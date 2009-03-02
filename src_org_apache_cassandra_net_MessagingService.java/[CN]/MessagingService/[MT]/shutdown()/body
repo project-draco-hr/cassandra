@@ -1,0 +1,20 @@
+{
+  logger_.info("Shutting down ...");
+synchronized (MessagingService.class) {
+    for (    SelectionKey skey : listenSockets_.values()) {
+      SelectorManager.getSelectorManager().cancel(skey);
+    }
+    listenSockets_.clear();
+    messageDeserializationExecutor_.shutdownNow();
+    messageSerializerExecutor_.shutdownNow();
+    messageDeserializerExecutor_.shutdownNow();
+    streamExecutor_.shutdownNow();
+    taskCompletionMap_.shutdown();
+    callbackMap_.shutdown();
+    SelectorManager.getSelectorManager().interrupt();
+    poolTable_.clear();
+    verbHandlers_.clear();
+    bShutdown_=true;
+  }
+  logger_.debug("Shutdown invocation complete.");
+}

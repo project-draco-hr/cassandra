@@ -1,0 +1,26 @@
+{
+  EndPointState epState=endPointStateMap_.get(localEndPoint_);
+  int generation=epState.getHeartBeatState().getGeneration();
+  int maxVersion=getMaxEndPointStateVersion(epState);
+  gDigests.add(new GossipDigest(localEndPoint_,generation,maxVersion));
+  int size=liveEndpoints_.size();
+  List<EndPoint> endpoints=new ArrayList<EndPoint>(liveEndpoints_);
+  Collections.shuffle(endpoints,random_);
+  for (  EndPoint liveEndPoint : endpoints) {
+    epState=endPointStateMap_.get(liveEndPoint);
+    if (epState != null) {
+      generation=epState.getHeartBeatState().getGeneration();
+      maxVersion=getMaxEndPointStateVersion(epState);
+      gDigests.add(new GossipDigest(liveEndPoint,generation,maxVersion));
+    }
+ else {
+      gDigests.add(new GossipDigest(liveEndPoint,0,0));
+    }
+  }
+  StringBuilder sb=new StringBuilder();
+  for (  GossipDigest gDigest : gDigests) {
+    sb.append(gDigest);
+    sb.append(" ");
+  }
+  logger_.debug("Gossip Digests are : " + sb.toString());
+}

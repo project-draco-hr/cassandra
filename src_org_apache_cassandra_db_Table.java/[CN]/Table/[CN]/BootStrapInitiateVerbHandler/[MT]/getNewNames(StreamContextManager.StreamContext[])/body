@@ -1,0 +1,17 @@
+{
+  Map<String,String> fileNames=new HashMap<String,String>();
+  Set<String> distinctEntries=new HashSet<String>();
+  for (  StreamContextManager.StreamContext streamContext : streamContexts) {
+    String[] peices=FBUtilities.strip(streamContext.getTargetFile(),"-");
+    distinctEntries.add(peices[1] + "-" + peices[2]);
+  }
+  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
+  Map<String,ColumnFamilyStore> columnFamilyStores=table.getColumnFamilyStores();
+  for (  String distinctEntry : distinctEntries) {
+    String[] peices=FBUtilities.strip(distinctEntry,"-");
+    ColumnFamilyStore cfStore=columnFamilyStores.get(peices[0]);
+    logger_.debug("Generating file name for " + distinctEntry + " ...");
+    fileNames.put(distinctEntry,cfStore.getNextFileName());
+  }
+  return fileNames;
+}

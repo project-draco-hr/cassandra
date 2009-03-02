@@ -1,0 +1,18 @@
+{
+  String key=from + ":" + to;
+  TcpConnectionManager cp=poolTable_.get(key);
+  if (cp == null) {
+    lock_.lock();
+    try {
+      cp=poolTable_.get(key);
+      if (cp == null) {
+        cp=new TcpConnectionManager(MessagingConfig.getConnectionPoolInitialSize(),MessagingConfig.getConnectionPoolGrowthFactor(),MessagingConfig.getConnectionPoolMaxSize(),from,to);
+        poolTable_.put(key,cp);
+      }
+    }
+  finally {
+      lock_.unlock();
+    }
+  }
+  return cp;
+}

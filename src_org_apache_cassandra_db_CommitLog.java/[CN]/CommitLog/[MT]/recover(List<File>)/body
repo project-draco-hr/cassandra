@@ -1,0 +1,24 @@
+{
+  Table table=Table.open(table_);
+  int cfSize=table.getNumberOfColumnFamilies();
+  int size=CommitLogHeader.size(cfSize);
+  byte[] header=new byte[size];
+  byte[] header2=new byte[size];
+  int index=clogs.size() - 1;
+  File file=clogs.get(index);
+  readCommitLogHeader(file.getAbsolutePath(),header);
+  Stack<File> filesNeeded=new Stack<File>();
+  filesNeeded.push(file);
+  for (int i=(index - 1); i >= 0; --i) {
+    file=clogs.get(i);
+    readCommitLogHeader(file.getAbsolutePath(),header2);
+    byte[] result=CommitLogHeader.and(header,header2);
+    if (!CommitLogHeader.isZero(result)) {
+      filesNeeded.push(file);
+    }
+ else {
+      break;
+    }
+  }
+  doRecovery(filesNeeded,header);
+}

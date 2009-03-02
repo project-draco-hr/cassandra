@@ -1,0 +1,35 @@
+{
+  try {
+    logger_.debug(" batch_insert");
+    logger_.debug(" Creating the row mutation");
+    validateTable(batchMutation.table);
+    RowMutation rm=new RowMutation(batchMutation.table,batchMutation.key.trim());
+    if (batchMutation.cfmap != null) {
+      Set keys=batchMutation.cfmap.keySet();
+      Iterator keyIter=keys.iterator();
+      while (keyIter.hasNext()) {
+        Object key=keyIter.next();
+        List<column_t> list=batchMutation.cfmap.get(key);
+        for (        column_t columnData : list) {
+          rm.add(key.toString() + ":" + columnData.columnName,columnData.value.getBytes(),columnData.timestamp);
+        }
+      }
+    }
+    if (batchMutation.cfmapdel != null) {
+      Set keys=batchMutation.cfmapdel.keySet();
+      Iterator keyIter=keys.iterator();
+      while (keyIter.hasNext()) {
+        Object key=keyIter.next();
+        List<column_t> list=batchMutation.cfmapdel.get(key);
+        for (        column_t columnData : list) {
+          rm.delete(key.toString() + ":" + columnData.columnName);
+        }
+      }
+    }
+    StorageProxy.insert(rm);
+  }
+ catch (  Exception e) {
+    logger_.info(LogUtil.throwableToString(e));
+  }
+  return;
+}

@@ -1,0 +1,28 @@
+{
+  EndPoint from=message.getFrom();
+  logger_.info("Received a GossipDigestAckMessage from " + from);
+  byte[] bytes=(byte[])message.getMessageBody()[0];
+  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(bytes));
+  try {
+    GossipDigestAckMessage gDigestAckMessage=GossipDigestAckMessage.serializer().deserialize(dis);
+    List<GossipDigest> gDigestList=gDigestAckMessage.getGossipDigestList();
+    Map<EndPoint,EndPointState> epStateMap=gDigestAckMessage.getEndPointStateMap();
+    if (epStateMap.size() > 0) {
+      Gossiper.instance().notifyFailureDetector(epStateMap);
+      Gossiper.instance().applyStateLocally(epStateMap);
+    }
+    Map<EndPoint,EndPointState> deltaEpStateMap=new HashMap<EndPoint,EndPointState>();
+    for (    GossipDigest gDigest : gDigestList) {
+      EndPoint addr=gDigest.getEndPoint();
+      EndPointState localEpStatePtr=Gossiper.instance().getStateForVersionBiggerThan(addr,gDigest.getMaxVersion());
+      if (localEpStatePtr != null)       deltaEpStateMap.put(addr,localEpStatePtr);
+    }
+    GossipDigestAck2Message gDigestAck2=new GossipDigestAck2Message(deltaEpStateMap);
+    Message gDigestAck2Message=Gossiper.instance().makeGossipDigestAck2Message(gDigestAck2);
+    logger_.info("Sending a GossipDigestAck2Message to " + from);
+    MessagingService.getMessagingInstance().sendUdpOneWay(gDigestAck2Message,from);
+  }
+ catch (  IOException e) {
+    logger_.info(LogUtil.throwableToString(e));
+  }
+}

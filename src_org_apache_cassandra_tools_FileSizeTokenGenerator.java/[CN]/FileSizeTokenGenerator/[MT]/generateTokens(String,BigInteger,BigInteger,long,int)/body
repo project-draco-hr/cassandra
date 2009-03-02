@@ -1,0 +1,35 @@
+{
+  final int bufferSize=64 * 1024;
+  IFileReader dataReader=SequenceFile.bufferedReader(dataFile,bufferSize);
+  DataOutputBuffer bufOut=new DataOutputBuffer();
+  DataInputBuffer bufIn=new DataInputBuffer();
+  long splitFactor=totalSize / (splitCount + 1);
+  long curSize=0;
+  BigInteger[] tokens=new BigInteger[splitCount];
+  int k=0;
+  try {
+    while (!dataReader.isEOF()) {
+      bufOut.reset();
+      dataReader.next(bufOut);
+      bufIn.reset(bufOut.getData(),bufOut.getLength());
+      String key=bufIn.readUTF();
+      if (!key.equals(SSTable.blockIndexKey_) && l.compareTo(StorageService.hash(key)) < 0 && h.compareTo(StorageService.hash(key)) > 0) {
+        int sz=bufIn.readInt();
+        curSize=curSize + sz;
+        byte[] keyData=new byte[sz];
+        bufIn.read(keyData,0,sz);
+        if (curSize > splitFactor) {
+          tokens[k++]=StorageService.hash(key);
+          curSize=0;
+          if (k == splitCount) {
+            break;
+          }
+        }
+      }
+    }
+  }
+  finally {
+    dataReader.close();
+  }
+  return tokens;
+}

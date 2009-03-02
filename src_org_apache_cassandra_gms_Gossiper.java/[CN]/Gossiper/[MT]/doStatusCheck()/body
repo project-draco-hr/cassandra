@@ -1,0 +1,16 @@
+{
+  long now=System.currentTimeMillis();
+  Set<EndPoint> eps=endPointStateMap_.keySet();
+  for (  EndPoint endpoint : eps) {
+    if (endpoint.equals(localEndPoint_))     continue;
+    FailureDetector.instance().intepret(endpoint);
+    EndPointState epState=endPointStateMap_.get(endpoint);
+    if (epState != null) {
+      long l=now - epState.getUpdateTimestamp();
+      long duration=now - l;
+      if (!epState.isAlive() && (duration > aVeryLongTime_)) {
+        evictFromMembership(endpoint);
+      }
+    }
+  }
+}

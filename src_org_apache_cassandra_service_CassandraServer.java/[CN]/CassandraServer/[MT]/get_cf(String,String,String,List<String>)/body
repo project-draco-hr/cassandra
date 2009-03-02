@@ -1,0 +1,30 @@
+{
+  ColumnFamily cfamily=null;
+  try {
+    validateTable(tablename);
+    String[] values=RowMutation.getColumnAndColumnFamily(columnFamily);
+    if (values.length < 1) {
+      throw new CassandraException("Column Family " + columnFamily + " is invalid.");
+    }
+    Row row=StorageProxy.readProtocol(tablename,key,columnFamily,columNames,StorageService.ConsistencyLevel.WEAK);
+    if (row == null) {
+      throw new CassandraException("No row exists for key " + key);
+    }
+    Map<String,ColumnFamily> cfMap=row.getColumnFamilies();
+    if (cfMap == null || cfMap.size() == 0) {
+      logger_.info("ERROR ColumnFamily " + columnFamily + " map is missing.....: "+ "   key:"+ key);
+      throw new CassandraException("Either the key " + key + " is not present or the columns requested are not present.");
+    }
+    cfamily=cfMap.get(values[0]);
+    if (cfamily == null) {
+      logger_.info("ERROR ColumnFamily " + columnFamily + " is missing.....: "+ "   key:"+ key+ "  ColumnFamily:"+ values[0]);
+      throw new CassandraException("Either the key " + key + " is not present or the column family "+ values[0]+ " is not present.");
+    }
+  }
+ catch (  Throwable ex) {
+    String exception=LogUtil.throwableToString(ex);
+    logger_.info(exception);
+    throw new CassandraException(exception);
+  }
+  return cfamily;
+}

@@ -1,0 +1,20 @@
+{
+  assert(ast.getType() == CqlParser.A_COLUMN_ACCESS);
+  CommonTree columnFamilyNode=(CommonTree)(ast.getChild(1));
+  CommonTree tableNode=(CommonTree)(ast.getChild(0));
+  String columnFamily=columnFamilyNode.getText();
+  String table=tableNode.getText();
+  Map<String,CFMetaData> columnFamilies=DatabaseDescriptor.getTableMetaData(table);
+  if (columnFamilies == null) {
+    throw new SemanticException(CompilerErrorMsg.INVALID_TABLE.getMsg(ast,table));
+  }
+  CFMetaData cfMetaData=columnFamilies.get(columnFamily);
+  if (cfMetaData == null) {
+    throw new SemanticException(CompilerErrorMsg.INVALID_COLUMN_FAMILY.getMsg(ast,columnFamily,table));
+  }
+  int dimensions=numColumnDimensions(ast);
+  if (("Super".equals(cfMetaData.columnType) && (dimensions > 2)) || ("Standard".equals(cfMetaData.columnType) && dimensions > 1)) {
+    throw new SemanticException(CompilerErrorMsg.TOO_MANY_DIMENSIONS.getMsg(ast,cfMetaData.columnType));
+  }
+  return cfMetaData;
+}

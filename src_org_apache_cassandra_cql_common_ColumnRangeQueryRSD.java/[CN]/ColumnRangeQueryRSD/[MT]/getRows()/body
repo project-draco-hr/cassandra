@@ -1,0 +1,47 @@
+{
+  String columnFamily_column;
+  String superColumnKey=null;
+  if (superColumnKey_ != null) {
+    superColumnKey=(String)(superColumnKey_.get());
+    columnFamily_column=cfMetaData_.cfName + ":" + superColumnKey;
+  }
+ else {
+    columnFamily_column=cfMetaData_.cfName;
+  }
+  Row row=null;
+  try {
+    String key=(String)(rowKey_.get());
+    row=StorageProxy.readProtocol(cfMetaData_.tableName,key,columnFamily_column,offset_,limit_,StorageService.ConsistencyLevel.WEAK);
+  }
+ catch (  Exception e) {
+    logger_.error(LogUtil.throwableToString(e));
+    throw new RuntimeException(RuntimeErrorMsg.GENERIC_ERROR.getMsg());
+  }
+  List<Map<String,String>> rows=new LinkedList<Map<String,String>>();
+  if (row != null) {
+    Map<String,ColumnFamily> cfMap=row.getColumnFamilies();
+    if (cfMap != null && cfMap.size() > 0) {
+      ColumnFamily cfamily=cfMap.get(cfMetaData_.cfName);
+      if (cfamily != null) {
+        Collection<IColumn> columns=null;
+        if (superColumnKey_ != null) {
+          IColumn column=cfamily.getColumn(superColumnKey);
+          if (column != null)           columns=column.getSubColumns();
+        }
+ else {
+          columns=cfamily.getAllColumns();
+        }
+        if (columns != null && columns.size() > 0) {
+          for (          IColumn column : columns) {
+            Map<String,String> result=new HashMap<String,String>();
+            result.put(cfMetaData_.n_columnKey,column.name());
+            result.put(cfMetaData_.n_columnValue,new String(column.value()));
+            result.put(cfMetaData_.n_columnTimestamp,Long.toString(column.timestamp()));
+            rows.add(result);
+          }
+        }
+      }
+    }
+  }
+  return rows;
+}

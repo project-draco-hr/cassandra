@@ -1,0 +1,32 @@
+{
+  Random random=new Random();
+  byte[] bytes=new byte[size];
+  int ts=1;
+  try {
+    while (true) {
+      int key=random.nextInt(keys) + 1;
+      String stringKey=new Integer(key).toString();
+      stringKey=stringKey + keyFix_;
+      RowMutation rm=new RowMutation(tablename_,stringKey);
+      int j=random.nextInt(columns) + 1;
+      random.nextBytes(bytes);
+      rm.add(columnFamilyColumn_ + ":" + columnFix_+ j,bytes,ts);
+      if (ts == Integer.MAX_VALUE) {
+        ts=0;
+      }
+      ts++;
+      for (int k=0; k < requestsPerSecond_ / 1000 + 1; k++) {
+        runner_.submit(new LoadManager(new RowMutationMessage(rm)));
+      }
+      try {
+        if (requestsPerSecond_ > 1000)         Thread.sleep(1);
+ else         Thread.sleep(1000 / requestsPerSecond_);
+      }
+ catch (      Exception ex) {
+      }
+    }
+  }
+ catch (  Exception ex) {
+    ex.printStackTrace();
+  }
+}

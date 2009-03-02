@@ -1,0 +1,62 @@
+{
+  long startTime=System.currentTimeMillis();
+  Row retRow=null;
+  List<Row> rowList=new ArrayList<Row>();
+  List<EndPoint> endPoints=new ArrayList<EndPoint>();
+  String key=null;
+  String table=null;
+  byte[] digest=new byte[0];
+  boolean isDigestQuery=false;
+  DataInputBuffer bufIn=new DataInputBuffer();
+  for (  Message response : responses) {
+    byte[] body=(byte[])response.getMessageBody()[0];
+    bufIn.reset(body,body.length);
+    try {
+      long start=System.currentTimeMillis();
+      ReadResponseMessage result=ReadResponseMessage.serializer().deserialize(bufIn);
+      logger_.debug("Response deserialization time : " + (System.currentTimeMillis() - start) + " ms.");
+      if (!result.isDigestQuery()) {
+        rowList.add(result.row());
+        endPoints.add(response.getFrom());
+        key=result.row().key();
+        table=result.table();
+      }
+ else {
+        digest=result.digest();
+        isDigestQuery=true;
+      }
+    }
+ catch (    IOException ex) {
+      logger_.info(LogUtil.throwableToString(ex));
+    }
+  }
+  if (isDigestQuery) {
+    for (    Row row : rowList) {
+      if (!Arrays.equals(row.digest(),digest)) {
+        throw new DigestMismatchException("The Digest does not match");
+      }
+    }
+  }
+  if (rowList.size() == 0) {
+    return retRow;
+  }
+  retRow=new Row(key);
+  for (int i=0; i < rowList.size(); i++) {
+    retRow.repair(rowList.get(i));
+  }
+  for (int i=0; i < rowList.size(); i++) {
+    Row diffRow=rowList.get(i).diff(retRow);
+    if (diffRow == null)     continue;
+    RowMutation rowMutation=new RowMutation(table,key);
+    Map<String,ColumnFamily> columnFamilies=diffRow.getColumnFamilies();
+    Set<String> cfNames=columnFamilies.keySet();
+    for (    String cfName : cfNames) {
+      ColumnFamily cf=columnFamilies.get(cfName);
+      rowMutation.add(cfName,cf);
+    }
+    RowMutationMessage rowMutationMessage=new RowMutationMessage(rowMutation);
+    ReadRepairManager.instance().schedule(endPoints.get(i),rowMutationMessage);
+  }
+  logger_.info("resolve: " + (System.currentTimeMillis() - startTime) + " ms.");
+  return retRow;
+}

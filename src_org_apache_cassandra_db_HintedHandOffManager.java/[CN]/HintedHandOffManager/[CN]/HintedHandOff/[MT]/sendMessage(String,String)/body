@@ -1,0 +1,18 @@
+{
+  boolean success=false;
+  if (FailureDetector.instance().isAlive(new EndPoint(endpointAddress,DatabaseDescriptor.getControlPort()))) {
+    success=true;
+  }
+ else {
+    return success;
+  }
+  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
+  Row row=null;
+  row=table.get(key);
+  RowMutation rm=new RowMutation(DatabaseDescriptor.getTables().get(0),row);
+  RowMutationMessage rmMsg=new RowMutationMessage(rm);
+  Message message=RowMutationMessage.makeRowMutationMessage(rmMsg);
+  EndPoint endPoint=new EndPoint(endpointAddress,DatabaseDescriptor.getStoragePort());
+  MessagingService.getMessagingInstance().sendOneWay(message,endPoint);
+  return success;
+}

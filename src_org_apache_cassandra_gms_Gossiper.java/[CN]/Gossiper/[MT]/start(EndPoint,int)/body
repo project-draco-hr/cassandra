@@ -1,0 +1,18 @@
+{
+  localEndPoint_=localEndPoint;
+  Set<String> seedHosts=DatabaseDescriptor.getSeeds();
+  for (  String seedHost : seedHosts) {
+    EndPoint seed=new EndPoint(seedHost,DatabaseDescriptor.getControlPort());
+    if (seed.equals(localEndPoint))     continue;
+    seeds_.add(seed);
+  }
+  EndPointState localState=endPointStateMap_.get(localEndPoint_);
+  if (localState == null) {
+    HeartBeatState hbState=new HeartBeatState(generationNbr,0);
+    localState=new EndPointState(hbState);
+    localState.isAlive(true);
+    localState.isAGossiper(true);
+    endPointStateMap_.put(localEndPoint_,localState);
+  }
+  gossipTimer_.schedule(new GossipTimerTask(),Gossiper.intervalInMillis_,Gossiper.intervalInMillis_);
+}

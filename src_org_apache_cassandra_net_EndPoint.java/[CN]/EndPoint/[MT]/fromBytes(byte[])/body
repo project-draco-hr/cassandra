@@ -1,0 +1,19 @@
+{
+  ByteBuffer buffer=ByteBuffer.allocate(4);
+  System.arraycopy(bytes,0,buffer.array(),0,4);
+  byte[] portBytes=new byte[2];
+  System.arraycopy(bytes,4,portBytes,0,portBytes.length);
+  try {
+    CharBuffer charBuffer=buffer.asCharBuffer();
+    String host=hostNames_.get(charBuffer);
+    if (host == null) {
+      host=InetAddress.getByAddress(buffer.array()).getHostName();
+      hostNames_.put(charBuffer,host);
+    }
+    int port=(int)MessagingService.byteArrayToShort(portBytes);
+    return new EndPoint(host,port);
+  }
+ catch (  UnknownHostException e) {
+    throw new IllegalArgumentException(e);
+  }
+}

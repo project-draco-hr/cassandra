@@ -1,0 +1,40 @@
+{
+  if (!CliMain.isConnected())   return;
+  int childCount=ast.getChildCount();
+  assert(childCount == 1);
+  CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
+  assert(columnFamilySpec.getType() == CliParser.NODE_COLUMN_ACCESS);
+  String tableName=CliCompiler.getTableName(columnFamilySpec);
+  String key=CliCompiler.getKey(columnFamilySpec);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  if (columnSpecCnt == 0) {
+    List<column_t> columns=new ArrayList<column_t>();
+    try {
+      columns=thriftClient_.get_slice(tableName,key,columnFamily,-1,1000000);
+    }
+ catch (    CassandraException cex) {
+      css_.out.println(LogUtil.throwableToString(cex));
+    }
+    int size=columns.size();
+    for (Iterator<column_t> colIter=columns.iterator(); colIter.hasNext(); ) {
+      column_t col=colIter.next();
+      css_.out.printf("  (column=%s, value=%s; timestamp=%d)\n",col.columnName,col.value,col.timestamp);
+    }
+    css_.out.println("Returned " + size + " rows.");
+  }
+ else   if (columnSpecCnt == 1) {
+    String columnName=CliCompiler.getColumn(columnFamilySpec,0);
+    column_t col=new column_t();
+    try {
+      col=thriftClient_.get_column(tableName,key,columnFamily + ":" + columnName);
+    }
+ catch (    CassandraException cex) {
+      css_.out.println(LogUtil.throwableToString(cex));
+    }
+    css_.out.printf("==> (name=%s, value=%s; timestamp=%d)\n",col.columnName,col.value,col.timestamp);
+  }
+ else {
+    assert(false);
+  }
+}

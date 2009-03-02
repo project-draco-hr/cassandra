@@ -1,0 +1,24 @@
+{
+  if (isThresholdViolated(key)) {
+    lock_.lock();
+    try {
+      ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
+      if (!isFrozen_) {
+        isFrozen_=true;
+        MemtableManager.instance().submit(cfStore.getColumnFamilyName(),this,cLogCtx);
+        cfStore.switchMemtable(key,columnFamily,cLogCtx);
+      }
+ else {
+        cfStore.apply(key,columnFamily,cLogCtx);
+      }
+    }
+  finally {
+      lock_.unlock();
+    }
+  }
+ else {
+    printExecutorStats();
+    Runnable putter=new Putter(key,columnFamily);
+    apartments_.get(cfName_).submit(putter);
+  }
+}

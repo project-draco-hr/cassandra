@@ -1,0 +1,30 @@
+{
+  boolean result=false;
+  try {
+    logger_.warn(" batch_insert_SuperColumn_blocking");
+    logger_.debug(" Creating the row mutation");
+    validateTable(batchMutationSuper.table);
+    RowMutation rm=new RowMutation(batchMutationSuper.table,batchMutationSuper.key.trim());
+    Set keys=batchMutationSuper.cfmap.keySet();
+    Iterator keyIter=keys.iterator();
+    while (keyIter.hasNext()) {
+      Object key=keyIter.next();
+      List<superColumn_t> list=batchMutationSuper.cfmap.get(key);
+      for (      superColumn_t superColumnData : list) {
+        if (superColumnData.columns.size() != 0) {
+          for (          column_t columnData : superColumnData.columns) {
+            rm.add(key.toString() + ":" + superColumnData.name+ ":"+ columnData.columnName,columnData.value.getBytes(),columnData.timestamp);
+          }
+        }
+ else {
+          rm.add(key.toString() + ":" + superColumnData.name,new byte[0],0);
+        }
+      }
+    }
+    StorageProxy.insert(rm);
+  }
+ catch (  Exception e) {
+    logger_.info(LogUtil.throwableToString(e));
+  }
+  return result;
+}

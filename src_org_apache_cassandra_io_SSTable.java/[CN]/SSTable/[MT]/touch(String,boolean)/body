@@ -1,0 +1,25 @@
+{
+  if (touchCache_.containsKey(key))   return;
+  IFileReader dataReader=SequenceFile.reader(dataFile_);
+  try {
+    key=morphKey(key);
+    Coordinate fileCoordinate=getCoordinates(key,dataReader);
+    dataReader.seek(fileCoordinate.end_);
+    BlockMetadata blockMetadata=dataReader.getBlockMetadata(key);
+    if (blockMetadata.position_ != -1L) {
+      touchCache_.put(dataFile_ + ":" + key,blockMetadata.position_);
+    }
+    if (fData) {
+      if (blockMetadata.position_ != -1L) {
+        dataReader.seek(blockMetadata.position_);
+        DataOutputBuffer bufOut=new DataOutputBuffer();
+        dataReader.next(bufOut);
+        bufOut.reset();
+        logger_.debug("Finished the touch of the key to pull it into buffer cache.");
+      }
+    }
+  }
+  finally {
+    if (dataReader != null)     dataReader.close();
+  }
+}

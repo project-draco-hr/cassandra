@@ -1,0 +1,78 @@
+{
+  requestsPerSecond_=config.getInt("tps");
+  int numThreads=requestsPerSecond_ / 1000 + 1;
+  if (config.getString("Server") != null) {
+    server_=config.getString("Server");
+    to_=new EndPoint(config.getString("Server"),7000);
+  }
+  runner_=new DebuggableThreadPoolExecutor(numThreads,numThreads,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("MEMTABLE-FLUSHER-POOL"));
+  if (config.getInt("mailboxstress") == 1) {
+    return;
+  }
+  if (config.getInt("commitLogTest") == 1) {
+    testCommitLog();
+    return;
+  }
+  if (config.getInt("thrift") == 0) {
+    if (config.getInt("supercolumns") == 0) {
+      if (config.getBoolean("reads")) {
+        randomReadColumn(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("bulkwrites")) {
+        bulkWriteColumn(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("writes")) {
+        randomWriteColumn(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+    }
+ else {
+      if (config.getBoolean("reads")) {
+        randomReadSuperColumn(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("bulkwrites")) {
+        bulkWriteSuperColumn(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("writes")) {
+        randomWriteSuperColumn(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+    }
+  }
+ else {
+    peerstorageClient_=connect();
+    if (config.getInt("supercolumns") == 0) {
+      if (config.getBoolean("reads")) {
+        randomReadColumnThrift(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("bulkwrites")) {
+        bulkWriteColumnThrift(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("writes")) {
+        randomWriteColumnThrift(config.getInt("keys"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+    }
+ else {
+      if (config.getBoolean("reads")) {
+        randomReadSuperColumnThrift(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("bulkwrites")) {
+        bulkWriteSuperColumnThrift(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+      if (config.getBoolean("writes")) {
+        randomWriteSuperColumnThrift(config.getInt("keys"),config.getInt("supercolumns"),config.getInt("columns"),config.getInt("size"),config.getInt("tps"));
+        return;
+      }
+    }
+  }
+  System.out.println(" StressTest : Done !!!!!!");
+}

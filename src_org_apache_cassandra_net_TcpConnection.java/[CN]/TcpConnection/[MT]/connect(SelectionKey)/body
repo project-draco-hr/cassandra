@@ -1,0 +1,23 @@
+{
+  key.interestOps(key.interestOps() & (~SelectionKey.OP_CONNECT));
+  try {
+    if (socketChannel_.finishConnect()) {
+      SelectorManager.getSelectorManager().modifyKeyForRead(key);
+      connected_.set(true);
+      if (!pendingWrites_.isEmpty()) {
+        SelectorManager.getSelectorManager().modifyKeyForWrite(key_);
+      }
+      resumeStreaming();
+    }
+ else {
+      logger_.warn("Closing connection because socket channel could not finishConnect.");
+      ;
+      errorClose();
+    }
+  }
+ catch (  IOException e) {
+    logger_.warn("Encountered IOException on connection: " + socketChannel_);
+    logger_.warn(LogUtil.throwableToString(e));
+    errorClose();
+  }
+}

@@ -1,0 +1,53 @@
+{
+  Table table=Table.open(table_);
+  DataInputBuffer bufIn=new DataInputBuffer();
+  DataOutputBuffer bufOut=new DataOutputBuffer();
+  while (!filesNeeded.isEmpty()) {
+    File file=filesNeeded.pop();
+    IFileReader reader=SequenceFile.reader(file.getAbsolutePath());
+    try {
+      Map<String,Row> rows=new HashMap<String,Row>();
+      reader.readDirect(header);
+      bufIn.reset(header,0,header.length);
+      CommitLogHeader clHeader=CommitLogHeader.serializer().deserialize(bufIn);
+      int lowPos=CommitLogHeader.getLowestPosition(clHeader);
+      if (lowPos == 0)       break;
+ else       reader.seek(lowPos);
+      while (!reader.isEOF()) {
+        bufOut.reset();
+        long bytesRead=reader.next(bufOut);
+        if (bytesRead == -1)         break;
+        bufIn.reset(bufOut.getData(),bufOut.getLength());
+        bufIn.readUTF();
+        bufIn.readInt();
+        try {
+          Row row=Row.serializer().deserialize(bufIn);
+          Map<String,ColumnFamily> columnFamilies=new HashMap<String,ColumnFamily>(row.getColumnFamilies());
+          Set<String> cNames=columnFamilies.keySet();
+          for (          String cName : cNames) {
+            ColumnFamily columnFamily=columnFamilies.get(cName);
+            if (!DatabaseDescriptor.isApplicationColumnFamily(cName)) {
+              row.removeColumnFamily(columnFamily);
+              continue;
+            }
+            int id=table.getColumnFamilyId(columnFamily.name());
+            if (clHeader.get(id) == 0 || reader.getCurrentPosition() < clHeader.getPosition(id))             row.removeColumnFamily(columnFamily);
+          }
+          if (!row.isEmpty()) {
+            table.applyNow(row);
+          }
+        }
+ catch (        IOException e) {
+          logger_.debug(LogUtil.throwableToString(e));
+        }
+      }
+      reader.close();
+      table.flush(true);
+    }
+ catch (    Throwable th) {
+      logger_.info(LogUtil.throwableToString(th));
+      reader.close();
+      FileUtils.delete(new File[]{file});
+    }
+  }
+}

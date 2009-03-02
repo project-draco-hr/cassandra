@@ -1,0 +1,25 @@
+{
+  String columnFamily_column;
+  if (superColumnKey_ != null) {
+    String superColumnKey=(String)(superColumnKey_.get());
+    columnFamily_column=cfMetaData_.cfName + ":" + superColumnKey+ ":";
+  }
+ else {
+    columnFamily_column=cfMetaData_.cfName + ":";
+  }
+  try {
+    RowMutation rm=new RowMutation(cfMetaData_.tableName,(String)(rowKey_.get()));
+    long time=System.currentTimeMillis();
+    for (    Pair<OperandDef,OperandDef> entry : columnMapExpr_) {
+      OperandDef columnKey=entry.getFirst();
+      OperandDef value=entry.getSecond();
+      rm.add(columnFamily_column + (String)(columnKey.get()),((String)value.get()).getBytes(),time);
+    }
+    StorageProxy.insert(rm);
+  }
+ catch (  Exception e) {
+    logger_.error(LogUtil.throwableToString(e));
+    throw new RuntimeException(RuntimeErrorMsg.GENERIC_ERROR.getMsg());
+  }
+  return null;
+}

@@ -1,0 +1,15 @@
+{
+  EndPoint from=message.getFrom();
+  logger_.debug("Received a JoinMessage from " + from);
+  byte[] bytes=(byte[])message.getMessageBody()[0];
+  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(bytes));
+  try {
+    JoinMessage joinMessage=JoinMessage.serializer().deserialize(dis);
+    if (joinMessage.clusterId_.equals(DatabaseDescriptor.getClusterName())) {
+      Gossiper.instance().join(from);
+    }
+  }
+ catch (  IOException ex) {
+    logger_.info(LogUtil.throwableToString(ex));
+  }
+}

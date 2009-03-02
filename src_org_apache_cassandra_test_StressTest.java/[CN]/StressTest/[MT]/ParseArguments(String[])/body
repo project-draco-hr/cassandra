@@ -1,0 +1,23 @@
+{
+  JSAPResult config=null;
+  try {
+    SimpleJSAP jsap=new SimpleJSAP("StressTest","Runs stress test for Cassandra",new Parameter[]{new FlaggedOption("keys",JSAP.INTEGER_PARSER,"10000",JSAP.REQUIRED,'k',JSAP.NO_LONGFLAG,"The number of keys from 1 to this number"),new FlaggedOption("columns",JSAP.INTEGER_PARSER,"1000",JSAP.REQUIRED,'c',JSAP.NO_LONGFLAG,"The number of columns from 1 to this number"),new FlaggedOption("supercolumns",JSAP.INTEGER_PARSER,"0",JSAP.NOT_REQUIRED,'u',JSAP.NO_LONGFLAG,"The number of super columns from 1 to this number"),new FlaggedOption("size",JSAP.INTEGER_PARSER,"1000",JSAP.REQUIRED,'s',JSAP.NO_LONGFLAG,"The Size in bytes of each column"),new FlaggedOption("tps",JSAP.INTEGER_PARSER,"1000",JSAP.REQUIRED,'t',JSAP.NO_LONGFLAG,"Requests per second"),new FlaggedOption("thrift",JSAP.INTEGER_PARSER,"0",JSAP.REQUIRED,'h',JSAP.NO_LONGFLAG,"Use Thrift - 1 , use messaging - 0"),new FlaggedOption("mailboxstress",JSAP.INTEGER_PARSER,"0",JSAP.REQUIRED,'M',JSAP.NO_LONGFLAG,"Run mailbox stress  - 1 , hmm default - 0"),new FlaggedOption("commitLogTest",JSAP.INTEGER_PARSER,"0",JSAP.REQUIRED,'C',JSAP.NO_LONGFLAG,"Run mailbox stress  - 1 , hmm default - 0"),new QualifiedSwitch("randomize",JSAP.STRING_PARSER,JSAP.NO_DEFAULT,JSAP.NOT_REQUIRED,'z',"randomize","Random reads or writes").setList(true).setListSeparator(','),new QualifiedSwitch("reads",JSAP.STRING_PARSER,JSAP.NO_DEFAULT,JSAP.NOT_REQUIRED,'r',"reads","Read data").setList(true).setListSeparator(','),new QualifiedSwitch("writes",JSAP.STRING_PARSER,JSAP.NO_DEFAULT,JSAP.NOT_REQUIRED,'w',"writes","Write Data").setList(false).setListSeparator(','),new QualifiedSwitch("bulkwrites",JSAP.STRING_PARSER,JSAP.NO_DEFAULT,JSAP.NOT_REQUIRED,'b',"bulkwrites","Bulk Write Data").setList(false).setListSeparator(','),new UnflaggedOption("Server",JSAP.STRING_PARSER,JSAP.REQUIRED,"Name of the server the request needs to be sent to.")});
+    config=jsap.parse(args);
+    if (!config.success()) {
+      System.err.println();
+      System.err.println("Usage: java " + StressTest.class.getName());
+      System.err.println("                " + jsap.getUsage());
+      System.err.println();
+      System.err.println(jsap.getHelp());
+      System.err.println("**********Errors*************");
+    }
+    if (jsap.messagePrinted())     return null;
+    String hostName=FBUtilities.getHostName();
+    from_=new EndPoint(hostName,10001);
+    MessagingService.getMessagingInstance().listen(from_,false);
+  }
+ catch (  Exception ex) {
+    logger_.debug(LogUtil.throwableToString(ex));
+  }
+  return config;
+}

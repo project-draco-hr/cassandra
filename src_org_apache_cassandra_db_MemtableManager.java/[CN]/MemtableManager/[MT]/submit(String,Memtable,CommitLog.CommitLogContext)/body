@@ -1,0 +1,15 @@
+{
+  rwLock_.writeLock().lock();
+  try {
+    List<Memtable> memtables=history_.get(cfName);
+    if (memtables == null) {
+      memtables=new ArrayList<Memtable>();
+      history_.put(cfName,memtables);
+    }
+    memtables.add(memtbl);
+    flusher_.submit(new MemtableFlusher(memtbl,cLogCtx));
+  }
+  finally {
+    rwLock_.writeLock().unlock();
+  }
+}

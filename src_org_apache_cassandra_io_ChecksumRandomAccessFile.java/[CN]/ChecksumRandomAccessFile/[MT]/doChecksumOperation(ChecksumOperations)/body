@@ -1,0 +1,23 @@
+{
+  int buffSz=buff_.length;
+  long currentPosition=((diskPos_ % buffSz) == 0) ? diskPos_ - 1 : diskPos_;
+  long chunk=(currentPosition / buffSz) + 1;
+  int chksumChunks=buff_.length / checksumSz_;
+  long pos=(chunk == 0) ? 0 : (chunk - 1) * buffSz;
+  int startOffset=0;
+  int chksumChunkId=(int)(chksumChunks * (chunk - 1) + 1);
+  do {
+    int fId=SequenceFile.getFileId(filename_);
+switch (chksumOps) {
+case LOG:
+      ChecksumManager.instance(filename_).logChecksum(fId,chksumChunkId++,buff_,startOffset,checksumSz_);
+    break;
+case VERIFY:
+  ChecksumManager.instance(filename_).validateChecksum(filename_,chksumChunkId++,buff_,startOffset,checksumSz_);
+break;
+}
+pos+=checksumSz_;
+startOffset+=checksumSz_;
+}
+ while (pos < currentPosition);
+}

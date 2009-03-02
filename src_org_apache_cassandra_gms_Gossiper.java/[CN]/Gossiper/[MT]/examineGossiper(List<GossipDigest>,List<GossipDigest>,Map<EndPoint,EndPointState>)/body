@@ -1,0 +1,29 @@
+{
+  for (  GossipDigest gDigest : gDigestList) {
+    int remoteGeneration=gDigest.getGeneration();
+    int maxRemoteVersion=gDigest.getMaxVersion();
+    EndPointState epStatePtr=endPointStateMap_.get(gDigest.getEndPoint());
+    if (epStatePtr != null) {
+      int localGeneration=epStatePtr.getHeartBeatState().getGeneration();
+      int maxLocalVersion=getMaxEndPointStateVersion(epStatePtr);
+      if (remoteGeneration == localGeneration && maxRemoteVersion == maxLocalVersion)       continue;
+      if (remoteGeneration > localGeneration) {
+        requestAll(gDigest,deltaGossipDigestList,remoteGeneration);
+      }
+      if (remoteGeneration < localGeneration) {
+        sendAll(gDigest,deltaEpStateMap,0);
+      }
+      if (remoteGeneration == localGeneration) {
+        if (maxRemoteVersion > maxLocalVersion) {
+          deltaGossipDigestList.add(new GossipDigest(gDigest.getEndPoint(),remoteGeneration,maxLocalVersion));
+        }
+        if (maxRemoteVersion < maxLocalVersion) {
+          sendAll(gDigest,deltaEpStateMap,maxRemoteVersion);
+        }
+      }
+    }
+ else {
+      requestAll(gDigest,deltaGossipDigestList,remoteGeneration);
+    }
+  }
+}

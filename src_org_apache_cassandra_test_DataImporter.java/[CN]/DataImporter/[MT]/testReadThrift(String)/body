@@ -1,0 +1,82 @@
+{
+  BufferedReader bufReader=new BufferedReader(new InputStreamReader(new FileInputStream(filepath)),16 * 1024 * 1024);
+  String line=null;
+  String delimiter_=new String(",");
+  RowMutationMessage rmInbox=null;
+  RowMutationMessage rmOutbox=null;
+  ColumnFamily cfInbox=null;
+  ColumnFamily cfOutbox=null;
+  String firstuser=null;
+  String nextuser=null;
+  while ((line=bufReader.readLine()) != null) {
+    StringTokenizer st=new StringTokenizer(line,delimiter_);
+    int i=0;
+    String threadId=null;
+    int lastUpdated=0;
+    int isDeleted=0;
+    int folder=0;
+    String user=null;
+    while (st.hasMoreElements()) {
+switch (i) {
+case 0:
+        user=(String)st.nextElement();
+      if (!isNumeric(user))       continue;
+    break;
+case 1:
+  folder=Integer.parseInt((String)st.nextElement());
+break;
+case 2:
+threadId=(String)st.nextElement();
+break;
+case 3:
+lastUpdated=Integer.parseInt((String)st.nextElement());
+break;
+case 4:
+isDeleted=Integer.parseInt((String)st.nextElement());
+break;
+default :
+break;
+}
+++i;
+}
+String key=null;
+if (folder == 0) {
+key=user + ":0";
+}
+ else {
+key=user + ":1";
+}
+nextuser=key;
+if (firstuser == null || firstuser.compareTo(nextuser) != 0) {
+List<column_t> columns=null;
+firstuser=key;
+try {
+Thread.sleep(1000 / requestsPerSecond_,1000 % requestsPerSecond_);
+long t=System.currentTimeMillis();
+columns=peerstorageClient_.get_slice(tablename_,key,columnFamily_ + (columnFamilyHack_ % divideby_),0,10);
+numReqs_++;
+totalTime_=totalTime_ + (System.currentTimeMillis() - t);
+logger_.debug("Numreqs:" + numReqs_ + " Average: "+ totalTime_ / numReqs_ + "   Time taken for thrift..." + (System.currentTimeMillis() - t));
+}
+ catch (Exception e) {
+e.printStackTrace();
+}
+if (columns == null) {
+logger_.debug("ERROR No row for this key .....: " + line);
+Thread.sleep(1000 / requestsPerSecond_,1000 % requestsPerSecond_);
+errorCount_++;
+}
+ else {
+if (columns.size() == 0) {
+logger_.debug("ERROR ColumnFamil map is missing.....: " + threadId + "   key:"+ key+ "    record:"+ line);
+System.out.println("ERROR ColumnFamil map is missing.....: " + threadId + "   key:"+ key+ "    record:"+ line);
+errorCount_++;
+continue;
+}
+ else {
+}
+}
+queryCount_++;
+}
+}
+}

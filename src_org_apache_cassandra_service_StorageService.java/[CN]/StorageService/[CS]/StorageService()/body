@@ -1,0 +1,35 @@
+{
+  init();
+  uptime_=System.currentTimeMillis();
+  storageLoadBalancer_=new StorageLoadBalancer(this);
+  endPointSnitch_=new EndPointSnitch();
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.tokenVerbHandler_,new TokenUpdateVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.binaryVerbHandler_,new BinaryVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.loadVerbHandler_,new LoadVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.mutationVerbHandler_,new RowMutationVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.readRepairVerbHandler_,new ReadRepairVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.readVerbHandler_,new ReadVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.bootStrapInitiateVerbHandler_,new Table.BootStrapInitiateVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.bootStrapInitiateDoneVerbHandler_,new StorageService.BootstrapInitiateDoneVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.bootStrapTerminateVerbHandler_,new StreamManager.BootstrapTerminateVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(HttpConnection.httpRequestVerbHandler_,new HttpRequestVerbHandler(this));
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.tokenInfoVerbHandler_,new TokenInfoVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.locationInfoVerbHandler_,new LocationInfoVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.dataFileVerbHandler_,new DataFileVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.mbrshipCleanerVerbHandler_,new MembershipCleanerVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.bsMetadataVerbHandler_,new BootstrapMetadataVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.jobConfigurationVerbHandler_,new JobTracker.JobConfigurationVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.mapAssignmentVerbHandler_,new MapAssignmentVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.reduceAssignmentVerbHandler_,new ReduceAssignmentVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.mapCompletionVerbHandler_,new MapCompletionVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.calloutDeployVerbHandler_,new CalloutDeployVerbHandler());
+  MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.touchVerbHandler_,new TouchVerbHandler());
+  int threadCount=DatabaseDescriptor.getThreadsPerPool();
+  consistencyManager_=new DebuggableThreadPoolExecutor(threadCount,threadCount,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("CONSISTENCY-MANAGER"));
+  StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,threadCount));
+  StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,2 * threadCount));
+  StageManager.registerStage(StorageService.mrStage_,new MultiThreadedStage(StorageService.mrStage_,threadCount));
+  StageManager.registerStage(HttpConnection.httpStage_,new SingleThreadedStage("HTTP-REQUEST"));
+  if (DatabaseDescriptor.isRackAware())   nodePicker_=new RackAwareStrategy(tokenMetadata_);
+ else   nodePicker_=new RackUnawareStrategy(tokenMetadata_);
+}

@@ -1,0 +1,21 @@
+{
+  boolean bVal=true;
+  int estimate=0;
+  int size=epStateMap.size();
+  dos.writeInt(size);
+  Set<EndPoint> eps=epStateMap.keySet();
+  for (  EndPoint ep : eps) {
+    if (Gossiper.MAX_GOSSIP_PACKET_SIZE - dos.size() < estimate) {
+      logger_.info("@@@@ Breaking out to respect the MTU size in EPS. Estimate is " + estimate + " @@@@");
+      bVal=false;
+      break;
+    }
+    int pre=dos.size();
+    CompactEndPointSerializationHelper.serialize(ep,dos);
+    EndPointState epState=epStateMap.get(ep);
+    EndPointState.serializer().serialize(epState,dos);
+    int post=dos.size();
+    estimate=post - pre;
+  }
+  return bVal;
+}

@@ -1,0 +1,24 @@
+{
+  long currentPosition=-1L;
+  CommitLogContext cLogCtx=null;
+  DataOutputBuffer cfBuffer=new DataOutputBuffer();
+  long fileSize=0L;
+  try {
+    cfBuffer.reset();
+    Row.serializer().serialize(row,cfBuffer);
+    currentPosition=logWriter_.getCurrentPosition();
+    cLogCtx=new CommitLogContext(logFile_,currentPosition);
+    updateHeader(row);
+    logWriter_.append(table_,cfBuffer);
+    fileSize=logWriter_.getFileSize();
+    checkThresholdAndRollLog(fileSize);
+  }
+ catch (  IOException e) {
+    if (currentPosition != -1)     logWriter_.seek(currentPosition);
+    throw e;
+  }
+ finally {
+    cfBuffer.close();
+  }
+  return cLogCtx;
+}

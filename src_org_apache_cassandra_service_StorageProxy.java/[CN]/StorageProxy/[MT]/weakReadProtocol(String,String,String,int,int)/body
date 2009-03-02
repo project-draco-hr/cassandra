@@ -1,0 +1,16 @@
+{
+  Row row=null;
+  long startTime=System.currentTimeMillis();
+  List<EndPoint> endpoints=StorageService.instance().getNLiveStorageEndPoint(key);
+  endpoints.remove(StorageService.getLocalStorageEndPoint());
+  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
+  if (start >= 0 && count < Integer.MAX_VALUE) {
+    row=table.getRow(key,columnFamily,start,count);
+  }
+ else {
+    row=table.getRow(key,columnFamily);
+  }
+  logger_.debug("Local Read Protocol: " + (System.currentTimeMillis() - startTime) + " ms.");
+  if (endpoints.size() > 0 && DatabaseDescriptor.getConsistencyCheck())   StorageService.instance().doConsistencyCheck(row,endpoints,columnFamily,start,count);
+  return row;
+}

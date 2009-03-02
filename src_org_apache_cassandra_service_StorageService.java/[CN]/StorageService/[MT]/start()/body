@@ -1,0 +1,16 @@
+{
+  initPartitioner();
+  storageMetadata_=DBManager.instance().start();
+  tcpAddr_=new EndPoint(DatabaseDescriptor.getStoragePort());
+  udpAddr_=new EndPoint(DatabaseDescriptor.getControlPort());
+  MessagingService.getMessagingInstance().listen(tcpAddr_,false);
+  MessagingService.getMessagingInstance().listenUDP(udpAddr_);
+  MessagingService.getMessagingInstance().listen(new EndPoint(DatabaseDescriptor.getHttpPort()),true);
+  AnalyticsContext.instance().start();
+  loadTimer_.schedule(new LoadDisseminator(),StorageService.threshold_,StorageService.threshold_);
+  storageLoadBalancer_.start();
+  Gossiper.instance().register(this);
+  Gossiper.instance().start(udpAddr_,storageMetadata_.getGeneration());
+  tokenMetadata_.update(storageMetadata_.getStorageId(),StorageService.tcpAddr_);
+  Gossiper.instance().addApplicationState(StorageService.nodeId_,new ApplicationState(storageMetadata_.getStorageId().toString()));
+}

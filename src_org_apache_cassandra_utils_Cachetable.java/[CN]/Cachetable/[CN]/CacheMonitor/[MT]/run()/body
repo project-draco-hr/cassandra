@@ -1,0 +1,32 @@
+{
+  Map<K,V> expungedValues=new HashMap<K,V>();
+synchronized (cache_) {
+    Enumeration<K> e=cache_.keys();
+    while (e.hasMoreElements()) {
+      K key=e.nextElement();
+      CacheableObject<V> co=cache_.get(key);
+      if (co != null && co.isReadyToDie(expiration_)) {
+        V v=co.getValue();
+        if (null != v)         expungedValues.put(key,v);
+        cache_.remove(key);
+      }
+    }
+  }
+  Set<K> keys=expungedValues.keySet();
+  for (  K key : keys) {
+    V value=expungedValues.get(key);
+    ICacheExpungeHook<K,V> hook=hooks_.remove(key);
+    try {
+      if (hook != null) {
+        hook.callMe(key,value);
+      }
+ else       if (globalHook_ != null) {
+        globalHook_.callMe(key,value);
+      }
+    }
+ catch (    Throwable e) {
+      logger_.info(LogUtil.throwableToString(e));
+    }
+  }
+  expungedValues.clear();
+}

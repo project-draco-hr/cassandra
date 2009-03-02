@@ -1,0 +1,28 @@
+{
+  EndPoint from=message.getFrom();
+  logger_.info("Received a location download request from " + from);
+  Object[] body=message.getMessageBody();
+  byte[] bytes=(byte[])body[0];
+  DataInputBuffer bufIn=new DataInputBuffer();
+  bufIn.reset(bytes,bytes.length);
+  try {
+    Range range=Range.serializer().deserialize(bufIn);
+    EndPoint[] replicas=StorageService.instance().getNStorageEndPoint(range.right());
+    ByteArrayOutputStream bos=new ByteArrayOutputStream();
+    DataOutputStream dos=new DataOutputStream(bos);
+    for (    EndPoint replica : replicas) {
+      replica.setPort(DatabaseDescriptor.getControlPort());
+      if (FailureDetector.instance().isAlive(replica)) {
+        replica.setPort(DatabaseDescriptor.getStoragePort());
+        CompactEndPointSerializationHelper.serialize(replica,dos);
+        break;
+      }
+    }
+    Message response=message.getReply(StorageService.getLocalStorageEndPoint(),new Object[]{bos.toByteArray()});
+    logger_.info("Sending the token download response to " + from);
+    MessagingService.getMessagingInstance().sendOneWay(response,from);
+  }
+ catch (  IOException ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+  }
+}

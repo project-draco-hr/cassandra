@@ -1,0 +1,27 @@
+{
+  byte[] body=(byte[])message.getMessageBody()[0];
+  try {
+    DataInputBuffer bufIn=new DataInputBuffer();
+    bufIn.reset(body,body.length);
+    MembershipCleaner.MembershipCleanerMessage mcMessage=MembershipCleaner.MembershipCleanerMessage.serializer().deserialize(bufIn);
+    String target=mcMessage.getTarget();
+    logger_.info("Removing the node [" + target + "] from membership");
+    EndPoint targetEndPoint=new EndPoint(target,DatabaseDescriptor.getControlPort());
+    StorageService.instance().removeTokenState(targetEndPoint);
+    Map<String,byte[]> headers=message.getHeaders();
+    headers.remove(StorageService.getLocalStorageEndPoint().getHost());
+    logger_.debug("Number of nodes in the header " + headers.size());
+    Set<String> nodes=headers.keySet();
+    for (    String node : nodes) {
+      logger_.debug("Processing node " + node);
+      byte[] bytes=headers.remove(node);
+      EndPoint targetNode=new EndPoint(node,DatabaseDescriptor.getStoragePort());
+      logger_.debug("Sending a membership clean message to " + targetNode);
+      MessagingService.getMessagingInstance().sendOneWay(message,targetNode);
+      break;
+    }
+  }
+ catch (  IOException ex) {
+    logger_.debug(LogUtil.throwableToString(ex));
+  }
+}

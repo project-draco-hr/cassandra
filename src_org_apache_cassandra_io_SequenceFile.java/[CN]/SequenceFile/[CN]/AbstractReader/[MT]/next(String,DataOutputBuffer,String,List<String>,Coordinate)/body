@@ -1,0 +1,61 @@
+{
+  String[] values=RowMutation.getColumnAndColumnFamily(cf);
+  String columnFamilyName=values[0];
+  List<String> cNames=new ArrayList<String>(columnNames);
+  long bytesRead=-1L;
+  if (isEOF())   return bytesRead;
+  seekTo(key,section);
+  long startPosition=file_.getFilePointer();
+  String keyInDisk=readKeyFromDisk(file_);
+  if (keyInDisk != null) {
+    if (keyInDisk.compareTo(key) > 0)     return bytesRead;
+    int dataSize=file_.readInt();
+    if (keyInDisk.equals(key)) {
+      bufOut.writeUTF(keyInDisk);
+      if (cNames == null || cNames.size() == 0) {
+        int bytesSkipped=IndexHelper.skipBloomFilterAndIndex(file_);
+        dataSize-=bytesSkipped;
+        bufOut.writeInt(dataSize);
+        bufOut.write(file_,dataSize);
+      }
+ else {
+        BloomFilter bf=defreezeBloomFilter();
+        List<IndexHelper.ColumnIndexInfo> columnIndexList=new ArrayList<IndexHelper.ColumnIndexInfo>();
+        int totalBytesRead=handleColumnNameIndexes(columnFamilyName,columnIndexList);
+        dataSize-=totalBytesRead;
+        String cfName=file_.readUTF();
+        dataSize-=(utfPrefix_ + cfName.length());
+        boolean markedForDelete=file_.readBoolean();
+        dataSize-=1;
+        int totalNumCols=file_.readInt();
+        dataSize-=4;
+        Collections.sort(cNames);
+        List<IndexHelper.ColumnRange> columnRanges=IndexHelper.getMultiColumnRangesFromNameIndex(cNames,columnIndexList,dataSize,totalNumCols);
+        int numColsReturned=0;
+        int dataSizeReturned=0;
+        for (        IndexHelper.ColumnRange columnRange : columnRanges) {
+          numColsReturned+=columnRange.count();
+          Coordinate coordinate=columnRange.coordinate();
+          dataSizeReturned+=coordinate.end_ - coordinate.start_;
+        }
+        bufOut.writeInt(dataSizeReturned + utfPrefix_ + cfName.length()+ 4+ 1);
+        bufOut.writeUTF(cfName);
+        bufOut.writeBoolean(markedForDelete);
+        bufOut.writeInt(numColsReturned);
+        int prevPosition=0;
+        for (        IndexHelper.ColumnRange columnRange : columnRanges) {
+          Coordinate coordinate=columnRange.coordinate();
+          file_.skipBytes((int)(coordinate.start_ - prevPosition));
+          bufOut.write(file_,(int)(coordinate.end_ - coordinate.start_));
+          prevPosition=(int)coordinate.end_;
+        }
+      }
+    }
+ else {
+      file_.seek(dataSize + file_.getFilePointer());
+    }
+    long endPosition=file_.getFilePointer();
+    bytesRead=endPosition - startPosition;
+  }
+  return bytesRead;
+}

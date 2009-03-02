@@ -1,0 +1,20 @@
+{
+  List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
+  Collections.sort(keys);
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  BloomFilter bf=new BloomFilter(keys.size(),15);
+  for (  String key : keys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies_.get(key);
+    if (columnFamily != null) {
+      ColumnFamily.serializer2().serialize(columnFamily,buffer);
+      ssTable.append(key,buffer);
+      bf.fill(key);
+      columnFamily.clear();
+    }
+  }
+  ssTable.close(bf);
+  cfStore.onMemtableFlush(cLogCtx);
+  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  buffer.close();
+}

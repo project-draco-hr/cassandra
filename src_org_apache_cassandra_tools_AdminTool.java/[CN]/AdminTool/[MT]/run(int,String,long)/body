@@ -1,0 +1,26 @@
+{
+  byte[] bytes=BasicUtilities.longToByteArray(skip);
+  RowMutation rm=new RowMutation(tableName_,key_);
+  if (columnFamilyName == null) {
+    rm.add(Table.recycleBin_ + ":" + cf1_,bytes,operation);
+    rm.add(Table.recycleBin_ + ":" + cf2_,bytes,operation);
+    rm.add(Table.recycleBin_ + ":" + cf3_,bytes,operation);
+    rm.add(Table.recycleBin_ + ":" + cf4_,bytes,operation);
+  }
+ else {
+    rm.add(Table.recycleBin_ + ":" + columnFamilyName,bytes,operation);
+  }
+  RowMutationMessage rmMsg=new RowMutationMessage(rm);
+  if (server_ != null) {
+    Message message=RowMutationMessage.makeRowMutationMessage(rmMsg,StorageService.binaryVerbHandler_);
+    EndPoint to=new EndPoint(server_,7000);
+    MessagingService.getMessagingInstance().sendOneWay(message,to);
+  }
+ else {
+    for (    String server : servers_) {
+      Message message=RowMutationMessage.makeRowMutationMessage(rmMsg,StorageService.binaryVerbHandler_);
+      EndPoint to=new EndPoint(server,7000);
+      MessagingService.getMessagingInstance().sendOneWay(message,to);
+    }
+  }
+}

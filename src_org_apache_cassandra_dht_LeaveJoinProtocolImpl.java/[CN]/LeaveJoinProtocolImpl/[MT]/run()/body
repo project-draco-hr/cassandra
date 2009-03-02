@@ -1,0 +1,40 @@
+{
+  try {
+    logger_.debug("Beginning leave/join process for ...");
+    Map<BigInteger,EndPoint> tokenToEndPointMap=tokenMetadata_.cloneTokenEndPointMap();
+    Map<EndPoint,BigInteger> endpointToTokenMap=tokenMetadata_.cloneEndPointTokenMap();
+    Set<BigInteger> oldTokens=new HashSet<BigInteger>(tokenToEndPointMap.keySet());
+    Range[] oldRanges=StorageService.instance().getAllRanges(oldTokens);
+    logger_.debug("Total number of old ranges " + oldRanges.length);
+    Map<Range,List<EndPoint>> oldRangeToEndPointMap=StorageService.instance().constructRangeToEndPointMap(oldRanges);
+    Set<BigInteger> tokens=getTokensForLeavingNodes();
+    oldTokens.removeAll(tokens);
+    Range[] rangesAfterNodesLeave=StorageService.instance().getAllRanges(oldTokens);
+    Map<Range,List<Range>> expandedRangeToOldRangeMap=getExpandedRangeToOldRangeMapping(oldRanges,rangesAfterNodesLeave);
+    for (    BigInteger token : tokens_)     oldTokens.add(token);
+    Range[] rangesAfterNodesJoin=StorageService.instance().getAllRanges(oldTokens);
+    addSplitRangesToOldConfiguration(oldRangeToEndPointMap,rangesAfterNodesJoin);
+    Range[] newRanges=StorageService.instance().getAllRanges(oldTokens);
+    for (int i=0; i < targets_.length; ++i) {
+      tokenToEndPointMap.remove(endpointToTokenMap.get(targets_[i]));
+      tokenToEndPointMap.put(tokens_[i],targets_[i]);
+    }
+    Map<Range,List<EndPoint>> newRangeToEndPointMap=StorageService.instance().constructRangeToEndPointMap(newRanges,tokenToEndPointMap);
+    removeExpandedRangesFromNewConfiguration(newRangeToEndPointMap,expandedRangeToOldRangeMap);
+    Map<Range,List<BootstrapSourceTarget>> rangesWithSourceTarget=LeaveJoinProtocolHelper.getRangeSourceTargetInfo(oldRangeToEndPointMap,newRangeToEndPointMap);
+    Set<Range> ranges=rangesWithSourceTarget.keySet();
+    for (    Range range : ranges) {
+      System.out.print("RANGE: " + range + ":: ");
+      List<BootstrapSourceTarget> infos=rangesWithSourceTarget.get(range);
+      for (      BootstrapSourceTarget info : infos) {
+        System.out.print(info);
+        System.out.print(" ");
+      }
+      System.out.println(System.getProperty("line.separator"));
+    }
+    LeaveJoinProtocolHelper.assignWork(rangesWithSourceTarget);
+  }
+ catch (  Throwable th) {
+    logger_.warn(LogUtil.throwableToString(th));
+  }
+}

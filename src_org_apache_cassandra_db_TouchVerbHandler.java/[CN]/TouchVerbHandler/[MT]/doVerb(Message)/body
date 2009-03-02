@@ -1,0 +1,17 @@
+{
+  byte[] body=(byte[])message.getMessageBody()[0];
+  ReadContext readCtx=tls_.get();
+  if (readCtx == null) {
+    readCtx=new ReadContext();
+    tls_.set(readCtx);
+  }
+  readCtx.bufIn_.reset(body,body.length);
+  try {
+    TouchMessage touchMessage=TouchMessage.serializer().deserialize(readCtx.bufIn_);
+    Table table=Table.open(touchMessage.table());
+    table.touch(touchMessage.key(),touchMessage.isData());
+  }
+ catch (  IOException ex) {
+    logger_.info(LogUtil.throwableToString(ex));
+  }
+}

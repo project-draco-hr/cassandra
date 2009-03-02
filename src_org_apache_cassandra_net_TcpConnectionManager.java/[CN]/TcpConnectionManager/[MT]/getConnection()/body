@@ -1,0 +1,34 @@
+{
+  lock_.lock();
+  try {
+    if (allConnections_.isEmpty()) {
+      TcpConnection conn=new TcpConnection(this,localEp_,remoteEp_);
+      addToPool(conn);
+      conn.inUse_=true;
+      incUsed();
+      return conn;
+    }
+    TcpConnection least=getLeastLoaded();
+    if ((least != null && least.pending() == 0) || allConnections_.size() == maxSize_) {
+      least.inUse_=true;
+      incUsed();
+      return least;
+    }
+    TcpConnection connection=new TcpConnection(this,localEp_,remoteEp_);
+    if (connection != null && !contains(connection)) {
+      addToPool(connection);
+      connection.inUse_=true;
+      incUsed();
+      return connection;
+    }
+ else {
+      if (connection != null) {
+        connection.closeSocket();
+      }
+      return getLeastLoaded();
+    }
+  }
+  finally {
+    lock_.unlock();
+  }
+}

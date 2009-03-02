@@ -1,0 +1,40 @@
+{
+  if (tcpReader_ == null) {
+    tcpReader_=new TcpReader(TcpConnection.this);
+    StartState nextState=tcpReader_.getSocketState(TcpReader.TcpReaderState.PREAMBLE);
+    if (nextState == null) {
+      nextState=new ProtocolState(tcpReader_);
+      tcpReader_.putSocketState(TcpReader.TcpReaderState.PREAMBLE,nextState);
+    }
+    tcpReader_.morphState(nextState);
+  }
+  try {
+    byte[] bytes=new byte[0];
+    while ((bytes=tcpReader_.read()).length > 0) {
+      ProtocolHeader pH=tcpReader_.getProtocolHeader();
+      if (!pH.isStreamingMode_) {
+        if (remoteEp_ == null) {
+          int port=(pH.isListening_) ? DatabaseDescriptor.getStoragePort() : EndPoint.randomPort_;
+          remoteEp_=new EndPoint(socketChannel_.socket().getInetAddress().getHostName(),port);
+          pool_=MessagingService.getConnectionPool(localEp_,remoteEp_);
+          pool_.addToPool(TcpConnection.this);
+        }
+        MessagingService.getDeserilizationExecutor().submit(new MessageDeserializationTask(pH.serializerType_,bytes));
+        tcpReader_.resetState();
+      }
+ else {
+        MessagingService.setStreamingMode(false);
+        closeSocket();
+      }
+    }
+  }
+ catch (  IOException ex) {
+    handleException(ex);
+  }
+catch (  Throwable th) {
+    handleException(th);
+  }
+ finally {
+    SelectorManager.getSelectorManager().modifyKeyForRead(key_);
+  }
+}

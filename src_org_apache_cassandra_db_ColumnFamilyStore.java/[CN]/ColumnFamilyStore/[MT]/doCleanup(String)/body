@@ -1,0 +1,29 @@
+{
+  if (file == null)   return;
+  List<Range> myRanges=null;
+  List<String> files=new ArrayList<String>();
+  files.add(file);
+  List<String> newFiles=new ArrayList<String>();
+  Map<EndPoint,List<Range>> endPointtoRangeMap=StorageService.instance().constructEndPointToRangesMap();
+  myRanges=endPointtoRangeMap.get(StorageService.getLocalStorageEndPoint());
+  List<BloomFilter> compactedBloomFilters=new ArrayList<BloomFilter>();
+  doFileAntiCompaction(files,myRanges,null,bufSize_,newFiles,compactedBloomFilters);
+  logger_.debug("Original file : " + file + " of size "+ new File(file).length());
+  lock_.writeLock().lock();
+  try {
+    ssTables_.remove(file);
+    SSTable.removeAssociatedBloomFilter(file);
+    for (    String newfile : newFiles) {
+      logger_.debug("New file : " + newfile + " of size "+ new File(newfile).length());
+      if (newfile != null) {
+        ssTables_.add(newfile);
+        logger_.debug("Inserting bloom filter for file " + newfile);
+        SSTable.storeBloomFilter(newfile,compactedBloomFilters.get(0));
+      }
+    }
+    SSTable.delete(file);
+  }
+  finally {
+    lock_.writeLock().unlock();
+  }
+}

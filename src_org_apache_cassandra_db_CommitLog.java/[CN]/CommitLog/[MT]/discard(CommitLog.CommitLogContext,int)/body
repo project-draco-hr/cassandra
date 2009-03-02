@@ -1,0 +1,37 @@
+{
+  CommitLogHeader commitLogHeader=clHeaders_.get(cLogCtx.file());
+  if (commitLogHeader == null) {
+    if (logFile_.equals(cLogCtx.file())) {
+      commitLogHeader=clHeader_;
+      clHeaders_.put(cLogCtx.file(),clHeader_);
+    }
+ else     return;
+  }
+  if (cLogCtx.position() < commitLogHeader.getPosition(id))   return;
+  commitLogHeader.turnOff(id);
+  List<String> oldFiles=new ArrayList<String>(clHeaders_.keySet());
+  Collections.sort(oldFiles,new CommitLogFileComparator());
+  List<String> listOfDeletedFiles=new ArrayList<String>();
+  for (  String oldFile : oldFiles) {
+    if (oldFile.equals(cLogCtx.file())) {
+      commitLogHeader.turnOn(id,cLogCtx.position());
+      writeCommitLogHeader(cLogCtx.file(),commitLogHeader.toByteArray());
+      break;
+    }
+ else {
+      CommitLogHeader oldCommitLogHeader=clHeaders_.get(oldFile);
+      oldCommitLogHeader.and(commitLogHeader);
+      if (oldCommitLogHeader.isSafeToDelete()) {
+        logger_.debug("Deleting commit log:" + oldFile);
+        FileUtils.deleteAsync(oldFile);
+        listOfDeletedFiles.add(oldFile);
+      }
+ else {
+        writeCommitLogHeader(oldFile,oldCommitLogHeader.toByteArray());
+      }
+    }
+  }
+  for (  String deletedFile : listOfDeletedFiles) {
+    clHeaders_.remove(deletedFile);
+  }
+}

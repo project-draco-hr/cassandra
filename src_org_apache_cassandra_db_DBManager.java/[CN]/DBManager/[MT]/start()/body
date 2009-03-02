@@ -1,0 +1,37 @@
+{
+  StorageMetadata storageMetadata=null;
+  SystemTable sysTable=SystemTable.openSystemTable(SystemTable.name_);
+  Row row=sysTable.get(FBUtilities.getHostName());
+  Random random=new Random();
+  if (row == null) {
+    String guid=GuidGenerator.guid();
+    BigInteger token=StorageService.hash(guid);
+    if (token.signum() == -1)     token=token.multiply(BigInteger.valueOf(-1L));
+    int generation=1;
+    String key=FBUtilities.getHostName();
+    row=new Row(key);
+    ColumnFamily cf=new ColumnFamily(SystemTable.cfName_);
+    cf.addColumn(SystemTable.token_,new Column(SystemTable.token_,token.toByteArray()));
+    cf.addColumn(SystemTable.generation_,new Column(SystemTable.generation_,BasicUtilities.intToByteArray(generation)));
+    row.addColumnFamily(cf);
+    sysTable.apply(row);
+    storageMetadata=new StorageMetadata(token,generation);
+  }
+ else {
+    Map<String,ColumnFamily> columnFamilies=row.getColumnFamilies();
+    Set<String> cfNames=columnFamilies.keySet();
+    for (    String cfName : cfNames) {
+      ColumnFamily columnFamily=columnFamilies.get(cfName);
+      IColumn token=columnFamily.getColumn(SystemTable.token_);
+      BigInteger bi=new BigInteger(token.value());
+      IColumn generation=columnFamily.getColumn(SystemTable.generation_);
+      int gen=BasicUtilities.byteArrayToInt(generation.value()) + 1;
+      Column generation2=new Column("Generation",BasicUtilities.intToByteArray(gen),generation.timestamp() + 1);
+      columnFamily.addColumn("Generation",generation2);
+      storageMetadata=new StorageMetadata(bi,gen);
+      break;
+    }
+    sysTable.reset(row);
+  }
+  return storageMetadata;
+}

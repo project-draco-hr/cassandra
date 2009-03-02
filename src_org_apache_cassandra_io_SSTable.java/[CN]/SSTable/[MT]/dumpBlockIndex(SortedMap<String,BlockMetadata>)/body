@@ -1,0 +1,21 @@
+{
+  if (blockIndex.size() == 0)   return;
+  DataOutputBuffer bufOut=new DataOutputBuffer();
+  long position=dataWriter_.getCurrentPosition();
+  Set<String> keys=blockIndex.keySet();
+  bufOut.writeInt(keys.size());
+  for (  String key : keys) {
+    bufOut.writeUTF(key);
+    BlockMetadata blockMetadata=blockIndex.get(key);
+    bufOut.writeLong(position - blockMetadata.position_);
+    bufOut.writeLong(blockMetadata.size_);
+  }
+  dataWriter_.append(SSTable.blockIndexKey_,bufOut);
+  List<KeyPositionInfo> keyPositionInfos=SSTable.indexMetadataMap_.get(dataFile_);
+  if (keyPositionInfos == null) {
+    keyPositionInfos=new ArrayList<KeyPositionInfo>();
+    SSTable.indexMetadataMap_.put(dataFile_,keyPositionInfos);
+  }
+  keyPositionInfos.add(new KeyPositionInfo(blockIndex.firstKey(),position));
+  blockIndex.clear();
+}

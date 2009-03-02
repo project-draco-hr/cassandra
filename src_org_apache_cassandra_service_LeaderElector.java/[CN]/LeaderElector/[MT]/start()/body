@@ -1,0 +1,11 @@
+{
+  Gossiper.instance().register(this);
+  logger_.debug("Starting the leader election process ...");
+  ZooKeeper zk=StorageService.instance().getZooKeeperHandle();
+  String path="/Cassandra/" + DatabaseDescriptor.getClusterName() + "/Leader";
+  String createPath=path + "/L-";
+  logger_.debug("Attempting to create znode " + createPath);
+  String pathCreated=zk.create(createPath,EndPoint.toBytes(StorageService.getLocalControlEndPoint()),Ids.OPEN_ACL_UNSAFE,(CreateMode.EPHEMERAL_SEQUENTIAL));
+  logger_.debug("Created znode under leader znode " + pathCreated);
+  leaderElectionService_.submit(new LeaderDeathMonitor(pathCreated));
+}

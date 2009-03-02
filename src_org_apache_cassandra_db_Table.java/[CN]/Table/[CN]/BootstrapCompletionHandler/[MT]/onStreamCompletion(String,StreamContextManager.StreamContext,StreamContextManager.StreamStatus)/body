@@ -1,0 +1,16 @@
+{
+  if (streamContext.getTargetFile().indexOf("-Data.db") != -1) {
+    File file=new File(streamContext.getTargetFile());
+    String fileName=file.getName();
+    SSTable ssTable=new SSTable(streamContext.getTargetFile());
+    ssTable.close();
+    logger_.debug("Merging the counting bloom filter in the sampler ...");
+    String[] peices=FBUtilities.strip(fileName,"-");
+    Table.open(peices[0]).getColumnFamilyStore(peices[1]).addToList(streamContext.getTargetFile());
+  }
+  EndPoint to=new EndPoint(host,DatabaseDescriptor.getStoragePort());
+  logger_.debug("Sending a bootstrap terminate message with " + streamStatus + " to "+ to);
+  StreamContextManager.StreamStatusMessage streamStatusMessage=new StreamContextManager.StreamStatusMessage(streamStatus);
+  Message message=StreamContextManager.StreamStatusMessage.makeStreamStatusMessage(streamStatusMessage);
+  MessagingService.getMessagingInstance().sendOneWay(message,to);
+}

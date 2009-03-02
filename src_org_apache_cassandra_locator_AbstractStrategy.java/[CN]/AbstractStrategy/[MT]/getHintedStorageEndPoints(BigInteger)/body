@@ -1,0 +1,22 @@
+{
+  List<EndPoint> liveList=new ArrayList<EndPoint>();
+  Map<EndPoint,EndPoint> map=new HashMap<EndPoint,EndPoint>();
+  EndPoint[] topN=getStorageEndPoints(token);
+  for (int i=0; i < topN.length; i++) {
+    if (FailureDetector.instance().isAlive(topN[i])) {
+      map.put(topN[i],topN[i]);
+      liveList.add(topN[i]);
+    }
+ else {
+      EndPoint endPoint=getNextAvailableEndPoint(topN[i],Arrays.asList(topN),liveList);
+      if (endPoint != null) {
+        map.put(endPoint,topN[i]);
+        liveList.add(endPoint);
+      }
+ else {
+        logger_.warn("Unable to find a live Endpoint we might be out of live nodes , This is dangerous !!!!");
+      }
+    }
+  }
+  return map;
+}

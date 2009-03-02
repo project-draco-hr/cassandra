@@ -1,0 +1,32 @@
+{
+  boolean fQuerySuccess=false;
+  String sRetVal="";
+  String sColumnFamily=httpRequest.getParameter("columnfamily");
+  String sColumn=httpRequest.getParameter("columnName");
+  String sKey=httpRequest.getParameter("key");
+  String sTableName=DatabaseDescriptor.getTables().get(0);
+  StringBuilder sb=new StringBuilder();
+  ColumnFamilyFormatter cformatter=new ColumnFamilyFormatter(sb);
+  try {
+    Table table=Table.open(sTableName);
+    String queryFor=sColumnFamily;
+    if (sColumn != null && !"*".equals(sColumn)) {
+      queryFor+=":" + sColumn;
+    }
+    ColumnFamily cf=table.get(sKey,queryFor);
+    if (cf == null) {
+      sRetVal="Key [" + sKey + "], column family ["+ sColumnFamily+ "] not found.";
+    }
+ else {
+      cformatter.printKeyColumnFamily(sb,sKey,cf);
+      fQuerySuccess=true;
+      sRetVal=sb.toString();
+    }
+  }
+ catch (  Exception e) {
+    sRetVal=e.getMessage();
+  }
+  if (fQuerySuccess)   sRetVal="Success: " + sRetVal;
+ else   sRetVal="Error: " + sRetVal;
+  return handlePageDisplay(sRetVal,null,null);
+}

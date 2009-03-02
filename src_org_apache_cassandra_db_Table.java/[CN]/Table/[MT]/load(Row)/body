@@ -1,0 +1,36 @@
+{
+  String key=row.key();
+  long start=System.currentTimeMillis();
+  Map<String,ColumnFamily> columnFamilies=row.getColumnFamilies();
+  Set<String> cNames=columnFamilies.keySet();
+  for (  String cName : cNames) {
+    if (cName.equals(Table.recycleBin_)) {
+      ColumnFamily columnFamily=columnFamilies.get(cName);
+      Collection<IColumn> columns=columnFamily.getAllColumns();
+      for (      IColumn column : columns) {
+        ColumnFamilyStore cfStore=columnFamilyStores_.get(column.name());
+        if (column.timestamp() == 1) {
+          cfStore.forceFlushBinary();
+        }
+ else         if (column.timestamp() == 2) {
+          cfStore.forceCompaction(null,null,BasicUtilities.byteArrayToLong(column.value()),null);
+        }
+ else         if (column.timestamp() == 3) {
+          cfStore.forceFlush(false);
+        }
+ else         if (column.timestamp() == 4) {
+          cfStore.forceCleanup();
+        }
+ else         if (column.timestamp() == 5) {
+          cfStore.snapshot(new String(column.value()));
+        }
+ else {
+          cfStore.applyBinary(key,column.value());
+        }
+      }
+    }
+  }
+  row.clear();
+  long timeTaken=System.currentTimeMillis() - start;
+  dbAnalyticsSource_.updateWriteStatistics(timeTaken);
+}

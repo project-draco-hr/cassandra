@@ -1,0 +1,36 @@
+{
+  Map<Range,List<BootstrapSourceTarget>> rangesWithSourceTarget=new HashMap<Range,List<BootstrapSourceTarget>>();
+  Set<Range> oldRangeSet=oldRangeToEndPointMap.keySet();
+  for (  Range range : oldRangeSet) {
+    logger_.debug("Attempting to figure out the dudes who are bumped out for " + range + " ...");
+    List<EndPoint> oldEndPoints=oldRangeToEndPointMap.get(range);
+    List<EndPoint> newEndPoints=newRangeToEndPointMap.get(range);
+    if (newEndPoints != null) {
+      List<EndPoint> newEndPoints2=new ArrayList<EndPoint>(newEndPoints);
+      for (      EndPoint newEndPoint : newEndPoints2) {
+        if (oldEndPoints.contains(newEndPoint)) {
+          oldEndPoints.remove(newEndPoint);
+          newEndPoints.remove(newEndPoint);
+        }
+      }
+    }
+ else {
+      logger_.warn("Trespassing - scram");
+    }
+    logger_.debug("Done figuring out the dudes who are bumped out for range " + range + " ...");
+  }
+  for (  Range range : oldRangeSet) {
+    List<EndPoint> oldEndPoints=oldRangeToEndPointMap.get(range);
+    List<EndPoint> newEndPoints=newRangeToEndPointMap.get(range);
+    List<BootstrapSourceTarget> srcTarget=rangesWithSourceTarget.get(range);
+    if (srcTarget == null) {
+      srcTarget=new ArrayList<BootstrapSourceTarget>();
+      rangesWithSourceTarget.put(range,srcTarget);
+    }
+    int i=0;
+    for (    EndPoint oldEndPoint : oldEndPoints) {
+      srcTarget.add(new BootstrapSourceTarget(oldEndPoint,newEndPoints.get(i++)));
+    }
+  }
+  return rangesWithSourceTarget;
+}

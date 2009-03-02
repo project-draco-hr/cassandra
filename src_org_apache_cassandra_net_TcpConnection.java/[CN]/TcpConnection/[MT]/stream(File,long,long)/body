@@ -1,0 +1,38 @@
+{
+  if (!bStream_)   throw new IllegalStateException("Cannot stream since we are not set up to stream data.");
+  lock_.lock();
+  try {
+    int limit=64 * 1024 * 1024;
+    long total=endPosition - startPosition;
+    long bytesWritten=0L;
+    RandomAccessFile raf=new RandomAccessFile(file,"r");
+    FileChannel fc=raf.getChannel();
+    long waitTime=2;
+    int retry=0;
+    while (!connected_.get()) {
+      if (retry == 3)       throw new IOException("Unable to connect to " + remoteEp_ + " after "+ retry+ " attempts.");
+      waitToContinueStreaming(waitTime,TimeUnit.SECONDS);
+      ++retry;
+    }
+    while (bytesWritten < total) {
+      if (startPosition == 0) {
+        ByteBuffer buffer=MessagingService.constructStreamHeader(false,true);
+        socketChannel_.write(buffer);
+        handleIncompleteWrite(buffer);
+      }
+      long bytesTransferred=fc.transferTo(startPosition,limit,socketChannel_);
+      logger_.debug("Bytes transferred " + bytesTransferred);
+      bytesWritten+=bytesTransferred;
+      startPosition+=bytesTransferred;
+      if (bytesTransferred < limit && bytesWritten != total) {
+        if ((key_.interestOps() & SelectionKey.OP_WRITE) == 0) {
+          SelectorManager.getSelectorManager().modifyKeyForWrite(key_);
+        }
+        waitToContinueStreaming();
+      }
+    }
+  }
+  finally {
+    lock_.unlock();
+  }
+}

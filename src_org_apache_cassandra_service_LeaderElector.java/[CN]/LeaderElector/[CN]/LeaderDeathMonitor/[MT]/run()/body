@@ -1,0 +1,46 @@
+{
+  ZooKeeper zk=StorageService.instance().getZooKeeperHandle();
+  String path="/Cassandra/" + DatabaseDescriptor.getClusterName() + "/Leader";
+  try {
+    String createPath=path + "/L-";
+    LeaderElector.createLock_.lock();
+    while (true) {
+      List<String> values=zk.getChildren(path,false);
+      SortedMap<Integer,String> suffixToZnode=getSuffixToZnodeMapping(values);
+      String value=suffixToZnode.get(suffixToZnode.firstKey());
+      if (leader_ == null) {
+        leader_=new AtomicReference<EndPoint>(EndPoint.fromBytes(zk.getData(path + "/" + value,false,null)));
+      }
+ else {
+        leader_.set(EndPoint.fromBytes(zk.getData(path + "/" + value,false,null)));
+        onLeaderElection();
+      }
+      logger_.debug("Elected leader is " + leader_ + " @ znode "+ (path + "/" + value));
+      int index=getLocalSuffix();
+      if (index > suffixToZnode.firstKey()) {
+        String pathToCheck=path + "/" + getImmediatelyPrecedingZnode(suffixToZnode,index);
+        Stat stat=zk.exists(pathToCheck,true);
+        if (stat != null) {
+          logger_.debug("Awaiting my turn ...");
+          condition_.await();
+          logger_.debug("Checking to see if leader is around ...");
+        }
+      }
+ else {
+        break;
+      }
+    }
+  }
+ catch (  InterruptedException ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+  }
+catch (  IOException ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+  }
+catch (  KeeperException ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+  }
+ finally {
+    LeaderElector.createLock_.unlock();
+  }
+}

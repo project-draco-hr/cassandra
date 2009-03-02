@@ -1,0 +1,24 @@
+{
+  int estimate=0;
+  HeartBeatState hbState=epState.getHeartBeatState();
+  HeartBeatState.serializer().serialize(hbState,dos);
+  int size=epState.applicationState_.size();
+  dos.writeInt(size);
+  if (size > 0) {
+    Set<String> keys=epState.applicationState_.keySet();
+    for (    String key : keys) {
+      if (Gossiper.MAX_GOSSIP_PACKET_SIZE - dos.size() < estimate) {
+        logger_.info("@@@@ Breaking out to respect the MTU size in EndPointState serializer. Estimate is " + estimate + " @@@@");
+        break;
+      }
+      ApplicationState appState=epState.applicationState_.get(key);
+      if (appState != null) {
+        int pre=dos.size();
+        dos.writeUTF(key);
+        ApplicationState.serializer().serialize(appState,dos);
+        int post=dos.size();
+        estimate=post - pre;
+      }
+    }
+  }
+}

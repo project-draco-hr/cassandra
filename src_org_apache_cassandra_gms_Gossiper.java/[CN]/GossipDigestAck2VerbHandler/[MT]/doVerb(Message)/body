@@ -1,0 +1,15 @@
+{
+  EndPoint from=message.getFrom();
+  logger_.info("Received a GossipDigestAck2Message from " + from);
+  byte[] bytes=(byte[])message.getMessageBody()[0];
+  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(bytes));
+  try {
+    GossipDigestAck2Message gDigestAck2Message=GossipDigestAck2Message.serializer().deserialize(dis);
+    Map<EndPoint,EndPointState> remoteEpStateMap=gDigestAck2Message.getEndPointStateMap();
+    Gossiper.instance().notifyFailureDetector(remoteEpStateMap);
+    Gossiper.instance().applyStateLocally(remoteEpStateMap);
+  }
+ catch (  IOException e) {
+    logger_.info(LogUtil.throwableToString(e));
+  }
+}

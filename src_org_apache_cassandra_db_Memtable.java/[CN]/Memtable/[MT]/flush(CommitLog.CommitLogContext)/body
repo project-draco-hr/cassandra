@@ -1,0 +1,20 @@
+{
+  ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
+  if (columnFamilies_.size() == 0) {
+    cfStore.onMemtableFlush(cLogCtx);
+    return;
+  }
+  PartitionerType pType=StorageService.getPartitionerType();
+  String directory=DatabaseDescriptor.getDataFileLocation();
+  String filename=cfStore.getNextFileName();
+  SSTable ssTable=new SSTable(directory,filename,pType);
+switch (pType) {
+case OPHF:
+    flushForOrderPreservingPartitioner(ssTable,cfStore,cLogCtx);
+  break;
+default :
+flushForRandomPartitioner(ssTable,cfStore,cLogCtx);
+break;
+}
+columnFamilies_.clear();
+}

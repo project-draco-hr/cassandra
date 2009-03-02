@@ -1,0 +1,22 @@
+{
+  EndPointState epState=endPointStateMap_.get(forEndpoint);
+  EndPointState reqdEndPointState=null;
+  if (epState != null) {
+    int localHbVersion=epState.getHeartBeatState().getHeartBeatVersion();
+    if (localHbVersion > version) {
+      reqdEndPointState=new EndPointState(epState.getHeartBeatState());
+    }
+    Map<String,ApplicationState> appStateMap=epState.getApplicationState();
+    Set<String> keys=appStateMap.keySet();
+    for (    String key : keys) {
+      ApplicationState appState=appStateMap.get(key);
+      if (appState.getStateVersion() > version) {
+        if (reqdEndPointState == null) {
+          reqdEndPointState=new EndPointState(epState.getHeartBeatState());
+        }
+        reqdEndPointState.addApplicationState(key,appState);
+      }
+    }
+  }
+  return reqdEndPointState;
+}

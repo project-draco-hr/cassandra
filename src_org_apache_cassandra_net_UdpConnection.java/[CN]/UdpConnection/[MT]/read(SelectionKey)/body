@@ -1,0 +1,26 @@
+{
+  key.interestOps(key.interestOps() & (~SelectionKey.OP_READ));
+  ByteBuffer buffer=ByteBuffer.allocate(BUFFER_SIZE);
+  try {
+    SocketAddress sa=socketChannel_.receive(buffer);
+    if (sa == null) {
+      logger_.debug("*** No datagram packet was available to be read ***");
+      return;
+    }
+    buffer.flip();
+    byte[] bytes=gobbleHeaderAndExtractBody(buffer);
+    if (bytes.length > 0) {
+      DataInputStream dis=new DataInputStream(new ByteArrayInputStream(bytes));
+      Message message=Message.serializer().deserialize(dis);
+      if (message != null) {
+        MessagingService.receive(message);
+      }
+    }
+  }
+ catch (  IOException ioe) {
+    logger_.warn(LogUtil.throwableToString(ioe));
+  }
+ finally {
+    key.interestOps(key_.interestOps() | SelectionKey.OP_READ);
+  }
+}

@@ -1,0 +1,38 @@
+{
+  final Object[] set=set_;
+  final int length=set.length;
+  final int hash=obj.hashCode() & 0x7fffffff;
+  int index=hash % length;
+  Object cur=set[index];
+  if (cur == FREE) {
+    return index;
+  }
+ else   if (cur != REMOVED && cur.equals(obj)) {
+    return -index - 1;
+  }
+ else {
+    final int probe=1 + (hash % (length - 2));
+    if (cur != REMOVED) {
+      do {
+        index-=probe;
+        if (index < 0) {
+          index+=length;
+        }
+        cur=set[index];
+      }
+ while (cur != FREE && cur != REMOVED && !cur.equals(obj));
+    }
+    if (cur == REMOVED) {
+      int firstRemoved=index;
+      while (cur != FREE && (cur == REMOVED || !cur.equals(obj))) {
+        index-=probe;
+        if (index < 0) {
+          index+=length;
+        }
+        cur=set[index];
+      }
+      return (cur != FREE) ? -index - 1 : firstRemoved;
+    }
+    return (cur != FREE) ? -index - 1 : index;
+  }
+}

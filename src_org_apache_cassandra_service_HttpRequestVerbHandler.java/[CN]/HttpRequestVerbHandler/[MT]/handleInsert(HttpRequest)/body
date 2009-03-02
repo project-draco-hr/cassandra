@@ -1,0 +1,23 @@
+{
+  boolean fInsertSuccess=false;
+  String sRetVal="";
+  String sColumnFamily=httpRequest.getParameter("columnfamily");
+  String sColumn=httpRequest.getParameter("columnName");
+  String sKey=httpRequest.getParameter("key");
+  String sDataToInsert=httpRequest.getParameter("data");
+  String sTableName=DatabaseDescriptor.getTables().get(0);
+  try {
+    RowMutation rm=new RowMutation(sTableName,sKey);
+    rm.add(sColumnFamily + ":" + sColumn,sDataToInsert.getBytes(),0);
+    rm.apply();
+    fInsertSuccess=true;
+    sRetVal="columnfamily=" + httpRequest.getParameter("columnfamily") + " key="+ httpRequest.getParameter("key")+ " data="+ httpRequest.getParameter("data");
+  }
+ catch (  Exception e) {
+    sRetVal=e.getMessage();
+  }
+  System.out.println("Write done ...");
+  if (fInsertSuccess)   sRetVal="The insert was successful : " + sRetVal;
+ else   sRetVal="The insert was failed : " + sRetVal;
+  return handlePageDisplay(null,sRetVal,null);
+}

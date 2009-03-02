@@ -1,0 +1,56 @@
+{
+  IFileReader indexReader=null;
+  try {
+    indexReader=SequenceFile.bufferedReader(dataFile_,4 * 1024 * 1024);
+    long size=indexReader.getEOF();
+    loadBloomFilter(indexReader,size);
+    byte[] bytes=new byte[8];
+    indexReader.seek(size - 16L);
+    long currentPosition=indexReader.getCurrentPosition();
+    indexReader.readDirect(bytes);
+    long firstBlockIndexPosition=BasicUtilities.byteArrayToLong(bytes);
+    List<KeyPositionInfo> keyPositionInfos=new ArrayList<KeyPositionInfo>();
+    indexMetadataMap_.put(dataFile_,keyPositionInfos);
+    DataOutputBuffer bufOut=new DataOutputBuffer();
+    DataInputBuffer bufIn=new DataInputBuffer();
+    long nextPosition=currentPosition - firstBlockIndexPosition;
+    indexReader.seek(nextPosition);
+    while (nextPosition > 0) {
+      bufOut.reset();
+      currentPosition=indexReader.getCurrentPosition();
+      long bytesRead=indexReader.next(bufOut);
+      if (bytesRead != -1) {
+        bufIn.reset(bufOut.getData(),bufOut.getLength());
+        String blockIndexKey=bufIn.readUTF();
+        if (!blockIndexKey.equals(SSTable.blockIndexKey_)) {
+          logger_.debug(" Done reading the block indexes, Index has been created");
+          break;
+        }
+        bufIn.readInt();
+        int keys=bufIn.readInt();
+        String largestKeyInBlock=null;
+        for (int i=0; i < keys; ++i) {
+          String keyInBlock=bufIn.readUTF();
+          if (i == 0) {
+            largestKeyInBlock=keyInBlock;
+            bufIn.readLong();
+            bufIn.readLong();
+            keyPositionInfos.add(new KeyPositionInfo(largestKeyInBlock,currentPosition));
+          }
+ else {
+            bufIn.readLong();
+            bufIn.readLong();
+          }
+        }
+      }
+    }
+    bufIn.close();
+    bufOut.close();
+    Collections.sort(keyPositionInfos);
+  }
+  finally {
+    if (indexReader != null) {
+      indexReader.close();
+    }
+  }
+}

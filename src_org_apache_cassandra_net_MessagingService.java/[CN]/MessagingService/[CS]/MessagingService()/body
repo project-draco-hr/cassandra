@@ -1,0 +1,17 @@
+{
+  for (  ReservedVerbs_ verbs : ReservedVerbs_.values()) {
+    reservedVerbs_.put(verbs.toString(),verbs.toString());
+  }
+  verbHandlers_=new HashMap<String,IVerbHandler>();
+  endPoints_=new HashSet<EndPoint>();
+  int maxSize=MessagingConfig.getMessagingThreadCount();
+  callbackMap_=new Cachetable<String,IAsyncCallback>(2 * DatabaseDescriptor.getRpcTimeout());
+  taskCompletionMap_=new Cachetable<String,IAsyncResult>(2 * DatabaseDescriptor.getRpcTimeout());
+  messageDeserializationExecutor_=new DebuggableThreadPoolExecutor(maxSize,maxSize,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("MESSAGING-SERVICE-POOL"));
+  messageSerializerExecutor_=new DebuggableThreadPoolExecutor(maxSize,maxSize,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("MESSAGE-SERIALIZER-POOL"));
+  messageDeserializerExecutor_=new DebuggableThreadPoolExecutor(maxSize,maxSize,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("MESSAGE-DESERIALIZER-POOL"));
+  streamExecutor_=new DebuggableThreadPoolExecutor(1,1,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("MESSAGE-STREAMING-POOL"));
+  protocol_=hash(HashingSchemes.MD5,"FB-MESSAGING".getBytes());
+  registerVerbHandlers(MessagingService.responseVerbHandler_,new ResponseVerbHandler());
+  StageManager.registerStage(MessagingService.responseStage_,new MultiThreadedStage("RESPONSE-STAGE",maxSize));
+}

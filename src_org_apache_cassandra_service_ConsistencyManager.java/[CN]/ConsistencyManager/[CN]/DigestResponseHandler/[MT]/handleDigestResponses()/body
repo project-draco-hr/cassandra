@@ -1,0 +1,19 @@
+{
+  DataInputBuffer bufIn=new DataInputBuffer();
+  logger_.debug("Handle Digest reponses");
+  for (  Message response : responses_) {
+    byte[] body=(byte[])response.getMessageBody()[0];
+    bufIn.reset(body,body.length);
+    try {
+      ReadResponseMessage result=ReadResponseMessage.serializer().deserialize(bufIn);
+      byte[] digest=result.digest();
+      if (!Arrays.equals(row_.digest(),digest)) {
+        doReadRepair();
+        break;
+      }
+    }
+ catch (    IOException ex) {
+      logger_.info(LogUtil.throwableToString(ex));
+    }
+  }
+}

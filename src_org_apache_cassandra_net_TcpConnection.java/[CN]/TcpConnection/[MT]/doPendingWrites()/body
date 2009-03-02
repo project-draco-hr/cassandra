@@ -1,0 +1,23 @@
+{
+  try {
+    while (!pendingWrites_.isEmpty()) {
+      ByteBuffer buffer=pendingWrites_.get(0);
+      socketChannel_.write(buffer);
+      if (buffer.remaining() > 0) {
+        break;
+      }
+      pendingWrites_.remove(0);
+    }
+  }
+ catch (  IOException ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+    errorClose();
+  }
+ finally {
+synchronized (this) {
+      if (!pendingWrites_.isEmpty() && (key_.interestOps() & SelectionKey.OP_WRITE) == 0) {
+        SelectorManager.getSelectorManager().modifyKeyForWrite(key_);
+      }
+    }
+  }
+}

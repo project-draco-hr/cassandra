@@ -1,0 +1,20 @@
+{
+  try {
+synchronized (Gossiper.instance()) {
+      endPointStateMap_.get(localEndPoint_).getHeartBeatState().updateHeartBeat();
+      List<GossipDigest> gDigests=new ArrayList<GossipDigest>();
+      Gossiper.instance().makeRandomGossipDigest(gDigests);
+      if (gDigests.size() > 0) {
+        Message message=makeGossipDigestSynMessage(gDigests);
+        boolean bVal=doGossipToLiveMember(message);
+        doGossipToUnreachableMember(message);
+        if (!bVal)         doGossipToSeed(message);
+        logger_.debug("Performing status check ...");
+        doStatusCheck();
+      }
+    }
+  }
+ catch (  Throwable th) {
+    logger_.info(LogUtil.throwableToString(th));
+  }
+}

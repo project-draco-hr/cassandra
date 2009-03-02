@@ -1,0 +1,41 @@
+{
+  ArrayList<superColumn_t> retlist=new ArrayList<superColumn_t>();
+  long startTime=System.currentTimeMillis();
+  try {
+    validateTable(tablename);
+    ColumnFamily cfamily=get_cf(tablename,key,columnFamily,superColumnNames);
+    if (cfamily == null) {
+      logger_.info("ERROR ColumnFamily " + columnFamily + " is missing.....: "+ "   key:"+ key+ "  ColumnFamily:"+ columnFamily);
+      throw new CassandraException("Either the key " + key + " is not present or the column family requested"+ columnFamily+ "is not present.");
+    }
+    Collection<IColumn> columns=null;
+    columns=cfamily.getAllColumns();
+    if (columns == null || columns.size() == 0) {
+      logger_.info("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ columnFamily);
+      throw new CassandraException("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ columnFamily);
+    }
+    for (    IColumn column : columns) {
+      superColumn_t thrift_superColumn=new superColumn_t();
+      thrift_superColumn.name=column.name();
+      Collection<IColumn> subColumns=column.getSubColumns();
+      if (subColumns.size() != 0) {
+        thrift_superColumn.columns=new ArrayList<column_t>();
+        for (        IColumn subColumn : subColumns) {
+          column_t thrift_column=new column_t();
+          thrift_column.columnName=subColumn.name();
+          thrift_column.value=new String(subColumn.value());
+          thrift_column.timestamp=subColumn.timestamp();
+          thrift_superColumn.columns.add(thrift_column);
+        }
+      }
+      retlist.add(thrift_superColumn);
+    }
+  }
+ catch (  Exception ex) {
+    String exception=LogUtil.throwableToString(ex);
+    logger_.info(exception);
+    throw new CassandraException(exception);
+  }
+  logger_.debug("get_slice2: " + (System.currentTimeMillis() - startTime) + " ms.");
+  return retlist;
+}

@@ -1,0 +1,42 @@
+{
+  boolean fServeSummary=true;
+  HTMLFormatter formatter=new HTMLFormatter();
+  String query=httpRequest.getQuery();
+  String path=httpRequest.getPath();
+  if (path.indexOf(LB_HEALTH_CHECK) != -1) {
+    httpResponse.println(handleLBHealthCheck());
+    return;
+  }
+  formatter.startBody(true,getJSFunctions(),true,true);
+  formatter.appendLine("<h1><font color=\"white\"> Cluster map </font></h1>");
+  StringBuilder sbResult=new StringBuilder();
+  do {
+    if (query.indexOf(DETAILS) != -1) {
+      fServeSummary=false;
+      sbResult.append(handleNodeDetails());
+      break;
+    }
+ else     if (query.indexOf(LOADME) != -1) {
+      sbResult.append(handleLoadMe());
+      break;
+    }
+ else     if (query.indexOf(KILLME) != -1) {
+      sbResult.append(handleKillMe());
+      break;
+    }
+ else     if (query.indexOf(COMPACTME) != -1) {
+      sbResult.append(handleCompactMe());
+      break;
+    }
+  }
+ while (false);
+  if (fServeSummary) {
+    formatter.appendLine(handlePageDisplay(null,null,null));
+  }
+  formatter.appendLine("<br>");
+  if (sbResult.toString() != null) {
+    formatter.appendLine(sbResult.toString());
+  }
+  formatter.endBody();
+  httpResponse.println(formatter.toString());
+}

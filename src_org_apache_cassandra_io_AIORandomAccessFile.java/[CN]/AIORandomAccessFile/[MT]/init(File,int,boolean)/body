@@ -1,0 +1,24 @@
+{
+  bContinuations_=bVal;
+  OpenOption[] openOptions=new OpenOption[]{StandardOpenOption.CREATE,StandardOpenOption.WRITE,StandardOpenOption.READ};
+  this.dirty_=this.closed_=false;
+  this.lo_=this.curr_=this.hi_=0;
+  this.buffer_=(size > BuffSz_) ? new byte[size] : new byte[BuffSz_];
+  this.maxHi_=(long)BuffSz_;
+  this.hitEOF_=false;
+  this.diskPos_=0L;
+  if (diskIOPool_ == null) {
+    createLock_.lock();
+    try {
+      if (diskIOPool_ == null) {
+        int maxThreads=DatabaseDescriptor.getThreadsPerPool();
+        diskIOPool_=new ContinuationsExecutor(maxThreads,maxThreads,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("DISK-IO-POOL"));
+      }
+    }
+  finally {
+      createLock_.unlock();
+    }
+  }
+  Set<OpenOption> set=new HashSet<OpenOption>(Arrays.asList(openOptions));
+  fileChannel_=AsynchronousFileChannel.open(file.toPath(),set,diskIOPool_);
+}

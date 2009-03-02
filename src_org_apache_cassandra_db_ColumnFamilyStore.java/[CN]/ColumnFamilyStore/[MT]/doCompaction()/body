@@ -1,0 +1,32 @@
+{
+  isCompacting_.set(true);
+  List<String> files=new ArrayList<String>(ssTables_);
+  try {
+    int count=0;
+    Map<Integer,List<String>> buckets=stageOrderedCompaction(files);
+    Set<Integer> keySet=buckets.keySet();
+    for (    Integer key : keySet) {
+      List<String> fileList=buckets.get(key);
+      Collections.sort(fileList,new FileNameComparator(FileNameComparator.Ascending));
+      if (fileList.size() >= threshHold_) {
+        files.clear();
+        count=0;
+        for (        String file : fileList) {
+          files.add(file);
+          count++;
+          if (count == threshHold_)           break;
+        }
+        try {
+          if (count == threshHold_)           doFileCompaction(files,bufSize_);
+        }
+ catch (        Exception ex) {
+          logger_.warn(LogUtil.throwableToString(ex));
+        }
+      }
+    }
+  }
+  finally {
+    isCompacting_.set(false);
+  }
+  return;
+}

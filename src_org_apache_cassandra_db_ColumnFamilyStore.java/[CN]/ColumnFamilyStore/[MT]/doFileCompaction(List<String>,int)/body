@@ -1,0 +1,138 @@
+{
+  String newfile=null;
+  long startTime=System.currentTimeMillis();
+  long totalBytesRead=0;
+  long totalBytesWritten=0;
+  long totalkeysRead=0;
+  long totalkeysWritten=0;
+  try {
+    long expectedCompactedFileSize=getExpectedCompactedFileSize(files);
+    String compactionFileLocation=DatabaseDescriptor.getCompactionFileLocation(expectedCompactedFileSize);
+    if (compactionFileLocation == null) {
+      String maxFile=getMaxSizeFile(files);
+      files.remove(maxFile);
+      doFileCompaction(files,minBufferSize);
+      return;
+    }
+    PriorityQueue<FileStruct> pq=initializePriorityQueue(files,null,minBufferSize);
+    if (pq.size() > 0) {
+      String mergedFileName=getTempFileName(files);
+      SSTable ssTable=null;
+      String lastkey=null;
+      List<FileStruct> lfs=new ArrayList<FileStruct>();
+      DataOutputBuffer bufOut=new DataOutputBuffer();
+      int expectedBloomFilterSize=SSTable.getApproximateKeyCount(files);
+      expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTable.indexInterval();
+      logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
+      BloomFilter compactedBloomFilter=new BloomFilter(expectedBloomFilterSize,15);
+      List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
+      while (pq.size() > 0 || lfs.size() > 0) {
+        FileStruct fs=null;
+        if (pq.size() > 0) {
+          fs=pq.poll();
+        }
+        if (fs != null && (lastkey == null || lastkey.compareTo(fs.key_) == 0)) {
+          lastkey=fs.key_;
+          lfs.add(fs);
+        }
+ else {
+          Collections.sort(lfs,new FileStructComparator());
+          ColumnFamily columnFamily=null;
+          bufOut.reset();
+          if (lfs.size() > 1) {
+            for (            FileStruct filestruct : lfs) {
+              try {
+                filestruct.bufIn_.readInt();
+                IndexHelper.skipBloomFilterAndIndex(filestruct.bufIn_);
+                if (columnFamilies.size() > 1) {
+                  columnFamily=resolve(columnFamilies);
+                  columnFamilies.clear();
+                  if (columnFamily != null) {
+                    columnFamilies.add(columnFamily);
+                  }
+                }
+                columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.bufIn_));
+              }
+ catch (              Exception ex) {
+                continue;
+              }
+            }
+            columnFamily=resolve(columnFamilies);
+            columnFamilies.clear();
+            if (columnFamily != null) {
+              ColumnFamily.serializer2().serialize(columnFamily,bufOut);
+            }
+          }
+ else {
+            FileStruct filestruct=lfs.get(0);
+            try {
+              int size=filestruct.bufIn_.readInt();
+              bufOut.write(filestruct.bufIn_,size);
+            }
+ catch (            Exception ex) {
+              ex.printStackTrace();
+              filestruct.reader_.close();
+              continue;
+            }
+          }
+          if (ssTable == null) {
+            PartitionerType pType=StorageService.getPartitionerType();
+            ssTable=new SSTable(compactionFileLocation,mergedFileName,pType);
+          }
+          doWrite(ssTable,lastkey,bufOut);
+          doFill(compactedBloomFilter,lastkey);
+          totalkeysWritten++;
+          for (          FileStruct filestruct : lfs) {
+            try {
+              filestruct=getNextKey(filestruct);
+              if (filestruct == null) {
+                continue;
+              }
+              pq.add(filestruct);
+              totalkeysRead++;
+            }
+ catch (            Throwable ex) {
+              filestruct.reader_.close();
+              continue;
+            }
+          }
+          lfs.clear();
+          lastkey=null;
+          if (fs != null) {
+            pq.add(fs);
+          }
+        }
+      }
+      if (ssTable != null) {
+        ssTable.closeRename(compactedBloomFilter);
+        newfile=ssTable.getDataFileLocation();
+      }
+      lock_.writeLock().lock();
+      try {
+        for (        String file : files) {
+          ssTables_.remove(file);
+          SSTable.removeAssociatedBloomFilter(file);
+        }
+        if (newfile != null) {
+          ssTables_.add(newfile);
+          logger_.debug("Inserting bloom filter for file " + newfile);
+          SSTable.storeBloomFilter(newfile,compactedBloomFilter);
+          totalBytesWritten=(new File(newfile)).length();
+        }
+      }
+  finally {
+        lock_.writeLock().unlock();
+      }
+      for (      String file : files) {
+        SSTable.delete(file);
+      }
+    }
+  }
+ catch (  Exception ex) {
+    logger_.warn(LogUtil.throwableToString(ex));
+  }
+  logger_.debug("Total time taken for compaction  ..." + (System.currentTimeMillis() - startTime));
+  logger_.debug("Total bytes Read for compaction  ..." + totalBytesRead);
+  logger_.debug("Total bytes written for compaction  ..." + totalBytesWritten + "   Total keys read ..."+ totalkeysRead);
+  return;
+}

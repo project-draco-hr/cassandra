@@ -1,0 +1,35 @@
+{
+  Row row=null;
+  try {
+    String key=(String)(rowKey_.get());
+    row=StorageProxy.readProtocol(cfMetaData_.tableName,key,cfMetaData_.cfName,offset_,limit_,StorageService.ConsistencyLevel.WEAK);
+  }
+ catch (  Exception e) {
+    logger_.error(LogUtil.throwableToString(e));
+    throw new RuntimeException(RuntimeErrorMsg.GENERIC_ERROR.getMsg());
+  }
+  List<Map<String,String>> rows=new LinkedList<Map<String,String>>();
+  if (row != null) {
+    Map<String,ColumnFamily> cfMap=row.getColumnFamilies();
+    if (cfMap != null && cfMap.size() > 0) {
+      ColumnFamily cfamily=cfMap.get(cfMetaData_.cfName);
+      if (cfamily != null) {
+        Collection<IColumn> columns=cfamily.getAllColumns();
+        if (columns != null && columns.size() > 0) {
+          for (          IColumn column : columns) {
+            Collection<IColumn> subColumns=column.getSubColumns();
+            for (            IColumn subColumn : subColumns) {
+              Map<String,String> result=new HashMap<String,String>();
+              result.put(cfMetaData_.n_superColumnKey,column.name());
+              result.put(cfMetaData_.n_columnKey,subColumn.name());
+              result.put(cfMetaData_.n_columnValue,new String(subColumn.value()));
+              result.put(cfMetaData_.n_columnTimestamp,Long.toString(subColumn.timestamp()));
+              rows.add(result);
+            }
+          }
+        }
+      }
+    }
+  }
+  return rows;
+}

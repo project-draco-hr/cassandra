@@ -1,0 +1,35 @@
+{
+  EndPoint ep=new EndPoint(endpoint.getHost(),DatabaseDescriptor.getStoragePort());
+  ApplicationState nodeIdState=epState.getApplicationState(StorageService.nodeId_);
+  if (nodeIdState != null) {
+    BigInteger newToken=new BigInteger(nodeIdState.getState());
+    logger_.debug("CHANGE IN STATE FOR " + endpoint + " - has token "+ nodeIdState.getState());
+    BigInteger oldToken=tokenMetadata_.getToken(ep);
+    if (oldToken != null) {
+      if (!oldToken.equals(newToken)) {
+        logger_.debug("Relocation for endpoint " + ep);
+        tokenMetadata_.update(newToken,ep);
+      }
+ else {
+        logger_.debug("Sending hinted data to " + ep);
+        doBootstrap(endpoint,BootstrapMode.HINT);
+      }
+    }
+ else {
+      tokenMetadata_.update(newToken,ep);
+    }
+  }
+ else {
+    if (epState.isAlive() && tokenMetadata_.isKnownEndPoint(endpoint)) {
+      logger_.debug("EndPoint " + ep + " just recovered from a partition. Sending hinted data.");
+      doBootstrap(ep,BootstrapMode.HINT);
+    }
+  }
+  ApplicationState loadAllState=epState.getApplicationState(StorageService.loadAll_);
+  if (loadAllState != null) {
+    String nodes=loadAllState.getState();
+    if (nodes != null) {
+      doBootstrap(ep,BootstrapMode.FULL);
+    }
+  }
+}

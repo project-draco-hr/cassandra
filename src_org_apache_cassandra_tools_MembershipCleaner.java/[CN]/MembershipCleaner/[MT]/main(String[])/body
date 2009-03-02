@@ -1,0 +1,25 @@
+{
+  if (args.length != 3) {
+    System.out.println("Usage : java com.facebook.infrastructure.tools.MembershipCleaner " + "<ip:port to send the message> " + "<node which needs to be removed> "+ "<file containing all nodes in the cluster>");
+    System.exit(1);
+  }
+  String ipPort=args[0];
+  String node=args[1];
+  String file=args[2];
+  String[] ipPortPair=ipPort.split(":");
+  EndPoint target=new EndPoint(ipPortPair[0],Integer.valueOf(ipPortPair[1]));
+  MembershipCleanerMessage mcMessage=new MembershipCleanerMessage(node);
+  ByteArrayOutputStream bos=new ByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(bos);
+  MembershipCleanerMessage.serializer().serialize(mcMessage,dos);
+  Message mbrshipCleanerMessage=new Message(new EndPoint(FBUtilities.getHostName(),port_),"",StorageService.mbrshipCleanerVerbHandler_,new Object[]{bos.toByteArray()});
+  BufferedReader bufReader=new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+  String line=null;
+  while ((line=bufReader.readLine()) != null) {
+    mbrshipCleanerMessage.addHeader(line,line.getBytes());
+  }
+  System.out.println("Sending a membership clean message to " + target);
+  MessagingService.getMessagingInstance().sendOneWay(mbrshipCleanerMessage,target);
+  Thread.sleep(MembershipCleaner.waitTime_);
+  System.out.println("Done sending the update message");
+}

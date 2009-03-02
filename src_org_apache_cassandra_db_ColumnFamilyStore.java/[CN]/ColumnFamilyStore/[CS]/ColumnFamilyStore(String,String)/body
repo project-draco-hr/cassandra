@@ -1,0 +1,23 @@
+{
+  table_=table;
+  columnFamily_=columnFamily;
+  List<Integer> indices=new ArrayList<Integer>();
+  String[] dataFileDirectories=DatabaseDescriptor.getAllDataFileLocations();
+  for (  String directory : dataFileDirectories) {
+    File fileDir=new File(directory);
+    File[] files=fileDir.listFiles();
+    for (    File file : files) {
+      String filename=file.getName();
+      String[] tblCfName=getTableAndColumnFamilyName(filename);
+      if (tblCfName[0].equals(table_) && tblCfName[1].equals(columnFamily)) {
+        int index=getIndexFromFileName(filename);
+        indices.add(index);
+      }
+    }
+  }
+  Collections.sort(indices);
+  int value=(indices.size() > 0) ? (indices.get(indices.size() - 1)) : 0;
+  fileIndexGenerator_.set(value);
+  memtable_=new AtomicReference<Memtable>(new Memtable(table_,columnFamily_));
+  binaryMemtable_=new AtomicReference<BinaryMemtable>(new BinaryMemtable(table_,columnFamily_));
+}

@@ -1,0 +1,20 @@
+{
+  if (!CliMain.isConnected())   return;
+  int childCount=ast.getChildCount();
+  assert(childCount == 2);
+  CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
+  assert(columnFamilySpec.getType() == CliParser.NODE_COLUMN_ACCESS);
+  String tableName=CliCompiler.getTableName(columnFamilySpec);
+  String key=CliCompiler.getKey(columnFamilySpec);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  String value=Utils.unescapeSQLString(ast.getChild(1).getText());
+  if (columnSpecCnt == 1) {
+    String columnName=CliCompiler.getColumn(columnFamilySpec,0);
+    thriftClient_.insert(tableName,key,columnFamily + ":" + columnName,value,System.currentTimeMillis());
+    css_.out.println("Value inserted.");
+  }
+ else {
+    assert(false);
+  }
+}

@@ -1,0 +1,16 @@
+{
+  SSTable ssTable=new SSTable("C:\\Engagements\\Cassandra","Table-Test-1",PartitionerType.RANDOM);
+  List<PrimaryKey> pKeys=PrimaryKey.create(columnFamilies.keySet());
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  BloomFilter bf=new BloomFilter(pKeys.size(),15);
+  for (  PrimaryKey pKey : pKeys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies.get(pKey.key());
+    if (columnFamily != null) {
+      ColumnFamily.serializer2().serialize(columnFamily,buffer);
+      ssTable.append(pKey.key(),pKey.hash(),buffer);
+      bf.fill(pKey.key());
+    }
+  }
+  ssTable.close(bf);
+}

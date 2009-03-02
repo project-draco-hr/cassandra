@@ -1,0 +1,88 @@
+{
+  BufferedReader bufReader=new BufferedReader(new InputStreamReader(new FileInputStream(filepath)),16 * 1024 * 1024);
+  String line=null;
+  String delimiter_=new String(",");
+  String firstuser=null;
+  String nextuser=null;
+  batch_mutation_t rmInbox=null;
+  batch_mutation_t rmOutbox=null;
+  while ((line=bufReader.readLine()) != null) {
+    StringTokenizer st=new StringTokenizer(line,delimiter_);
+    int i=0;
+    String threadId=null;
+    int lastUpdated=0;
+    int isDeleted=0;
+    int folder=0;
+    int uid=0;
+    String user=null;
+    while (st.hasMoreElements()) {
+switch (i) {
+case 0:
+        user=(String)st.nextElement();
+      if (!isNumeric(user))       continue;
+    break;
+case 1:
+  folder=Integer.parseInt((String)st.nextElement());
+break;
+case 2:
+threadId=(String)st.nextElement();
+break;
+case 3:
+lastUpdated=Integer.parseInt((String)st.nextElement());
+break;
+case 4:
+isDeleted=Integer.parseInt((String)st.nextElement());
+break;
+default :
+break;
+}
+++i;
+}
+nextuser=user;
+if (firstuser == null || firstuser.compareTo(nextuser) != 0) {
+firstuser=nextuser;
+if (rmInbox != null && !rmInbox.cfmap.isEmpty()) {
+apply(rmInbox);
+}
+if (rmOutbox != null && !rmOutbox.cfmap.isEmpty()) {
+apply(rmOutbox);
+}
+rmInbox=new batch_mutation_t();
+rmInbox.table="Mailbox";
+rmInbox.key=firstuser + ":0";
+rmInbox.cfmap=new HashMap<String,List<column_t>>();
+rmOutbox=new batch_mutation_t();
+rmOutbox.table="Mailbox";
+rmOutbox.key=firstuser + ":1";
+rmOutbox.cfmap=new HashMap<String,List<column_t>>();
+}
+column_t columnData=new column_t();
+columnData.columnName=threadId;
+columnData.value=String.valueOf(isDeleted);
+columnData.timestamp=lastUpdated;
+if (folder == 0) {
+List<column_t> list=rmInbox.cfmap.get("MailboxUserList" + (columnFamilyHack_ % divideby_));
+if (list == null) {
+list=new ArrayList<column_t>();
+rmInbox.cfmap.put("MailboxUserList" + (columnFamilyHack_ % divideby_),list);
+}
+list.add(columnData);
+}
+ else {
+List<column_t> list=rmOutbox.cfmap.get("MailboxUserList" + (columnFamilyHack_ % divideby_));
+if (list == null) {
+list=new ArrayList<column_t>();
+rmOutbox.cfmap.put("MailboxUserList" + (columnFamilyHack_ % divideby_),list);
+}
+list.add(columnData);
+}
+}
+if (firstuser != null) {
+if (rmInbox != null && !rmInbox.cfmap.isEmpty()) {
+apply(rmInbox);
+}
+if (rmOutbox != null && !rmOutbox.cfmap.isEmpty()) {
+apply(rmOutbox);
+}
+}
+}

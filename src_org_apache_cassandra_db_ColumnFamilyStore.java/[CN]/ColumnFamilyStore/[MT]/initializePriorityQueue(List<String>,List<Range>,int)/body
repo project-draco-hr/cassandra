@@ -1,0 +1,32 @@
+{
+  PriorityQueue<FileStruct> pq=new PriorityQueue<FileStruct>();
+  if (files.size() > 1 || (ranges != null && files.size() > 0)) {
+    int bufferSize=Math.min((ColumnFamilyStore.compactionMemoryThreshold_ / files.size()),minBufferSize);
+    FileStruct fs=null;
+    for (    String file : files) {
+      try {
+        fs=new FileStruct();
+        fs.bufIn_=new DataInputBuffer();
+        fs.bufOut_=new DataOutputBuffer();
+        fs.reader_=SequenceFile.bufferedReader(file,bufferSize);
+        fs.key_=null;
+        fs=getNextKey(fs);
+        if (fs == null)         continue;
+        pq.add(fs);
+      }
+ catch (      Exception ex) {
+        ex.printStackTrace();
+        try {
+          if (fs != null) {
+            fs.reader_.close();
+          }
+        }
+ catch (        Exception e) {
+          logger_.warn("Unable to close file :" + file);
+        }
+        continue;
+      }
+    }
+  }
+  return pq;
+}

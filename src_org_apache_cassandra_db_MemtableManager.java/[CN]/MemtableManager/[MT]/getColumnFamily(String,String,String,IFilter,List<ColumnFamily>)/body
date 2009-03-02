@@ -1,0 +1,20 @@
+{
+  rwLock_.readLock().lock();
+  try {
+    List<Memtable> memtables=history_.get(cfName);
+    if (memtables != null) {
+      Collections.sort(memtables);
+      int size=memtables.size();
+      for (int i=size - 1; i >= 0; --i) {
+        ColumnFamily columnFamily=memtables.get(i).getLocalCopy(key,cf,filter);
+        if (columnFamily != null) {
+          columnFamilies.add(columnFamily);
+          if (filter.isDone())           break;
+        }
+      }
+    }
+  }
+  finally {
+    rwLock_.readLock().unlock();
+  }
+}

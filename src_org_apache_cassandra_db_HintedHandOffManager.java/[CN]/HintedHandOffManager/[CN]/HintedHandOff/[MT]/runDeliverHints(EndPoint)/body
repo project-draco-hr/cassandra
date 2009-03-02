@@ -1,0 +1,33 @@
+{
+  logger_.debug("Started  hinted handoff for endPoint " + endPoint_.getHost());
+  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
+  ColumnFamily hintedColumnFamily=null;
+  boolean success=false;
+  try {
+    hintedColumnFamily=table.get(key_,Table.hints_);
+    if (hintedColumnFamily == null)     return;
+    Collection<IColumn> keys=hintedColumnFamily.getAllColumns();
+    if (keys != null) {
+      for (      IColumn key : keys) {
+        Collection<IColumn> endpoints=key.getSubColumns();
+        if (endpoints != null) {
+          for (          IColumn endpoint : endpoints) {
+            if (endpoint.name().equals(endPoint_.getHost())) {
+              success=sendMessage(endpoint.name(),key.name());
+              if (success) {
+                deleteEndPoint(endpoint.name(),key.name());
+              }
+            }
+          }
+        }
+        if (endpoints == null) {
+          deleteKey(key.name());
+        }
+      }
+    }
+  }
+ catch (  Exception ex) {
+    logger_.warn(ex.getMessage());
+  }
+  logger_.debug("Finished hinted handoff for endpoint ..." + endPoint_.getHost());
+}
