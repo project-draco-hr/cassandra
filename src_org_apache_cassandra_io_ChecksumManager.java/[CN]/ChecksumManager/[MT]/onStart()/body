@@ -11,10 +11,11 @@
     }
   }
   for (  File file : allFiles) {
-    int fId=SequenceFile.getFileId(file.getName());
-    ChecksumReader chksumRdr=new ChecksumReader(file.getAbsolutePath(),0L,file.length());
+    int fId=ChecksumManager.getChecksumFileId(file.getName());
+    RandomAccessFile chksumRdr=new RandomAccessFile(file,"r");
+    long size=chksumRdr.length();
     int chunk=0;
-    while (!chksumRdr.isEOF()) {
+    while (chksumRdr.getFilePointer() != size) {
       long value=chksumRdr.readLong();
       long key=ChecksumManager.key(fId,++chunk);
       chksums_.put(key,value);
