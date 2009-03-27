@@ -1,21 +1,21 @@
 {
-  int newSize=0;
   String name=column.name();
   IColumn oldColumn=columns_.get(name);
   if (oldColumn != null) {
-    int oldSize=oldColumn.size();
-    if (oldColumn.putColumn(column)) {
-      columns_.put(name,column);
-      newSize=column.size();
+    if (oldColumn instanceof SuperColumn) {
+      int oldSize=oldColumn.size();
+      ((SuperColumn)oldColumn).putColumn(column);
+      size_.addAndGet(oldColumn.size() - oldSize);
     }
  else {
-      newSize=oldColumn.size();
+      if (oldColumn.timestamp() <= column.timestamp()) {
+        columns_.put(name,column);
+        size_.addAndGet(column.size());
+      }
     }
-    size_.addAndGet(newSize - oldSize);
   }
  else {
-    newSize=column.size();
-    size_.addAndGet(newSize);
+    size_.addAndGet(column.size());
     columns_.put(name,column);
   }
 }
