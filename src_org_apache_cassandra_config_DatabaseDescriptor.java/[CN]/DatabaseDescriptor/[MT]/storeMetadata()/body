@@ -1,0 +1,20 @@
+{
+  AtomicInteger idGenerator=new AtomicInteger(0);
+  Set<String> tables=tableToCFMetaDataMap_.keySet();
+  for (  String table : tables) {
+    Table.TableMetadata tmetadata=Table.TableMetadata.instance();
+    if (tmetadata.isEmpty()) {
+      tmetadata=Table.TableMetadata.instance();
+      Map<String,CFMetaData> columnFamilies=tableToCFMetaDataMap_.get(table);
+      for (      String columnFamily : columnFamilies.keySet()) {
+        tmetadata.add(columnFamily,idGenerator.getAndIncrement(),DatabaseDescriptor.getColumnType(columnFamily));
+      }
+      tmetadata.add(Table.TableMetadata.cfName_,idGenerator.getAndIncrement());
+      tmetadata.add(SystemTable.cfName_,idGenerator.getAndIncrement());
+      tmetadata.add(Table.recycleBin_,idGenerator.getAndIncrement());
+      tmetadata.add(Table.hints_,idGenerator.getAndIncrement(),ColumnFamily.getColumnType("Super"));
+      tmetadata.apply();
+      idGenerator.set(0);
+    }
+  }
+}
