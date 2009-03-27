@@ -46,11 +46,7 @@
                 filestruct.bufIn_.readInt();
                 IndexHelper.skipBloomFilterAndIndex(filestruct.bufIn_);
                 if (columnFamilies.size() > 1) {
-                  columnFamily=resolve(columnFamilies);
-                  columnFamilies.clear();
-                  if (columnFamily != null) {
-                    columnFamilies.add(columnFamily);
-                  }
+                  merge(columnFamilies);
                 }
                 columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.bufIn_));
               }
@@ -59,7 +55,7 @@
                 continue;
               }
             }
-            columnFamily=resolve(columnFamilies);
+            columnFamily=resolveAndRemoveDeleted(columnFamilies);
             columnFamilies.clear();
             if (columnFamily != null) {
               ColumnFamily.serializerWithIndexes().serialize(columnFamily,bufOut);
