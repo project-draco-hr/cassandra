@@ -1,6 +1,16 @@
 {
-  String[] values=RowMutation.getColumnAndColumnFamily(columnFamilyColumn);
-  String columnFamilyName=values[0];
-  List<String> cnNames=(values.length == 1) ? null : Arrays.asList(values[1]);
-  return next(clientKey,columnFamilyName,cnNames);
+  DataInputBuffer bufIn=null;
+  IFileReader dataReader=null;
+  try {
+    dataReader=SequenceFile.reader(dataFile_);
+    key=morphKey(key);
+    Coordinate fileCoordinate=getCoordinates(key,dataReader);
+    bufIn=getData(dataReader,key,columnName,fileCoordinate);
+  }
+  finally {
+    if (dataReader != null) {
+      dataReader.close();
+    }
+  }
+  return bufIn;
 }

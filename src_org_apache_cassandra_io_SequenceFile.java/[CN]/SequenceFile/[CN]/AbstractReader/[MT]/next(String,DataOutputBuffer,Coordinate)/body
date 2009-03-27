@@ -1,0 +1,22 @@
+{
+  long bytesRead=-1L;
+  if (isEOF())   return bytesRead;
+  seekTo(key,section);
+  long startPosition=file_.getFilePointer();
+  String keyInDisk=readKeyFromDisk(file_);
+  if (keyInDisk != null) {
+    if (keyInDisk.compareTo(key) > 0)     return bytesRead;
+    int dataSize=file_.readInt();
+    if (keyInDisk.equals(key)) {
+      bufOut.writeUTF(keyInDisk);
+      bufOut.writeInt(dataSize);
+      bufOut.write(file_,dataSize);
+    }
+ else {
+      file_.seek(dataSize + file_.getFilePointer());
+    }
+    long endPosition=file_.getFilePointer();
+    bytesRead=endPosition - startPosition;
+  }
+  return bytesRead;
+}
