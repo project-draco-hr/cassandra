@@ -1,0 +1,17 @@
+{
+  if (DatabaseDescriptor.getConsistencyCheck()) {
+    List<EndPoint> endpoints=StorageService.instance().getNLiveStorageEndPoint(readMessage.key());
+    endpoints.remove(StorageService.getLocalStorageEndPoint());
+    if (readMessage.getColumnNames().size() == 0) {
+      if (readMessage.start() >= 0 && readMessage.count() < Integer.MAX_VALUE) {
+        StorageService.instance().doConsistencyCheck(row,endpoints,readMessage.columnFamily_column(),readMessage.start(),readMessage.count());
+      }
+      if (readMessage.sinceTimestamp() > 0) {
+        StorageService.instance().doConsistencyCheck(row,endpoints,readMessage.columnFamily_column(),readMessage.sinceTimestamp());
+      }
+    }
+ else {
+      StorageService.instance().doConsistencyCheck(row,endpoints,readMessage.columnFamily_column(),readMessage.getColumnNames());
+    }
+  }
+}
