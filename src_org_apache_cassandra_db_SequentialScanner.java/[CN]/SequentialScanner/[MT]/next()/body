@@ -1,0 +1,12 @@
+{
+  if (fsQueue_.size() == 0)   throw new IllegalStateException("Nothing in the stream to scan.");
+  Row row=null;
+  FileStruct fs=fsQueue_.poll();
+  if (StorageService.instance().isPrimary(fs.getKey()) && !fs.getKey().equals(SSTable.blockIndexKey_)) {
+    row=Table.open(table_).get(fs.getKey());
+  }
+  doCorrections(fs.getKey());
+  long bytesRead=fs.advance();
+  if (bytesRead != -1L)   fsQueue_.add(fs);
+  return row;
+}

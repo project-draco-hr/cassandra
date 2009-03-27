@@ -1,4 +1,20 @@
 {
-  List<ColumnFamily> columnFamilies=getColumnFamilies(key,columnFamilyColumn,filter);
-  return resolveAndRemoveDeleted(columnFamilies);
+  List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
+  ColumnFamily columnFamily=null;
+  long start=System.currentTimeMillis();
+  getColumnFamilyFromCurrentMemtable(key,cf,filter,columnFamilies);
+  if (columnFamilies.size() != 0) {
+    if (filter.isDone())     return columnFamilies.get(0);
+  }
+  MemtableManager.instance().getColumnFamily(key,columnFamily_,cf,filter,columnFamilies);
+  if (columnFamilies.size() != 0) {
+    columnFamily=resolve(columnFamilies);
+    if (filter.isDone())     return columnFamily;
+    columnFamilies.clear();
+    columnFamilies.add(columnFamily);
+  }
+  getColumnFamilyFromDisk(key,cf,columnFamilies,filter);
+  logger_.debug("DISK TIME: " + (System.currentTimeMillis() - start) + " ms.");
+  columnFamily=resolve(columnFamilies);
+  return columnFamily;
 }

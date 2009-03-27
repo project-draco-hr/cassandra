@@ -1,10 +1,15 @@
 {
+  String key=row.key();
   long start=System.currentTimeMillis();
   CommitLog.CommitLogContext cLogCtx=CommitLog.open(table_).add(row);
-  for (  ColumnFamily columnFamily : row.getColumnFamilies()) {
+  Map<String,ColumnFamily> columnFamilies=row.getColumnFamilies();
+  Set<String> cNames=columnFamilies.keySet();
+  for (  String cName : cNames) {
+    ColumnFamily columnFamily=columnFamilies.get(cName);
     ColumnFamilyStore cfStore=columnFamilyStores_.get(columnFamily.name());
-    cfStore.apply(row.key(),columnFamily,cLogCtx);
+    cfStore.apply(key,columnFamily,cLogCtx);
   }
+  row.clear();
   long timeTaken=System.currentTimeMillis() - start;
   dbAnalyticsSource_.updateWriteStatistics(timeTaken);
 }

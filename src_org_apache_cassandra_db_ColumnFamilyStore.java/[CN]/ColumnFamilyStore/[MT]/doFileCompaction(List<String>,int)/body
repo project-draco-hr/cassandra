@@ -31,8 +31,8 @@
         if (pq.size() > 0) {
           fs=pq.poll();
         }
-        if (fs != null && (lastkey == null || lastkey.compareTo(fs.getKey()) == 0)) {
-          lastkey=fs.getKey();
+        if (fs != null && (lastkey == null || lastkey.compareTo(fs.key_) == 0)) {
+          lastkey=fs.key_;
           lfs.add(fs);
         }
  else {
@@ -42,52 +42,58 @@
           if (lfs.size() > 1) {
             for (            FileStruct filestruct : lfs) {
               try {
-                filestruct.getBufIn().readInt();
-                IndexHelper.skipBloomFilterAndIndex(filestruct.getBufIn());
+                filestruct.bufIn_.readInt();
+                IndexHelper.skipBloomFilterAndIndex(filestruct.bufIn_);
                 if (columnFamilies.size() > 1) {
-                  merge(columnFamilies);
+                  columnFamily=resolve(columnFamilies);
+                  columnFamilies.clear();
+                  if (columnFamily != null) {
+                    columnFamilies.add(columnFamily);
+                  }
                 }
-                columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.getBufIn()));
+                columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.bufIn_));
               }
  catch (              Exception ex) {
-                logger_.warn("error in filecompaction",ex);
+                continue;
               }
             }
-            columnFamily=resolveAndRemoveDeleted(columnFamilies);
+            columnFamily=resolve(columnFamilies);
             columnFamilies.clear();
             if (columnFamily != null) {
-              ColumnFamily.serializerWithIndexes().serialize(columnFamily,bufOut);
+              ColumnFamily.serializer2().serialize(columnFamily,bufOut);
             }
           }
  else {
             FileStruct filestruct=lfs.get(0);
             try {
-              int size=filestruct.getBufIn().readInt();
-              bufOut.write(filestruct.getBufIn(),size);
+              int size=filestruct.bufIn_.readInt();
+              bufOut.write(filestruct.bufIn_,size);
             }
  catch (            Exception ex) {
               ex.printStackTrace();
-              filestruct.close();
+              filestruct.reader_.close();
               continue;
             }
           }
           if (ssTable == null) {
-            ssTable=new SSTable(compactionFileLocation,mergedFileName);
+            PartitionerType pType=StorageService.getPartitionerType();
+            ssTable=new SSTable(compactionFileLocation,mergedFileName,pType);
           }
-          ssTable.append(lastkey,bufOut);
+          doWrite(ssTable,lastkey,bufOut);
           doFill(compactedBloomFilter,lastkey);
           totalkeysWritten++;
           for (          FileStruct filestruct : lfs) {
             try {
-              filestruct.getNextKey();
-              if (filestruct.isExhausted()) {
+              filestruct=getNextKey(filestruct);
+              if (filestruct == null) {
                 continue;
               }
               pq.add(filestruct);
               totalkeysRead++;
             }
  catch (            Throwable ex) {
-              filestruct.close();
+              filestruct.reader_.close();
+              continue;
             }
           }
           lfs.clear();
@@ -128,4 +134,5 @@
   logger_.debug("Total time taken for compaction  ..." + (System.currentTimeMillis() - startTime));
   logger_.debug("Total bytes Read for compaction  ..." + totalBytesRead);
   logger_.debug("Total bytes written for compaction  ..." + totalBytesWritten + "   Total keys read ..."+ totalkeysRead);
+  return;
 }

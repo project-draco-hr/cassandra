@@ -1,0 +1,19 @@
+{
+  List<PrimaryKey> pKeys=PrimaryKey.create(columnFamilies_.keySet());
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  BloomFilter bf=new BloomFilter(pKeys.size(),15);
+  for (  PrimaryKey pKey : pKeys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies_.get(pKey.key());
+    if (columnFamily != null) {
+      ColumnFamily.serializer2().serialize(columnFamily,buffer);
+      ssTable.append(pKey.key(),pKey.hash(),buffer);
+      bf.fill(pKey.key());
+      columnFamily.clear();
+    }
+  }
+  ssTable.close(bf);
+  cfStore.onMemtableFlush(cLogCtx);
+  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  buffer.close();
+}
