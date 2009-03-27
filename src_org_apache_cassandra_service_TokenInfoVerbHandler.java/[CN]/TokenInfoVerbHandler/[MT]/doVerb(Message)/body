@@ -1,0 +1,15 @@
+{
+  EndPoint from=message.getFrom();
+  logger_.info("Received a token download request from " + from);
+  ByteArrayOutputStream bos=new ByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(bos);
+  try {
+    TokenMetadata.serializer().serialize(StorageService.instance().getTokenMetadata(),dos);
+    Message response=message.getReply(StorageService.getLocalStorageEndPoint(),new Object[]{bos.toByteArray()});
+    logger_.info("Sending the token download response to " + from);
+    MessagingService.getMessagingInstance().sendOneWay(response,from);
+  }
+ catch (  IOException ex) {
+    logger_.info(LogUtil.throwableToString(ex));
+  }
+}
