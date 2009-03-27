@@ -1,22 +1,6 @@
 {
   logger_.debug(" Run the consistency checks for " + columnFamily_);
-  String table=DatabaseDescriptor.getTables().get(0);
-  ReadMessage readMessageDigestOnly=null;
-  if (columnNames_.size() == 0) {
-    if (start_ >= 0 && count_ < Integer.MAX_VALUE) {
-      readMessageDigestOnly=new ReadMessage(table,row_.key(),columnFamily_,start_,count_);
-    }
- else     if (sinceTimestamp_ > 0) {
-      readMessageDigestOnly=new ReadMessage(table,row_.key(),columnFamily_,sinceTimestamp_);
-    }
- else {
-      readMessageDigestOnly=new ReadMessage(table,row_.key(),columnFamily_);
-    }
-  }
- else {
-    readMessageDigestOnly=new ReadMessage(table,row_.key(),columnFamily_,columnNames_);
-  }
-  readMessageDigestOnly.setIsDigestQuery(true);
+  ReadMessage readMessageDigestOnly=constructReadMessage(true);
   try {
     Message messageDigestOnly=ReadMessage.makeReadMessage(readMessageDigestOnly);
     IAsyncCallback digestResponseHandler=new DigestResponseHandler();

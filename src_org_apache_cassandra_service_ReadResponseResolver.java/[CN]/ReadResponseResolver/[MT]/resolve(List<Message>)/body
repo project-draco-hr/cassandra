@@ -33,7 +33,7 @@
   if (isDigestQuery) {
     for (    Row row : rowList) {
       if (!Arrays.equals(row.digest(),digest)) {
-        throw new DigestMismatchException("The Digest does not match");
+        throw new DigestMismatchException(row.key());
       }
     }
   }
@@ -48,11 +48,11 @@
     Row diffRow=rowList.get(i).diff(retRow);
     if (diffRow == null)     continue;
     RowMutation rowMutation=new RowMutation(table,key);
-    Map<String,ColumnFamily> columnFamilies=diffRow.getColumnFamilyMap();
+    Map<String,ColumnFamily> columnFamilies=diffRow.getColumnFamilies();
     Set<String> cfNames=columnFamilies.keySet();
     for (    String cfName : cfNames) {
       ColumnFamily cf=columnFamilies.get(cfName);
-      rowMutation.add(cf);
+      rowMutation.add(cfName,cf);
     }
     RowMutationMessage rowMutationMessage=new RowMutationMessage(rowMutation);
     ReadRepairManager.instance().schedule(endPoints.get(i),rowMutationMessage);

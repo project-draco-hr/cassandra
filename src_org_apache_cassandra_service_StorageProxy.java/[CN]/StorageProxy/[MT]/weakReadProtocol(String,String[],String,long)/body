@@ -1,0 +1,16 @@
+{
+  Row row=null;
+  long startTime=System.currentTimeMillis();
+  Map<String,ReadMessage> readMessages=new HashMap<String,ReadMessage>();
+  for (  String key : keys) {
+    ReadMessage readMessage=new ReadMessage(tablename,key,columnFamily,sinceTimestamp);
+    readMessages.put(key,readMessage);
+  }
+  Map<String,Row> rows=doReadProtocol(readMessages);
+  for (  String key : keys) {
+    List<EndPoint> endpoints=StorageService.instance().getNLiveStorageEndPoint(key);
+    endpoints.remove(StorageService.getLocalStorageEndPoint());
+    if (endpoints.size() > 0 && DatabaseDescriptor.getConsistencyCheck())     StorageService.instance().doConsistencyCheck(row,endpoints,columnFamily,sinceTimestamp);
+  }
+  return rows;
+}
