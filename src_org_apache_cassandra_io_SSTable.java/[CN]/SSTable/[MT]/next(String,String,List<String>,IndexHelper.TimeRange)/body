@@ -1,0 +1,24 @@
+{
+  IFileReader dataReader=null;
+  try {
+    dataReader=SequenceFile.reader(dataFile_);
+    String decoratedKey=StorageService.getPartitioner().decorateKey(clientKey);
+    Coordinate fileCoordinate=getCoordinates(decoratedKey,dataReader);
+    DataOutputBuffer bufOut=new DataOutputBuffer();
+    DataInputBuffer bufIn=new DataInputBuffer();
+    long bytesRead=dataReader.next(decoratedKey,bufOut,cfName,columnNames,timeRange,fileCoordinate);
+    if (bytesRead != -1L) {
+      if (bufOut.getLength() > 0) {
+        bufIn.reset(bufOut.getData(),bufOut.getLength());
+        bufIn.readUTF();
+        bufIn.readInt();
+      }
+    }
+    return bufIn;
+  }
+  finally {
+    if (dataReader != null) {
+      dataReader.close();
+    }
+  }
+}

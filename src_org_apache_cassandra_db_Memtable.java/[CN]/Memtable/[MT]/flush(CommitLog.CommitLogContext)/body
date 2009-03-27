@@ -4,16 +4,26 @@
     cfStore.onMemtableFlush(cLogCtx);
     return;
   }
-  PartitionerType pType=StorageService.getPartitionerType();
   String directory=DatabaseDescriptor.getDataFileLocation();
   String filename=cfStore.getNextFileName();
-  SSTable ssTable=new SSTable(directory,filename,pType);
-switch (pType) {
-case OPHF:
-    flushForOrderPreservingPartitioner(ssTable,cfStore,cLogCtx);
-  break;
-default :
-flushForRandomPartitioner(ssTable,cfStore,cLogCtx);
-break;
-}
+  SSTable ssTable=new SSTable(directory,filename);
+  List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
+  Collections.sort(keys);
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  BloomFilter bf=new BloomFilter(keys.size(),15);
+  for (  String key : keys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies_.get(key);
+    if (columnFamily != null) {
+      ColumnFamily.serializerWithIndexes().serialize(columnFamily,buffer);
+      ssTable.append(key,buffer);
+      bf.fill(key);
+      columnFamily.clear();
+    }
+  }
+  ssTable.close(bf);
+  cfStore.onMemtableFlush(cLogCtx);
+  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  buffer.close();
+  columnFamilies_.clear();
 }
