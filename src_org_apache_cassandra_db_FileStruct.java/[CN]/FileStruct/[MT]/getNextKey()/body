@@ -1,0 +1,35 @@
+{
+  if (exhausted) {
+    throw new IndexOutOfBoundsException();
+  }
+  try {
+    bufOut.reset();
+    if (reader.isEOF()) {
+      reader.close();
+      exhausted=true;
+      return;
+    }
+    long bytesread=reader.next(bufOut);
+    if (bytesread == -1) {
+      reader.close();
+      exhausted=true;
+      return;
+    }
+    bufIn.reset(bufOut.getData(),bufOut.getLength());
+    key=bufIn.readUTF();
+    if (key.equals(SSTable.blockIndexKey_)) {
+      bufOut.reset();
+      bytesread=reader.next(bufOut);
+      if (bytesread == -1) {
+        reader.close();
+        exhausted=true;
+        return;
+      }
+      bufIn.reset(bufOut.getData(),bufOut.getLength());
+      key=bufIn.readUTF();
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
