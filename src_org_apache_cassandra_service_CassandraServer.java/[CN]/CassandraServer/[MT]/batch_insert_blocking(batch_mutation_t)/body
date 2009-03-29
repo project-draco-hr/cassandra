@@ -1,30 +1,5 @@
 {
-  boolean result=false;
-  try {
-    logger_.warn(" batch_insert_blocking");
-    validateTable(batchMutation.table);
-    IResponseResolver<Boolean> writeResponseResolver=new WriteResponseResolver();
-    QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(DatabaseDescriptor.getReplicationFactor(),writeResponseResolver);
-    EndPoint[] endpoints=storageService.getNStorageEndPoint(batchMutation.key);
-    logger_.debug(" Creating the row mutation");
-    RowMutation rm=new RowMutation(batchMutation.table,batchMutation.key.trim());
-    Set keys=batchMutation.cfmap.keySet();
-    Iterator keyIter=keys.iterator();
-    while (keyIter.hasNext()) {
-      Object key=keyIter.next();
-      List<column_t> list=batchMutation.cfmap.get(key);
-      for (      column_t columnData : list) {
-        rm.add(key.toString() + ":" + columnData.columnName,columnData.value.getBytes(),columnData.timestamp);
-      }
-    }
-    RowMutationMessage rmMsg=new RowMutationMessage(rm);
-    Message message=new Message(StorageService.getLocalStorageEndPoint(),StorageService.mutationStage_,StorageService.mutationVerbHandler_,new Object[]{rmMsg});
-    MessagingService.getMessagingInstance().sendRR(message,endpoints,quorumResponseHandler);
-    logger_.debug(" Calling quorum response handler's get");
-    result=quorumResponseHandler.get();
-  }
- catch (  Exception e) {
-    logger_.info(LogUtil.throwableToString(e));
-  }
-  return result;
+  logger_.debug("batch_insert_blocking");
+  RowMutation rm=RowMutation.getRowMutation(batchMutation);
+  return StorageProxy.insertBlocking(rm);
 }
