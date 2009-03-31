@@ -1,0 +1,17 @@
+{
+  int listenPort=DatabaseDescriptor.getThriftPort();
+  Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
+    public void uncaughtException(    Thread t,    Throwable e){
+      logger.error("Fatal exception in thread " + t,e);
+    }
+  }
+);
+  CassandraServer peerStorageServer=new CassandraServer();
+  peerStorageServer.start();
+  Cassandra.Processor processor=new Cassandra.Processor(peerStorageServer);
+  TServerSocket tServerSocket=new TServerSocket(listenPort);
+  TProtocolFactory tProtocolFactory=new TBinaryProtocol.Factory();
+  TThreadPoolServer.Options options=new TThreadPoolServer.Options();
+  options.minWorkerThreads=64;
+  serverEngine=new TThreadPoolServer(processor,tServerSocket,tProtocolFactory);
+}
