@@ -1,0 +1,24 @@
+{
+  int dataSize=file_.readInt();
+  bufOut.writeUTF(key);
+  int bytesSkipped=IndexHelper.skipBloomFilter(file_);
+  dataSize-=bytesSkipped;
+  List<IndexHelper.ColumnIndexInfo> columnIndexList=new ArrayList<IndexHelper.ColumnIndexInfo>();
+  int totalBytesRead=handleColumnTimeIndexes(columnFamilyName,columnIndexList);
+  dataSize-=totalBytesRead;
+  String cfName=file_.readUTF();
+  dataSize-=(utfPrefix_ + cfName.length());
+  long markedForDeleteAt=file_.readLong();
+  dataSize-=8;
+  int totalNumCols=file_.readInt();
+  dataSize-=4;
+  IndexHelper.ColumnRange columnRange=IndexHelper.getColumnRangeFromTimeIndex(timeRange,columnIndexList,dataSize,totalNumCols);
+  Coordinate coordinate=columnRange.coordinate();
+  file_.skipBytes((int)coordinate.start_);
+  dataSize=(int)(coordinate.end_ - coordinate.start_);
+  bufOut.writeInt(dataSize + utfPrefix_ + cfName.length()+ 4+ 1);
+  bufOut.writeUTF(cfName);
+  bufOut.writeLong(markedForDeleteAt);
+  bufOut.writeInt(columnRange.count());
+  bufOut.write(file_,dataSize);
+}
