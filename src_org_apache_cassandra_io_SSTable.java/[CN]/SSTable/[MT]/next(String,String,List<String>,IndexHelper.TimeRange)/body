@@ -1,0 +1,24 @@
+{
+  DataInputBuffer bufIn=new DataInputBuffer();
+  IFileReader dataReader=null;
+  try {
+    dataReader=SequenceFile.reader(dataFile_);
+    key=morphKey(key);
+    Coordinate fileCoordinate=getCoordinates(key,dataReader);
+    DataOutputBuffer bufOut=new DataOutputBuffer();
+    long bytesRead=dataReader.next(key,bufOut,cf,cNames,timeRange,fileCoordinate);
+    if (bytesRead != -1L) {
+      if (bufOut.getLength() > 0) {
+        bufIn.reset(bufOut.getData(),bufOut.getLength());
+        bufIn.readUTF();
+        bufIn.readInt();
+      }
+    }
+  }
+  finally {
+    if (dataReader != null) {
+      dataReader.close();
+    }
+  }
+  return bufIn;
+}
