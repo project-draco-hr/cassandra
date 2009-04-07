@@ -1,11 +1,11 @@
 {
-  if (key == null)   throw new IOException("Keys must not be null.");
-  if (lastWrittenKey_ != null && key.compareTo(lastWrittenKey_) <= 0) {
+  if (decoratedKey == null)   throw new IOException("Keys must not be null.");
+  Comparator<String> c=StorageService.getPartitioner().getDecoratedKeyComparator();
+  if (lastWrittenKey_ != null && c.compare(lastWrittenKey_,decoratedKey) > 0) {
     logger_.info("Last written key : " + lastWrittenKey_);
-    logger_.info("Current key : " + key);
+    logger_.info("Current key : " + decoratedKey);
     logger_.info("Writing into file " + dataFile_);
     throw new IOException("Keys must be written in ascending order.");
   }
-  long currentPosition=(lastWrittenKey_ == null) ? SSTable.positionAfterFirstBlockIndex_ : dataWriter_.getCurrentPosition();
-  return currentPosition;
+  return (lastWrittenKey_ == null) ? SSTable.positionAfterFirstBlockIndex_ : dataWriter_.getCurrentPosition();
 }

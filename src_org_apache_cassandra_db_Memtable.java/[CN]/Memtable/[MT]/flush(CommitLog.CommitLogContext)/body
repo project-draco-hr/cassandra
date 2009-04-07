@@ -4,16 +4,33 @@
     cfStore.onMemtableFlush(cLogCtx);
     return;
   }
-  PartitionerType pType=StorageService.getPartitionerType();
   String directory=DatabaseDescriptor.getDataFileLocation();
   String filename=cfStore.getNextFileName();
-  SSTable ssTable=new SSTable(directory,filename,pType);
-switch (pType) {
-case OPHF:
-    flushForOrderPreservingPartitioner(ssTable,cfStore,cLogCtx);
-  break;
-default :
-flushForRandomPartitioner(ssTable,cfStore,cLogCtx);
-break;
-}
+  SSTable ssTable=new SSTable(directory,filename);
+  final IPartitioner partitioner=StorageService.getPartitioner();
+  final Comparator<String> dc=partitioner.getDecoratedKeyComparator();
+  ArrayList<String> orderedKeys=new ArrayList<String>(columnFamilies_.keySet());
+  Collections.sort(orderedKeys,new Comparator<String>(){
+    public int compare(    String o1,    String o2){
+      return dc.compare(partitioner.decorateKey(o1),partitioner.decorateKey(o2));
+    }
+  }
+);
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  BloomFilter bf=new BloomFilter(columnFamilies_.size(),15);
+  for (  String key : orderedKeys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies_.get(key);
+    if (columnFamily != null) {
+      ColumnFamily.serializerWithIndexes().serialize(columnFamily,buffer);
+      ssTable.append(partitioner.decorateKey(key),buffer);
+      bf.fill(key);
+      columnFamily.clear();
+    }
+  }
+  ssTable.close(bf);
+  cfStore.onMemtableFlush(cLogCtx);
+  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  buffer.close();
+  columnFamilies_.clear();
 }

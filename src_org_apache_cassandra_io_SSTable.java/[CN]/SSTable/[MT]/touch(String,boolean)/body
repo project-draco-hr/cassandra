@@ -1,13 +1,13 @@
 {
-  if (touchCache_.containsKey(key))   return;
+  if (touchCache_.containsKey(dataFile_ + ":" + clientKey))   return;
   IFileReader dataReader=SequenceFile.reader(dataFile_);
   try {
-    key=morphKey(key);
-    Coordinate fileCoordinate=getCoordinates(key,dataReader);
+    String decoratedKey=StorageService.getPartitioner().decorateKey(clientKey);
+    Coordinate fileCoordinate=getCoordinates(decoratedKey,dataReader);
     dataReader.seek(fileCoordinate.end_);
-    BlockMetadata blockMetadata=dataReader.getBlockMetadata(key);
+    BlockMetadata blockMetadata=dataReader.getBlockMetadata(decoratedKey);
     if (blockMetadata.position_ != -1L) {
-      touchCache_.put(dataFile_ + ":" + key,blockMetadata.position_);
+      touchCache_.put(dataFile_ + ":" + clientKey,blockMetadata.position_);
     }
     if (fData) {
       if (blockMetadata.position_ != -1L) {
