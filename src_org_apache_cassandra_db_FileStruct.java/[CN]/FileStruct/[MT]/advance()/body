@@ -1,26 +1,23 @@
 {
-  long bytesRead=-1L;
-  bufOut_.reset();
-  if (reader_.isEOF()) {
-    reader_.close();
-    return bytesRead;
+  if (exhausted) {
+    throw new IndexOutOfBoundsException();
   }
-  bytesRead=reader_.next(bufOut_);
-  if (bytesRead == -1) {
-    reader_.close();
-    return bytesRead;
+  bufOut.reset();
+  if (reader.isEOF()) {
+    reader.close();
+    exhausted=true;
+    return;
   }
-  bufIn_.reset(bufOut_.getData(),bufOut_.getLength());
-  key_=bufIn_.readUTF();
-  if (key_.equals(SSTable.blockIndexKey_)) {
-    bufOut_.reset();
-    bytesRead=reader_.next(bufOut_);
-    if (bytesRead == -1) {
-      reader_.close();
-      return bytesRead;
-    }
-    bufIn_.reset(bufOut_.getData(),bufOut_.getLength());
-    key_=bufIn_.readUTF();
+  long bytesread=reader.next(bufOut);
+  if (bytesread == -1) {
+    reader.close();
+    exhausted=true;
+    return;
   }
-  return bytesRead;
+  bufIn.reset(bufOut.getData(),bufOut.getLength());
+  key=bufIn.readUTF();
+  if (key.equals(SSTable.blockIndexKey_)) {
+    reader.close();
+    exhausted=true;
+  }
 }

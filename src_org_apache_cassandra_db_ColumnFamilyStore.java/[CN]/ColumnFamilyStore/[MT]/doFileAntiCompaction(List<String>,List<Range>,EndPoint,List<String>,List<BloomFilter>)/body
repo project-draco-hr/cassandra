@@ -7,6 +7,7 @@
   long totalkeysWritten=0;
   String rangeFileLocation;
   String mergedFileName;
+  IPartitioner p=StorageService.getPartitioner();
   try {
     long expectedRangeFileSize=getExpectedCompactedFileSize(files);
     expectedRangeFileSize=expectedRangeFileSize / 2;
@@ -32,8 +33,8 @@
         if (pq.size() > 0) {
           fs=pq.poll();
         }
-        if (fs != null && (lastkey == null || lastkey.compareTo(fs.key_) == 0)) {
-          lastkey=fs.key_;
+        if (fs != null && (lastkey == null || lastkey.equals(fs.getKey()))) {
+          lastkey=fs.getKey();
           lfs.add(fs);
         }
  else {
@@ -43,12 +44,12 @@
           if (lfs.size() > 1) {
             for (            FileStruct filestruct : lfs) {
               try {
-                filestruct.bufIn_.readInt();
-                IndexHelper.skipBloomFilterAndIndex(filestruct.bufIn_);
+                filestruct.getBufIn().readInt();
+                IndexHelper.skipBloomFilterAndIndex(filestruct.getBufIn());
                 if (columnFamilies.size() > 1) {
                   merge(columnFamilies);
                 }
-                columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.bufIn_));
+                columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.getBufIn()));
               }
  catch (              Exception ex) {
                 logger_.warn(LogUtil.throwableToString(ex));
@@ -63,16 +64,16 @@
  else {
             FileStruct filestruct=lfs.get(0);
             try {
-              int size=filestruct.bufIn_.readInt();
-              bufOut.write(filestruct.bufIn_,size);
+              int size=filestruct.getBufIn().readInt();
+              bufOut.write(filestruct.getBufIn(),size);
             }
  catch (            Exception ex) {
               logger_.warn(LogUtil.throwableToString(ex));
-              filestruct.reader_.close();
+              filestruct.close();
               continue;
             }
           }
-          if (Range.isKeyInRanges(ranges,lastkey)) {
+          if (Range.isKeyInRanges(ranges,p.undecorateKey(lastkey))) {
             if (ssTableRange == null) {
               if (target != null)               rangeFileLocation=rangeFileLocation + System.getProperty("file.separator") + "bootstrap";
               FileUtils.createDirectory(rangeFileLocation);
@@ -89,24 +90,24 @@
           totalkeysWritten++;
           for (          FileStruct filestruct : lfs) {
             try {
-              filestruct=getNextKey(filestruct);
-              if (filestruct == null) {
+              filestruct.advance();
+              if (filestruct.isExhausted()) {
                 continue;
               }
-              while (!Range.isKeyInRanges(ranges,filestruct.key_)) {
-                filestruct=getNextKey(filestruct);
-                if (filestruct == null) {
+              while (!Range.isKeyInRanges(ranges,p.undecorateKey(filestruct.getKey()))) {
+                filestruct.advance();
+                if (filestruct.isExhausted()) {
                   break;
                 }
               }
-              if (filestruct != null) {
+              if (!filestruct.isExhausted()) {
                 pq.add(filestruct);
               }
               totalkeysRead++;
             }
  catch (            Exception ex) {
               logger_.warn(LogUtil.throwableToString(ex));
-              filestruct.reader_.close();
+              filestruct.close();
             }
           }
           lfs.clear();
