@@ -2,12 +2,18 @@
   if (isThresholdViolated(key)) {
     lock_.lock();
     try {
-      ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
+      final ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
       if (!isFrozen_) {
         isFrozen_=true;
-        Runnable flusher=new Flusher(cLogCtx);
-        apartments_.get(cfName_).submit(flusher);
+        Runnable flushQueuer=new Runnable(){
+          public void run(){
+            MemtableManager.instance().submit(cfStore.getColumnFamilyName(),Memtable.this,cLogCtx);
+          }
+        }
+;
         cfStore.switchMemtable(key,columnFamily,cLogCtx);
+        executor_.runOnTermination(flushQueuer);
+        executor_.shutdown();
       }
  else {
         cfStore.apply(key,columnFamily,cLogCtx);
@@ -20,6 +26,6 @@
  else {
     printExecutorStats();
     Runnable putter=new Putter(key,columnFamily);
-    apartments_.get(cfName_).submit(putter);
+    executor_.submit(putter);
   }
 }
