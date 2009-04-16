@@ -5,14 +5,8 @@
       final ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
       if (!isFrozen_) {
         isFrozen_=true;
-        Runnable flushQueuer=new Runnable(){
-          public void run(){
-            MemtableManager.instance().submit(cfStore.getColumnFamilyName(),Memtable.this,cLogCtx);
-          }
-        }
-;
         cfStore.switchMemtable(key,columnFamily,cLogCtx);
-        executor_.runOnTermination(flushQueuer);
+        executor_.flushWhenTerminated(cLogCtx);
         executor_.shutdown();
       }
  else {
