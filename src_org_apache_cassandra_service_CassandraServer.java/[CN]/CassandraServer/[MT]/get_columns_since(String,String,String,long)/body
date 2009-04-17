@@ -1,5 +1,4 @@
 {
-  ArrayList<column_t> retlist=new ArrayList<column_t>();
   long startTime=System.currentTimeMillis();
   try {
     validateTable(tablename);
@@ -34,19 +33,14 @@
       logger_.info("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
       throw new CassandraException("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
     }
-    for (    IColumn column : columns) {
-      column_t thrift_column=new column_t();
-      thrift_column.columnName=column.name();
-      thrift_column.value=new String(column.value());
-      thrift_column.timestamp=column.timestamp();
-      retlist.add(thrift_column);
-    }
+    return thriftifyColumns(columns);
   }
  catch (  Exception ex) {
     String exception=LogUtil.throwableToString(ex);
     logger_.info(exception);
     throw new CassandraException(exception);
   }
-  logger_.debug("get_slice2: " + (System.currentTimeMillis() - startTime) + " ms.");
-  return retlist;
+ finally {
+    logger_.debug("get_slice2: " + (System.currentTimeMillis() - startTime) + " ms.");
+  }
 }
