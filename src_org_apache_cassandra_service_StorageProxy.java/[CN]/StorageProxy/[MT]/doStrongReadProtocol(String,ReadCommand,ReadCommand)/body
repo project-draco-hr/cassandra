@@ -1,0 +1,48 @@
+{
+  Row row=null;
+  Message message=ReadCommand.makeReadMessage(readCommand);
+  Message messageDigestOnly=ReadCommand.makeReadMessage(readCommandDigest);
+  IResponseResolver<Row> readResponseResolver=new ReadResponseResolver();
+  QuorumResponseHandler<Row> quorumResponseHandler=new QuorumResponseHandler<Row>(DatabaseDescriptor.getReplicationFactor(),readResponseResolver);
+  EndPoint dataPoint=StorageService.instance().findSuitableEndPoint(key);
+  List<EndPoint> endpointList=new ArrayList<EndPoint>(Arrays.asList(StorageService.instance().getNStorageEndPoint(key)));
+  endpointList.remove(dataPoint);
+  EndPoint[] endPoints=new EndPoint[endpointList.size() + 1];
+  Message messages[]=new Message[endpointList.size() + 1];
+  endPoints[0]=dataPoint;
+  messages[0]=message;
+  for (int i=1; i < endPoints.length; i++) {
+    endPoints[i]=endpointList.get(i - 1);
+    messages[i]=messageDigestOnly;
+  }
+  try {
+    MessagingService.getMessagingInstance().sendRR(messages,endPoints,quorumResponseHandler);
+    long startTime2=System.currentTimeMillis();
+    row=quorumResponseHandler.get();
+    logger_.debug("quorumResponseHandler: " + (System.currentTimeMillis() - startTime2) + " ms.");
+    if (row == null) {
+      logger_.info("ERROR No row for this key .....: " + key);
+      return row;
+    }
+  }
+ catch (  DigestMismatchException ex) {
+    if (DatabaseDescriptor.getConsistencyCheck()) {
+      IResponseResolver<Row> readResponseResolverRepair=new ReadResponseResolver();
+      QuorumResponseHandler<Row> quorumResponseHandlerRepair=new QuorumResponseHandler<Row>(DatabaseDescriptor.getReplicationFactor(),readResponseResolverRepair);
+      readCommand.setIsDigestQuery(false);
+      logger_.info("DigestMismatchException: " + key);
+      Message messageRepair=ReadCommand.makeReadMessage(readCommand);
+      MessagingService.getMessagingInstance().sendRR(messageRepair,endPoints,quorumResponseHandlerRepair);
+      try {
+        row=quorumResponseHandlerRepair.get();
+      }
+ catch (      DigestMismatchException dex) {
+        logger_.warn(LogUtil.throwableToString(dex));
+      }
+      if (row == null) {
+        logger_.info("ERROR No row for this key .....: " + key);
+      }
+    }
+  }
+  return row;
+}

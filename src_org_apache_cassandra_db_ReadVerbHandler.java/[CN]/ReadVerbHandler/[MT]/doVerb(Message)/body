@@ -7,30 +7,30 @@
   }
   readCtx.bufIn_.reset(body,body.length);
   try {
-    ReadMessage readMessage=ReadMessage.serializer().deserialize(readCtx.bufIn_);
-    Table table=Table.open(readMessage.table());
+    ReadCommand readCommand=ReadCommand.serializer().deserialize(readCtx.bufIn_);
+    Table table=Table.open(readCommand.table());
     Row row=null;
     long start=System.currentTimeMillis();
-    if (readMessage.columnFamily_column() == null)     row=table.get(readMessage.key());
+    if (readCommand.columnFamily_column() == null)     row=table.get(readCommand.key());
  else {
-      if (readMessage.getColumnNames().size() == 0) {
-        if (readMessage.count() > 0 && readMessage.start() >= 0)         row=table.getRow(readMessage.key(),readMessage.columnFamily_column(),readMessage.start(),readMessage.count());
- else         row=table.getRow(readMessage.key(),readMessage.columnFamily_column());
+      if (readCommand.getColumnNames().size() == 0) {
+        if (readCommand.count() > 0 && readCommand.start() >= 0)         row=table.getRow(readCommand.key(),readCommand.columnFamily_column(),readCommand.start(),readCommand.count());
+ else         row=table.getRow(readCommand.key(),readCommand.columnFamily_column());
       }
  else {
-        row=table.getRow(readMessage.key(),readMessage.columnFamily_column(),readMessage.getColumnNames());
+        row=table.getRow(readCommand.key(),readCommand.columnFamily_column(),readCommand.getColumnNames());
       }
     }
     logger_.info("getRow()  TIME: " + (System.currentTimeMillis() - start) + " ms.");
     start=System.currentTimeMillis();
     ReadResponseMessage readResponseMessage=null;
-    if (readMessage.isDigestQuery()) {
+    if (readCommand.isDigestQuery()) {
       readResponseMessage=new ReadResponseMessage(table.getTableName(),row.digest());
     }
  else {
       readResponseMessage=new ReadResponseMessage(table.getTableName(),row);
     }
-    readResponseMessage.setIsDigestQuery(readMessage.isDigestQuery());
+    readResponseMessage.setIsDigestQuery(readCommand.isDigestQuery());
     readCtx.bufOut_.reset();
     start=System.currentTimeMillis();
     ReadResponseMessage.serializer().serialize(readResponseMessage,readCtx.bufOut_);
@@ -42,8 +42,8 @@
     Message response=message.getReply(StorageService.getLocalStorageEndPoint(),new Object[]{bytes});
     MessagingService.getMessagingInstance().sendOneWay(response,message.getFrom());
     logger_.info("ReadVerbHandler  TIME 2: " + (System.currentTimeMillis() - start) + " ms.");
-    String repair=new String(message.getHeader(ReadMessage.doRepair_));
-    if (repair.equals(ReadMessage.doRepair_))     doReadRepair(row,readMessage);
+    String repair=new String(message.getHeader(ReadCommand.doRepair_));
+    if (repair.equals(ReadCommand.doRepair_))     doReadRepair(row,readCommand);
   }
  catch (  IOException ex) {
     logger_.info(LogUtil.throwableToString(ex));

@@ -1,0 +1,29 @@
+{
+  Set<String> keys=messages.keySet();
+  Map<String,ReadCommand> readMessage=new HashMap<String,ReadCommand>();
+  Map<String,EndPoint[]> endpoints=new HashMap<String,EndPoint[]>();
+  Message[][] msgList=new Message[messages.size()][DatabaseDescriptor.getReplicationFactor()];
+  EndPoint[][] epList=new EndPoint[messages.size()][DatabaseDescriptor.getReplicationFactor()];
+  int i=0;
+  for (  String key : keys) {
+    EndPoint dataPoint=StorageService.instance().findSuitableEndPoint(key);
+    List<EndPoint> replicas=new ArrayList<EndPoint>(StorageService.instance().getNLiveStorageEndPoint(key));
+    replicas.remove(dataPoint);
+    Message[] message=messages.get(key);
+    msgList[i][0]=message[0];
+    int N=DatabaseDescriptor.getReplicationFactor();
+    for (int j=1; j < N; ++j) {
+      msgList[i][j]=message[1];
+    }
+    epList[i][0]=dataPoint;
+    for (int j=1; i < N; ++i) {
+      epList[i][j]=replicas.get(j - 1);
+    }
+    readMessage.put(key,readMessages.get(key)[0]);
+    endpoints.put(key,epList[i]);
+    ++i;
+  }
+  MultiQuorumResponseHandler quorumResponseHandlers=new MultiQuorumResponseHandler(readMessage,endpoints);
+  MessagingService.getMessagingInstance().sendRR(msgList,epList,quorumResponseHandlers);
+  return quorumResponseHandlers;
+}

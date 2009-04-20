@@ -1,0 +1,19 @@
+{
+  Row row=null;
+  EndPoint endPoint=StorageService.instance().findSuitableEndPoint(key);
+  if (endPoint != null) {
+    Message message=ReadCommand.makeReadMessage(readCommand);
+    message.addHeader(ReadCommand.doRepair_,ReadCommand.doRepair_.getBytes());
+    IAsyncResult iar=MessagingService.getMessagingInstance().sendRR(message,endPoint);
+    Object[] result=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+    byte[] body=(byte[])result[0];
+    DataInputBuffer bufIn=new DataInputBuffer();
+    bufIn.reset(body,body.length);
+    ReadResponseMessage responseMessage=ReadResponseMessage.serializer().deserialize(bufIn);
+    row=responseMessage.row();
+  }
+ else {
+    logger_.warn(" Alert : Unable to find a suitable end point for the key : " + key);
+  }
+  return row;
+}

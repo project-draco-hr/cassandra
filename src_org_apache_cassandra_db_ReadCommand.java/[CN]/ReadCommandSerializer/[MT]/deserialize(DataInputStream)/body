@@ -1,0 +1,28 @@
+{
+  String table=dis.readUTF();
+  String key=dis.readUTF();
+  String columnFamily_column=dis.readUTF();
+  int start=dis.readInt();
+  int count=dis.readInt();
+  long sinceTimestamp=dis.readLong();
+  boolean isDigest=dis.readBoolean();
+  int size=dis.readInt();
+  List<String> columns=new ArrayList<String>();
+  for (int i=0; i < size; ++i) {
+    byte[] bytes=new byte[dis.readInt()];
+    dis.readFully(bytes);
+    columns.add(new String(bytes));
+  }
+  ReadCommand rm=null;
+  if (columns.size() > 0) {
+    rm=new ReadCommand(table,key,columnFamily_column,columns);
+  }
+ else   if (sinceTimestamp > 0) {
+    rm=new ReadCommand(table,key,columnFamily_column,sinceTimestamp);
+  }
+ else {
+    rm=new ReadCommand(table,key,columnFamily_column,start,count);
+  }
+  rm.setIsDigestQuery(isDigest);
+  return rm;
+}
