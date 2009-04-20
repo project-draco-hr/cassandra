@@ -1,7 +1,7 @@
 {
   Row row=null;
-  Message message=ReadCommand.makeReadMessage(readCommand);
-  Message messageDigestOnly=ReadCommand.makeReadMessage(readCommandDigest);
+  Message message=readCommand.makeReadMessage();
+  Message messageDigestOnly=readCommandDigest.makeReadMessage();
   IResponseResolver<Row> readResponseResolver=new ReadResponseResolver();
   QuorumResponseHandler<Row> quorumResponseHandler=new QuorumResponseHandler<Row>(DatabaseDescriptor.getReplicationFactor(),readResponseResolver);
   EndPoint dataPoint=StorageService.instance().findSuitableEndPoint(key);
@@ -29,9 +29,9 @@
     if (DatabaseDescriptor.getConsistencyCheck()) {
       IResponseResolver<Row> readResponseResolverRepair=new ReadResponseResolver();
       QuorumResponseHandler<Row> quorumResponseHandlerRepair=new QuorumResponseHandler<Row>(DatabaseDescriptor.getReplicationFactor(),readResponseResolverRepair);
-      readCommand.setIsDigestQuery(false);
+      readCommand.setDigestQuery(false);
       logger_.info("DigestMismatchException: " + key);
-      Message messageRepair=ReadCommand.makeReadMessage(readCommand);
+      Message messageRepair=readCommand.makeReadMessage();
       MessagingService.getMessagingInstance().sendRR(messageRepair,endPoints,quorumResponseHandlerRepair);
       try {
         row=quorumResponseHandlerRepair.get();
