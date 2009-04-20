@@ -1,22 +1,8 @@
 {
   long startTime=System.currentTimeMillis();
   try {
-    validateTable(tablename);
     String[] values=RowMutation.getColumnAndColumnFamily(columnFamily_column);
-    if (values.length < 1) {
-      throw new CassandraException("Column Family " + columnFamily_column + " is invalid.");
-    }
-    Row row=StorageProxy.readProtocol(tablename,key,columnFamily_column,start,count,StorageService.ConsistencyLevel.WEAK);
-    if (row == null) {
-      logger_.info("ERROR No row for this key .....: " + key);
-      throw new CassandraException("ERROR No row for this key .....: " + key);
-    }
-    Map<String,ColumnFamily> cfMap=row.getColumnFamilyMap();
-    if (cfMap == null || cfMap.size() == 0) {
-      logger_.info("ERROR ColumnFamily " + columnFamily_column + " map is missing.....: "+ "   key:"+ key);
-      throw new CassandraException("Either the key " + key + " is not present or the columns requested are not present.");
-    }
-    ColumnFamily cfamily=cfMap.get(values[0]);
+    ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily_column,start,count));
     if (cfamily == null) {
       logger_.info("ERROR ColumnFamily " + columnFamily_column + " is missing.....: "+ "   key:"+ key+ "  ColumnFamily:"+ values[0]);
       throw new CassandraException("Either the key " + key + " is not present or the columns requested"+ columnFamily_column+ "are not present.");
