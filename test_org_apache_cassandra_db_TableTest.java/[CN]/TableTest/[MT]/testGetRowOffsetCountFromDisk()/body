@@ -1,0 +1,31 @@
+{
+  Table table=Table.open("Table1");
+  RowMutation rm=new RowMutation(TABLE_NAME,KEY2);
+  ColumnFamily cf=new ColumnFamily("Standard1","Standard");
+  cf.addColumn(new Column("col5","val5".getBytes(),1L));
+  cf.addColumn(new Column("col6","val6".getBytes(),1L));
+  rm.add(cf);
+  rm.apply();
+  Row result=table.getRow(KEY2,"Standard1:col5");
+  ColumnFamily cres=result.getColumnFamily("Standard1");
+  assertNotNull(cres.getColumn("col5"));
+  table.getColumnFamilyStore("Standard1").forceBlockingFlush();
+  rm=new RowMutation(TABLE_NAME,KEY2);
+  cf=new ColumnFamily("Standard1","Standard");
+  cf.addColumn(new Column("col7","val7".getBytes(),1L));
+  cf.addColumn(new Column("col8","val8".getBytes(),1L));
+  cf.addColumn(new Column("col4","val4".getBytes(),1L));
+  rm.add(cf);
+  rm.apply();
+  result=table.getRow(KEY2,"Standard1:col5");
+  cres=result.getColumnFamily("Standard1");
+  assertNotNull(cres.getColumn("col5"));
+  result=table.getRow(KEY2,"Standard1",0,3);
+  cres=result.getColumnFamily("Standard1");
+  assertNotNull(cres);
+  assertEquals(cres.getColumnCount(),3);
+  assertNotNull(cres.getColumn("col4"));
+  assertNotNull(cres.getColumn("col5"));
+  assertNotNull(cres.getColumn("col6"));
+  assertNull(cres.getColumn("col8"));
+}

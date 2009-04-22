@@ -1,0 +1,31 @@
+{
+  Table table=Table.open(TABLE_NAME);
+  RowMutation rm=new RowMutation(TABLE_NAME,TEST_KEY);
+  ColumnFamily cf=new ColumnFamily("Super1","Super");
+  SuperColumn sc1=new SuperColumn("sc1");
+  sc1.addColumn("col1",new Column("col1","val1".getBytes(),1L));
+  sc1.addColumn("col2",new Column("col2","val2".getBytes(),1L));
+  SuperColumn sc2=new SuperColumn("sc2");
+  sc2.addColumn("col3",new Column("col3","val3".getBytes(),1L));
+  sc2.addColumn("col4",new Column("col4","val4".getBytes(),1L));
+  cf.addColumn(sc1);
+  cf.addColumn(sc2);
+  rm.add(cf);
+  rm.apply();
+  Row result=table.getRow(TEST_KEY,"Super1",0,2);
+  ColumnFamily cres=result.getColumnFamily("Super1");
+  assertNotNull(cres);
+  assertEquals(cres.getAllColumns().size(),2);
+  assertEquals(cres.getColumnCount(),2 + 4);
+  assertNotNull(cres.getColumn("sc1").getSubColumn("col1"));
+  assertNotNull(cres.getColumn("sc1").getSubColumn("col2"));
+  assertNotNull(cres.getColumn("sc2").getSubColumn("col3"));
+  assertNotNull(cres.getColumn("sc2").getSubColumn("col4"));
+  result=table.getRow(TEST_KEY,"Super1:sc1",1,2);
+  cres=result.getColumnFamily("Super1");
+  assertNotNull(cres);
+  assertEquals(cres.getAllColumns().size(),1);
+  assertEquals(cres.getColumnCount(),2);
+  assertNotNull(cres.getColumn("sc1").getSubColumn("col2"));
+  assertNull(cres.getColumn("sc2"));
+}
