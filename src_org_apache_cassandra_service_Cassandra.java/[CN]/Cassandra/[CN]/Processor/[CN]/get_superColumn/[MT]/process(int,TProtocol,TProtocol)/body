@@ -5,19 +5,20 @@
   get_superColumn_result result=new get_superColumn_result();
   try {
     result.success=iface_.get_superColumn(args.tablename,args.key,args.columnFamily);
-    result.__isset.success=true;
   }
  catch (  InvalidRequestException ire) {
     result.ire=ire;
-    result.__isset.ire=true;
   }
 catch (  NotFoundException nfe) {
     result.nfe=nfe;
-    result.__isset.nfe=true;
   }
-catch (  CassandraException ce) {
-    result.ce=ce;
-    result.__isset.ce=true;
+catch (  Throwable th) {
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing get_superColumn");
+    oprot.writeMessageBegin(new TMessage("get_superColumn",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
   }
   oprot.writeMessageBegin(new TMessage("get_superColumn",TMessageType.REPLY,seqid));
   result.write(oprot);

@@ -5,15 +5,17 @@
   get_slice_super_result result=new get_slice_super_result();
   try {
     result.success=iface_.get_slice_super(args.tablename,args.key,args.columnFamily_superColumnName,args.start,args.count);
-    result.__isset.success=true;
   }
  catch (  InvalidRequestException ire) {
     result.ire=ire;
-    result.__isset.ire=true;
   }
-catch (  CassandraException ce) {
-    result.ce=ce;
-    result.__isset.ce=true;
+catch (  Throwable th) {
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing get_slice_super");
+    oprot.writeMessageBegin(new TMessage("get_slice_super",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
   }
   oprot.writeMessageBegin(new TMessage("get_slice_super",TMessageType.REPLY,seqid));
   result.write(oprot);

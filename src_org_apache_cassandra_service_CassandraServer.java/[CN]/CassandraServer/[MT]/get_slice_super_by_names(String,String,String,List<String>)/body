@@ -3,23 +3,13 @@
   try {
     ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily,superColumnNames));
     if (cfamily == null) {
-      logger_.info("ERROR ColumnFamily " + columnFamily + " is missing.....: "+ "   key:"+ key+ "  ColumnFamily:"+ columnFamily);
-      throw new CassandraException("Either the key " + key + " is not present or the column family requested"+ columnFamily+ "is not present.");
+      return EMPTY_SUPERCOLUMNS;
     }
     Collection<IColumn> columns=null;
     columns=cfamily.getAllColumns();
-    if (columns == null || columns.size() == 0) {
-      logger_.info("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ columnFamily);
-      throw new CassandraException("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ columnFamily);
-    }
     return thriftifySuperColumns(columns);
   }
- catch (  Exception ex) {
-    String exception=LogUtil.throwableToString(ex);
-    logger_.info(exception);
-    throw new CassandraException(exception);
-  }
- finally {
+  finally {
     logger_.debug("get_slice2: " + (System.currentTimeMillis() - startTime) + " ms.");
   }
 }

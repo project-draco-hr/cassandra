@@ -1,30 +1,19 @@
 {
-  int count=-1;
-  try {
-    String[] values=RowMutation.getColumnAndColumnFamily(columnFamily_column);
-    ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily_column,-1,Integer.MAX_VALUE));
-    if (cfamily == null) {
-      logger_.info("ERROR ColumnFamily  is missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-      throw new CassandraException("Either the key " + key + " is not present or the columns requested"+ columnFamily_column+ "are not present.");
-    }
-    Collection<IColumn> columns=null;
-    if (values.length > 1) {
-      IColumn column=cfamily.getColumn(values[1]);
-      if (column != null)       columns=column.getSubColumns();
-    }
+  String[] values=RowMutation.getColumnAndColumnFamily(columnFamily_column);
+  ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily_column,-1,Integer.MAX_VALUE));
+  if (cfamily == null) {
+    return 0;
+  }
+  Collection<IColumn> columns=null;
+  if (values.length > 1) {
+    IColumn column=cfamily.getColumn(values[1]);
+    if (column != null)     columns=column.getSubColumns();
+  }
  else {
-      columns=cfamily.getAllColumns();
-    }
-    if (columns == null || columns.size() == 0) {
-      logger_.info("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-      throw new CassandraException("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-    }
-    count=columns.size();
+    columns=cfamily.getAllColumns();
   }
- catch (  Exception ex) {
-    String exception=LogUtil.throwableToString(ex);
-    logger_.info(exception);
-    throw new CassandraException(exception);
+  if (columns == null || columns.size() == 0) {
+    return 0;
   }
-  return count;
+  return columns.size();
 }

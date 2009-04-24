@@ -9,11 +9,14 @@
   }
  catch (  InvalidRequestException ire) {
     result.ire=ire;
-    result.__isset.ire=true;
   }
-catch (  CassandraException ce) {
-    result.ce=ce;
-    result.__isset.ce=true;
+catch (  Throwable th) {
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing get_column_count");
+    oprot.writeMessageBegin(new TMessage("get_column_count",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
   }
   oprot.writeMessageBegin(new TMessage("get_column_count",TMessageType.REPLY,seqid));
   result.write(oprot);

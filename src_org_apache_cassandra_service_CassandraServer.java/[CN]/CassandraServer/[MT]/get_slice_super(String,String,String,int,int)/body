@@ -1,21 +1,8 @@
 {
-  try {
-    String[] values=RowMutation.getColumnAndColumnFamily(columnFamily_superColumnName);
-    ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily_superColumnName,start,count));
-    if (cfamily == null) {
-      logger_.info("ERROR ColumnFamily  is missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-      throw new CassandraException("Either the key " + key + " is not present or the columns requested"+ columnFamily_superColumnName+ "are not present.");
-    }
-    Collection<IColumn> columns=cfamily.getAllColumns();
-    if (columns == null || columns.size() == 0) {
-      logger_.info("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-      throw new CassandraException("ERROR Columns are missing.....: " + "   key:" + key + "  ColumnFamily:"+ values[0]);
-    }
-    return thriftifySuperColumns(columns);
+  ColumnFamily cfamily=readColumnFamily(new ReadCommand(tablename,key,columnFamily_superColumnName,start,count));
+  if (cfamily == null) {
+    return EMPTY_SUPERCOLUMNS;
   }
- catch (  Exception ex) {
-    String exception=LogUtil.throwableToString(ex);
-    logger_.info(exception);
-    throw new CassandraException(exception);
-  }
+  Collection<IColumn> columns=cfamily.getAllColumns();
+  return thriftifySuperColumns(columns);
 }
