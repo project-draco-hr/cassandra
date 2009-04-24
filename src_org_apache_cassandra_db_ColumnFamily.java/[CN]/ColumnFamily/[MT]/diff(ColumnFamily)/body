@@ -1,6 +1,9 @@
 {
-  ColumnFamily cfDiff=new ColumnFamily(columnFamily.name(),columnFamily.type_);
-  Map<String,IColumn> columns=columnFamily.getColumns();
+  ColumnFamily cfDiff=new ColumnFamily(cfComposite.name(),cfComposite.type_);
+  if (cfComposite.getMarkedForDeleteAt() > getMarkedForDeleteAt()) {
+    cfDiff.delete(cfComposite.getLocalDeletionTime(),cfComposite.getMarkedForDeleteAt());
+  }
+  Map<String,IColumn> columns=cfComposite.getColumns();
   Set<String> cNames=columns.keySet();
   for (  String cName : cNames) {
     IColumn columnInternal=columns_.get(cName);
@@ -15,6 +18,6 @@
       }
     }
   }
-  if (cfDiff.getColumns().size() != 0)   return cfDiff;
+  if (!cfDiff.getColumns().isEmpty() || cfDiff.isMarkedForDelete())   return cfDiff;
  else   return null;
 }

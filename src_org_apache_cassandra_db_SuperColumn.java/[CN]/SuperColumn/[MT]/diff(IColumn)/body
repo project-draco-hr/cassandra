@@ -1,6 +1,9 @@
 {
-  IColumn columnDiff=new SuperColumn(column.name());
-  for (  IColumn subColumn : column.getSubColumns()) {
+  IColumn columnDiff=new SuperColumn(columnNew.name());
+  if (columnNew.getMarkedForDeleteAt() > getMarkedForDeleteAt()) {
+    ((SuperColumn)columnDiff).markForDeleteAt(columnNew.getLocalDeletionTime(),columnNew.getMarkedForDeleteAt());
+  }
+  for (  IColumn subColumn : columnNew.getSubColumns()) {
     IColumn columnInternal=columns_.get(subColumn.name());
     if (columnInternal == null) {
       columnDiff.addColumn(subColumn.name(),subColumn);
@@ -12,6 +15,6 @@
       }
     }
   }
-  if (!columnDiff.getSubColumns().isEmpty())   return columnDiff;
+  if (!columnDiff.getSubColumns().isEmpty() || columnNew.isMarkedForDelete())   return columnDiff;
  else   return null;
 }
