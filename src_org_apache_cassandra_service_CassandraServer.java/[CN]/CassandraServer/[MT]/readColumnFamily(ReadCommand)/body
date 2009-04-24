@@ -1,13 +1,9 @@
 {
-  validateTable(command.table);
   String[] values=RowMutation.getColumnAndColumnFamily(command.columnFamilyColumn);
   if (values.length < 1) {
-    throw new CassandraException("Empty column Family is invalid.");
+    throw new ColumnFamilyNotDefinedException("Empty column Family is invalid.");
   }
-  Table table=Table.open(command.table);
-  if (!table.getColumnFamilies().contains(values[0])) {
-    throw new CassandraException("Column Family " + values[0] + " is invalid.");
-  }
+  validateCommand(command.key,command.table,values[0]);
   Row row=StorageProxy.readProtocol(command,StorageService.ConsistencyLevel.WEAK);
   if (row == null) {
     return null;
