@@ -4,21 +4,21 @@
     System.exit(1);
   }
   String ipPort=args[0];
-  String token=args[1];
+  IPartitioner p=StorageService.getPartitioner();
+  Token token=p.getTokenFactory().fromString(args[1]);
   String file=args[2];
   String[] ipPortPair=ipPort.split(":");
   EndPoint target=new EndPoint(ipPortPair[0],Integer.valueOf(ipPortPair[1]));
-  TokenInfoMessage tiMessage=new TokenInfoMessage(target,new BigInteger(token));
   ByteArrayOutputStream bos=new ByteArrayOutputStream();
   DataOutputStream dos=new DataOutputStream(bos);
-  TokenInfoMessage.serializer().serialize(tiMessage,dos);
+  Token.serializer().serialize(token,dos);
   Message tokenUpdateMessage=new Message(new EndPoint(FBUtilities.getHostAddress(),port_),"",StorageService.tokenVerbHandler_,new Object[]{bos.toByteArray()});
   BufferedReader bufReader=new BufferedReader(new InputStreamReader(new FileInputStream(file)));
   String line=null;
   while ((line=bufReader.readLine()) != null) {
     String[] nodeTokenPair=line.split(" ");
-    BigInteger nodeToken=new BigInteger(nodeTokenPair[1]);
-    tokenUpdateMessage.addHeader(nodeTokenPair[0],nodeToken.toByteArray());
+    Token nodeToken=p.getTokenFactory().fromString(nodeTokenPair[1]);
+    tokenUpdateMessage.addHeader(nodeTokenPair[0],p.getTokenFactory().toByteArray(nodeToken));
   }
   System.out.println("Sending a token update message to " + target);
   MessagingService.getMessagingInstance().sendOneWay(tokenUpdateMessage,target);
