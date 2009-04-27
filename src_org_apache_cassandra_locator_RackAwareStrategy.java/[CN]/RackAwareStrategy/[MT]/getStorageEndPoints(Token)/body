@@ -4,7 +4,6 @@
   boolean bDataCenter=false;
   boolean bOtherRack=false;
   int foundCount=0;
-  int N=DatabaseDescriptor.getReplicationFactor();
   Map<Token,EndPoint> tokenToEndPointMap=tokenMetadata_.cloneTokenEndPointMap();
   List tokens=new ArrayList(tokenToEndPointMap.keySet());
   Collections.sort(tokens);
@@ -16,12 +15,12 @@
   int totalNodes=tokens.size();
   list.add(tokenToEndPointMap.get(tokens.get(index)));
   foundCount++;
-  if (N == 1) {
+  if (replicas_ == 1) {
     return list.toArray(new EndPoint[list.size()]);
   }
   startIndex=(index + 1) % totalNodes;
   IEndPointSnitch endPointSnitch=StorageService.instance().getEndPointSnitch();
-  for (int i=startIndex, count=1; count < totalNodes && foundCount < N; ++count, i=(i + 1) % totalNodes) {
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas_; ++count, i=(i + 1) % totalNodes) {
     try {
       if (!endPointSnitch.isInSameDataCenter(tokenToEndPointMap.get(tokens.get(index)),tokenToEndPointMap.get(tokens.get(i)))) {
         if (!bDataCenter) {
@@ -43,7 +42,7 @@
       logger_.debug(LogUtil.throwableToString(e));
     }
   }
-  for (int i=startIndex, count=1; count < totalNodes && foundCount < N; ++count, i=(i + 1) % totalNodes) {
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas_; ++count, i=(i + 1) % totalNodes) {
     if (!list.contains(tokenToEndPointMap.get(tokens.get(i)))) {
       list.add(tokenToEndPointMap.get(tokens.get(i)));
       foundCount++;
