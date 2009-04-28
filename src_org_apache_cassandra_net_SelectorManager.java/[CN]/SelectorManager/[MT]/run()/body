@@ -1,29 +1,11 @@
 {
-  try {
-    while (true && !Thread.currentThread().interrupted()) {
-      try {
-        doProcess();
-        selector_.select(1000);
-synchronized (cancelledKeys_) {
-          if (cancelledKeys_.size() > 0) {
-            SelectionKey[] keys=cancelledKeys_.toArray(new SelectionKey[0]);
-            for (            SelectionKey key : keys) {
-              key.cancel();
-              key.channel().close();
-            }
-            cancelledKeys_.clear();
-          }
-        }
-      }
- catch (      IOException e) {
-        logger_.warn(LogUtil.throwableToString(e));
-      }
+  while (true) {
+    try {
+      selector_.select(1000);
+      doProcess();
     }
-    manager_=null;
-  }
- catch (  Throwable t) {
-    logger_.error("ERROR (SelectorManager.run): " + t);
-    logger_.error(LogUtil.throwableToString(t));
-    System.exit(-1);
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
