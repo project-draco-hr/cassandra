@@ -1,0 +1,16 @@
+{
+  logger_.debug("get_range");
+  if (!(StorageService.getPartitioner() instanceof OrderPreservingPartitioner)) {
+    throw new InvalidRequestException("range queries may only be performed against an order-preserving partitioner");
+  }
+  try {
+    Message message=new RangeCommand(tablename,startWith,stopAt,maxResults).getMessage();
+    EndPoint endPoint=StorageService.instance().findSuitableEndPoint(startWith);
+    IAsyncResult iar=MessagingService.getMessagingInstance().sendRR(message,endPoint);
+    byte[] responseBody=(byte[])iar.get(2 * DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS)[0];
+    return RangeReply.read(responseBody).keys;
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}
