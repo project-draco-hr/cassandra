@@ -1,0 +1,28 @@
+def setUp(self):
+    if self.runserver:
+        import shutil
+        for dirname in ['system', 'data', 'commitlog']:
+            try:
+                shutil.rmtree(('build/test/cassandra/' + dirname))
+            except OSError:
+                pass
+        import subprocess as sp
+        os.chdir(root)
+        os.environ['CASSANDRA_INCLUDE'] = 'test/cassandra.in.sh'
+        args = ['bin/cassandra', '-p', pid_fname]
+        sp.Popen(args, stderr=sp.PIPE, stdout=sp.PIPE)
+        time.sleep(0.1)
+        start = time.time()
+        while (time.time() < (start + 20)):
+            try:
+                client.transport.open()
+            except:
+                time.sleep(0.1)
+            else:
+                break
+        else:
+            os.kill(pid(), signal.SIGKILL)
+            print "Couldn't connect to server; aborting regression test"
+            sys.exit()
+    else:
+        client.transport.open()
