@@ -19,28 +19,37 @@
       iterators.add(fs);
     }
   }
-  Iterator<String> iter=IteratorUtils.collatedIterator(comparator,iterators);
-  List<String> keys=new ArrayList<String>();
-  String last=null, current=null;
-  while (keys.size() < maxResults) {
-    if (!iter.hasNext()) {
-      break;
-    }
-    current=iter.next();
-    if (!current.equals(last)) {
-      if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
+  Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
+  try {
+    List<String> keys=new ArrayList<String>();
+    String last=null, current=null;
+    while (keys.size() < maxResults) {
+      if (!collated.hasNext()) {
         break;
       }
-      last=current;
-      for (      String cfName : getApplicationColumnFamilies()) {
-        ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
-        ColumnFamily cf=cfs.getColumnFamily(current,cfName,new IdentityFilter(),Integer.MAX_VALUE);
-        if (cf != null && cf.getColumns().size() > 0) {
-          keys.add(current);
+      current=collated.next();
+      if (!current.equals(last)) {
+        if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
           break;
+        }
+        last=current;
+        for (        String cfName : getApplicationColumnFamilies()) {
+          ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
+          ColumnFamily cf=cfs.getColumnFamily(current,cfName,new IdentityFilter(),Integer.MAX_VALUE);
+          if (cf != null && cf.getColumns().size() > 0) {
+            keys.add(current);
+            break;
+          }
         }
       }
     }
+    return keys;
   }
-  return keys;
+  finally {
+    for (    Iterator iter : iterators) {
+      if (iter instanceof FileStruct) {
+        ((FileStruct)iter).close();
+      }
+    }
+  }
 }
