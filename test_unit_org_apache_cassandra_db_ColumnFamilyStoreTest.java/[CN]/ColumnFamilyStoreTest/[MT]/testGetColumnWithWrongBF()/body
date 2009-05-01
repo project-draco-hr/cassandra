@@ -1,0 +1,15 @@
+{
+  Table table=Table.open("Table1");
+  ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  RowMutation rm;
+  rm=new RowMutation("Table1","key1");
+  rm.add("Standard1:Column1","asdf".getBytes(),0);
+  rm.add("Standard1:Column2","asdf".getBytes(),0);
+  rm.apply();
+  store.forceBlockingFlush();
+  List<String> ssTables=table.getAllSSTablesOnDisk();
+  IFilter filter=new IdentityFilter();
+  SSTable ssTable=new SSTable(ssTables.get(0),StorageService.getPartitioner());
+  DataInputBuffer bufIn=filter.next("key2","Standard1:Column1",ssTable);
+  assertEquals(bufIn.getLength(),0);
+}
