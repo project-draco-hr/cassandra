@@ -1,18 +1,13 @@
 {
-  boolean success=false;
-  if (FailureDetector.instance().isAlive(new EndPoint(endpointAddress,DatabaseDescriptor.getControlPort()))) {
-    success=true;
-  }
- else {
-    return success;
+  EndPoint endPoint=new EndPoint(endpointAddress,DatabaseDescriptor.getStoragePort());
+  if (!FailureDetector.instance().isAlive(endPoint)) {
+    return false;
   }
   Table table=Table.open(DatabaseDescriptor.getTables().get(0));
-  Row row=null;
-  row=table.get(key);
+  Row row=table.get(key);
   RowMutation rm=new RowMutation(DatabaseDescriptor.getTables().get(0),row);
-  RowMutationMessage rmMsg=new RowMutationMessage(rm);
-  Message message=RowMutationMessage.makeRowMutationMessage(rmMsg);
-  EndPoint endPoint=new EndPoint(endpointAddress,DatabaseDescriptor.getStoragePort());
-  MessagingService.getMessagingInstance().sendOneWay(message,endPoint);
-  return success;
+  Message message=rm.makeRowMutationMessage();
+  QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(1,new WriteResponseResolver());
+  MessagingService.getMessagingInstance().sendRR(message,new EndPoint[]{endPoint},quorumResponseHandler);
+  return quorumResponseHandler.get();
 }
