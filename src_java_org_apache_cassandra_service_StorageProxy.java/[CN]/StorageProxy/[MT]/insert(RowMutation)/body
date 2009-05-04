@@ -1,14 +1,21 @@
 {
+  long startTime=System.currentTimeMillis();
   try {
     Map<EndPoint,EndPoint> endpointMap=StorageService.instance().getNStorageEndPointMap(rm.key());
     Map<EndPoint,Message> messageMap=createWriteMessages(rm,endpointMap);
-    logger_.debug("insert writing to [" + StringUtils.join(messageMap.keySet(),", ") + "]");
+    logger.debug("insert writing to [" + StringUtils.join(messageMap.keySet(),", ") + "]");
     for (    Map.Entry<EndPoint,Message> entry : messageMap.entrySet()) {
       MessagingService.getMessagingInstance().sendOneWay(entry.getValue(),entry.getKey());
     }
   }
- catch (  Exception e) {
-    logger_.error(LogUtil.throwableToString(e));
+ catch (  IOException e) {
+    throw new RuntimeException(e);
   }
-  return;
+ finally {
+    if (writeOperations++ == Integer.MAX_VALUE) {
+      writeOperations=1;
+      writeLatency=0;
+    }
+    writeLatency+=System.currentTimeMillis() - startTime;
+  }
 }

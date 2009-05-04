@@ -3,13 +3,14 @@
   logger_.debug("Received a JoinMessage from " + from);
   byte[] bytes=message.getMessageBody();
   DataInputStream dis=new DataInputStream(new ByteArrayInputStream(bytes));
+  JoinMessage joinMessage=null;
   try {
-    JoinMessage joinMessage=JoinMessage.serializer().deserialize(dis);
-    if (joinMessage.clusterId_.equals(DatabaseDescriptor.getClusterName())) {
-      Gossiper.instance().join(from);
-    }
+    joinMessage=JoinMessage.serializer().deserialize(dis);
   }
- catch (  IOException ex) {
-    logger_.info(LogUtil.throwableToString(ex));
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  if (joinMessage.clusterId_.equals(DatabaseDescriptor.getClusterName())) {
+    Gossiper.instance().join(from);
   }
 }

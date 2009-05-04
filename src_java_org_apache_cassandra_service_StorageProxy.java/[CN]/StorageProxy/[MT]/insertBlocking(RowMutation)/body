@@ -1,15 +1,22 @@
 {
+  long startTime=System.currentTimeMillis();
   try {
     Message message=rm.makeRowMutationMessage();
     IResponseResolver<Boolean> writeResponseResolver=new WriteResponseResolver();
     QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(DatabaseDescriptor.getReplicationFactor(),writeResponseResolver);
     EndPoint[] endpoints=StorageService.instance().getNStorageEndPoint(rm.key());
-    logger_.debug("insertBlocking writing to [" + StringUtils.join(endpoints,", ") + "]");
+    logger.debug("insertBlocking writing to [" + StringUtils.join(endpoints,", ") + "]");
     MessagingService.getMessagingInstance().sendRR(message,endpoints,quorumResponseHandler);
     return quorumResponseHandler.get();
   }
  catch (  Exception e) {
-    logger_.error(LogUtil.throwableToString(e));
-    return false;
+    throw new RuntimeException(e);
+  }
+ finally {
+    if (writeOperations++ == Integer.MAX_VALUE) {
+      writeOperations=1;
+      writeLatency=0;
+    }
+    writeLatency+=System.currentTimeMillis() - startTime;
   }
 }
