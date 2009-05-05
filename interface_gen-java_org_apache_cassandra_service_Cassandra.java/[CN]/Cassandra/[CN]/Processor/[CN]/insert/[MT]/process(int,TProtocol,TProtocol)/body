@@ -2,6 +2,27 @@
   insert_args args=new insert_args();
   args.read(iprot);
   iprot.readMessageEnd();
-  iface_.insert(args.tablename,args.key,args.columnFamily_column,args.cellData,args.timestamp);
-  return;
+  insert_result result=new insert_result();
+  try {
+    iface_.insert(args.tablename,args.key,args.columnFamily_column,args.cellData,args.timestamp,args.block);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  UnavailableException ue) {
+    result.ue=ue;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing insert",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing insert");
+    oprot.writeMessageBegin(new TMessage("insert",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("insert",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
 }
