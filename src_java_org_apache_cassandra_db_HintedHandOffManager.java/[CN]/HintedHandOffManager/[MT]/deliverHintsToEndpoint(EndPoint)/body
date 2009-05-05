@@ -1,9 +1,8 @@
 {
   logger_.debug("Started hinted handoff for endPoint " + endPoint.getHost());
   Table table=Table.open(DatabaseDescriptor.getTables().get(0));
-  ColumnFamily hintedColumnFamily=null;
   try {
-    hintedColumnFamily=table.get(key_,Table.hints_);
+    ColumnFamily hintedColumnFamily=table.get(key_,Table.hints_);
     if (hintedColumnFamily == null) {
       return;
     }
@@ -13,14 +12,11 @@
     }
     for (    IColumn keyColumn : keys) {
       Collection<IColumn> endpoints=keyColumn.getSubColumns();
-      if (endpoints == null) {
-        deleteKey(keyColumn.name());
-        continue;
-      }
       for (      IColumn endpoint : endpoints) {
-        if (endpoint.name().equals(endPoint.getHost())) {
-          if (sendMessage(endpoint.name(),keyColumn.name())) {
-            deleteEndPoint(endpoint.name(),keyColumn.name());
+        if (endpoint.name().equals(endPoint.getHost()) && sendMessage(endpoint.name(),keyColumn.name())) {
+          deleteEndPoint(endpoint.name(),keyColumn.name(),keyColumn.timestamp());
+          if (endpoints.size() == 1) {
+            deleteHintedData(keyColumn.name());
           }
         }
       }

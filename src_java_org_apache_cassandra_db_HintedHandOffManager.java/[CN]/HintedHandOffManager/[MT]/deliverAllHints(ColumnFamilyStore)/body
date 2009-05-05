@@ -1,9 +1,8 @@
 {
   logger_.debug("Started hinted handoff of " + columnFamilyStore.columnFamily_);
   Table table=Table.open(DatabaseDescriptor.getTables().get(0));
-  ColumnFamily hintColumnFamily=null;
   try {
-    hintColumnFamily=table.get(key_,Table.hints_);
+    ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(table.get(key_,Table.hints_),Integer.MAX_VALUE);
     if (hintColumnFamily == null) {
       columnFamilyStore.forceFlush();
       return;
@@ -14,19 +13,15 @@
     }
     for (    IColumn keyColumn : keys) {
       Collection<IColumn> endpoints=keyColumn.getSubColumns();
-      boolean allsuccess=true;
-      if (endpoints != null) {
-        for (        IColumn endpoint : endpoints) {
-          if (sendMessage(endpoint.name(),keyColumn.name())) {
-            deleteEndPoint(endpoint.name(),keyColumn.name());
-          }
- else {
-            allsuccess=false;
-          }
+      int deleted=0;
+      for (      IColumn endpoint : endpoints) {
+        if (sendMessage(endpoint.name(),keyColumn.name())) {
+          deleteEndPoint(endpoint.name(),keyColumn.name(),keyColumn.timestamp());
+          deleted++;
         }
       }
-      if (allsuccess) {
-        deleteKey(keyColumn.name());
+      if (deleted == endpoints.size()) {
+        deleteHintedData(keyColumn.name());
       }
     }
     columnFamilyStore.forceFlush();
