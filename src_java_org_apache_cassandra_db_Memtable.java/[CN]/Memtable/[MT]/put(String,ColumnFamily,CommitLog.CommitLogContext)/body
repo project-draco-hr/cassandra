@@ -1,24 +1,6 @@
 {
-  if (isThresholdViolated(key)) {
-    lock_.lock();
-    try {
-      final ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
-      if (!isFrozen_) {
-        isFrozen_=true;
-        cfStore.switchMemtable(key,columnFamily,cLogCtx);
-        executor_.flushWhenTerminated(cLogCtx);
-        executor_.shutdown();
-      }
- else {
-        cfStore.apply(key,columnFamily,cLogCtx);
-      }
-    }
-  finally {
-      lock_.unlock();
-    }
-  }
- else {
-    Runnable putter=new Putter(key,columnFamily);
-    executor_.submit(putter);
+  executor_.submit(new Putter(key,columnFamily));
+  if (isThresholdViolated()) {
+    enqueueFlush(cLogCtx);
   }
 }
