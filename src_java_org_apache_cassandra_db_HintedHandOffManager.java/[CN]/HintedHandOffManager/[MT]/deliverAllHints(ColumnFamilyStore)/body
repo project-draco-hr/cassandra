@@ -1,0 +1,41 @@
+{
+  logger_.debug("Started hinted handoff of " + columnFamilyStore.columnFamily_);
+  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
+  ColumnFamily hintColumnFamily=null;
+  try {
+    hintColumnFamily=table.get(key_,Table.hints_);
+    if (hintColumnFamily == null) {
+      columnFamilyStore.forceFlush();
+      return;
+    }
+    Collection<IColumn> keys=hintColumnFamily.getAllColumns();
+    if (keys == null) {
+      return;
+    }
+    for (    IColumn keyColumn : keys) {
+      Collection<IColumn> endpoints=keyColumn.getSubColumns();
+      boolean allsuccess=true;
+      if (endpoints != null) {
+        for (        IColumn endpoint : endpoints) {
+          if (sendMessage(endpoint.name(),keyColumn.name())) {
+            deleteEndPoint(endpoint.name(),keyColumn.name());
+          }
+ else {
+            allsuccess=false;
+          }
+        }
+      }
+      if (allsuccess) {
+        deleteKey(keyColumn.name());
+      }
+    }
+    columnFamilyStore.forceFlush();
+    columnFamilyStore.forceCompaction(null,null,0,null);
+  }
+ catch (  Exception ex) {
+    logger_.error(ex.getMessage());
+  }
+ finally {
+    logger_.debug("Finished hinted handoff of " + columnFamilyStore.columnFamily_);
+  }
+}
