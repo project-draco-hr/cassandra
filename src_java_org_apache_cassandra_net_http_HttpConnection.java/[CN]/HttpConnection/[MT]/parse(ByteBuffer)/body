@@ -1,6 +1,6 @@
 {
   try {
-    logger_.debug("Processing http requests from socket ...");
+    logger_.debug("Processing http request from socket ...");
 switch (parseState_) {
 case IN_NEW:
       parseState_=ParseState.IN_START;
@@ -74,6 +74,7 @@ if (contentLength_ == 0) {
 done=true;
 }
 if (done) {
+logger_.debug("... done parsing request for " + currentRequest_.getPath());
 if (currentMsgType_ == HttpMessageType.REQUEST) {
 currentRequest_.setBody(bodyBuffers_);
 if (currentRequest_.getHeader("Content-Type") == null) {
@@ -82,17 +83,17 @@ currentRequest_.addHeader("Content-Type",defaultContentType_);
 executor_.submit(new HttpRequestHandler(currentRequest_));
 }
  else if (currentMsgType_ == HttpMessageType.RESPONSE) {
-logger_.info("Holy shit! We are not supposed to be here - ever !!!");
+logger_.error("Holy shit! We are not supposed to be processing responses here!");
 }
  else {
-logger_.error("Http message type is still" + " unset after we finish parsing the body?");
+logger_.error("Http message type is still unset after we finish parsing the body?");
 }
 resetParserState();
 }
 }
 }
- catch (final Throwable e) {
-logger_.warn(LogUtil.throwableToString(e));
+ catch (Exception e) {
+throw new RuntimeException(e);
 }
  finally {
 httpKey_.interestOps(httpKey_.interestOps() | SelectionKey.OP_READ);
