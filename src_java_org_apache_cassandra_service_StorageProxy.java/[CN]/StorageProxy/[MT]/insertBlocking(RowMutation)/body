@@ -8,10 +8,9 @@
     throw new RuntimeException(e);
   }
   try {
-    IResponseResolver<Boolean> writeResponseResolver=new WriteResponseResolver();
-    QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(DatabaseDescriptor.getReplicationFactor(),writeResponseResolver);
+    QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(DatabaseDescriptor.getReplicationFactor(),new WriteResponseResolver());
     EndPoint[] endpoints=StorageService.instance().getNStorageEndPoint(rm.key());
-    logger.debug("insertBlocking writing to [" + StringUtils.join(endpoints,", ") + "]");
+    logger.debug("insertBlocking writing key " + rm.key() + " to ["+ StringUtils.join(endpoints,", ")+ "]");
     MessagingService.getMessagingInstance().sendRR(message,endpoints,quorumResponseHandler);
     if (!quorumResponseHandler.get())     throw new UnavailableException();
   }
@@ -20,10 +19,6 @@
     throw new UnavailableException();
   }
  finally {
-    if (writeOperations++ == Integer.MAX_VALUE) {
-      writeOperations=1;
-      writeLatency=0;
-    }
-    writeLatency+=System.currentTimeMillis() - startTime;
+    writeStats.add(System.currentTimeMillis() - startTime);
   }
 }
