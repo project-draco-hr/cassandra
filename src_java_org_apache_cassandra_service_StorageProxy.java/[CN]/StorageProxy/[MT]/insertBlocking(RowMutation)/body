@@ -10,12 +10,12 @@
   try {
     QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(DatabaseDescriptor.getReplicationFactor(),new WriteResponseResolver());
     EndPoint[] endpoints=StorageService.instance().getNStorageEndPoint(rm.key());
-    logger.debug("insertBlocking writing key " + rm.key() + " to ["+ StringUtils.join(endpoints,", ")+ "]");
+    logger.debug("insertBlocking writing key " + rm.key() + " to "+ message.getMessageId()+ "@["+ StringUtils.join(endpoints,", ")+ "]");
     MessagingService.getMessagingInstance().sendRR(message,endpoints,quorumResponseHandler);
     if (!quorumResponseHandler.get())     throw new UnavailableException();
   }
  catch (  Exception e) {
-    logger.error(e);
+    logger.error("error writing key " + rm.key(),e);
     throw new UnavailableException();
   }
  finally {

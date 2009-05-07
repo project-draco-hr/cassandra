@@ -1,12 +1,11 @@
 {
-  logger_.debug(" Run the consistency checks for " + readCommand_.getColumnFamilyName());
   ReadCommand readCommandDigestOnly=constructReadMessage(true);
   try {
-    Message messageDigestOnly=readCommandDigestOnly.makeReadMessage();
-    IAsyncCallback digestResponseHandler=new DigestResponseHandler();
-    MessagingService.getMessagingInstance().sendRR(messageDigestOnly,replicas_.toArray(new EndPoint[replicas_.size()]),digestResponseHandler);
+    Message message=readCommandDigestOnly.makeReadMessage();
+    logger_.debug("Reading consistency digest for " + readCommand_.key + " from "+ message.getMessageId()+ "@["+ StringUtils.join(replicas_,", ")+ "]");
+    MessagingService.getMessagingInstance().sendRR(message,replicas_.toArray(new EndPoint[replicas_.size()]),new DigestResponseHandler());
   }
  catch (  IOException ex) {
-    logger_.info(LogUtil.throwableToString(ex));
+    throw new RuntimeException(ex);
   }
 }

@@ -3,13 +3,15 @@
   try {
     Map<EndPoint,EndPoint> endpointMap=StorageService.instance().getNStorageEndPointMap(rm.key());
     Map<EndPoint,Message> messageMap=createWriteMessages(rm,endpointMap);
-    logger.debug("insert writing key " + rm.key() + " to ["+ StringUtils.join(messageMap.keySet(),", ")+ "]");
     for (    Map.Entry<EndPoint,Message> entry : messageMap.entrySet()) {
-      MessagingService.getMessagingInstance().sendOneWay(entry.getValue(),entry.getKey());
+      Message message=entry.getValue();
+      EndPoint endpoint=entry.getKey();
+      logger.debug("insert writing key " + rm.key() + " to "+ message.getMessageId()+ "@"+ endpoint);
+      MessagingService.getMessagingInstance().sendOneWay(message,endpoint);
     }
   }
  catch (  IOException e) {
-    throw new RuntimeException(e);
+    throw new RuntimeException("error inserting key " + rm.key(),e);
   }
  finally {
     writeStats.add(System.currentTimeMillis() - startTime);
