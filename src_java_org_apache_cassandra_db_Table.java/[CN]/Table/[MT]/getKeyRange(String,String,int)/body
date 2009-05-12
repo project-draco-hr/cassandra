@@ -1,55 +1,13 @@
 {
-  final Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
-  List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
   for (  String cfName : getApplicationColumnFamilies()) {
-    ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
-    Iterator<Memtable> memtables=(Iterator<Memtable>)IteratorUtils.chainedIterator(IteratorUtils.singletonIterator(cfs.getMemtable()),ColumnFamilyStore.getUnflushedMemtables(cfName).iterator());
-    while (memtables.hasNext()) {
-      iterators.add(IteratorUtils.filteredIterator(memtables.next().sortedKeyIterator(),new Predicate(){
-        public boolean evaluate(        Object key){
-          String st=(String)key;
-          return comparator.compare(startWith,st) <= 0 && (stopAt.isEmpty() || comparator.compare(st,stopAt) <= 0);
-        }
-      }
-));
-    }
-    for (    String filename : cfs.getSSTableFilenames()) {
-      FileStruct fs=new FileStruct(SequenceFile.reader(filename),StorageService.getPartitioner());
-      fs.seekTo(startWith);
-      iterators.add(fs);
-    }
+    getColumnFamilyStore(cfName).getReadLock().lock();
   }
-  Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
   try {
-    List<String> keys=new ArrayList<String>();
-    String last=null, current=null;
-    while (keys.size() < maxResults) {
-      if (!collated.hasNext()) {
-        break;
-      }
-      current=collated.next();
-      if (!current.equals(last)) {
-        if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
-          break;
-        }
-        last=current;
-        for (        String cfName : getApplicationColumnFamilies()) {
-          ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
-          ColumnFamily cf=cfs.getColumnFamily(current,cfName,new IdentityFilter(),Integer.MAX_VALUE);
-          if (cf != null && cf.getColumns().size() > 0) {
-            keys.add(current);
-            break;
-          }
-        }
-      }
-    }
-    return keys;
+    return getKeyRangeUnsafe(startWith,stopAt,maxResults);
   }
   finally {
-    for (    Iterator iter : iterators) {
-      if (iter instanceof FileStruct) {
-        ((FileStruct)iter).close();
-      }
+    for (    String cfName : getApplicationColumnFamilies()) {
+      getColumnFamilyStore(cfName).getReadLock().unlock();
     }
   }
 }
