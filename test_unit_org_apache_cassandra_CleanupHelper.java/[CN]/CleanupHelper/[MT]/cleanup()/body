@@ -1,15 +1,12 @@
 {
-  cleanUpFilesystem();
-  Table table=Table.open("Table1");
-  for (  String cfName : table.getColumnFamilies()) {
-    ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
-    try {
-      cfs.reset();
+  String[] directoryNames={DatabaseDescriptor.getBootstrapFileLocation(),DatabaseDescriptor.getLogFileLocation(),DatabaseDescriptor.getDataFileLocation(),DatabaseDescriptor.getMetadataDirectory()};
+  for (  String dirName : directoryNames) {
+    File dir=new File(dirName);
+    if (!dir.exists()) {
+      throw new RuntimeException("No such directory: " + dir.getAbsolutePath());
     }
- catch (    Exception e) {
-      throw new RuntimeException(e);
+    for (    File f : dir.listFiles()) {
+      f.delete();
     }
   }
-  CommitLog.reset();
-  cleanUpFilesystem();
 }
