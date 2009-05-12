@@ -1,24 +1,21 @@
 {
-  List<String> files=new ArrayList<String>();
   lock_.readLock().lock();
   try {
-    files.addAll(ssTables_);
-    Collections.sort(files,new FileNameComparator(FileNameComparator.Descending));
+    for (    String file : ssTables_) {
+      boolean bVal=SSTable.isKeyInFile(key,file);
+      if (!bVal) {
+        continue;
+      }
+      ColumnFamily columnFamily=fetchColumnFamily(key,cf,filter,file);
+      if (columnFamily != null) {
+        columnFamilies.add(columnFamily);
+        if (filter.isDone()) {
+          break;
+        }
+      }
+    }
   }
   finally {
     lock_.readLock().unlock();
-  }
-  for (  String file : files) {
-    boolean bVal=SSTable.isKeyInFile(key,file);
-    if (!bVal) {
-      continue;
-    }
-    ColumnFamily columnFamily=fetchColumnFamily(key,cf,filter,file);
-    if (columnFamily != null) {
-      columnFamilies.add(columnFamily);
-      if (filter.isDone()) {
-        break;
-      }
-    }
   }
 }
