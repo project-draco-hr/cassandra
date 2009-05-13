@@ -1,3 +1,14 @@
 {
-  memtable_.get().put(key,columnFamily,cLogCtx);
+  Memtable initialMemtable=getMemtableThreadSafe();
+  if (initialMemtable.isThresholdViolated()) {
+    switchMemtable();
+    initialMemtable.enqueueFlush(cLogCtx);
+  }
+  memtableLock_.writeLock().lock();
+  try {
+    memtable_.put(key,columnFamily);
+  }
+  finally {
+    memtableLock_.writeLock().unlock();
+  }
 }

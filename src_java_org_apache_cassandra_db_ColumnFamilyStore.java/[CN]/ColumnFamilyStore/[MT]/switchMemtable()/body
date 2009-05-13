@@ -1,6 +1,13 @@
 {
-  getMemtablesPendingFlushNotNull(columnFamily_).add(memtable_.get());
-  memtable_.set(new Memtable(table_,columnFamily_));
+  memtableLock_.writeLock().lock();
+  try {
+    logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable");
+    getMemtablesPendingFlushNotNull(columnFamily_).add(memtable_);
+    memtable_=new Memtable(table_,columnFamily_);
+  }
+  finally {
+    memtableLock_.writeLock().unlock();
+  }
   if (memtableSwitchCount == Integer.MAX_VALUE) {
     memtableSwitchCount=0;
   }

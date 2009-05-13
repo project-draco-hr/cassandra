@@ -3,15 +3,16 @@
   List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
   for (  String cfName : getApplicationColumnFamilies()) {
     ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
-    Iterator<Memtable> memtables=(Iterator<Memtable>)IteratorUtils.chainedIterator(IteratorUtils.singletonIterator(cfs.getMemtable()),ColumnFamilyStore.getUnflushedMemtables(cfName).iterator());
-    while (memtables.hasNext()) {
-      iterators.add(IteratorUtils.filteredIterator(memtables.next().sortedKeyIterator(),new Predicate(){
-        public boolean evaluate(        Object key){
-          String st=(String)key;
-          return comparator.compare(startWith,st) <= 0 && (stopAt.isEmpty() || comparator.compare(st,stopAt) <= 0);
-        }
+    Predicate p=new Predicate(){
+      public boolean evaluate(      Object key){
+        String st=(String)key;
+        return comparator.compare(startWith,st) <= 0 && (stopAt.isEmpty() || comparator.compare(st,stopAt) <= 0);
       }
-));
+    }
+;
+    iterators.add(IteratorUtils.filteredIterator(cfs.memtableKeyIterator(),p));
+    for (    Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(cfName)) {
+      iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
     }
     for (    String filename : cfs.getSSTableFilenames()) {
       FileStruct fs=new FileStruct(SequenceFile.reader(filename),StorageService.getPartitioner());
