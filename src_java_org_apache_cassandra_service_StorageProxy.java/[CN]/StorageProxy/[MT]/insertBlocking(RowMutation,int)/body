@@ -1,0 +1,27 @@
+{
+  long startTime=System.currentTimeMillis();
+  Message message=null;
+  try {
+    message=rm.makeRowMutationMessage();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  try {
+    EndPoint[] endpoints=StorageService.instance().getNStorageEndPoint(rm.key());
+    if (endpoints.length < (DatabaseDescriptor.getReplicationFactor() / 2) + 1) {
+      throw new UnavailableException();
+    }
+    QuorumResponseHandler<Boolean> quorumResponseHandler=new QuorumResponseHandler<Boolean>(blockFor,new WriteResponseResolver());
+    logger.debug("insertBlocking writing key " + rm.key() + " to "+ message.getMessageId()+ "@["+ StringUtils.join(endpoints,", ")+ "]");
+    MessagingService.getMessagingInstance().sendRR(message,endpoints,quorumResponseHandler);
+    if (!quorumResponseHandler.get())     throw new UnavailableException();
+  }
+ catch (  Exception e) {
+    logger.error("error writing key " + rm.key(),e);
+    throw new UnavailableException();
+  }
+ finally {
+    writeStats.add(System.currentTimeMillis() - startTime);
+  }
+}
