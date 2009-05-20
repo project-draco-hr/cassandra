@@ -1,28 +1,22 @@
 {
-  isCompacting_.set(true);
   List<String> files=new ArrayList<String>(ssTables_);
   int filesCompacted=0;
-  try {
-    Set<List<String>> buckets=getCompactionBuckets(files,50L * 1024L * 1024L);
-    for (    List<String> fileList : buckets) {
-      Collections.sort(fileList,new FileNameComparator(FileNameComparator.Ascending));
-      if (fileList.size() < threshold) {
-        continue;
-      }
-      files.clear();
-      int count=0;
-      for (      String file : fileList) {
-        files.add(file);
-        count++;
-        if (count == threshold) {
-          filesCompacted+=doFileCompaction(files,BUFSIZE);
-          break;
-        }
+  Set<List<String>> buckets=getCompactionBuckets(files,50L * 1024L * 1024L);
+  for (  List<String> fileList : buckets) {
+    Collections.sort(fileList,new FileNameComparator(FileNameComparator.Ascending));
+    if (fileList.size() < threshold) {
+      continue;
+    }
+    files.clear();
+    int count=0;
+    for (    String file : fileList) {
+      files.add(file);
+      count++;
+      if (count == threshold) {
+        filesCompacted+=doFileCompaction(files,BUFSIZE);
+        break;
       }
     }
-  }
-  finally {
-    isCompacting_.set(false);
   }
   return filesCompacted;
 }
