@@ -21,27 +21,32 @@
     }
   }
   Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
+  Iterable<String> reduced=new ReducingIterator<String>(collated){
+    String current;
+    public void reduce(    String current){
+      this.current=current;
+    }
+    protected String getReduced(){
+      return current;
+    }
+  }
+;
   try {
     List<String> keys=new ArrayList<String>();
-    String last=null, current=null;
-    while (keys.size() < maxResults) {
-      if (!collated.hasNext()) {
+    for (    String current : reduced) {
+      if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
         break;
       }
-      current=collated.next();
-      if (!current.equals(last)) {
-        if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
+      for (      String cfName : getApplicationColumnFamilies()) {
+        ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
+        ColumnFamily cf=cfs.getColumnFamily(current,cfName,new IdentityFilter(),Integer.MAX_VALUE);
+        if (cf != null && cf.getColumns().size() > 0) {
+          keys.add(current);
           break;
         }
-        last=current;
-        for (        String cfName : getApplicationColumnFamilies()) {
-          ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
-          ColumnFamily cf=cfs.getColumnFamily(current,cfName,new IdentityFilter(),Integer.MAX_VALUE);
-          if (cf != null && cf.getColumns().size() > 0) {
-            keys.add(current);
-            break;
-          }
-        }
+      }
+      if (keys.size() >= maxResults) {
+        break;
       }
     }
     return keys;

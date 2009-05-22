@@ -1,0 +1,28 @@
+{
+  get_slice_from_args args=new get_slice_from_args();
+  args.read(iprot);
+  iprot.readMessageEnd();
+  get_slice_from_result result=new get_slice_from_result();
+  try {
+    result.success=iface_.get_slice_from(args.tablename,args.key,args.columnFamily_column,args.isAscending,args.count);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  NotFoundException nfe) {
+    result.nfe=nfe;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing get_slice_from",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing get_slice_from");
+    oprot.writeMessageBegin(new TMessage("get_slice_from",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("get_slice_from",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}
