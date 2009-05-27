@@ -1,9 +1,9 @@
 {
   lock_.readLock().lock();
+  List<ColumnIterator> iterators=new ArrayList<ColumnIterator>();
   try {
     final ColumnFamily returnCF;
     ColumnIterator iter;
-    List<ColumnIterator> iterators=new ArrayList<ColumnIterator>();
     memtableLock_.readLock().lock();
     try {
       iter=memtable_.getColumnIterator(key,cfName,isAscending,startColumn);
@@ -37,9 +37,7 @@
     if (!isAscending)     comparator=new ReverseComparator(comparator);
     Iterator collated=IteratorUtils.collatedIterator(comparator,iterators);
     if (!collated.hasNext())     return new ColumnFamily(cfName,DatabaseDescriptor.getColumnFamilyType(cfName));
-    List<IColumn> L=new ArrayList();
-    CollectionUtils.addAll(L,collated);
-    ReducingIterator<IColumn> reduced=new ReducingIterator<IColumn>(L.iterator()){
+    ReducingIterator<IColumn> reduced=new ReducingIterator<IColumn>(collated){
       ColumnFamily curCF=returnCF.cloneMeShallow();
       protected Object getKey(      IColumn o){
         return o == null ? null : o.name();
@@ -62,10 +60,17 @@
       if (!column.isMarkedForDelete())       liveColumns++;
       returnCF.addColumn(column);
     }
-    for (    ColumnIterator ci : iterators)     ci.close();
     return removeDeleted(returnCF);
   }
   finally {
+    for (    ColumnIterator ci : iterators) {
+      try {
+        ci.close();
+      }
+ catch (      Throwable th) {
+        logger_.error(th);
+      }
+    }
     lock_.readLock().unlock();
   }
 }
