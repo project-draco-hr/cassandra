@@ -20,33 +20,30 @@
     throw new RuntimeException(RuntimeErrorMsg.GENERIC_ERROR.getMsg());
   }
   if (row != null) {
-    Map<String,ColumnFamily> cfMap=row.getColumnFamilyMap();
-    if (cfMap != null && cfMap.size() > 0) {
-      ColumnFamily cfamily=cfMap.get(cfMetaData_.cfName);
-      if (cfamily != null) {
-        Collection<IColumn> columns=null;
-        if (superColumnKey_ != null) {
-          IColumn column=cfamily.getColumn(superColumnKey);
-          if (column != null)           columns=column.getSubColumns();
-        }
+    ColumnFamily cfamily=row.getColumnFamily(cfMetaData_.cfName);
+    if (cfamily != null) {
+      Collection<IColumn> columns=null;
+      if (superColumnKey_ != null) {
+        IColumn column=cfamily.getColumn(superColumnKey);
+        if (column != null)         columns=column.getSubColumns();
+      }
  else {
-          columns=cfamily.getAllColumns();
+        columns=cfamily.getAllColumns();
+      }
+      if (columns != null && columns.size() > 0) {
+        if (columns.size() > 1) {
+          throw new RuntimeException(RuntimeErrorMsg.INTERNAL_ERROR.getMsg("Too many columns found for: " + columnKey));
         }
-        if (columns != null && columns.size() > 0) {
-          if (columns.size() > 1) {
-            throw new RuntimeException(RuntimeErrorMsg.INTERNAL_ERROR.getMsg("Too many columns found for: " + columnKey));
-          }
-          for (          IColumn column : columns) {
-            List<Map<String,String>> rows=new LinkedList<Map<String,String>>();
-            Map<String,String> result=new HashMap<String,String>();
-            result.put(cfMetaData_.n_columnKey,column.name());
-            result.put(cfMetaData_.n_columnValue,new String(column.value()));
-            result.put(cfMetaData_.n_columnTimestamp,Long.toString(column.timestamp()));
-            rows.add(result);
-            return rows;
-          }
-          return null;
+        for (        IColumn column : columns) {
+          List<Map<String,String>> rows=new LinkedList<Map<String,String>>();
+          Map<String,String> result=new HashMap<String,String>();
+          result.put(cfMetaData_.n_columnKey,column.name());
+          result.put(cfMetaData_.n_columnValue,new String(column.value()));
+          result.put(cfMetaData_.n_columnTimestamp,Long.toString(column.timestamp()));
+          rows.add(result);
+          return rows;
         }
+        return null;
       }
     }
   }
