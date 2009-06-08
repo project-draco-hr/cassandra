@@ -11,14 +11,18 @@
     int retry=0;
     while (!socketChannel_.isConnected()) {
       if (retry == 3)       throw new IOException("Unable to connect to " + remoteEp_ + " after "+ retry+ " attempts.");
-      waitToContinueStreaming(waitTime,TimeUnit.SECONDS);
+      condition_.await(waitTime,TimeUnit.SECONDS);
       ++retry;
     }
     while (bytesWritten < total) {
       if (startPosition == 0) {
         ByteBuffer buffer=MessagingService.constructStreamHeader(false,true);
         socketChannel_.write(buffer);
-        handleIncompleteWrite(buffer);
+        if (buffer.remaining() > 0) {
+          pendingWrites_.add(buffer);
+          key_.interestOps(key_.interestOps() | SelectionKey.OP_WRITE);
+          condition_.await();
+        }
       }
       long bytesTransferred=fc.transferTo(startPosition,limit,socketChannel_);
       logger_.debug("Bytes transferred " + bytesTransferred);
@@ -26,7 +30,7 @@
       startPosition+=bytesTransferred;
       if (bytesTransferred < limit && bytesWritten != total) {
         key_.interestOps(key_.interestOps() | SelectionKey.OP_WRITE);
-        waitToContinueStreaming();
+        condition_.await();
       }
     }
   }
