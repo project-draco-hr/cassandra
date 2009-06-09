@@ -1,8 +1,11 @@
 {
-  blockIndexes_.add(blockIndex_);
-  dumpBlockIndexes();
-  DataOutputBuffer bufOut=new DataOutputBuffer();
-  BloomFilter.serializer().serialize(bf,bufOut);
-  close(bufOut.getData(),bufOut.getLength());
-  bufOut.close();
+  FileOutputStream fos=new FileOutputStream(filterFilename());
+  DataOutputStream stream=new DataOutputStream(fos);
+  BloomFilter.serializer().serialize(bf,stream);
+  stream.flush();
+  fos.getFD().sync();
+  stream.close();
+  indexRAF_.getChannel().force(true);
+  indexRAF_.close();
+  dataWriter_.close();
 }

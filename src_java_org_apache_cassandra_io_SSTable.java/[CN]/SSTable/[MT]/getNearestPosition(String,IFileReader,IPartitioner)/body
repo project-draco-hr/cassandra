@@ -1,0 +1,25 @@
+{
+  long start=getIndexScanPosition(decoratedKey,dataReader,partitioner);
+  if (start < 0) {
+    return 0;
+  }
+  BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(dataReader.getFileName()),"r");
+  input.seek(start);
+  try {
+    while (true) {
+      String indexDecoratedKey;
+      try {
+        indexDecoratedKey=input.readUTF();
+      }
+ catch (      EOFException e) {
+        return -1;
+      }
+      long position=input.readLong();
+      int v=partitioner.getDecoratedKeyComparator().compare(indexDecoratedKey,decoratedKey);
+      if (v >= 0)       return position;
+    }
+  }
+  finally {
+    input.close();
+  }
+}

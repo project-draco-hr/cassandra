@@ -1,20 +1,12 @@
 {
   try {
-    Coordinate range=SSTable.getCoordinates(seekKey,reader,partitioner);
-    reader.seek(range.end_);
-    long position=reader.getPositionFromBlockIndex(seekKey);
-    if (position == -1) {
-      reader.seek(range.start_);
+    long position=SSTable.getNearestPosition(seekKey,reader,partitioner);
+    if (position < 0) {
+      exhausted=true;
+      return;
     }
- else {
-      reader.seek(position);
-    }
-    while (!exhausted) {
-      advance();
-      if (key.compareTo(seekKey) >= 0) {
-        break;
-      }
-    }
+    reader.seek(position);
+    advance();
   }
  catch (  IOException e) {
     throw new RuntimeException("corrupt sstable",e);
