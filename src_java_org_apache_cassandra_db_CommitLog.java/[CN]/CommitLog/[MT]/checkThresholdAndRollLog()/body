@@ -1,0 +1,16 @@
+{
+  try {
+    if (logWriter_.getFileSize() >= SEGMENT_SIZE) {
+      setNextFileName();
+      String oldLogFile=logWriter_.getFileName();
+      logWriter_.close();
+      logWriter_=CommitLog.createWriter(logFile_);
+      clHeaders_.put(oldLogFile,new CommitLogHeader(clHeader_));
+      clHeader_.zeroPositions();
+      writeCommitLogHeader(clHeader_.toByteArray(),false);
+    }
+  }
+ catch (  IOException e) {
+    logger_.info(LogUtil.throwableToString(e));
+  }
+}
