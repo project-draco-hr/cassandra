@@ -8,6 +8,10 @@
   dataSize-=totalBytesRead;
   String cfName=file_.readUTF();
   dataSize-=(utfPrefix_ + cfName.length());
+  String cfType=file_.readUTF();
+  dataSize-=(utfPrefix_ + cfType.length());
+  int indexType=file_.readInt();
+  dataSize-=4;
   int localDeletionTime=file_.readInt();
   dataSize-=4;
   long markedForDeleteAt=file_.readLong();
@@ -18,8 +22,10 @@
   Coordinate coordinate=columnRange.coordinate();
   file_.skipBytes((int)coordinate.start_);
   dataSize=(int)(coordinate.end_ - coordinate.start_);
-  bufOut.writeInt(dataSize + utfPrefix_ + cfName.length()+ 4+ 8+ 4);
+  bufOut.writeInt(dataSize + utfPrefix_ * 2 + cfName.length() + cfType.length() + 4 + 4 + 8 + 4);
   bufOut.writeUTF(cfName);
+  bufOut.writeUTF(cfType);
+  bufOut.writeInt(indexType);
   bufOut.writeInt(localDeletionTime);
   bufOut.writeLong(markedForDeleteAt);
   bufOut.writeInt(columnRange.count());

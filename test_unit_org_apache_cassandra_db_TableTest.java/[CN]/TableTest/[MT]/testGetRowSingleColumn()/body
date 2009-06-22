@@ -1,10 +1,21 @@
 {
-  Table table=Table.open(TABLE_NAME);
-  RowMutation rm=makeSimpleRowMutation();
-  rm.apply();
-  Row result=table.getRow(TEST_KEY,"Standard1:col1");
-  ColumnFamily cres=result.getColumnFamily("Standard1");
-  assertNotNull(cres);
-  assertEquals(1,cres.getColumnCount());
-  assertNotNull(cres.getColumn("col1"));
+  final Table table=Table.open(TABLE_NAME);
+  Runner setup=new Runner(){
+    public void run() throws Exception {
+      RowMutation rm=makeSimpleRowMutation();
+      rm.apply();
+    }
+  }
+;
+  Runner verify=new Runner(){
+    public void run() throws Exception {
+      Row result;
+      result=table.getRow(TEST_KEY,"Standard1:col1");
+      assertColumns(result.getColumnFamily("Standard1"),"col1");
+      result=table.getRow(TEST_KEY,"Standard1:col3");
+      assertColumns(result.getColumnFamily("Standard1"),"col3");
+    }
+  }
+;
+  reTest(setup,table.getColumnFamilyStore("Standard1"),verify);
 }

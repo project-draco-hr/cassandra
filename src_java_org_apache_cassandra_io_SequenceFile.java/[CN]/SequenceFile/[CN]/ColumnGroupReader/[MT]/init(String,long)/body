@@ -7,12 +7,14 @@
     boolean hasColumnIndexes=file_.readBoolean();
     totalBytesRead+=1;
     List<IndexHelper.ColumnIndexInfo> colIndexList=new ArrayList<IndexHelper.ColumnIndexInfo>();
-    if (hasColumnIndexes)     totalBytesRead+=IndexHelper.deserializeIndex(null,cfName_,file_,colIndexList);
+    if (hasColumnIndexes)     totalBytesRead+=IndexHelper.deserializeIndex(getTableName(),cfName_,file_,colIndexList);
     String cfName=file_.readUTF();
+    cfType_=file_.readUTF();
+    indexType_=file_.readInt();
     localDeletionTime_=file_.readInt();
     markedForDeleteAt_=file_.readLong();
     int totalNumCols=file_.readInt();
-    allColumnsSize_=dataSize - (totalBytesRead + utfPrefix_ + cfName.length()+ 4+ 8+ 4);
+    allColumnsSize_=dataSize - (totalBytesRead + 2 * utfPrefix_ + cfName.length() + cfType_.length() + 4 + 4 + 8 + 4);
     columnStartPosition_=file_.getFilePointer();
     columnIndexList_=getFullColumnIndexList(colIndexList,totalNumCols);
     int index=Collections.binarySearch(columnIndexList_,new IndexHelper.ColumnNameIndexInfo(startColumn));

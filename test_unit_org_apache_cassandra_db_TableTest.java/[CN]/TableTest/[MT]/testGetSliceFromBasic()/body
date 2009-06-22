@@ -1,20 +1,48 @@
 {
-  Table table=Table.open(TABLE_NAME);
-  String ROW="row1";
-  RowMutation rm=new RowMutation(TABLE_NAME,ROW);
-  ColumnFamily cf=ColumnFamily.create("Table1","Standard1");
-  cf.addColumn(new Column("col1","val1".getBytes(),1L));
-  cf.addColumn(new Column("col3","val3".getBytes(),1L));
-  cf.addColumn(new Column("col4","val4".getBytes(),1L));
-  cf.addColumn(new Column("col5","val5".getBytes(),1L));
-  cf.addColumn(new Column("col7","val7".getBytes(),1L));
-  cf.addColumn(new Column("col9","val9".getBytes(),1L));
-  rm.add(cf);
-  rm.apply();
-  rm=new RowMutation(TABLE_NAME,ROW);
-  rm.delete("Standard1:col4",2L);
-  rm.apply();
-  validateGetSliceFromBasic(table,ROW);
-  table.getColumnFamilyStore("Standard1").forceBlockingFlush();
-  validateGetSliceFromBasic(table,ROW);
+  final Table table=Table.open(TABLE_NAME);
+  final String ROW="row1";
+  Runner setup=new Runner(){
+    public void run() throws Exception {
+      RowMutation rm=new RowMutation(TABLE_NAME,ROW);
+      ColumnFamily cf=ColumnFamily.create("Table1","Standard1");
+      cf.addColumn(new Column("col1","val1".getBytes(),1L));
+      cf.addColumn(new Column("col3","val3".getBytes(),1L));
+      cf.addColumn(new Column("col4","val4".getBytes(),1L));
+      cf.addColumn(new Column("col5","val5".getBytes(),1L));
+      cf.addColumn(new Column("col7","val7".getBytes(),1L));
+      cf.addColumn(new Column("col9","val9".getBytes(),1L));
+      rm.add(cf);
+      rm.apply();
+      rm=new RowMutation(TABLE_NAME,ROW);
+      rm.delete("Standard1:col4",2L);
+      rm.apply();
+    }
+  }
+;
+  Runner verify=new Runner(){
+    public void run() throws Exception {
+      Row result;
+      ColumnFamily cf;
+      result=table.getSliceFrom(ROW,"Standard1:col5",true,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf,"col5","col7");
+      result=table.getSliceFrom(ROW,"Standard1:col4",true,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf,"col4","col5","col7");
+      result=table.getSliceFrom(ROW,"Standard1:col5",false,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf,"col3","col4","col5");
+      result=table.getSliceFrom(ROW,"Standard1:col6",false,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf,"col3","col4","col5");
+      result=table.getSliceFrom(ROW,"Standard1:col95",true,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf);
+      result=table.getSliceFrom(ROW,"Standard1:col0",false,2);
+      cf=result.getColumnFamily("Standard1");
+      assertColumns(cf);
+    }
+  }
+;
+  reTest(setup,table.getColumnFamilyStore("Standard1"),verify);
 }
