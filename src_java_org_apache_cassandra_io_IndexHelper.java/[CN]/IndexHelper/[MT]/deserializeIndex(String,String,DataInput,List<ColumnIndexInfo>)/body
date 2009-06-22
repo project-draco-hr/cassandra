@@ -1,0 +1,19 @@
+{
+  int columnIndexSize=in.readInt();
+  int totalBytesRead=4;
+  DataOutputBuffer indexOut=new DataOutputBuffer();
+  indexOut.write(in,columnIndexSize);
+  totalBytesRead+=columnIndexSize;
+  DataInputBuffer indexIn=new DataInputBuffer();
+  indexIn.reset(indexOut.getData(),indexOut.getLength());
+  TypeInfo typeInfo=DatabaseDescriptor.getTypeInfo(tableName,cfName);
+  if (DatabaseDescriptor.getColumnFamilyType(tableName,cfName).equals("Super") || DatabaseDescriptor.isNameSortingEnabled(tableName,cfName)) {
+    typeInfo=TypeInfo.STRING;
+  }
+  while (indexIn.available() > 0) {
+    ColumnIndexInfo cIndexInfo=ColumnIndexFactory.instance(typeInfo);
+    cIndexInfo=cIndexInfo.deserialize(indexIn);
+    columnIndexList.add(cIndexInfo);
+  }
+  return totalBytesRead;
+}

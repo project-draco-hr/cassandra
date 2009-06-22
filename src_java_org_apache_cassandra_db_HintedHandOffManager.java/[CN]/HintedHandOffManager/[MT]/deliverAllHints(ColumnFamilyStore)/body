@@ -1,36 +1,38 @@
 {
   logger_.debug("Started hinted handoff of " + columnFamilyStore.columnFamily_);
-  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
-  try {
-    ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(table.get(key_,Table.hints_),Integer.MAX_VALUE);
-    if (hintColumnFamily == null) {
-      columnFamilyStore.forceFlush();
-      return;
-    }
-    Collection<IColumn> keys=hintColumnFamily.getAllColumns();
-    if (keys == null) {
-      return;
-    }
-    for (    IColumn keyColumn : keys) {
-      Collection<IColumn> endpoints=keyColumn.getSubColumns();
-      int deleted=0;
-      for (      IColumn endpoint : endpoints) {
-        if (sendMessage(endpoint.name(),keyColumn.name())) {
-          deleteEndPoint(endpoint.name(),keyColumn.name(),keyColumn.timestamp());
-          deleted++;
+  for (  String tableName : DatabaseDescriptor.getTables()) {
+    Table table=Table.open(tableName);
+    try {
+      ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(table.get(key_,Table.hints_),Integer.MAX_VALUE);
+      if (hintColumnFamily == null) {
+        columnFamilyStore.forceFlush();
+        return;
+      }
+      Collection<IColumn> keys=hintColumnFamily.getAllColumns();
+      if (keys == null) {
+        return;
+      }
+      for (      IColumn keyColumn : keys) {
+        Collection<IColumn> endpoints=keyColumn.getSubColumns();
+        int deleted=0;
+        for (        IColumn endpoint : endpoints) {
+          if (sendMessage(endpoint.name(),tableName,keyColumn.name())) {
+            deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),keyColumn.timestamp());
+            deleted++;
+          }
+        }
+        if (deleted == endpoints.size()) {
+          deleteHintedData(tableName,keyColumn.name());
         }
       }
-      if (deleted == endpoints.size()) {
-        deleteHintedData(keyColumn.name());
-      }
+      columnFamilyStore.forceFlush();
+      columnFamilyStore.forceCompaction(null,null,0,null);
     }
-    columnFamilyStore.forceFlush();
-    columnFamilyStore.forceCompaction(null,null,0,null);
-  }
- catch (  Exception ex) {
-    logger_.error(ex.getMessage());
-  }
+ catch (    Exception ex) {
+      logger_.error(ex.getMessage());
+    }
  finally {
-    logger_.debug("Finished hinted handoff of " + columnFamilyStore.columnFamily_);
+      logger_.debug("Finished hinted handoff of " + columnFamilyStore.columnFamily_);
+    }
   }
 }

@@ -1,7 +1,7 @@
 {
   DataInputBuffer bufIn=new DataInputBuffer();
   for (  File file : clogs) {
-    IFileReader reader=SequenceFile.reader(file.getAbsolutePath());
+    IFileReader reader=SequenceFile.reader(table_,file.getAbsolutePath());
     try {
       CommitLogHeader clHeader=readCommitLogHeader(reader);
       int lowPos=CommitLogHeader.getLowestPosition(clHeader);
@@ -13,7 +13,7 @@
         reader.readDirect(bytes);
         bufIn.reset(bytes,bytes.length);
         try {
-          Row row=Row.serializer().deserialize(bufIn);
+          Row row=Row.serializer(table_).deserialize(bufIn);
           Table table=Table.open(table_);
           tablesRecovered.add(table);
           Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(row.getColumnFamilies());

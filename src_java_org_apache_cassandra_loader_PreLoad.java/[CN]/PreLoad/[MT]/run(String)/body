@@ -1,19 +1,21 @@
 {
-  String table=DatabaseDescriptor.getTables().get(0);
-  String cfName=Table.recycleBin_ + ":" + "Keys";
-  preParse(userFile,table,cfName);
-  Table.open(table).flush(false);
-  Table.open(table).forceCompaction(null,null,null);
-  logger_.info("Taking a nap after forcing a compaction ...");
-  Thread.sleep(PreLoad.siesta_);
-  List<String> ssTables=Table.open(table).getAllSSTablesOnDisk();
-  for (  String df : ssTables) {
-    new SSTable(df,StorageService.getPartitioner());
+  List<String> tables=DatabaseDescriptor.getTables();
+  for (  String table : tables) {
+    String cfName=Table.recycleBin_ + ":" + "Keys";
+    preParse(userFile,table,cfName);
+    Table.open(table).flush(false);
+    Table.open(table).forceCompaction(null,null,null);
+    logger_.info("Taking a nap after forcing a compaction ...");
+    Thread.sleep(PreLoad.siesta_);
+    List<String> ssTables=Table.open(table).getAllSSTablesOnDisk();
+    for (    String df : ssTables) {
+      new SSTable(df,table,StorageService.getPartitioner());
+    }
+    List<String> indexedKeys=SSTable.getIndexedKeys();
+    storageService_.relocate(indexedKeys.toArray(new String[0]));
+    logger_.info("Taking a nap after relocating ...");
+    Thread.sleep(PreLoad.siesta_);
+    SSTable.delete(ssTables.get(0));
   }
-  List<String> indexedKeys=SSTable.getIndexedKeys();
-  storageService_.relocate(indexedKeys.toArray(new String[0]));
-  logger_.info("Taking a nap after relocating ...");
-  Thread.sleep(PreLoad.siesta_);
-  SSTable.delete(ssTables.get(0));
   logger_.info("Finished all the requisite clean up ...");
 }

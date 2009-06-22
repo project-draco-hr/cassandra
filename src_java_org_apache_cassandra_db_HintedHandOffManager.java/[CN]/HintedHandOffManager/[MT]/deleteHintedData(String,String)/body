@@ -1,0 +1,22 @@
+{
+  RowMutation rm=new RowMutation(tableName,key_);
+  Table table=Table.open(tableName);
+  Row row=table.get(key);
+  Collection<ColumnFamily> cfs=row.getColumnFamilies();
+  for (  ColumnFamily cf : cfs) {
+    Set<IColumn> columns=cf.getAllColumns();
+    long maxTS=Long.MIN_VALUE;
+    if (!cf.isSuper()) {
+      for (      IColumn col : columns)       maxTS=Math.max(maxTS,col.timestamp());
+    }
+ else {
+      for (      IColumn col : columns) {
+        maxTS=Math.max(maxTS,col.timestamp());
+        Collection<IColumn> subColumns=col.getSubColumns();
+        for (        IColumn subCol : subColumns)         maxTS=Math.max(maxTS,subCol.timestamp());
+      }
+    }
+    rm.delete(cf.name(),maxTS);
+  }
+  rm.apply();
+}

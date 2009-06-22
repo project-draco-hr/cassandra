@@ -3,13 +3,15 @@
   Set<String> distinctEntries=new HashSet<String>();
   for (  StreamContextManager.StreamContext streamContext : streamContexts) {
     String[] peices=FBUtilities.strip(streamContext.getTargetFile(),"-");
-    distinctEntries.add(peices[1] + "-" + peices[2]);
+    distinctEntries.add(peices[0] + "-" + peices[1]+ "-"+ peices[2]);
   }
-  Table table=Table.open(DatabaseDescriptor.getTables().get(0));
-  Map<String,ColumnFamilyStore> columnFamilyStores=table.getColumnFamilyStores();
   for (  String distinctEntry : distinctEntries) {
+    String tableName;
     String[] peices=FBUtilities.strip(distinctEntry,"-");
-    ColumnFamilyStore cfStore=columnFamilyStores.get(peices[0]);
+    tableName=peices[0];
+    Table table=Table.open(tableName);
+    Map<String,ColumnFamilyStore> columnFamilyStores=table.getColumnFamilyStores();
+    ColumnFamilyStore cfStore=columnFamilyStores.get(peices[1]);
     logger_.debug("Generating file name for " + distinctEntry + " ...");
     fileNames.put(distinctEntry,cfStore.getNextFileName());
   }

@@ -1,6 +1,13 @@
 {
-  dataFile_=directory + System.getProperty("file.separator") + filename+ "-Data.db";
+  dataFile_=dataFileName;
   partitioner_=partitioner;
-  dataWriter_=SequenceFile.bufferedWriter(dataFile_,4 * 1024 * 1024);
-  indexRAF_=new BufferedRandomAccessFile(indexFilename(),"rw",1024 * 1024);
+  table_=tableName;
+synchronized (indexLoadLock_) {
+    if (indexMetadataMap_.get(dataFile_) == null) {
+      long start=System.currentTimeMillis();
+      loadIndexFile();
+      loadBloomFilter();
+      logger_.debug("INDEX LOAD TIME: " + (System.currentTimeMillis() - start) + " ms.");
+    }
+  }
 }
