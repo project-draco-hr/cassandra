@@ -1,5 +1,5 @@
 {
-  AtomicInteger idGenerator=new AtomicInteger(0);
+  int cfId=0;
   Set<String> tables=tableToCFMetaDataMap_.keySet();
   for (  String table : tables) {
     Table.TableMetadata tmetadata=Table.TableMetadata.instance(table);
@@ -7,14 +7,16 @@
       tmetadata=Table.TableMetadata.instance(table);
       Map<String,CFMetaData> columnFamilies=tableToCFMetaDataMap_.get(table);
       for (      String columnFamily : columnFamilies.keySet()) {
-        tmetadata.add(columnFamily,idGenerator.getAndIncrement(),DatabaseDescriptor.getColumnType(table,columnFamily));
+        tmetadata.add(columnFamily,cfId++,DatabaseDescriptor.getColumnType(table,columnFamily));
       }
-      tmetadata.add(Table.TableMetadata.cfName_,idGenerator.getAndIncrement());
-      tmetadata.add(SystemTable.cfName_,idGenerator.getAndIncrement());
-      tmetadata.add(Table.recycleBin_,idGenerator.getAndIncrement());
-      tmetadata.add(Table.hints_,idGenerator.getAndIncrement(),ColumnFamily.getColumnType("Super"));
+      tmetadata.add(Table.TableMetadata.cfName_,cfId++);
+      tmetadata.add(SystemTable.cfName_,cfId++);
+      tmetadata.add(Table.recycleBin_,cfId++);
+      tmetadata.add(Table.hints_,cfId++,ColumnFamily.getColumnType("Super"));
       tmetadata.apply();
-      idGenerator.set(0);
     }
+    tmetadata.add(SystemTable.cfName_,cfId++);
+    tmetadata.add(Table.recycleBin_,cfId++);
+    tmetadata.add(Table.hints_,cfId++,ColumnFamily.getColumnType("Super"));
   }
 }
