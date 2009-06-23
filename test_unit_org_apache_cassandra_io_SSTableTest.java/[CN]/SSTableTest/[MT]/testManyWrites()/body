@@ -1,17 +1,16 @@
 {
-  File f=File.createTempFile("sstable","");
-  SSTable ssTable;
+  File f=File.createTempFile("sstable","-" + SSTable.temporaryFile_);
   TreeMap<String,byte[]> map=new TreeMap<String,byte[]>();
   for (int i=100; i < 1000; ++i) {
     map.put(Integer.toString(i),("Avinash Lakshman is a good man: " + i).getBytes());
   }
-  ssTable=new SSTable(f.getParent(),f.getName(),new OrderPreservingPartitioner());
+  SSTable ssTable=new SSTable(f.getParent(),f.getName(),new OrderPreservingPartitioner());
   BloomFilter bf=new BloomFilter(1000,8);
   for (  String key : map.navigableKeySet()) {
     ssTable.append(key,map.get(key));
   }
   ssTable.close(bf);
-  verifyMany(f,map);
-  SSTable.indexMetadataMap_.clear();
-  verifyMany(f,map);
+  verifyMany(ssTable.dataFile_,map);
+  SSTable.reopenUnsafe();
+  verifyMany(ssTable.dataFile_,map);
 }
