@@ -3,7 +3,7 @@
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
   String directory=DatabaseDescriptor.getDataFileLocation();
   String filename=cfStore.getTempFileName();
-  SSTable ssTable=new SSTable(directory,filename,StorageService.getPartitioner());
+  SSTable ssTable=new SSTable(directory,filename,columnFamilies_.size(),StorageService.getPartitioner());
   final IPartitioner partitioner=StorageService.getPartitioner();
   final Comparator<String> dc=partitioner.getDecoratedKeyComparator();
   ArrayList<String> orderedKeys=new ArrayList<String>(columnFamilies_.keySet());
@@ -14,19 +14,17 @@
   }
 );
   DataOutputBuffer buffer=new DataOutputBuffer();
-  BloomFilter bf=new BloomFilter(columnFamilies_.size(),15);
   for (  String key : orderedKeys) {
     buffer.reset();
     ColumnFamily columnFamily=columnFamilies_.get(key);
     if (columnFamily != null) {
       ColumnFamily.serializerWithIndexes().serialize(columnFamily,buffer);
       ssTable.append(partitioner.decorateKey(key),buffer);
-      bf.add(key);
     }
   }
-  ssTable.close(bf);
+  ssTable.close();
   cfStore.onMemtableFlush(cLogCtx);
-  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  cfStore.storeLocation(ssTable);
   buffer.close();
   isFlushed_=true;
   logger_.info("Completed flushing " + this);

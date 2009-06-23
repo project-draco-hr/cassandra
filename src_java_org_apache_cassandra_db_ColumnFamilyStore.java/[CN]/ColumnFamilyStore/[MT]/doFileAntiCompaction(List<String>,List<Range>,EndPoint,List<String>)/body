@@ -1,24 +1,26 @@
 {
-  logger_.info("Compacting [" + StringUtils.join(files,",") + "]");
-  String compactionFileLocation=DatabaseDescriptor.getCompactionFileLocation(getExpectedCompactedFileSize(files));
-  if (compactionFileLocation == null) {
-    String maxFile=getMaxSizeFile(files);
-    files.remove(maxFile);
-    return doFileCompaction(files,minBufferSize);
-  }
-  String newfile=null;
+  boolean result=false;
   long startTime=System.currentTimeMillis();
   long totalBytesRead=0;
   long totalBytesWritten=0;
   long totalkeysRead=0;
   long totalkeysWritten=0;
-  PriorityQueue<FileStruct> pq=initializePriorityQueue(files,null,minBufferSize);
-  if (pq.isEmpty()) {
-    logger_.warn("Nothing to compact (all files empty or corrupt)");
-    return 0;
+  String rangeFileLocation;
+  String mergedFileName;
+  IPartitioner p=StorageService.getPartitioner();
+  long expectedRangeFileSize=getExpectedCompactedFileSize(files);
+  expectedRangeFileSize=expectedRangeFileSize / 2;
+  rangeFileLocation=DatabaseDescriptor.getCompactionFileLocation(expectedRangeFileSize);
+  if (rangeFileLocation == null) {
+    logger_.warn("Total bytes to be written for range compaction  ..." + expectedRangeFileSize + "   is greater than the safe limit of the disk space available.");
+    return result;
   }
-  String mergedFileName=getTempFileName(files);
-  SSTable ssTable=null;
+  PriorityQueue<FileStruct> pq=initializePriorityQueue(files,ranges,ColumnFamilyStore.BUFSIZE);
+  if (pq.isEmpty()) {
+    return result;
+  }
+  mergedFileName=getTempFileName();
+  SSTable ssTableRange=null;
   String lastkey=null;
   List<FileStruct> lfs=new ArrayList<FileStruct>();
   DataOutputBuffer bufOut=new DataOutputBuffer();
@@ -50,7 +52,7 @@
             columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.getBufIn()));
           }
  catch (          Exception ex) {
-            logger_.warn("error in filecompaction",ex);
+            logger_.warn(LogUtil.throwableToString(ex));
           }
         }
         columnFamily=resolveAndRemoveDeleted(columnFamilies);
@@ -64,10 +66,21 @@
         int size=filestruct.getBufIn().readInt();
         bufOut.write(filestruct.getBufIn(),size);
       }
-      if (ssTable == null) {
-        ssTable=new SSTable(compactionFileLocation,mergedFileName,expectedBloomFilterSize,StorageService.getPartitioner());
+      if (Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(lastkey),ranges)) {
+        if (ssTableRange == null) {
+          if (target != null) {
+            rangeFileLocation=rangeFileLocation + System.getProperty("file.separator") + "bootstrap";
+          }
+          FileUtils.createDirectory(rangeFileLocation);
+          ssTableRange=new SSTable(rangeFileLocation,mergedFileName,expectedBloomFilterSize,StorageService.getPartitioner());
+        }
+        try {
+          ssTableRange.append(lastkey,bufOut);
+        }
+ catch (        Exception ex) {
+          logger_.warn(LogUtil.throwableToString(ex));
+        }
       }
-      ssTable.append(lastkey,bufOut);
       totalkeysWritten++;
       for (      FileStruct filestruct : lfs) {
         try {
@@ -75,10 +88,18 @@
           if (filestruct.isExhausted()) {
             continue;
           }
-          pq.add(filestruct);
+          while (!Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(filestruct.getKey()),ranges)) {
+            filestruct.advance();
+            if (filestruct.isExhausted()) {
+              break;
+            }
+          }
+          if (!filestruct.isExhausted()) {
+            pq.add(filestruct);
+          }
           totalkeysRead++;
         }
- catch (        Throwable ex) {
+ catch (        Exception ex) {
           logger_.warn("corrupt sstable?",ex);
           filestruct.close();
         }
@@ -90,28 +111,14 @@
       }
     }
   }
-  if (ssTable != null) {
-    ssTable.close();
-    newfile=ssTable.getFilename();
-  }
-  lock_.writeLock().lock();
-  try {
-    for (    String file : files) {
-      ssTables_.remove(file);
-    }
-    if (newfile != null) {
-      ssTables_.put(newfile,ssTable);
-      totalBytesWritten+=(new File(newfile)).length();
-    }
-    for (    String file : files) {
-      SSTable.get(file).delete();
+  if (ssTableRange != null) {
+    ssTableRange.close();
+    if (fileList != null) {
+      fileList.add(ssTableRange.getFilename());
     }
   }
-  finally {
-    lock_.writeLock().unlock();
-  }
-  String format="Compacted to %s.  %d/%d bytes for %d/%d keys read/written.  Time: %dms.";
-  long dTime=System.currentTimeMillis() - startTime;
-  logger_.info(String.format(format,newfile,totalBytesRead,totalBytesWritten,totalkeysRead,totalkeysWritten,dTime));
-  return files.size();
+  logger_.debug("Total time taken for range split   ..." + (System.currentTimeMillis() - startTime));
+  logger_.debug("Total bytes Read for range split  ..." + totalBytesRead);
+  logger_.debug("Total bytes written for range split  ..." + totalBytesWritten + "   Total keys read ..."+ totalkeysRead);
+  return result;
 }

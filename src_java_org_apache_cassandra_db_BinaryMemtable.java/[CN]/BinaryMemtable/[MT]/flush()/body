@@ -3,18 +3,16 @@
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
   String directory=DatabaseDescriptor.getDataFileLocation();
   String filename=cfStore.getTempFileName();
-  SSTable ssTable=new SSTable(directory,filename,StorageService.getPartitioner());
   List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
+  SSTable ssTable=new SSTable(directory,filename,keys.size(),StorageService.getPartitioner());
   Collections.sort(keys);
-  BloomFilter bf=new BloomFilter(keys.size(),8);
   for (  String key : keys) {
     byte[] bytes=columnFamilies_.get(key);
     if (bytes.length > 0) {
       ssTable.append(key,bytes);
-      bf.add(key);
     }
   }
-  ssTable.close(bf);
-  cfStore.storeLocation(ssTable.getDataFileLocation(),bf);
+  ssTable.close();
+  cfStore.storeLocation(ssTable);
   columnFamilies_.clear();
 }
