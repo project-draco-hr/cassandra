@@ -1,11 +1,12 @@
 {
   IPartitioner p=StorageService.getPartitioner();
-  if (systemRow_ != null) {
-    ColumnFamily columnFamily=systemRow_.getColumnFamily(SystemTable.cfName_);
-    long oldTokenColumnTimestamp=columnFamily.getColumn(SystemTable.token_).timestamp();
-    IColumn tokenColumn=new Column(SystemTable.token_,p.getTokenFactory().toByteArray(token),oldTokenColumnTimestamp + 1);
-    logger_.debug("Replacing old token " + p.getTokenFactory().fromByteArray(columnFamily.getColumn(SystemTable.token_).value()) + " with "+ token);
-    columnFamily.addColumn(tokenColumn);
-    reset(systemRow_);
-  }
+  Table table=Table.open(Table.SYSTEM_TABLE);
+  ColumnFamily cf=table.getColumnFamilyStore(LOCATION_CF).getColumnFamily(LOCATION_KEY,LOCATION_KEY + ":" + TOKEN,new IdentityFilter());
+  long oldTokenColumnTimestamp=cf.getColumn(SystemTable.TOKEN).timestamp();
+  IColumn tokenColumn=new Column(SystemTable.TOKEN,p.getTokenFactory().toByteArray(token),oldTokenColumnTimestamp + 1);
+  logger_.debug("Replacing old token " + p.getTokenFactory().fromByteArray(cf.getColumn(SystemTable.TOKEN).value()) + " with "+ token);
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCATION_KEY);
+  cf.addColumn(tokenColumn);
+  rm.add(cf);
+  rm.apply();
 }
