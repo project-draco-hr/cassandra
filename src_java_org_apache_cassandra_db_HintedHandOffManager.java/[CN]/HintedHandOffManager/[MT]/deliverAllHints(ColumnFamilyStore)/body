@@ -1,38 +1,26 @@
 {
-  logger_.debug("Started hinted handoff of " + columnFamilyStore.columnFamily_);
+  logger_.debug("Started deliverAllHints");
   for (  String tableName : DatabaseDescriptor.getTables()) {
-    try {
-      Table table=Table.open(tableName);
-      ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(table.get(key_,Table.hints_),Integer.MAX_VALUE);
-      if (hintColumnFamily == null) {
-        columnFamilyStore.forceFlush();
-        return;
-      }
-      Collection<IColumn> keys=hintColumnFamily.getAllColumns();
-      if (keys == null) {
-        return;
-      }
-      for (      IColumn keyColumn : keys) {
-        Collection<IColumn> endpoints=keyColumn.getSubColumns();
-        int deleted=0;
-        for (        IColumn endpoint : endpoints) {
-          if (sendMessage(endpoint.name(),tableName,keyColumn.name())) {
-            deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),keyColumn.timestamp());
-            deleted++;
-          }
-        }
-        if (deleted == endpoints.size()) {
-          deleteHintedData(tableName,keyColumn.name());
+    ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(tableName,Table.HINTS_CF,new IdentityFilter()),Integer.MAX_VALUE);
+    if (hintColumnFamily == null) {
+      continue;
+    }
+    Collection<IColumn> keys=hintColumnFamily.getAllColumns();
+    for (    IColumn keyColumn : keys) {
+      Collection<IColumn> endpoints=keyColumn.getSubColumns();
+      int deleted=0;
+      for (      IColumn endpoint : endpoints) {
+        if (sendMessage(endpoint.name(),tableName,keyColumn.name())) {
+          deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),keyColumn.timestamp());
+          deleted++;
         }
       }
-      columnFamilyStore.forceFlush();
-      columnFamilyStore.forceCompaction(null,null,0,null);
-    }
- catch (    Exception ex) {
-      logger_.error("error delivering hints",ex);
-    }
- finally {
-      logger_.debug("Finished hinted handoff of " + columnFamilyStore.columnFamily_);
+      if (deleted == endpoints.size()) {
+        deleteHintedData(tableName,keyColumn.name());
+      }
     }
   }
+  hintStore.forceFlush();
+  hintStore.forceCompaction(null,null,0,null);
+  logger_.debug("Finished deliverAllHints");
 }
