@@ -17,26 +17,21 @@
     }
   }
   Collections.sort(sstableFiles,new FileUtils.FileComparator());
-  List<String> filenames=new ArrayList<String>();
-  for (  File ssTable : sstableFiles) {
-    filenames.add(ssTable.getAbsolutePath());
-  }
-  for (  String filename : filenames) {
+  for (  File file : sstableFiles) {
+    String filename=file.getAbsolutePath();
     try {
       SSTable sstable=SSTable.open(filename,StorageService.getPartitioner());
       ssTables_.put(filename,sstable);
     }
  catch (    IOException ex) {
-      logger_.info("Deleting corrupted file " + filename);
+      logger_.error("Corrupt file " + filename,ex);
       FileUtils.delete(filename);
-      logger_.warn(LogUtil.throwableToString(ex));
     }
   }
   MinorCompactionManager.instance().submit(ColumnFamilyStore.this);
   if (table_.equals(Table.SYSTEM_TABLE) && columnFamily_.equals(HintedHandOffManager.HINTS_CF)) {
     HintedHandOffManager.instance().submit(this);
   }
-  MinorCompactionManager.instance().submitPeriodicCompaction(this);
   int flushPeriod=DatabaseDescriptor.getFlushPeriod(table_,columnFamily_);
   if (flushPeriod > 0) {
     PeriodicFlushManager.instance().submitPeriodicFlusher(this,flushPeriod);
