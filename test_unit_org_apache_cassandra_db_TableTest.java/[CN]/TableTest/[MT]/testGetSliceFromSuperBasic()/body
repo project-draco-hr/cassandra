@@ -1,0 +1,28 @@
+{
+  final Table table=Table.open("Table1");
+  final String ROW="row2";
+  Runner setup=new Runner(){
+    public void run() throws Exception {
+      RowMutation rm=new RowMutation("Table1",ROW);
+      ColumnFamily cf=ColumnFamily.create("Table1","Super1");
+      SuperColumn sc=new SuperColumn("sc1");
+      sc.addColumn(new Column("col1","val1".getBytes(),1L));
+      cf.addColumn(sc);
+      rm.add(cf);
+      rm.apply();
+    }
+  }
+;
+  Runner verify=new Runner(){
+    public void run() throws Exception {
+      Row result;
+      ColumnFamily cfres;
+      result=table.getSliceFrom(ROW,"Super1:",true,10);
+      cfres=result.getColumnFamily("Super1");
+      assertColumns(cfres,"sc1");
+      assertEquals(new String(cfres.getColumn("sc1").getSubColumn("col1").value()),"val1");
+    }
+  }
+;
+  reTest(setup,table.getColumnFamilyStore("Standard1"),verify);
+}

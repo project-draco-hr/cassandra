@@ -1,7 +1,13 @@
 {
   logger.debug("get_column_count");
   String[] values=RowMutation.getColumnAndColumnFamily(columnParent);
-  ColumnFamily cfamily=readColumnFamily(new SliceReadCommand(tablename,key,columnParent,-1,Integer.MAX_VALUE));
+  ColumnFamily cfamily;
+  if (DatabaseDescriptor.isNameSortingEnabled(tablename,values[0])) {
+    cfamily=readColumnFamily(new SliceFromReadCommand(tablename,key,columnParent + ":",true,Integer.MAX_VALUE));
+  }
+ else {
+    cfamily=readColumnFamily(new ColumnsSinceReadCommand(tablename,key,columnParent,Long.MIN_VALUE));
+  }
   if (cfamily == null) {
     return 0;
   }
