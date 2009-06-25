@@ -1,0 +1,21 @@
+{
+  ColumnFamilyStore store=Table.open("Table1").getColumnFamilyStore("Super2");
+  RowMutation rm;
+  rm=new RowMutation("Table1","key1");
+  rm.add("Super2:SC1:Column1","asdf".getBytes(),0);
+  rm.apply();
+  store.forceBlockingFlush();
+  rm=new RowMutation("Table1","key1");
+  rm.delete("Super2:SC1",1);
+  rm.apply();
+  rm=new RowMutation("Table1","key1");
+  rm.add("Super2:SC1:Column2","asdf".getBytes(),2);
+  rm.apply();
+  validateRemoveWithNewData();
+  store.forceBlockingFlush();
+  validateRemoveWithNewData();
+  Future<Integer> ft=MinorCompactionManager.instance().submit(store,2);
+  ft.get();
+  assertEquals(1,store.getSSTables().size());
+  validateRemoveWithNewData();
+}
