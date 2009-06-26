@@ -3,7 +3,21 @@
   args.read(iprot);
   iprot.readMessageEnd();
   describeTable_result result=new describeTable_result();
-  result.success=iface_.describeTable(args.tableName);
+  try {
+    result.success=iface_.describeTable(args.tableName);
+  }
+ catch (  NotFoundException nfe) {
+    result.nfe=nfe;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing describeTable",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing describeTable");
+    oprot.writeMessageBegin(new TMessage("describeTable",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   oprot.writeMessageBegin(new TMessage("describeTable",TMessageType.REPLY,seqid));
   result.write(oprot);
   oprot.writeMessageEnd();
