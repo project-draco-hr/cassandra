@@ -8,11 +8,11 @@
     StorageService.instance().updateToken(token);
     Map<String,byte[]> headers=message.getHeaders();
     headers.remove(StorageService.getLocalStorageEndPoint().getHost());
-    logger_.debug("Number of nodes in the header " + headers.size());
+    if (logger_.isDebugEnabled())     logger_.debug("Number of nodes in the header " + headers.size());
     Set<String> nodes=headers.keySet();
     IPartitioner p=StorageService.getPartitioner();
     for (    String node : nodes) {
-      logger_.debug("Processing node " + node);
+      if (logger_.isDebugEnabled())       logger_.debug("Processing node " + node);
       byte[] bytes=headers.remove(node);
       EndPoint target=new EndPoint(node,DatabaseDescriptor.getStoragePort());
       token=p.getTokenFactory().fromByteArray(bytes);
@@ -20,12 +20,12 @@
       DataOutputStream dos=new DataOutputStream(bos);
       Token.serializer().serialize(token,dos);
       message.setMessageBody(bos.toByteArray());
-      logger_.debug("Sending a token update message to " + target + " to update it to "+ token);
+      if (logger_.isDebugEnabled())       logger_.debug("Sending a token update message to " + target + " to update it to "+ token);
       MessagingService.getMessagingInstance().sendOneWay(message,target);
       break;
     }
   }
  catch (  IOException ex) {
-    logger_.debug(LogUtil.throwableToString(ex));
+    if (logger_.isDebugEnabled())     logger_.debug(LogUtil.throwableToString(ex));
   }
 }
