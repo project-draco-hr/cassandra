@@ -2,46 +2,34 @@
   DataInputBuffer bufIn=new DataInputBuffer();
   for (  File file : clogs) {
     IFileReader reader=SequenceFile.reader(file.getAbsolutePath());
-    try {
-      CommitLogHeader clHeader=readCommitLogHeader(reader);
-      int lowPos=CommitLogHeader.getLowestPosition(clHeader);
-      if (lowPos == 0)       break;
- else       reader.seek(lowPos);
-      Set<Table> tablesRecovered=new HashSet<Table>();
-      while (!reader.isEOF()) {
-        byte[] bytes=new byte[(int)reader.readLong()];
-        reader.readDirect(bytes);
-        bufIn.reset(bytes,bytes.length);
-        try {
-          Row row=Row.serializer().deserialize(bufIn);
-          Table table=Table.open(row.getTable());
-          tablesRecovered.add(table);
-          Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(row.getColumnFamilies());
-          for (          ColumnFamily columnFamily : columnFamilies) {
-            if (!DatabaseDescriptor.isApplicationColumnFamily(columnFamily.name())) {
-              row.removeColumnFamily(columnFamily);
-              continue;
-            }
-            int id=table.getColumnFamilyId(columnFamily.name());
-            if (!clHeader.isDirty(id) || reader.getCurrentPosition() < clHeader.getPosition(id))             row.removeColumnFamily(columnFamily);
-          }
-          if (!row.isEmpty()) {
-            table.applyNow(row);
-          }
+    CommitLogHeader clHeader=readCommitLogHeader(reader);
+    int lowPos=CommitLogHeader.getLowestPosition(clHeader);
+    if (lowPos == 0)     break;
+ else     reader.seek(lowPos);
+    Set<Table> tablesRecovered=new HashSet<Table>();
+    while (!reader.isEOF()) {
+      byte[] bytes=new byte[(int)reader.readLong()];
+      reader.readDirect(bytes);
+      bufIn.reset(bytes,bytes.length);
+      Row row=Row.serializer().deserialize(bufIn);
+      Table table=Table.open(row.getTable());
+      tablesRecovered.add(table);
+      Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(row.getColumnFamilies());
+      for (      ColumnFamily columnFamily : columnFamilies) {
+        if (!DatabaseDescriptor.isApplicationColumnFamily(columnFamily.name())) {
+          row.removeColumnFamily(columnFamily);
+          continue;
         }
- catch (        IOException e) {
-          logger_.error("Unexpected error reading " + file.getName() + "; attempting to continue with the next entry",e);
-        }
+        int id=table.getColumnFamilyId(columnFamily.name());
+        if (!clHeader.isDirty(id) || reader.getCurrentPosition() < clHeader.getPosition(id))         row.removeColumnFamily(columnFamily);
       }
-      reader.close();
-      for (      Table table : tablesRecovered) {
-        table.flush(true);
+      if (!row.isEmpty()) {
+        table.applyNow(row);
       }
     }
- catch (    Throwable th) {
-      logger_.error("Fatal error reading " + file.getName(),th);
-      reader.close();
-      FileUtils.delete(new File[]{file});
+    reader.close();
+    for (    Table table : tablesRecovered) {
+      table.flush(true);
     }
   }
 }
