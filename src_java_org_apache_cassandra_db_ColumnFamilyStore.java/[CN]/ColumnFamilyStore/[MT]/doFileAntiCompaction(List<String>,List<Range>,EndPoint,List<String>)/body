@@ -20,12 +20,12 @@
     return result;
   }
   mergedFileName=getTempSSTableFileName();
-  SSTable ssTableRange=null;
+  SSTableWriter rangeWriter=null;
   String lastkey=null;
   List<FileStruct> lfs=new ArrayList<FileStruct>();
   DataOutputBuffer bufOut=new DataOutputBuffer();
-  int expectedBloomFilterSize=SSTable.getApproximateKeyCount(files);
-  expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTable.indexInterval();
+  int expectedBloomFilterSize=SSTableReader.getApproximateKeyCount(files);
+  expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTableReader.indexInterval();
   if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
   List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
   while (pq.size() > 0 || lfs.size() > 0) {
@@ -67,16 +67,16 @@
         bufOut.write(filestruct.getBufIn(),size);
       }
       if (Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(lastkey),ranges)) {
-        if (ssTableRange == null) {
+        if (rangeWriter == null) {
           if (target != null) {
             rangeFileLocation=rangeFileLocation + File.separator + "bootstrap";
           }
           FileUtils.createDirectory(rangeFileLocation);
           String fname=new File(rangeFileLocation,mergedFileName).getAbsolutePath();
-          ssTableRange=new SSTable(fname,expectedBloomFilterSize,StorageService.getPartitioner());
+          rangeWriter=new SSTableWriter(fname,expectedBloomFilterSize,StorageService.getPartitioner());
         }
         try {
-          ssTableRange.append(lastkey,bufOut);
+          rangeWriter.append(lastkey,bufOut);
         }
  catch (        Exception ex) {
           logger_.warn(LogUtil.throwableToString(ex));
@@ -112,10 +112,10 @@
       }
     }
   }
-  if (ssTableRange != null) {
-    ssTableRange.close();
+  if (rangeWriter != null) {
+    rangeWriter.closeAndOpenReader();
     if (fileList != null) {
-      fileList.add(ssTableRange.getFilename());
+      fileList.add(rangeWriter.getFilename());
     }
   }
   logger_.debug("Total time taken for range split   ..." + (System.currentTimeMillis() - startTime));

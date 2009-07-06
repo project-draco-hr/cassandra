@@ -2,15 +2,14 @@
   if (columnFamilies_.size() == 0)   return;
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
   List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
-  SSTable ssTable=new SSTable(cfStore.getTempSSTablePath(),keys.size(),StorageService.getPartitioner());
+  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),keys.size(),StorageService.getPartitioner());
   Collections.sort(keys);
   for (  String key : keys) {
     byte[] bytes=columnFamilies_.get(key);
     if (bytes.length > 0) {
-      ssTable.append(key,bytes);
+      writer.append(key,bytes);
     }
   }
-  ssTable.close();
-  cfStore.storeLocation(ssTable);
+  cfStore.storeLocation(writer.closeAndOpenReader());
   columnFamilies_.clear();
 }

@@ -18,12 +18,13 @@
     return 0;
   }
   String mergedFileName=getTempFileName(files);
-  SSTable ssTable=null;
+  SSTableWriter writer=null;
+  SSTableReader ssTable=null;
   String lastkey=null;
   List<FileStruct> lfs=new ArrayList<FileStruct>();
   DataOutputBuffer bufOut=new DataOutputBuffer();
-  int expectedBloomFilterSize=SSTable.getApproximateKeyCount(files);
-  expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTable.indexInterval();
+  int expectedBloomFilterSize=SSTableReader.getApproximateKeyCount(files);
+  expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTableReader.indexInterval();
   if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
   List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
   while (pq.size() > 0 || lfs.size() > 0) {
@@ -64,11 +65,11 @@
         int size=filestruct.getBufIn().readInt();
         bufOut.write(filestruct.getBufIn(),size);
       }
-      if (ssTable == null) {
+      if (writer == null) {
         String fname=new File(compactionFileLocation,mergedFileName).getAbsolutePath();
-        ssTable=new SSTable(fname,expectedBloomFilterSize,StorageService.getPartitioner());
+        writer=new SSTableWriter(fname,expectedBloomFilterSize,StorageService.getPartitioner());
       }
-      ssTable.append(lastkey,bufOut);
+      writer.append(lastkey,bufOut);
       totalkeysWritten++;
       for (      FileStruct filestruct : lfs) {
         try {
@@ -91,9 +92,9 @@
       }
     }
   }
-  if (ssTable != null) {
-    ssTable.close();
-    newfile=ssTable.getFilename();
+  if (writer != null) {
+    ssTable=writer.closeAndOpenReader();
+    newfile=writer.getFilename();
   }
   lock_.writeLock().lock();
   try {
@@ -105,7 +106,7 @@
       totalBytesWritten+=(new File(newfile)).length();
     }
     for (    String file : files) {
-      SSTable.get(file).delete();
+      SSTableReader.get(file).delete();
     }
   }
   finally {

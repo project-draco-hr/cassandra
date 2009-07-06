@@ -1,7 +1,7 @@
 {
   logger_.info("Flushing " + this);
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
-  SSTable ssTable=new SSTable(cfStore.getTempSSTablePath(),columnFamilies_.size(),StorageService.getPartitioner());
+  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),columnFamilies_.size(),StorageService.getPartitioner());
   final IPartitioner partitioner=StorageService.getPartitioner();
   final Comparator<String> dc=partitioner.getDecoratedKeyComparator();
   ArrayList<String> orderedKeys=new ArrayList<String>(columnFamilies_.keySet());
@@ -17,10 +17,10 @@
     ColumnFamily columnFamily=columnFamilies_.get(key);
     if (columnFamily != null) {
       ColumnFamily.serializerWithIndexes().serialize(columnFamily,buffer);
-      ssTable.append(partitioner.decorateKey(key),buffer);
+      writer.append(partitioner.decorateKey(key),buffer);
     }
   }
-  ssTable.close();
+  SSTableReader ssTable=writer.closeAndOpenReader();
   cfStore.onMemtableFlush(cLogCtx);
   cfStore.storeLocation(ssTable);
   buffer.close();
