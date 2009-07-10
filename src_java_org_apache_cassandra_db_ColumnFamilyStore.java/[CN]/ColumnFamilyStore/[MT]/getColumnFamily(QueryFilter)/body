@@ -1,0 +1,50 @@
+{
+  sstableLock_.readLock().lock();
+  List<ColumnIterator> iterators=new ArrayList<ColumnIterator>();
+  try {
+    final ColumnFamily returnCF;
+    ColumnIterator iter;
+    memtableLock_.readLock().lock();
+    try {
+      iter=filter.getMemColumnIterator(memtable_);
+      returnCF=iter.getColumnFamily();
+    }
+  finally {
+      memtableLock_.readLock().unlock();
+    }
+    iterators.add(iter);
+    List<Memtable> memtables=getUnflushedMemtables(filter.getColumnFamilyName());
+    for (    Memtable memtable : memtables) {
+      iter=filter.getMemColumnIterator(memtable);
+      returnCF.delete(iter.getColumnFamily());
+      iterators.add(iter);
+    }
+    List<SSTableReader> sstables=new ArrayList<SSTableReader>(ssTables_.values());
+    for (    SSTableReader sstable : sstables) {
+      iter=filter.getSSTableColumnIterator(sstable);
+      if (iter.hasNext()) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
+      }
+ else {
+        iter.close();
+      }
+    }
+    Comparator<IColumn> comparator=filter.getColumnComparator();
+    Iterator collated=IteratorUtils.collatedIterator(comparator,iterators);
+    if (!collated.hasNext())     return ColumnFamily.create(table_,filter.getColumnFamilyName());
+    filter.collectColumns(returnCF,collated);
+    return removeDeleted(returnCF);
+  }
+  finally {
+    for (    ColumnIterator ci : iterators) {
+      try {
+        ci.close();
+      }
+ catch (      Throwable th) {
+        logger_.error(th);
+      }
+    }
+    sstableLock_.readLock().unlock();
+  }
+}
