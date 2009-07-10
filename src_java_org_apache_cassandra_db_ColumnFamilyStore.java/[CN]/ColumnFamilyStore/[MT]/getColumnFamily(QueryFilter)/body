@@ -3,8 +3,10 @@
   if (values.length > 1) {
     QueryFilter nameFilter=new NamesQueryFilter(filter.key,values[0],values[1]);
     ColumnFamily cf=getColumnFamily(nameFilter);
-    for (    IColumn column : cf.getAllColumns()) {
-      filter.filterSuperColumn((SuperColumn)column);
+    if (cf != null) {
+      for (      IColumn column : cf.getAllColumns()) {
+        filter.filterSuperColumn((SuperColumn)column);
+      }
     }
     return removeDeleted(cf);
   }
@@ -33,15 +35,12 @@
       iter=filter.getSSTableColumnIterator(sstable);
       if (iter.hasNext()) {
         returnCF.delete(iter.getColumnFamily());
-        iterators.add(iter);
       }
- else {
-        iter.close();
-      }
+      iterators.add(iter);
     }
     Comparator<IColumn> comparator=filter.getColumnComparator();
     Iterator collated=IteratorUtils.collatedIterator(comparator,iterators);
-    if (!collated.hasNext())     return ColumnFamily.create(table_,columnFamily_);
+    if (!collated.hasNext())     return null;
     filter.collectColumns(returnCF,collated);
     return removeDeleted(returnCF);
   }
