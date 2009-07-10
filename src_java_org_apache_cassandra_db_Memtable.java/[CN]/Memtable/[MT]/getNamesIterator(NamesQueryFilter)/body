@@ -1,0 +1,24 @@
+{
+  ColumnFamily cf=columnFamilies_.get(filter.key);
+  final ColumnFamily columnFamily=cf == null ? ColumnFamily.create(table_,filter.getColumnFamilyName()) : cf.cloneMeShallow();
+  final Map<String,IColumn> columnsContainer=cf == null ? null : cf.getColumns();
+  return new SimpleAbstractColumnIterator(){
+    private Iterator<String> iter=filter.columns.iterator();
+    private String current;
+    public ColumnFamily getColumnFamily(){
+      return columnFamily;
+    }
+    protected IColumn computeNext(){
+      if (columnsContainer == null) {
+        return endOfData();
+      }
+      while (iter.hasNext()) {
+        current=iter.next();
+        IColumn column=columnsContainer.get(current);
+        if (column != null)         return column;
+      }
+      return endOfData();
+    }
+  }
+;
+}

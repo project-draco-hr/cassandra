@@ -1,4 +1,13 @@
 {
+  String[] values=RowMutation.getColumnAndColumnFamily(filter.columnFamilyColumn);
+  if (values.length > 1) {
+    QueryFilter nameFilter=new NamesQueryFilter(filter.key,values[0],values[1]);
+    ColumnFamily cf=getColumnFamily(nameFilter);
+    for (    IColumn column : cf.getAllColumns()) {
+      filter.filterSuperColumn((SuperColumn)column);
+    }
+    return removeDeleted(cf);
+  }
   sstableLock_.readLock().lock();
   List<ColumnIterator> iterators=new ArrayList<ColumnIterator>();
   try {
@@ -32,7 +41,7 @@
     }
     Comparator<IColumn> comparator=filter.getColumnComparator();
     Iterator collated=IteratorUtils.collatedIterator(comparator,iterators);
-    if (!collated.hasNext())     return ColumnFamily.create(table_,filter.getColumnFamilyName());
+    if (!collated.hasNext())     return ColumnFamily.create(table_,columnFamily_);
     filter.collectColumns(returnCF,collated);
     return removeDeleted(returnCF);
   }
