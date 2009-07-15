@@ -1,5 +1,6 @@
 {
   final Table table=Table.open("Table1");
+  final ColumnFamilyStore cfStore=table.getColumnFamilyStore("Standard1");
   final String ROW="row2";
   Runner setup=new Runner(){
     public void run() throws Exception {
@@ -13,7 +14,7 @@
       cf.addColumn(new Column("col6","val6".getBytes(),1L));
       rm.add(cf);
       rm.apply();
-      table.getColumnFamilyStore("Standard1").forceBlockingFlush();
+      cfStore.forceBlockingFlush();
       rm=new RowMutation("Table1",ROW);
       cf=ColumnFamily.create("Table1","Standard1");
       cf.addColumn(new Column("col1","valx".getBytes(),2L));
@@ -26,14 +27,12 @@
 ;
   Runner verify=new Runner(){
     public void run() throws Exception {
-      Row result;
-      ColumnFamily cfres;
-      result=table.getRow(ROW,"Standard1","col2","",true,0,3);
-      cfres=result.getColumnFamily("Standard1");
-      assertColumns(cfres,"col2","col3","col4");
-      assertEquals(new String(cfres.getColumn("col2").value()),"valx");
-      assertEquals(new String(cfres.getColumn("col3").value()),"valx");
-      assertEquals(new String(cfres.getColumn("col4").value()),"val4");
+      ColumnFamily cf;
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col2","",true,0,3);
+      assertColumns(cf,"col2","col3","col4");
+      assertEquals(new String(cf.getColumn("col2").value()),"valx");
+      assertEquals(new String(cf.getColumn("col3").value()),"valx");
+      assertEquals(new String(cf.getColumn("col4").value()),"val4");
     }
   }
 ;

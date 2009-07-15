@@ -1,5 +1,6 @@
 {
   final Table table=Table.open("Table1");
+  final ColumnFamilyStore cfStore=table.getColumnFamilyStore("Standard1");
   final String ROW="row1";
   Runner setup=new Runner(){
     public void run() throws Exception {
@@ -14,7 +15,7 @@
       rm.add(cf);
       rm.apply();
       rm=new RowMutation("Table1",ROW);
-      rm.delete("Standard1:col4",2L);
+      rm.delete(new QueryPath("Standard1",null,"col4"),2L);
       rm.apply();
     }
   }
@@ -23,23 +24,17 @@
     public void run() throws Exception {
       Row result;
       ColumnFamily cf;
-      result=table.getRow(ROW,"Standard1","col5","",true,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col5","",true,0,2);
       assertColumns(cf,"col5","col7");
-      result=table.getRow(ROW,"Standard1","col4","",true,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col4","",true,0,2);
       assertColumns(cf,"col5","col7");
-      result=table.getRow(ROW,"Standard1","col5","",false,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col5","",false,0,2);
       assertColumns(cf,"col3","col4","col5");
-      result=table.getRow(ROW,"Standard1","col6","",false,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col6","",false,0,2);
       assertColumns(cf,"col3","col4","col5");
-      result=table.getRow(ROW,"Standard1","col95","",true,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col95","",true,0,2);
       assertColumns(cf);
-      result=table.getRow(ROW,"Standard1","col0","",false,0,2);
-      cf=result.getColumnFamily("Standard1");
+      cf=cfStore.getColumnFamily(ROW,new QueryPath("Standard1"),"col0","",false,0,2);
       assertColumns(cf);
     }
   }

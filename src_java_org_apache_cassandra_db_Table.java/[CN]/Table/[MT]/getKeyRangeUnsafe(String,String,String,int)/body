@@ -1,7 +1,7 @@
 {
   final Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
   List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
-  ColumnFamilyStore cfs=getColumnFamilyStore(columnFamily);
+  ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
   Predicate p=new Predicate(){
     public boolean evaluate(    Object key){
       String st=(String)key;
@@ -10,7 +10,7 @@
   }
 ;
   iterators.add(IteratorUtils.filteredIterator(cfs.memtableKeyIterator(),p));
-  for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(columnFamily)) {
+  for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(cfName)) {
     iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
   }
   for (  SSTableReader sstable : cfs.getSSTables()) {
@@ -35,7 +35,7 @@
       if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
         break;
       }
-      if (cfs.getColumnFamily(new SliceQueryFilter(current,columnFamily,"","",true,0,1)) != null) {
+      if (cfs.getColumnFamily(new SliceQueryFilter(current,new QueryPath(cfName),"","",true,0,1)) != null) {
         keys.add(current);
       }
       if (keys.size() >= maxResults) {

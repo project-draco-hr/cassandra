@@ -1,6 +1,7 @@
 {
   String key=TEST_KEY + "slicerow";
   Table table=Table.open("Table1");
+  ColumnFamilyStore cfStore=table.getColumnFamilyStore("Standard1");
   RowMutation rm=new RowMutation("Table1",key);
   ColumnFamily cf=ColumnFamily.create("Table1","Standard1");
   cf.addColumn(new Column("a","val1".getBytes(),1L));
@@ -8,12 +9,12 @@
   cf.addColumn(new Column("c","val3".getBytes(),1L));
   rm.add(cf);
   rm.apply();
-  Row result=table.getRow(key,"Standard1","b","c",true,0,100);
-  assertEquals(2,result.getColumnFamily("Standard1").getColumnCount());
-  result=table.getRow(key,"Standard1","b","b",true,0,100);
-  assertEquals(1,result.getColumnFamily("Standard1").getColumnCount());
-  result=table.getRow(key,"Standard1","b","c",true,0,1);
-  assertEquals(1,result.getColumnFamily("Standard1").getColumnCount());
-  result=table.getRow(key,"Standard1","c","b",true,0,1);
-  assertNull(result.getColumnFamily("Standard1"));
+  cf=cfStore.getColumnFamily(key,new QueryPath("Standard1"),"b","c",true,0,100);
+  assertEquals(2,cf.getColumnCount());
+  cf=cfStore.getColumnFamily(key,new QueryPath("Standard1"),"b","b",true,0,100);
+  assertEquals(1,cf.getColumnCount());
+  cf=cfStore.getColumnFamily(key,new QueryPath("Standard1"),"b","c",true,0,1);
+  assertEquals(1,cf.getColumnCount());
+  cf=cfStore.getColumnFamily(key,new QueryPath("Standard1"),"c","b",true,0,1);
+  assertNull(cf);
 }

@@ -9,20 +9,20 @@
   String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
   int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
   if (columnSpecCnt == 0) {
-    List<column_t> columns=new ArrayList<column_t>();
-    columns=thriftClient_.get_slice(tableName,key,columnFamily,"","",true,0,1000000);
+    List<Column> columns=new ArrayList<Column>();
+    columns=thriftClient_.get_slice(tableName,key,new ColumnParent(columnFamily,null),"","",true,0,1000000);
     int size=columns.size();
-    for (Iterator<column_t> colIter=columns.iterator(); colIter.hasNext(); ) {
-      column_t col=colIter.next();
-      css_.out.printf("  (column=%s, value=%s; timestamp=%d)\n",col.columnName,col.value,col.timestamp);
+    for (Iterator<Column> colIter=columns.iterator(); colIter.hasNext(); ) {
+      Column col=colIter.next();
+      css_.out.printf("  (column=%s, value=%s; timestamp=%d)\n",col.column_name,col.value,col.timestamp);
     }
     css_.out.println("Returned " + size + " rows.");
   }
  else   if (columnSpecCnt == 1) {
     String columnName=CliCompiler.getColumn(columnFamilySpec,0);
-    column_t col=new column_t();
-    col=thriftClient_.get_column(tableName,key,columnFamily + ":" + columnName);
-    css_.out.printf("==> (name=%s, value=%s; timestamp=%d)\n",col.columnName,col.value,col.timestamp);
+    Column col=new Column();
+    col=thriftClient_.get_column(tableName,key,new ColumnPath(columnFamily,null,columnName));
+    css_.out.printf("==> (name=%s, value=%s; timestamp=%d)\n",col.column_name,col.value,col.timestamp);
   }
  else {
     assert(false);
