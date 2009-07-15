@@ -1,17 +1,17 @@
 def test_super_cf_remove_supercolumn(self):
     _insert_simple()
     _insert_super()
-    client.remove('Table1', 'key1', 'Super1:sc2', 5, True)
-    _expect_missing((lambda : client.get_column('Table1', 'key1', 'Super1:sc2:c5')))
-    actual = client.get_columns_since('Table1', 'key1', 'Super1:sc2', (-1))
+    client.remove('Table1', 'key1', ColumnPathOrParent('Super1', 'sc2'), 5, True)
+    _expect_missing((lambda : client.get_column('Table1', 'key1', ColumnPath('Super1', 'sc2', 'c5'))))
+    actual = client.get_columns_since('Table1', 'key1', ColumnParent('Super1', 'sc2'), (-1))
     assert (actual == []), actual
-    scs = [superColumn_t(name='sc1', columns=[column_t(columnName='c4', value='value4', timestamp=0)])]
+    scs = [SuperColumn(name='sc1', columns=[Column('c4', 'value4', 0)])]
     actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 0, 1000)
     assert (actual == scs), actual
     _verify_simple()
-    client.insert('Table1', 'key1', 'Super1:sc2:c5', 'value5', 0, True)
+    client.insert('Table1', 'key1', ColumnPath('Super1', 'sc2', 'c5'), 'value5', 0, True)
     actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 0, 1000)
     assert (actual == scs), actual
-    client.insert('Table1', 'key1', 'Super1:sc2:c5', 'value5', 6, True)
+    client.insert('Table1', 'key1', ColumnPath('Super1', 'sc2', 'c5'), 'value5', 6, True)
     actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 0, 1000)
-    assert (actual == [superColumn_t(name='sc1', columns=[column_t(columnName='c4', value='value4', timestamp=0)]), superColumn_t(name='sc2', columns=[column_t(columnName='c5', value='value5', timestamp=6)])]), actual
+    assert (actual == [SuperColumn(name='sc1', columns=[Column('c4', 'value4', 0)]), SuperColumn(name='sc2', columns=[Column('c5', 'value5', 6)])]), actual
