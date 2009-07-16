@@ -1,13 +1,31 @@
 {
-  String[] directoryNames={DatabaseDescriptor.getBootstrapFileLocation(),DatabaseDescriptor.getLogFileLocation(),DatabaseDescriptor.getDataFileLocation()};
+  String[] directoryNames={DatabaseDescriptor.getBootstrapFileLocation(),DatabaseDescriptor.getLogFileLocation()};
   for (  String dirName : directoryNames) {
     File dir=new File(dirName);
     if (!dir.exists()) {
       throw new RuntimeException("No such directory: " + dir.getAbsolutePath());
     }
     for (    File f : dir.listFiles()) {
-      logger.debug("deleting " + f);
-      f.delete();
+      if (logger.isDebugEnabled())       logger.debug("deleting " + f);
+      if (!f.delete()) {
+        logger.error("could not delete " + f);
+      }
+    }
+  }
+  for (  String dirName : DatabaseDescriptor.getAllDataFileLocations()) {
+    File dir=new File(dirName);
+    if (!dir.exists()) {
+      throw new RuntimeException("No such directory: " + dir.getAbsolutePath());
+    }
+    for (    File tableFile : dir.listFiles()) {
+      if (tableFile.isDirectory()) {
+        for (        File dataFile : tableFile.listFiles()) {
+          if (logger.isDebugEnabled())           logger.debug("deleting " + dataFile);
+          if (!dataFile.delete()) {
+            logger.error("could not delete " + dataFile);
+          }
+        }
+      }
     }
   }
 }
