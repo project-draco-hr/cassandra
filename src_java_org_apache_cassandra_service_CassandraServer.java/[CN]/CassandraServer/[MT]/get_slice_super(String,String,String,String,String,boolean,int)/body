@@ -1,0 +1,11 @@
+{
+  logger.debug("get_slice_super");
+  if (!DatabaseDescriptor.getColumnFamilyType(table,column_family).equals("Super"))   throw new InvalidRequestException("get_slice_super requires a super CF name");
+  if (count <= 0)   throw new InvalidRequestException("get_slice_super requires positive count");
+  ColumnFamily cfamily=readColumnFamily(new SliceFromReadCommand(table,key,new QueryPath(column_family),start,finish,is_ascending,count));
+  if (cfamily == null) {
+    return EMPTY_SUPERCOLUMNS;
+  }
+  Collection<IColumn> columns=cfamily.getAllColumns();
+  return thriftifySuperColumns(columns);
+}
