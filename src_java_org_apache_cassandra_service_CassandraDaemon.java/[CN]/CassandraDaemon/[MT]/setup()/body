@@ -1,5 +1,7 @@
 {
   int listenPort=DatabaseDescriptor.getThriftPort();
+  String listenAddr=DatabaseDescriptor.getThriftAddress();
+  if (listenAddr == null)   listenAddr=FBUtilities.getHostAddress();
   Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
     public void uncaughtException(    Thread t,    Throwable e){
       logger.error("Fatal exception in thread " + t,e);
@@ -20,7 +22,8 @@
   CassandraServer peerStorageServer=new CassandraServer();
   peerStorageServer.start();
   Cassandra.Processor processor=new Cassandra.Processor(peerStorageServer);
-  TServerSocket tServerSocket=new TServerSocket(new InetSocketAddress(FBUtilities.getHostAddress(),listenPort));
+  TServerSocket tServerSocket=new TServerSocket(new InetSocketAddress(listenAddr,listenPort));
+  if (logger.isDebugEnabled())   logger.debug(String.format("Binding thrift service to %s:%s",listenAddr,listenPort));
   TProtocolFactory tProtocolFactory=new TBinaryProtocol.Factory();
   TThreadPoolServer.Options options=new TThreadPoolServer.Options();
   options.minWorkerThreads=64;
