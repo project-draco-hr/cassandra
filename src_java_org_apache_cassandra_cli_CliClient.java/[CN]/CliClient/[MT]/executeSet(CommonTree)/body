@@ -11,7 +11,12 @@
   String value=Utils.unescapeSQLString(ast.getChild(1).getText());
   if (columnSpecCnt == 1) {
     String columnName=CliCompiler.getColumn(columnFamilySpec,0);
-    thriftClient_.insert(tableName,key,new ColumnPath(columnFamily,null,columnName),value.getBytes(),System.currentTimeMillis(),1);
+    try {
+      thriftClient_.insert(tableName,key,new ColumnPath(columnFamily,null,columnName.getBytes("UTF-8")),value.getBytes(),System.currentTimeMillis(),1);
+    }
+ catch (    UnsupportedEncodingException e) {
+      throw new RuntimeException(e);
+    }
     css_.out.println("Value inserted.");
   }
  else {

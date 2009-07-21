@@ -1,0 +1,25 @@
+{
+  ColumnFamily cf=columnFamilies_.get(filter.key);
+  final ColumnFamily columnFamily=cf == null ? ColumnFamily.create(table_,filter.getColumnFamilyName()) : cf.cloneMeShallow();
+  final IColumn columns[]=(cf == null ? columnFamily : cf).getSortedColumns().toArray(new IColumn[columnFamily.getSortedColumns().size()]);
+  if (!filter.isAscending)   ArrayUtils.reverse(columns);
+  IColumn startIColumn;
+  if (DatabaseDescriptor.getColumnFamilyType(table_,filter.getColumnFamilyName()).equals("Standard"))   startIColumn=new Column(filter.start);
+ else   startIColumn=new SuperColumn(filter.start);
+  Comparator<IColumn> comparator=filter.getColumnComparator(typeComparator);
+  int index=Arrays.binarySearch(columns,startIColumn,comparator);
+  final int startIndex=index < 0 ? -(index + 1) : index;
+  return new AbstractColumnIterator(){
+    private int curIndex_=startIndex;
+    public ColumnFamily getColumnFamily(){
+      return columnFamily;
+    }
+    public boolean hasNext(){
+      return curIndex_ < columns.length;
+    }
+    public IColumn next(){
+      return columns[curIndex_++];
+    }
+  }
+;
+}
