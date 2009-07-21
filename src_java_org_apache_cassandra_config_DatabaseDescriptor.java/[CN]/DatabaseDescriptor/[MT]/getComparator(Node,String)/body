@@ -1,0 +1,17 @@
+{
+  Class<? extends AbstractType> typeClass;
+  String compareWith=XMLUtils.getAttributeValue(columnFamily,attr);
+  if (compareWith == null) {
+    typeClass=AsciiType.class;
+  }
+ else {
+    String className=compareWith.contains(".") ? compareWith : "org.apache.cassandra.db.marshal." + compareWith;
+    try {
+      typeClass=(Class<? extends AbstractType>)Class.forName(className);
+    }
+ catch (    ClassNotFoundException e) {
+      throw new ConfigurationException("Unable to load class " + className + " for "+ attr+ " attribute");
+    }
+  }
+  return typeClass.getConstructor().newInstance();
+}
