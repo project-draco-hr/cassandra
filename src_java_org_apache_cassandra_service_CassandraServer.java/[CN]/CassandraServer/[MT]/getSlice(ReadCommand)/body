@@ -1,11 +1,13 @@
 {
   ColumnFamily cfamily=readColumnFamily(command);
+  boolean reverseOrder=false;
+  if (command instanceof SliceFromReadCommand)   reverseOrder=!((SliceFromReadCommand)command).isAscending;
   if (cfamily == null || cfamily.getColumnsMap().size() == 0) {
     return EMPTY_COLUMNS;
   }
   if (cfamily.isSuper()) {
     IColumn column=cfamily.getColumnsMap().values().iterator().next();
-    return thriftifyColumns(column.getSubColumns());
+    return thriftifyColumns(column.getSubColumns(),reverseOrder);
   }
-  return thriftifyColumns(cfamily.getSortedColumns());
+  return thriftifyColumns(cfamily.getSortedColumns(),reverseOrder);
 }
