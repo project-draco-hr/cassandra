@@ -1,0 +1,24 @@
+{
+  String osname=System.getProperty("os.name");
+  ProcessBuilder pb;
+  if (osname.startsWith("Windows")) {
+    float osversion=Float.parseFloat(System.getProperty("os.version"));
+    if (osversion >= 6.0f) {
+      pb=new ProcessBuilder("cmd","/c","mklink","/H",destinationFile.getAbsolutePath(),sourceFile.getAbsolutePath());
+    }
+ else {
+      pb=new ProcessBuilder("fsutil","hardlink","create",destinationFile.getAbsolutePath(),sourceFile.getAbsolutePath());
+    }
+  }
+ else {
+    pb=new ProcessBuilder("ln",sourceFile.getAbsolutePath(),destinationFile.getAbsolutePath());
+    pb.redirectErrorStream(true);
+  }
+  Process p=pb.start();
+  try {
+    p.waitFor();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+}
