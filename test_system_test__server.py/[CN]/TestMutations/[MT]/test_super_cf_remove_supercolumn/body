@@ -2,16 +2,16 @@ def test_super_cf_remove_supercolumn(self):
     _insert_simple()
     _insert_super()
     client.remove('Table1', 'key1', ColumnPathOrParent('Super1', 'sc2'), 5, ConsistencyLevel.ONE)
-    _expect_missing((lambda : client.get_column('Table1', 'key1', ColumnPath('Super1', 'sc2', _i64(5)))))
-    actual = client.get_slice('Table1', 'key1', ColumnParent('Super1', 'sc2'), '', '', True, 1000)
+    _expect_missing((lambda : client.get_column('Table1', 'key1', ColumnPath('Super1', 'sc2', _i64(5)), ConsistencyLevel.ONE)))
+    actual = client.get_slice('Table1', 'key1', ColumnParent('Super1', 'sc2'), '', '', True, 1000, ConsistencyLevel.ONE)
     assert (actual == []), actual
     scs = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)])]
-    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000)
+    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000, ConsistencyLevel.ONE)
     assert (actual == scs), actual
     _verify_simple()
     client.insert('Table1', 'key1', ColumnPath('Super1', 'sc2', _i64(5)), 'value5', 0, ConsistencyLevel.ONE)
-    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000)
+    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000, ConsistencyLevel.ONE)
     assert (actual == scs), actual
     client.insert('Table1', 'key1', ColumnPath('Super1', 'sc2', _i64(5)), 'value5', 6, ConsistencyLevel.ONE)
-    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000)
+    actual = client.get_slice_super('Table1', 'key1', 'Super1', '', '', True, 1000, ConsistencyLevel.ONE)
     assert (actual == [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)]), SuperColumn(name='sc2', columns=[Column(_i64(5), 'value5', 6)])]), actual
