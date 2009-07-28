@@ -1,0 +1,36 @@
+{
+  while (queue.isEmpty()) {
+    try {
+      Thread.sleep(1);
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  incompleteTasks.clear();
+  taskValues.clear();
+  while (!queue.isEmpty() && queue.peek().getRawCallable() instanceof CommitLog.LogRecordAdder && incompleteTasks.size() < 20) {
+    CheaterFutureTask task=queue.remove();
+    incompleteTasks.add(task);
+    try {
+      taskValues.add(task.getRawCallable().call());
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+  if (incompleteTasks.size() == 0) {
+    queue.remove().run();
+  }
+ else {
+    try {
+      CommitLog.open().sync();
+    }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+    for (int i=0; i < incompleteTasks.size(); i++) {
+      incompleteTasks.get(i).set(taskValues.get(i));
+    }
+  }
+}

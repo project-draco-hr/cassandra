@@ -1,0 +1,18 @@
+{
+  long currentPosition=-1L;
+  DataOutputBuffer cfBuffer=new DataOutputBuffer();
+  try {
+    Row.serializer().serialize(row,cfBuffer);
+    currentPosition=logWriter_.getCurrentPosition();
+    CommitLogContext cLogCtx=new CommitLogContext(logFile_,currentPosition);
+    maybeUpdateHeader(row);
+    logWriter_.writeLong(cfBuffer.getLength());
+    logWriter_.append(cfBuffer);
+    maybeRollLog();
+    return cLogCtx;
+  }
+ catch (  IOException e) {
+    if (currentPosition != -1)     logWriter_.seek(currentPosition);
+    throw e;
+  }
+}
