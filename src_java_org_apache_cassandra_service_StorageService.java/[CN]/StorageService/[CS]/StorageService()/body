@@ -16,11 +16,9 @@
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.bsMetadataVerbHandler_,new BootstrapMetadataVerbHandler());
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.calloutDeployVerbHandler_,new CalloutDeployVerbHandler());
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.rangeVerbHandler_,new RangeVerbHandler());
-  int threadCount=DatabaseDescriptor.getThreadsPerPool();
-  consistencyManager_=new DebuggableThreadPoolExecutor(threadCount,threadCount,Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("CONSISTENCY-MANAGER"));
-  StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,threadCount));
-  StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,2 * threadCount));
-  StageManager.registerStage(StorageService.mrStage_,new MultiThreadedStage(StorageService.mrStage_,threadCount));
+  consistencyManager_=new DebuggableThreadPoolExecutor(DatabaseDescriptor.getConsistencyThreads(),DatabaseDescriptor.getConsistencyThreads(),Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("CONSISTENCY-MANAGER"));
+  StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,DatabaseDescriptor.getConcurrentWriters()));
+  StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,DatabaseDescriptor.getConcurrentReaders()));
   if (DatabaseDescriptor.isRackAware())   nodePicker_=new RackAwareStrategy(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
  else   nodePicker_=new RackUnawareStrategy(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
 }
