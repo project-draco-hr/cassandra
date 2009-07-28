@@ -1,16 +1,21 @@
 {
-  queue=new ConcurrentLinkedQueue<CheaterFutureTask>();
+  queue=new ArrayBlockingQueue<CheaterFutureTask>(10000);
   Runnable runnable=new Runnable(){
     public void run(){
-      if (DatabaseDescriptor.isCommitLogSyncEnabled()) {
-        while (true) {
-          processWithSyncDelay();
+      try {
+        if (DatabaseDescriptor.isCommitLogSyncEnabled()) {
+          while (true) {
+            processWithSyncDelay();
+          }
+        }
+ else {
+          while (true) {
+            process();
+          }
         }
       }
- else {
-        while (true) {
-          process();
-        }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
       }
     }
   }

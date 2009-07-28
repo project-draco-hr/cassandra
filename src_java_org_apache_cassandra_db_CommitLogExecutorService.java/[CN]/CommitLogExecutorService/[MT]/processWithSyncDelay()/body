@@ -1,37 +1,26 @@
 {
-  while (queue.isEmpty()) {
-    try {
-      Thread.sleep(1);
-    }
- catch (    InterruptedException e) {
-      throw new RuntimeException(e);
-    }
+  CheaterFutureTask firstTask=queue.take();
+  if (!(firstTask.getRawCallable() instanceof CommitLog.LogRecordAdder)) {
+    firstTask.run();
+    return;
   }
   incompleteTasks.clear();
   taskValues.clear();
   long end=System.nanoTime() + 1000 * DatabaseDescriptor.getCommitLogSyncDelay();
-  while (!queue.isEmpty() && queue.peek().getRawCallable() instanceof CommitLog.LogRecordAdder && (incompleteTasks.isEmpty() || System.nanoTime() < end)) {
+  incompleteTasks.add(firstTask);
+  taskValues.add(firstTask.getRawCallable().call());
+  while (!queue.isEmpty() && queue.peek().getRawCallable() instanceof CommitLog.LogRecordAdder && System.nanoTime() < end) {
     CheaterFutureTask task=queue.remove();
     incompleteTasks.add(task);
-    try {
-      taskValues.add(task.getRawCallable().call());
-    }
- catch (    Exception e) {
-      throw new RuntimeException(e);
-    }
+    taskValues.add(task.getRawCallable().call());
   }
-  if (incompleteTasks.size() == 0) {
-    queue.remove().run();
+  try {
+    CommitLog.open().sync();
   }
- else {
-    try {
-      CommitLog.open().sync();
-    }
- catch (    IOException e) {
-      throw new RuntimeException(e);
-    }
-    for (int i=0; i < incompleteTasks.size(); i++) {
-      incompleteTasks.get(i).set(taskValues.get(i));
-    }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  for (int i=0; i < incompleteTasks.size(); i++) {
+    incompleteTasks.get(i).set(taskValues.get(i));
   }
 }
