@@ -8,8 +8,14 @@
  else     reader.seek(lowPos);
     Set<Table> tablesRecovered=new HashSet<Table>();
     while (!reader.isEOF()) {
-      byte[] bytes=new byte[(int)reader.readLong()];
-      reader.readDirect(bytes);
+      byte[] bytes;
+      try {
+        bytes=new byte[(int)reader.readLong()];
+        reader.readDirect(bytes);
+      }
+ catch (      EOFException e) {
+        break;
+      }
       bufIn.reset(bytes,bytes.length);
       Row row=Row.serializer().deserialize(bufIn);
       Table table=Table.open(row.getTable());
