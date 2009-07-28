@@ -1,21 +1,34 @@
 {
-  long currentPosition=-1L;
-  CommitLogContext cLogCtx=null;
-  DataOutputBuffer cfBuffer=new DataOutputBuffer();
-  try {
-    Row.serializer().serialize(row,cfBuffer);
-    currentPosition=logWriter_.getCurrentPosition();
-    cLogCtx=new CommitLogContext(logFile_,currentPosition);
-    maybeUpdateHeader(row);
-    logWriter_.writeLong(cfBuffer.getLength());
-    logWriter_.append(cfBuffer);
-    if (!maybeRollLog()) {
-      logWriter_.sync();
+  Callable<CommitLogContext> task=new Callable<CommitLogContext>(){
+    public CommitLogContext call() throws Exception {
+      long currentPosition=-1L;
+      DataOutputBuffer cfBuffer=new DataOutputBuffer();
+      try {
+        Row.serializer().serialize(row,cfBuffer);
+        currentPosition=logWriter_.getCurrentPosition();
+        CommitLogContext cLogCtx=new CommitLogContext(logFile_,currentPosition);
+        maybeUpdateHeader(row);
+        logWriter_.writeLong(cfBuffer.getLength());
+        logWriter_.append(cfBuffer);
+        if (!maybeRollLog()) {
+          logWriter_.sync();
+        }
+        return cLogCtx;
+      }
+ catch (      IOException e) {
+        if (currentPosition != -1)         logWriter_.seek(currentPosition);
+        throw e;
+      }
     }
   }
- catch (  IOException e) {
-    if (currentPosition != -1)     logWriter_.seek(currentPosition);
-    throw e;
+;
+  try {
+    return executor.submit(task).get();
   }
-  return cLogCtx;
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
 }
