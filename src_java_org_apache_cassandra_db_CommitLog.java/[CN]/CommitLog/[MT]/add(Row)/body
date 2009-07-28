@@ -3,21 +3,19 @@
   CommitLogContext cLogCtx=null;
   DataOutputBuffer cfBuffer=new DataOutputBuffer();
   try {
-    cfBuffer.reset();
     Row.serializer().serialize(row,cfBuffer);
     currentPosition=logWriter_.getCurrentPosition();
     cLogCtx=new CommitLogContext(logFile_,currentPosition);
     maybeUpdateHeader(row);
     logWriter_.writeLong(cfBuffer.getLength());
     logWriter_.append(cfBuffer);
-    checkThresholdAndRollLog();
+    if (!maybeRollLog()) {
+      logWriter_.sync();
+    }
   }
  catch (  IOException e) {
     if (currentPosition != -1)     logWriter_.seek(currentPosition);
     throw e;
-  }
- finally {
-    cfBuffer.close();
   }
   return cLogCtx;
 }
