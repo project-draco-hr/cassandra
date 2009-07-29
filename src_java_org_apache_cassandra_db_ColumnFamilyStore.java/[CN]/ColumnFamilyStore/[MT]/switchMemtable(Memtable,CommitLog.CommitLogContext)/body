@@ -1,8 +1,13 @@
 {
   memtableLock_.writeLock().lock();
   try {
+    if (oldMemtable.isFrozen()) {
+      return;
+    }
     logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable");
-    getMemtablesPendingFlushNotNull(columnFamily_).add(memtable_);
+    oldMemtable.freeze();
+    getMemtablesPendingFlushNotNull(columnFamily_).add(oldMemtable);
+    submitFlush(oldMemtable,ctx);
     memtable_=new Memtable(table_,columnFamily_);
   }
   finally {
