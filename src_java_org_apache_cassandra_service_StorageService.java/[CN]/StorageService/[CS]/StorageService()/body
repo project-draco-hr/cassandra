@@ -1,7 +1,7 @@
 {
   init();
   storageLoadBalancer_=new StorageLoadBalancer(this);
-  endPointSnitch_=DatabaseDescriptor.getEndPointSnitch();
+  endPointSnitch_=new EndPointSnitch();
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.tokenVerbHandler_,new TokenUpdateVerbHandler());
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.binaryVerbHandler_,new BinaryVerbHandler());
   MessagingService.getMessagingInstance().registerVerbHandlers(StorageService.loadVerbHandler_,new LoadVerbHandler());
@@ -19,13 +19,6 @@
   consistencyManager_=new DebuggableThreadPoolExecutor(DatabaseDescriptor.getConsistencyThreads(),DatabaseDescriptor.getConsistencyThreads(),Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new ThreadFactoryImpl("CONSISTENCY-MANAGER"));
   StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,DatabaseDescriptor.getConcurrentWriters()));
   StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,DatabaseDescriptor.getConcurrentReaders()));
-  Class cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();
-  Class[] parameterTypes=new Class[]{TokenMetadata.class,IPartitioner.class,int.class,int.class};
-  try {
-    nodePicker_=(IReplicaPlacementStrategy)cls.getConstructor(parameterTypes).newInstance(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
-  }
- catch (  Exception e) {
-    throw new RuntimeException(e);
-  }
-  partitioner_=DatabaseDescriptor.getPartitioner();
+  if (DatabaseDescriptor.isRackAware())   nodePicker_=new RackAwareStrategy(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
+ else   nodePicker_=new RackUnawareStrategy(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
 }
