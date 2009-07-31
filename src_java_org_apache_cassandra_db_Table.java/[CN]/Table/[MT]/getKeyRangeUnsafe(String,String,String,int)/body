@@ -31,8 +31,10 @@
 ;
   try {
     List<String> keys=new ArrayList<String>();
+    boolean rangeCompletedLocally=false;
     for (    String current : reduced) {
       if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
+        rangeCompletedLocally=true;
         break;
       }
       QueryFilter filter=new SliceQueryFilter(current,new QueryPath(cfName),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,true,1);
@@ -40,10 +42,11 @@
         keys.add(current);
       }
       if (keys.size() >= maxResults) {
+        rangeCompletedLocally=true;
         break;
       }
     }
-    return keys;
+    return new RangeReply(keys,rangeCompletedLocally);
   }
   finally {
     for (    Iterator iter : iterators) {
