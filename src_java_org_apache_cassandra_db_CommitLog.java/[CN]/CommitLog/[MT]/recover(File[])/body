@@ -1,17 +1,17 @@
 {
   DataInputBuffer bufIn=new DataInputBuffer();
   for (  File file : clogs) {
-    IFileReader reader=SequenceFile.reader(file.getAbsolutePath());
+    BufferedRandomAccessFile reader=new BufferedRandomAccessFile(file.getAbsolutePath(),"r");
     CommitLogHeader clHeader=readCommitLogHeader(reader);
     int lowPos=CommitLogHeader.getLowestPosition(clHeader);
     if (lowPos == 0)     break;
  else     reader.seek(lowPos);
     Set<Table> tablesRecovered=new HashSet<Table>();
-    while (!reader.isEOF()) {
+    while (reader.getFilePointer() < reader.length()) {
       byte[] bytes;
       try {
         bytes=new byte[(int)reader.readLong()];
-        reader.readDirect(bytes);
+        reader.read(bytes);
       }
  catch (      EOFException e) {
         break;
@@ -27,7 +27,9 @@
           continue;
         }
         int id=table.getColumnFamilyId(columnFamily.name());
-        if (!clHeader.isDirty(id) || reader.getCurrentPosition() < clHeader.getPosition(id))         row.removeColumnFamily(columnFamily);
+        if (!clHeader.isDirty(id) || reader.getFilePointer() < clHeader.getPosition(id)) {
+          row.removeColumnFamily(columnFamily);
+        }
       }
       if (!row.isEmpty()) {
         table.applyNow(row);
