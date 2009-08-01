@@ -4,25 +4,12 @@
     int bufferSize=Math.min((ColumnFamilyStore.COMPACTION_MEMORY_THRESHOLD / files.size()),minBufferSize);
     FileStruct fs=null;
     for (    String file : files) {
-      try {
-        fs=SSTableReader.get(file).getFileStruct();
-        fs.advance();
-        if (fs.isExhausted()) {
-          continue;
-        }
-        pq.add(fs);
+      fs=SSTableReader.get(file).getFileStruct();
+      fs.advance(true);
+      if (fs.isExhausted()) {
+        continue;
       }
- catch (      Exception ex) {
-        logger_.warn("corrupt file?  or are you just blowing away data files manually out from under me?",ex);
-        try {
-          if (fs != null) {
-            fs.close();
-          }
-        }
- catch (        Exception e) {
-          logger_.error("Unable to close file :" + file);
-        }
-      }
+      pq.add(fs);
     }
   }
   return pq;

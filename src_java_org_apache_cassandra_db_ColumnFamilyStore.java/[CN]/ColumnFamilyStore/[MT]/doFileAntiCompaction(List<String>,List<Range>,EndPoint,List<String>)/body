@@ -12,7 +12,7 @@
   expectedRangeFileSize=expectedRangeFileSize / 2;
   rangeFileLocation=DatabaseDescriptor.getDataFileLocationForTable(table_,expectedRangeFileSize);
   if (rangeFileLocation == null) {
-    logger_.warn("Total bytes to be written for range compaction  ..." + expectedRangeFileSize + "   is greater than the safe limit of the disk space available.");
+    logger_.error("Total bytes to be written for range compaction  ..." + expectedRangeFileSize + "   is greater than the safe limit of the disk space available.");
     return result;
   }
   PriorityQueue<FileStruct> pq=initializePriorityQueue(files,ranges,ColumnFamilyStore.BUFSIZE);
@@ -43,17 +43,10 @@
       bufOut.reset();
       if (lfs.size() > 1) {
         for (        FileStruct filestruct : lfs) {
-          try {
-            filestruct.getBufIn().readInt();
-            IndexHelper.skipBloomFilterAndIndex(filestruct.getBufIn());
-            if (columnFamilies.size() > 1) {
-              merge(columnFamilies);
-            }
-            columnFamilies.add(ColumnFamily.serializer().deserialize(filestruct.getBufIn()));
+          if (columnFamilies.size() > 1) {
+            merge(columnFamilies);
           }
- catch (          Exception ex) {
-            logger_.warn(LogUtil.throwableToString(ex));
-          }
+          columnFamilies.add(filestruct.getColumnFamily());
         }
         columnFamily=resolveAndRemoveDeleted(columnFamilies);
         columnFamilies.clear();
@@ -63,8 +56,7 @@
       }
  else {
         FileStruct filestruct=lfs.get(0);
-        int size=filestruct.getBufIn().readInt();
-        bufOut.write(filestruct.getBufIn(),size);
+        ColumnFamily.serializerWithIndexes().serialize(filestruct.getColumnFamily(),bufOut);
       }
       if (Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(lastkey),ranges)) {
         if (rangeWriter == null) {
@@ -75,35 +67,24 @@
           String fname=new File(rangeFileLocation,mergedFileName).getAbsolutePath();
           rangeWriter=new SSTableWriter(fname,expectedBloomFilterSize,StorageService.getPartitioner());
         }
-        try {
-          rangeWriter.append(lastkey,bufOut);
-        }
- catch (        Exception ex) {
-          logger_.warn(LogUtil.throwableToString(ex));
-        }
+        rangeWriter.append(lastkey,bufOut);
       }
       totalkeysWritten++;
       for (      FileStruct filestruct : lfs) {
-        try {
-          filestruct.advance();
+        filestruct.advance(true);
+        if (filestruct.isExhausted()) {
+          continue;
+        }
+        while (!Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(filestruct.getKey()),ranges)) {
+          filestruct.advance(true);
           if (filestruct.isExhausted()) {
-            continue;
+            break;
           }
-          while (!Range.isTokenInRanges(StorageService.getPartitioner().getInitialToken(filestruct.getKey()),ranges)) {
-            filestruct.advance();
-            if (filestruct.isExhausted()) {
-              break;
-            }
-          }
-          if (!filestruct.isExhausted()) {
-            pq.add(filestruct);
-          }
-          totalkeysRead++;
         }
- catch (        Exception ex) {
-          logger_.warn("corrupt sstable?",ex);
-          filestruct.close();
+        if (!filestruct.isExhausted()) {
+          pq.add(filestruct);
         }
+        totalkeysRead++;
       }
       lfs.clear();
       lastkey=null;
