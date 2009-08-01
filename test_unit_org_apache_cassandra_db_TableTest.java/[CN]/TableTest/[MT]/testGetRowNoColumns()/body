@@ -1,0 +1,22 @@
+{
+  final Table table=Table.open("Keyspace2");
+  final ColumnFamilyStore cfStore=table.getColumnFamilyStore("Standard3");
+  Runner setup=new Runner(){
+    public void run() throws Exception {
+      RowMutation rm=makeSimpleRowMutation();
+      rm.apply();
+    }
+  }
+;
+  Runner verify=new Runner(){
+    public void run() throws Exception {
+      ColumnFamily cf;
+      cf=cfStore.getColumnFamily(new NamesQueryFilter(TEST_KEY,new QueryPath("Standard3"),new TreeSet<byte[]>()));
+      assertColumns(cf);
+      cf=cfStore.getColumnFamily(new SliceQueryFilter(TEST_KEY,new QueryPath("Standard3"),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,true,0));
+      assertColumns(cf);
+    }
+  }
+;
+  reTest(setup,table.getColumnFamilyStore("Standard3"),verify);
+}
