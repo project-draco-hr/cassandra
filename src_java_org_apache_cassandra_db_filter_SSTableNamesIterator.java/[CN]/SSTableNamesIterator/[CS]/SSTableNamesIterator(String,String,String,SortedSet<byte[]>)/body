@@ -1,7 +1,28 @@
 {
   this.columns=columns;
   SSTableReader ssTable=SSTableReader.open(filename);
-  DataInputBuffer buffer=ssTable.next(key,cfName,columns);
+  IFileReader dataReader=null;
+  DataOutputBuffer bufOut=new DataOutputBuffer();
+  DataInputBuffer bufIn=new DataInputBuffer();
+  try {
+    dataReader=SequenceFile.bufferedReader(ssTable.getFilename(),64 * 1024);
+    String decoratedKey=ssTable.getPartitioner().decorateKey(key);
+    long position=ssTable.getPosition(decoratedKey,ssTable.getPartitioner());
+    long bytesRead=dataReader.next(decoratedKey,bufOut,cfName,columns,position);
+    if (bytesRead != -1L) {
+      if (bufOut.getLength() > 0) {
+        bufIn.reset(bufOut.getData(),bufOut.getLength());
+        bufIn.readUTF();
+        bufIn.readInt();
+      }
+    }
+  }
+  finally {
+    if (dataReader != null) {
+      dataReader.close();
+    }
+  }
+  DataInputBuffer buffer=bufIn;
   if (buffer.getLength() > 0) {
     cf=ColumnFamily.serializer().deserialize(buffer);
     iter=cf.getSortedColumns().iterator();
