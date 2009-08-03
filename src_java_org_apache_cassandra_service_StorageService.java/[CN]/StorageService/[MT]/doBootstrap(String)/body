@@ -1,28 +1,13 @@
 {
-  String[] allNodesAndFilter=nodes.split("-");
-  String nodesToLoad;
-  String filterSources=null;
-  if (allNodesAndFilter.length == 2) {
-    nodesToLoad=allNodesAndFilter[0];
-    filterSources=allNodesAndFilter[1];
-  }
- else {
-    nodesToLoad=allNodesAndFilter[0];
-  }
-  String[] allNodes=nodesToLoad.split(":");
+  String[] allNodes=nodes.split(":");
   EndPoint[] endpoints=new EndPoint[allNodes.length];
   Token[] tokens=new Token[allNodes.length];
   for (int i=0; i < allNodes.length; ++i) {
-    endpoints[i]=new EndPoint(allNodes[i].trim(),DatabaseDescriptor.getStoragePort());
+    String host=allNodes[i].trim();
+    InetAddress ip=InetAddress.getByName(host);
+    host=ip.getHostAddress();
+    endpoints[i]=new EndPoint(host,DatabaseDescriptor.getStoragePort());
     tokens[i]=tokenMetadata_.getToken(endpoints[i]);
   }
-  if (filterSources == null)   bootStrapper_.submit(new BootStrapper(endpoints,tokens));
- else {
-    String[] allFilters=filterSources.split(":");
-    EndPoint[] filters=new EndPoint[allFilters.length];
-    for (int i=0; i < allFilters.length; ++i) {
-      filters[i]=new EndPoint(allFilters[i].trim(),DatabaseDescriptor.getStoragePort());
-    }
-    bootStrapper_.submit(new BootStrapper(endpoints,tokens,filters));
-  }
+  bootStrapper_.submit(new BootStrapper(endpoints,tokens));
 }

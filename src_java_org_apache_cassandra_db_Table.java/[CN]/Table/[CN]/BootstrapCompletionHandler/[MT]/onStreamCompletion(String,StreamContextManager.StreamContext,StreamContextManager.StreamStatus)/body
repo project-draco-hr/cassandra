@@ -1,15 +1,18 @@
 {
   if (streamContext.getTargetFile().contains("-Data.db")) {
+    String tableName=streamContext.getTable();
     File file=new File(streamContext.getTargetFile());
     String fileName=file.getName();
-    String[] temp=null;
-    String tableName;
-    temp=fileName.split("-");
-    tableName=temp[0];
-    SSTableReader sstable=SSTableReader.open(streamContext.getTargetFile());
-    if (logger_.isDebugEnabled())     logger_.debug("Merging the counting bloom filter in the sampler ...");
-    String[] peices=FBUtilities.strip(fileName,"-");
-    Table.open(peices[0]).getColumnFamilyStore(peices[1]).addToList(sstable);
+    String[] temp=fileName.split("-");
+    SSTableReader sstable=null;
+    try {
+      sstable=SSTableReader.open(streamContext.getTargetFile());
+      Table.open(tableName).getColumnFamilyStore(temp[0]).addToList(sstable);
+      logger_.info("Bootstrap added " + sstable.getFilename());
+    }
+ catch (    IOException e) {
+      logger_.error("Not able to bootstrap with file " + streamContext.getTargetFile(),e);
+    }
   }
   EndPoint to=new EndPoint(host,DatabaseDescriptor.getStoragePort());
   if (logger_.isDebugEnabled())   logger_.debug("Sending a bootstrap terminate message with " + streamStatus + " to "+ to);
