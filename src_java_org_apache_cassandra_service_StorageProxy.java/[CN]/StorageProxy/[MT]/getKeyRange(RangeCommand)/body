@@ -3,35 +3,36 @@
   int endpointOffset=0;
   List<String> allKeys=new ArrayList<String>();
   int maxResults=command.maxResults;
-  try {
-    EndPoint endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,endpointOffset);
-    String firstEndpoint=endPoint.toString();
-    do {
-      IAsyncResult iar=MessagingService.getMessagingInstance().sendRR(command.getMessage(),endPoint);
-      byte[] responseBody=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
-      RangeReply rangeReply=RangeReply.read(responseBody);
-      List<String> rangeKeys=rangeReply.keys;
-      if (allKeys.size() > 0 && rangeKeys != null && rangeKeys.size() > 0 && allKeys.get(allKeys.size() - 1).equals(rangeKeys.get(0))) {
-        allKeys.remove(allKeys.size() - 1);
-        allKeys.addAll(rangeKeys);
-      }
- else       if (rangeKeys != null && rangeKeys.size() > 0) {
-        allKeys.addAll(rangeKeys);
-      }
-      if (allKeys.size() >= maxResults || rangeReply.rangeCompletedLocally) {
-        break;
-      }
-      String newStartAt=(allKeys.size() > 0) ? allKeys.get(allKeys.size() - 1) : command.stopAt;
-      command=new RangeCommand(command.table,command.columnFamily,newStartAt,command.stopAt,command.maxResults - rangeKeys.size());
-      endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,++endpointOffset);
+  EndPoint endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,endpointOffset);
+  String firstEndpoint=endPoint.toString();
+  do {
+    Message message=command.getMessage();
+    if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
+    IAsyncResult iar=MessagingService.getMessagingInstance().sendRR(message,endPoint);
+    byte[] responseBody=new byte[0];
+    try {
+      responseBody=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
     }
+ catch (    TimeoutException e) {
+      throw new RuntimeException(e);
+    }
+    RangeReply rangeReply=RangeReply.read(responseBody);
+    List<String> rangeKeys=rangeReply.keys;
+    if (allKeys.size() > 0 && rangeKeys != null && rangeKeys.size() > 0 && allKeys.get(allKeys.size() - 1).equals(rangeKeys.get(0))) {
+      allKeys.remove(allKeys.size() - 1);
+      allKeys.addAll(rangeKeys);
+    }
+ else     if (rangeKeys != null && rangeKeys.size() > 0) {
+      allKeys.addAll(rangeKeys);
+    }
+    if (allKeys.size() >= maxResults || rangeReply.rangeCompletedLocally) {
+      break;
+    }
+    String newStartWith=(allKeys.size() > 0) ? allKeys.get(allKeys.size() - 1) : command.startWith;
+    command=new RangeCommand(command.table,command.columnFamily,newStartWith,command.stopAt,command.maxResults - allKeys.size());
+    endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,++endpointOffset);
+  }
  while (!endPoint.toString().equals(firstEndpoint));
-    return (allKeys.size() > maxResults) ? allKeys.subList(0,maxResults) : allKeys;
-  }
- catch (  Exception e) {
-    throw new RuntimeException("error reading keyrange " + command,e);
-  }
- finally {
-    rangeStats.add(System.currentTimeMillis() - startTime);
-  }
+  rangeStats.add(System.currentTimeMillis() - startTime);
+  return (allKeys.size() > maxResults) ? allKeys.subList(0,maxResults) : allKeys;
 }
