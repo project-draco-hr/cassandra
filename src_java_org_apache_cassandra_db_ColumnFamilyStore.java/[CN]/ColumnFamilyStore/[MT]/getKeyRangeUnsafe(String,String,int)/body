@@ -1,7 +1,6 @@
 {
   final Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
   List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
-  ColumnFamilyStore cfs=getColumnFamilyStore(cfName);
   Predicate p=new Predicate(){
     public boolean evaluate(    Object key){
       String st=(String)key;
@@ -9,11 +8,11 @@
     }
   }
 ;
-  iterators.add(IteratorUtils.filteredIterator(cfs.memtableKeyIterator(),p));
-  for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(cfName)) {
+  iterators.add(IteratorUtils.filteredIterator(memtableKeyIterator(),p));
+  for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(columnFamily_)) {
     iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
   }
-  for (  SSTableReader sstable : cfs.getSSTables()) {
+  for (  SSTableReader sstable : getSSTables()) {
     FileStruct fs=sstable.getFileStruct();
     fs.seekTo(startWith);
     iterators.add(fs);
@@ -37,8 +36,8 @@
         rangeCompletedLocally=true;
         break;
       }
-      QueryFilter filter=new SliceQueryFilter(current,new QueryPath(cfName),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,true,1);
-      if (cfs.getColumnFamily(filter,Integer.MAX_VALUE) != null) {
+      QueryFilter filter=new SliceQueryFilter(current,new QueryPath(columnFamily_),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,true,1);
+      if (getColumnFamily(filter,Integer.MAX_VALUE) != null) {
         keys.add(current);
       }
       if (keys.size() >= maxResults) {
