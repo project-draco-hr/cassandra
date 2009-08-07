@@ -1,9 +1,11 @@
 {
-  inBuf.reset(outBuf.getData(),outBuf.getLength());
-  ColumnFamily columnFamily=ColumnFamily.serializer().deserialize(inBuf);
-  if (curCF == null)   curCF=columnFamily.cloneMeShallow();
+  if (curCF == null)   curCF=reader.getEmptyColumnFamily().cloneMeShallow();
   curColumns.clear();
-  for (  IColumn column : columnFamily.getSortedColumns())   if (isColumnNeeded(column))   curColumns.add(column);
+  while (true) {
+    IColumn column=reader.pollColumn();
+    if (column == null)     break;
+    if (isColumnNeeded(column))     curColumns.add(column);
+  }
   if (isAscending)   curColumnIndex=0;
  else   curColumnIndex=curColumns.size() - 1;
 }

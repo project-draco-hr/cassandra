@@ -4,15 +4,8 @@
   long start=curColPostion.position();
   long end=curRangeIndex_ < columnIndexList_.size() - 1 ? columnIndexList_.get(curRangeIndex_ + 1).position() : allColumnsSize_;
   file_.seek(columnStartPosition_ + start);
-  long dataSize=end - start;
-  bufOut.reset();
-  bufOut.writeUTF(cfName_);
-  bufOut.writeUTF(cfType_);
-  bufOut.writeUTF(comparator_.getClass().getCanonicalName());
-  bufOut.writeUTF(subComparatorName_);
-  bufOut.writeInt(localDeletionTime_);
-  bufOut.writeLong(markedForDeleteAt_);
-  bufOut.writeInt(curColPostion.count());
-  bufOut.write(file_,(int)dataSize);
+  while (file_.getFilePointer() < columnStartPosition_ + end) {
+    blockColumns.add(emptyColumnFamily.getColumnSerializer().deserialize(file_));
+  }
   return true;
 }
