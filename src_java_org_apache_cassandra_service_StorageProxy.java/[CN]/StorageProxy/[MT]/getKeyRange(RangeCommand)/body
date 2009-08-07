@@ -1,10 +1,12 @@
 {
   long startTime=System.currentTimeMillis();
-  int endpointOffset=0;
+  Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
+  TokenMetadata tokenMetadata=StorageService.instance().getTokenMetadata();
   List<String> allKeys=new ArrayList<String>();
-  int maxResults=command.maxResults;
-  EndPoint endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,endpointOffset);
-  String firstEndpoint=endPoint.toString();
+  RangeCommand command=rawCommand;
+  EndPoint endPoint=StorageService.instance().findSuitableEndPoint(command.startWith);
+  EndPoint startEndpoint=endPoint;
+  EndPoint wrapEndpoint=tokenMetadata.getFirstEndpoint();
   do {
     Message message=command.getMessage();
     if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
@@ -18,21 +20,41 @@
     }
     RangeReply rangeReply=RangeReply.read(responseBody);
     List<String> rangeKeys=rangeReply.keys;
-    if (allKeys.size() > 0 && rangeKeys != null && rangeKeys.size() > 0 && allKeys.get(allKeys.size() - 1).equals(rangeKeys.get(0))) {
-      allKeys.remove(allKeys.size() - 1);
-      allKeys.addAll(rangeKeys);
+    if (rangeKeys.size() > 0) {
+      if (allKeys.size() > 0) {
+        if (comparator.compare(rangeKeys.get(rangeKeys.size() - 1),allKeys.get(0)) <= 0) {
+          if (rangeKeys.get(rangeKeys.size() - 1).equals(allKeys.get(0))) {
+            rangeKeys.remove(rangeKeys.size() - 1);
+          }
+          rangeKeys.addAll(allKeys);
+          allKeys=rangeKeys;
+        }
+ else         if (comparator.compare(allKeys.get(allKeys.size() - 1),rangeKeys.get(0)) <= 0) {
+          if (allKeys.get(allKeys.size() - 1).equals(rangeKeys.get(0))) {
+            allKeys.remove(allKeys.size() - 1);
+          }
+          allKeys.addAll(rangeKeys);
+        }
+ else {
+          HashSet<String> keys=new HashSet<String>(allKeys);
+          keys.addAll(rangeKeys);
+          allKeys=new ArrayList<String>(keys);
+          Collections.sort(allKeys);
+        }
+      }
+ else {
+        allKeys=rangeKeys;
+      }
     }
- else     if (rangeKeys != null && rangeKeys.size() > 0) {
-      allKeys.addAll(rangeKeys);
-    }
-    if (allKeys.size() >= maxResults || rangeReply.rangeCompletedLocally) {
+    if (allKeys.size() >= rawCommand.maxResults || rangeReply.rangeCompletedLocally) {
       break;
     }
-    String newStartWith=(allKeys.size() > 0) ? allKeys.get(allKeys.size() - 1) : command.startWith;
-    command=new RangeCommand(command.table,command.columnFamily,newStartWith,command.stopAt,command.maxResults - allKeys.size());
-    endPoint=StorageService.instance().findSuitableEndPoint(command.startWith,++endpointOffset);
+    String newStartWith=endPoint.equals(wrapEndpoint) ? rawCommand.startWith : allKeys.size() > 0 ? allKeys.get(allKeys.size() - 1) : command.startWith;
+    endPoint=tokenMetadata.getNextEndpoint(endPoint);
+    int maxResults=endPoint == wrapEndpoint ? rawCommand.maxResults : rawCommand.maxResults - allKeys.size();
+    command=new RangeCommand(command.table,command.columnFamily,newStartWith,command.stopAt,maxResults);
   }
- while (!endPoint.toString().equals(firstEndpoint));
+ while (!endPoint.equals(startEndpoint));
   rangeStats.add(System.currentTimeMillis() - startTime);
-  return (allKeys.size() > maxResults) ? allKeys.subList(0,maxResults) : allKeys;
+  return (allKeys.size() > rawCommand.maxResults) ? allKeys.subList(0,rawCommand.maxResults) : allKeys;
 }

@@ -1,3 +1,22 @@
 {
-  return findSuitableEndPoint(key,0);
+  EndPoint[] endpoints=getNStorageEndPoint(key);
+  for (  EndPoint endPoint : endpoints) {
+    if (endPoint.equals(StorageService.getLocalStorageEndPoint())) {
+      return endPoint;
+    }
+  }
+  int j=0;
+  for (; j < endpoints.length; ++j) {
+    if (StorageService.instance().isInSameDataCenter(endpoints[j]) && FailureDetector.instance().isAlive(endpoints[j])) {
+      return endpoints[j];
+    }
+  }
+  j=0;
+  for (; j < endpoints.length; ++j) {
+    if (FailureDetector.instance().isAlive(endpoints[j])) {
+      if (logger_.isDebugEnabled())       logger_.debug("EndPoint " + endpoints[j] + " is alive so get data from it.");
+      return endpoints[j];
+    }
+  }
+  return null;
 }
