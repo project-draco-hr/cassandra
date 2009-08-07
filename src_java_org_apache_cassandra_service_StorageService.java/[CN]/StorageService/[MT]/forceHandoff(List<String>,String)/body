@@ -14,8 +14,10 @@
   }
   if (streamContexts.size() > 0) {
     EndPoint target=new EndPoint(host,DatabaseDescriptor.getStoragePort());
-    StreamManager.instance(target).addFilesToStream((StreamContextManager.StreamContext[])streamContexts.toArray());
-    BootstrapInitiateMessage biMessage=new BootstrapInitiateMessage((StreamContextManager.StreamContext[])streamContexts.toArray());
+    final StreamContextManager.StreamContext[] contexts=streamContexts.toArray(new StreamContextManager.StreamContext[streamContexts.size()]);
+    StreamManager.instance(target).addFilesToStream(contexts);
+    final StreamContextManager.StreamContext[] bootContexts=streamContexts.toArray(new StreamContextManager.StreamContext[streamContexts.size()]);
+    BootstrapInitiateMessage biMessage=new BootstrapInitiateMessage(bootContexts);
     Message message=BootstrapInitiateMessage.makeBootstrapInitiateMessage(biMessage);
     if (logger_.isDebugEnabled())     logger_.debug("Sending a bootstrap initiate message to " + target + " ...");
     MessagingService.getMessagingInstance().sendOneWay(message,target);
