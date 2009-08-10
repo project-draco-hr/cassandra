@@ -1,0 +1,26 @@
+{
+  get_count_args args=new get_count_args();
+  args.read(iprot);
+  iprot.readMessageEnd();
+  get_count_result result=new get_count_result();
+  try {
+    result.success=iface_.get_count(args.keyspace,args.key,args.column_parent,args.consistency_level);
+    result.__isset.success=true;
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing get_count",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing get_count");
+    oprot.writeMessageBegin(new TMessage("get_count",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("get_count",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}
