@@ -26,7 +26,16 @@
   TServerSocket tServerSocket=new TServerSocket(new InetSocketAddress(listenAddr,listenPort));
   if (logger.isDebugEnabled())   logger.debug(String.format("Binding thrift service to %s:%s",listenAddr,listenPort));
   TProtocolFactory tProtocolFactory=new TBinaryProtocol.Factory();
+  TTransportFactory inTransportFactory, outTransportFactory;
+  if (DatabaseDescriptor.isThriftFramed()) {
+    inTransportFactory=new TFramedTransport.Factory();
+    outTransportFactory=new TFramedTransport.Factory();
+  }
+ else {
+    inTransportFactory=new TTransportFactory();
+    outTransportFactory=new TTransportFactory();
+  }
   TThreadPoolServer.Options options=new TThreadPoolServer.Options();
   options.minWorkerThreads=64;
-  serverEngine=new TThreadPoolServer(new TProcessorFactory(processor),tServerSocket,new TTransportFactory(),new TTransportFactory(),tProtocolFactory,tProtocolFactory,options);
+  serverEngine=new TThreadPoolServer(new TProcessorFactory(processor),tServerSocket,inTransportFactory,outTransportFactory,tProtocolFactory,tProtocolFactory,options);
 }
