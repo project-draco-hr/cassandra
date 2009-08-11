@@ -1,0 +1,18 @@
+{
+  ObjectName query;
+  try {
+    query=new ObjectName("org.apache.cassandra.concurrent:type=*");
+    Set<ObjectName> result=mbeanServerConn.queryNames(query,null);
+    for (    ObjectName objectName : result) {
+      String poolName=objectName.getKeyProperty("type");
+      DebuggableThreadPoolExecutorMBean threadPoolProxy=JMX.newMBeanProxy(mbeanServerConn,objectName,DebuggableThreadPoolExecutorMBean.class);
+      outs.println(poolName + ", pending tasks=" + threadPoolProxy.getPendingTasks());
+    }
+  }
+ catch (  MalformedObjectNameException e) {
+    throw new RuntimeException("Invalid ObjectName? Please report this as a bug.",e);
+  }
+catch (  IOException e) {
+    throw new RuntimeException("Could not retrieve list of stat mbeans.",e);
+  }
+}
