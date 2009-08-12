@@ -11,7 +11,7 @@
     Message message=command.getMessage();
     if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
     IAsyncResult iar=MessagingService.getMessagingInstance().sendRR(message,endPoint);
-    byte[] responseBody=new byte[0];
+    byte[] responseBody;
     try {
       responseBody=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
     }
@@ -49,10 +49,9 @@
     if (allKeys.size() >= rawCommand.maxResults || rangeReply.rangeCompletedLocally) {
       break;
     }
-    String newStartWith=endPoint.equals(wrapEndpoint) ? rawCommand.startWith : allKeys.size() > 0 ? allKeys.get(allKeys.size() - 1) : command.startWith;
     endPoint=tokenMetadata.getNextEndpoint(endPoint);
     int maxResults=endPoint == wrapEndpoint ? rawCommand.maxResults : rawCommand.maxResults - allKeys.size();
-    command=new RangeCommand(command.table,command.columnFamily,newStartWith,command.stopAt,maxResults);
+    command=new RangeCommand(command.table,command.columnFamily,command.startWith,command.stopAt,maxResults);
   }
  while (!endPoint.equals(startEndpoint));
   rangeStats.add(System.currentTimeMillis() - startTime);
