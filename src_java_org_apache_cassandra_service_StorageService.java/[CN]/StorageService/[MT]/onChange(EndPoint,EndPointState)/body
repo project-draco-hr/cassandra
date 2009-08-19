@@ -1,6 +1,10 @@
 {
   EndPoint ep=new EndPoint(endpoint.getHost(),DatabaseDescriptor.getStoragePort());
   ApplicationState nodeIdState=epState.getApplicationState(StorageService.nodeId_);
+  boolean bootstrapState=epState.getApplicationState(StorageService.BOOTSTRAP_MODE) != null;
+  if (bootstrapState) {
+    if (logger_.isDebugEnabled())     logger_.debug(ep.getHost() + " is in bootstrap state.");
+  }
   if (nodeIdState != null) {
     Token newToken=getPartitioner().getTokenFactory().fromString(nodeIdState.getState());
     if (logger_.isDebugEnabled())     logger_.debug("CHANGE IN STATE FOR " + endpoint + " - has token "+ nodeIdState.getState());
@@ -8,7 +12,7 @@
     if (oldToken != null) {
       if (!oldToken.equals(newToken)) {
         if (logger_.isDebugEnabled())         logger_.debug("Relocation for endpoint " + ep);
-        tokenMetadata_.update(newToken,ep);
+        tokenMetadata_.update(newToken,ep,bootstrapState);
       }
  else {
         if (logger_.isDebugEnabled())         logger_.debug("Sending hinted data to " + ep);
@@ -16,20 +20,13 @@
       }
     }
  else {
-      tokenMetadata_.update(newToken,ep);
+      tokenMetadata_.update(newToken,ep,bootstrapState);
     }
   }
  else {
     if (epState.isAlive() && tokenMetadata_.isKnownEndPoint(endpoint)) {
       if (logger_.isDebugEnabled())       logger_.debug("EndPoint " + ep + " just recovered from a partition. Sending hinted data.");
       deliverHints(ep);
-    }
-  }
-  ApplicationState loadAllState=epState.getApplicationState(StorageService.loadAll_);
-  if (loadAllState != null) {
-    String nodes=loadAllState.getState();
-    if (nodes != null) {
-      doBootstrap(ep);
     }
   }
 }

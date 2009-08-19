@@ -10,7 +10,12 @@
   storageLoadBalancer_.start();
   Gossiper.instance().register(this);
   Gossiper.instance().start(udpAddr_,storageMetadata_.getGeneration());
-  tokenMetadata_.update(storageMetadata_.getStorageId(),StorageService.tcpAddr_);
+  tokenMetadata_.update(storageMetadata_.getStorageId(),StorageService.tcpAddr_,isBootstrapMode);
   ApplicationState state=new ApplicationState(StorageService.getPartitioner().getTokenFactory().toString(storageMetadata_.getStorageId()));
   Gossiper.instance().addApplicationState(StorageService.nodeId_,state);
+  if (isBootstrapMode) {
+    logger_.info("Starting in bootstrap mode");
+    doBootstrap(StorageService.getLocalStorageEndPoint());
+    Gossiper.instance().addApplicationState(BOOTSTRAP_MODE,new ApplicationState(""));
+  }
 }

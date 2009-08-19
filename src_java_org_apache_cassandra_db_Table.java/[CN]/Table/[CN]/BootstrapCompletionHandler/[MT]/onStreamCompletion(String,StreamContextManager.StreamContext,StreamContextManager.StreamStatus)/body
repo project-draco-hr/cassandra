@@ -6,7 +6,7 @@
     String[] temp=fileName.split("-");
     SSTableReader sstable=null;
     try {
-      sstable=SSTableReader.open(streamContext.getTargetFile());
+      sstable=SSTableWriter.renameAndOpen(streamContext.getTargetFile());
       Table.open(tableName).getColumnFamilyStore(temp[0]).addToList(sstable);
       logger_.info("Bootstrap added " + sstable.getFilename());
     }
@@ -19,4 +19,5 @@
   StreamContextManager.StreamStatusMessage streamStatusMessage=new StreamContextManager.StreamStatusMessage(streamStatus);
   Message message=StreamContextManager.StreamStatusMessage.makeStreamStatusMessage(streamStatusMessage);
   MessagingService.getMessagingInstance().sendOneWay(message,to);
+  if (StreamContextManager.isDone(to.getHost()))   StorageService.instance().removeBootstrapSource(to);
 }
