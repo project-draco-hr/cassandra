@@ -1,0 +1,15 @@
+{
+  AbstractType comparator=ColumnFamily.getComparatorFor(keyspace,column_parent.column_family,column_parent.super_column);
+  try {
+    comparator.validate(range.start);
+    comparator.validate(range.finish);
+  }
+ catch (  MarshalException e) {
+    throw new InvalidRequestException(e.getMessage());
+  }
+  if (range.count < 0)   throw new InvalidRequestException("get_slice requires non-negative count");
+  Comparator<byte[]> orderedComparator=range.isReversed() ? comparator.getReverseComparator() : comparator;
+  if (range.start.length > 0 && range.finish.length > 0 && orderedComparator.compare(range.start,range.finish) > 0) {
+    throw new InvalidRequestException("range finish must come after start in the order of traversal");
+  }
+}

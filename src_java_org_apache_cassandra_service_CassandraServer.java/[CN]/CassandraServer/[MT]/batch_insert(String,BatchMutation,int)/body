@@ -1,7 +1,9 @@
 {
   if (logger.isDebugEnabled())   logger.debug("batch_insert");
-  RowMutation rm=RowMutation.getRowMutation(table,batch_mutation);
-  Set<String> cfNames=rm.columnFamilyNames();
-  ThriftValidation.validateKeyCommand(rm.key(),rm.table(),cfNames.toArray(new String[cfNames.size()]));
-  doInsert(consistency_level,rm);
+  for (  String cfName : batch_mutation.cfmap.keySet()) {
+    for (    Column c : batch_mutation.cfmap.get(cfName)) {
+      ThriftValidation.validateColumnPath(table,new ColumnPath(cfName,null,c.name));
+    }
+  }
+  doInsert(consistency_level,RowMutation.getRowMutation(table,batch_mutation));
 }
