@@ -2,10 +2,15 @@
   int liveColumns=0;
   AbstractType comparator=container.getComparator();
   while (reducedColumns.hasNext()) {
-    IColumn column=reducedColumns.next();
     if (liveColumns >= count)     break;
+    IColumn column=reducedColumns.next();
+    if (logger.isDebugEnabled())     logger.debug("collecting " + column.getString(comparator));
     if (finish.length > 0 && ((!reversed && comparator.compare(column.name(),finish) > 0)) || (reversed && comparator.compare(column.name(),finish) < 0))     break;
-    if (!column.isMarkedForDelete())     liveColumns++;
-    if (!column.isMarkedForDelete() || column.getLocalDeletionTime() > gcBefore)     container.addColumn(column);
+    if (!column.isMarkedForDelete() && (!container.isMarkedForDelete() || column.mostRecentChangeAt() > container.getMarkedForDeleteAt())) {
+      liveColumns++;
+    }
+    if ((!column.isMarkedForDelete() || column.getLocalDeletionTime() > gcBefore) && (!container.isMarkedForDelete() || column.mostRecentChangeAt() > container.getMarkedForDeleteAt())) {
+      container.addColumn(column);
+    }
   }
 }
