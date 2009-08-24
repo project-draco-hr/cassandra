@@ -1,0 +1,32 @@
+{
+  for (  String seed : seeds_) {
+    try {
+      TSocket socket=new TSocket(seed,port_);
+      TBinaryProtocol binaryProtocol=new TBinaryProtocol(socket,false,false);
+      Cassandra.Client client=new Cassandra.Client(binaryProtocol);
+      socket.open();
+      Map<String,String> tokenToHostMap=(Map<String,String>)new JSONTokener(client.get_string_property(CassandraServer.TOKEN_MAP)).nextValue();
+      HashMap<Token,EndPoint> tokenEndpointMap=new HashMap<Token,EndPoint>();
+      Map<EndPoint,Token> endpointTokenMap=new HashMap<EndPoint,Token>();
+      for (      Map.Entry<String,String> entry : tokenToHostMap.entrySet()) {
+        Token token=StorageService.getPartitioner().getTokenFactory().fromString(entry.getKey());
+        String host=entry.getValue();
+        tokenEndpointMap.put(token,new EndPoint(host,port_));
+        endpointTokenMap.put(new EndPoint(host,port_),token);
+      }
+      TokenMetadata tokenMetadata=new TokenMetadata(tokenEndpointMap,endpointTokenMap,null);
+      Class cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();
+      Class[] parameterTypes=new Class[]{TokenMetadata.class,IPartitioner.class,int.class,int.class};
+      try {
+        nodePicker_=(IReplicaPlacementStrategy)cls.getConstructor(parameterTypes).newInstance(tokenMetadata,partitioner_,DatabaseDescriptor.getReplicationFactor(),port_);
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+      break;
+    }
+ catch (    TException e) {
+      logger_.debug("Error contacting seed " + seed + " "+ e.getMessage());
+    }
+  }
+}

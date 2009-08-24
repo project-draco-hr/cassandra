@@ -1,0 +1,16 @@
+{
+  String table="Keyspace1";
+  for (int nRows=1; nRows < 10; nRows++) {
+    String row="row" + nRows;
+    ColumnPath col=new ColumnPath("Standard1",null,"col1".getBytes());
+    EndPoint endPoints[]=ringCache.getEndPoint(row);
+    String hosts="";
+    for (int i=0; i < endPoints.length; i++)     hosts=hosts + ((i > 0) ? "," : "") + endPoints[i].getHost();
+    System.out.println("hosts with key " + row + " : "+ hosts+ "; choose "+ endPoints[0].getHost());
+    setup(endPoints[0].getHost(),endPoints[0].getPort());
+    thriftClient.insert(table,row,col,"val1".getBytes(),1,1);
+    Column column=thriftClient.get(table,row,col,1).column;
+    System.out.println("read row " + row + " "+ new String(column.name)+ ":"+ new String(column.value)+ ":"+ column.timestamp);
+  }
+  System.exit(1);
+}
