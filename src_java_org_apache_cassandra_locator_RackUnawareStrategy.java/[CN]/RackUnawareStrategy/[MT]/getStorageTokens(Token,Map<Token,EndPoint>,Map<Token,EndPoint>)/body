@@ -1,0 +1,28 @@
+{
+  int startIndex;
+  List<Token> tokenList=new ArrayList<Token>();
+  int foundCount=0;
+  List tokens=new ArrayList<Token>(tokenToEndPointMap.keySet());
+  List<Token> bsTokens=null;
+  if (bootStrapTokenToEndPointMap != null) {
+    bsTokens=new ArrayList<Token>(bootStrapTokenToEndPointMap.keySet());
+    tokens.addAll(bsTokens);
+  }
+  Collections.sort(tokens);
+  int index=Collections.binarySearch(tokens,token);
+  if (index < 0) {
+    index=(index + 1) * (-1);
+    if (index >= tokens.size())     index=0;
+  }
+  int totalNodes=tokens.size();
+  tokenList.add((Token)tokens.get(index));
+  if (bsTokens == null || !bsTokens.contains(tokens.get(index)))   foundCount++;
+  startIndex=(index + 1) % totalNodes;
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas_; ++count, i=(i + 1) % totalNodes) {
+    if (!tokenList.contains(tokens.get(i))) {
+      tokenList.add((Token)tokens.get(i));
+      if (bsTokens == null || !bsTokens.contains(tokens.get(i)))       foundCount++;
+    }
+  }
+  return tokenList;
+}
