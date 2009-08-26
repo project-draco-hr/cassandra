@@ -1,8 +1,15 @@
 {
   if (logger.isDebugEnabled())   logger.debug("batch_insert");
   for (  String cfName : batch_mutation.cfmap.keySet()) {
-    for (    Column c : batch_mutation.cfmap.get(cfName)) {
-      ThriftValidation.validateColumnPath(table,new ColumnPath(cfName,null,c.name));
+    for (    ColumnOrSuperColumn cosc : batch_mutation.cfmap.get(cfName)) {
+      if (cosc.column != null) {
+        ThriftValidation.validateColumnPath(table,new ColumnPath(cfName,null,cosc.column.name));
+      }
+      if (cosc.super_column != null) {
+        for (        Column c : cosc.super_column.columns) {
+          ThriftValidation.validateColumnPath(table,new ColumnPath(cfName,cosc.super_column.name,c.name));
+        }
+      }
     }
   }
   doInsert(consistency_level,RowMutation.getRowMutation(table,batch_mutation));
