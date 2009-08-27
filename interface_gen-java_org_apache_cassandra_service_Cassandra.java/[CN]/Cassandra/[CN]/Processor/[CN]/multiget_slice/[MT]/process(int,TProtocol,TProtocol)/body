@@ -1,0 +1,25 @@
+{
+  multiget_slice_args args=new multiget_slice_args();
+  args.read(iprot);
+  iprot.readMessageEnd();
+  multiget_slice_result result=new multiget_slice_result();
+  try {
+    result.success=iface_.multiget_slice(args.keyspace,args.keys,args.column_parent,args.predicate,args.consistency_level);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing multiget_slice",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing multiget_slice");
+    oprot.writeMessageBegin(new TMessage("multiget_slice",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("multiget_slice",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}

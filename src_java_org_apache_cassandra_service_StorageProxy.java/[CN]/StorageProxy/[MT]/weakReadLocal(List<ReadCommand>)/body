@@ -1,0 +1,13 @@
+{
+  List<Row> rows=new ArrayList<Row>();
+  for (  ReadCommand command : commands) {
+    List<EndPoint> endpoints=StorageService.instance().getNLiveStorageEndPoint(command.key);
+    endpoints.remove(StorageService.getLocalStorageEndPoint());
+    if (logger.isDebugEnabled())     logger.debug("weakreadlocal reading " + command);
+    Table table=Table.open(command.table);
+    Row row=command.getRow(table);
+    if (row != null)     rows.add(row);
+    if (endpoints.size() > 0 && DatabaseDescriptor.getConsistencyCheck())     StorageService.instance().doConsistencyCheck(row,endpoints,command);
+  }
+  return rows;
+}
