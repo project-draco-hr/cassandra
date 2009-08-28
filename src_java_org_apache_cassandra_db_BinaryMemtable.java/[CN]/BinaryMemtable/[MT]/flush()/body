@@ -1,9 +1,20 @@
 {
   if (columnFamilies_.size() == 0)   return;
+  String path;
+  SSTableWriter writer;
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
   List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
-  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),keys.size(),StorageService.getPartitioner());
-  Collections.sort(keys);
+  lock_.lock();
+  try {
+    path=cfStore.getTempSSTablePath();
+    writer=new SSTableWriter(path,keys.size(),StorageService.getPartitioner());
+  }
+  finally {
+    lock_.unlock();
+  }
+  final IPartitioner partitioner=StorageService.getPartitioner();
+  final Comparator<String> dc=partitioner.getDecoratedKeyComparator();
+  Collections.sort(keys,dc);
   for (  String key : keys) {
     byte[] bytes=columnFamilies_.get(key);
     if (bytes.length > 0) {
