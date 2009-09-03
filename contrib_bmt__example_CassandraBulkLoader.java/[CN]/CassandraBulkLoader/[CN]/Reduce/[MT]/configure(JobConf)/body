@@ -1,0 +1,17 @@
+{
+  this.jobconf=job;
+  String cassConfig;
+  try {
+    localFiles=DistributedCache.getLocalCacheFiles(job);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  cassConfig=localFiles[0].getParent().toString();
+  System.setProperty("storage-config",cassConfig);
+  startMessagingService();
+  for (  String token : this.tokens) {
+    String[] values=token.split(":");
+    StorageService.instance().updateTokenMetadata(new BigIntegerToken(new BigInteger(values[0])),new EndPoint(values[1],7000));
+  }
+}
