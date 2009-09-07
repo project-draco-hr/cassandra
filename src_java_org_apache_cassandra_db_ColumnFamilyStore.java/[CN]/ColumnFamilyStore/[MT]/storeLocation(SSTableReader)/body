@@ -1,7 +1,13 @@
 {
   int ssTableCount;
-  ssTables_.put(sstable.getFilename(),sstable);
-  ssTableCount=ssTables_.size();
+  sstableLock_.writeLock().lock();
+  try {
+    ssTables_.put(sstable.getFilename(),sstable);
+    ssTableCount=ssTables_.size();
+  }
+  finally {
+    sstableLock_.writeLock().unlock();
+  }
   if (ssTableCount >= MinorCompactionManager.MINCOMPACTION_THRESHOLD) {
     if (logger_.isDebugEnabled())     logger_.debug("Submitting " + columnFamily_ + " for compaction");
     MinorCompactionManager.instance().submit(this);

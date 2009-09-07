@@ -1,57 +1,9 @@
 {
-  final Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
-  List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
-  Predicate p=new Predicate(){
-    public boolean evaluate(    Object key){
-      String st=(String)key;
-      return comparator.compare(startWith,st) <= 0 && (stopAt.isEmpty() || comparator.compare(st,stopAt) <= 0);
-    }
-  }
-;
-  iterators.add(IteratorUtils.filteredIterator(memtableKeyIterator(),p));
-  for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(columnFamily_)) {
-    iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
-  }
-  for (  SSTableReader sstable : getSSTables()) {
-    FileStruct fs=sstable.getFileStruct();
-    fs.seekTo(startWith);
-    iterators.add(fs);
-  }
-  Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
-  Iterable<String> reduced=new ReducingIterator<String>(collated){
-    String current;
-    public void reduce(    String current){
-      this.current=current;
-    }
-    protected String getReduced(){
-      return current;
-    }
-  }
-;
+  getReadLock().lock();
   try {
-    List<String> keys=new ArrayList<String>();
-    boolean rangeCompletedLocally=false;
-    for (    String current : reduced) {
-      if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
-        rangeCompletedLocally=true;
-        break;
-      }
-      QueryFilter filter=new SliceQueryFilter(current,new QueryPath(columnFamily_),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,1);
-      if (getColumnFamily(filter,Integer.MAX_VALUE) != null) {
-        keys.add(current);
-      }
-      if (keys.size() >= maxResults) {
-        rangeCompletedLocally=true;
-        break;
-      }
-    }
-    return new RangeReply(keys,rangeCompletedLocally);
+    return getKeyRangeUnsafe(startWith,stopAt,maxResults);
   }
   finally {
-    for (    Iterator iter : iterators) {
-      if (iter instanceof FileStruct) {
-        ((FileStruct)iter).close();
-      }
-    }
+    getReadLock().unlock();
   }
 }
