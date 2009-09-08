@@ -1,0 +1,24 @@
+{
+  Map<List<SSTableReader>,Long> buckets=new HashMap<List<SSTableReader>,Long>();
+  for (  SSTableReader sstable : files) {
+    long size=sstable.length();
+    boolean bFound=false;
+    for (    List<SSTableReader> bucket : buckets.keySet()) {
+      long averageSize=buckets.get(bucket);
+      if ((size > averageSize / 2 && size < 3 * averageSize / 2) || (size < min && averageSize < min)) {
+        buckets.remove(bucket);
+        averageSize=(averageSize + size) / 2;
+        bucket.add(sstable);
+        buckets.put(bucket,averageSize);
+        bFound=true;
+        break;
+      }
+    }
+    if (!bFound) {
+      ArrayList<SSTableReader> bucket=new ArrayList<SSTableReader>();
+      bucket.add(sstable);
+      buckets.put(bucket,size);
+    }
+  }
+  return buckets.keySet();
+}
