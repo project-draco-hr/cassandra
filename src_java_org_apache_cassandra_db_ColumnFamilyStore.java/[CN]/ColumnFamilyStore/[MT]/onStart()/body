@@ -6,7 +6,7 @@
     File[] files=fileDir.listFiles();
     for (    File file : files) {
       String filename=file.getName();
-      if (((file.length() == 0) || (filename.contains("-" + SSTable.TEMPFILE_MARKER))) && (filename.contains(columnFamily_))) {
+      if (((file.length() == 0 && !filename.endsWith("-Compacted")) || (filename.contains("-" + SSTable.TEMPFILE_MARKER))) && (filename.contains(columnFamily_))) {
         file.delete();
         continue;
       }
@@ -17,8 +17,10 @@
     }
   }
   Collections.sort(sstableFiles,new FileUtils.FileComparator());
+  List<SSTableReader> sstables=new ArrayList<SSTableReader>();
   for (  File file : sstableFiles) {
     String filename=file.getAbsolutePath();
+    if (SSTable.deleteIfCompacted(filename))     continue;
     SSTableReader sstable;
     try {
       sstable=SSTableReader.open(filename);
@@ -27,8 +29,9 @@
       logger_.error("Corrupt file " + filename + "; skipped",ex);
       continue;
     }
-    ssTables_.add(sstable);
+    sstables.add(sstable);
   }
+  ssTables_.onStart(sstables);
   MinorCompactionManager.instance().submit(ColumnFamilyStore.this);
   if (table_.equals(Table.SYSTEM_TABLE) && columnFamily_.equals(HintedHandOffManager.HINTS_CF)) {
     HintedHandOffManager.instance().submit(this);
