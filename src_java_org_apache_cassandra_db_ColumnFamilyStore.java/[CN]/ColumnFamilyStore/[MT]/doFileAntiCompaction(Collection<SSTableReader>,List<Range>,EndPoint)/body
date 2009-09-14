@@ -1,5 +1,5 @@
 {
-  boolean result=false;
+  List<SSTableReader> results=new ArrayList<SSTableReader>();
   long startTime=System.currentTimeMillis();
   long totalBytesRead=0;
   long totalBytesWritten=0;
@@ -12,11 +12,11 @@
   rangeFileLocation=DatabaseDescriptor.getDataFileLocationForTable(table_,expectedRangeFileSize);
   if (rangeFileLocation == null) {
     logger_.error("Total bytes to be written for range compaction  ..." + expectedRangeFileSize + "   is greater than the safe limit of the disk space available.");
-    return result;
+    return results;
   }
   PriorityQueue<FileStruct> pq=initializePriorityQueue(sstables,ranges);
   if (pq.isEmpty()) {
-    return result;
+    return results;
   }
   mergedFileName=getTempSSTableFileName();
   SSTableWriter rangeWriter=null;
@@ -93,18 +93,12 @@
     }
   }
   if (rangeWriter != null) {
-    rangeWriter.closeAndOpenReader();
-    if (fileList != null) {
-      fileList.add(rangeWriter.indexFilename());
-      fileList.add(rangeWriter.filterFilename());
-      fileList.add(rangeWriter.getFilename());
-    }
-    result=true;
+    results.add(rangeWriter.closeAndOpenReader());
   }
   if (logger_.isDebugEnabled()) {
     logger_.debug("Total time taken for range split   ..." + (System.currentTimeMillis() - startTime));
     logger_.debug("Total bytes Read for range split  ..." + totalBytesRead);
     logger_.debug("Total bytes written for range split  ..." + totalBytesWritten + "   Total keys read ..."+ totalkeysRead);
   }
-  return result;
+  return results;
 }
