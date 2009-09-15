@@ -1,27 +1,30 @@
 {
-  if (args.length != 3) {
-    System.out.println("Usage : java org.apache.cassandra.tools.TokenUpdater <ip:port> <token> <file containing node token info>");
+  if (args.length < 2) {
+    System.out.println("Usage : java org.apache.cassandra.tools.TokenUpdater <ip:port> <token>");
     System.exit(1);
   }
+  Thread selectorThread=SelectorManager.getSelectorManager();
+  selectorThread.setDaemon(true);
+  selectorThread.start();
   String ipPort=args[0];
   IPartitioner p=StorageService.getPartitioner();
   Token token=p.getTokenFactory().fromString(args[1]);
-  String file=args[2];
+  System.out.println("Partitioner is " + p.getClass() + ", token is: "+ token);
+  System.out.println(p.getTokenFactory().getClass());
   String[] ipPortPair=ipPort.split(":");
-  EndPoint target=new EndPoint(ipPortPair[0],Integer.valueOf(ipPortPair[1]));
+  int port=7000;
+  if (ipPortPair.length > 1) {
+    port=Integer.valueOf(ipPortPair[1]);
+  }
+  EndPoint target=new EndPoint(ipPortPair[0],port);
   ByteArrayOutputStream bos=new ByteArrayOutputStream();
   DataOutputStream dos=new DataOutputStream(bos);
   Token.serializer().serialize(token,dos);
   Message tokenUpdateMessage=new Message(new EndPoint(FBUtilities.getHostAddress(),port_),"",StorageService.tokenVerbHandler_,bos.toByteArray());
-  BufferedReader bufReader=new BufferedReader(new InputStreamReader(new FileInputStream(file)));
-  String line=null;
-  while ((line=bufReader.readLine()) != null) {
-    String[] nodeTokenPair=line.split(" ");
-    Token nodeToken=p.getTokenFactory().fromString(nodeTokenPair[1]);
-    tokenUpdateMessage.addHeader(nodeTokenPair[0],p.getTokenFactory().toByteArray(nodeToken));
-  }
   System.out.println("Sending a token update message to " + target);
   MessagingService.getMessagingInstance().sendOneWay(tokenUpdateMessage,target);
   Thread.sleep(TokenUpdater.waitTime_);
   System.out.println("Done sending the update message");
+  MessagingService.shutdown();
+  FileUtils.shutdown();
 }
