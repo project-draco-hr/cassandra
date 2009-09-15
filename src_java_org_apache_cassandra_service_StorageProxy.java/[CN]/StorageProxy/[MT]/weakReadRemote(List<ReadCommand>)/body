@@ -1,2 +1,28 @@
 {
+  if (logger.isDebugEnabled())   logger.debug("weakreadlocal reading " + StringUtils.join(commands,", "));
+  List<Row> rows=new ArrayList<Row>();
+  List<IAsyncResult> iars=new ArrayList<IAsyncResult>();
+  int commandIndex=0;
+  for (  ReadCommand command : commands) {
+    EndPoint endPoint=StorageService.instance().findSuitableEndPoint(command.key);
+    Message message=command.makeReadMessage();
+    if (logger.isDebugEnabled())     logger.debug("weakreadremote reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
+    message.addHeader(ReadCommand.DO_REPAIR,ReadCommand.DO_REPAIR.getBytes());
+    iars.add(MessagingService.getMessagingInstance().sendRR(message,endPoint));
+  }
+  for (  IAsyncResult iar : iars) {
+    byte[] body;
+    try {
+      body=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+    }
+ catch (    TimeoutException e) {
+      throw new RuntimeException("error reading key " + commands.get(commandIndex).key,e);
+    }
+    DataInputBuffer bufIn=new DataInputBuffer();
+    bufIn.reset(body,body.length);
+    ReadResponse response=ReadResponse.serializer().deserialize(bufIn);
+    if (response.row() != null)     rows.add(response.row());
+    commandIndex++;
+  }
+  return rows;
 }
