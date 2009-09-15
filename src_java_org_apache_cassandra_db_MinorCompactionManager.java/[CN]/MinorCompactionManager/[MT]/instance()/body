@@ -2,9 +2,16 @@
   if (instance_ == null) {
     lock_.lock();
     try {
-      if (instance_ == null)       instance_=new MinorCompactionManager();
+      if (instance_ == null) {
+        instance_=new MinorCompactionManager();
+        MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+        mbs.registerMBean(instance_,new ObjectName(MBEAN_OBJECT_NAME));
+      }
     }
-  finally {
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+ finally {
       lock_.unlock();
     }
   }
