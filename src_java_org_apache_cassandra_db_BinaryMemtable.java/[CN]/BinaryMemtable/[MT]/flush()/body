@@ -3,7 +3,7 @@
   String path;
   SSTableWriter writer;
   ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
-  List<String> keys=new ArrayList<String>(columnFamilies_.keySet());
+  List<DecoratedKey> keys=new ArrayList<DecoratedKey>(columnFamilies_.keySet());
   lock_.lock();
   try {
     path=cfStore.getTempSSTablePath();
@@ -12,13 +12,11 @@
   finally {
     lock_.unlock();
   }
-  final IPartitioner partitioner=StorageService.getPartitioner();
-  final Comparator<String> dc=partitioner.getDecoratedKeyComparator();
-  Collections.sort(keys,dc);
-  for (  String key : keys) {
+  Collections.sort(keys,partitioner_.getDecoratedKeyObjComparator());
+  for (  DecoratedKey key : keys) {
     byte[] bytes=columnFamilies_.get(key);
     if (bytes.length > 0) {
-      writer.append(key,bytes);
+      writer.append(key.toString(),bytes);
     }
   }
   cfStore.addSSTable(writer.closeAndOpenReader());
