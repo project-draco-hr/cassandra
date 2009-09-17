@@ -13,20 +13,21 @@
     iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
   }
   for (  SSTableReader sstable : ssTables_) {
-    final SSTableScanner fs=sstable.getScanner();
-    fs.seekTo(startWith);
-    iterators.add(new Iterator<String>(){
+    final SSTableScanner scanner=sstable.getScanner();
+    scanner.seekTo(startWith);
+    Iterator<String> iter=new Iterator<String>(){
       public boolean hasNext(){
-        return fs.hasNext();
+        return scanner.hasNext();
       }
       public String next(){
-        return fs.next().getKey();
+        return scanner.next().getKey();
       }
       public void remove(){
         throw new UnsupportedOperationException();
       }
     }
-);
+;
+    iterators.add(iter);
   }
   Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
   Iterable<String> reduced=new ReducingIterator<String,String>(collated){

@@ -7,77 +7,33 @@
     return doFileCompaction(sstables);
   }
   long startTime=System.currentTimeMillis();
-  long totalBytesRead=0;
-  long totalkeysRead=0;
   long totalkeysWritten=0;
-  PriorityQueue<FileStruct> pq=initializePriorityQueue(sstables,null);
-  if (pq.isEmpty()) {
-    logger_.warn("Nothing to compact (all files empty or corrupt). This should not happen.");
-    return 0;
-  }
-  int expectedBloomFilterSize=SSTableReader.getApproximateKeyCount(sstables);
-  if (expectedBloomFilterSize < 0)   expectedBloomFilterSize=SSTableReader.indexInterval();
-  String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
-  SSTableWriter writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
-  SSTableReader ssTable=null;
-  String lastkey=null;
-  List<FileStruct> lfs=new ArrayList<FileStruct>();
-  DataOutputBuffer bufOut=new DataOutputBuffer();
+  int expectedBloomFilterSize=Math.max(SSTableReader.indexInterval(),SSTableReader.getApproximateKeyCount(sstables));
   if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
-  List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
-  while (pq.size() > 0 || lfs.size() > 0) {
-    FileStruct fs=null;
-    if (pq.size() > 0) {
-      fs=pq.poll();
+  SSTableWriter writer;
+  CompactionIterator ci=new CompactionIterator(sstables);
+  try {
+    if (!ci.hasNext()) {
+      logger_.warn("Nothing to compact (all files empty or corrupt). This should not happen.");
+      return 0;
     }
-    if (fs != null && (lastkey == null || lastkey.equals(fs.getKey()))) {
-      lastkey=fs.getKey();
-      lfs.add(fs);
-    }
- else {
-      Collections.sort(lfs,new FileStructComparator());
-      ColumnFamily columnFamily;
-      bufOut.reset();
-      if (lfs.size() > 1) {
-        for (        FileStruct filestruct : lfs) {
-          if (columnFamilies.size() > 1) {
-            merge(columnFamilies);
-          }
-          columnFamilies.add(filestruct.getColumnFamily());
-        }
-        columnFamily=resolveAndRemoveDeleted(columnFamilies);
-        columnFamilies.clear();
-        if (columnFamily != null) {
-          ColumnFamily.serializer().serializeWithIndexes(columnFamily,bufOut);
-        }
-      }
- else {
-        FileStruct filestruct=lfs.get(0);
-        ColumnFamily.serializer().serializeWithIndexes(filestruct.getColumnFamily(),bufOut);
-      }
-      writer.append(lastkey,bufOut);
+    String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
+    writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
+    while (ci.hasNext()) {
+      CompactionIterator.CompactedRow row=ci.next();
+      writer.append(row.key,row.buffer);
       totalkeysWritten++;
-      for (      FileStruct filestruct : lfs) {
-        filestruct.advance(true);
-        if (filestruct.isExhausted()) {
-          continue;
-        }
-        pq.add(filestruct);
-        totalkeysRead++;
-      }
-      lfs.clear();
-      lastkey=null;
-      if (fs != null) {
-        pq.add(fs);
-      }
     }
   }
-  ssTable=writer.closeAndOpenReader();
+  finally {
+    ci.close();
+  }
+  SSTableReader ssTable=writer.closeAndOpenReader();
   ssTables_.add(ssTable);
   ssTables_.markCompacted(sstables);
   CompactionManager.instance().submit(ColumnFamilyStore.this);
-  String format="Compacted to %s.  %d/%d bytes for %d/%d keys read/written.  Time: %dms.";
+  String format="Compacted to %s.  %d/%d bytes for %d keys.  Time: %dms.";
   long dTime=System.currentTimeMillis() - startTime;
-  logger_.info(String.format(format,writer.getFilename(),totalBytesRead,ssTable.length(),totalkeysRead,totalkeysWritten,dTime));
+  logger_.info(String.format(format,writer.getFilename(),getTotalBytes(sstables),ssTable.length(),totalkeysWritten,dTime));
   return sstables.size();
 }

@@ -1,104 +1,46 @@
 {
+  logger_.info("AntiCompacting [" + StringUtils.join(sstables,",") + "]");
+  long expectedRangeFileSize=getExpectedCompactedFileSize(sstables) / 2;
+  String compactionFileLocation=DatabaseDescriptor.getDataFileLocationForTable(table_,expectedRangeFileSize);
+  if (compactionFileLocation == null) {
+    throw new UnsupportedOperationException("disk full");
+  }
   List<SSTableReader> results=new ArrayList<SSTableReader>();
   long startTime=System.currentTimeMillis();
-  long totalBytesRead=0;
-  long totalBytesWritten=0;
-  long totalkeysRead=0;
   long totalkeysWritten=0;
-  String rangeFileLocation;
-  String mergedFileName;
-  long expectedRangeFileSize=getExpectedCompactedFileSize(sstables);
-  expectedRangeFileSize=expectedRangeFileSize / 2;
-  rangeFileLocation=DatabaseDescriptor.getDataFileLocationForTable(table_,expectedRangeFileSize);
-  if (rangeFileLocation == null) {
-    logger_.error("Total bytes to be written for range compaction  ..." + expectedRangeFileSize + "   is greater than the safe limit of the disk space available.");
-    return results;
-  }
-  PriorityQueue<FileStruct> pq=initializePriorityQueue(sstables,ranges);
-  if (pq.isEmpty()) {
-    return results;
-  }
-  mergedFileName=getTempSSTableFileName();
-  SSTableWriter rangeWriter=null;
-  String lastkey=null;
-  List<FileStruct> lfs=new ArrayList<FileStruct>();
-  DataOutputBuffer bufOut=new DataOutputBuffer();
-  int expectedBloomFilterSize=SSTableReader.getApproximateKeyCount(sstables);
-  expectedBloomFilterSize=(expectedBloomFilterSize > 0) ? expectedBloomFilterSize : SSTableReader.indexInterval();
+  int expectedBloomFilterSize=Math.max(SSTableReader.indexInterval(),SSTableReader.getApproximateKeyCount(sstables) / 2);
   if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
-  List<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>();
-  while (pq.size() > 0 || lfs.size() > 0) {
-    FileStruct fs=null;
-    if (pq.size() > 0) {
-      fs=pq.poll();
+  SSTableWriter writer=null;
+  CompactionIterator ci=new CompactionIterator(sstables);
+  try {
+    if (!ci.hasNext()) {
+      logger_.warn("Nothing to compact (all files empty or corrupt). This should not happen.");
+      return results;
     }
-    if (fs != null && (lastkey == null || lastkey.equals(fs.getKey()))) {
-      lastkey=fs.getKey();
-      lfs.add(fs);
-    }
- else {
-      Collections.sort(lfs,new FileStructComparator());
-      ColumnFamily columnFamily;
-      bufOut.reset();
-      if (lfs.size() > 1) {
-        for (        FileStruct filestruct : lfs) {
-          if (columnFamilies.size() > 1) {
-            merge(columnFamilies);
-          }
-          columnFamilies.add(filestruct.getColumnFamily());
-        }
-        columnFamily=resolveAndRemoveDeleted(columnFamilies);
-        columnFamilies.clear();
-        if (columnFamily != null) {
-          ColumnFamily.serializer().serializeWithIndexes(columnFamily,bufOut);
-        }
-      }
- else {
-        FileStruct filestruct=lfs.get(0);
-        ColumnFamily.serializer().serializeWithIndexes(filestruct.getColumnFamily(),bufOut);
-      }
-      if (Range.isTokenInRanges(StorageService.getPartitioner().getToken(lastkey),ranges)) {
-        if (rangeWriter == null) {
+    while (ci.hasNext()) {
+      CompactionIterator.CompactedRow row=ci.next();
+      if (Range.isTokenInRanges(StorageService.getPartitioner().getToken(row.key),ranges)) {
+        if (writer == null) {
           if (target != null) {
-            rangeFileLocation=rangeFileLocation + File.separator + "bootstrap";
+            compactionFileLocation=compactionFileLocation + File.separator + "bootstrap";
           }
-          FileUtils.createDirectory(rangeFileLocation);
-          String fname=new File(rangeFileLocation,mergedFileName).getAbsolutePath();
-          rangeWriter=new SSTableWriter(fname,expectedBloomFilterSize,StorageService.getPartitioner());
+          FileUtils.createDirectory(compactionFileLocation);
+          String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
+          writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
         }
-        rangeWriter.append(lastkey,bufOut);
-      }
-      totalkeysWritten++;
-      for (      FileStruct filestruct : lfs) {
-        filestruct.advance(true);
-        if (filestruct.isExhausted()) {
-          continue;
-        }
-        while (!Range.isTokenInRanges(StorageService.getPartitioner().getToken(filestruct.getKey()),ranges)) {
-          filestruct.advance(true);
-          if (filestruct.isExhausted()) {
-            break;
-          }
-        }
-        if (!filestruct.isExhausted()) {
-          pq.add(filestruct);
-        }
-        totalkeysRead++;
-      }
-      lfs.clear();
-      lastkey=null;
-      if (fs != null) {
-        pq.add(fs);
+        writer.append(row.key,row.buffer);
+        totalkeysWritten++;
       }
     }
   }
-  if (rangeWriter != null) {
-    results.add(rangeWriter.closeAndOpenReader());
+  finally {
+    ci.close();
   }
-  if (logger_.isDebugEnabled()) {
-    logger_.debug("Total time taken for range split   ..." + (System.currentTimeMillis() - startTime));
-    logger_.debug("Total bytes Read for range split  ..." + totalBytesRead);
-    logger_.debug("Total bytes written for range split  ..." + totalBytesWritten + "   Total keys read ..."+ totalkeysRead);
+  if (writer != null) {
+    results.add(writer.closeAndOpenReader());
+    String format="AntiCompacted to %s.  %d/%d bytes for %d keys.  Time: %dms.";
+    long dTime=System.currentTimeMillis() - startTime;
+    logger_.info(String.format(format,writer.getFilename(),getTotalBytes(sstables),results.get(0).length(),totalkeysWritten,dTime));
   }
   return results;
 }
