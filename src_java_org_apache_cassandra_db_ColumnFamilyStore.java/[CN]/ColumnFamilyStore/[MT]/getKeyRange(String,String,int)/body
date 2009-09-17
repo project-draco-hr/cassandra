@@ -13,9 +13,20 @@
     iterators.add(IteratorUtils.filteredIterator(Memtable.getKeyIterator(memtable.getKeys()),p));
   }
   for (  SSTableReader sstable : ssTables_) {
-    FileStruct fs=sstable.getFileStruct();
+    final SSTableScanner fs=sstable.getScanner();
     fs.seekTo(startWith);
-    iterators.add(fs);
+    iterators.add(new Iterator<String>(){
+      public boolean hasNext(){
+        return fs.hasNext();
+      }
+      public String next(){
+        return fs.next().getKey();
+      }
+      public void remove(){
+        throw new UnsupportedOperationException();
+      }
+    }
+);
   }
   Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
   Iterable<String> reduced=new ReducingIterator<String>(collated){
@@ -49,8 +60,8 @@
   }
   finally {
     for (    Iterator iter : iterators) {
-      if (iter instanceof FileStruct) {
-        ((FileStruct)iter).close();
+      if (iter instanceof Closeable) {
+        ((Closeable)iter).close();
       }
     }
   }
