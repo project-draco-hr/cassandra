@@ -1,15 +1,17 @@
 {
   long start=System.currentTimeMillis();
   Memtable initialMemtable=getMemtableThreadSafe();
+  boolean isFlush=false;
   if (initialMemtable.isThresholdViolated()) {
-    switchMemtable(initialMemtable,cLogCtx);
+    isFlush=true;
   }
   memtableLock_.writeLock().lock();
   try {
-    memtable_.put(key,columnFamily);
+    initialMemtable.put(key,columnFamily);
   }
   finally {
     memtableLock_.writeLock().unlock();
   }
   writeStats_.add(System.currentTimeMillis() - start);
+  return isFlush ? initialMemtable : null;
 }
