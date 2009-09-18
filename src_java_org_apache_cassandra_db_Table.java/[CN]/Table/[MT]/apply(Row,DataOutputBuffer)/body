@@ -1,5 +1,5 @@
 {
-  HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>();
+  HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
   flusherLock_.readLock().lock();
   try {
     CommitLog.open().add(row,serializedRow);
@@ -12,7 +12,5 @@
   finally {
     flusherLock_.readLock().unlock();
   }
-  if (memtablesToFlush.size() > 0) {
-    for (    Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())     entry.getKey().switchMemtable(entry.getValue());
-  }
+  for (  Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())   entry.getKey().switchMemtable(entry.getValue());
 }
