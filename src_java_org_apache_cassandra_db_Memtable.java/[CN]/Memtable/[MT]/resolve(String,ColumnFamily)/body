@@ -1,6 +1,11 @@
 {
-  ColumnFamily oldCf=columnFamilies_.get(key);
-  if (oldCf != null) {
+  ColumnFamily oldCf=columnFamilies_.putIfAbsent(key,columnFamily);
+  if (oldCf == null) {
+    currentSize_.addAndGet(columnFamily.size() + key.length());
+    currentObjectCount_.addAndGet(columnFamily.getColumnCount());
+    return;
+  }
+synchronized (keyLocks[Math.abs(key.hashCode() % keyLocks.length)]) {
     int oldSize=oldCf.size();
     int oldObjectCount=oldCf.getColumnCount();
     oldCf.addAll(columnFamily);
@@ -9,10 +14,5 @@
     resolveSize(oldSize,newSize);
     resolveCount(oldObjectCount,newObjectCount);
     oldCf.delete(columnFamily);
-  }
- else {
-    columnFamilies_.put(key,columnFamily);
-    currentSize_.addAndGet(columnFamily.size() + key.length());
-    currentObjectCount_.addAndGet(columnFamily.getColumnCount());
   }
 }

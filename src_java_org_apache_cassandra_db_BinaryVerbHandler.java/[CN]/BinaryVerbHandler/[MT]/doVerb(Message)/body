@@ -1,16 +1,11 @@
 {
   byte[] bytes=message.getMessageBody();
-  RowMutationContext rowMutationCtx=tls_.get();
-  if (rowMutationCtx == null) {
-    rowMutationCtx=new RowMutationContext();
-    tls_.set(rowMutationCtx);
-  }
-  rowMutationCtx.buffer_.reset(bytes,bytes.length);
+  DataInputBuffer buffer=new DataInputBuffer();
+  buffer.reset(bytes,bytes.length);
   try {
-    RowMutationMessage rmMsg=RowMutationMessage.serializer().deserialize(rowMutationCtx.buffer_);
+    RowMutationMessage rmMsg=RowMutationMessage.serializer().deserialize(buffer);
     RowMutation rm=rmMsg.getRowMutation();
-    rowMutationCtx.row_.setKey(rm.key());
-    rm.applyBinary(rowMutationCtx.row_);
+    rm.applyBinary();
   }
  catch (  Exception e) {
     if (logger_.isDebugEnabled())     logger_.debug(LogUtil.throwableToString(e));

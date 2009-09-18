@@ -1,13 +1,9 @@
 {
   byte[] bytes=message.getMessageBody();
-  RowMutationContext rowMutationCtx=tls_.get();
-  if (rowMutationCtx == null) {
-    rowMutationCtx=new RowMutationContext();
-    tls_.set(rowMutationCtx);
-  }
-  rowMutationCtx.buffer_.reset(bytes,bytes.length);
+  DataInputBuffer buffer=new DataInputBuffer();
+  buffer.reset(bytes,bytes.length);
   try {
-    RowMutation rm=RowMutation.serializer().deserialize(rowMutationCtx.buffer_);
+    RowMutation rm=RowMutation.serializer().deserialize(buffer);
     if (logger_.isDebugEnabled())     logger_.debug("Applying " + rm);
     byte[] hintedBytes=message.getHeader(RowMutation.HINT);
     if (hintedBytes != null && hintedBytes.length > 0) {
@@ -17,10 +13,7 @@
       hintedMutation.addHints(rm.key(),hint.getHost());
       hintedMutation.apply();
     }
-    rowMutationCtx.row_.clear();
-    rowMutationCtx.row_.setTable(rm.table());
-    rowMutationCtx.row_.setKey(rm.key());
-    rm.apply(rowMutationCtx.row_);
+    rm.apply();
     WriteResponse response=new WriteResponse(rm.table(),rm.key(),true);
     Message responseMessage=WriteResponse.makeWriteResponseMessage(message,response);
     if (logger_.isDebugEnabled())     logger_.debug(rm + " applied.  Sending response to " + message.getMessageId()+ "@"+ message.getFrom());
