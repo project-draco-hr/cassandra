@@ -3,6 +3,28 @@
     MessagingService.receive(message);
     return;
   }
-  Runnable tcpWriteEvent=new MessageSerializationTask(message,to);
-  messageSerializerExecutor_.execute(tcpWriteEvent);
+  TcpConnection connection=null;
+  try {
+    Message processedMessage=SinkManager.processClientMessageSink(message);
+    if (processedMessage == null) {
+      return;
+    }
+    connection=MessagingService.getConnection(processedMessage.getFrom(),to);
+    connection.write(message);
+  }
+ catch (  SocketException se) {
+    MessagingService.getConnectionPool(message.getFrom(),to).shutdown();
+    logger_.error("socket error writing to " + to,se);
+  }
+catch (  IOException e) {
+    if (connection != null) {
+      connection.errorClose();
+    }
+    logger_.error("unexpected error writing " + message,e);
+  }
+ finally {
+    if (connection != null) {
+      connection.close();
+    }
+  }
 }
