@@ -1,0 +1,20 @@
+{
+  logger_.info("Writing " + this);
+  IPartitioner<?> partitioner=StorageService.getPartitioner();
+  ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
+  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),columnFamilies_.size(),StorageService.getPartitioner());
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  for (  String key : (List<String>)sortedFlushable.keys) {
+    buffer.reset();
+    ColumnFamily columnFamily=columnFamilies_.get(key);
+    if (columnFamily != null) {
+      ColumnFamily.serializer().serializeWithIndexes(columnFamily,buffer);
+      writer.append(partitioner.decorateKey(key),buffer);
+    }
+  }
+  buffer.close();
+  SSTableReader ssTable=writer.closeAndOpenReader();
+  isFlushed_=true;
+  logger_.info("Completed flushing " + ssTable.getFilename());
+  return ssTable;
+}

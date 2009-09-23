@@ -7,13 +7,12 @@
     }
     logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable");
     oldMemtable.freeze();
-    getMemtablesPendingFlushNotNull(columnFamily_).add(oldMemtable);
-    final Future<?> future=submitFlush(oldMemtable);
+    final Condition condition=submitFlush(oldMemtable);
     memtable_=new Memtable(table_,columnFamily_);
     return commitLogUpdater_.submit(new Runnable(){
       public void run(){
         try {
-          future.get();
+          condition.await();
           onMemtableFlush(ctx);
         }
  catch (        Exception e) {

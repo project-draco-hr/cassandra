@@ -1,0 +1,29 @@
+{
+  logger_.info("Enqueuing flush of " + flushable);
+  if (flushable instanceof Memtable) {
+    getMemtablesPendingFlushNotNull(columnFamily_).add((Memtable)flushable);
+  }
+  final Condition condition=new SimpleCondition();
+  flushSorter_.submit(new Runnable(){
+    public void run(){
+      final SortedFlushable sortedFlushable=flushable.getSortedContents();
+      flushWriter_.submit(new Runnable(){
+        public void run(){
+          try {
+            addSSTable(flushable.writeSortedContents(sortedFlushable));
+          }
+ catch (          IOException e) {
+            throw new RuntimeException(e);
+          }
+          if (flushable instanceof Memtable) {
+            getMemtablesPendingFlushNotNull(columnFamily_).remove(flushable);
+          }
+          condition.signalAll();
+        }
+      }
+);
+    }
+  }
+);
+  return condition;
+}
