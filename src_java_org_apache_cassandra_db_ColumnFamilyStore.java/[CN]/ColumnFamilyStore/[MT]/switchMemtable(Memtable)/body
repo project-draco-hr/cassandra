@@ -1,27 +1,33 @@
 {
-  CommitLog.CommitLogContext ctx=null;
   Table.flusherLock_.writeLock().lock();
   try {
-    try {
-      ctx=CommitLog.open().getContext();
-    }
- catch (    IOException e) {
-      throw new RuntimeException(e);
-    }
+    final CommitLog.CommitLogContext ctx=CommitLog.open().getContext();
     if (oldMemtable.isFrozen()) {
-      return;
+      return null;
     }
     logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable");
     oldMemtable.freeze();
     getMemtablesPendingFlushNotNull(columnFamily_).add(oldMemtable);
-    submitFlush(oldMemtable,ctx);
+    final Future<?> future=submitFlush(oldMemtable,ctx);
     memtable_=new Memtable(table_,columnFamily_);
+    return commitLogUpdater_.submit(new Runnable(){
+      public void run(){
+        try {
+          future.get();
+          onMemtableFlush(ctx);
+        }
+ catch (        Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+);
+  }
+  finally {
+    Table.flusherLock_.writeLock().unlock();
     if (memtableSwitchCount == Integer.MAX_VALUE) {
       memtableSwitchCount=0;
     }
     memtableSwitchCount++;
-  }
-  finally {
-    Table.flusherLock_.writeLock().unlock();
   }
 }
