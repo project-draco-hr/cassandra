@@ -22,19 +22,19 @@
         break;
       }
       bufIn.reset(bytes,bytes.length);
-      Row row=Row.serializer().deserialize(bufIn);
-      if (logger_.isDebugEnabled())       logger_.debug(String.format("replaying mutation for %s.%s: %s",row.getTable(),row.key(),"{" + StringUtils.join(row.getColumnFamilies(),", ") + "}"));
-      Table table=Table.open(row.getTable());
+      RowMutation rm=RowMutation.serializer().deserialize(bufIn);
+      if (logger_.isDebugEnabled())       logger_.debug(String.format("replaying mutation for %s.%s: %s",rm.getTable(),rm.key(),"{" + StringUtils.join(rm.getColumnFamilies(),", ") + "}"));
+      Table table=Table.open(rm.getTable());
       tablesRecovered.add(table);
-      Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(row.getColumnFamilies());
+      Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(rm.getColumnFamilies());
       for (      ColumnFamily columnFamily : columnFamilies) {
         int id=table.getColumnFamilyId(columnFamily.name());
         if (!clHeader.isDirty(id) || reader.getFilePointer() < clHeader.getPosition(id)) {
-          row.removeColumnFamily(columnFamily);
+          rm.removeColumnFamily(columnFamily);
         }
       }
-      if (!row.isEmpty()) {
-        table.applyNow(row);
+      if (!rm.isEmpty()) {
+        table.applyNow(rm);
       }
     }
     reader.close();
