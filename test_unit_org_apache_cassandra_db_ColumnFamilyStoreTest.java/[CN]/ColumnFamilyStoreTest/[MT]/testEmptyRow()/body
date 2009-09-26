@@ -1,0 +1,18 @@
+{
+  Table table=Table.open("Keyspace1");
+  final ColumnFamilyStore store=table.getColumnFamilyStore("Standard2");
+  RowMutation rm;
+  rm=new RowMutation("Keyspace1","key1");
+  rm.delete(new QueryPath("Standard2",null,null),System.currentTimeMillis());
+  rm.apply();
+  TableTest.Runner r=new TableTest.Runner(){
+    public void run() throws IOException {
+      SliceQueryFilter sliceFilter=new SliceQueryFilter("key1",new QueryPath("Standard2",null,null),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,1);
+      assertNull(store.getColumnFamily(sliceFilter));
+      NamesQueryFilter namesFilter=new NamesQueryFilter("key1",new QueryPath("Standard2",null,null),"a".getBytes());
+      assertNull(store.getColumnFamily(namesFilter));
+    }
+  }
+;
+  TableTest.reTest(store,r);
+}
