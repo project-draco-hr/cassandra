@@ -34,10 +34,20 @@
   ssTables_.onStart(sstables);
   CompactionManager.instance().submit(ColumnFamilyStore.this);
   if (table_.equals(Table.SYSTEM_TABLE) && columnFamily_.equals(HintedHandOffManager.HINTS_CF)) {
-    HintedHandOffManager.instance().submit(this);
+    HintedHandOffManager.instance().scheduleHandoffsFor(this);
   }
-  int flushPeriod=DatabaseDescriptor.getFlushPeriod(table_,columnFamily_);
-  if (flushPeriod > 0) {
-    PeriodicFlushManager.instance().submitPeriodicFlusher(this,flushPeriod);
+  int flushPeriodMS=DatabaseDescriptor.getFlushPeriod(table_,columnFamily_) * 60 * 1000;
+  if (flushPeriodMS > 0) {
+    flushTimer_.schedule(new TimerTask(){
+      public void run(){
+        try {
+          forceFlush();
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+,flushPeriodMS,flushPeriodMS);
   }
 }
