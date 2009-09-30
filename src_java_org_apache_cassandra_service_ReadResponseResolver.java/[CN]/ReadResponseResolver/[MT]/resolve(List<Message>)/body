@@ -11,23 +11,18 @@
   for (  Message response : responses) {
     byte[] body=response.getMessageBody();
     bufIn.reset(body,body.length);
-    try {
-      long start=System.currentTimeMillis();
-      ReadResponse result=ReadResponse.serializer().deserialize(bufIn);
-      if (logger_.isDebugEnabled())       logger_.debug("Response deserialization time : " + (System.currentTimeMillis() - start) + " ms.");
-      if (!result.isDigestQuery()) {
-        rowList.add(result.row());
-        endPoints.add(response.getFrom());
-        key=result.row().key();
-        table=result.row().getTable();
-      }
- else {
-        digest=result.digest();
-        isDigestQuery=true;
-      }
+    long start=System.currentTimeMillis();
+    ReadResponse result=ReadResponse.serializer().deserialize(bufIn);
+    if (logger_.isDebugEnabled())     logger_.debug("Response deserialization time : " + (System.currentTimeMillis() - start) + " ms.");
+    if (result.isDigestQuery()) {
+      digest=result.digest();
+      isDigestQuery=true;
     }
- catch (    IOException ex) {
-      logger_.info(LogUtil.throwableToString(ex));
+ else {
+      rowList.add(result.row());
+      endPoints.add(response.getFrom());
+      key=result.row().key();
+      table=result.row().getTable();
     }
   }
   if (isDigestQuery) {
