@@ -1,13 +1,13 @@
 {
-  Set<String> cfamilies=columnFamilies_.keySet();
-  byte[] xorHash=ArrayUtils.EMPTY_BYTE_ARRAY;
-  for (  String cFamily : cfamilies) {
-    if (xorHash.length == 0) {
-      xorHash=columnFamilies_.get(cFamily).digest();
-    }
- else {
-      xorHash=FBUtilities.xor(xorHash,columnFamilies_.get(cFamily).digest());
-    }
+  MessageDigest digest;
+  try {
+    digest=MessageDigest.getInstance("MD5");
   }
-  return xorHash;
+ catch (  NoSuchAlgorithmException e) {
+    throw new AssertionError(e);
+  }
+  for (  String cFamily : columnFamilies_.keySet()) {
+    columnFamilies_.get(cFamily).updateDigest(digest);
+  }
+  return digest.digest();
 }
