@@ -1,25 +1,26 @@
 {
-  final Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
-  List<Iterator<String>> iterators=new ArrayList<Iterator<String>>();
-  Predicate p=new Predicate(){
-    public boolean evaluate(    Object key){
-      String st=(String)key;
-      return comparator.compare(startWith,st) <= 0 && (stopAt.isEmpty() || comparator.compare(st,stopAt) <= 0);
+  final DecoratedKey startWithDK=partitioner.decorateKey(startWith);
+  final DecoratedKey stopAtDK=partitioner.decorateKey(stopAt);
+  final Comparator<DecoratedKey> comparator=partitioner.getDecoratedKeyComparator();
+  List<Iterator<DecoratedKey>> iterators=new ArrayList<Iterator<DecoratedKey>>();
+  Predicate<DecoratedKey> p=new Predicate<DecoratedKey>(){
+    public boolean apply(    DecoratedKey key){
+      return comparator.compare(startWithDK,key) <= 0 && (stopAt.isEmpty() || comparator.compare(key,stopAtDK) <= 0);
     }
   }
 ;
-  iterators.add(IteratorUtils.filteredIterator(memtableKeyIterator(),p));
+  iterators.add(Iterators.filter(memtableKeyIterator(),p));
   for (  Memtable memtable : ColumnFamilyStore.getUnflushedMemtables(columnFamily_)) {
-    iterators.add(IteratorUtils.filteredIterator(memtable.getKeyIterator(),p));
+    iterators.add(Iterators.filter(memtable.getKeyIterator(),p));
   }
   for (  SSTableReader sstable : ssTables_) {
     final SSTableScanner scanner=sstable.getScanner();
-    scanner.seekTo(startWith);
-    Iterator<String> iter=new Iterator<String>(){
+    scanner.seekTo(startWithDK);
+    Iterator<DecoratedKey> iter=new Iterator<DecoratedKey>(){
       public boolean hasNext(){
         return scanner.hasNext();
       }
-      public String next(){
+      public DecoratedKey next(){
         return scanner.next().getKey();
       }
       public void remove(){
@@ -29,13 +30,13 @@
 ;
     iterators.add(iter);
   }
-  Iterator<String> collated=IteratorUtils.collatedIterator(comparator,iterators);
-  Iterable<String> reduced=new ReducingIterator<String,String>(collated){
-    String current;
-    public void reduce(    String current){
+  Iterator<DecoratedKey> collated=IteratorUtils.collatedIterator(comparator,iterators);
+  Iterable<DecoratedKey> reduced=new ReducingIterator<DecoratedKey,DecoratedKey>(collated){
+    DecoratedKey current;
+    public void reduce(    DecoratedKey current){
       this.current=current;
     }
-    protected String getReduced(){
+    protected DecoratedKey getReduced(){
       return current;
     }
   }
@@ -43,14 +44,14 @@
   try {
     List<String> keys=new ArrayList<String>();
     boolean rangeCompletedLocally=false;
-    for (    String current : reduced) {
-      if (!stopAt.isEmpty() && comparator.compare(stopAt,current) < 0) {
+    for (    DecoratedKey current : reduced) {
+      if (!stopAt.isEmpty() && comparator.compare(stopAtDK,current) < 0) {
         rangeCompletedLocally=true;
         break;
       }
-      QueryFilter filter=new SliceQueryFilter(current,new QueryPath(columnFamily_),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,1);
+      QueryFilter filter=new SliceQueryFilter(current.key,new QueryPath(columnFamily_),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,1);
       if (getColumnFamily(filter,Integer.MAX_VALUE) != null) {
-        keys.add(current);
+        keys.add(current.key);
       }
       if (keys.size() >= maxResults) {
         rangeCompletedLocally=true;

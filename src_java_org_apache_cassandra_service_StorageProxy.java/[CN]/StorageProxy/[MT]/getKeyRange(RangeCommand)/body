@@ -1,6 +1,5 @@
 {
   long startTime=System.currentTimeMillis();
-  Comparator<String> comparator=StorageService.getPartitioner().getDecoratedKeyComparator();
   TokenMetadata tokenMetadata=StorageService.instance().getTokenMetadata();
   List<String> allKeys=new ArrayList<String>();
   RangeCommand command=rawCommand;
@@ -22,6 +21,13 @@
     List<String> rangeKeys=rangeReply.keys;
     if (rangeKeys.size() > 0) {
       if (allKeys.size() > 0) {
+        Comparator<String> comparator=new Comparator<String>(){
+          public int compare(          String o1,          String o2){
+            IPartitioner p=StorageService.getPartitioner();
+            return p.getDecoratedKeyComparator().compare(p.decorateKey(o1),p.decorateKey(o2));
+          }
+        }
+;
         if (comparator.compare(rangeKeys.get(rangeKeys.size() - 1),allKeys.get(0)) <= 0) {
           if (rangeKeys.get(rangeKeys.size() - 1).equals(allKeys.get(0))) {
             rangeKeys.remove(rangeKeys.size() - 1);
