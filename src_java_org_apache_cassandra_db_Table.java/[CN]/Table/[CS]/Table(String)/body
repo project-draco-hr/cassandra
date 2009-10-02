@@ -4,4 +4,18 @@
   for (  String columnFamily : tableMetadata_.getColumnFamilies()) {
     columnFamilyStores_.put(columnFamily,ColumnFamilyStore.getColumnFamilyStore(table,columnFamily));
   }
+  int checkMs=DatabaseDescriptor.getMemtableLifetimeMS() / 10;
+  flushTimer_.schedule(new TimerTask(){
+    public void run(){
+      for (      ColumnFamilyStore cfs : columnFamilyStores_.values()) {
+        try {
+          cfs.forceFlushIfExpired();
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+,checkMs,checkMs);
 }
