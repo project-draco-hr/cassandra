@@ -2,17 +2,12 @@
   storageMetadata_=SystemTable.initMetadata();
   tcpAddr_=new EndPoint(DatabaseDescriptor.getStoragePort());
   udpAddr_=new EndPoint(DatabaseDescriptor.getControlPort());
+  isBootstrapMode=!(DatabaseDescriptor.getSeeds().contains(udpAddr_.getHost()) || SystemTable.isBootstrapped());
   MessagingService.instance().listen(tcpAddr_);
   MessagingService.instance().listenUDP(udpAddr_);
   SelectorManager.getSelectorManager().start();
   SelectorManager.getUdpSelectorManager().start();
   loadTimer_.schedule(new LoadDisseminator(),StorageService.threshold_,StorageService.threshold_);
-  storageLoadBalancer_.start();
-  Gossiper.instance().register(this);
-  Gossiper.instance().start(udpAddr_,storageMetadata_.getGeneration());
-  tokenMetadata_.update(storageMetadata_.getToken(),StorageService.tcpAddr_,isBootstrapMode);
-  ApplicationState state=new ApplicationState(StorageService.getPartitioner().getTokenFactory().toString(storageMetadata_.getToken()));
-  Gossiper.instance().addApplicationState(StorageService.nodeId_,state);
   if (isBootstrapMode) {
     logger_.info("Starting in bootstrap mode (first, sleeping to get load information)");
     try {
@@ -39,7 +34,14 @@
         updateToken(t);
       }
     }
-    doBootstrap(StorageService.getLocalStorageEndPoint());
+    BootStrapper bs=new BootStrapper(new EndPoint[]{getLocalStorageEndPoint()},storageMetadata_.getToken());
+    bootStrapper_.submit(bs);
     Gossiper.instance().addApplicationState(BOOTSTRAP_MODE,new ApplicationState(""));
   }
+  storageLoadBalancer_.start();
+  Gossiper.instance().register(this);
+  Gossiper.instance().start(udpAddr_,storageMetadata_.getGeneration());
+  tokenMetadata_.update(storageMetadata_.getToken(),StorageService.tcpAddr_,isBootstrapMode);
+  ApplicationState state=new ApplicationState(StorageService.getPartitioner().getTokenFactory().toString(storageMetadata_.getToken()));
+  Gossiper.instance().addApplicationState(StorageService.nodeId_,state);
 }
