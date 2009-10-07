@@ -1,0 +1,29 @@
+def _cassandraGetColumn(params):
+    try:
+        cassandra = _cassandraConnect(params)
+        pp = pprint.PrettyPrinter(indent=2)
+        result = cassandra['client'].get(params['table'], params['row'], Cassandra.ColumnPath(params['cf'], None, params['open']), 1)
+        col = result.column
+        cassandra['transport'].close()
+        s = ''
+        s += ('Column: %s<br/>\nTimestamp: %s - <span class="parsedts">%s</span>' % (col.name, col.timestamp, _cassandraTimestampToDatetime(col.timestamp)))
+        jsonObj = None
+        error = ''
+        try:
+            jsonObj = json.loads(col.value)
+        except ValueError as exc:
+            error = str(exc)
+        if (jsonObj != None):
+            s += (('<h3>Data is a json object!</h3>\n<div class="columnData"><tt>\n' + cutejson.cutejson(jsonObj)) + '\n</tt></div>')
+        else:
+            s += ('<br/><br/>(Not a valid json string) - ' + str(error))
+        s += ('<h3>Data</h3><div class="columnData">%s</div><br/>' % escape(col.value))
+        if (jsonObj != None):
+            s += ('<h3>By Python prettyprinter:</h3><div class="columnData"><pre>%s</pre></div>' % json.dumps(json.loads(col.value), indent=4, sort_keys=True))
+        return s
+    except Thrift.TException as tx:
+        print ('%s' % tx.message)
+        return ('Thrift Error: %s' % tx.message)
+    except Cassandra.InvalidRequestException as ire:
+        print ('%s' % ire.message)
+        return ('Invalid Request Error: %s' % ire.message)

@@ -1,0 +1,47 @@
+def _cassandraGetSliceFrom(params):
+    try:
+        cassandra = _cassandraConnect(params)
+        s = ''
+        range = Cassandra.SliceRange(params['search'], params['searchend'], params['descending'], (params['count'] + params['offset']))
+        predicate = Cassandra.SlicePredicate(None, range)
+        parent = Cassandra.ColumnParent(params['cf'], None)
+        result = cassandra['client'].get_slice(params['table'], params['row'], parent, predicate, 1)
+        cassandra['transport'].close()
+        n = (len(result) - params['offset'])
+        if (n < 0):
+            n = 0
+        s += (('Obtained: ' + str(n)) + ' columns (click on column data to open)')
+        s += ((' <span style="color:gray">- query predicate: ' + str(predicate)) + '</span><br>\n')
+        s += ('%s<table class="main">' % _navigationButtonsHtml(params))
+        strcol = '<tr class="%s">\n  <td class="rownum">%d</td>\n  <td><tt>%s</tt></td>\n  <td class="link"><a href="%s"><tt>%s</tt></a></td>\n  <td>%s<br/><span class="parsedts">%s</span></td>\n  <td><a title="Delete column" href="#" onclick="javascript:if(confirm(\'Are you sure you want to delete this column?\'))window.open(\'%s\')">&times;</a></td>\n</tr>\n'
+        i = 0
+        deleteParams = {'host': params['host'], 'port': params['port'], 'table': params['table'], 'row': params['row'], 'cf': params['cf'], }
+        clazz = 'even'
+        for csp in result:
+            col = csp.column
+            s += '<!-- a column -- >\n'
+            if (i >= params['offset']):
+                targetmap = copy(params)
+                targetmap['open'] = col.name
+                target = ('view?%s' % urllib.urlencode(targetmap))
+                deleteParams['columnName'] = col.name
+                svalue = col.value
+                if (len(svalue) > 120):
+                    svalue = (escape(svalue[0:120]) + _htmlEllipsis())
+                else:
+                    svalue = escape(svalue)
+                s += (strcol % (clazz, i, col.name, target, svalue, str(col.timestamp), _cassandraTimestampToDatetime(col.timestamp), ('delete?' + urllib.urlencode(deleteParams))))
+                if (clazz == 'odd'):
+                    clazz = 'even'
+                else:
+                    clazz = 'odd'
+            i = (i + 1)
+        s += '</table>\n'
+        s += _navigationButtonsHtml(params)
+        return s
+    except Thrift.TException as tx:
+        print ('%s' % tx.message)
+        return ('TException: %s' % tx.message)
+    except Cassandra.InvalidRequestException as ire:
+        print ('%s' % ire.why)
+        return ('InvalidRequestException: %s' % ire.why)

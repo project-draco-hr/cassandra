@@ -1,0 +1,12 @@
+def _cassandraInsert(params, colName, columnValue):
+    try:
+        cassandra = _cassandraConnect(params)
+        cassandra['client'].insert(params['table'], params['row'], Cassandra.ColumnPath(params['cf'], None, colName), columnValue, _nowAsCassandraTimestamp(), 1)
+        cassandra['transport'].close()
+        return ("Column '%s' inserted" % escape(colName))
+    except Thrift.TException as tx:
+        print ('%s' % tx.message)
+        return ('Error inserting column - Thrift Error: %s' % tx.message)
+    except Cassandra.InvalidRequestException as ire:
+        print ('%s' % ire.message)
+        return ('Error inserting column - Invalid Request Error: %s' % ire.message)
