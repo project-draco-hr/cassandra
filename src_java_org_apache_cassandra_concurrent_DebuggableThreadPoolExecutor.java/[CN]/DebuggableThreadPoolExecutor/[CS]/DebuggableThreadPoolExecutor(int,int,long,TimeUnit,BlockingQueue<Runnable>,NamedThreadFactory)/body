@@ -3,10 +3,20 @@
   super.prestartAllCoreThreads();
   MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
   try {
-    objName=new ObjectName("org.apache.cassandra.concurrent:type=" + threadFactory.id);
-    mbs.registerMBean(this,objName);
+    mbs.registerMBean(this,new ObjectName("org.apache.cassandra.concurrent:type=" + threadFactory.id));
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
+  }
+  if (maximumPoolSize > 1) {
+    this.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+  }
+ else {
+    this.setRejectedExecutionHandler(new RejectedExecutionHandler(){
+      public void rejectedExecution(      Runnable r,      ThreadPoolExecutor executor){
+        throw new AssertionError("Blocking serialized executor is not yet implemented");
+      }
+    }
+);
   }
 }
