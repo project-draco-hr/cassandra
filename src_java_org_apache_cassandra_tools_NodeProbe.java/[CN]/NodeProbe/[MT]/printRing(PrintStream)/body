@@ -1,19 +1,24 @@
 {
-  Map<Range,List<EndPoint>> rangeMap=ssProxy.getRangeToEndPointMap();
+  Map<Range,List<String>> rangeMap=ssProxy.getRangeToEndPointMap();
   List<Range> ranges=new ArrayList<Range>(rangeMap.keySet());
   Collections.sort(ranges);
+  Set<String> liveNodes=ssProxy.getLiveNodes();
+  Set<String> deadNodes=ssProxy.getUnreachableNodes();
   int counter=0;
-  outs.print(String.format("%-46s ","Starting Token"));
-  outs.print(String.format("%-44s ","Ending Token"));
-  outs.print(String.format("%-4s ","Size"));
-  outs.print(String.format("%-15s","Address"));
+  outs.print(String.format("%-14s","Address"));
+  outs.print(String.format("%-11s","Status"));
+  outs.print(String.format("%-43s","Range"));
   outs.println("Ring");
+  if (ranges.size() > 1) {
+    outs.println(String.format("%-14s%-11s%-43s","","",ranges.get(0).left()));
+  }
   for (  Range range : ranges) {
-    List<EndPoint> endpoints=rangeMap.get(range);
-    outs.print(String.format("%-46s ",range.left()));
-    outs.print(String.format("%-46s ",range.right()));
-    outs.print(String.format("%2d ",endpoints.size()));
-    outs.print(String.format("%-15s",endpoints.get(0).getHost()));
+    List<String> endpoints=rangeMap.get(range);
+    String primaryEndpoint=endpoints.get(0);
+    outs.print(String.format("%-14s",primaryEndpoint));
+    String status=liveNodes.contains(primaryEndpoint) ? "Up" : deadNodes.contains(primaryEndpoint) ? "Down" : "?";
+    outs.print(String.format("%-11s",status));
+    outs.print(String.format("%-43s",range.right()));
     String asciiRingArt;
     if (counter == 0) {
       asciiRingArt="|<--|";
@@ -22,15 +27,9 @@
       asciiRingArt="|-->|";
     }
  else {
-      if ((rangeMap.size() > 4) && ((counter % 2) == 0)) {
-        asciiRingArt="v   |";
-      }
- else       if ((rangeMap.size() > 4) && ((counter % 2) != 0)) {
-        asciiRingArt="|   ^";
-      }
- else {
-        asciiRingArt="|   |";
-      }
+      if ((rangeMap.size() > 4) && ((counter % 2) == 0))       asciiRingArt="v   |";
+ else       if ((rangeMap.size() > 4) && ((counter % 2) != 0))       asciiRingArt="|   ^";
+ else       asciiRingArt="|   |";
     }
     outs.println(asciiRingArt);
     counter++;
