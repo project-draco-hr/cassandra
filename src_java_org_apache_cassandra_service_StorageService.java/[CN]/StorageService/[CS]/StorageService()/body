@@ -1,2 +1,34 @@
 {
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  try {
+    mbs.registerMBean(this,new ObjectName("org.apache.cassandra.service:type=StorageService"));
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+  bootstrapSet=new HashSet<EndPoint>();
+  endPointSnitch_=DatabaseDescriptor.getEndPointSnitch();
+  MessagingService.instance().registerVerbHandlers(tokenVerbHandler_,new TokenUpdateVerbHandler());
+  MessagingService.instance().registerVerbHandlers(binaryVerbHandler_,new BinaryVerbHandler());
+  MessagingService.instance().registerVerbHandlers(mutationVerbHandler_,new RowMutationVerbHandler());
+  MessagingService.instance().registerVerbHandlers(readRepairVerbHandler_,new ReadRepairVerbHandler());
+  MessagingService.instance().registerVerbHandlers(readVerbHandler_,new ReadVerbHandler());
+  MessagingService.instance().registerVerbHandlers(dataFileVerbHandler_,new DataFileVerbHandler());
+  MessagingService.instance().registerVerbHandlers(mbrshipCleanerVerbHandler_,new MembershipCleanerVerbHandler());
+  MessagingService.instance().registerVerbHandlers(rangeVerbHandler_,new RangeVerbHandler());
+  MessagingService.instance().registerVerbHandlers(bootstrapMetadataVerbHandler_,new BootstrapMetadataVerbHandler());
+  MessagingService.instance().registerVerbHandlers(bootStrapInitiateVerbHandler_,new BootStrapper.BootStrapInitiateVerbHandler());
+  MessagingService.instance().registerVerbHandlers(bootStrapInitiateDoneVerbHandler_,new BootStrapper.BootstrapInitiateDoneVerbHandler());
+  MessagingService.instance().registerVerbHandlers(bootStrapTerminateVerbHandler_,new BootStrapper.BootstrapTerminateVerbHandler());
+  MessagingService.instance().registerVerbHandlers(bootstrapTokenVerbHandler_,new BootStrapper.BootstrapTokenVerbHandler());
+  StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,DatabaseDescriptor.getConcurrentWriters()));
+  StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,DatabaseDescriptor.getConcurrentReaders()));
+  Class cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();
+  Class[] parameterTypes=new Class[]{TokenMetadata.class,IPartitioner.class,int.class,int.class};
+  try {
+    nodePicker_=(AbstractReplicationStrategy)cls.getConstructor(parameterTypes).newInstance(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
 }

@@ -7,38 +7,10 @@
   MessagingService.instance().listenUDP(udpAddr_);
   SelectorManager.getSelectorManager().start();
   SelectorManager.getUdpSelectorManager().start();
-  loadTimer_.schedule(new LoadDisseminator(),StorageService.threshold_,StorageService.threshold_);
+  StorageLoadBalancer.instance().startBroadcasting();
   if (isBootstrapMode) {
-    logger_.info("Starting in bootstrap mode (first, sleeping to get load information)");
-    try {
-      while (storageLoadBalancer_.getLoadInfo().isEmpty()) {
-        Thread.sleep(100);
-      }
-      Thread.sleep(BootStrapper.INITIAL_DELAY);
-    }
- catch (    InterruptedException e) {
-      throw new AssertionError(e);
-    }
-    if (DatabaseDescriptor.getInitialToken() == null) {
-      double maxLoad=0;
-      EndPoint maxEndpoint=null;
-      for (      Map.Entry<EndPoint,Double> entry : storageLoadBalancer_.getLoadInfo().entrySet()) {
-        if (maxEndpoint == null || entry.getValue() > maxLoad) {
-          maxEndpoint=entry.getKey();
-          maxLoad=entry.getValue();
-        }
-      }
-      if (!maxEndpoint.equals(getLocalStorageEndPoint())) {
-        Token<?> t=getBootstrapTokenFrom(maxEndpoint);
-        logger_.info("Setting token to " + t + " to assume load from "+ maxEndpoint.getHost());
-        updateToken(t);
-      }
-    }
-    BootStrapper bs=new BootStrapper(new EndPoint[]{getLocalStorageEndPoint()},storageMetadata_.getToken());
-    bootStrapper_.submit(bs);
-    Gossiper.instance().addApplicationState(BOOTSTRAP_MODE,new ApplicationState(""));
+    BootStrapper.startBootstrap();
   }
-  storageLoadBalancer_.start();
   Gossiper.instance().register(this);
   Gossiper.instance().start(udpAddr_,storageMetadata_.getGeneration());
   tokenMetadata_.update(storageMetadata_.getToken(),StorageService.tcpAddr_,isBootstrapMode);
