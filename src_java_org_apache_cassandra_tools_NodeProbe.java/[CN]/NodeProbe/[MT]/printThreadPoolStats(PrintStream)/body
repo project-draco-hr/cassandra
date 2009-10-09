@@ -1,12 +1,21 @@
 {
   ObjectName query;
   try {
+    outs.print(String.format("%-25s","Pool Name"));
+    outs.print(String.format("%10s","Active"));
+    outs.print(String.format("%10s","Pending"));
+    outs.print(String.format("%15s","Completed"));
+    outs.println();
     query=new ObjectName("org.apache.cassandra.concurrent:type=*");
     Set<ObjectName> result=mbeanServerConn.queryNames(query,null);
     for (    ObjectName objectName : result) {
       String poolName=objectName.getKeyProperty("type");
       IExecutorMBean threadPoolProxy=JMX.newMBeanProxy(mbeanServerConn,objectName,IExecutorMBean.class);
-      outs.println(poolName + ", pending tasks=" + threadPoolProxy.getPendingTasks());
+      outs.print(String.format("%-25s",poolName));
+      outs.print(String.format("%10d",threadPoolProxy.getActiveCount()));
+      outs.print(String.format("%10d",threadPoolProxy.getPendingTasks()));
+      outs.print(String.format("%15d",threadPoolProxy.getCompletedTasks()));
+      outs.println();
     }
   }
  catch (  MalformedObjectNameException e) {
