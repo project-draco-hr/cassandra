@@ -2,7 +2,7 @@
   storageMetadata_=SystemTable.initMetadata();
   tcpAddr_=new EndPoint(DatabaseDescriptor.getStoragePort());
   udpAddr_=new EndPoint(DatabaseDescriptor.getControlPort());
-  isBootstrapMode=!(DatabaseDescriptor.getSeeds().contains(udpAddr_.getHost()) || SystemTable.isBootstrapped());
+  isBootstrapMode=DatabaseDescriptor.isAutoBootstrap() && !(DatabaseDescriptor.getSeeds().contains(udpAddr_.getHost()) || SystemTable.isBootstrapped());
   MessagingService.instance().listen(tcpAddr_);
   MessagingService.instance().listenUDP(udpAddr_);
   SelectorManager.getSelectorManager().start();
@@ -14,6 +14,7 @@
     BootStrapper.startBootstrap();
   }
  else {
+    SystemTable.setBootstrapped();
     tokenMetadata_.update(storageMetadata_.getToken(),StorageService.tcpAddr_,isBootstrapMode);
   }
   ApplicationState state=new ApplicationState(StorageService.getPartitioner().getTokenFactory().toString(storageMetadata_.getToken()));
