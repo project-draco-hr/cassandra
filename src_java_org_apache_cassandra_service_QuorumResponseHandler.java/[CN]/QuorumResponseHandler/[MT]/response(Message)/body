@@ -1,15 +1,7 @@
 {
-  lock_.lock();
-  try {
-    if (!done_.get()) {
-      responses_.add(message);
-      if (responses_.size() >= responseCount_ && responseResolver_.isDataPresent(responses_)) {
-        done_.set(true);
-        condition_.signal();
-      }
-    }
-  }
-  finally {
-    lock_.unlock();
+  if (condition_.isSignaled())   return;
+  responses_.add(message);
+  if (responses_.size() >= responseCount_ && responseResolver_.isDataPresent(responses_)) {
+    condition_.signal();
   }
 }

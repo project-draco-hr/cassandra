@@ -1,22 +1,14 @@
 {
-  lock_.lock();
   try {
-    boolean bVal=true;
+    long timeout=System.currentTimeMillis() - startTime_ + DatabaseDescriptor.getRpcTimeout();
+    boolean success;
     try {
-      if (!done_.get()) {
-        long timeout=System.currentTimeMillis() - startTime_ + DatabaseDescriptor.getRpcTimeout();
-        if (timeout > 0) {
-          bVal=condition_.await(timeout,TimeUnit.MILLISECONDS);
-        }
- else {
-          bVal=false;
-        }
-      }
+      success=condition_.await(timeout,TimeUnit.MILLISECONDS);
     }
  catch (    InterruptedException ex) {
       throw new AssertionError(ex);
     }
-    if (!bVal && !done_.get()) {
+    if (!success) {
       StringBuilder sb=new StringBuilder("");
       for (      Message message : responses_) {
         sb.append(message.getFrom());
@@ -25,7 +17,6 @@
     }
   }
   finally {
-    lock_.unlock();
     for (    Message response : responses_) {
       MessagingService.removeRegisteredCallback(response.getMessageId());
     }
