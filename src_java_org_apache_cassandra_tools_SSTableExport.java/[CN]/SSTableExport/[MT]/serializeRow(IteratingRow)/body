@@ -1,0 +1,20 @@
+{
+  ColumnFamily cf=row.getColumnFamily();
+  AbstractType comparator=cf.getComparator();
+  StringBuilder json=new StringBuilder(asKey(row.getKey().key));
+  if (cf.isSuper()) {
+    json.append("{ ");
+    Iterator<IColumn> iter=cf.getSortedColumns().iterator();
+    while (iter.hasNext()) {
+      IColumn column=iter.next();
+      json.append(asKey(comparator.getString(column.name())));
+      json.append(serializeColumns(column.getSubColumns(),comparator));
+      if (iter.hasNext())       json.append(", ");
+    }
+    json.append(" }");
+  }
+ else {
+    json.append(serializeColumns(cf.getSortedColumns(),comparator));
+  }
+  return json.toString();
+}
