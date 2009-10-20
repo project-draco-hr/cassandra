@@ -1,0 +1,30 @@
+{
+  SSTableReader reader=SSTableReader.open(ssTableFile);
+  SSTableScanner scanner=reader.getScanner();
+  IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
+  int i=0;
+  outs.println("{");
+  for (  String key : keys) {
+    DecoratedKey<?> dk=partitioner.decorateKey(key);
+    scanner.seekTo(dk);
+    i++;
+    if (scanner.hasNext()) {
+      IteratingRow row=scanner.next();
+      try {
+        String jsonOut=serializeRow(row);
+        if (i != 1)         outs.println(",");
+        outs.print("  " + jsonOut);
+      }
+ catch (      IOException ioexc) {
+        System.err.println("WARNING: Corrupt row " + key + " (skipping).");
+        continue;
+      }
+catch (      OutOfMemoryError oom) {
+        System.err.println("ERROR: Out of memory deserializing row " + key);
+        continue;
+      }
+    }
+  }
+  outs.println("\n}");
+  outs.flush();
+}
