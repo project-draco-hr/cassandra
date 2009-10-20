@@ -1,0 +1,42 @@
+{
+  if (DatabaseDescriptor.isSnapshotBeforeCompaction())   Table.open(table_).snapshot("compact-" + columnFamily_);
+  logger_.info("Compacting [" + StringUtils.join(sstables,",") + "]");
+  String compactionFileLocation=DatabaseDescriptor.getDataFileLocationForTable(table_,getExpectedCompactedFileSize(sstables));
+  if (compactionFileLocation == null) {
+    SSTableReader maxFile=getMaxSizeFile(sstables);
+    List<SSTableReader> smallerSSTables=new ArrayList<SSTableReader>(sstables);
+    smallerSSTables.remove(maxFile);
+    return doFileCompaction(smallerSSTables);
+  }
+  long startTime=System.currentTimeMillis();
+  long totalkeysWritten=0;
+  int expectedBloomFilterSize=Math.max(SSTableReader.indexInterval(),(int)SSTableReader.getApproximateKeyCount(sstables));
+  if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
+  SSTableWriter writer;
+  CompactionIterator ci=new CompactionIterator(sstables,gcBefore);
+  Iterator nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
+  try {
+    if (!ci.hasNext()) {
+      logger_.warn("Nothing to compact (all files empty or corrupt). This should not happen.");
+      return 0;
+    }
+    String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
+    writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
+    while (nni.hasNext()) {
+      CompactionIterator.CompactedRow row=(CompactionIterator.CompactedRow)nni.next();
+      writer.append(row.key,row.buffer);
+      totalkeysWritten++;
+    }
+  }
+  finally {
+    ci.close();
+  }
+  SSTableReader ssTable=writer.closeAndOpenReader();
+  ssTables_.add(ssTable);
+  ssTables_.markCompacted(sstables);
+  CompactionManager.instance().submit(ColumnFamilyStore.this);
+  String format="Compacted to %s.  %d/%d bytes for %d keys.  Time: %dms.";
+  long dTime=System.currentTimeMillis() - startTime;
+  logger_.info(String.format(format,writer.getFilename(),getTotalBytes(sstables),ssTable.length(),totalkeysWritten,dTime));
+  return sstables.size();
+}
