@@ -7,7 +7,25 @@
       liveList.add(topN[i]);
     }
  else {
-      EndPoint endPoint=getNextAvailableEndPoint(topN[i],Arrays.asList(topN),liveList);
+      EndPoint endPoint=null;
+      Map<Token,EndPoint> tokenToEndPointMap=tokenMetadata_.cloneTokenEndPointMap();
+      List tokens=new ArrayList(tokenToEndPointMap.keySet());
+      Collections.sort(tokens);
+      Token token=tokenMetadata_.getToken(topN[i]);
+      int index=Collections.binarySearch(tokens,token);
+      if (index < 0) {
+        index=(index + 1) * (-1);
+        if (index >= tokens.size())         index=0;
+      }
+      int totalNodes=tokens.size();
+      int startIndex=(index + 1) % totalNodes;
+      for (int i1=startIndex, count=1; count < totalNodes; ++count, i1=(i1 + 1) % totalNodes) {
+        EndPoint tmpEndPoint=tokenToEndPointMap.get(tokens.get(i1));
+        if (FailureDetector.instance().isAlive(tmpEndPoint) && !Arrays.asList(topN).contains(tmpEndPoint) && !liveList.contains(tmpEndPoint)) {
+          endPoint=tmpEndPoint;
+          break;
+        }
+      }
       if (endPoint != null) {
         map.put(endPoint,topN[i]);
         liveList.add(endPoint);
