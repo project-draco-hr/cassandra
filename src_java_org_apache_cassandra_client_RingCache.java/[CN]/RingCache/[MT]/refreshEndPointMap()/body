@@ -6,13 +6,18 @@
       Cassandra.Client client=new Cassandra.Client(binaryProtocol);
       socket.open();
       Map<String,String> tokenToHostMap=(Map<String,String>)new JSONTokener(client.get_string_property(CassandraServer.TOKEN_MAP)).nextValue();
-      HashMap<Token,EndPoint> tokenEndpointMap=new HashMap<Token,EndPoint>();
-      Map<EndPoint,Token> endpointTokenMap=new HashMap<EndPoint,Token>();
+      HashMap<Token,InetAddress> tokenEndpointMap=new HashMap<Token,InetAddress>();
+      Map<InetAddress,Token> endpointTokenMap=new HashMap<InetAddress,Token>();
       for (      Map.Entry<String,String> entry : tokenToHostMap.entrySet()) {
         Token token=StorageService.getPartitioner().getTokenFactory().fromString(entry.getKey());
         String host=entry.getValue();
-        tokenEndpointMap.put(token,new EndPoint(host,port_));
-        endpointTokenMap.put(new EndPoint(host,port_),token);
+        try {
+          tokenEndpointMap.put(token,InetAddress.getByName(host));
+          endpointTokenMap.put(InetAddress.getByName(host),token);
+        }
+ catch (        UnknownHostException e) {
+          throw new AssertionError(e);
+        }
       }
       TokenMetadata tokenMetadata=new TokenMetadata(tokenEndpointMap,endpointTokenMap,null);
       Class cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();

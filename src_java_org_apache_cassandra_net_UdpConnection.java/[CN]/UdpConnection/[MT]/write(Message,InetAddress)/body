@@ -1,0 +1,20 @@
+{
+  boolean bVal=true;
+  ByteArrayOutputStream bos=new ByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(bos);
+  Message.serializer().serialize(message,dos);
+  byte[] data=bos.toByteArray();
+  if (data.length > 0) {
+    if (logger_.isTraceEnabled())     logger_.trace("Size of Gossip packet " + data.length);
+    byte[] protocol=BasicUtilities.intToByteArray(protocol_);
+    ByteBuffer buffer=ByteBuffer.allocate(data.length + protocol.length);
+    buffer.put(protocol);
+    buffer.put(data);
+    buffer.flip();
+    int n=socketChannel_.send(buffer,new InetSocketAddress(to,DatabaseDescriptor.getControlPort()));
+    if (n == 0) {
+      bVal=false;
+    }
+  }
+  return bVal;
+}

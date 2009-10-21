@@ -1,0 +1,20 @@
+{
+  lock_.readLock().lock();
+  try {
+    ArrayList<Token> tokens=new ArrayList<Token>(tokenToEndPointMap_.keySet());
+    if (tokens.isEmpty())     return null;
+    Collections.sort(tokens);
+    int i=tokens.indexOf(endPointToTokenMap_.get(endPoint));
+    int j=1;
+    InetAddress ep;
+    while (!FailureDetector.instance().isAlive((ep=tokenToEndPointMap_.get(tokens.get((i + j) % tokens.size()))))) {
+      if (++j > DatabaseDescriptor.getReplicationFactor()) {
+        throw new UnavailableException();
+      }
+    }
+    return ep;
+  }
+  finally {
+    lock_.readLock().unlock();
+  }
+}

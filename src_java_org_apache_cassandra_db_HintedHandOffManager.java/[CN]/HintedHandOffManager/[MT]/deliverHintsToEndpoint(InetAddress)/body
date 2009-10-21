@@ -1,0 +1,28 @@
+{
+  if (logger_.isDebugEnabled())   logger_.debug("Started hinted handoff for endPoint " + endPoint);
+  byte[] targetEPBytes=endPoint.getAddress();
+  Table systemTable=Table.open(Table.SYSTEM_TABLE);
+  for (  String tableName : DatabaseDescriptor.getTables()) {
+    ColumnFamily hintedColumnFamily=systemTable.get(tableName,HINTS_CF);
+    if (hintedColumnFamily == null) {
+      continue;
+    }
+    Collection<IColumn> keys=hintedColumnFamily.getSortedColumns();
+    for (    IColumn keyColumn : keys) {
+      String keyStr=new String(keyColumn.name(),"UTF-8");
+      Collection<IColumn> endpoints=keyColumn.getSubColumns();
+      for (      IColumn hintEndPoint : endpoints) {
+        if (Arrays.equals(hintEndPoint.name(),targetEPBytes) && sendMessage(endPoint,null,keyStr)) {
+          if (endpoints.size() == 1) {
+            deleteHintKey(tableName,keyColumn.name());
+          }
+ else {
+            deleteEndPoint(hintEndPoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (logger_.isDebugEnabled())   logger_.debug("Finished hinted handoff for endpoint " + endPoint);
+}

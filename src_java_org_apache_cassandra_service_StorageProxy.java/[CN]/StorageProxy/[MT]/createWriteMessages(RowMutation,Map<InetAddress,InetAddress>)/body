@@ -1,0 +1,18 @@
+{
+  Map<InetAddress,Message> messageMap=new HashMap<InetAddress,Message>();
+  Message message=rm.makeRowMutationMessage();
+  for (  Map.Entry<InetAddress,InetAddress> entry : endpointMap.entrySet()) {
+    InetAddress target=entry.getKey();
+    InetAddress hint=entry.getValue();
+    if (!target.equals(hint)) {
+      Message hintedMessage=rm.makeRowMutationMessage();
+      hintedMessage.addHeader(RowMutation.HINT,hint.getAddress());
+      if (logger.isDebugEnabled())       logger.debug("Sending the hint of " + hint + " to "+ target);
+      messageMap.put(target,hintedMessage);
+    }
+ else {
+      messageMap.put(target,message);
+    }
+  }
+  return messageMap;
+}

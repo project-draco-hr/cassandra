@@ -2,9 +2,9 @@
   int numOldNodes=3;
   IPartitioner p=generateOldTokens(numOldNodes);
   Token newToken=p.getDefaultToken();
-  EndPoint newEndPoint=new EndPoint("1.2.3.10",100);
+  InetAddress newEndPoint=InetAddress.getByName("1.2.3.10");
   StorageService.instance().updateTokenMetadataUnsafe(newToken,newEndPoint);
-  BootStrapper b=new BootStrapper(new EndPoint[]{newEndPoint},newToken);
+  BootStrapper b=new BootStrapper(new InetAddress[]{newEndPoint},newToken);
   Map<Range,List<BootstrapSourceTarget>> res=b.getRangesWithSourceTarget();
   int transferCount=0;
   for (  Map.Entry<Range,List<BootstrapSourceTarget>> e : res.entrySet()) {
@@ -13,11 +13,11 @@
     }
   }
   assertEquals(1,transferCount);
-  Map<EndPoint,Map<EndPoint,List<Range>>> temp=LeaveJoinProtocolHelper.getWorkMap(res);
+  Map<InetAddress,Map<InetAddress,List<Range>>> temp=LeaveJoinProtocolHelper.getWorkMap(res);
   assertEquals(1,temp.keySet().size());
   assertEquals(1,temp.entrySet().size());
-  Map<EndPoint,Map<EndPoint,List<Range>>> res2=LeaveJoinProtocolHelper.filterRangesForTargetEndPoint(temp,newEndPoint);
+  Map<InetAddress,Map<InetAddress,List<Range>>> res2=LeaveJoinProtocolHelper.filterRangesForTargetEndPoint(temp,newEndPoint);
   assertEquals(1,res2.keySet().size());
   assertEquals(1,res2.entrySet().size());
-  assertTrue(((Map<EndPoint,List<Range>>)res2.values().toArray()[0]).containsKey(newEndPoint));
+  assertTrue(((Map<InetAddress,List<Range>>)res2.values().toArray()[0]).containsKey(newEndPoint));
 }

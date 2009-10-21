@@ -1,0 +1,35 @@
+{
+  Set<InetAddress> usedEndpoints=new HashSet<InetAddress>();
+  Map<InetAddress,InetAddress> map=new HashMap<InetAddress,InetAddress>();
+  for (  InetAddress ep : topN) {
+    if (FailureDetector.instance().isAlive(ep)) {
+      map.put(ep,ep);
+      usedEndpoints.add(ep);
+    }
+ else {
+      InetAddress hintLocation=null;
+      Map<Token,InetAddress> tokenToEndPointMap=tokenMetadata_.cloneTokenEndPointMap();
+      List tokens=new ArrayList(tokenToEndPointMap.keySet());
+      Collections.sort(tokens);
+      Token token=tokenMetadata_.getToken(ep);
+      int index=Collections.binarySearch(tokens,token);
+      if (index < 0) {
+        index=(index + 1) * (-1);
+        if (index >= tokens.size())         index=0;
+      }
+      int totalNodes=tokens.size();
+      int startIndex=(index + 1) % totalNodes;
+      for (int i=startIndex, count=1; count < totalNodes; ++count, i=(i + 1) % totalNodes) {
+        InetAddress tmpEndPoint=tokenToEndPointMap.get(tokens.get(i));
+        if (FailureDetector.instance().isAlive(tmpEndPoint) && !Arrays.asList(topN).contains(tmpEndPoint) && !usedEndpoints.contains(tmpEndPoint)) {
+          hintLocation=tmpEndPoint;
+          break;
+        }
+      }
+      if (hintLocation == null)       hintLocation=FBUtilities.getLocalAddress();
+      map.put(hintLocation,ep);
+      usedEndpoints.add(hintLocation);
+    }
+  }
+  return map;
+}
