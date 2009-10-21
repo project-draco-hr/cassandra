@@ -9,13 +9,12 @@
     tcpReader_.morphState(nextState);
   }
   try {
-    byte[] bytes=new byte[0];
+    byte[] bytes;
     while ((bytes=tcpReader_.read()).length > 0) {
       ProtocolHeader pH=tcpReader_.getProtocolHeader();
       if (!pH.isStreamingMode_) {
         if (remoteEp_ == null) {
-          int port=(pH.isListening_) ? DatabaseDescriptor.getStoragePort() : EndPoint.sentinelPort_;
-          remoteEp_=new EndPoint(socketChannel_.socket().getInetAddress().getHostAddress(),port);
+          remoteEp_=new EndPoint(socketChannel_.socket().getInetAddress().getHostAddress(),DatabaseDescriptor.getStoragePort());
           pool_=MessagingService.getConnectionPool(localEp_,remoteEp_);
           pool_.addToPool(TcpConnection.this);
         }
