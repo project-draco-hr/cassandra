@@ -2,8 +2,13 @@
   Collection<IColumn> columns=columnFamily.getSortedColumns();
   BloomFilter bf=createColumnBloomFilter(columns);
   DataOutputBuffer bufOut=new DataOutputBuffer();
-  BloomFilter.serializer().serialize(bf,bufOut);
-  dos.writeInt(bufOut.getLength());
-  dos.write(bufOut.getData(),0,bufOut.getLength());
-  doIndexing(columnFamily.getComparator(),columns,dos);
+  try {
+    BloomFilter.serializer().serialize(bf,bufOut);
+    dos.writeInt(bufOut.getLength());
+    dos.write(bufOut.getData(),0,bufOut.getLength());
+    doIndexing(columnFamily.getComparator(),columns,dos);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
 }
