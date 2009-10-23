@@ -2,6 +2,13 @@
   byte[] name=ColumnSerializer.readName(dis);
   boolean delete=dis.readBoolean();
   long ts=dis.readLong();
-  byte[] value=FBUtilities.readByteArray(dis);
+  int length=dis.readInt();
+  if (length < 0) {
+    throw new IOException("Corrupt (negative) value length encountered");
+  }
+  byte[] value=new byte[length];
+  if (length > 0) {
+    dis.readFully(value);
+  }
   return new Column(name,value,ts,delete);
 }

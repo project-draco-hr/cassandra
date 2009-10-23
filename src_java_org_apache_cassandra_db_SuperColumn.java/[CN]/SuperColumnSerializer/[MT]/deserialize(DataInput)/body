@@ -1,7 +1,11 @@
 {
   byte[] name=ColumnSerializer.readName(dis);
   SuperColumn superColumn=new SuperColumn(name,comparator);
-  superColumn.markForDeleteAt(dis.readInt(),dis.readLong());
+  int localDeleteTime=dis.readInt();
+  if (localDeleteTime != Integer.MIN_VALUE && localDeleteTime <= 0) {
+    throw new IOException("Invalid localDeleteTime read: " + localDeleteTime);
+  }
+  superColumn.markForDeleteAt(localDeleteTime,dis.readLong());
   int size=dis.readInt();
   for (int i=0; i < size; ++i) {
     IColumn subColumn=Column.serializer().deserialize(dis);
