@@ -1,0 +1,16 @@
+{
+  if (isBootstrapping)   bootstrapping.add(endpoint);
+ else   bootstrapping.remove(endpoint);
+  lock.writeLock().lock();
+  try {
+    BiMap<Token,InetAddress> otherMap=bootstrapping.contains(endpoint) ? tokenToEndPointMap : bootstrapTokenMap;
+    Token t=otherMap.inverse().get(endpoint);
+    if (t != null) {
+      Map<Token,InetAddress> map=bootstrapping.contains(endpoint) ? bootstrapTokenMap : tokenToEndPointMap;
+      map.put(t,endpoint);
+    }
+  }
+  finally {
+    lock.writeLock().unlock();
+  }
+}

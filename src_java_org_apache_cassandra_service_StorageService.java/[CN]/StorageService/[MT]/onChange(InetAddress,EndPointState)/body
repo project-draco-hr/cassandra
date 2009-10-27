@@ -1,8 +1,11 @@
 {
   ApplicationState nodeIdState=epState.getApplicationState(StorageService.NODE_ID);
-  boolean bootstrapState=epState.getApplicationState(StorageService.BOOTSTRAP_MODE) != null;
-  if (bootstrapState) {
-    if (logger_.isDebugEnabled())     logger_.debug(endpoint + " is in bootstrap state.");
+  ApplicationState modeState=epState.getApplicationState(StorageService.MODE);
+  if (modeState != null) {
+    String mode=modeState.getState();
+    if (logger_.isDebugEnabled())     logger_.debug(endpoint + " is in " + mode+ " mode");
+    boolean bootstrapState=mode.equals(MODE_MOVING);
+    tokenMetadata_.setBootstrapping(endpoint,bootstrapState);
   }
   if (nodeIdState != null) {
     Token newToken=getPartitioner().getTokenFactory().fromString(nodeIdState.getState());
@@ -11,7 +14,7 @@
     if (oldToken != null) {
       if (!oldToken.equals(newToken)) {
         if (logger_.isDebugEnabled())         logger_.debug("Relocation for endpoint " + endpoint);
-        updateTokenMetadata(newToken,endpoint,bootstrapState);
+        updateForeignToken(newToken,endpoint);
       }
  else {
         if (logger_.isDebugEnabled())         logger_.debug("Sending hinted data to " + endpoint);
@@ -19,7 +22,7 @@
       }
     }
  else {
-      updateTokenMetadata(newToken,endpoint,bootstrapState);
+      updateForeignToken(newToken,endpoint);
     }
   }
  else {

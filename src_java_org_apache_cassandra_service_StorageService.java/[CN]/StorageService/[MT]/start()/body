@@ -1,20 +1,2 @@
 {
-  storageMetadata_=SystemTable.initMetadata();
-  isBootstrapMode=DatabaseDescriptor.isAutoBootstrap() && !(DatabaseDescriptor.getSeeds().contains(FBUtilities.getLocalAddress()) || SystemTable.isBootstrapped());
-  MessagingService.instance().listen(FBUtilities.getLocalAddress());
-  MessagingService.instance().listenUDP(FBUtilities.getLocalAddress());
-  SelectorManager.getSelectorManager().start();
-  SelectorManager.getUdpSelectorManager().start();
-  StorageLoadBalancer.instance().startBroadcasting();
-  Gossiper.instance().register(this);
-  Gossiper.instance().start(FBUtilities.getLocalAddress(),storageMetadata_.getGeneration());
-  if (isBootstrapMode) {
-    new BootStrapper(Arrays.asList(FBUtilities.getLocalAddress()),getLocalToken()).startBootstrap();
-  }
- else {
-    SystemTable.setBootstrapped();
-    tokenMetadata_.update(storageMetadata_.getToken(),FBUtilities.getLocalAddress(),isBootstrapMode);
-  }
-  ApplicationState state=new ApplicationState(StorageService.getPartitioner().getTokenFactory().toString(storageMetadata_.getToken()));
-  Gossiper.instance().addApplicationState(StorageService.NODE_ID,state);
 }
