@@ -21,7 +21,21 @@
       ss.updateToken(t);
     }
   }
-  BootStrapper bs=new BootStrapper(Arrays.asList(FBUtilities.getLocalAddress()),ss.getLocalToken());
-  bootstrapExecutor_.submit(bs);
+  new Thread(new Runnable(){
+    public void run(){
+      for (int i=0; i < targets_.size(); i++) {
+        tokenMetadata_.update(tokens_[i],targets_.get(i),false);
+      }
+      Map<Range,List<BootstrapSourceTarget>> rangesWithSourceTarget=getRangesWithSourceTarget();
+      if (logger_.isDebugEnabled())       logger_.debug("Beginning bootstrap process for [" + StringUtils.join(targets_,", ") + "] ...");
+      try {
+        LeaveJoinProtocolHelper.assignWork(rangesWithSourceTarget);
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+).start();
   Gossiper.instance().addApplicationState(StorageService.BOOTSTRAP_MODE,new ApplicationState(""));
 }
