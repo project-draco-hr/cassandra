@@ -2,11 +2,17 @@
   if (condition_.isSignaled()) {
     return;
   }
-  if (waitList.contains(message.getFrom())) {
-    blockFor--;
+  try {
+    if (endpointsnitch.isInSameDataCenter(localEndpoint,message.getFrom())) {
+      blockFor--;
+    }
+  }
+ catch (  UnknownHostException e) {
+    throw new RuntimeException(e);
   }
   responses_.add(message);
   if (blockFor <= 0) {
     condition_.signal();
   }
+  if (logger_.isDebugEnabled())   logger_.debug("Processed Message: " + message.toString());
 }
