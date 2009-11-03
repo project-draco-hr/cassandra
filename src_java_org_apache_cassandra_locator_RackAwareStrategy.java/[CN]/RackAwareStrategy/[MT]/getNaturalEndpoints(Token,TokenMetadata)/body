@@ -1,0 +1,53 @@
+{
+  int startIndex;
+  ArrayList<InetAddress> endpoints=new ArrayList<InetAddress>();
+  boolean bDataCenter=false;
+  boolean bOtherRack=false;
+  int foundCount=0;
+  List tokens=metadata.sortedTokens();
+  int index=Collections.binarySearch(tokens,token);
+  if (index < 0) {
+    index=(index + 1) * (-1);
+    if (index >= tokens.size())     index=0;
+  }
+  int totalNodes=tokens.size();
+  Token primaryToken=(Token)tokens.get(index);
+  endpoints.add(metadata.getEndPoint(primaryToken));
+  foundCount++;
+  if (replicas_ == 1) {
+    return endpoints;
+  }
+  startIndex=(index + 1) % totalNodes;
+  IEndPointSnitch endPointSnitch=StorageService.instance().getEndPointSnitch();
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas_; ++count, i=(i + 1) % totalNodes) {
+    try {
+      Token t=(Token)tokens.get(i);
+      if (!endPointSnitch.isInSameDataCenter(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t))) {
+        if (!bDataCenter) {
+          endpoints.add(metadata.getEndPoint(t));
+          bDataCenter=true;
+          foundCount++;
+        }
+        continue;
+      }
+      if (!endPointSnitch.isOnSameRack(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t)) && endPointSnitch.isInSameDataCenter(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t))) {
+        if (!bOtherRack) {
+          endpoints.add(metadata.getEndPoint(t));
+          bOtherRack=true;
+          foundCount++;
+        }
+      }
+    }
+ catch (    UnknownHostException e) {
+      if (logger_.isDebugEnabled())       logger_.debug(LogUtil.throwableToString(e));
+    }
+  }
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas_; ++count, i=(i + 1) % totalNodes) {
+    Token t=(Token)tokens.get(i);
+    if (!endpoints.contains(metadata.getEndPoint(t))) {
+      endpoints.add(metadata.getEndPoint(t));
+      foundCount++;
+    }
+  }
+  return endpoints;
+}
