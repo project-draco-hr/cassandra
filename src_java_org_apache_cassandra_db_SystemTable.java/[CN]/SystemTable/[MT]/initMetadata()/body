@@ -5,7 +5,10 @@
   ColumnFamily cf=table.getColumnFamilyStore(STATUS_CF).getColumnFamily(filter);
   IPartitioner p=StorageService.getPartitioner();
   if (cf == null) {
-    Token token=p.getDefaultToken();
+    Token token;
+    String initialToken=DatabaseDescriptor.getInitialToken();
+    if (initialToken == null)     token=p.getRandomToken();
+ else     token=p.getToken(initialToken);
     logger.info("Saved Token not found. Using " + token);
     int generation=(int)(System.currentTimeMillis() / 1000);
     RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCATION_KEY);
