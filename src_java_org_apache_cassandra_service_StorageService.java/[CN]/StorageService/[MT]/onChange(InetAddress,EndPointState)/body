@@ -7,7 +7,13 @@
     boolean bootstrapState=mode.equals(MODE_MOVING);
     tokenMetadata_.setBootstrapping(endpoint,bootstrapState);
   }
-  if (nodeIdState != null) {
+  if (nodeIdState == null) {
+    if (epState.isAlive() && tokenMetadata_.isMember(endpoint)) {
+      if (logger_.isDebugEnabled())       logger_.debug("InetAddress " + endpoint + " just recovered from a partition. Sending hinted data.");
+      deliverHints(endpoint);
+    }
+  }
+ else {
     Token newToken=getPartitioner().getTokenFactory().fromString(nodeIdState.getState());
     if (logger_.isDebugEnabled())     logger_.debug("CHANGE IN STATE FOR " + endpoint + " - has token "+ nodeIdState.getState());
     if (tokenMetadata_.isMember(endpoint)) {
@@ -23,12 +29,6 @@
     }
  else {
       updateForeignToken(newToken,endpoint);
-    }
-  }
- else {
-    if (epState.isAlive() && tokenMetadata_.isMember(endpoint)) {
-      if (logger_.isDebugEnabled())       logger_.debug("InetAddress " + endpoint + " just recovered from a partition. Sending hinted data.");
-      deliverHints(endpoint);
     }
   }
 }

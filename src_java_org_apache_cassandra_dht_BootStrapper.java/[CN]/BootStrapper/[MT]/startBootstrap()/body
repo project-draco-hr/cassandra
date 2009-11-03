@@ -2,12 +2,12 @@
   new Thread(new Runnable(){
     public void run(){
       Multimap<Range,InetAddress> rangesWithSourceTarget=getRangesWithSources();
-      if (logger.isDebugEnabled())       logger.debug("Beginning bootstrap process for " + address + " ...");
+      if (logger.isDebugEnabled())       logger.debug("Beginning bootstrap process");
       for (      Map.Entry<InetAddress,Collection<Range>> entry : getWorkMap(rangesWithSourceTarget).asMap().entrySet()) {
         InetAddress source=entry.getKey();
+        if (logger.isDebugEnabled())         logger.debug("Sending BootstrapMetadataMessage to " + source + " for "+ StringUtils.join(entry.getValue(),", "));
         BootstrapMetadata bsMetadata=new BootstrapMetadata(address,entry.getValue());
         Message message=BootstrapMetadataMessage.makeBootstrapMetadataMessage(new BootstrapMetadataMessage(bsMetadata));
-        if (logger.isDebugEnabled())         logger.debug("Sending the BootstrapMetadataMessage to " + source);
         MessagingService.instance().sendOneWay(message,source);
         StorageService.instance().addBootstrapSource(source);
       }
