@@ -2,27 +2,8 @@
   if (cf == null) {
     return null;
   }
-  for (  byte[] cname : cf.getColumnNames()) {
-    IColumn c=cf.getColumnsMap().get(cname);
-    if (c instanceof SuperColumn) {
-      long minTimestamp=Math.max(c.getMarkedForDeleteAt(),cf.getMarkedForDeleteAt());
-      cf.remove(cname);
-      SuperColumn sc=((SuperColumn)c).cloneMeShallow();
-      for (      IColumn subColumn : c.getSubColumns()) {
-        if (subColumn.timestamp() > minTimestamp) {
-          if (!subColumn.isMarkedForDelete() || subColumn.getLocalDeletionTime() > gcBefore) {
-            sc.addColumn(subColumn);
-          }
-        }
-      }
-      if (sc.getSubColumns().size() > 0 || sc.getLocalDeletionTime() > gcBefore) {
-        cf.addColumn(sc);
-      }
-    }
- else     if ((c.isMarkedForDelete() && c.getLocalDeletionTime() <= gcBefore) || c.timestamp() <= cf.getMarkedForDeleteAt()) {
-      cf.remove(cname);
-    }
-  }
+  if (cf.isSuper())   removeDeletedSuper(cf,gcBefore);
+ else   removeDeletedStandard(cf,gcBefore);
   if (cf.getColumnCount() == 0 && cf.getLocalDeletionTime() <= gcBefore) {
     return null;
   }

@@ -1,6 +1,7 @@
 {
   final ColumnFamily cf=columnFamilies_.get(partitioner_.decorateKey(filter.key));
   final ColumnFamily columnFamily=cf == null ? ColumnFamily.create(table_,filter.getColumnFamilyName()) : cf.cloneMeShallow();
+  final boolean isStandard=DatabaseDescriptor.getColumnFamilyType(table_,filter.getColumnFamilyName()).equals("Standard");
   return new SimpleAbstractColumnIterator(){
     private Iterator<byte[]> iter=filter.columns.iterator();
     private byte[] current;
@@ -14,7 +15,7 @@
       while (iter.hasNext()) {
         current=iter.next();
         IColumn column=cf.getColumn(current);
-        if (column != null)         return column;
+        if (column != null)         return isStandard ? column : ((SuperColumn)column).cloneMe();
       }
       return endOfData();
     }

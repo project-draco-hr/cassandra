@@ -4,7 +4,8 @@
   final IColumn columns[]=(cf == null ? columnFamily : cf).getSortedColumns().toArray(new IColumn[columnFamily.getSortedColumns().size()]);
   if (filter.reversed)   ArrayUtils.reverse(columns);
   IColumn startIColumn;
-  if (DatabaseDescriptor.getColumnFamilyType(table_,filter.getColumnFamilyName()).equals("Standard"))   startIColumn=new Column(filter.start);
+  final boolean isStandard=DatabaseDescriptor.getColumnFamilyType(table_,filter.getColumnFamilyName()).equals("Standard");
+  if (isStandard)   startIColumn=new Column(filter.start);
  else   startIColumn=new SuperColumn(filter.start,null);
   Comparator<IColumn> comparator=filter.getColumnComparator(typeComparator);
   int index;
@@ -24,7 +25,7 @@
       return curIndex_ < columns.length;
     }
     public IColumn next(){
-      return columns[curIndex_++];
+      return isStandard ? columns[curIndex_++] : ((SuperColumn)columns[curIndex_++]).cloneMe();
     }
   }
 ;

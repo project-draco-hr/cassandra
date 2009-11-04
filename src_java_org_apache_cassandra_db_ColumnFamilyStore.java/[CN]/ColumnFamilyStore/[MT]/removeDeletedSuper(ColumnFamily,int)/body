@@ -1,0 +1,14 @@
+{
+  for (  byte[] cname : cf.getColumnNames()) {
+    IColumn c=cf.getColumnsMap().get(cname);
+    long minTimestamp=Math.max(c.getMarkedForDeleteAt(),cf.getMarkedForDeleteAt());
+    for (    IColumn subColumn : c.getSubColumns()) {
+      if (subColumn.timestamp() <= minTimestamp || (subColumn.isMarkedForDelete() && subColumn.getLocalDeletionTime() <= gcBefore)) {
+        ((SuperColumn)c).remove(subColumn.name());
+      }
+    }
+    if (c.getSubColumns().isEmpty() && c.getLocalDeletionTime() <= gcBefore) {
+      cf.remove(c.name());
+    }
+  }
+}
