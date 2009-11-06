@@ -1,22 +1,12 @@
 {
-  if (StorageService.MODE.equals(stateName)) {
-    String mode=state.getValue();
-    if (logger_.isDebugEnabled())     logger_.debug(endpoint + " is in " + mode+ " mode");
-    boolean bootstrapState=mode.equals(MODE_MOVING);
-    tokenMetadata_.setBootstrapping(endpoint,bootstrapState);
+  Token token=getPartitioner().getTokenFactory().fromString(state.getValue());
+  if (STATE_BOOTSTRAPPING.equals(stateName)) {
+    if (logger_.isDebugEnabled())     logger_.debug(endpoint + " state bootstrapping, token " + token);
+    updateBootstrapRanges(token,endpoint);
   }
-  if (StorageService.NODE_ID.equals(stateName)) {
-    Token newToken=getPartitioner().getTokenFactory().fromString(state.getValue());
-    if (logger_.isDebugEnabled())     logger_.debug("CHANGE IN STATE FOR " + endpoint + " - has token "+ newToken);
-    if (tokenMetadata_.isMember(endpoint)) {
-      Token oldToken=tokenMetadata_.getToken(endpoint);
-      if (!oldToken.equals(newToken)) {
-        if (logger_.isDebugEnabled())         logger_.debug("Relocation for endpoint " + endpoint);
-        updateForeignToken(newToken,endpoint);
-      }
-    }
- else {
-      updateForeignToken(newToken,endpoint);
-    }
+ else   if (STATE_NORMAL.equals(stateName)) {
+    if (logger_.isDebugEnabled())     logger_.debug(endpoint + " state normal, token " + token);
+    tokenMetadata_.removePendingRanges(endpoint);
+    updateForeignToken(token,endpoint);
   }
 }
