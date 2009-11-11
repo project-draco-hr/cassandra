@@ -1,4 +1,5 @@
 {
+  Set<Table> tablesRecovered=new HashSet<Table>();
   DataInputBuffer bufIn=new DataInputBuffer();
   for (  File file : clogs) {
     int bufferSize=(int)Math.min(file.length(),32 * 1024 * 1024);
@@ -8,7 +9,6 @@
     if (lowPos == 0)     break;
     reader.seek(lowPos);
     if (logger_.isDebugEnabled())     logger_.debug("Replaying " + file + " starting at "+ lowPos);
-    Set<Table> tablesRecovered=new HashSet<Table>();
     while (!reader.isEOF()) {
       if (logger_.isDebugEnabled())       logger_.debug("Reading mutation at " + reader.getFilePointer());
       byte[] bytes;
@@ -38,8 +38,17 @@
       }
     }
     reader.close();
-    for (    Table table : tablesRecovered) {
-      table.flush(true);
+  }
+  List<Future<?>> futures=new ArrayList<Future<?>>();
+  for (  Table table : tablesRecovered) {
+    futures.addAll(table.flush());
+  }
+  for (  Future<?> future : futures) {
+    try {
+      future.get();
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
     }
   }
 }
