@@ -1,22 +1,16 @@
 {
-  Multimap<Range,InetAddress> newRangeAddresses=replicationStrategy_.getRangeAddressesAfterLeaving(endpoint);
-  if (logger_.isDebugEnabled())   logger_.debug("leaving node ranges are [" + StringUtils.join(newRangeAddresses.keySet(),", ") + "]");
+  Collection<Range> ranges=getRangesForEndPoint(endpoint);
+  if (logger_.isDebugEnabled())   logger_.debug("leaving node ranges are [" + StringUtils.join(ranges,", ") + "]");
+  Map<Range,ArrayList<InetAddress>> currentReplicaEndpoints=new HashMap<Range,ArrayList<InetAddress>>();
+  for (  Range range : ranges)   currentReplicaEndpoints.put(range,replicationStrategy_.getNaturalEndpoints(range.right(),tokenMetadata_));
+  TokenMetadata temp=tokenMetadata_.cloneWithoutPending();
+  temp.removeEndpoint(endpoint);
   Multimap<Range,InetAddress> changedRanges=HashMultimap.create();
-  for (  final Range range : newRangeAddresses.keySet()) {
-    if (logger_.isDebugEnabled())     logger_.debug("considering Range " + range);
-    for (    InetAddress newEndpoint : newRangeAddresses.get(range)) {
-      boolean alreadyReplicatesRange=false;
-      for (      Range existingRange : getRangesForEndPoint(newEndpoint)) {
-        if (existingRange.contains(range)) {
-          alreadyReplicatesRange=true;
-          break;
-        }
-      }
-      if (!alreadyReplicatesRange) {
-        if (logger_.isDebugEnabled())         logger_.debug(newEndpoint + " needs pendingrange " + range);
-        changedRanges.put(range,newEndpoint);
-      }
-    }
+  for (  Range range : ranges) {
+    ArrayList<InetAddress> newReplicaEndpoints=replicationStrategy_.getNaturalEndpoints(range.right(),temp);
+    newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
+    if (logger_.isDebugEnabled())     logger_.debug("adding pending range " + range + " to endpoints "+ StringUtils.join(newReplicaEndpoints,", "));
+    changedRanges.putAll(range,newReplicaEndpoints);
   }
   return changedRanges;
 }
