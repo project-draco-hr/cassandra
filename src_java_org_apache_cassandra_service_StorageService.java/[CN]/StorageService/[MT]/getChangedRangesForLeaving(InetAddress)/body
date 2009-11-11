@@ -1,0 +1,22 @@
+{
+  Multimap<Range,InetAddress> newRangeAddresses=replicationStrategy_.getRangeAddressesAfterLeaving(endpoint);
+  if (logger_.isDebugEnabled())   logger_.debug("leaving node ranges are [" + StringUtils.join(newRangeAddresses.keySet(),", ") + "]");
+  Multimap<Range,InetAddress> changedRanges=HashMultimap.create();
+  for (  final Range range : newRangeAddresses.keySet()) {
+    if (logger_.isDebugEnabled())     logger_.debug("considering Range " + range);
+    for (    InetAddress newEndpoint : newRangeAddresses.get(range)) {
+      boolean alreadyReplicatesRange=false;
+      for (      Range existingRange : getRangesForEndPoint(newEndpoint)) {
+        if (existingRange.contains(range)) {
+          alreadyReplicatesRange=true;
+          break;
+        }
+      }
+      if (!alreadyReplicatesRange) {
+        if (logger_.isDebugEnabled())         logger_.debug(newEndpoint + " needs pendingrange " + range);
+        changedRanges.put(range,newEndpoint);
+      }
+    }
+  }
+  return changedRanges;
+}
