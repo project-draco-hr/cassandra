@@ -22,10 +22,11 @@
   MessagingService.instance().registerVerbHandlers(bootStrapTerminateVerbHandler_,new BootStrapper.BootstrapTerminateVerbHandler());
   StageManager.registerStage(StorageService.mutationStage_,new MultiThreadedStage(StorageService.mutationStage_,DatabaseDescriptor.getConcurrentWriters()));
   StageManager.registerStage(StorageService.readStage_,new MultiThreadedStage(StorageService.readStage_,DatabaseDescriptor.getConcurrentReaders()));
-  Class cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();
+  Class<AbstractReplicationStrategy> cls=DatabaseDescriptor.getReplicaPlacementStrategyClass();
   Class[] parameterTypes=new Class[]{TokenMetadata.class,IPartitioner.class,int.class,int.class};
   try {
-    replicationStrategy_=(AbstractReplicationStrategy)cls.getConstructor(parameterTypes).newInstance(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
+    Constructor<AbstractReplicationStrategy> constructor=cls.getConstructor(parameterTypes);
+    replicationStrategy_=constructor.newInstance(tokenMetadata_,partitioner_,DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getStoragePort());
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
