@@ -1,0 +1,24 @@
+{
+  byte[] body=message.getMessageBody();
+  DataInputBuffer bufIn=new DataInputBuffer();
+  bufIn.reset(body,body.length);
+  try {
+    StreamInitiateMessage biMsg=StreamInitiateMessage.serializer().deserialize(bufIn);
+    StreamContextManager.StreamContext[] streamContexts=biMsg.getStreamContext();
+    Map<String,String> fileNames=getNewNames(streamContexts);
+    for (    StreamContextManager.StreamContext streamContext : streamContexts) {
+      StreamContextManager.StreamStatus streamStatus=new StreamContextManager.StreamStatus(streamContext.getTargetFile(),streamContext.getExpectedBytes());
+      String file=getNewFileNameFromOldContextAndNames(fileNames,streamContext);
+      if (logger.isDebugEnabled())       logger.debug("Received Data from  : " + message.getFrom() + " "+ streamContext.getTargetFile()+ " "+ file);
+      streamContext.setTargetFile(file);
+      addStreamContext(message.getFrom(),streamContext,streamStatus);
+    }
+    StreamContextManager.registerStreamCompletionHandler(message.getFrom(),new StreamCompletionHandler());
+    if (logger.isDebugEnabled())     logger.debug("Sending a stream initiate done message ...");
+    Message doneMessage=new Message(FBUtilities.getLocalAddress(),"",StorageService.streamInitiateDoneVerbHandler_,new byte[0]);
+    MessagingService.instance().sendOneWay(doneMessage,message.getFrom());
+  }
+ catch (  IOException ex) {
+    logger.info(LogUtil.throwableToString(ex));
+  }
+}
