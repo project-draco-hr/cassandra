@@ -1,10 +1,12 @@
 {
-  if (fileList.isEmpty())   return;
-  StreamContextManager.StreamContext[] streamContexts=new StreamContextManager.StreamContext[fileList.size()];
+  if (sstables.isEmpty())   return;
+  StreamContextManager.StreamContext[] streamContexts=new StreamContextManager.StreamContext[sstables.size()];
   int i=0;
-  for (  String filename : fileList) {
-    File file=new File(filename);
-    streamContexts[i++]=new StreamContextManager.StreamContext(file.getAbsolutePath(),file.length(),table);
+  for (  SSTableReader sstable : sstables) {
+    for (    String filename : sstable.getAllFilenames()) {
+      File file=new File(filename);
+      streamContexts[i++]=new StreamContextManager.StreamContext(file.getAbsolutePath(),file.length(),table);
+    }
   }
   if (logger.isDebugEnabled())   logger.debug("Stream context metadata " + StringUtils.join(streamContexts,", "));
   StreamManager.instance(target).addFilesToStream(streamContexts);
@@ -14,5 +16,5 @@
   MessagingService.instance().sendOneWay(message,target);
   if (logger.isDebugEnabled())   logger.debug("Waiting for transfer to " + target + " to complete");
   StreamManager.instance(target).waitForStreamCompletion();
-  if (logger.isDebugEnabled())   logger.debug("Done with transfer to " + target);
+  if (logger.isDebugEnabled())   logger.debug("Done with transfer to " + target + " of "+ StringUtils.join(sstables,", "));
 }

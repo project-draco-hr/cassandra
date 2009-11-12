@@ -12,17 +12,17 @@
   if (logger_.isDebugEnabled())   logger_.debug("Expected bloom filter size : " + expectedBloomFilterSize);
   SSTableWriter writer=null;
   CompactionIterator ci=new CompactionIterator(sstables,getDefaultGCBefore());
+  Iterator nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
   try {
-    if (!ci.hasNext()) {
-      logger_.warn("Nothing to compact (all files empty or corrupt). This should not happen.");
+    if (!nni.hasNext()) {
       return results;
     }
-    while (ci.hasNext()) {
-      CompactionIterator.CompactedRow row=ci.next();
+    while (nni.hasNext()) {
+      CompactionIterator.CompactedRow row=(CompactionIterator.CompactedRow)nni.next();
       if (Range.isTokenInRanges(row.key.token,ranges)) {
         if (writer == null) {
           if (target != null) {
-            compactionFileLocation=compactionFileLocation + File.separator + "bootstrap";
+            compactionFileLocation=compactionFileLocation + File.separator + "stream";
           }
           FileUtils.createDirectory(compactionFileLocation);
           String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
