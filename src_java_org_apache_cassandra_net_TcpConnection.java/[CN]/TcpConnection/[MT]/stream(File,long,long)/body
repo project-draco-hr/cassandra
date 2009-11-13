@@ -24,7 +24,15 @@
           condition_.await();
         }
       }
-      long bytesTransferred=fc.transferTo(startPosition,limit,socketChannel_);
+      long bytesTransferred;
+      try {
+        bytesTransferred=fc.transferTo(startPosition,limit,socketChannel_);
+      }
+ catch (      IOException e) {
+        if (!e.getMessage().startsWith("Resource temporarily unavailable"))         throw e;
+        Thread.sleep(10);
+        continue;
+      }
       if (logger_.isDebugEnabled())       logger_.debug("Bytes transferred " + bytesTransferred);
       bytesWritten+=bytesTransferred;
       startPosition+=bytesTransferred;
