@@ -1,5 +1,4 @@
 {
-  if (sstables.isEmpty())   return;
   StreamContextManager.StreamContext[] streamContexts=new StreamContextManager.StreamContext[SSTable.FILES_ON_DISK * sstables.size()];
   int i=0;
   for (  SSTableReader sstable : sstables) {
@@ -14,7 +13,9 @@
   Message message=StreamInitiateMessage.makeStreamInitiateMessage(biMessage);
   if (logger.isDebugEnabled())   logger.debug("Sending a stream initiate message to " + target + " ...");
   MessagingService.instance().sendOneWay(message,target);
-  if (logger.isDebugEnabled())   logger.debug("Waiting for transfer to " + target + " to complete");
-  StreamManager.instance(target).waitForStreamCompletion();
-  if (logger.isDebugEnabled())   logger.debug("Done with transfer to " + target + " of "+ StringUtils.join(sstables,", "));
+  if (streamContexts.length > 0) {
+    if (logger.isDebugEnabled())     logger.debug("Waiting for transfer to " + target + " to complete");
+    StreamManager.instance(target).waitForStreamCompletion();
+    if (logger.isDebugEnabled())     logger.debug("Done with transfer to " + target + " of "+ StringUtils.join(sstables,", "));
+  }
 }
