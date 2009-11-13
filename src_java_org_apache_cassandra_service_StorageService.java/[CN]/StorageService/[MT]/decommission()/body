@@ -5,30 +5,13 @@
   logger_.info("DECOMMISSIONING");
   Gossiper.instance().addApplicationState(STATE_LEAVING,new ApplicationState(getLocalToken().toString()));
   logger_.info("decommission sleeping " + Streaming.RING_DELAY);
-  try {
-    Thread.sleep(Streaming.RING_DELAY);
-  }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
-  Multimap<Range,InetAddress> rangesMM=getChangedRangesForLeaving(FBUtilities.getLocalAddress());
-  if (logger_.isDebugEnabled())   logger_.debug("Ranges needing transfer are [" + StringUtils.join(rangesMM.keySet(),",") + "]");
-  final Set<Map.Entry<Range,InetAddress>> pending=new HashSet<Map.Entry<Range,InetAddress>>(rangesMM.entries());
-  for (  final Map.Entry<Range,InetAddress> entry : rangesMM.entries()) {
-    final Range range=entry.getKey();
-    final InetAddress newEndpoint=entry.getValue();
-    final Runnable callback=new Runnable(){
-      public synchronized void run(){
-        pending.remove(entry);
-        if (pending.isEmpty())         finishLeaving();
-      }
+  Thread.sleep(Streaming.RING_DELAY);
+  Runnable finishLeaving=new Runnable(){
+    public void run(){
+      Gossiper.instance().stop();
+      logger_.info("DECOMMISSION FINISHED.");
     }
+  }
 ;
-    StageManager.getStage(streamStage_).execute(new Runnable(){
-      public void run(){
-        Streaming.transferRanges(newEndpoint,Arrays.asList(range),callback);
-      }
-    }
-);
-  }
+  unbootstrap(finishLeaving);
 }
