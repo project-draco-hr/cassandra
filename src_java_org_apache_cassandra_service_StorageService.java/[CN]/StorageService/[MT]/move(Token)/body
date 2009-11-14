@@ -1,0 +1,20 @@
+{
+  if (tokenMetadata_.getPendingRanges(FBUtilities.getLocalAddress()).size() > 0)   throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
+  logger_.info("moving to " + token);
+  Gossiper.instance().addApplicationState(STATE_LEAVING,new ApplicationState(getLocalToken().toString()));
+  logger_.info("move sleeping " + Streaming.RING_DELAY);
+  Thread.sleep(Streaming.RING_DELAY);
+  Runnable finishMoving=new Runnable(){
+    public void run(){
+      try {
+        logger_.info("re-bootstrapping to new token " + token);
+        startBootstrap(token);
+      }
+ catch (      IOException e) {
+        throw new IOError(e);
+      }
+    }
+  }
+;
+  unbootstrap(finishMoving);
+}
