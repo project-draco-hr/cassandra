@@ -1,13 +1,19 @@
 {
   List<Row> rows=new ArrayList<Row>();
+  List<Future<Object>> futures=new ArrayList<Future<Object>>();
   for (  ReadCommand command : commands) {
-    List<InetAddress> endpoints=StorageService.instance().getLiveNaturalEndpoints(command.key);
-    endpoints.remove(FBUtilities.getLocalAddress());
-    if (logger.isDebugEnabled())     logger.debug("weakreadlocal reading " + command);
-    Table table=Table.open(command.table);
-    Row row=command.getRow(table);
-    if (row != null)     rows.add(row);
-    if (endpoints.size() > 0 && DatabaseDescriptor.getConsistencyCheck())     StorageService.instance().doConsistencyCheck(row,endpoints,command);
+    Callable<Object> callable=new weakReadLocalCallable(command);
+    futures.add(StageManager.getStage(StorageService.readStage_).execute(callable));
+  }
+  for (  Future<Object> future : futures) {
+    Row row;
+    try {
+      row=(Row)future.get();
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+    rows.add(row);
   }
   return rows;
 }
