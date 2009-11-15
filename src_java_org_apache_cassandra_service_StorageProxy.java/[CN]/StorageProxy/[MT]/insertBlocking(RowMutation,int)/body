@@ -18,10 +18,15 @@
     QuorumResponseHandler<Boolean> quorumResponseHandler=StorageService.instance().getResponseHandler(new WriteResponseResolver(),blockFor,consistency_level);
     if (logger.isDebugEnabled())     logger.debug("insertBlocking writing key " + rm.key() + " to "+ message.getMessageId()+ "@["+ StringUtils.join(endpointMap.values(),", ")+ "]");
     MessagingService.instance().sendRR(message,primaryNodes.toArray(new InetAddress[primaryNodes.size()]),quorumResponseHandler);
-    if (!quorumResponseHandler.get())     throw new UnavailableException();
+    try {
+      if (!quorumResponseHandler.get())       throw new UnavailableException();
+    }
+ catch (    DigestMismatchException e) {
+      throw new AssertionError(e);
+    }
     if (primaryNodes.size() < endpointMap.size()) {
       for (      Map.Entry<InetAddress,InetAddress> e : endpointMap.entrySet()) {
-        if (e.getKey() != e.getValue()) {
+        if (!e.getKey().equals(e.getValue())) {
           MessagingService.instance().sendOneWay(message,e.getValue());
         }
       }
@@ -30,7 +35,7 @@
  catch (  TimeoutException e) {
     throw new UnavailableException();
   }
-catch (  Exception e) {
+catch (  IOException e) {
     throw new RuntimeException("error writing key " + rm.key(),e);
   }
  finally {
