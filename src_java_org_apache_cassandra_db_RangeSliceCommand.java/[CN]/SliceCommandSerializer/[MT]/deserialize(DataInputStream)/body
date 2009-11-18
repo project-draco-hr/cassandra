@@ -1,0 +1,21 @@
+{
+  String keyspace=dis.readUTF();
+  String column_family=dis.readUTF();
+  int scLength=dis.readInt();
+  byte[] super_column=null;
+  if (scLength > 0)   super_column=readBuf(scLength,dis);
+  byte[] predBytes=new byte[dis.readInt()];
+  dis.readFully(predBytes);
+  TDeserializer dser=new TDeserializer(new TBinaryProtocol.Factory());
+  SlicePredicate pred=new SlicePredicate();
+  try {
+    dser.deserialize(pred,predBytes);
+  }
+ catch (  TException ex) {
+    throw new IOException(ex);
+  }
+  String start_key=dis.readUTF();
+  String finish_key=dis.readUTF();
+  int max_keys=dis.readInt();
+  return new RangeSliceCommand(keyspace,new ColumnParent(column_family,super_column),pred,start_key,finish_key,max_keys);
+}

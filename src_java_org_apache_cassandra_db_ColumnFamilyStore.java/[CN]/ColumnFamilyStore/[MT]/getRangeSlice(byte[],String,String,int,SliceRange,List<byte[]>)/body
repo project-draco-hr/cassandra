@@ -1,0 +1,14 @@
+{
+  RangeReply rr=getKeyRangeRaw(startKey,finishKey,keyMax);
+  List<Row> rows=new ArrayList<Row>(rr.keys.size());
+  final QueryPath queryPath=new QueryPath(columnFamily_,super_column,null);
+  final SortedSet<byte[]> columnNameSet=new TreeSet<byte[]>(getComparator());
+  if (columnNames != null)   columnNameSet.addAll(columnNames);
+  for (  String key : rr.keys) {
+    Row row=new Row(table_,key);
+    QueryFilter filter=sliceRange == null ? new NamesQueryFilter(key,queryPath,columnNameSet) : new SliceQueryFilter(key,queryPath,sliceRange.start,sliceRange.finish,sliceRange.reversed,sliceRange.count);
+    row.addColumnFamily(getColumnFamily(filter));
+    rows.add(row);
+  }
+  return new RangeSliceReply(rows,rr.rangeCompletedLocally);
+}
