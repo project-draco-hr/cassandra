@@ -10,27 +10,29 @@
     if (StorageService.instance().isBootstrapMode()) {
       throw new RuntimeException("Cannot service reads while bootstrapping!");
     }
-    ReadCommand readCommand=ReadCommand.serializer().deserialize(readCtx.bufIn_);
-    Table table=Table.open(readCommand.table);
-    Row row=readCommand.getRow(table);
+    ReadCommand command=ReadCommand.serializer().deserialize(readCtx.bufIn_);
+    Table table=Table.open(command.table);
+    Row row=command.getRow(table);
     ReadResponse readResponse;
-    if (readCommand.isDigestQuery()) {
+    if (command.isDigestQuery()) {
       if (logger_.isDebugEnabled())       logger_.debug("digest is " + FBUtilities.bytesToHex(row.digest()));
       readResponse=new ReadResponse(row.digest());
     }
  else {
       readResponse=new ReadResponse(row);
     }
-    readResponse.setIsDigestQuery(readCommand.isDigestQuery());
+    readResponse.setIsDigestQuery(command.isDigestQuery());
     readCtx.bufOut_.reset();
     ReadResponse.serializer().serialize(readResponse,readCtx.bufOut_);
     byte[] bytes=new byte[readCtx.bufOut_.getLength()];
     System.arraycopy(readCtx.bufOut_.getData(),0,bytes,0,bytes.length);
     Message response=message.getReply(FBUtilities.getLocalAddress(),bytes);
-    if (logger_.isDebugEnabled())     logger_.debug("Read key " + readCommand.key + "; sending response to "+ message.getMessageId()+ "@"+ message.getFrom());
+    if (logger_.isDebugEnabled())     logger_.debug("Read key " + command.key + "; sending response to "+ message.getMessageId()+ "@"+ message.getFrom());
     MessagingService.instance().sendOneWay(response,message.getFrom());
     if (message.getHeader(ReadCommand.DO_REPAIR) != null) {
-      doReadRepair(row,readCommand);
+      List<InetAddress> endpoints=StorageService.instance().getLiveNaturalEndpoints(command.key);
+      endpoints.remove(FBUtilities.getLocalAddress());
+      if (endpoints.size() > 0 && DatabaseDescriptor.getConsistencyCheck())       StorageService.instance().doConsistencyCheck(row,endpoints,command);
     }
   }
  catch (  IOException ex) {
