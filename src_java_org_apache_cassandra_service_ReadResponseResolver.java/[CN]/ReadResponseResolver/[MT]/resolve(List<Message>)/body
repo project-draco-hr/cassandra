@@ -1,7 +1,6 @@
 {
   long startTime=System.currentTimeMillis();
-  Row resolved=null;
-  List<Row> rowList=new ArrayList<Row>();
+  List<Row> rows=new ArrayList<Row>();
   List<InetAddress> endPoints=new ArrayList<InetAddress>();
   String key=null;
   byte[] digest=new byte[0];
@@ -16,28 +15,22 @@
       isDigestQuery=true;
     }
  else {
-      rowList.add(result.row());
+      rows.add(result.row());
       endPoints.add(response.getFrom());
       key=result.row().key;
     }
   }
   if (isDigestQuery) {
-    for (    Row row : rowList) {
+    for (    Row row : rows) {
       if (!Arrays.equals(row.digest(),digest)) {
         String s=String.format("Mismatch for key %s (%s vs %s)",row.key,FBUtilities.bytesToHex(row.digest()),FBUtilities.bytesToHex(digest));
         throw new DigestMismatchException(s);
       }
     }
   }
-  if (rowList.size() == 0) {
-    return resolved;
-  }
-  resolved=new Row(key,rowList.get(0).cf);
-  for (  Row other : rowList.subList(1,rowList.size())) {
-    resolved.resolve(other);
-  }
-  for (int i=0; i < rowList.size(); i++) {
-    ColumnFamily diffCf=rowList.get(i).cf.diff(resolved.cf);
+  Row resolved=resolveSuperset(rows);
+  for (int i=0; i < rows.size(); i++) {
+    ColumnFamily diffCf=rows.get(i).diff(resolved);
     if (diffCf == null)     continue;
     RowMutation rowMutation=new RowMutation(table,key);
     rowMutation.add(diffCf);
