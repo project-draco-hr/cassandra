@@ -1,0 +1,26 @@
+{
+  ColumnFamily cfamily=ColumnFamily.create(keyspace,cf);
+  String cfType=cfamily.type();
+  IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
+  DataOutputBuffer dob=new DataOutputBuffer();
+  try {
+    JSONObject json=(JSONObject)JSONValue.parse(new FileReader(jsonFile));
+    SSTableWriter writer=new SSTableWriter(ssTablePath,json.size(),partitioner);
+    List<DecoratedKey<?>> decoratedKeys=new ArrayList<DecoratedKey<?>>();
+    for (    String key : (Set<String>)json.keySet())     decoratedKeys.add(partitioner.decorateKey(key));
+    Collections.sort(decoratedKeys);
+    for (    DecoratedKey<?> rowKey : decoratedKeys) {
+      JSONObject value=(JSONObject)json.get(rowKey.key);
+      if (cfType.equals("Super"))       addToSuperCF(value,cfamily);
+ else       addToStandardCF(value,cfamily);
+      ColumnFamily.serializer().serializeWithIndexes(cfamily,dob);
+      writer.append(rowKey,dob);
+      dob.reset();
+      cfamily.clear();
+    }
+    writer.closeAndOpenReader(0);
+  }
+ catch (  ClassCastException cce) {
+    throw new RuntimeException("Invalid JSON input, or incorrect column family");
+  }
+}
