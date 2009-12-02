@@ -1,0 +1,20 @@
+{
+  if (!CliMain.isConnected())   return;
+  int childCount=ast.getChildCount();
+  assert(childCount == 1);
+  CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
+  assert(columnFamilySpec.getType() == CliParser.NODE_COLUMN_ACCESS);
+  String tableName=CliCompiler.getTableName(columnFamilySpec);
+  String key=CliCompiler.getKey(columnFamilySpec);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  if (columnSpecCnt == 0) {
+    ColumnParent cp=new ColumnParent(columnFamily,null);
+    int count=thriftClient_.get_count(tableName,key,cp,ConsistencyLevel.ONE);
+    css_.out.printf("%d columns\n",count);
+  }
+ else {
+    css_.err.println("Only column count for a top level row key supported");
+    return;
+  }
+}
