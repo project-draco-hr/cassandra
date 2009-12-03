@@ -6,11 +6,9 @@
     IColumn column=reducedColumns.next();
     if (logger.isDebugEnabled())     logger.debug("collecting " + column.getString(comparator));
     if (finish.length > 0 && ((!reversed && comparator.compare(column.name(),finish) > 0)) || (reversed && comparator.compare(column.name(),finish) < 0))     break;
-    if (!column.isMarkedForDelete() && (!container.isMarkedForDelete() || column.mostRecentChangeAt() > container.getMarkedForDeleteAt())) {
+    if (!column.isMarkedForDelete() && (!container.isMarkedForDelete() || column.mostRecentLiveChangeAt() > container.getMarkedForDeleteAt())) {
       liveColumns++;
     }
-    if ((!column.isMarkedForDelete() || column.getLocalDeletionTime() > gcBefore) && (!container.isMarkedForDelete() || column.mostRecentChangeAt() > container.getMarkedForDeleteAt())) {
-      container.addColumn(column);
-    }
+    if (QueryFilter.isRelevant(column,container,gcBefore))     container.addColumn(column);
   }
 }
