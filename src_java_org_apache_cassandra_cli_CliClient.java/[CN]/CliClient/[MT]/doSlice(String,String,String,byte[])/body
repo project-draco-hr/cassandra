@@ -3,20 +3,15 @@
   List<ColumnOrSuperColumn> columns=thriftClient_.get_slice(keyspace,key,new ColumnParent(columnFamily,superColumnName),new SlicePredicate(null,range),ConsistencyLevel.ONE);
   int size=columns.size();
   for (  ColumnOrSuperColumn cosc : columns) {
-    try {
-      if (cosc.isSetSuper_column()) {
-        SuperColumn superColumn=cosc.super_column;
-        css_.out.printf("=> (super_column=%s,",new String(superColumn.name,"UTF-8"));
-        for (        Column col : superColumn.getColumns())         css_.out.printf("\n     (column=%s, value=%s, timestamp=%d)",new String(col.name,"UTF-8"),new String(col.value,"UTF-8"),col.timestamp);
-        css_.out.println(")");
-      }
- else {
-        Column column=cosc.column;
-        css_.out.printf("=> (column=%s, value=%s; timestamp=%d)\n",new String(column.name,"UTF-8"),new String(column.value,"UTF-8"),column.timestamp);
-      }
+    if (cosc.isSetSuper_column()) {
+      SuperColumn superColumn=cosc.super_column;
+      css_.out.printf("=> (super_column=%s,",new String(superColumn.name,"UTF-8"));
+      for (      Column col : superColumn.getColumns())       css_.out.printf("\n     (column=%s, value=%s, timestamp=%d)",new String(col.name,"UTF-8"),new String(col.value,"UTF-8"),col.timestamp);
+      css_.out.println(")");
     }
- catch (    UnsupportedEncodingException e) {
-      throw new RuntimeException(e);
+ else {
+      Column column=cosc.column;
+      css_.out.printf("=> (column=%s, value=%s; timestamp=%d)\n",new String(column.name,"UTF-8"),new String(column.value,"UTF-8"),column.timestamp);
     }
   }
   css_.out.println("Returned " + size + " results.");
