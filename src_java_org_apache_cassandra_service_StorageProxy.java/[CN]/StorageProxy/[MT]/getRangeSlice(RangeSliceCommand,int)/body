@@ -1,29 +1,44 @@
 {
   long startTime=System.currentTimeMillis();
   TokenMetadata tokenMetadata=StorageService.instance().getTokenMetadata();
-  InetAddress endPoint=StorageService.instance().findSuitableEndPoint(command.startKey.key);
+  InetAddress endPoint=StorageService.instance().getPrimary(command.startKey.token);
   InetAddress startEndpoint=endPoint;
+  int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getReplicationFactor(),consistency_level);
   Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
   do {
-    Message message=command.getMessage();
-    if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
-    IAsyncResult iar=MessagingService.instance().sendRR(message,endPoint);
-    byte[] responseBody;
-    try {
-      responseBody=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+    Range primaryRange=StorageService.instance().getPrimaryRangeForEndPoint(endPoint);
+    List<InetAddress> endpoints=StorageService.instance().getLiveNaturalEndpoints(primaryRange.right());
+    if (endpoints.size() < responseCount)     throw new UnavailableException();
+    IPartitioner<?> p=StorageService.getPartitioner();
+    DecoratedKey startKey;
+    DecoratedKey finishKey;
+    if (primaryRange.left().equals(primaryRange.right())) {
+      startKey=command.startKey;
+      finishKey=command.finishKey;
     }
- catch (    TimeoutException ex) {
+ else {
+      startKey=Collections.max(Arrays.asList(command.startKey,new DecoratedKey(primaryRange.left(),null)));
+      finishKey=command.finishKey.isEmpty() ? new DecoratedKey(primaryRange.right(),null) : Collections.min(Arrays.asList(command.finishKey,new DecoratedKey(primaryRange.right(),null)));
+    }
+    RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,startKey,finishKey,command.max_keys);
+    Message message=c2.getMessage();
+    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,primaryRange,endpoints);
+    QuorumResponseHandler<Map<String,ColumnFamily>> handler=new QuorumResponseHandler<Map<String,ColumnFamily>>(responseCount,resolver);
+    if (logger.isDebugEnabled())     logger.debug("reading " + command + " for "+ primaryRange+ " from "+ message.getMessageId()+ "@"+ endPoint);
+    for (    InetAddress replicaEndpoint : endpoints) {
+      MessagingService.instance().sendRR(message,replicaEndpoint,handler);
+    }
+    try {
+      rows.putAll(handler.get());
+    }
+ catch (    TimeoutException e) {
       throw new TimedOutException();
     }
-    RangeSliceReply reply=RangeSliceReply.read(responseBody);
-    for (    Row row : reply.rows) {
-      rows.put(row.key,ColumnFamily.resolve(row.cf,rows.get(row.key)));
+catch (    DigestMismatchException e) {
+      throw new AssertionError(e);
     }
-    if (rows.size() >= command.max_keys || reply.rangeCompletedLocally)     break;
-    do {
-      endPoint=tokenMetadata.getSuccessor(endPoint);
-    }
- while (!FailureDetector.instance().isAlive(endPoint));
+    if (rows.size() >= command.max_keys || resolver.completed())     break;
+    endPoint=tokenMetadata.getSuccessor(endPoint);
   }
  while (!endPoint.equals(startEndpoint));
   List<Pair<String,Collection<IColumn>>> results=new ArrayList<Pair<String,Collection<IColumn>>>(rows.size());

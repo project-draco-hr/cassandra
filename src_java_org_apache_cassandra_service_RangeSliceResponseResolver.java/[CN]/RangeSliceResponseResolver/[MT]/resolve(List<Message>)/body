@@ -1,0 +1,25 @@
+{
+  Map<InetAddress,Map<String,ColumnFamily>> replies=new HashMap<InetAddress,Map<String,ColumnFamily>>(responses.size());
+  Set<String> allKeys=new HashSet<String>();
+  for (  Message response : responses) {
+    RangeSliceReply reply=RangeSliceReply.read(response.getMessageBody());
+    isCompleted&=reply.rangeCompletedLocally;
+    Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(reply.rows.size());
+    for (    Row row : reply.rows) {
+      rows.put(row.key,row.cf);
+      allKeys.add(row.key);
+    }
+    replies.put(response.getFrom(),rows);
+  }
+  Map<String,ColumnFamily> resolvedRows=new HashMap<String,ColumnFamily>(allKeys.size());
+  for (  String key : allKeys) {
+    List<ColumnFamily> versions=new ArrayList<ColumnFamily>(sources.size());
+    for (    InetAddress endpoint : sources) {
+      versions.add(replies.get(endpoint).get(key));
+    }
+    ColumnFamily resolved=ReadResponseResolver.resolveSuperset(versions);
+    ReadResponseResolver.maybeScheduleRepairs(resolved,table,key,versions,sources);
+    resolvedRows.put(key,resolved);
+  }
+  return resolvedRows;
+}
