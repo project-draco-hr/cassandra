@@ -1,12 +1,12 @@
 {
-  Table table=Table.open("Keyspace1");
-  ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  List<RowMutation> rms=new LinkedList<RowMutation>();
   RowMutation rm;
   rm=new RowMutation("Keyspace1","key1");
   rm.add(new QueryPath("Standard1",null,"Column1".getBytes()),"asdf".getBytes(),0);
   rm.add(new QueryPath("Standard1",null,"Column2".getBytes()),"asdf".getBytes(),0);
-  rm.apply();
-  store.forceBlockingFlush();
+  rms.add(rm);
+  ColumnFamilyStore store=ColumnFamilyStoreUtils.writeColumnFamily(rms);
+  Table table=Table.open("Keyspace1");
   List<SSTableReader> ssTables=table.getAllSSTablesOnDisk();
   assertEquals(1,ssTables.size());
   ssTables.get(0).forceBloomFilterFailures();

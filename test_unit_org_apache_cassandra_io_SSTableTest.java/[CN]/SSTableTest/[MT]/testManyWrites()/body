@@ -1,14 +1,9 @@
 {
-  File f=tempSSTableFileName();
   TreeMap<String,byte[]> map=new TreeMap<String,byte[]>();
   for (int i=100; i < 1000; ++i) {
     map.put(Integer.toString(i),("Avinash Lakshman is a good man: " + i).getBytes());
   }
-  SSTableWriter writer=new SSTableWriter(f.getAbsolutePath(),1000,new OrderPreservingPartitioner());
-  for (  String key : map.navigableKeySet()) {
-    writer.append(writer.partitioner.decorateKey(key),map.get(key));
-  }
-  SSTableReader ssTable=writer.closeAndOpenReader(0.01);
+  SSTableReader ssTable=SSTableUtils.writeSSTable("manywrites",map,1000,new OrderPreservingPartitioner(),0.01);
   verifyMany(ssTable,map);
   SSTableReader.reopenUnsafe();
   verifyMany(ssTable,map);
