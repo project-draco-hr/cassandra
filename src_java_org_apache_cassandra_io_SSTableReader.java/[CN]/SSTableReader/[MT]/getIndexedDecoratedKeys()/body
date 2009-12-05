@@ -1,13 +1,10 @@
 {
-  Range range=StorageService.instance().getLocalPrimaryRange();
-  List<DecoratedKey> indexedKeys=new ArrayList<DecoratedKey>();
-  for (  SSTableReader sstable : openedFiles.values()) {
-    for (    KeyPosition kp : sstable.getIndexPositions()) {
-      if (range.contains(kp.key.token)) {
-        indexedKeys.add(kp.key);
-      }
+  final Range range=StorageService.instance().getLocalPrimaryRange();
+  Predicate<SSTable> cfpred=Predicates.alwaysTrue();
+  return getIndexedDecoratedKeysFor(cfpred,new Predicate<DecoratedKey>(){
+    public boolean apply(    DecoratedKey dk){
+      return range.contains(dk.token);
     }
   }
-  Collections.sort(indexedKeys);
-  return indexedKeys;
+);
 }
