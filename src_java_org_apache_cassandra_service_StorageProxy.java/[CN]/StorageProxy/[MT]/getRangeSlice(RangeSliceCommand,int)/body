@@ -1,0 +1,43 @@
+{
+  long startTime=System.currentTimeMillis();
+  TokenMetadata tokenMetadata=StorageService.instance().getTokenMetadata();
+  InetAddress endPoint=StorageService.instance().findSuitableEndPoint(command.start_key);
+  InetAddress startEndpoint=endPoint;
+  Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
+  do {
+    Message message=command.getMessage();
+    if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
+    IAsyncResult iar=MessagingService.instance().sendRR(message,endPoint);
+    byte[] responseBody;
+    try {
+      responseBody=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+    }
+ catch (    TimeoutException ex) {
+      throw new TimedOutException();
+    }
+    RangeSliceReply reply=RangeSliceReply.read(responseBody);
+    for (    Row row : reply.rows) {
+      rows.put(row.key,ColumnFamily.resolve(row.cf,rows.get(row.key)));
+    }
+    if (rows.size() >= command.max_keys || reply.rangeCompletedLocally)     break;
+    do {
+      endPoint=tokenMetadata.getSuccessor(endPoint);
+    }
+ while (!FailureDetector.instance().isAlive(endPoint));
+  }
+ while (!endPoint.equals(startEndpoint));
+  List<Pair<String,Collection<IColumn>>> results=new ArrayList<Pair<String,Collection<IColumn>>>(rows.size());
+  for (  Map.Entry<String,ColumnFamily> entry : rows.entrySet()) {
+    ColumnFamily cf=entry.getValue();
+    Collection<IColumn> columns=(cf == null) ? Collections.<IColumn>emptyList() : cf.getSortedColumns();
+    results.add(new Pair<String,Collection<IColumn>>(entry.getKey(),columns));
+  }
+  Collections.sort(results,new Comparator<Pair<String,Collection<IColumn>>>(){
+    public int compare(    Pair<String,Collection<IColumn>> o1,    Pair<String,Collection<IColumn>> o2){
+      return keyComparator.compare(o1.left,o2.left);
+    }
+  }
+);
+  rangeStats.add(System.currentTimeMillis() - startTime);
+  return results;
+}

@@ -1,11 +1,9 @@
 {
   long startTime=System.currentTimeMillis();
   TokenMetadata tokenMetadata=StorageService.instance().getTokenMetadata();
-  List<String> allKeys=new ArrayList<String>();
-  RangeCommand command=rawCommand;
+  Set<String> uniqueKeys=new HashSet<String>(command.maxResults);
   InetAddress endPoint=StorageService.instance().findSuitableEndPoint(command.startWith);
   InetAddress startEndpoint=endPoint;
-  InetAddress wrapEndpoint=tokenMetadata.getFirstEndpoint();
   do {
     Message message=command.getMessage();
     if (logger.isDebugEnabled())     logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
@@ -18,44 +16,18 @@
       throw new TimedOutException();
     }
     RangeReply rangeReply=RangeReply.read(responseBody);
-    List<String> rangeKeys=rangeReply.keys;
-    if (rangeKeys.size() > 0) {
-      if (allKeys.size() > 0) {
-        if (keyComparator.compare(rangeKeys.get(rangeKeys.size() - 1),allKeys.get(0)) <= 0) {
-          if (rangeKeys.get(rangeKeys.size() - 1).equals(allKeys.get(0))) {
-            rangeKeys.remove(rangeKeys.size() - 1);
-          }
-          rangeKeys.addAll(allKeys);
-          allKeys=rangeKeys;
-        }
- else         if (keyComparator.compare(allKeys.get(allKeys.size() - 1),rangeKeys.get(0)) <= 0) {
-          if (allKeys.get(allKeys.size() - 1).equals(rangeKeys.get(0))) {
-            allKeys.remove(allKeys.size() - 1);
-          }
-          allKeys.addAll(rangeKeys);
-        }
- else {
-          HashSet<String> keys=new HashSet<String>(allKeys);
-          keys.addAll(rangeKeys);
-          allKeys=new ArrayList<String>(keys);
-          Collections.sort(allKeys);
-        }
-      }
- else {
-        allKeys=rangeKeys;
-      }
-    }
-    if (allKeys.size() >= rawCommand.maxResults || rangeReply.rangeCompletedLocally) {
+    uniqueKeys.addAll(rangeReply.keys);
+    if (uniqueKeys.size() >= command.maxResults || rangeReply.rangeCompletedLocally) {
       break;
     }
     do {
       endPoint=tokenMetadata.getSuccessor(endPoint);
     }
  while (!FailureDetector.instance().isAlive(endPoint));
-    int maxResults=endPoint.equals(wrapEndpoint) ? rawCommand.maxResults : rawCommand.maxResults - allKeys.size();
-    command=new RangeCommand(command.table,command.columnFamily,command.startWith,command.stopAt,maxResults);
   }
  while (!endPoint.equals(startEndpoint));
   rangeStats.add(System.currentTimeMillis() - startTime);
-  return (allKeys.size() > rawCommand.maxResults) ? allKeys.subList(0,rawCommand.maxResults) : allKeys;
+  List<String> allKeys=new ArrayList<String>(uniqueKeys);
+  Collections.sort(allKeys,keyComparator);
+  return (allKeys.size() > command.maxResults) ? allKeys.subList(0,command.maxResults) : allKeys;
 }
