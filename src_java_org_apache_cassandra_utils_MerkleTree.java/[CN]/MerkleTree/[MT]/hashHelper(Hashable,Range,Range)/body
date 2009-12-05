@@ -1,0 +1,19 @@
+{
+  if (hashable instanceof Leaf) {
+    if (!range.contains(active))     throw new StopRecursion.BadRange();
+    return hashable.hash();
+  }
+  Inner node=(Inner)hashable;
+  Range leftactive=new Range(active.left(),node.token);
+  Range rightactive=new Range(node.token,active.right());
+  if (range.contains(active)) {
+    if (node.hash() != null)     return node.hash();
+    byte[] lhash=hashHelper(node.lchild(),leftactive,range);
+    byte[] rhash=hashHelper(node.rchild(),rightactive,range);
+    node.hash(lhash,rhash);
+    return node.hash();
+  }
+  if (leftactive.contains(range))   return hashHelper(node.lchild,leftactive,range);
+ else   if (rightactive.contains(range))   return hashHelper(node.rchild,rightactive,range);
+ else   throw new StopRecursion.BadRange();
+}

@@ -1,0 +1,16 @@
+{
+  Range full=new Range(tok(0),tok(0));
+  ByteArrayOutputStream bout=new ByteArrayOutputStream();
+  ObjectOutputStream oout=new ObjectOutputStream(bout);
+  mt.maxsize(256);
+  mt.init();
+  for (  TreeRange range : mt.invalids(full))   range.validate(new HIterator(range.right()));
+  byte[] initialhash=mt.hash(full);
+  oout.writeObject(mt);
+  oout.close();
+  ByteArrayInputStream bin=new ByteArrayInputStream(bout.toByteArray());
+  ObjectInputStream oin=new ObjectInputStream(bin);
+  MerkleTree restored=(MerkleTree)oin.readObject();
+  restored.partitioner(partitioner);
+  assertHashEquals(initialhash,restored.hash(full));
+}
