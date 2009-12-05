@@ -1,0 +1,17 @@
+{
+  StorageService ss=StorageService.instance();
+  Token minimum=ss.getPartitioner().getMinimumToken();
+  if (ltree.partitioner() == null)   ltree.partitioner(ss.getPartitioner());
+  if (rtree.partitioner() == null)   rtree.partitioner(ss.getPartitioner());
+  Set<Range> interesting=new HashSet(ss.getRangesForEndPoint(local));
+  interesting.retainAll(ss.getRangesForEndPoint(remote));
+  for (  Range diff : MerkleTree.difference(ltree,rtree)) {
+    for (    Range localrange : interesting) {
+      if (diff.intersects(localrange)) {
+        differences.add(diff);
+        break;
+      }
+    }
+  }
+  logger.info("Found " + differences.size() + " differing ranges between local "+ local+ " and remote "+ remote+ " endpoints for "+ cf+ ".");
+}

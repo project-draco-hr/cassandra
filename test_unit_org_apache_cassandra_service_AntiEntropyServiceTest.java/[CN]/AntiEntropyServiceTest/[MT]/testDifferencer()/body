@@ -1,0 +1,18 @@
+{
+  Validator validator=new Validator(new CFTuple("ltable","lcf"),LOCAL);
+  validator.prepare();
+  validator.complete();
+  MerkleTree ltree=validator.tree;
+  validator=new Validator(new CFTuple("rtable","rcf"),LOCAL);
+  validator.prepare();
+  validator.complete();
+  MerkleTree rtree=validator.tree;
+  Token min=StorageService.instance().getPartitioner().getMinimumToken();
+  ltree.invalidate(min);
+  MerkleTree.TreeRange changed=ltree.invalids(new Range(min,min)).next();
+  changed.hash("non-empty hash!".getBytes());
+  Differencer diff=new Differencer(new CFTuple(tablename,cfname),LOCAL,LOCAL,ltree,rtree);
+  diff.run();
+  assertEquals("Wrong number of differing ranges",1,diff.differences.size());
+  assertEquals("Wrong differing range",changed,diff.differences.get(0));
+}

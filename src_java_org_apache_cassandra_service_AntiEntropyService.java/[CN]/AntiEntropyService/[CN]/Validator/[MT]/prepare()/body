@@ -1,0 +1,21 @@
+{
+  Predicate<SSTable> cfpred=new Predicate<SSTable>(){
+    public boolean apply(    SSTable ss){
+      return cf.table.equals(ss.getTableName()) && cf.cf.equals(ss.getColumnFamilyName());
+    }
+  }
+;
+  List<DecoratedKey> keys=SSTableReader.getIndexedDecoratedKeysFor(cfpred,DKPRED);
+  if (keys.isEmpty())   tree.init();
+ else {
+    int numkeys=keys.size();
+    Random random=new Random();
+    while (true) {
+      DecoratedKey dk=keys.get(random.nextInt(numkeys));
+      if (!tree.split(dk.token))       break;
+    }
+  }
+  logger.debug("Prepared AEService tree of size " + tree.size() + " for "+ cf);
+  mintoken=tree.partitioner().getMinimumToken();
+  ranges=tree.invalids(new Range(mintoken,mintoken));
+}
