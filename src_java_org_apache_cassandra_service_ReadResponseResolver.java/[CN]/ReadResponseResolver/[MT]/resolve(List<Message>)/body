@@ -1,6 +1,6 @@
 {
   long startTime=System.currentTimeMillis();
-  List<Row> rows=new ArrayList<Row>();
+  List<ColumnFamily> versions=new ArrayList<ColumnFamily>();
   List<InetAddress> endPoints=new ArrayList<InetAddress>();
   String key=null;
   byte[] digest=new byte[0];
@@ -15,28 +15,21 @@
       isDigestQuery=true;
     }
  else {
-      rows.add(result.row());
+      versions.add(result.row().cf);
       endPoints.add(response.getFrom());
       key=result.row().key;
     }
   }
   if (isDigestQuery) {
-    for (    Row row : rows) {
-      if (!Arrays.equals(row.digest(),digest)) {
-        String s=String.format("Mismatch for key %s (%s vs %s)",row.key,FBUtilities.bytesToHex(row.digest()),FBUtilities.bytesToHex(digest));
+    for (    ColumnFamily cf : versions) {
+      if (!Arrays.equals(ColumnFamily.digest(cf),digest)) {
+        String s=String.format("Mismatch for key %s (%s vs %s)",key,FBUtilities.bytesToHex(ColumnFamily.digest(cf)),FBUtilities.bytesToHex(digest));
         throw new DigestMismatchException(s);
       }
     }
   }
-  Row resolved=resolveSuperset(rows);
-  for (int i=0; i < rows.size(); i++) {
-    ColumnFamily diffCf=rows.get(i).diff(resolved);
-    if (diffCf == null)     continue;
-    RowMutation rowMutation=new RowMutation(table,key);
-    rowMutation.add(diffCf);
-    RowMutationMessage rowMutationMessage=new RowMutationMessage(rowMutation);
-    ReadRepairManager.instance().schedule(endPoints.get(i),rowMutationMessage);
-  }
+  ColumnFamily resolved=resolveSuperset(versions);
+  maybeScheduleRepairs(resolved,table,key,versions,endPoints);
   if (logger_.isDebugEnabled())   logger_.debug("resolve: " + (System.currentTimeMillis() - startTime) + " ms.");
-  return resolved;
+  return new Row(key,resolved);
 }
