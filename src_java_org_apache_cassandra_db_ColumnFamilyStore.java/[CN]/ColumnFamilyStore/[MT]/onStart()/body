@@ -8,6 +8,8 @@
     File[] files=fileDir.listFiles();
     for (    File file : files) {
       String filename=file.getName();
+      String cfName=getColumnFamilyFromFileName(filename);
+      if (!cfName.equals(columnFamily_))       continue;
       Matcher matcher=auxFilePattern.matcher(file.getAbsolutePath());
       if (matcher.matches()) {
         String basePath=matcher.group(1);
@@ -17,12 +19,11 @@
           continue;
         }
       }
-      if (((file.length() == 0 && !filename.endsWith("-Compacted")) || (filename.contains("-" + SSTable.TEMPFILE_MARKER))) && (filename.contains(columnFamily_))) {
+      if (((file.length() == 0 && !filename.endsWith("-Compacted")) || (filename.contains("-" + SSTable.TEMPFILE_MARKER)))) {
         FileUtils.deleteWithConfirm(file);
         continue;
       }
-      String cfName=getColumnFamilyFromFileName(filename);
-      if (cfName.equals(columnFamily_) && filename.contains("-Data.db")) {
+      if (filename.contains("-Data.db")) {
         sstableFiles.add(file.getAbsoluteFile());
       }
     }
