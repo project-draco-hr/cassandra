@@ -5,6 +5,9 @@
   if (compactionFileLocation == null) {
     throw new UnsupportedOperationException("disk full");
   }
+  if (target != null) {
+    compactionFileLocation=compactionFileLocation + File.separator + DatabaseDescriptor.STREAMING_SUBDIR;
+  }
   List<SSTableReader> results=new ArrayList<SSTableReader>();
   long startTime=System.currentTimeMillis();
   long totalkeysWritten=0;
@@ -21,9 +24,6 @@
       CompactionIterator.CompactedRow row=(CompactionIterator.CompactedRow)nni.next();
       if (Range.isTokenInRanges(row.key.token,ranges)) {
         if (writer == null) {
-          if (target != null) {
-            compactionFileLocation=compactionFileLocation + File.separator + DatabaseDescriptor.STREAMING_SUBDIR;
-          }
           FileUtils.createDirectory(compactionFileLocation);
           String newFilename=new File(compactionFileLocation,getTempSSTableFileName()).getAbsolutePath();
           writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
