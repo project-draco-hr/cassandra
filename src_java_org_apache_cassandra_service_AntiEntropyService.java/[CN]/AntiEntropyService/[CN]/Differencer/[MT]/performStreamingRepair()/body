@@ -1,0 +1,13 @@
+{
+  logger.info("Performing streaming repair of " + differences.size() + " ranges to "+ remote+ " for "+ cf);
+  ColumnFamilyStore cfstore=Table.open(cf.table).getColumnFamilyStore(cf.cf);
+  try {
+    List<Range> ranges=new ArrayList<Range>(differences);
+    List<SSTableReader> sstables=CompactionManager.instance().submitAnti(cfstore,ranges,remote).get();
+    Streaming.transferSSTables(remote,sstables,cf.table);
+  }
+ catch (  Exception e) {
+    throw new IOException("Streaming repair failed.",e);
+  }
+  logger.debug("Finished streaming repair to " + remote + " for "+ cf);
+}

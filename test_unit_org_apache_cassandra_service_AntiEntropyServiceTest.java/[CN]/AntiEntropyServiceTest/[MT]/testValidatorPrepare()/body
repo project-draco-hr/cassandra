@@ -1,11 +1,11 @@
 {
   Validator validator;
-  TreeMap<String,byte[]> map=new TreeMap<String,byte[]>();
-  for (int i=0; i < 1000; i++) {
-    map.put(Integer.toString(i),"blah".getBytes());
-  }
-  SSTableReader ssTable=SSTableUtils.writeSSTable(cfname,map,1000,StorageService.instance().getPartitioner(),0.01);
-  tablename=ssTable.getTableName();
+  List<RowMutation> rms=new LinkedList<RowMutation>();
+  RowMutation rm;
+  rm=new RowMutation(tablename,"key1");
+  rm.add(new QueryPath(cfname,null,"Column1".getBytes()),"asdf".getBytes(),0);
+  rms.add(rm);
+  ColumnFamilyStoreUtils.writeColumnFamily(rms);
   validator=new Validator(new CFTuple(tablename,cfname),LOCAL);
   validator.prepare();
   assertTrue(validator.tree.size() > 1);

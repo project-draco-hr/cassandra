@@ -5,7 +5,7 @@
   if (rtree.partitioner() == null)   rtree.partitioner(ss.getPartitioner());
   Set<Range> interesting=new HashSet(ss.getRangesForEndPoint(local));
   interesting.retainAll(ss.getRangesForEndPoint(remote));
-  for (  Range diff : MerkleTree.difference(ltree,rtree)) {
+  for (  MerkleTree.TreeRange diff : MerkleTree.difference(ltree,rtree)) {
     for (    Range localrange : interesting) {
       if (diff.intersects(localrange)) {
         differences.add(diff);
@@ -13,5 +13,16 @@
       }
     }
   }
-  logger.info("Found " + differences.size() + " differing ranges between local "+ local+ " and remote "+ remote+ " endpoints for "+ cf+ ".");
+  float difference=differenceFraction();
+  try {
+    if (difference == 0.0) {
+      logger.debug("Endpoints " + local + " and "+ remote+ " are consistent for "+ cf);
+      return;
+    }
+    if (difference < 0.05)     performRangeRepair();
+ else     performStreamingRepair();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
 }
