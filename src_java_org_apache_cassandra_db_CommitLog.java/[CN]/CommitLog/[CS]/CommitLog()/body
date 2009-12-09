@@ -1,0 +1,32 @@
+{
+  setNextFileName();
+  logWriter_=CommitLog.createWriter(logFile_);
+  writeCommitLogHeader();
+  if (DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.periodic) {
+    final Runnable syncer=new Runnable(){
+      public void run(){
+        try {
+          sync();
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+;
+    new Thread(new Runnable(){
+      public void run(){
+        while (true) {
+          executor.submit(syncer);
+          try {
+            Thread.sleep(DatabaseDescriptor.getCommitLogSyncPeriod());
+          }
+ catch (          InterruptedException e) {
+            throw new RuntimeException(e);
+          }
+        }
+      }
+    }
+,"PERIODIC-COMMIT-LOG-SYNCER").start();
+  }
+}
