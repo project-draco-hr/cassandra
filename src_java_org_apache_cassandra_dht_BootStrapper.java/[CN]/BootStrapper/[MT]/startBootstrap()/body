@@ -5,11 +5,9 @@
       if (logger.isDebugEnabled())       logger.debug("Beginning bootstrap process");
       for (      Map.Entry<InetAddress,Collection<Range>> entry : getWorkMap(rangesWithSourceTarget).asMap().entrySet()) {
         InetAddress source=entry.getKey();
-        if (logger.isDebugEnabled())         logger.debug("Sending BootstrapMetadataMessage to " + source + " for "+ StringUtils.join(entry.getValue(),", "));
-        BootstrapMetadata bsMetadata=new BootstrapMetadata(address,entry.getValue());
-        Message message=BootstrapMetadataMessage.makeBootstrapMetadataMessage(new BootstrapMetadataMessage(bsMetadata));
-        MessagingService.instance().sendOneWay(message,source);
         StorageService.instance().addBootstrapSource(source);
+        if (logger.isDebugEnabled())         logger.debug("Requesting from " + source + " ranges "+ StringUtils.join(entry.getValue(),", "));
+        Streaming.requestRanges(source,entry.getValue());
       }
     }
   }

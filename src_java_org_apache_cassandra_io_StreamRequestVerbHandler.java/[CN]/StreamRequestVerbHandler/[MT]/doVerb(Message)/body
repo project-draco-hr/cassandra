@@ -1,0 +1,17 @@
+{
+  if (logger_.isDebugEnabled())   logger_.debug("Received a StreamRequestMessage from " + message.getFrom());
+  byte[] body=message.getMessageBody();
+  DataInputBuffer bufIn=new DataInputBuffer();
+  bufIn.reset(body,body.length);
+  try {
+    StreamRequestMessage streamRequestMessage=StreamRequestMessage.serializer().deserialize(bufIn);
+    StreamRequestMetadata[] streamRequestMetadata=streamRequestMessage.streamRequestMetadata_;
+    for (    StreamRequestMetadata srm : streamRequestMetadata) {
+      if (logger_.isDebugEnabled())       logger_.debug(srm.toString());
+      Streaming.transferRanges(srm.target_,srm.ranges_,null);
+    }
+  }
+ catch (  IOException ex) {
+    throw new IOError(ex);
+  }
+}
