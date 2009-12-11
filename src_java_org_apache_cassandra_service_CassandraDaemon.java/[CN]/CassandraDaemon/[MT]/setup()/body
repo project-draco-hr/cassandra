@@ -1,4 +1,6 @@
 {
+  String file=System.getProperty("storage-config") + File.separator + "log4j.properties";
+  PropertyConfigurator.configure(file);
   int listenPort=DatabaseDescriptor.getThriftPort();
   InetAddress listenAddr=DatabaseDescriptor.getThriftAddress();
   if (listenAddr == null)   listenAddr=FBUtilities.getLocalAddress();
@@ -17,10 +19,10 @@
     tbl.onStart();
   }
   RecoveryManager recoveryMgr=RecoveryManager.instance();
-  recoveryMgr.doRecovery();
-  CassandraServer peerStorageServer=new CassandraServer();
-  peerStorageServer.start();
-  Cassandra.Processor processor=new Cassandra.Processor(peerStorageServer);
+  RecoveryManager.doRecovery();
+  CassandraServer cassandraServer=new CassandraServer();
+  StorageService.instance().initServer();
+  Cassandra.Processor processor=new Cassandra.Processor(cassandraServer);
   TServerSocket tServerSocket=new TServerSocket(new InetSocketAddress(listenAddr,listenPort));
   if (logger.isDebugEnabled())   logger.debug(String.format("Binding thrift service to %s:%s",listenAddr,listenPort));
   TProtocolFactory tProtocolFactory=new TBinaryProtocol.Factory();
