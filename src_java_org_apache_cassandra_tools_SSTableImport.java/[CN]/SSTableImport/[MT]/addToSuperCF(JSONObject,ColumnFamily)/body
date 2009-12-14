@@ -1,12 +1,12 @@
 {
   for (  Map.Entry<String,JSONObject> entry : (Set<Map.Entry<String,JSONObject>>)row.entrySet()) {
-    byte[] superName=entry.getKey().getBytes();
+    byte[] superName=hexToBytes(entry.getKey());
     long deletedAt=(Long)entry.getValue().get("deletedAt");
     JSONArray subColumns=(JSONArray)entry.getValue().get("subColumns");
     for (    Object c : subColumns) {
       JsonColumn col=new JsonColumn(c);
-      QueryPath path=new QueryPath(cfamily.name(),superName,col.name.getBytes());
-      cfamily.addColumn(path,FBUtilities.hexToBytes(col.value),col.timestamp,col.isDeleted);
+      QueryPath path=new QueryPath(cfamily.name(),superName,hexToBytes(col.name));
+      cfamily.addColumn(path,hexToBytes(col.value),col.timestamp,col.isDeleted);
     }
     SuperColumn superColumn=(SuperColumn)cfamily.getColumn(superName);
     superColumn.markForDeleteAt((int)System.currentTimeMillis(),deletedAt);
