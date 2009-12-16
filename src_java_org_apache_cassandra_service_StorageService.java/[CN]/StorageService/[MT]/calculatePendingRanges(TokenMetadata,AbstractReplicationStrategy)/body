@@ -1,0 +1,28 @@
+{
+  Multimap<Range,InetAddress> pendingRanges=HashMultimap.create();
+  Map<Token,InetAddress> bootstrapTokens=tm.getBootstrapTokens();
+  Set<InetAddress> leavingEndPoints=tm.getLeavingEndPoints();
+  if (bootstrapTokens.isEmpty() && leavingEndPoints.isEmpty()) {
+    if (logger_.isDebugEnabled())     logger_.debug("No bootstrapping or leaving nodes -> empty pending ranges");
+    tm.setPendingRanges(pendingRanges);
+    return;
+  }
+  Multimap<InetAddress,Range> addressRanges=strategy.getAddressRanges();
+  TokenMetadata allLeftMetadata=tm.cloneAfterAllLeft();
+  Set<Range> affectedRanges=new HashSet<Range>();
+  for (  InetAddress endPoint : leavingEndPoints)   affectedRanges.addAll(addressRanges.get(endPoint));
+  for (  Range range : affectedRanges) {
+    List<InetAddress> currentEndPoints=strategy.getNaturalEndpoints(range.right(),tm);
+    List<InetAddress> newEndPoints=strategy.getNaturalEndpoints(range.right(),allLeftMetadata);
+    newEndPoints.removeAll(currentEndPoints);
+    pendingRanges.putAll(range,newEndPoints);
+  }
+  for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
+    InetAddress endPoint=entry.getValue();
+    allLeftMetadata.updateNormalToken(entry.getKey(),endPoint);
+    for (    Range range : strategy.getAddressRanges(allLeftMetadata).get(endPoint))     pendingRanges.put(range,endPoint);
+    allLeftMetadata.removeEndpoint(endPoint);
+  }
+  tm.setPendingRanges(pendingRanges);
+  if (logger_.isDebugEnabled())   logger_.debug("Pending ranges:\n" + tm.printPendingRanges());
+}
