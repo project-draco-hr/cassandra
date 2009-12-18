@@ -1,0 +1,31 @@
+{
+  batch_mutate_args args=new batch_mutate_args();
+  args.read(iprot);
+  iprot.readMessageEnd();
+  batch_mutate_result result=new batch_mutate_result();
+  try {
+    iface_.batch_mutate(args.keyspace,args.mutation_map,args.consistency_level);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  UnavailableException ue) {
+    result.ue=ue;
+  }
+catch (  TimedOutException te) {
+    result.te=te;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing batch_mutate",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing batch_mutate");
+    oprot.writeMessageBegin(new TMessage("batch_mutate",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("batch_mutate",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}

@@ -1,0 +1,11 @@
+def test_batch_mutate_standard_columns(self):
+    column_families = ['Standard1', 'Standard2']
+    keys = [('key_%d' % i) for i in range(27, 32)]
+    mutations = [Mutation(ColumnOrSuperColumn(c)) for c in _SIMPLE_COLUMNS]
+    mutation_map = dict(((column_family, mutations) for column_family in column_families))
+    keyed_mutations = dict(((key, mutation_map) for key in keys))
+    client.batch_mutate('Keyspace1', keyed_mutations, ConsistencyLevel.ZERO)
+    time.sleep(0.1)
+    for column_family in column_families:
+        for key in keys:
+            _assert_column('Keyspace1', column_family, key, 'c1', 'value1')

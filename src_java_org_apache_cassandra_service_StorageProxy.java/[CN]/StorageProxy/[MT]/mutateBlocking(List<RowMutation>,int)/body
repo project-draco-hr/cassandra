@@ -1,0 +1,53 @@
+{
+  long startTime=System.currentTimeMillis();
+  ArrayList<WriteResponseHandler> responseHandlers=new ArrayList<WriteResponseHandler>();
+  RowMutation mostRecentRowMutation=null;
+  try {
+    for (    RowMutation rm : mutations) {
+      mostRecentRowMutation=rm;
+      List<InetAddress> naturalEndpoints=StorageService.instance().getNaturalEndpoints(rm.key());
+      Map<InetAddress,InetAddress> endpointMap=StorageService.instance().getHintedEndpointMap(rm.key(),naturalEndpoints);
+      int blockFor=determineBlockFor(naturalEndpoints.size(),endpointMap.size(),consistency_level);
+      assureSufficientLiveNodes(endpointMap,blockFor);
+      final WriteResponseHandler responseHandler=StorageService.instance().getWriteResponseHandler(blockFor,consistency_level);
+      responseHandlers.add(responseHandler);
+      Message unhintedMessage=null;
+      for (      Map.Entry<InetAddress,InetAddress> entry : endpointMap.entrySet()) {
+        InetAddress naturalTarget=entry.getKey();
+        InetAddress maybeHintedTarget=entry.getValue();
+        if (naturalTarget.equals(maybeHintedTarget)) {
+          if (naturalTarget.equals(FBUtilities.getLocalAddress())) {
+            insertLocalMessage(rm,responseHandler);
+          }
+ else {
+            if (unhintedMessage == null) {
+              unhintedMessage=rm.makeRowMutationMessage();
+              MessagingService.instance().addCallback(responseHandler,unhintedMessage.getMessageId());
+            }
+            if (logger.isDebugEnabled())             logger.debug("insert writing key " + rm.key() + " to "+ unhintedMessage.getMessageId()+ "@"+ naturalTarget);
+            MessagingService.instance().sendOneWay(unhintedMessage,naturalTarget);
+          }
+        }
+ else {
+          Message hintedMessage=rm.makeRowMutationMessage();
+          hintedMessage.addHeader(RowMutation.HINT,naturalTarget.getAddress());
+          if (logger.isDebugEnabled())           logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ maybeHintedTarget+ " for "+ naturalTarget);
+          MessagingService.instance().sendOneWay(hintedMessage,maybeHintedTarget);
+        }
+      }
+    }
+    for (    WriteResponseHandler responseHandler : responseHandlers) {
+      responseHandler.get();
+    }
+  }
+ catch (  IOException e) {
+    if (mostRecentRowMutation == null)     throw new RuntimeException("no mutations were seen but found an error during write anyway",e);
+ else     throw new RuntimeException("error writing key " + mostRecentRowMutation.key(),e);
+  }
+catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+ finally {
+    writeStats.add(System.currentTimeMillis() - startTime);
+  }
+}

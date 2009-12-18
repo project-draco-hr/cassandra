@@ -1,0 +1,23 @@
+def test_batch_mutate_insertions_and_deletions(self):
+    first_insert = SuperColumn('sc1', columns=[Column(_i64(20), 'value20', 3), Column(_i64(21), 'value21', 3)])
+    second_insert = SuperColumn('sc1', columns=[Column(_i64(20), 'value20', 3), Column(_i64(21), 'value21', 3)])
+    first_deletion = {'super_column': 'sc1', 'predicate': SlicePredicate(column_names=[_i64(22), _i64(23)]), }
+    second_deletion = {'super_column': 'sc2', 'predicate': SlicePredicate(column_names=[_i64(22), _i64(23)]), }
+    keys = ['key_30', 'key_31']
+    for key in keys:
+        sc = SuperColumn('sc1', [Column(_i64(22), 'value22', 0), Column(_i64(23), 'value23', 0)])
+        mutation = {'Super1': [ColumnOrSuperColumn(super_column=sc)], }
+        client.batch_insert('Keyspace1', key, mutation, ConsistencyLevel.ONE)
+        sc2 = SuperColumn('sc2', [Column(_i64(22), 'value22', 0), Column(_i64(23), 'value23', 0)])
+        mutation2 = {'Super2': [ColumnOrSuperColumn(super_column=sc2)], }
+        client.batch_insert('Keyspace1', key, mutation2, ConsistencyLevel.ONE)
+    mutation_map = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=first_insert)), Mutation(deletion=Deletion(3, **first_deletion))], 'Super2': [Mutation(deletion=Deletion(2, **second_deletion)), Mutation(ColumnOrSuperColumn(super_column=second_insert))], }
+    keyed_mutations = dict(((key, mutation_map) for key in keys))
+    client.batch_mutate('Keyspace1', keyed_mutations, ConsistencyLevel.ONE)
+    for key in keys:
+        for c in [_i64(22), _i64(23)]:
+            _assert_no_columnpath('Keyspace1', key, ColumnPath('Super1', super_column='sc1', column=c))
+            _assert_no_columnpath('Keyspace1', key, ColumnPath('Super2', super_column='sc2', column=c))
+        for c in [_i64(20), _i64(21)]:
+            _assert_columnpath_exists('Keyspace1', key, ColumnPath('Super1', super_column='sc1', column=c))
+            _assert_columnpath_exists('Keyspace1', key, ColumnPath('Super2', super_column='sc1', column=c))

@@ -1,0 +1,50 @@
+{
+  long startTime=System.currentTimeMillis();
+  try {
+    for (    final RowMutation rm : mutations) {
+      try {
+        List<InetAddress> naturalEndpoints=StorageService.instance().getNaturalEndpoints(rm.key());
+        Map<InetAddress,InetAddress> endpointMap=StorageService.instance().getHintedEndpointMap(rm.key(),naturalEndpoints);
+        Message unhintedMessage=null;
+        for (        Map.Entry<InetAddress,InetAddress> entry : endpointMap.entrySet()) {
+          InetAddress target=entry.getKey();
+          InetAddress hintedTarget=entry.getValue();
+          if (target.equals(hintedTarget)) {
+            if (target.equals(FBUtilities.getLocalAddress())) {
+              if (logger.isDebugEnabled())               logger.debug("insert writing local key " + rm.key());
+              Runnable runnable=new Runnable(){
+                public void run(){
+                  try {
+                    rm.apply();
+                  }
+ catch (                  IOException e) {
+                    throw new IOError(e);
+                  }
+                }
+              }
+;
+              StageManager.getStage(StageManager.mutationStage_).execute(runnable);
+            }
+ else {
+              if (unhintedMessage == null)               unhintedMessage=rm.makeRowMutationMessage();
+              if (logger.isDebugEnabled())               logger.debug("insert writing key " + rm.key() + " to "+ unhintedMessage.getMessageId()+ "@"+ target);
+              MessagingService.instance().sendOneWay(unhintedMessage,target);
+            }
+          }
+ else {
+            Message hintedMessage=rm.makeRowMutationMessage();
+            hintedMessage.addHeader(RowMutation.HINT,target.getAddress());
+            if (logger.isDebugEnabled())             logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ hintedTarget+ " for "+ target);
+            MessagingService.instance().sendOneWay(hintedMessage,hintedTarget);
+          }
+        }
+      }
+ catch (      IOException e) {
+        throw new RuntimeException("error inserting key " + rm.key(),e);
+      }
+    }
+  }
+  finally {
+    writeStats.add(System.currentTimeMillis() - startTime);
+  }
+}
