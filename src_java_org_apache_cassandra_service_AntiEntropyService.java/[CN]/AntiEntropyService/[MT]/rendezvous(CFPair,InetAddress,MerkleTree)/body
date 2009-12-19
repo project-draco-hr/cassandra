@@ -1,0 +1,30 @@
+{
+  InetAddress LOCAL=FBUtilities.getLocalAddress();
+  Cachetable<InetAddress,TreePair> ctrees=rendezvousPairs(cf);
+  List<Differencer> differencers=new ArrayList<Differencer>();
+  if (LOCAL.equals(endpoint)) {
+    for (    InetAddress neighbor : getNeighbors()) {
+      TreePair waiting=ctrees.remove(neighbor);
+      if (waiting != null && waiting.right != null) {
+        differencers.add(new Differencer(cf,LOCAL,neighbor,tree,waiting.right));
+        continue;
+      }
+      ctrees.put(neighbor,new TreePair(tree,null));
+      logger.debug("Stored local tree for " + cf + " to wait for "+ neighbor);
+    }
+  }
+ else {
+    TreePair waiting=ctrees.remove(endpoint);
+    if (waiting != null && waiting.left != null) {
+      differencers.add(new Differencer(cf,LOCAL,endpoint,waiting.left,tree));
+    }
+ else {
+      ctrees.put(endpoint,new TreePair(null,tree));
+      logger.debug("Stored remote tree for " + cf + " from "+ endpoint);
+    }
+  }
+  for (  Differencer differencer : differencers) {
+    logger.info("Queueing comparison " + differencer);
+    StageManager.getStage(AE_SERVICE_STAGE).execute(differencer);
+  }
+}

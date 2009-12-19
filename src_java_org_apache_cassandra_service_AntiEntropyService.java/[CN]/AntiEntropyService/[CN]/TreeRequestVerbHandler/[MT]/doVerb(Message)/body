@@ -3,22 +3,10 @@
   DataInputBuffer buffer=new DataInputBuffer();
   buffer.reset(bytes,bytes.length);
   try {
-    CFTuple request=this.deserialize(buffer);
-    InetAddress local=FBUtilities.getLocalAddress();
-    MerkleTree cached=AntiEntropyService.instance().getCachedTree(request.table,request.cf,local);
-    if (cached != null) {
-      if (local.equals(message.getFrom())) {
-        return;
-      }
-      Validator valid=new Validator(request,message.getFrom(),cached);
-      Message response=TreeResponseVerbHandler.makeVerb(local,valid);
-      MessagingService.instance().sendOneWay(response,message.getFrom());
-      logger.debug("Answered request from " + message.getFrom() + " for "+ request+ " with cached tree.");
-      return;
-    }
+    CFPair request=this.deserialize(buffer);
     logger.debug("Queueing readonly compaction for request from " + message.getFrom() + " for "+ request);
-    Table table=Table.open(request.table);
-    CompactionManager.instance.submitReadonly(table.getColumnFamilyStore(request.cf),message.getFrom());
+    Table table=Table.open(request.left);
+    CompactionManager.instance.submitReadonly(table.getColumnFamilyStore(request.right),message.getFrom());
   }
  catch (  IOException e) {
     throw new IOError(e);
