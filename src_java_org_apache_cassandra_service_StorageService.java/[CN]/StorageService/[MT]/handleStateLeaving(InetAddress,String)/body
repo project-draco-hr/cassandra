@@ -1,0 +1,14 @@
+{
+  Token token=getPartitioner().getTokenFactory().fromString(moveValue);
+  if (logger_.isDebugEnabled())   logger_.debug("Node " + endPoint + " state leaving, token "+ token);
+  if (!tokenMetadata_.isMember(endPoint)) {
+    logger_.info("Node " + endPoint + " state jump to leaving");
+    tokenMetadata_.updateNormalToken(token,endPoint);
+  }
+ else   if (!tokenMetadata_.getToken(endPoint).equals(token)) {
+    logger_.warn("Node " + endPoint + " 'leaving' token mismatch. Long network partition?");
+    tokenMetadata_.updateNormalToken(token,endPoint);
+  }
+  tokenMetadata_.addLeavingEndPoint(endPoint);
+  calculatePendingRanges();
+}

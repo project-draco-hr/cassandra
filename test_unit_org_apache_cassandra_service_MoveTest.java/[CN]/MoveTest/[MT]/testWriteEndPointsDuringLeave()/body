@@ -1,0 +1,25 @@
+{
+  StorageService ss=StorageService.instance();
+  TokenMetadata tmd=ss.getTokenMetadata();
+  tmd.clearUnsafe();
+  IPartitioner partitioner=new RandomPartitioner();
+  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,partitioner,3);
+  IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
+  AbstractReplicationStrategy oldStrategy=ss.setReplicationStrategyUnsafe(testStrategy);
+  ArrayList<Token> endPointTokens=new ArrayList<Token>();
+  ArrayList<Token> keyTokens=new ArrayList<Token>();
+  List<InetAddress> hosts=new ArrayList<InetAddress>();
+  createInitialRing(ss,partitioner,endPointTokens,keyTokens,hosts,5);
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_LEAVING + StorageService.Delimiter + partitioner.getTokenFactory().toString(endPointTokens.get(2))));
+  assertTrue(tmd.isLeaving(hosts.get(2)));
+  assertTrue(tmd.getPendingRanges(hosts.get(0)).get(0).equals(new Range(endPointTokens.get(1),endPointTokens.get(2))));
+  assertTrue(tmd.getPendingRanges(hosts.get(3)).get(0).equals(new Range(endPointTokens.get(4),endPointTokens.get(0))));
+  assertTrue(tmd.getPendingRanges(hosts.get(4)).get(0).equals(new Range(endPointTokens.get(0),endPointTokens.get(1))));
+  for (int i=0; i < keyTokens.size(); ++i) {
+    Collection<InetAddress> endPoints=testStrategy.getWriteEndpoints(keyTokens.get(i),testStrategy.getNaturalEndpoints(keyTokens.get(i)));
+    if (i == 2 || i == 3)     assertTrue(endPoints.size() == 3);
+ else     assertTrue(endPoints.size() == 4);
+  }
+  ss.setPartitionerUnsafe(oldPartitioner);
+  ss.setReplicationStrategyUnsafe(oldStrategy);
+}

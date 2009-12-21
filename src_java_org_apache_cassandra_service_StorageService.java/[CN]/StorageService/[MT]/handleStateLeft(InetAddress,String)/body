@@ -1,0 +1,24 @@
+{
+  int index=moveValue.indexOf(Delimiter);
+  assert(index != -1);
+  String typeOfState=moveValue.substring(0,index);
+  Token token=getPartitioner().getTokenFactory().fromString(moveValue.substring(index + 1));
+  if (typeOfState.equals(LEFT_NORMALLY)) {
+    if (logger_.isDebugEnabled())     logger_.debug("Node " + endPoint + " state left, token "+ token);
+    if (tokenMetadata_.isMember(endPoint)) {
+      if (!tokenMetadata_.getToken(endPoint).equals(token))       logger_.warn("Node " + endPoint + " 'left' token mismatch. Long network partition?");
+      tokenMetadata_.removeEndpoint(endPoint);
+    }
+  }
+ else {
+    assert(typeOfState.equals(REMOVE_TOKEN));
+    InetAddress endPointThatLeft=tokenMetadata_.getEndPoint(token);
+    if (logger_.isDebugEnabled())     logger_.debug("Token " + token + " removed manually (endpoint was "+ ((endPointThatLeft == null) ? "unknown" : endPointThatLeft)+ ")");
+    if (endPointThatLeft != null) {
+      restoreReplicaCount(endPointThatLeft);
+      tokenMetadata_.removeEndpoint(endPointThatLeft);
+    }
+  }
+  tokenMetadata_.removeBootstrapToken(token);
+  calculatePendingRanges();
+}

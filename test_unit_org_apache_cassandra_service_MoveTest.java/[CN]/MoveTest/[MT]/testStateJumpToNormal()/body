@@ -1,0 +1,27 @@
+{
+  StorageService ss=StorageService.instance();
+  TokenMetadata tmd=ss.getTokenMetadata();
+  tmd.clearUnsafe();
+  IPartitioner partitioner=new RandomPartitioner();
+  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,partitioner,3);
+  IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
+  AbstractReplicationStrategy oldStrategy=ss.setReplicationStrategyUnsafe(testStrategy);
+  ArrayList<Token> endPointTokens=new ArrayList<Token>();
+  ArrayList<Token> keyTokens=new ArrayList<Token>();
+  List<InetAddress> hosts=new ArrayList<InetAddress>();
+  createInitialRing(ss,partitioner,endPointTokens,keyTokens,hosts,5);
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_LEAVING + StorageService.Delimiter + partitioner.getTokenFactory().toString(endPointTokens.get(2))));
+  assertTrue(tmd.isLeaving(hosts.get(2)));
+  assertTrue(tmd.getToken(hosts.get(2)).equals(endPointTokens.get(2)));
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_NORMAL + StorageService.Delimiter + partitioner.getTokenFactory().toString(keyTokens.get(2))));
+  assertTrue(tmd.getLeavingEndPoints().isEmpty());
+  assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(2)));
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_LEAVING + StorageService.Delimiter + partitioner.getTokenFactory().toString(keyTokens.get(2))));
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_LEFT + StorageService.Delimiter + StorageService.LEFT_NORMALLY+ StorageService.Delimiter+ partitioner.getTokenFactory().toString(keyTokens.get(2))));
+  ss.onChange(hosts.get(2),StorageService.MOVE_STATE,new ApplicationState(StorageService.STATE_NORMAL + StorageService.Delimiter + partitioner.getTokenFactory().toString(keyTokens.get(4))));
+  assertTrue(tmd.getBootstrapTokens().isEmpty());
+  assertTrue(tmd.getLeavingEndPoints().isEmpty());
+  assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(4)));
+  ss.setPartitionerUnsafe(oldPartitioner);
+  ss.setReplicationStrategyUnsafe(oldStrategy);
+}
