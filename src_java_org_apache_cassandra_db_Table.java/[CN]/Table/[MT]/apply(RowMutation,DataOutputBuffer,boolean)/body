@@ -1,16 +1,16 @@
 {
   HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
-  flusherLock_.readLock().lock();
+  flusherLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.open().add(mutation,serializedMutation);
     for (    ColumnFamily columnFamily : mutation.getColumnFamilies()) {
       Memtable memtableToFlush;
-      ColumnFamilyStore cfStore=columnFamilyStores_.get(columnFamily.name());
+      ColumnFamilyStore cfStore=columnFamilyStores.get(columnFamily.name());
       if ((memtableToFlush=cfStore.apply(mutation.key(),columnFamily)) != null)       memtablesToFlush.put(cfStore,memtableToFlush);
     }
   }
   finally {
-    flusherLock_.readLock().unlock();
+    flusherLock.readLock().unlock();
   }
   for (  Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())   entry.getKey().switchMemtable(entry.getValue(),writeCommitLog);
 }
