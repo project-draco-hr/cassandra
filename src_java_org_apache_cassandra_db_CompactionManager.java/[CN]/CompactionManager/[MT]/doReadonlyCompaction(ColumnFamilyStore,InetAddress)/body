@@ -1,0 +1,17 @@
+{
+  Collection<SSTableReader> sstables=cfs.getSSTables();
+  CompactionIterator ci=new CompactionIterator(sstables,getDefaultGCBefore(),true);
+  try {
+    Iterator<CompactionIterator.CompactedRow> nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
+    AntiEntropyService.IValidator validator=AntiEntropyService.instance().getValidator(cfs.getTable().name,cfs.getColumnFamilyName(),initiator,true);
+    validator.prepare();
+    while (nni.hasNext()) {
+      CompactionIterator.CompactedRow row=nni.next();
+      validator.add(row);
+    }
+    validator.complete();
+  }
+  finally {
+    ci.close();
+  }
+}

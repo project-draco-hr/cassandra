@@ -1,4 +1,5 @@
 {
+  CompactionManager.instance.disableAutoCompaction();
   Table table=Table.open(TABLE2);
   ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
   final int ROWS_PER_SSTABLE=10;
@@ -15,7 +16,7 @@
     assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange("","",10000).keys.size());
   }
   ArrayList<SSTableReader> oldsstables=new ArrayList<SSTableReader>(store.getSSTables());
-  store.doReadonlyCompaction(LOCAL);
+  CompactionManager.instance.submitReadonly(store,LOCAL).get();
   assertEquals(oldsstables,new ArrayList<SSTableReader>(store.getSSTables()));
   assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange("","",10000).keys.size());
 }

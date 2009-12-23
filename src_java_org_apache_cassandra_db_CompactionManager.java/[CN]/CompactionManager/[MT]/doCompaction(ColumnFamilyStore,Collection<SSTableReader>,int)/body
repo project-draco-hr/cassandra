@@ -1,0 +1,48 @@
+{
+  Table table=cfs.getTable();
+  if (DatabaseDescriptor.isSnapshotBeforeCompaction())   table.snapshot("compact-" + cfs.columnFamily_);
+  logger.info("Compacting [" + StringUtils.join(sstables,",") + "]");
+  String compactionFileLocation=table.getDataFileLocation(cfs.getExpectedCompactedFileSize(sstables));
+  if (compactionFileLocation == null) {
+    SSTableReader maxFile=cfs.getMaxSizeFile(sstables);
+    List<SSTableReader> smallerSSTables=new ArrayList<SSTableReader>(sstables);
+    smallerSSTables.remove(maxFile);
+    return doCompaction(cfs,smallerSSTables,gcBefore);
+  }
+  boolean major=cfs.isCompleteSSTables(sstables);
+  long startTime=System.currentTimeMillis();
+  long totalkeysWritten=0;
+  int expectedBloomFilterSize=Math.max(SSTableReader.indexInterval(),(int)SSTableReader.getApproximateKeyCount(sstables));
+  if (logger.isDebugEnabled())   logger.debug("Expected bloom filter size : " + expectedBloomFilterSize);
+  SSTableWriter writer;
+  CompactionIterator ci=new CompactionIterator(sstables,gcBefore,major);
+  Iterator<CompactionIterator.CompactedRow> nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
+  try {
+    if (!nni.hasNext()) {
+      cfs.markCompacted(sstables);
+      return 0;
+    }
+    String newFilename=new File(compactionFileLocation,cfs.getTempSSTableFileName()).getAbsolutePath();
+    writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
+    AntiEntropyService.IValidator validator=AntiEntropyService.instance().getValidator(table.name,cfs.getColumnFamilyName(),null,major);
+    validator.prepare();
+    while (nni.hasNext()) {
+      CompactionIterator.CompactedRow row=nni.next();
+      writer.append(row.key,row.buffer);
+      validator.add(row);
+      totalkeysWritten++;
+    }
+    validator.complete();
+  }
+  finally {
+    ci.close();
+  }
+  SSTableReader ssTable=writer.closeAndOpenReader(DatabaseDescriptor.getKeysCachedFraction(table.name));
+  cfs.replaceCompactedSSTables(sstables,Arrays.asList(ssTable));
+  gcAfterRpcTimeout();
+  instance.submitMinor(cfs);
+  String format="Compacted to %s.  %d/%d bytes for %d keys.  Time: %dms.";
+  long dTime=System.currentTimeMillis() - startTime;
+  logger.info(String.format(format,writer.getFilename(),SSTable.getTotalBytes(sstables),ssTable.length(),totalkeysWritten,dTime));
+  return sstables.size();
+}

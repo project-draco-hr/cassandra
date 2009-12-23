@@ -4,7 +4,12 @@
   for (  String columnFamily : columnFamilies) {
     if (!isApplicationColumnFamily(columnFamily))     continue;
     ColumnFamilyStore cfStore=columnFamilyStores.get(columnFamily);
-    allResults.addAll(cfStore.forceAntiCompaction(ranges,target));
+    try {
+      allResults.addAll(CompactionManager.instance.submitAnticompaction(cfStore,ranges,target).get());
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
   }
   return allResults;
 }
