@@ -1,12 +1,20 @@
 {
   for (  String tableName : DatabaseDescriptor.getTables()) {
-    try {
-      for (      ColumnFamilyStore cfs : Table.open(tableName).getColumnFamilyStores().values()) {
-        submitMinor(cfs);
+    for (    final ColumnFamilyStore cfs : Table.open(tableName).getColumnFamilyStores().values()) {
+      Runnable runnable=new Runnable(){
+        public void run(){
+          logger.debug("Estimating compactions for " + cfs.columnFamily_);
+          final Set<List<SSTableReader>> buckets=getCompactionBuckets(cfs.getSSTables(),50L * 1024L * 1024L);
+          updateEstimateFor(cfs,buckets);
+        }
       }
+;
+      executor.submit(runnable);
     }
- catch (    IOException e) {
-      throw new RuntimeException(e);
+  }
+  for (  String tableName : DatabaseDescriptor.getTables()) {
+    for (    final ColumnFamilyStore cfs : Table.open(tableName).getColumnFamilyStores().values()) {
+      submitMinorIfNeeded(cfs);
     }
   }
 }
