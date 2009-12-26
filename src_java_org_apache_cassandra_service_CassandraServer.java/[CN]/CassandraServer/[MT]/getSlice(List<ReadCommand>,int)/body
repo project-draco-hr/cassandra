@@ -1,25 +1,11 @@
 {
-  Map<String,ColumnFamily> cfamilies=readColumnFamily(commands,consistency_level);
+  Map<String,ColumnFamily> columnFamilies=readColumnFamily(commands,consistency_level);
   Map<String,List<ColumnOrSuperColumn>> columnFamiliesMap=new HashMap<String,List<ColumnOrSuperColumn>>();
   for (  ReadCommand command : commands) {
-    ColumnFamily cfamily=cfamilies.get(command.key);
+    ColumnFamily cf=columnFamilies.get(command.key);
     boolean reverseOrder=command instanceof SliceFromReadCommand && ((SliceFromReadCommand)command).reversed;
-    if (cfamily == null || cfamily.getColumnsMap().size() == 0) {
-      columnFamiliesMap.put(command.key,EMPTY_COLUMNS);
-      continue;
-    }
-    if (command.queryPath.superColumnName != null) {
-      IColumn column=cfamily.getColumnsMap().values().iterator().next();
-      Collection<IColumn> subcolumns=column.getSubColumns();
-      if (subcolumns == null || subcolumns.isEmpty()) {
-        columnFamiliesMap.put(command.key,EMPTY_COLUMNS);
-        continue;
-      }
-      columnFamiliesMap.put(command.key,thriftifyColumns(subcolumns,reverseOrder));
-      continue;
-    }
-    if (cfamily.isSuper())     columnFamiliesMap.put(command.key,thriftifySuperColumns(cfamily.getSortedColumns(),reverseOrder));
- else     columnFamiliesMap.put(command.key,thriftifyColumns(cfamily.getSortedColumns(),reverseOrder));
+    List<ColumnOrSuperColumn> thriftifiedColumns=thriftifyColumnFamily(cf,command.queryPath.superColumnName != null,reverseOrder);
+    columnFamiliesMap.put(command.key,thriftifiedColumns);
   }
   return columnFamiliesMap;
 }
