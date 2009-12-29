@@ -3,14 +3,9 @@
   logWriter_=CommitLog.createWriter(logFile_);
   writeCommitLogHeader();
   if (DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.periodic) {
-    final Runnable syncer=new Runnable(){
-      public void run(){
-        try {
-          sync();
-        }
- catch (        IOException e) {
-          throw new RuntimeException(e);
-        }
+    final Runnable syncer=new WrappedRunnable(){
+      public void runMayThrow() throws IOException {
+        sync();
       }
     }
 ;
@@ -22,7 +17,7 @@
             Thread.sleep(DatabaseDescriptor.getCommitLogSyncPeriod());
           }
  catch (          InterruptedException e) {
-            throw new RuntimeException(e);
+            throw new AssertionError(e);
           }
         }
       }

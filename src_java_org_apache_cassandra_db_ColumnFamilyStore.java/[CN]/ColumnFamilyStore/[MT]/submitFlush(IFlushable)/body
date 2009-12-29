@@ -7,14 +7,9 @@
   flushSorter_.submit(new Runnable(){
     public void run(){
       final List sortedKeys=flushable.getSortedKeys();
-      flushWriter_.submit(new Runnable(){
-        public void run(){
-          try {
-            addSSTable(flushable.writeSortedContents(sortedKeys));
-          }
- catch (          IOException e) {
-            throw new RuntimeException(e);
-          }
+      flushWriter_.submit(new WrappedRunnable(){
+        public void runMayThrow() throws IOException {
+          addSSTable(flushable.writeSortedContents(sortedKeys));
           if (flushable instanceof Memtable) {
             getMemtablesPendingFlushNotNull(columnFamily_).remove(flushable);
           }

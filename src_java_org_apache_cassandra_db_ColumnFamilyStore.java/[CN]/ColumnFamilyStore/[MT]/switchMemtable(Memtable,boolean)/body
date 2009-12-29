@@ -9,16 +9,11 @@
     oldMemtable.freeze();
     final Condition condition=submitFlush(oldMemtable);
     memtable_=new Memtable(table_,columnFamily_);
-    return commitLogUpdater_.submit(new Runnable(){
-      public void run(){
-        try {
-          condition.await();
-          if (writeCommitLog) {
-            onMemtableFlush(ctx);
-          }
-        }
- catch (        Exception e) {
-          throw new RuntimeException(e);
+    return commitLogUpdater_.submit(new WrappedRunnable(){
+      public void runMayThrow() throws InterruptedException, IOException {
+        condition.await();
+        if (writeCommitLog) {
+          onMemtableFlush(ctx);
         }
       }
     }

@@ -1,23 +1,18 @@
 {
   queue=new ArrayBlockingQueue<CheaterFutureTask>(10000);
-  Runnable runnable=new Runnable(){
-    public void run(){
-      try {
-        if (DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.batch) {
-          while (true) {
-            processWithSyncBatch();
-            completedTaskCount++;
-          }
-        }
- else {
-          while (true) {
-            process();
-            completedTaskCount++;
-          }
+  Runnable runnable=new WrappedRunnable(){
+    public void runMayThrow() throws Exception {
+      if (DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.batch) {
+        while (true) {
+          processWithSyncBatch();
+          completedTaskCount++;
         }
       }
- catch (      Exception e) {
-        throw new RuntimeException(e);
+ else {
+        while (true) {
+          process();
+          completedTaskCount++;
+        }
       }
     }
   }

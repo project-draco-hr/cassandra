@@ -4,17 +4,12 @@
   startLeaving();
   logger_.info("move sleeping " + Streaming.RING_DELAY);
   Thread.sleep(Streaming.RING_DELAY);
-  Runnable finishMoving=new Runnable(){
-    public void run(){
-      try {
-        Token bootstrapToken=token;
-        if (bootstrapToken == null)         bootstrapToken=BootStrapper.getBalancedToken(tokenMetadata_,StorageLoadBalancer.instance().getLoadInfo());
-        logger_.info("re-bootstrapping to new token " + bootstrapToken);
-        startBootstrap(bootstrapToken);
-      }
- catch (      IOException e) {
-        throw new IOError(e);
-      }
+  Runnable finishMoving=new WrappedRunnable(){
+    public void runMayThrow() throws IOException {
+      Token bootstrapToken=token;
+      if (bootstrapToken == null)       bootstrapToken=BootStrapper.getBalancedToken(tokenMetadata_,StorageLoadBalancer.instance().getLoadInfo());
+      logger_.info("re-bootstrapping to new token " + bootstrapToken);
+      startBootstrap(bootstrapToken);
     }
   }
 ;
