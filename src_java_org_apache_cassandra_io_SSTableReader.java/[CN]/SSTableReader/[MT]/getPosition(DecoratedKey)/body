@@ -10,30 +10,25 @@
   if (start < 0) {
     return -1;
   }
-  BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(path),"r");
+  FileDataInput input=new MappedFileDataInput(indexBuffer,indexFilename());
   input.seek(start);
   int i=0;
-  try {
-    do {
-      DecoratedKey indexDecoratedKey;
-      try {
-        indexDecoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
-      }
- catch (      EOFException e) {
-        return -1;
-      }
-      long position=input.readLong();
-      int v=indexDecoratedKey.compareTo(decoratedKey);
-      if (v == 0) {
-        if (keyCache != null)         keyCache.put(decoratedKey,position);
-        return position;
-      }
-      if (v > 0)       return -1;
+  do {
+    DecoratedKey indexDecoratedKey;
+    try {
+      indexDecoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
     }
+ catch (    EOFException e) {
+      return -1;
+    }
+    long position=input.readLong();
+    int v=indexDecoratedKey.compareTo(decoratedKey);
+    if (v == 0) {
+      if (keyCache != null)       keyCache.put(decoratedKey,position);
+      return position;
+    }
+    if (v > 0)     return -1;
+  }
  while (++i < INDEX_INTERVAL);
-  }
-  finally {
-    input.close();
-  }
   return -1;
 }
