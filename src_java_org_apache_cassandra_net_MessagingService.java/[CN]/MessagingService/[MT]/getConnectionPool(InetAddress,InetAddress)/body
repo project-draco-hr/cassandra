@@ -1,18 +1,9 @@
 {
   String key=from + ":" + to;
-  TcpConnectionManager cp=poolTable_.get(key);
+  TcpConnectionManager cp=connectionManagers_.get(key);
   if (cp == null) {
-    lock_.lock();
-    try {
-      cp=poolTable_.get(key);
-      if (cp == null) {
-        cp=new TcpConnectionManager(from,to);
-        poolTable_.put(key,cp);
-      }
-    }
-  finally {
-      lock_.unlock();
-    }
+    connectionManagers_.putIfAbsent(key,new TcpConnectionManager(from,to));
+    cp=connectionManagers_.get(key);
   }
   return cp;
 }
