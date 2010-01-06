@@ -9,5 +9,13 @@ def run(self):
             cfmap = {'Super1': [ColumnOrSuperColumn(super_column=s) for s in supers], }
         else:
             cfmap = {'Standard1': [ColumnOrSuperColumn(column=c) for c in columns], }
-        self.cclient.batch_insert('Keyspace1', key, cfmap, ConsistencyLevel.ONE)
+        try:
+            self.cclient.batch_insert('Keyspace1', key, cfmap, ConsistencyLevel.ONE)
+        except KeyboardInterrupt:
+            raise
+        except Exception as e:
+            if options.ignore:
+                print e
+            else:
+                raise
         self.counts[self.idx] = (self.counts[self.idx] + 1)

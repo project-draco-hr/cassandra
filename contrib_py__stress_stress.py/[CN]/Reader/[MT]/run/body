@@ -5,11 +5,31 @@ def run(self):
             key = str(key_generator())
             for j in xrange(supers_per_key):
                 parent = ColumnParent('Super1', chr((ord('A') + j)))
-                self.cclient.get_slice('Keyspace1', key, parent, p, ConsistencyLevel.ONE)
+                try:
+                    r = self.cclient.get_slice('Keyspace1', key, parent, p, ConsistencyLevel.ONE)
+                    if (not r):
+                        raise RuntimeError(('Key %s not found' % key))
+                except KeyboardInterrupt:
+                    raise
+                except Exception as e:
+                    if options.ignore:
+                        print e
+                    else:
+                        raise
                 self.counts[self.idx] = (self.counts[self.idx] + 1)
     else:
         parent = ColumnParent('Standard1')
         for i in xrange(keys_per_thread):
             key = str(key_generator())
-            self.cclient.get_slice('Keyspace1', key, parent, p, ConsistencyLevel.ONE)
+            try:
+                r = self.cclient.get_slice('Keyspace1', key, parent, p, ConsistencyLevel.ONE)
+                if (not r):
+                    raise RuntimeError(('Key %s not found' % key))
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                if options.ignore:
+                    print e
+                else:
+                    raise
             self.counts[self.idx] = (self.counts[self.idx] + 1)
