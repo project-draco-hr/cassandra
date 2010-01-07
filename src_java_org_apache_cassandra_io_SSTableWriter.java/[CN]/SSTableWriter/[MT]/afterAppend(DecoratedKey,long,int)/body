@@ -1,0 +1,24 @@
+{
+  String diskKey=partitioner.convertToDiskFormat(decoratedKey);
+  bf.add(diskKey);
+  lastWrittenKey=decoratedKey;
+  long indexPosition=indexFile.getFilePointer();
+  indexFile.writeUTF(diskKey);
+  indexFile.writeLong(dataPosition);
+  if (logger.isTraceEnabled())   logger.trace("wrote " + decoratedKey + " at "+ dataPosition);
+  if (logger.isTraceEnabled())   logger.trace("wrote index of " + decoratedKey + " at "+ indexPosition);
+  boolean spannedEntry=SSTableReader.bufferIndex(indexPosition) != SSTableReader.bufferIndex(indexFile.getFilePointer());
+  if (keysWritten++ % INDEX_INTERVAL == 0 || spannedEntry) {
+    if (indexPositions == null) {
+      indexPositions=new ArrayList<KeyPosition>();
+    }
+    KeyPosition info=new KeyPosition(decoratedKey,indexPosition);
+    indexPositions.add(info);
+    if (spannedEntry) {
+      if (spannedIndexDataPositions == null) {
+        spannedIndexDataPositions=new HashMap<KeyPosition,PositionSize>();
+      }
+      spannedIndexDataPositions.put(info,new PositionSize(dataPosition,dataSize));
+    }
+  }
+}

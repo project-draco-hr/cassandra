@@ -6,12 +6,16 @@
       return cachedPosition;
     }
   }
-  long start=getIndexScanPosition(decoratedKey);
-  if (start < 0) {
+  KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
+  if (sampledPosition == null) {
     return null;
   }
+  if (spannedIndexDataPositions != null) {
+    PositionSize info=spannedIndexDataPositions.get(sampledPosition);
+    if (info != null)     return info;
+  }
   FileDataInput input=new MappedFileDataInput(indexBuffer,indexFilename());
-  input.seek(start);
+  input.seek(sampledPosition.position);
   int i=0;
   do {
     DecoratedKey indexDecoratedKey;

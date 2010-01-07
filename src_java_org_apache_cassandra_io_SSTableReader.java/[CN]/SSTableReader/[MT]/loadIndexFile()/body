@@ -1,17 +1,35 @@
 {
   indexPositions=new ArrayList<KeyPosition>();
-  FileDataInput input=new MappedFileDataInput(indexBuffer,indexFilename());
-  int i=0;
-  long indexSize=input.length();
-  while (true) {
-    long indexPosition=input.getFilePointer();
-    if (indexPosition == indexSize) {
-      break;
+  BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(),"r");
+  try {
+    int i=0;
+    long indexSize=input.length();
+    while (true) {
+      long indexPosition=input.getFilePointer();
+      if (indexPosition == indexSize) {
+        break;
+      }
+      DecoratedKey decoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
+      long dataPosition=input.readLong();
+      long nextIndexPosition=input.getFilePointer();
+      boolean spannedEntry=bufferIndex(indexPosition) != bufferIndex(nextIndexPosition);
+      if (i++ % INDEX_INTERVAL == 0 || spannedEntry) {
+        KeyPosition info;
+        info=new KeyPosition(decoratedKey,indexPosition);
+        indexPositions.add(info);
+        if (spannedEntry) {
+          if (spannedIndexDataPositions == null) {
+            spannedIndexDataPositions=new HashMap<KeyPosition,PositionSize>();
+          }
+          input.readUTF();
+          long nextDataPosition=input.readLong();
+          input.seek(nextIndexPosition);
+          spannedIndexDataPositions.put(info,new PositionSize(dataPosition,nextDataPosition - dataPosition));
+        }
+      }
     }
-    DecoratedKey decoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
-    input.readLong();
-    if (i++ % INDEX_INTERVAL == 0) {
-      indexPositions.add(new KeyPosition(decoratedKey,indexPosition));
-    }
+  }
+  finally {
+    input.close();
   }
 }
