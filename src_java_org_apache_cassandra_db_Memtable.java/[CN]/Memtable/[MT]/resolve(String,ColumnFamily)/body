@@ -1,20 +1,10 @@
 {
   DecoratedKey decoratedKey=partitioner_.decorateKey(key);
-  ColumnFamily oldCf=columnFamilies_.putIfAbsent(decoratedKey,columnFamily);
-  if (oldCf == null) {
-    currentSize_.addAndGet(columnFamily.size() + key.length());
-    currentObjectCount_.addAndGet(columnFamily.getColumnCount());
-    return;
-  }
-  int oldSize, newSize;
-  int oldObjectCount, newObjectCount;
+  currentThroughput_.addAndGet(cf.size());
+  currentOperations.addAndGet(cf.getColumnCount());
+  ColumnFamily oldCf=columnFamilies_.putIfAbsent(decoratedKey,cf);
+  if (oldCf == null)   return;
 synchronized (keyLocks[Math.abs(key.hashCode() % keyLocks.length)]) {
-    oldSize=oldCf.size();
-    oldObjectCount=oldCf.getColumnCount();
-    oldCf.resolve(columnFamily);
-    newSize=oldCf.size();
-    newObjectCount=oldCf.getColumnCount();
+    oldCf.resolve(cf);
   }
-  resolveSize(oldSize,newSize);
-  resolveCount(oldObjectCount,newObjectCount);
 }
