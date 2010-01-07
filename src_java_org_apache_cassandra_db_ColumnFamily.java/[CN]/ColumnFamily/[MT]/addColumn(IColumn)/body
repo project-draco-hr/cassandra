@@ -1,18 +1,15 @@
 {
   byte[] name=column.name();
-  IColumn oldColumn=columns_.get(name);
+  IColumn oldColumn=columns_.putIfAbsent(name,column);
   if (oldColumn != null) {
     if (oldColumn instanceof SuperColumn) {
-      int oldSize=oldColumn.size();
       ((SuperColumn)oldColumn).putColumn(column);
     }
  else {
-      if (((Column)oldColumn).comparePriority((Column)column) <= 0) {
-        columns_.put(name,column);
+      while (((Column)oldColumn).comparePriority((Column)column) <= 0) {
+        if (columns_.replace(name,oldColumn,column))         break;
+        oldColumn=columns_.get(name);
       }
     }
-  }
- else {
-    columns_.put(name,column);
   }
 }

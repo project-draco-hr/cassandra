@@ -1,16 +1,11 @@
 {
   if (!(column instanceof Column))   throw new UnsupportedOperationException("A super column can only contain simple columns.");
-  IColumn oldColumn=columns_.get(column.name());
-  if (oldColumn == null) {
-    columns_.put(column.name(),column);
-    size_.addAndGet(column.size());
-  }
- else {
-    if (((Column)oldColumn).comparePriority((Column)column) <= 0) {
-      columns_.put(column.name(),column);
-      int delta=(-1) * oldColumn.size();
-      size_.addAndGet(delta);
-      size_.addAndGet(column.size());
+  byte[] name=column.name();
+  IColumn oldColumn=columns_.putIfAbsent(name,column);
+  if (oldColumn != null) {
+    while (((Column)oldColumn).comparePriority((Column)column) <= 0) {
+      if (columns_.replace(name,oldColumn,column))       break;
+      oldColumn=columns_.get(name);
     }
   }
 }
