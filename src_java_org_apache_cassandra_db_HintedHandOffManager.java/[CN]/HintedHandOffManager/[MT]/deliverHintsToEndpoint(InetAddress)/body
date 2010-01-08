@@ -2,25 +2,31 @@
   if (logger_.isDebugEnabled())   logger_.debug("Started hinted handoff for endPoint " + endPoint);
   byte[] targetEPBytes=endPoint.getAddress();
   Table systemTable=Table.open(Table.SYSTEM_TABLE);
+  ColumnFamilyStore hintStore=systemTable.getColumnFamilyStore(HINTS_CF);
   for (  String tableName : DatabaseDescriptor.getTables()) {
-    ColumnFamily hintedColumnFamily=ColumnFamilyStore.removeDeleted(systemTable.get(tableName,HINTS_CF),Integer.MAX_VALUE);
-    if (hintedColumnFamily == null) {
-      continue;
-    }
-    Collection<IColumn> keys=hintedColumnFamily.getSortedColumns();
-    for (    IColumn keyColumn : keys) {
-      String keyStr=new String(keyColumn.name(),"UTF-8");
-      Collection<IColumn> endpoints=keyColumn.getSubColumns();
-      for (      IColumn hintEndPoint : endpoints) {
-        if (Arrays.equals(hintEndPoint.name(),targetEPBytes) && sendMessage(endPoint,tableName,keyStr)) {
-          if (endpoints.size() == 1) {
-            deleteHintKey(tableName,keyColumn.name());
-          }
+    byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
+    while (true) {
+      QueryFilter filter=new SliceQueryFilter(tableName,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,false,PAGE_SIZE);
+      ColumnFamily hintedColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
+      if (hintedColumnFamily == null) {
+        break;
+      }
+      Collection<IColumn> keys=hintedColumnFamily.getSortedColumns();
+      for (      IColumn keyColumn : keys) {
+        String keyStr=new String(keyColumn.name(),"UTF-8");
+        Collection<IColumn> endpoints=keyColumn.getSubColumns();
+        for (        IColumn hintEndPoint : endpoints) {
+          if (Arrays.equals(hintEndPoint.name(),targetEPBytes) && sendMessage(endPoint,tableName,keyStr)) {
+            if (endpoints.size() == 1) {
+              deleteHintKey(tableName,keyColumn.name());
+            }
  else {
-            deleteEndPoint(hintEndPoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
+              deleteEndPoint(hintEndPoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
+            }
+            break;
           }
-          break;
         }
+        startColumn=keyColumn.name();
       }
     }
   }

@@ -1,23 +1,28 @@
 {
   if (logger_.isDebugEnabled())   logger_.debug("Started deliverAllHints");
   for (  String tableName : DatabaseDescriptor.getTables()) {
-    ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(new IdentityQueryFilter(tableName,new QueryPath(HINTS_CF))),Integer.MAX_VALUE);
-    if (hintColumnFamily == null) {
-      continue;
-    }
-    Collection<IColumn> keys=hintColumnFamily.getSortedColumns();
-    for (    IColumn keyColumn : keys) {
-      Collection<IColumn> endpoints=keyColumn.getSubColumns();
-      String keyStr=new String(keyColumn.name(),"UTF-8");
-      int deleted=0;
-      for (      IColumn endpoint : endpoints) {
-        if (sendMessage(InetAddress.getByAddress(endpoint.name()),tableName,keyStr)) {
-          deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
-          deleted++;
-        }
+    byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
+    while (true) {
+      QueryFilter filter=new SliceQueryFilter(tableName,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,false,PAGE_SIZE);
+      ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
+      if (hintColumnFamily == null) {
+        break;
       }
-      if (deleted == endpoints.size()) {
-        deleteHintKey(tableName,keyColumn.name());
+      Collection<IColumn> keys=hintColumnFamily.getSortedColumns();
+      for (      IColumn keyColumn : keys) {
+        Collection<IColumn> endpoints=keyColumn.getSubColumns();
+        String keyStr=new String(keyColumn.name(),"UTF-8");
+        int deleted=0;
+        for (        IColumn endpoint : endpoints) {
+          if (sendMessage(InetAddress.getByAddress(endpoint.name()),tableName,keyStr)) {
+            deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
+            deleted++;
+          }
+        }
+        if (deleted == endpoints.size()) {
+          deleteHintKey(tableName,keyColumn.name());
+        }
+        startColumn=keyColumn.name();
       }
     }
   }
