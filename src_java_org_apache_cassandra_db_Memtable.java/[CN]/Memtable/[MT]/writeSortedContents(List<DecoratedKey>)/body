@@ -1,16 +1,15 @@
 {
-  logger_.info("Writing " + this);
-  ColumnFamilyStore cfStore=Table.open(table_).getColumnFamilyStore(cfName_);
-  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),columnFamilies_.size(),StorageService.getPartitioner());
+  logger.info("Writing " + this);
+  ColumnFamilyStore cfStore=Table.open(table).getColumnFamilyStore(columnfamilyName);
+  SSTableWriter writer=new SSTableWriter(cfStore.getTempSSTablePath(),columnFamilies.size(),StorageService.getPartitioner());
   DataOutputBuffer buffer=new DataOutputBuffer();
   for (  DecoratedKey key : sortedKeys) {
     buffer.reset();
-    ColumnFamily columnFamily=columnFamilies_.get(key);
+    ColumnFamily columnFamily=columnFamilies.get(key);
     ColumnFamily.serializer().serializeWithIndexes(columnFamily,buffer);
     writer.append(key,buffer);
   }
-  SSTableReader ssTable=writer.closeAndOpenReader(DatabaseDescriptor.getKeysCachedFraction(table_));
-  isFlushed_=true;
-  logger_.info("Completed flushing " + ssTable.getFilename());
+  SSTableReader ssTable=writer.closeAndOpenReader(DatabaseDescriptor.getKeysCachedFraction(table));
+  logger.info("Completed flushing " + ssTable.getFilename());
   return ssTable;
 }
