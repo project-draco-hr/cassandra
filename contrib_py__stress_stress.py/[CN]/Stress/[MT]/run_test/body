@@ -4,14 +4,16 @@ def run_test(self, filename, threads):
         outf = open(filename, 'w')
     else:
         outf = sys.stdout
-    outf.write('total,interval_op_rate,elapsed_time\n')
-    total = old_total = 0
+    outf.write('total,interval_op_rate,avg_latency,elapsed_time\n')
+    total = old_total = latency = old_latency = 0
     while True:
         time.sleep(options.interval)
-        old_total = total
+        (old_total, old_latency) = (total, latency)
         total = sum((self.counts[th.idx] for th in threads))
+        latency = sum((self.latencies[th.idx] for th in threads))
         delta = (total - old_total)
+        delta_latency = (latency - old_latency)
         elapsed_t = int((time.time() - start_t))
-        outf.write(('%d,%d,%d\n' % (total, (delta / options.interval), elapsed_t)))
+        outf.write(('%d,%d,%f,%d\n' % (total, (delta / options.interval), (delta_latency / delta), elapsed_t)))
         if (not [th for th in threads if th.isAlive()]):
             break
