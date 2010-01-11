@@ -1,0 +1,28 @@
+{
+  queue=new ArrayBlockingQueue<CheaterFutureTask>(queueSize);
+  Runnable runnable=new WrappedRunnable(){
+    public void runMayThrow() throws Exception {
+      if (DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.batch) {
+        while (true) {
+          processWithSyncBatch();
+          completedTaskCount++;
+        }
+      }
+ else {
+        while (true) {
+          process();
+          completedTaskCount++;
+        }
+      }
+    }
+  }
+;
+  new Thread(runnable,"COMMIT-LOG-WRITER").start();
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  try {
+    mbs.registerMBean(this,new ObjectName("org.apache.cassandra.concurrent:type=COMMITLOG"));
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}
