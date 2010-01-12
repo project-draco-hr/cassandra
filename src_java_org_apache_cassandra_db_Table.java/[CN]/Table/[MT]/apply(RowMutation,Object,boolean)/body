@@ -1,20 +1,24 @@
 {
   HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
+  boolean invalidateRequired=false;
   flusherLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.open().add(mutation,serializedMutation);
     for (    ColumnFamily columnFamily : mutation.getColumnFamilies()) {
       Memtable memtableToFlush;
       ColumnFamilyStore cfStore=columnFamilyStores.get(columnFamily.name());
+      invalidateRequired|=cfStore.isRowCacheEnabled();
       if ((memtableToFlush=cfStore.apply(mutation.key(),columnFamily)) != null)       memtablesToFlush.put(cfStore,memtableToFlush);
     }
   }
   finally {
     flusherLock.readLock().unlock();
   }
-  for (  ColumnFamily cf : mutation.getColumnFamilies()) {
-    ColumnFamilyStore cfs=columnFamilyStores.get(cf.name());
-    cfs.invalidate(mutation.key());
+  if (invalidateRequired) {
+    for (    ColumnFamily cf : mutation.getColumnFamilies()) {
+      ColumnFamilyStore cfs=columnFamilyStores.get(cf.name());
+      cfs.invalidate(mutation.key());
+    }
   }
   for (  Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())   entry.getKey().switchMemtable(entry.getValue(),writeCommitLog);
 }
