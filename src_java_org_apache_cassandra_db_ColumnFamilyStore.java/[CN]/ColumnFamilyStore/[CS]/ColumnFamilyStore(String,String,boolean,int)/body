@@ -44,7 +44,9 @@
   }
   ssTables_=new SSTableTracker(sstables);
   double v=DatabaseDescriptor.getRowsCachedFraction(table,columnFamilyName);
-  int cacheSize=(int)(v * SSTableReader.estimatedKeys(columnFamilyName));
-  if (logger_.isDebugEnabled())   logger_.debug("cache size for " + columnFamilyName + " is "+ cacheSize);
-  if (cacheSize > 0)   rowCache=new InstrumentedCache<String,ColumnFamily>(table,columnFamilyName + "RowCache",cacheSize);
+  if (v > 0) {
+    int cacheSize=Math.max(1,(int)(v * SSTableReader.estimatedKeys(columnFamilyName)));
+    if (logger_.isDebugEnabled())     logger_.debug("enabling row cache for " + columnFamilyName + " with size "+ cacheSize);
+    rowCache=new InstrumentedCache<String,ColumnFamily>(table,columnFamilyName + "RowCache",cacheSize);
+  }
 }
