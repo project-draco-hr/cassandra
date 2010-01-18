@@ -1,12 +1,13 @@
 {
   byte[] body=message.getMessageBody();
   ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
+  if (logger.isDebugEnabled())   logger.debug(String.format("StreamInitiateVerbeHandler.doVerb %s %s %s",message.getVerb(),message.getMessageId(),message.getMessageType()));
   try {
     StreamInitiateMessage biMsg=StreamInitiateMessage.serializer().deserialize(new DataInputStream(bufIn));
     StreamContextManager.StreamContext[] streamContexts=biMsg.getStreamContext();
     if (streamContexts.length == 0 && StorageService.instance.isBootstrapMode()) {
       if (logger.isDebugEnabled())       logger.debug("no data needed from " + message.getFrom());
-      StorageService.instance.removeBootstrapSource(message.getFrom());
+      StorageService.instance.removeBootstrapSource(message.getFrom(),new String(message.getHeader(Streaming.TABLE_NAME)));
       return;
     }
     Map<String,String> fileNames=getNewNames(streamContexts);
