@@ -49,4 +49,18 @@
     if (logger_.isDebugEnabled())     logger_.debug("enabling row cache for " + columnFamilyName + " with size "+ cacheSize);
     rowCache=new JMXInstrumentedCache<String,ColumnFamily>(table,columnFamilyName + "RowCache",cacheSize);
   }
+  if (DatabaseDescriptor.getKeysCachedFraction(table,columnFamilyName) > 0) {
+    new JMXAggregatingCache(new Iterable<InstrumentedCache>(){
+      public Iterator<InstrumentedCache> iterator(){
+        final Iterator<SSTableReader> iter=ssTables_.iterator();
+        return new AbstractIterator<InstrumentedCache>(){
+          @Override protected InstrumentedCache computeNext(){
+            return iter.hasNext() ? iter.next().getKeyCache() : endOfData();
+          }
+        }
+;
+      }
+    }
+,table,columnFamilyName + "KeyCache");
+  }
 }
