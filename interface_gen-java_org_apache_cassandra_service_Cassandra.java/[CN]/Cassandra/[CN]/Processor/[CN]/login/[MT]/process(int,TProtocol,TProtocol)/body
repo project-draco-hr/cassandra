@@ -1,0 +1,28 @@
+{
+  login_args args=new login_args();
+  args.read(iprot);
+  iprot.readMessageEnd();
+  login_result result=new login_result();
+  try {
+    iface_.login(args.keyspace,args.auth_request);
+  }
+ catch (  AuthenticationException authnx) {
+    result.authnx=authnx;
+  }
+catch (  AuthorizationException authzx) {
+    result.authzx=authzx;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing login",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing login");
+    oprot.writeMessageBegin(new TMessage("login",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("login",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}
