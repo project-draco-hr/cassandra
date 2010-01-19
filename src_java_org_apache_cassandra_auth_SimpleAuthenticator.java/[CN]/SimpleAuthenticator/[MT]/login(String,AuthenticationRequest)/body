@@ -17,13 +17,13 @@
   if (null == username)   throw new AuthenticationException("Authentication request was missing the required key '" + USERNAME_KEY + "'");
   String password=authRequest.getCredentials().get(PASSWORD_KEY);
   if (null == password)   throw new AuthenticationException("Authentication request was missing the required key '" + PASSWORD_KEY + "'");
+  boolean authenticated=false;
   try {
     FileInputStream in=new FileInputStream(pfilename);
     Properties props=new Properties();
     props.load(in);
     in.close();
     if (null == props.getProperty(username))     throw new AuthenticationException(authenticationErrorMessage(mode,username));
-    boolean authenticated=false;
 switch (mode) {
 case PLAIN:
       authenticated=password.equals(props.getProperty(username));
@@ -32,7 +32,6 @@ case MD5:
   authenticated=MessageDigest.isEqual(password.getBytes(),MessageDigest.getInstance("MD5").digest(props.getProperty(username).getBytes()));
 break;
 }
-if (!authenticated) throw new AuthenticationException(authenticationErrorMessage(mode,username));
 }
  catch (NoSuchAlgorithmException e) {
 throw new AuthenticationException("You requested MD5 checking but the MD5 digest algorithm is not available: " + e.getMessage());
@@ -44,8 +43,9 @@ catch (IOException e) {
 throw new RuntimeException("Authentication table file given by property " + PASSWD_FILENAME_PROPERTY + " could not be opened: "+ e.getMessage());
 }
 catch (Exception e) {
-throw new RuntimeException("Unexpected authentication problem: " + e.getMessage());
+throw new RuntimeException("Unexpected authentication problem",e);
 }
+if (!authenticated) throw new AuthenticationException(authenticationErrorMessage(mode,username));
 String afilename=System.getProperty(AUTHORIZATION_FILENAME_PROPERTY);
 boolean authorized=false;
 try {
@@ -57,7 +57,6 @@ if (null == props.getProperty(keyspace)) throw new AuthorizationException(author
 for (String allow : props.getProperty(keyspace).split(",")) {
 if (allow.equals(username)) authorized=true;
 }
-if (!authorized) throw new AuthorizationException(authorizationErrorMessage(keyspace,username));
 }
  catch (FileNotFoundException e) {
 throw new RuntimeException("Authorization table file given by property " + AUTHORIZATION_FILENAME_PROPERTY + " could not be found: "+ e.getMessage());
@@ -66,6 +65,7 @@ catch (IOException e) {
 throw new RuntimeException("Authorization table file given by property " + AUTHORIZATION_FILENAME_PROPERTY + " could not be opened: "+ e.getMessage());
 }
 catch (Exception e) {
-throw new RuntimeException("Unexpected authorization problem: " + e.getMessage());
+throw new RuntimeException("Unexpected authorization problem",e);
 }
+if (!authorized) throw new AuthorizationException(authorizationErrorMessage(keyspace,username));
 }
