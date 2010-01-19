@@ -1,3 +1,11 @@
 {
-  enqueueRunnable(message.getMessageType(),new MessageDeliveryTask(message));
+  Runnable runnable=new MessageDeliveryTask(message);
+  ExecutorService stage=StageManager.getStage(message.getMessageType());
+  if (stage == null) {
+    if (logger_.isDebugEnabled())     logger_.debug("Running " + message.getMessageType() + " on default stage");
+    messageDeserializerExecutor_.execute(runnable);
+  }
+ else {
+    stage.execute(runnable);
+  }
 }
