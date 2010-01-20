@@ -1,10 +1,28 @@
 {
   if (StageManager.RESPONSE_STAGE.equals(msg.getMessageType()) || StageManager.GOSSIP_STAGE.equals(msg.getMessageType())) {
-    if (ackCon == null)     ackCon=newCon();
+    if (ackCon == null) {
+      if (System.currentTimeMillis() < lastFailedAttempt + OPEN_RETRY_DELAY)       return null;
+      try {
+        ackCon=new OutboundTcpConnection(this,remoteEp_);
+      }
+ catch (      IOException e) {
+        lastFailedAttempt=System.currentTimeMillis();
+        if (logger.isDebugEnabled())         logger.debug("unable to connect to " + remoteEp_,e);
+      }
+    }
     return ackCon;
   }
  else {
-    if (cmdCon == null)     cmdCon=newCon();
+    if (cmdCon == null) {
+      if (System.currentTimeMillis() < lastFailedAttempt + OPEN_RETRY_DELAY)       return null;
+      try {
+        cmdCon=new OutboundTcpConnection(this,remoteEp_);
+      }
+ catch (      IOException e) {
+        lastFailedAttempt=System.currentTimeMillis();
+        if (logger.isDebugEnabled())         logger.debug("unable to connect to " + remoteEp_,e);
+      }
+    }
     return cmdCon;
   }
 }
