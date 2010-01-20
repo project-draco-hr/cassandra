@@ -1,0 +1,19 @@
+{
+  while (true) {
+    try {
+      input.readFully(protocolBytes);
+      MessagingService.validateProtocol(protocolBytes);
+      input.readFully(headerBytes);
+      input.readFully(sizeBytes);
+      int size=sizeBuffer.getInt();
+      sizeBuffer.clear();
+      byte[] contentBytes=new byte[size];
+      input.readFully(contentBytes);
+      MessagingService.getDeserializationExecutor().submit(new MessageDeserializationTask(new ByteArrayInputStream(contentBytes)));
+    }
+ catch (    IOException e) {
+      if (logger.isDebugEnabled())       logger.debug("error reading from socket; closing",e);
+      break;
+    }
+  }
+}

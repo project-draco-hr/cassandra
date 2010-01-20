@@ -1,10 +1,20 @@
 {
   ServerSocketChannel serverChannel=ServerSocketChannel.open();
-  ServerSocket ss=serverChannel.socket();
+  final ServerSocket ss=serverChannel.socket();
   ss.setReuseAddress(true);
   ss.bind(new InetSocketAddress(localEp,DatabaseDescriptor.getStoragePort()));
-  serverChannel.configureBlocking(false);
-  SelectionKeyHandler handler=new TcpConnectionHandler(localEp);
-  SelectionKey key=SelectorManager.getSelectorManager().register(serverChannel,handler,SelectionKey.OP_ACCEPT);
-  FailureDetector.instance.registerFailureDetectionEventListener(this);
+  new Thread(new Runnable(){
+    public void run(){
+      while (true) {
+        try {
+          Socket socket=ss.accept();
+          new IncomingTcpConnection(socket).start();
+        }
+ catch (        IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+,"ACCEPT-" + localEp).start();
 }
