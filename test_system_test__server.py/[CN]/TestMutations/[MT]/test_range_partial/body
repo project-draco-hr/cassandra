@@ -1,11 +1,16 @@
 def test_range_partial(self):
     for key in (['-a', '-b', 'a', 'b'] + [str(i) for i in xrange(100)]):
         client.insert('Keyspace1', key, ColumnPath('Standard1', column=key), 'v', 0, ConsistencyLevel.ONE)
-    L = client.get_key_range('Keyspace1', 'Standard1', 'a', '', 1000, ConsistencyLevel.ONE)
-    assert (L == ['a', '-a', 'b', '-b']), L
-    L = client.get_key_range('Keyspace1', 'Standard1', '', '15', 1000, ConsistencyLevel.ONE)
-    assert (L == ['0', '1', '10', '11', '12', '13', '14', '15']), L
-    L = client.get_key_range('Keyspace1', 'Standard1', '50', '51', 1000, ConsistencyLevel.ONE)
-    assert (L == ['50', '51']), L
-    L = client.get_key_range('Keyspace1', 'Standard1', '1', '', 10, ConsistencyLevel.ONE)
-    assert (L == ['1', '10', '11', '12', '13', '14', '15', '16', '17', '18']), L
+
+    def check_slices_against_keys(keyList, sliceList):
+        assert (len(keyList) == len(sliceList))
+        for (key, ks) in zip(keyList, sliceList):
+            assert (key == ks.key)
+    slices = client.get_range_slice('Keyspace1', ColumnParent('Standard1'), SlicePredicate(column_names=['-a', '-a']), 'a', '', 1000, ConsistencyLevel.ONE)
+    check_slices_against_keys(['a', '-a', 'b', '-b'], slices)
+    slices = client.get_range_slice('Keyspace1', ColumnParent('Standard1'), SlicePredicate(column_names=['-a', '-a']), '', '15', 1000, ConsistencyLevel.ONE)
+    check_slices_against_keys(['0', '1', '10', '11', '12', '13', '14', '15'], slices)
+    slices = client.get_range_slice('Keyspace1', ColumnParent('Standard1'), SlicePredicate(column_names=['-a', '-a']), '50', '51', 1000, ConsistencyLevel.ONE)
+    check_slices_against_keys(['50', '51'], slices)
+    slices = client.get_range_slice('Keyspace1', ColumnParent('Standard1'), SlicePredicate(column_names=['-a', '-a']), '1', '', 10, ConsistencyLevel.ONE)
+    check_slices_against_keys(['1', '10', '11', '12', '13', '14', '15', '16', '17', '18'], slices)

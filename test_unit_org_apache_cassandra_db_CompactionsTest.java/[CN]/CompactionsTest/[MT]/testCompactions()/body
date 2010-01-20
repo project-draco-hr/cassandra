@@ -2,6 +2,7 @@
   CompactionManager.instance.disableAutoCompaction();
   Table table=Table.open(TABLE1);
   ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  DecoratedKey emptyKey=StorageService.getPartitioner().decorateKey("");
   final int ROWS_PER_SSTABLE=10;
   Set<String> inserted=new HashSet<String>();
   for (int j=0; j < (SSTableReader.indexInterval() * 3) / ROWS_PER_SSTABLE; j++) {
@@ -13,7 +14,7 @@
       inserted.add(key);
     }
     store.forceBlockingFlush();
-    assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange("","",10000).keys.size());
+    assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange(emptyKey,emptyKey,10000).keys.size());
   }
   while (true) {
     Future<Integer> ft=CompactionManager.instance.submitMinorIfNeeded(store);
@@ -22,5 +23,5 @@
   if (store.getSSTables().size() > 1) {
     CompactionManager.instance.submitMajor(store).get();
   }
-  assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange("","",10000).keys.size());
+  assertEquals(inserted.size(),table.getColumnFamilyStore("Standard1").getKeyRange(emptyKey,emptyKey,10000).keys.size());
 }
