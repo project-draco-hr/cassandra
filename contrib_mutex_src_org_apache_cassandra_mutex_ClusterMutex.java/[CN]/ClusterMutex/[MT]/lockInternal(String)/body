@@ -1,0 +1,42 @@
+{
+  String lockZNode=null;
+  String lockPath=root + "/" + lockName;
+  lockZNode=createLockZNode(lockPath);
+  if (logger.isTraceEnabled())   logger.trace("lockZNode created " + lockZNode);
+  while (true) {
+    int mySeqNum=Integer.parseInt(lockZNode.substring(lockZNode.lastIndexOf('-') + 1));
+    int previousSeqNum=-1;
+    String predessor=null;
+    List<String> children=zk.getChildren(lockPath,false);
+    if (children.isEmpty()) {
+      logger.warn("No children in " + lockPath + " although one was just created. Going to try again");
+      lockZNode=createLockZNode(lockPath);
+      continue;
+    }
+    for (    String child : children) {
+      if (logger.isTraceEnabled())       logger.trace("child: " + child);
+      int otherSeqNum=Integer.parseInt(child.substring(child.lastIndexOf('-') + 1));
+      if (otherSeqNum < mySeqNum && otherSeqNum > previousSeqNum) {
+        previousSeqNum=otherSeqNum;
+        predessor=child;
+      }
+    }
+    if (previousSeqNum == -1) {
+      if (logger.isTraceEnabled())       logger.trace("No smaller znode sequences, " + lockZNode + " acquired lock");
+      return lockZNode;
+    }
+synchronized (mutex) {
+      if (zk.exists(lockPath + "/" + predessor,true) == null) {
+        if (logger.isTraceEnabled())         logger.trace(predessor + " does not exists, " + lockZNode+ " acquired lock");
+        break;
+      }
+ else       if (logger.isTraceEnabled())       logger.trace(predessor + " is still here, " + lockZNode+ " must wait");
+      mutex.wait();
+      if (isConnected() == false) {
+        logger.info("ZooKeeper disconnected while waiting for lock");
+        throw new KeeperException.ConnectionLossException();
+      }
+    }
+  }
+  return lockZNode;
+}

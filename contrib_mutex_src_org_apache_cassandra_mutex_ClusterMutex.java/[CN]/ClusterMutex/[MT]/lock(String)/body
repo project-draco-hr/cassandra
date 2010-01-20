@@ -1,0 +1,21 @@
+{
+  for (int i=1; i <= OperationRetries; i++) {
+    try {
+      return lockInternal(lockName);
+    }
+ catch (    KeeperException.SessionExpiredException e) {
+      logger.warn("ZooKeeper session expired, reconnecting");
+      reestablishZooKeeperSession();
+    }
+catch (    KeeperException.ConnectionLossException e) {
+      logger.warn("ZooKeeper connection lost, reconnecting");
+      reestablishZooKeeperSession();
+    }
+    try {
+      Thread.sleep(RetryInterval * i);
+    }
+ catch (    InterruptedException ignore) {
+    }
+  }
+  throw new KeeperException.ConnectionLossException();
+}

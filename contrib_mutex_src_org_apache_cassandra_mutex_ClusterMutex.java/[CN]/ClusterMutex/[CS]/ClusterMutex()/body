@@ -1,0 +1,22 @@
+{
+  String zooKeeperRoot=DatabaseDescriptor.getZooKeeperRoot();
+  this.root="/" + ((zooKeeperRoot != null) ? zooKeeperRoot : "");
+  mutex=new Integer(1);
+  String zooKeeperPort=DatabaseDescriptor.getZooKeeperPort();
+  for (  String zooKeeper : DatabaseDescriptor.getZooKeepers()) {
+    logger.warn(zooKeeper);
+    hostString+=(hostString.isEmpty()) ? "" : ",";
+    hostString+=zooKeeper + ":" + zooKeeperPort;
+    logger.warn(hostString);
+  }
+  try {
+    connectZooKeeper();
+    if (zk.exists(root,false) == null) {
+      logger.info("Mutex root " + root + " does not exists, creating");
+      zk.create(root,new byte[0],Ids.OPEN_ACL_UNSAFE,CreateMode.PERSISTENT);
+    }
+  }
+ catch (  Exception e) {
+    throw new RuntimeException("ClusterMutex initialization failed: " + e.getMessage());
+  }
+}
