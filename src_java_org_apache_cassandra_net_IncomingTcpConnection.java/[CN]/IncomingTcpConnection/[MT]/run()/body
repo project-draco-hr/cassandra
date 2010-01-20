@@ -4,12 +4,21 @@
       input.readFully(protocolBytes);
       MessagingService.validateProtocol(protocolBytes);
       input.readFully(headerBytes);
-      input.readFully(sizeBytes);
-      int size=sizeBuffer.getInt();
-      sizeBuffer.clear();
-      byte[] contentBytes=new byte[size];
-      input.readFully(contentBytes);
-      MessagingService.getDeserializationExecutor().submit(new MessageDeserializationTask(new ByteArrayInputStream(contentBytes)));
+      int pH=FBUtilities.byteArrayToInt(headerBytes);
+      int type=MessagingService.getBits(pH,1,2);
+      boolean isStream=MessagingService.getBits(pH,3,1) == 1;
+      int version=MessagingService.getBits(pH,15,8);
+      if (isStream) {
+        new IncomingStreamReader(socket.getChannel()).read();
+      }
+ else {
+        input.readFully(sizeBytes);
+        int size=sizeBuffer.getInt();
+        sizeBuffer.clear();
+        byte[] contentBytes=new byte[size];
+        input.readFully(contentBytes);
+        MessagingService.getDeserializationExecutor().submit(new MessageDeserializationTask(new ByteArrayInputStream(contentBytes)));
+      }
     }
  catch (    IOException e) {
       if (logger.isDebugEnabled())       logger.debug("error reading from socket; closing",e);

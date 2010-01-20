@@ -1,0 +1,24 @@
+{
+  InetSocketAddress remoteAddress=(InetSocketAddress)socketChannel.socket().getRemoteSocketAddress();
+  if (logger.isDebugEnabled())   logger.debug("Creating file for " + streamContext.getTargetFile());
+  FileOutputStream fos=new FileOutputStream(streamContext.getTargetFile(),true);
+  FileChannel fc=fos.getChannel();
+  long bytesRead=0;
+  try {
+    while (bytesRead < streamContext.getExpectedBytes())     bytesRead+=fc.transferFrom(socketChannel,bytesRead,FileStreamTask.CHUNK_SIZE);
+  }
+ catch (  IOException ex) {
+    streamStatus.setAction(StreamContextManager.StreamCompletionAction.STREAM);
+    handleStreamCompletion(remoteAddress.getAddress());
+    File file=new File(streamContext.getTargetFile());
+    file.delete();
+    throw ex;
+  }
+  if (bytesRead == streamContext.getExpectedBytes()) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("Removing stream context " + streamContext);
+    }
+    fc.close();
+    handleStreamCompletion(remoteAddress.getAddress());
+  }
+}
