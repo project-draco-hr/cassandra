@@ -8,7 +8,7 @@
       List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(rm.key());
       Map<InetAddress,InetAddress> endpointMap=StorageService.instance.getHintedEndpointMap(rm.key(),naturalEndpoints);
       int blockFor=determineBlockFor(naturalEndpoints.size(),endpointMap.size(),consistency_level);
-      assureSufficientLiveNodes(endpointMap,blockFor);
+      assureSufficientLiveNodes(endpointMap,blockFor,consistency_level);
       final WriteResponseHandler responseHandler=StorageService.instance.getWriteResponseHandler(blockFor,consistency_level);
       responseHandlers.add(responseHandler);
       Message unhintedMessage=null;
@@ -31,6 +31,7 @@
  else {
           Message hintedMessage=rm.makeRowMutationMessage();
           hintedMessage.addHeader(RowMutation.HINT,naturalTarget.getAddress());
+          if (consistency_level == ConsistencyLevel.ANY)           MessagingService.instance.addCallback(responseHandler,hintedMessage.getMessageId());
           if (logger.isDebugEnabled())           logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ maybeHintedTarget+ " for "+ naturalTarget);
           MessagingService.instance.sendOneWay(hintedMessage,maybeHintedTarget);
         }
