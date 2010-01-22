@@ -1,0 +1,62 @@
+{
+  Map<String,List<ColumnFamilyStoreMBean>> cfstoreMap=new HashMap<String,List<ColumnFamilyStoreMBean>>();
+  Iterator<Map.Entry<String,ColumnFamilyStoreMBean>> cfamilies=probe.getColumnFamilyStoreMBeanProxies();
+  for (; cfamilies.hasNext(); ) {
+    Map.Entry<String,ColumnFamilyStoreMBean> entry=cfamilies.next();
+    String tableName=entry.getKey();
+    ColumnFamilyStoreMBean cfsProxy=entry.getValue();
+    if (!cfstoreMap.containsKey(tableName)) {
+      List<ColumnFamilyStoreMBean> columnFamilies=new ArrayList<ColumnFamilyStoreMBean>();
+      columnFamilies.add(cfsProxy);
+      cfstoreMap.put(tableName,columnFamilies);
+    }
+ else {
+      cfstoreMap.get(tableName).add(cfsProxy);
+    }
+  }
+  for (  String tableName : cfstoreMap.keySet()) {
+    List<ColumnFamilyStoreMBean> columnFamilies=cfstoreMap.get(tableName);
+    int tableReadCount=0;
+    int tableWriteCount=0;
+    int tablePendingTasks=0;
+    double tableTotalReadTime=0.0f;
+    double tableTotalWriteTime=0.0f;
+    outs.println("Keyspace: " + tableName);
+    for (    ColumnFamilyStoreMBean cfstore : columnFamilies) {
+      int writeCount=cfstore.getWriteCount();
+      int readCount=cfstore.getReadCount();
+      if (readCount > 0) {
+        tableReadCount+=readCount;
+        tableTotalReadTime+=cfstore.getReadLatency() * readCount;
+      }
+      if (writeCount > 0) {
+        tableWriteCount+=writeCount;
+        tableTotalWriteTime+=cfstore.getWriteLatency() * writeCount;
+      }
+      tablePendingTasks+=cfstore.getPendingTasks();
+    }
+    double tableReadLatency=tableReadCount > 0 ? tableTotalReadTime / tableReadCount : Double.NaN;
+    double tableWriteLatency=tableWriteCount > 0 ? tableTotalWriteTime / tableWriteCount : Double.NaN;
+    outs.println("\tRead Count: " + tableReadCount);
+    outs.println("\tRead Latency: " + String.format("%01.3f",tableReadLatency) + " ms.");
+    outs.println("\tWrite Count: " + tableWriteCount);
+    outs.println("\tWrite Latency: " + String.format("%01.3f",tableWriteLatency) + " ms.");
+    outs.println("\tPending Tasks: " + tablePendingTasks);
+    for (    ColumnFamilyStoreMBean cfstore : columnFamilies) {
+      outs.println("\t\tColumn Family: " + cfstore.getColumnFamilyName());
+      outs.println("\t\tSSTable count: " + cfstore.getLiveSSTableCount());
+      outs.println("\t\tSpace used (live): " + cfstore.getLiveDiskSpaceUsed());
+      outs.println("\t\tSpace used (total): " + cfstore.getTotalDiskSpaceUsed());
+      outs.println("\t\tMemtable Columns Count: " + cfstore.getMemtableColumnsCount());
+      outs.println("\t\tMemtable Data Size: " + cfstore.getMemtableDataSize());
+      outs.println("\t\tMemtable Switch Count: " + cfstore.getMemtableSwitchCount());
+      outs.println("\t\tRead Count: " + cfstore.getReadCount());
+      outs.println("\t\tRead Latency: " + String.format("%01.3f",cfstore.getReadLatency()) + " ms.");
+      outs.println("\t\tWrite Count: " + cfstore.getWriteCount());
+      outs.println("\t\tWrite Latency: " + String.format("%01.3f",cfstore.getWriteLatency()) + " ms.");
+      outs.println("\t\tPending Tasks: " + cfstore.getPendingTasks());
+      outs.println("");
+    }
+    outs.println("----------------");
+  }
+}
