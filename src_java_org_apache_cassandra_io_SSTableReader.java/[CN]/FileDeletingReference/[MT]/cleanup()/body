@@ -1,24 +1,5 @@
 {
   if (deleteOnCleanup) {
-    new Thread(new Runnable(){
-      public void run(){
-        File datafile=new File(path);
-        for (int i=0; i < DeletionService.MAX_RETRIES; i++) {
-          if (datafile.delete())           break;
-          try {
-            Thread.sleep(10000);
-          }
- catch (          InterruptedException e) {
-            throw new AssertionError(e);
-          }
-        }
-        if (datafile.exists())         throw new RuntimeException("Unable to delete " + path);
-        SSTable.logger.info("Deleted " + path);
-        DeletionService.submitDeleteWithRetry(SSTable.indexFilename(path));
-        DeletionService.submitDeleteWithRetry(SSTable.filterFilename(path));
-        DeletionService.submitDeleteWithRetry(SSTable.compactedFilename(path));
-      }
-    }
-,"Cleanup " + path).start();
+    timer.schedule(new CleanupTask(),RETRY_DELAY);
   }
 }

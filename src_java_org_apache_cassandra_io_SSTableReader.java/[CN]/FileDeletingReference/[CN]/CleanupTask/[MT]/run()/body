@@ -1,0 +1,16 @@
+{
+  File datafile=new File(path);
+  if (!datafile.delete()) {
+    if (attempts++ < DeletionService.MAX_RETRIES) {
+      timer.schedule(this,10000);
+      return;
+    }
+ else {
+      throw new RuntimeException("Unable to delete " + path);
+    }
+  }
+  SSTable.logger.info("Deleted " + path);
+  DeletionService.submitDeleteWithRetry(SSTable.indexFilename(path));
+  DeletionService.submitDeleteWithRetry(SSTable.filterFilename(path));
+  DeletionService.submitDeleteWithRetry(SSTable.compactedFilename(path));
+}
