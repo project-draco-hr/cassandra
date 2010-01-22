@@ -1,31 +1,5 @@
 {
-  if (logger.isDebugEnabled())   logger.debug("attempting to connect to " + remoteEp);
-  socket=new Socket(remoteEp,DatabaseDescriptor.getStoragePort());
-  socket.setTcpNoDelay(true);
-  output=new DataOutputStream(socket.getOutputStream());
-  new Thread(new Runnable(){
-    public void run(){
-      while (socket != null) {
-        ByteBuffer bb;
-        try {
-          bb=queue.take();
-        }
- catch (        InterruptedException e) {
-          throw new AssertionError(e);
-        }
-        try {
-          output.write(bb.array(),0,bb.limit());
-          if (queue.peek() == null) {
-            output.flush();
-          }
-        }
- catch (        IOException e) {
-          logger.info("error writing to " + remoteEp);
-          pool.reset();
-          break;
-        }
-      }
-    }
-  }
-,"WRITE-" + remoteEp).start();
+  super("WRITE-" + remoteEp);
+  this.pool=pool;
+  this.endpoint=remoteEp;
 }
