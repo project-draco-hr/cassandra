@@ -49,12 +49,22 @@
  else   cacheSize=(int)v;
   if (logger_.isDebugEnabled())   logger_.debug("row cache capacity for " + columnFamilyName + " is "+ cacheSize);
   rowCache=new JMXInstrumentedCache<String,ColumnFamily>(table,columnFamilyName + "RowCache",cacheSize);
-  new JMXAggregatingCache(new Iterable<InstrumentedCache>(){
-    public Iterator<InstrumentedCache> iterator(){
+  new JMXAggregatingCache(new Iterable<IAggregatableCacheProvider>(){
+    public Iterator<IAggregatableCacheProvider> iterator(){
       final Iterator<SSTableReader> iter=ssTables_.iterator();
-      return new AbstractIterator<InstrumentedCache>(){
-        @Override protected InstrumentedCache computeNext(){
-          return iter.hasNext() ? iter.next().getKeyCache() : endOfData();
+      return new AbstractIterator<IAggregatableCacheProvider>(){
+        @Override protected IAggregatableCacheProvider computeNext(){
+          if (!iter.hasNext())           return endOfData();
+          return new IAggregatableCacheProvider(){
+            SSTableReader sstable=iter.next();
+            public InstrumentedCache getCache(){
+              return sstable.getKeyCache();
+            }
+            public long getObjectCount(){
+              return sstable.getIndexPositions().size() * SSTableReader.indexInterval();
+            }
+          }
+;
         }
       }
 ;
