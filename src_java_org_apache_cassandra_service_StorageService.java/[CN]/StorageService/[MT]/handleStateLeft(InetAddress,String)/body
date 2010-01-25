@@ -13,10 +13,13 @@
  else {
     assert(typeOfState.equals(REMOVE_TOKEN));
     InetAddress endPointThatLeft=tokenMetadata_.getEndPoint(token);
+    if (endPointThatLeft.equals(FBUtilities.getLocalAddress())) {
+      logger_.info("Received removeToken gossip about myself. Is this node a replacement for a removed one?");
+      return;
+    }
     if (logger_.isDebugEnabled())     logger_.debug("Token " + token + " removed manually (endpoint was "+ ((endPointThatLeft == null) ? "unknown" : endPointThatLeft)+ ")");
     if (endPointThatLeft != null) {
-      restoreReplicaCount(endPointThatLeft);
-      tokenMetadata_.removeEndpoint(endPointThatLeft);
+      removeEndPointLocally(endPointThatLeft);
     }
   }
   tokenMetadata_.removeBootstrapToken(token);

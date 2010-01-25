@@ -1,13 +1,30 @@
 {
+  long now=System.currentTimeMillis();
   Set<InetAddress> eps=endPointStateMap_.keySet();
   for (  InetAddress endpoint : eps) {
     if (endpoint.equals(localEndPoint_))     continue;
     FailureDetector.instance.interpret(endpoint);
     EndPointState epState=endPointStateMap_.get(endpoint);
     if (epState != null) {
-      long duration=System.currentTimeMillis() - epState.getUpdateTimestamp();
+      long duration=now - epState.getUpdateTimestamp();
+      if (!epState.getHasToken() && !epState.isAlive() && (duration > FatClientTimeout_)) {
+        if (StorageService.instance.getTokenMetadata().isMember(endpoint))         epState.setHasToken(true);
+ else {
+          logger_.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout_+ "ms, removing from gossip");
+          removeEndPoint(endpoint);
+        }
+      }
       if (!epState.isAlive() && (duration > aVeryLongTime_)) {
         evictFromMembership(endpoint);
+      }
+    }
+    if (!justRemovedEndPoints_.isEmpty()) {
+      Hashtable<InetAddress,Long> copy=new Hashtable<InetAddress,Long>(justRemovedEndPoints_);
+      for (      Map.Entry<InetAddress,Long> entry : copy.entrySet()) {
+        if ((now - entry.getValue()) > Streaming.RING_DELAY) {
+          if (logger_.isDebugEnabled())           logger_.debug(Streaming.RING_DELAY + " elapsed, " + entry.getKey()+ " gossip quarantine over");
+          justRemovedEndPoints_.remove(entry.getKey());
+        }
       }
     }
   }
