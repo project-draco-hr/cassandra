@@ -1,0 +1,17 @@
+{
+  validateKeyspace(keyspace);
+  String column_family=cp.column_family.toString();
+  String cfType=validateColumnFamily(keyspace,column_family);
+  byte[] column=null, super_column=null;
+  if (cp.super_column != null)   super_column=cp.super_column.array();
+  if (cp.column != null)   column=cp.column.array();
+  if (cfType.equals("Standard")) {
+    if (super_column != null)     throw newInvalidRequestException("supercolumn parameter is invalid for standard CF " + column_family);
+    if (column == null)     throw newInvalidRequestException("column parameter is not optional for standard CF " + column_family);
+  }
+ else {
+    if (super_column == null)     throw newInvalidRequestException("supercolumn parameter is not optional for super CF " + column_family);
+  }
+  if (column != null)   validateColumns(keyspace,column_family,super_column,Arrays.asList(column));
+  if (super_column != null)   validateColumns(keyspace,column_family,null,Arrays.asList(super_column));
+}

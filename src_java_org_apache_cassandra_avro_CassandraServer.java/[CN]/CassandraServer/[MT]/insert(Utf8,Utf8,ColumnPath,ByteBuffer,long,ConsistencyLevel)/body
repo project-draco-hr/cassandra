@@ -1,0 +1,19 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("insert");
+  byte[] column, super_column;
+  column=cp.column == null ? null : cp.column.array();
+  super_column=cp.super_column == null ? null : cp.super_column.array();
+  String column_family=cp.column_family.toString();
+  String keyspace_string=keyspace.toString();
+  AvroValidation.validateKey(keyspace_string);
+  AvroValidation.validateColumnPath(keyspace_string,cp);
+  RowMutation rm=new RowMutation(keyspace_string,key.toString());
+  try {
+    rm.add(new QueryPath(column_family,super_column,column),value.array(),timestamp);
+  }
+ catch (  MarshalException e) {
+    throw newInvalidRequestException(e.getMessage());
+  }
+  doInsert(consistencyLevel,rm);
+  return null;
+}

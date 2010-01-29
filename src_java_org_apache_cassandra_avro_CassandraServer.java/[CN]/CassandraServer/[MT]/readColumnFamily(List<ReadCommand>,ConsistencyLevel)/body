@@ -1,0 +1,22 @@
+{
+  Map<String,ColumnFamily> columnFamilyKeyMap=new HashMap<String,ColumnFamily>();
+  if (consistency == ConsistencyLevel.ZERO)   throw newInvalidRequestException("Consistency level zero may not be applied to read operations");
+  if (consistency == ConsistencyLevel.ALL)   throw newInvalidRequestException("Consistency level all is not yet supported on read operations");
+  List<Row> rows;
+  try {
+    rows=StorageProxy.readProtocol(commands,thriftConsistencyLevel(consistency));
+  }
+ catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    throw new UnavailableException();
+  }
+  for (  Row row : rows) {
+    columnFamilyKeyMap.put(row.key,row.cf);
+  }
+  return columnFamilyKeyMap;
+}

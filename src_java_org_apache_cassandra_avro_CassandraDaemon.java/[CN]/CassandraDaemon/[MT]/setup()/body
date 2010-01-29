@@ -1,0 +1,23 @@
+{
+  String file=System.getProperty("storage-config") + File.separator + "log4j.properties";
+  PropertyConfigurator.configure(file);
+  listenPort=DatabaseDescriptor.getThriftPort();
+  listenAddr=DatabaseDescriptor.getThriftAddress();
+  if (listenAddr == null)   listenAddr=FBUtilities.getLocalAddress();
+  Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
+    public void uncaughtException(    Thread t,    Throwable e){
+      logger.error("Fatal exception in thread " + t,e);
+      if (e instanceof OutOfMemoryError) {
+        System.exit(100);
+      }
+    }
+  }
+);
+  for (  String table : Table.getAllTableNames()) {
+    if (logger.isDebugEnabled())     logger.debug("opening keyspace " + table);
+    Table.open(table);
+  }
+  RecoveryManager.doRecovery();
+  CompactionManager.instance.checkAllColumnFamilies();
+  StorageService.instance.initServer();
+}
