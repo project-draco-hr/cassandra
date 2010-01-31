@@ -4,21 +4,21 @@
   if (logger.isDebugEnabled())   logger.debug(String.format("StreamInitiateVerbeHandler.doVerb %s %s %s",message.getVerb(),message.getMessageId(),message.getMessageType()));
   try {
     StreamInitiateMessage biMsg=StreamInitiateMessage.serializer().deserialize(new DataInputStream(bufIn));
-    InitiatedFile[] initiatedFiles=biMsg.getStreamContext();
-    if (initiatedFiles.length == 0) {
+    PendingFile[] pendingFiles=biMsg.getStreamContext();
+    if (pendingFiles.length == 0) {
       if (logger.isDebugEnabled())       logger.debug("no data needed from " + message.getFrom());
       if (StorageService.instance.isBootstrapMode())       StorageService.instance.removeBootstrapSource(message.getFrom(),new String(message.getHeader(StreamOut.TABLE_NAME)));
       return;
     }
-    Map<String,String> fileNames=getNewNames(initiatedFiles);
+    Map<String,String> fileNames=getNewNames(pendingFiles);
     Map<String,String> pathNames=new HashMap<String,String>();
     for (    String ssName : fileNames.keySet())     pathNames.put(ssName,DatabaseDescriptor.getNextAvailableDataLocation());
-    for (    InitiatedFile initiatedFile : initiatedFiles) {
-      CompletedFileStatus streamStatus=new CompletedFileStatus(initiatedFile.getTargetFile(),initiatedFile.getExpectedBytes());
-      String file=getNewFileNameFromOldContextAndNames(fileNames,pathNames,initiatedFile);
-      if (logger.isDebugEnabled())       logger.debug("Received Data from  : " + message.getFrom() + " "+ initiatedFile.getTargetFile()+ " "+ file);
-      initiatedFile.setTargetFile(file);
-      addStreamContext(message.getFrom(),initiatedFile,streamStatus);
+    for (    PendingFile pendingFile : pendingFiles) {
+      CompletedFileStatus streamStatus=new CompletedFileStatus(pendingFile.getTargetFile(),pendingFile.getExpectedBytes());
+      String file=getNewFileNameFromOldContextAndNames(fileNames,pathNames,pendingFile);
+      if (logger.isDebugEnabled())       logger.debug("Received Data from  : " + message.getFrom() + " "+ pendingFile.getTargetFile()+ " "+ file);
+      pendingFile.setTargetFile(file);
+      addStreamContext(message.getFrom(),pendingFile,streamStatus);
     }
     StreamInManager.registerStreamCompletionHandler(message.getFrom(),new StreamCompletionHandler());
     if (logger.isDebugEnabled())     logger.debug("Sending a stream initiate done message ...");

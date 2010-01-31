@@ -1,0 +1,18 @@
+{
+  Map<String,String> fileNames=new HashMap<String,String>();
+  Set<String> distinctEntries=new HashSet<String>();
+  for (  PendingFile pendingFile : pendingFiles) {
+    String[] pieces=FBUtilities.strip(new File(pendingFile.getTargetFile()).getName(),"-");
+    distinctEntries.add(pendingFile.getTable() + "-" + pieces[0]+ "-"+ pieces[1]);
+  }
+  for (  String distinctEntry : distinctEntries) {
+    String tableName;
+    String[] pieces=FBUtilities.strip(distinctEntry,"-");
+    tableName=pieces[0];
+    Table table=Table.open(tableName);
+    ColumnFamilyStore cfStore=table.getColumnFamilyStore(pieces[1]);
+    if (logger.isDebugEnabled())     logger.debug("Generating file name for " + distinctEntry + " ...");
+    fileNames.put(distinctEntry,cfStore.getTempSSTableFileName());
+  }
+  return fileNames;
+}
