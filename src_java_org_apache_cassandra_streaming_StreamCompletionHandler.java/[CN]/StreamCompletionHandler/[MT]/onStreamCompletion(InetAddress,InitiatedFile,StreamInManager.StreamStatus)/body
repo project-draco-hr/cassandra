@@ -1,0 +1,23 @@
+{
+  if (initiatedFile.getTargetFile().contains("-Data.db")) {
+    String tableName=initiatedFile.getTable();
+    File file=new File(initiatedFile.getTargetFile());
+    String fileName=file.getName();
+    String[] temp=fileName.split("-");
+    try {
+      SSTableReader sstable=SSTableWriter.renameAndOpen(initiatedFile.getTargetFile());
+      Table.open(tableName).getColumnFamilyStore(temp[0]).addSSTable(sstable);
+      logger.info("Streaming added " + sstable.getFilename());
+    }
+ catch (    IOException e) {
+      throw new RuntimeException("Not able to add streamed file " + initiatedFile.getTargetFile(),e);
+    }
+  }
+  if (logger.isDebugEnabled())   logger.debug("Sending a streaming finished message with " + streamStatus + " to "+ host);
+  StreamInManager.StreamStatusMessage streamStatusMessage=new StreamInManager.StreamStatusMessage(streamStatus);
+  Message message=StreamInManager.StreamStatusMessage.makeStreamStatusMessage(streamStatusMessage);
+  MessagingService.instance.sendOneWay(message,host);
+  if (StreamInManager.isDone(host) && StorageService.instance.isBootstrapMode()) {
+    StorageService.instance.removeBootstrapSource(host,initiatedFile.getTable());
+  }
+}
