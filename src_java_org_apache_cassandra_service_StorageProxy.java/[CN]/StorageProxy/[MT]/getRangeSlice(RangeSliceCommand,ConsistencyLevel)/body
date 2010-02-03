@@ -7,17 +7,17 @@
   Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
   do {
     Range primaryRange=StorageService.instance.getPrimaryRangeForEndPoint(endPoint);
-    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(primaryRange.right());
+    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(primaryRange.right);
     if (endpoints.size() < responseCount)     throw new UnavailableException();
     DecoratedKey<?> startKey;
     DecoratedKey<?> finishKey;
-    if (primaryRange.left().equals(primaryRange.right())) {
+    if (primaryRange.left.equals(primaryRange.right)) {
       startKey=command.startKey;
       finishKey=command.finishKey;
     }
  else {
-      startKey=(DecoratedKey<?>)ObjectUtils.max(command.startKey,new DecoratedKey<Token<?>>(primaryRange.left(),null));
-      finishKey=command.finishKey.isEmpty() ? new DecoratedKey<Token<?>>(primaryRange.right(),null) : (DecoratedKey<?>)ObjectUtils.min(command.finishKey,new DecoratedKey<Token<?>>(primaryRange.right(),null));
+      startKey=(DecoratedKey<?>)ObjectUtils.max(command.startKey,new DecoratedKey<Token<?>>(primaryRange.left,null));
+      finishKey=command.finishKey.isEmpty() ? new DecoratedKey<Token<?>>(primaryRange.right,null) : (DecoratedKey<?>)ObjectUtils.min(command.finishKey,new DecoratedKey<Token<?>>(primaryRange.right,null));
     }
     RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,startKey,finishKey,command.max_keys);
     Message message=c2.getMessage();
