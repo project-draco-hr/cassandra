@@ -1,12 +1,23 @@
 {
-  RangeReply rr=getKeyRange(startKey,finishKey,keyMax);
-  List<Row> rows=new ArrayList<Row>(rr.keys.size());
+  List<String> keys=new ArrayList<String>();
+  boolean completed;
+  if (finishKey.isEmpty() || startKey.compareTo(finishKey) <= 0) {
+    completed=getKeyRange(keys,startKey,finishKey,keyMax);
+  }
+ else {
+    DecoratedKey emptyKey=new DecoratedKey(StorageService.getPartitioner().getMinimumToken(),null);
+    completed=getKeyRange(keys,startKey,emptyKey,keyMax);
+    if (!completed) {
+      completed=getKeyRange(keys,emptyKey,finishKey,keyMax);
+    }
+  }
+  List<Row> rows=new ArrayList<Row>(keys.size());
   final QueryPath queryPath=new QueryPath(columnFamily_,super_column,null);
   final SortedSet<byte[]> columnNameSet=new TreeSet<byte[]>(getComparator());
   if (columnNames != null)   columnNameSet.addAll(columnNames);
-  for (  String key : rr.keys) {
+  for (  String key : keys) {
     QueryFilter filter=sliceRange == null ? new NamesQueryFilter(key,queryPath,columnNameSet) : new SliceQueryFilter(key,queryPath,sliceRange.start,sliceRange.finish,sliceRange.reversed,sliceRange.count);
     rows.add(new Row(key,getColumnFamily(filter)));
   }
-  return new RangeSliceReply(rows,rr.rangeCompletedLocally);
+  return new RangeSliceReply(rows,completed);
 }
