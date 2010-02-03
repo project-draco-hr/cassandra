@@ -1,11 +1,15 @@
 {
-  Predicate<SSTable> cfpred=new Predicate<SSTable>(){
-    public boolean apply(    SSTable ss){
-      return cf.left.equals(ss.getTableName()) && cf.right.equals(ss.getColumnFamilyName());
-    }
+  List<DecoratedKey> keys=new ArrayList<DecoratedKey>();
+  ColumnFamilyStore cfs;
+  try {
+    cfs=Table.open(cf.left).getColumnFamilyStore(cf.right);
   }
-;
-  List<DecoratedKey> keys=SSTableReader.getIndexedDecoratedKeysFor(cfpred,DKPRED);
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+  if (cfs != null) {
+    for (    SSTable.KeyPosition info : cfs.allIndexPositions())     keys.add(info.key);
+  }
   if (keys.isEmpty()) {
     tree.init();
   }
