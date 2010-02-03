@@ -1,20 +1,16 @@
 {
-  for (  String tableName : DatabaseDescriptor.getTables()) {
-    for (    final ColumnFamilyStore cfs : Table.open(tableName).getColumnFamilyStores()) {
-      Runnable runnable=new Runnable(){
-        public void run(){
-          logger.debug("Estimating compactions for " + cfs.columnFamily_);
-          final Set<List<SSTableReader>> buckets=getCompactionBuckets(cfs.getSSTables(),50L * 1024L * 1024L);
-          updateEstimateFor(cfs,buckets);
-        }
+  for (  final ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    Runnable runnable=new Runnable(){
+      public void run(){
+        logger.debug("Estimating compactions for " + cfs.columnFamily_);
+        final Set<List<SSTableReader>> buckets=getCompactionBuckets(cfs.getSSTables(),50L * 1024L * 1024L);
+        updateEstimateFor(cfs,buckets);
       }
+    }
 ;
-      executor.submit(runnable);
-    }
+    executor.submit(runnable);
   }
-  for (  String tableName : DatabaseDescriptor.getTables()) {
-    for (    final ColumnFamilyStore cfs : Table.open(tableName).getColumnFamilyStores()) {
-      submitMinorIfNeeded(cfs);
-    }
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    submitMinorIfNeeded(cfs);
   }
 }
