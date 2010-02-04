@@ -2,7 +2,17 @@
   HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
   flusherLock.readLock().lock();
   try {
-    if (writeCommitLog)     CommitLog.open().add(mutation,serializedMutation);
+    if (writeCommitLog) {
+      Future<CommitLog.CommitLogContext> future=CommitLog.open().add(mutation,serializedMutation);
+      if (waitForCommitLog) {
+        try {
+          future.get();
+        }
+ catch (        Exception e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
     for (    ColumnFamily columnFamily : mutation.getColumnFamilies()) {
       Memtable memtableToFlush;
       ColumnFamilyStore cfs=columnFamilyStores.get(columnFamily.name());
