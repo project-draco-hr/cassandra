@@ -1,3 +1,14 @@
 {
-  return DatabaseDescriptor.getDataFileLocationForTable(name,expectedCompactedFileSize);
+  String path=DatabaseDescriptor.getDataFileLocationForTable(name,expectedCompactedFileSize);
+  if (path == null) {
+    StorageService.requestGC();
+    try {
+      Thread.sleep(SSTableDeletingReference.RETRY_DELAY * 2);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+    path=DatabaseDescriptor.getDataFileLocationForTable(name,expectedCompactedFileSize);
+  }
+  return path;
 }
