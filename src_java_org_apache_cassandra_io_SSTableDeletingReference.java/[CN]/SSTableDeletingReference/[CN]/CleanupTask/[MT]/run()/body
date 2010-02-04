@@ -9,8 +9,14 @@
       throw new RuntimeException("Unable to delete " + path);
     }
   }
+  try {
+    FileUtils.deleteWithConfirm(new File(SSTable.indexFilename(path)));
+    FileUtils.deleteWithConfirm(new File(SSTable.filterFilename(path)));
+    FileUtils.deleteWithConfirm(new File(SSTable.compactedFilename(path)));
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+  tracker.spaceReclaimed(size);
   logger.info("Deleted " + path);
-  DeletionService.submitDeleteWithRetry(SSTable.indexFilename(path));
-  DeletionService.submitDeleteWithRetry(SSTable.filterFilename(path));
-  DeletionService.submitDeleteWithRetry(SSTable.compactedFilename(path));
 }
