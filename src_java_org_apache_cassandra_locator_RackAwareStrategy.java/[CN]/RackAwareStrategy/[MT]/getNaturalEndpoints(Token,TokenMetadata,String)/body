@@ -1,0 +1,54 @@
+{
+  int startIndex;
+  ArrayList<InetAddress> endpoints=new ArrayList<InetAddress>();
+  boolean bDataCenter=false;
+  boolean bOtherRack=false;
+  int foundCount=0;
+  List tokens=metadata.sortedTokens();
+  if (tokens.isEmpty())   return endpoints;
+  int index=Collections.binarySearch(tokens,token);
+  if (index < 0) {
+    index=(index + 1) * (-1);
+    if (index >= tokens.size())     index=0;
+  }
+  int totalNodes=tokens.size();
+  Token primaryToken=(Token)tokens.get(index);
+  endpoints.add(metadata.getEndPoint(primaryToken));
+  foundCount++;
+  final int replicas=DatabaseDescriptor.getReplicationFactor(table);
+  if (replicas == 1) {
+    return endpoints;
+  }
+  startIndex=(index + 1) % totalNodes;
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas; ++count, i=(i + 1) % totalNodes) {
+    try {
+      Token t=(Token)tokens.get(i);
+      if (!((EndPointSnitch)snitch_).isInSameDataCenter(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t))) {
+        if (!bDataCenter) {
+          endpoints.add(metadata.getEndPoint(t));
+          bDataCenter=true;
+          foundCount++;
+        }
+        continue;
+      }
+      if (!((EndPointSnitch)snitch_).isOnSameRack(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t)) && ((EndPointSnitch)snitch_).isInSameDataCenter(metadata.getEndPoint(primaryToken),metadata.getEndPoint(t))) {
+        if (!bOtherRack) {
+          endpoints.add(metadata.getEndPoint(t));
+          bOtherRack=true;
+          foundCount++;
+        }
+      }
+    }
+ catch (    UnknownHostException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  for (int i=startIndex, count=1; count < totalNodes && foundCount < replicas; ++count, i=(i + 1) % totalNodes) {
+    Token t=(Token)tokens.get(i);
+    if (!endpoints.contains(metadata.getEndPoint(t))) {
+      endpoints.add(metadata.getEndPoint(t));
+      foundCount++;
+    }
+  }
+  return endpoints;
+}

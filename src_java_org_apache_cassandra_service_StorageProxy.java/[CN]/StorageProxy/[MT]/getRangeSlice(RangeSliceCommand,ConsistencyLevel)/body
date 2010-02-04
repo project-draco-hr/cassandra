@@ -3,11 +3,12 @@
   TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
   InetAddress endPoint=StorageService.instance.getPrimary(command.startKey.token);
   InetAddress startEndpoint=endPoint;
-  int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(),DatabaseDescriptor.getReplicationFactor(),consistency_level);
+  final String table=command.keyspace;
+  int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(table),DatabaseDescriptor.getReplicationFactor(table),consistency_level);
   Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
   do {
     Range primaryRange=StorageService.instance.getPrimaryRangeForEndPoint(endPoint);
-    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(primaryRange.right);
+    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(command.keyspace,primaryRange.right);
     if (endpoints.size() < responseCount)     throw new UnavailableException();
     DecoratedKey<?> startKey;
     DecoratedKey<?> finishKey;

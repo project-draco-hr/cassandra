@@ -1,12 +1,15 @@
 {
   new Thread(new Runnable(){
     public void run(){
-      Multimap<Range,InetAddress> rangesWithSourceTarget=getRangesWithSources();
       if (logger.isDebugEnabled())       logger.debug("Beginning bootstrap process");
-      for (      Map.Entry<InetAddress,Collection<Range>> entry : getWorkMap(rangesWithSourceTarget).asMap().entrySet()) {
-        InetAddress source=entry.getKey();
-        for (        String table : DatabaseDescriptor.getNonSystemTables())         StorageService.instance.addBootstrapSource(source,table);
-        StreamIn.requestRanges(source,entry.getValue());
+      for (      String table : DatabaseDescriptor.getNonSystemTables()) {
+        Multimap<Range,InetAddress> rangesWithSourceTarget=getRangesWithSources(table);
+        for (        Map.Entry<InetAddress,Collection<Range>> entry : getWorkMap(rangesWithSourceTarget).asMap().entrySet()) {
+          InetAddress source=entry.getKey();
+          StorageService.instance.addBootstrapSource(source,table);
+          if (logger.isDebugEnabled())           logger.debug("Requesting from " + source + " ranges "+ StringUtils.join(entry.getValue(),", "));
+          StreamIn.requestRanges(source,table,entry.getValue());
+        }
       }
     }
   }

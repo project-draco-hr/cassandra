@@ -1,30 +1,39 @@
 {
-  Multimap<Range,InetAddress> rangesMM=getChangedRangesForLeaving(FBUtilities.getLocalAddress());
-  if (logger_.isDebugEnabled())   logger_.debug("Ranges needing transfer are [" + StringUtils.join(rangesMM.keySet(),",") + "]");
-  if (rangesMM.isEmpty()) {
-    leaveRing();
-    onFinish.run();
-    return;
-  }
-  final Set<Map.Entry<Range,InetAddress>> pending=new HashSet<Map.Entry<Range,InetAddress>>(rangesMM.entries());
-  for (  final Map.Entry<Range,InetAddress> entry : rangesMM.entries()) {
-    final Range range=entry.getKey();
-    final InetAddress newEndpoint=entry.getValue();
-    final Runnable callback=new Runnable(){
-      public synchronized void run(){
-        pending.remove(entry);
-        if (pending.isEmpty()) {
-          leaveRing();
-          onFinish.run();
+  final CountDownLatch latch=new CountDownLatch(DatabaseDescriptor.getNonSystemTables().size());
+  for (  final String table : DatabaseDescriptor.getNonSystemTables()) {
+    Multimap<Range,InetAddress> rangesMM=getChangedRangesForLeaving(table,FBUtilities.getLocalAddress());
+    if (logger_.isDebugEnabled())     logger_.debug("Ranges needing transfer are [" + StringUtils.join(rangesMM.keySet(),",") + "]");
+    if (rangesMM.isEmpty()) {
+      latch.countDown();
+      continue;
+    }
+    final Set<Map.Entry<Range,InetAddress>> pending=Collections.synchronizedSet(new HashSet<Map.Entry<Range,InetAddress>>(rangesMM.entries()));
+    for (    final Map.Entry<Range,InetAddress> entry : rangesMM.entries()) {
+      final Range range=entry.getKey();
+      final InetAddress newEndpoint=entry.getValue();
+      final Runnable callback=new Runnable(){
+        public void run(){
+          pending.remove(entry);
+          if (pending.isEmpty())           latch.countDown();
         }
       }
-    }
 ;
-    StageManager.getStage(StageManager.STREAM_STAGE).execute(new Runnable(){
-      public void run(){
-        StreamOut.transferRanges(newEndpoint,Arrays.asList(range),callback);
+      StageManager.getStage(StageManager.STREAM_STAGE).execute(new Runnable(){
+        public void run(){
+          StreamOut.transferRanges(newEndpoint,table,Arrays.asList(range),callback);
+        }
       }
-    }
 );
+    }
   }
+  logger_.debug("waiting for stream aks.");
+  try {
+    latch.await();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  logger_.debug("stream acks all received.");
+  leaveRing();
+  onFinish.run();
 }

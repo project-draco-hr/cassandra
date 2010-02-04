@@ -1,0 +1,17 @@
+{
+  Collection<Range> ranges=getRangesForEndPoint(table,endpoint);
+  if (logger_.isDebugEnabled())   logger_.debug("Node " + endpoint + " ranges ["+ StringUtils.join(ranges,", ")+ "]");
+  Map<Range,ArrayList<InetAddress>> currentReplicaEndpoints=new HashMap<Range,ArrayList<InetAddress>>();
+  for (  Range range : ranges)   currentReplicaEndpoints.put(range,getReplicationStrategy(table).getNaturalEndpoints(range.right,tokenMetadata_,table));
+  TokenMetadata temp=tokenMetadata_.cloneAfterAllLeft();
+  if (temp.isMember(endpoint))   temp.removeEndpoint(endpoint);
+  Multimap<Range,InetAddress> changedRanges=HashMultimap.create();
+  for (  Range range : ranges) {
+    ArrayList<InetAddress> newReplicaEndpoints=getReplicationStrategy(table).getNaturalEndpoints(range.right,temp,table);
+    newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
+    if (logger_.isDebugEnabled())     if (newReplicaEndpoints.isEmpty())     logger_.debug("Range " + range + " already in all replicas");
+ else     logger_.debug("Range " + range + " will be responsibility of "+ StringUtils.join(newReplicaEndpoints,", "));
+    changedRanges.putAll(range,newReplicaEndpoints);
+  }
+  return changedRanges;
+}

@@ -1,26 +1,31 @@
 {
   InetAddress myAddress=FBUtilities.getLocalAddress();
-  Multimap<Range,InetAddress> changedRanges=getChangedRangesForLeaving(endPoint);
-  Set<Range> myNewRanges=new HashSet<Range>();
-  for (  Map.Entry<Range,InetAddress> entry : changedRanges.entries()) {
-    if (entry.getValue().equals(myAddress))     myNewRanges.add(entry.getKey());
-  }
-  if (!myNewRanges.isEmpty()) {
-    if (logger_.isDebugEnabled())     logger_.debug(endPoint + " was removed, my added ranges: " + StringUtils.join(myNewRanges,", "));
-    Multimap<Range,InetAddress> rangeAddresses=replicationStrategy_.getRangeAddresses(tokenMetadata_);
-    Multimap<InetAddress,Range> sourceRanges=HashMultimap.create();
-    IFailureDetector failureDetector=FailureDetector.instance;
-    for (    Range myNewRange : myNewRanges) {
-      List<InetAddress> sources=DatabaseDescriptor.getEndPointSnitch().getSortedListByProximity(myAddress,rangeAddresses.get(myNewRange));
-      assert(!sources.contains(myAddress));
-      for (      InetAddress source : sources) {
-        if (source.equals(endPoint))         continue;
-        if (failureDetector.isAlive(source)) {
-          sourceRanges.put(source,myNewRange);
-          break;
+  for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+    Multimap<Range,InetAddress> changedRanges=getChangedRangesForLeaving(table,endPoint);
+    Set<Range> myNewRanges=new HashSet<Range>();
+    for (    Map.Entry<Range,InetAddress> entry : changedRanges.entries()) {
+      if (entry.getValue().equals(myAddress))       myNewRanges.add(entry.getKey());
+    }
+    if (!myNewRanges.isEmpty()) {
+      if (logger_.isDebugEnabled())       logger_.debug(endPoint + " was removed, my added ranges: " + StringUtils.join(myNewRanges,", "));
+      Multimap<Range,InetAddress> rangeAddresses=getReplicationStrategy(table).getRangeAddresses(tokenMetadata_,table);
+      Multimap<InetAddress,Range> sourceRanges=HashMultimap.create();
+      IFailureDetector failureDetector=FailureDetector.instance;
+      for (      Range myNewRange : myNewRanges) {
+        List<InetAddress> sources=DatabaseDescriptor.getEndPointSnitch(table).getSortedListByProximity(myAddress,rangeAddresses.get(myNewRange));
+        assert(!sources.contains(myAddress));
+        for (        InetAddress source : sources) {
+          if (source.equals(endPoint))           continue;
+          if (failureDetector.isAlive(source)) {
+            sourceRanges.put(source,myNewRange);
+            break;
+          }
         }
       }
+      for (      Map.Entry<InetAddress,Collection<Range>> entry : sourceRanges.asMap().entrySet()) {
+        if (logger_.isDebugEnabled())         logger_.debug("Requesting from " + entry.getKey() + " ranges "+ StringUtils.join(entry.getValue(),", "));
+        StreamIn.requestRanges(entry.getKey(),table,entry.getValue());
+      }
     }
-    for (    Map.Entry<InetAddress,Collection<Range>> entry : sourceRanges.asMap().entrySet())     StreamIn.requestRanges(entry.getKey(),entry.getValue());
   }
 }
