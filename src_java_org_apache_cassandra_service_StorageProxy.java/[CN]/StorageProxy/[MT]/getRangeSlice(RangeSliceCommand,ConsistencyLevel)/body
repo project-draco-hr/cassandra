@@ -1,40 +1,33 @@
 {
   long startTime=System.nanoTime();
   TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
-  InetAddress endPoint=StorageService.instance.getPrimary(command.startKey.token);
+  InetAddress endPoint=StorageService.instance.getPrimary(command.range.left);
   InetAddress startEndpoint=endPoint;
   final String table=command.keyspace;
   int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(table),DatabaseDescriptor.getReplicationFactor(table),consistency_level);
   Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
-  do {
+  outer:   do {
     Range primaryRange=StorageService.instance.getPrimaryRangeForEndPoint(endPoint);
     List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(command.keyspace,primaryRange.right);
     if (endpoints.size() < responseCount)     throw new UnavailableException();
-    DecoratedKey<?> startKey;
-    DecoratedKey<?> finishKey;
-    if (primaryRange.left.equals(primaryRange.right)) {
-      startKey=command.startKey;
-      finishKey=command.finishKey;
+    List<AbstractBounds> restricted=command.range.restrictTo(primaryRange);
+    for (    AbstractBounds range : restricted) {
+      RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
+      Message message=c2.getMessage();
+      RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,primaryRange,endpoints);
+      QuorumResponseHandler<Map<String,ColumnFamily>> handler=new QuorumResponseHandler<Map<String,ColumnFamily>>(responseCount,resolver);
+      if (logger.isDebugEnabled())       logger.debug("reading " + c2 + " for "+ range+ " from "+ message.getMessageId()+ "@"+ endPoint);
+      for (      InetAddress replicaEndpoint : endpoints) {
+        MessagingService.instance.sendRR(message,replicaEndpoint,handler);
+      }
+      try {
+        rows.putAll(handler.get());
+      }
+ catch (      DigestMismatchException e) {
+        throw new AssertionError(e);
+      }
+      if (rows.size() >= command.max_keys || resolver.completed())       break outer;
     }
- else {
-      startKey=(DecoratedKey<?>)ObjectUtils.max(command.startKey,new DecoratedKey<Token<?>>(primaryRange.left,null));
-      finishKey=command.finishKey.isEmpty() ? new DecoratedKey<Token<?>>(primaryRange.right,null) : (DecoratedKey<?>)ObjectUtils.min(command.finishKey,new DecoratedKey<Token<?>>(primaryRange.right,null));
-    }
-    RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,startKey,finishKey,command.max_keys,command.includeStartKey);
-    Message message=c2.getMessage();
-    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,primaryRange,endpoints);
-    QuorumResponseHandler<Map<String,ColumnFamily>> handler=new QuorumResponseHandler<Map<String,ColumnFamily>>(responseCount,resolver);
-    if (logger.isDebugEnabled())     logger.debug("reading " + command + " for "+ primaryRange+ " from "+ message.getMessageId()+ "@"+ endPoint);
-    for (    InetAddress replicaEndpoint : endpoints) {
-      MessagingService.instance.sendRR(message,replicaEndpoint,handler);
-    }
-    try {
-      rows.putAll(handler.get());
-    }
- catch (    DigestMismatchException e) {
-      throw new AssertionError(e);
-    }
-    if (rows.size() >= command.max_keys || resolver.completed())     break;
     endPoint=tokenMetadata.getSuccessor(endPoint);
   }
  while (!endPoint.equals(startEndpoint));
