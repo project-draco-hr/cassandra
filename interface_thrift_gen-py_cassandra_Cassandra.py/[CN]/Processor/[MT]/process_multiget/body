@@ -1,0 +1,17 @@
+def process_multiget(self, seqid, iprot, oprot):
+    args = multiget_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = multiget_result()
+    try:
+        result.success = self._handler.multiget(args.keyspace, args.keys, args.column_path, args.consistency_level)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    oprot.writeMessageBegin('multiget', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
