@@ -5,7 +5,10 @@
   FileChannel fc=fos.getChannel();
   long bytesRead=0;
   try {
-    while (bytesRead < pendingFile.getExpectedBytes())     bytesRead+=fc.transferFrom(socketChannel,bytesRead,FileStreamTask.CHUNK_SIZE);
+    while (bytesRead < pendingFile.getExpectedBytes()) {
+      bytesRead+=fc.transferFrom(socketChannel,bytesRead,FileStreamTask.CHUNK_SIZE);
+      pendingFile.update(bytesRead);
+    }
   }
  catch (  IOException ex) {
     streamStatus.setAction(CompletedFileStatus.StreamCompletionAction.STREAM);
@@ -13,6 +16,9 @@
     File file=new File(pendingFile.getTargetFile());
     file.delete();
     throw ex;
+  }
+ finally {
+    StreamInManager.activeStreams.remove(remoteAddress.getAddress(),pendingFile);
   }
   if (bytesRead == pendingFile.getExpectedBytes()) {
     if (logger.isDebugEnabled()) {

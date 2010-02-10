@@ -4,15 +4,15 @@
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
     if (tokenMetadata_.getPendingRanges(table,FBUtilities.getLocalAddress()).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
   }
-  logger_.info("DECOMMISSIONING");
+  if (logger_.isDebugEnabled())   logger_.debug("DECOMMISSIONING");
   startLeaving();
-  logger_.info("decommission sleeping " + RING_DELAY);
+  setMode("Leaving: sleeping " + RING_DELAY + " for pending range setup",true);
   Thread.sleep(RING_DELAY);
   Runnable finishLeaving=new Runnable(){
     public void run(){
       Gossiper.instance.stop();
       MessagingService.shutdown();
-      logger_.info("DECOMMISSION FINISHED.");
+      setMode("Decommissioned",true);
     }
   }
 ;
