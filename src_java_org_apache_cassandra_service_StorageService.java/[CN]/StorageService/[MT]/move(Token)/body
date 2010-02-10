@@ -2,6 +2,7 @@
   for (  String table : DatabaseDescriptor.getTables()) {
     if (tokenMetadata_.getPendingRanges(table,FBUtilities.getLocalAddress()).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
   }
+  if (token != null && tokenMetadata_.sortedTokens().contains(token))   throw new IOException("target token " + token + " is already owned by another node");
   logger_.info("starting move. leaving token " + getLocalToken());
   startLeaving();
   logger_.info("move sleeping " + RING_DELAY);
@@ -9,7 +10,10 @@
   Runnable finishMoving=new WrappedRunnable(){
     public void runMayThrow() throws IOException {
       Token bootstrapToken=token;
-      if (bootstrapToken == null)       bootstrapToken=BootStrapper.getBalancedToken(tokenMetadata_,StorageLoadBalancer.instance.getLoadInfo());
+      if (bootstrapToken == null) {
+        StorageLoadBalancer.instance.waitForLoadInfo();
+        bootstrapToken=BootStrapper.getBalancedToken(tokenMetadata_,StorageLoadBalancer.instance.getLoadInfo());
+      }
       logger_.info("re-bootstrapping to new token " + bootstrapToken);
       startBootstrap(bootstrapToken);
     }
