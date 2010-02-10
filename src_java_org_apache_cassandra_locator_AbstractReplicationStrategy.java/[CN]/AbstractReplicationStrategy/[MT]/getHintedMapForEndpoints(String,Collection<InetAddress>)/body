@@ -1,2 +1,27 @@
 {
+  Set<InetAddress> usedEndpoints=new HashSet<InetAddress>();
+  Map<InetAddress,InetAddress> map=new HashMap<InetAddress,InetAddress>();
+  IEndPointSnitch endPointSnitch=DatabaseDescriptor.getEndPointSnitch(table);
+  Set<InetAddress> liveNodes=Gossiper.instance.getLiveMembers();
+  for (  InetAddress ep : targets) {
+    if (FailureDetector.instance.isAlive(ep)) {
+      map.put(ep,ep);
+      usedEndpoints.add(ep);
+    }
+ else {
+      if (!tokenMetadata_.isMember(ep))       continue;
+      InetAddress hintLocation=null;
+      List<InetAddress> preferred=endPointSnitch.getSortedListByProximity(ep,liveNodes);
+      for (      InetAddress hintCandidate : preferred) {
+        if (!targets.contains(hintCandidate) && !usedEndpoints.contains(hintCandidate) && tokenMetadata_.isMember(hintCandidate)) {
+          hintLocation=hintCandidate;
+          break;
+        }
+      }
+      if (hintLocation == null)       hintLocation=FBUtilities.getLocalAddress();
+      map.put(ep,hintLocation);
+      usedEndpoints.add(hintLocation);
+    }
+  }
+  return map;
 }
