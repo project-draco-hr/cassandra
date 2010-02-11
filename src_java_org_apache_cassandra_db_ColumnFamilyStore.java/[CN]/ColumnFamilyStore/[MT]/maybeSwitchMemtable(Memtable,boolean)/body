@@ -1,19 +1,19 @@
 {
   Table.flusherLock.writeLock().lock();
   try {
-    final CommitLog.CommitLogContext ctx=CommitLog.instance().getContext();
     if (oldMemtable.isFrozen()) {
       return null;
     }
-    logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable");
     oldMemtable.freeze();
+    final CommitLogSegment.CommitLogContext ctx=writeCommitLog ? CommitLog.instance().getContext() : null;
+    logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable at " + ctx);
     final Condition condition=submitFlush(oldMemtable);
     memtable_=new Memtable(table_,columnFamily_);
     return commitLogUpdater_.submit(new WrappedRunnable(){
       public void runMayThrow() throws InterruptedException, IOException {
         condition.await();
         if (writeCommitLog) {
-          onMemtableFlush(ctx);
+          CommitLog.instance().discardCompletedSegments(table_,columnFamily_,ctx);
         }
       }
     }
