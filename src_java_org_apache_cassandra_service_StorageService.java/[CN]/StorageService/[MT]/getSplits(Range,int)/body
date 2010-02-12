@@ -1,0 +1,20 @@
+{
+  List<Token> tokens=new ArrayList<Token>();
+  tokens.add(range.left);
+  List<DecoratedKey> keys=new ArrayList<DecoratedKey>();
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    for (    SSTable.KeyPosition info : cfs.allIndexPositions()) {
+      if (range.contains(info.key.token))       keys.add(info.key);
+    }
+  }
+  FBUtilities.sortSampledKeys(keys,range);
+  int splits=keys.size() * SSTableReader.indexInterval() / keysPerSplit;
+  if (keys.size() >= splits) {
+    for (int i=1; i < splits; i++) {
+      int index=i * (keys.size() / splits);
+      tokens.add(keys.get(index).token);
+    }
+  }
+  tokens.add(range.right);
+  return tokens;
+}

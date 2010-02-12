@@ -1,0 +1,12 @@
+{
+  Range range=getLocalPrimaryRange();
+  List<DecoratedKey> keys=new ArrayList<DecoratedKey>();
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    for (    SSTable.KeyPosition info : cfs.allIndexPositions()) {
+      if (range.contains(info.key.token))       keys.add(info.key);
+    }
+  }
+  FBUtilities.sortSampledKeys(keys,range);
+  if (keys.size() < 3)   return partitioner_.getRandomToken();
+ else   return keys.get(keys.size() / 2).token;
+}
