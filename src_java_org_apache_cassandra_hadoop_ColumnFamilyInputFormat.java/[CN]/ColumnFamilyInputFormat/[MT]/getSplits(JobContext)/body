@@ -2,13 +2,14 @@
   Configuration conf=context.getConfiguration();
   keyspace=conf.get(KEYSPACE_CONFIG);
   columnFamily=conf.get(COLUMNFAMILY_CONFIG);
-  validateNotNullKeyspaceAndColumnFamily(keyspace,columnFamily);
+  predicate=predicateFromString(conf.get(PREDICATE_CONFIG));
+  validateConfiguration();
   List<TokenRange> map=getRangeMap();
   ArrayList<InputSplit> splits=new ArrayList<InputSplit>();
   for (  TokenRange entry : map) {
     if (logger.isDebugEnabled())     logger.debug("split range is [" + entry.start_token + ", "+ entry.end_token+ "]");
     String[] endpoints=entry.endpoints.toArray(new String[0]);
-    splits.add(new ColumnFamilySplit(keyspace,columnFamily,entry.start_token,entry.end_token,endpoints));
+    splits.add(new ColumnFamilySplit(keyspace,columnFamily,predicate,entry.start_token,entry.end_token,endpoints));
   }
   return splits;
 }
