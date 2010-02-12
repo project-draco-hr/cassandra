@@ -1,0 +1,18 @@
+{
+  Configuration conf=getConf();
+  for (int i=0; i < WordCountSetup.TEST_COUNT; i++) {
+    columnName="text" + i;
+    Job job=new Job(conf,"wordcount");
+    job.setJarByClass(WordCount.class);
+    job.setMapperClass(TokenizerMapper.class);
+    job.setCombinerClass(IntSumReducer.class);
+    job.setReducerClass(IntSumReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
+    job.setInputFormatClass(ColumnFamilyInputFormat.class);
+    FileOutputFormat.setOutputPath(job,new Path(OUTPUT_PATH_PREFIX + i));
+    ColumnFamilyInputFormat.setColumnFamily(job,KEYSPACE,COLUMN_FAMILY);
+    job.waitForCompletion(true);
+  }
+  return 0;
+}
