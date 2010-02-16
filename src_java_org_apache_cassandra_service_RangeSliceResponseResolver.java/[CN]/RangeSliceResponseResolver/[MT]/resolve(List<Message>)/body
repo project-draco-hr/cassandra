@@ -1,25 +1,34 @@
 {
-  Map<InetAddress,Map<String,ColumnFamily>> replies=new HashMap<InetAddress,Map<String,ColumnFamily>>(responses.size());
-  Set<String> allKeys=new HashSet<String>();
+  CollatingIterator collator=new CollatingIterator(new Comparator<Pair<Row,InetAddress>>(){
+    public int compare(    Pair<Row,InetAddress> o1,    Pair<Row,InetAddress> o2){
+      return o1.left.key.compareTo(o2.left.key);
+    }
+  }
+);
+  int n=0;
   for (  Message response : responses) {
     RangeSliceReply reply=RangeSliceReply.read(response.getMessageBody());
-    isCompleted&=reply.rangeCompletedLocally;
-    Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(reply.rows.size());
-    for (    Row row : reply.rows) {
-      rows.put(row.key,row.cf);
-      allKeys.add(row.key);
-    }
-    replies.put(response.getFrom(),rows);
+    n=Math.max(n,reply.rows.size());
+    collator.addIterator(new RowIterator(reply.rows.iterator(),response.getFrom()));
   }
-  Map<String,ColumnFamily> resolvedRows=new HashMap<String,ColumnFamily>(allKeys.size());
-  for (  String key : allKeys) {
+  ReducingIterator<Pair<Row,InetAddress>,Row> iter=new ReducingIterator<Pair<Row,InetAddress>,Row>(collator){
     List<ColumnFamily> versions=new ArrayList<ColumnFamily>(sources.size());
-    for (    InetAddress endpoint : sources) {
-      versions.add(replies.get(endpoint).get(key));
+    List<InetAddress> versionSources=new ArrayList<InetAddress>(sources.size());
+    String key;
+    public void reduce(    Pair<Row,InetAddress> current){
+      key=current.left.key;
+      versions.add(current.left.cf);
+      versionSources.add(current.right);
     }
-    ColumnFamily resolved=ReadResponseResolver.resolveSuperset(versions);
-    ReadResponseResolver.maybeScheduleRepairs(resolved,table,key,versions,sources);
-    resolvedRows.put(key,resolved);
+    protected Row getReduced(){
+      ColumnFamily resolved=ReadResponseResolver.resolveSuperset(versions);
+      ReadResponseResolver.maybeScheduleRepairs(resolved,table,key,versions,versionSources);
+      versions.clear();
+      return new Row(key,resolved);
+    }
   }
+;
+  List<Row> resolvedRows=new ArrayList<Row>(n);
+  while (iter.hasNext())   resolvedRows.add(iter.next());
   return resolvedRows;
 }

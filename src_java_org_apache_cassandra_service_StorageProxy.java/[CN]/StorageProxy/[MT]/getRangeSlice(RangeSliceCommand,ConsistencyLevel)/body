@@ -1,47 +1,34 @@
 {
+  if (logger.isDebugEnabled())   logger.debug(command);
   long startTime=System.nanoTime();
-  TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
-  Iterator<Token> iter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),command.range.left);
   final String table=command.keyspace;
   int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(table),DatabaseDescriptor.getReplicationFactor(table),consistency_level);
-  Map<String,ColumnFamily> rows=new HashMap<String,ColumnFamily>(command.max_keys);
-  outer:   while (iter.hasNext()) {
-    Token currentToken=iter.next();
-    Range currentRange=new Range(tokenMetadata.getPredecessor(currentToken),currentToken);
-    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(command.keyspace,currentToken);
-    if (endpoints.size() < responseCount)     throw new UnavailableException();
-    DatabaseDescriptor.getEndPointSnitch(command.keyspace).sortByProximity(FBUtilities.getLocalAddress(),endpoints);
-    List<AbstractBounds> restricted=command.range.restrictTo(currentRange);
-    for (    AbstractBounds range : restricted) {
-      RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
-      Message message=c2.getMessage();
-      List<InetAddress> endpointsforCL=endpoints.subList(0,responseCount);
-      RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,currentRange,endpointsforCL);
-      QuorumResponseHandler<Map<String,ColumnFamily>> handler=new QuorumResponseHandler<Map<String,ColumnFamily>>(responseCount,resolver);
-      for (      InetAddress endpoint : endpointsforCL) {
-        MessagingService.instance.sendRR(message,endpoint,handler);
-        if (logger.isDebugEnabled())         logger.debug("reading " + c2 + " for "+ range+ " from "+ message.getMessageId()+ "@"+ endpoint);
-      }
-      try {
-        rows.putAll(handler.get());
-      }
- catch (      DigestMismatchException e) {
-        throw new AssertionError(e);
-      }
-      if (rows.size() >= command.max_keys || resolver.completed())       break outer;
+  List<Pair<AbstractBounds,List<InetAddress>>> ranges=getRestrictedRanges(command.range,command.keyspace,responseCount);
+  List<Row> rows=new ArrayList<Row>(command.max_keys);
+  for (  Pair<AbstractBounds,List<InetAddress>> pair : getRangeIterator(ranges,command.range.left)) {
+    AbstractBounds range=pair.left;
+    List<InetAddress> endpoints=pair.right;
+    RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
+    Message message=c2.getMessage();
+    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,endpoints);
+    QuorumResponseHandler<List<Row>> handler=new QuorumResponseHandler<List<Row>>(responseCount,resolver);
+    for (    InetAddress endpoint : endpoints) {
+      MessagingService.instance.sendRR(message,endpoint,handler);
+      if (logger.isDebugEnabled())       logger.debug("reading " + c2 + " from "+ message.getMessageId()+ "@"+ endpoint);
     }
-  }
-  List<Pair<String,ColumnFamily>> results=new ArrayList<Pair<String,ColumnFamily>>(rows.size());
-  for (  Map.Entry<String,ColumnFamily> entry : rows.entrySet()) {
-    ColumnFamily cf=entry.getValue();
-    results.add(new Pair<String,ColumnFamily>(entry.getKey(),cf));
-  }
-  Collections.sort(results,new Comparator<Pair<String,ColumnFamily>>(){
-    public int compare(    Pair<String,ColumnFamily> o1,    Pair<String,ColumnFamily> o2){
-      return keyComparator.compare(o1.left,o2.left);
+    try {
+      if (logger.isDebugEnabled()) {
+        for (        Row row : handler.get()) {
+          logger.debug("range slices read " + row.key);
+        }
+      }
+      rows.addAll(handler.get());
     }
+ catch (    DigestMismatchException e) {
+      throw new AssertionError(e);
+    }
+    if (rows.size() >= command.max_keys)     break;
   }
-);
   rangeStats.addNano(System.nanoTime() - startTime);
-  return results;
+  return rows.size() > command.max_keys ? rows.subList(0,command.max_keys) : rows;
 }

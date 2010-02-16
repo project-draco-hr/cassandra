@@ -1,12 +1,12 @@
 {
-  Token left, right;
-  if (range.left.equals(range.right)) {
-    left=this.left;
-    right=this.right;
+  Token min=partitioner.getMinimumToken();
+  if (this.left.equals(this.right) && !this.right.equals(min))   return range.contains(this.left) ? Collections.unmodifiableSet(new HashSet<AbstractBounds>(Arrays.asList(this))) : Collections.<AbstractBounds>emptySet();
+  Set<Range> ranges=range.intersectionWith(new Range(this.left,this.right));
+  if (!range.contains(this.left))   return (Set)ranges;
+  Set<AbstractBounds> S=new HashSet<AbstractBounds>(ranges.size());
+  for (  Range restricted : ranges) {
+    if (restricted.left.equals(this.left))     S.add(new Bounds(restricted.left,restricted.right));
+ else     S.add(restricted);
   }
- else {
-    left=(Token)ObjectUtils.max(this.left,range.left);
-    right=this.right.equals(StorageService.getPartitioner().getMinimumToken()) ? range.right : (Token)ObjectUtils.min(this.right,range.right);
-  }
-  return (List)Arrays.asList(new Bounds(left,right));
+  return Collections.unmodifiableSet(S);
 }
