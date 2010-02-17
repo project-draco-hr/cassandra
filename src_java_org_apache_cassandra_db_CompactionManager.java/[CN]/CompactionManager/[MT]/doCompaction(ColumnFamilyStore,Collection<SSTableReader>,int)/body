@@ -3,12 +3,17 @@
   if (DatabaseDescriptor.isSnapshotBeforeCompaction())   table.snapshot("compact-" + cfs.columnFamily_);
   logger.info("Compacting [" + StringUtils.join(sstables,",") + "]");
   String compactionFileLocation=table.getDataFileLocation(cfs.getExpectedCompactedFileSize(sstables));
-  if (compactionFileLocation == null) {
-    SSTableReader maxFile=cfs.getMaxSizeFile(sstables);
-    List<SSTableReader> smallerSSTables=new ArrayList<SSTableReader>(sstables);
-    smallerSSTables.remove(maxFile);
-    return doCompaction(cfs,smallerSSTables,gcBefore);
+  List<SSTableReader> smallerSSTables=new ArrayList<SSTableReader>(sstables);
+  while (compactionFileLocation == null && smallerSSTables.size() > 1) {
+    logger.warn("insufficient space to compact all requested files " + StringUtils.join(smallerSSTables,", "));
+    smallerSSTables.remove(cfs.getMaxSizeFile(smallerSSTables));
+    compactionFileLocation=table.getDataFileLocation(cfs.getExpectedCompactedFileSize(smallerSSTables));
   }
+  if (compactionFileLocation == null) {
+    logger.error("insufficient space to compact even the two smallest files, aborting");
+    return 0;
+  }
+  sstables=smallerSSTables;
   boolean major=cfs.isCompleteSSTables(sstables);
   long startTime=System.currentTimeMillis();
   long totalkeysWritten=0;
