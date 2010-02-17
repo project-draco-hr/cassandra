@@ -1,10 +1,9 @@
 {
-  ColumnFamilyStore.getMemtablesPendingFlushNotNull(columnfamilyName).add(this);
+  cfs.getMemtablesPendingFlush().add(this);
   writer.submit(new WrappedRunnable(){
     public void runMayThrow() throws IOException {
-      ColumnFamilyStore cfs=Table.open(table).getColumnFamilyStore(columnfamilyName);
       cfs.addSSTable(writeSortedContents());
-      ColumnFamilyStore.getMemtablesPendingFlushNotNull(columnfamilyName).remove(Memtable.this);
+      cfs.getMemtablesPendingFlush().remove(Memtable.this);
       condition.signalAll();
     }
   }
