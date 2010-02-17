@@ -3,11 +3,10 @@
   ColumnFamilyStore cfStore=Table.open(table).getColumnFamilyStore(columnfamilyName);
   SSTableWriter writer=new SSTableWriter(cfStore.getFlushPath(),columnFamilies.size(),StorageService.getPartitioner());
   DataOutputBuffer buffer=new DataOutputBuffer();
-  for (  DecoratedKey key : sortedKeys) {
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet()) {
     buffer.reset();
-    ColumnFamily columnFamily=columnFamilies.get(key);
-    ColumnFamily.serializer().serializeWithIndexes(columnFamily,buffer);
-    writer.append(key,buffer);
+    ColumnFamily.serializer().serializeWithIndexes(entry.getValue(),buffer);
+    writer.append(entry.getKey(),buffer);
   }
   SSTableReader ssTable=writer.closeAndOpenReader(DatabaseDescriptor.getKeysCachedFraction(table,columnfamilyName));
   logger.info("Completed flushing " + ssTable.getFilename());
