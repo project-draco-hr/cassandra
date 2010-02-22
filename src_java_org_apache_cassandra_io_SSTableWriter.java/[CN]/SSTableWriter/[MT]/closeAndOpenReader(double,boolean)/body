@@ -1,0 +1,18 @@
+{
+  FileOutputStream fos=new FileOutputStream(filterFilename());
+  DataOutputStream stream=new DataOutputStream(fos);
+  BloomFilter.serializer().serialize(bf,stream);
+  stream.flush();
+  fos.getFD().sync();
+  stream.close();
+  indexFile.getChannel().force(true);
+  indexFile.close();
+  dataFile.close();
+  if (!temporary) {
+    rename(indexFilename());
+    rename(filterFilename());
+    path=rename(path);
+  }
+  InstrumentedCache<DecoratedKey,PositionSize> keyCache=SSTableReader.createKeyCache((int)(cacheFraction * keysWritten));
+  return new SSTableReader(path,partitioner,indexPositions,spannedIndexDataPositions,bf,keyCache);
+}
