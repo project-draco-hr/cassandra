@@ -10,15 +10,12 @@
       if (StorageService.instance.isBootstrapMode())       StorageService.instance.removeBootstrapSource(message.getFrom(),new String(message.getHeader(StreamOut.TABLE_NAME)));
       return;
     }
-    Map<String,String> fileNames=getNewNames(pendingFiles);
-    Map<String,String> pathNames=new HashMap<String,String>();
-    for (    String ssName : fileNames.keySet())     pathNames.put(ssName,DatabaseDescriptor.getNextAvailableDataLocation());
-    for (    PendingFile pendingFile : pendingFiles) {
-      CompletedFileStatus streamStatus=new CompletedFileStatus(pendingFile.getTargetFile(),pendingFile.getExpectedBytes());
-      String file=getNewFileNameFromOldContextAndNames(fileNames,pathNames,pendingFile);
-      if (logger.isDebugEnabled())       logger.debug("Received Data from  : " + message.getFrom() + " "+ pendingFile.getTargetFile()+ " "+ file);
-      pendingFile.setTargetFile(file);
-      addStreamContext(message.getFrom(),pendingFile,streamStatus);
+    for (    Map.Entry<PendingFile,PendingFile> pendingFile : getContextMapping(pendingFiles).entrySet()) {
+      PendingFile remoteFile=pendingFile.getKey();
+      PendingFile localFile=pendingFile.getValue();
+      CompletedFileStatus streamStatus=new CompletedFileStatus(remoteFile.getFilename(),remoteFile.getExpectedBytes());
+      if (logger.isDebugEnabled())       logger.debug("Preparing to receive stream from " + message.getFrom() + ": "+ remoteFile+ " -> "+ localFile);
+      addStreamContext(message.getFrom(),localFile,streamStatus);
     }
     StreamInManager.registerStreamCompletionHandler(message.getFrom(),new StreamCompletionHandler());
     if (logger.isDebugEnabled())     logger.debug("Sending a stream initiate done message ...");

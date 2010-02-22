@@ -1,0 +1,16 @@
+{
+  LinkedHashMap<PendingFile,PendingFile> mapping=new LinkedHashMap<PendingFile,PendingFile>();
+  Map<SSTable.Descriptor,SSTable.Descriptor> sstables=new HashMap<SSTable.Descriptor,SSTable.Descriptor>();
+  for (  PendingFile remote : remoteFiles) {
+    SSTable.Descriptor remotedesc=remote.getDescriptor();
+    SSTable.Descriptor localdesc=sstables.get(remotedesc);
+    if (localdesc == null) {
+      Table table=Table.open(remotedesc.ksname);
+      ColumnFamilyStore cfStore=table.getColumnFamilyStore(remotedesc.cfname);
+      localdesc=SSTable.Descriptor.fromFilename(cfStore.getFlushPath());
+      sstables.put(remotedesc,localdesc);
+    }
+    mapping.put(remote,new PendingFile(localdesc,remote.getComponent(),remote.getExpectedBytes()));
+  }
+  return mapping;
+}
