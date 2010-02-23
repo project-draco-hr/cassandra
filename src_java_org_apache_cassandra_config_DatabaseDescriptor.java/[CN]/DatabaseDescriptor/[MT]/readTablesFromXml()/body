@@ -1,0 +1,132 @@
+{
+  XMLUtils xmlUtils=null;
+  try {
+    xmlUtils=new XMLUtils(configFileName_);
+  }
+ catch (  ParserConfigurationException e) {
+    ConfigurationException ex=new ConfigurationException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  SAXException e) {
+    ConfigurationException ex=new ConfigurationException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IOException e) {
+    ConfigurationException ex=new ConfigurationException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+  try {
+    NodeList tables=xmlUtils.getRequestedNodeList("/Storage/Keyspaces/Keyspace");
+    int size=tables.getLength();
+    for (int i=0; i < size; ++i) {
+      String value=null;
+      Node table=tables.item(i);
+      String ksName=XMLUtils.getAttributeValue(table,"Name");
+      if (ksName == null) {
+        throw new ConfigurationException("Table name attribute is required");
+      }
+      if (ksName.equalsIgnoreCase(Table.SYSTEM_TABLE)) {
+        throw new ConfigurationException("'system' is a reserved table name for Cassandra internals");
+      }
+      String replicaPlacementStrategyClassName=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ksName + "']/ReplicaPlacementStrategy");
+      if (replicaPlacementStrategyClassName == null) {
+        throw new ConfigurationException("Missing replicaplacementstrategy directive for " + ksName);
+      }
+      Class<? extends AbstractReplicationStrategy> repStratClass=null;
+      try {
+        repStratClass=(Class<? extends AbstractReplicationStrategy>)Class.forName(replicaPlacementStrategyClassName);
+      }
+ catch (      ClassNotFoundException e) {
+        throw new ConfigurationException("Invalid replicaplacementstrategy class " + replicaPlacementStrategyClassName);
+      }
+      String replicationFactor=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ksName + "']/ReplicationFactor");
+      int repFact=-1;
+      if (replicationFactor == null)       throw new ConfigurationException("Missing replicationfactor directory for keyspace " + ksName);
+ else {
+        repFact=Integer.parseInt(replicationFactor);
+      }
+      String endPointSnitchClassName=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ksName + "']/EndPointSnitch");
+      if (endPointSnitchClassName == null) {
+        throw new ConfigurationException("Missing endpointsnitch directive for keyspace " + ksName);
+      }
+      IEndPointSnitch epSnitch=null;
+      try {
+        Class cls=Class.forName(endPointSnitchClassName);
+        epSnitch=(IEndPointSnitch)cls.getConstructor().newInstance();
+      }
+ catch (      ClassNotFoundException e) {
+        throw new ConfigurationException("Invalid endpointsnitch class " + endPointSnitchClassName);
+      }
+catch (      NoSuchMethodException e) {
+        throw new ConfigurationException("Invalid endpointsnitch class " + endPointSnitchClassName + " "+ e.getMessage());
+      }
+catch (      InstantiationException e) {
+        throw new ConfigurationException("Invalid endpointsnitch class " + endPointSnitchClassName + " "+ e.getMessage());
+      }
+catch (      IllegalAccessException e) {
+        throw new ConfigurationException("Invalid endpointsnitch class " + endPointSnitchClassName + " "+ e.getMessage());
+      }
+catch (      InvocationTargetException e) {
+        throw new ConfigurationException("Invalid endpointsnitch class " + endPointSnitchClassName + " "+ e.getMessage());
+      }
+      String xqlTable="/Storage/Keyspaces/Keyspace[@Name='" + ksName + "']/";
+      NodeList columnFamilies=xmlUtils.getRequestedNodeList(xqlTable + "ColumnFamily");
+      KSMetaData meta=new KSMetaData(ksName,repStratClass,repFact,epSnitch);
+      int size2=columnFamilies.getLength();
+      for (int j=0; j < size2; ++j) {
+        Node columnFamily=columnFamilies.item(j);
+        String tableName=ksName;
+        String cfName=XMLUtils.getAttributeValue(columnFamily,"Name");
+        if (cfName == null) {
+          throw new ConfigurationException("ColumnFamily name attribute is required");
+        }
+        String xqlCF=xqlTable + "ColumnFamily[@Name='" + cfName+ "']/";
+        String rawColumnType=XMLUtils.getAttributeValue(columnFamily,"ColumnType");
+        String columnType=ColumnFamily.getColumnType(rawColumnType);
+        if (columnType == null) {
+          throw new ConfigurationException("ColumnFamily " + cfName + " has invalid type "+ rawColumnType);
+        }
+        if (XMLUtils.getAttributeValue(columnFamily,"ColumnSort") != null) {
+          throw new ConfigurationException("ColumnSort is no longer an accepted attribute.  Use CompareWith instead.");
+        }
+        AbstractType comparator=getComparator(columnFamily,"CompareWith");
+        AbstractType subcolumnComparator=null;
+        if (columnType.equals("Super")) {
+          subcolumnComparator=getComparator(columnFamily,"CompareSubcolumnsWith");
+        }
+ else         if (XMLUtils.getAttributeValue(columnFamily,"CompareSubcolumnsWith") != null) {
+          throw new ConfigurationException("CompareSubcolumnsWith is only a valid attribute on super columnfamilies (not regular columnfamily " + cfName + ")");
+        }
+        double keysCachedFraction=0.01d;
+        if ((value=XMLUtils.getAttributeValue(columnFamily,"KeysCachedFraction")) != null) {
+          keysCachedFraction=Double.valueOf(value);
+        }
+        double rowCacheSize=0;
+        if ((value=XMLUtils.getAttributeValue(columnFamily,"RowsCached")) != null) {
+          if (value.endsWith("%")) {
+            rowCacheSize=Double.valueOf(value.substring(0,value.length() - 1)) / 100;
+          }
+ else {
+            rowCacheSize=Double.valueOf(value);
+          }
+        }
+        String comment=xmlUtils.getNodeValue(xqlCF + "Comment");
+        meta.cfMetaData.put(cfName,new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keysCachedFraction));
+      }
+      tables_.put(meta.name,meta);
+    }
+  }
+ catch (  XPathExpressionException e) {
+    ConfigurationException ex=new ConfigurationException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  TransformerException e) {
+    ConfigurationException ex=new ConfigurationException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+}

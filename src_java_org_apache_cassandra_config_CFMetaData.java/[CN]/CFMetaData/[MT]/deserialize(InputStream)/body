@@ -1,0 +1,23 @@
+{
+  DataInputStream din=new DataInputStream(in);
+  String tableName=din.readUTF();
+  String cfName=din.readUTF();
+  String columnType=din.readUTF();
+  AbstractType comparator=null;
+  try {
+    comparator=(AbstractType)Class.forName(din.readUTF()).newInstance();
+  }
+ catch (  Exception ex) {
+    throw new IOException(ex);
+  }
+  AbstractType subcolumnComparator=null;
+  try {
+    subcolumnComparator=din.readBoolean() ? (AbstractType)Class.forName(din.readUTF()).newInstance() : null;
+  }
+ catch (  Exception ex) {
+  }
+  String comment=din.readBoolean() ? din.readUTF() : null;
+  double rowCacheSize=din.readDouble();
+  double keysCachedFraction=din.readDouble();
+  return new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keysCachedFraction);
+}

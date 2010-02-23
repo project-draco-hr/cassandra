@@ -1,0 +1,32 @@
+{
+  DataInputStream din=new DataInputStream(in);
+  String name=din.readUTF();
+  Class<AbstractReplicationStrategy> repStratClass=null;
+  try {
+    repStratClass=din.readBoolean() ? (Class<AbstractReplicationStrategy>)Class.forName(din.readUTF()) : null;
+  }
+ catch (  Exception ex) {
+    throw new IOException(ex);
+  }
+  int replicationFactor=din.readInt();
+  IEndPointSnitch epSnitch=null;
+  try {
+    epSnitch=din.readBoolean() ? (IEndPointSnitch)Class.forName(din.readUTF()).newInstance() : null;
+  }
+ catch (  Exception ex) {
+    throw new IOException(ex);
+  }
+  int cfsz=din.readInt();
+  KSMetaData ksm=new KSMetaData(name,repStratClass,replicationFactor,epSnitch);
+  for (int i=0; i < cfsz; i++) {
+    try {
+      CFMetaData cfm=CFMetaData.deserialize(din);
+      ksm.cfMetaData.put(cfm.cfName,cfm);
+    }
+ catch (    IOException ex) {
+      System.err.println(ksm.name);
+      throw ex;
+    }
+  }
+  return ksm;
+}
