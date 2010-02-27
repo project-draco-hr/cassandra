@@ -1,12 +1,12 @@
 {
   ColumnFamily columnFamily;
-  String Keyspace="Keyspace1";
-  String CFName="Super1";
+  String keyspace="Keyspace1";
+  String cfName="Super1";
   Message message;
   List<ColumnFamily> columnFamilies;
   columnFamilies=new LinkedList<ColumnFamily>();
   String line;
-  columnFamily=ColumnFamily.create(Keyspace,CFName);
+  columnFamily=ColumnFamily.create(keyspace,cfName);
   while (values.hasNext()) {
     line=values.next().toString();
     String[] fields=line.split("\1");
@@ -14,12 +14,12 @@
     String ColumnName=fields[2];
     String ColumnValue=fields[3];
     int timestamp=0;
-    columnFamily.addColumn(new QueryPath(CFName,SuperColumnName.getBytes("UTF-8"),ColumnName.getBytes("UTF-8")),ColumnValue.getBytes(),timestamp);
+    columnFamily.addColumn(new QueryPath(cfName,SuperColumnName.getBytes("UTF-8"),ColumnName.getBytes("UTF-8")),ColumnValue.getBytes(),timestamp);
   }
   columnFamilies.add(columnFamily);
-  message=createMessage(Keyspace,key.toString(),CFName,columnFamilies);
-  for (  InetAddress endpoint : StorageService.instance().getNaturalEndPoints(key.toString())) {
-    MessagingService.instance().sendOneWay(message,endpoint);
+  message=createMessage(keyspace,key.toString(),cfName,columnFamilies);
+  for (  InetAddress endpoint : StorageService.instance.getNaturalEndpoints(keyspace,key.toString())) {
+    MessagingService.instance.sendOneWay(message,endpoint);
   }
   output.collect(key,new Text(" inserted into Cassandra node(s)"));
 }
