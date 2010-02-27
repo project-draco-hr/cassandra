@@ -42,34 +42,6 @@
     }
     sstables.add(sstable);
   }
-  ssTables_=new SSTableTracker();
+  ssTables_=new SSTableTracker(table,columnFamilyName);
   ssTables_.add(sstables);
-  double v=DatabaseDescriptor.getRowsCachedFraction(table,columnFamilyName);
-  int cacheSize;
-  if (0 < v && v < 1)   cacheSize=Math.max(1,(int)(v * ssTables_.estimatedKeys()));
- else   cacheSize=(int)v;
-  if (logger_.isDebugEnabled())   logger_.debug("row cache capacity for " + columnFamilyName + " is "+ cacheSize);
-  rowCache=new JMXInstrumentedCache<String,ColumnFamily>(table,columnFamilyName + "RowCache",cacheSize);
-  new JMXAggregatingCache(new Iterable<IAggregatableCacheProvider>(){
-    public Iterator<IAggregatableCacheProvider> iterator(){
-      final Iterator<SSTableReader> iter=ssTables_.iterator();
-      return new AbstractIterator<IAggregatableCacheProvider>(){
-        @Override protected IAggregatableCacheProvider computeNext(){
-          if (!iter.hasNext())           return endOfData();
-          return new IAggregatableCacheProvider(){
-            SSTableReader sstable=iter.next();
-            public InstrumentedCache getCache(){
-              return sstable.getKeyCache();
-            }
-            public long getObjectCount(){
-              return sstable.getIndexPositions().size() * SSTableReader.indexInterval();
-            }
-          }
-;
-        }
-      }
-;
-    }
-  }
-,table,columnFamilyName + "KeyCache");
 }

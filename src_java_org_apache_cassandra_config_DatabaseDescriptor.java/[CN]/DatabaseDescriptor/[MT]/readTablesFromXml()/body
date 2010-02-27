@@ -100,21 +100,20 @@ catch (      InvocationTargetException e) {
  else         if (XMLUtils.getAttributeValue(columnFamily,"CompareSubcolumnsWith") != null) {
           throw new ConfigurationException("CompareSubcolumnsWith is only a valid attribute on super columnfamilies (not regular columnfamily " + cfName + ")");
         }
-        double keysCachedFraction=0.01d;
+        double keyCacheSize=CFMetaData.DEFAULT_KEY_CACHE_SIZE;
         if ((value=XMLUtils.getAttributeValue(columnFamily,"KeysCachedFraction")) != null) {
-          keysCachedFraction=Double.valueOf(value);
+          keyCacheSize=Double.valueOf(value);
+          logger_.warn("KeysCachedFraction is deprecated: use KeysCached instead.");
         }
-        double rowCacheSize=0;
+        if ((value=XMLUtils.getAttributeValue(columnFamily,"KeysCached")) != null) {
+          keyCacheSize=FBUtilities.parseDoubleOrPercent(value);
+        }
+        double rowCacheSize=CFMetaData.DEFAULT_ROW_CACHE_SIZE;
         if ((value=XMLUtils.getAttributeValue(columnFamily,"RowsCached")) != null) {
-          if (value.endsWith("%")) {
-            rowCacheSize=Double.valueOf(value.substring(0,value.length() - 1)) / 100;
-          }
- else {
-            rowCacheSize=Double.valueOf(value);
-          }
+          rowCacheSize=FBUtilities.parseDoubleOrPercent(value);
         }
         String comment=xmlUtils.getNodeValue(xqlCF + "Comment");
-        meta.cfMetaData.put(cfName,new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keysCachedFraction));
+        meta.cfMetaData.put(cfName,new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keyCacheSize));
       }
       tables_.put(meta.name,meta);
     }
