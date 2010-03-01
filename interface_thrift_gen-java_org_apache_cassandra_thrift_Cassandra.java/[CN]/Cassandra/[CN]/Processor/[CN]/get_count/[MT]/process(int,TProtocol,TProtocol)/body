@@ -1,6 +1,17 @@
 {
   get_count_args args=new get_count_args();
-  args.read(iprot);
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("get_count",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   iprot.readMessageEnd();
   get_count_result result=new get_count_result();
   try {

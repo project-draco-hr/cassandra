@@ -1,6 +1,17 @@
 {
   batch_insert_args args=new batch_insert_args();
-  args.read(iprot);
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("batch_insert",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   iprot.readMessageEnd();
   batch_insert_result result=new batch_insert_result();
   try {

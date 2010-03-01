@@ -1,6 +1,17 @@
 {
   remove_args args=new remove_args();
-  args.read(iprot);
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("remove",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   iprot.readMessageEnd();
   remove_result result=new remove_result();
   try {

@@ -1,6 +1,17 @@
 {
   describe_cluster_name_args args=new describe_cluster_name_args();
-  args.read(iprot);
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("describe_cluster_name",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   iprot.readMessageEnd();
   describe_cluster_name_result result=new describe_cluster_name_result();
   result.success=iface_.describe_cluster_name();

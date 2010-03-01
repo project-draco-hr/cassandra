@@ -1,6 +1,17 @@
 {
   describe_keyspace_args args=new describe_keyspace_args();
-  args.read(iprot);
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("describe_keyspace",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   iprot.readMessageEnd();
   describe_keyspace_result result=new describe_keyspace_result();
   try {
