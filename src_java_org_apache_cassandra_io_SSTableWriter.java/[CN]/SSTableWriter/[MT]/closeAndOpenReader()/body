@@ -1,3 +1,16 @@
 {
-  return closeAndOpenReader(false);
+  FileOutputStream fos=new FileOutputStream(filterFilename());
+  DataOutputStream stream=new DataOutputStream(fos);
+  BloomFilter.serializer().serialize(bf,stream);
+  stream.flush();
+  fos.getFD().sync();
+  stream.close();
+  indexFile.getChannel().force(true);
+  indexFile.close();
+  dataFile.close();
+  String newpath=getFilename();
+  rename(indexFilename());
+  rename(filterFilename());
+  newpath=rename(newpath);
+  return new SSTableReader(newpath,partitioner,indexPositions,spannedIndexDataPositions,bf);
 }
