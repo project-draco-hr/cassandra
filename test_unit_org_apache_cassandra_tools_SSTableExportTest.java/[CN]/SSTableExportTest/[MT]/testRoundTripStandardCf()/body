@@ -1,22 +1,2 @@
 {
-  File tempSS=tempSSTableFile("Keyspace1","Standard1");
-  ColumnFamily cfamily=ColumnFamily.create("Keyspace1","Standard1");
-  IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
-  DataOutputBuffer dob=new DataOutputBuffer();
-  SSTableWriter writer=new SSTableWriter(tempSS.getPath(),2,partitioner);
-  cfamily.addColumn(new QueryPath("Standard1",null,"name".getBytes()),"val".getBytes(),1,false);
-  ColumnFamily.serializer().serializeWithIndexes(cfamily,dob);
-  writer.append(partitioner.decorateKey("rowA"),dob);
-  dob.reset();
-  cfamily.clear();
-  SSTableReader reader=writer.closeAndOpenReader();
-  File tempJson=File.createTempFile("Standard1",".json");
-  SSTableExport.export(reader,new PrintStream(tempJson.getPath()));
-  File tempSS2=tempSSTableFile("Keyspace1","Standard1");
-  SSTableImport.importJson(tempJson.getPath(),"Keyspace1","Standard1",tempSS2.getPath());
-  reader=SSTableReader.open(tempSS2.getPath(),DatabaseDescriptor.getPartitioner());
-  NamesQueryFilter qf=new NamesQueryFilter("rowA",new QueryPath("Standard1",null,null),"name".getBytes());
-  ColumnFamily cf=qf.getSSTableColumnIterator(reader).getColumnFamily();
-  assertTrue(cf != null);
-  assertTrue(Arrays.equals(cf.getColumn("name".getBytes()).value(),hexToBytes("76616c")));
 }

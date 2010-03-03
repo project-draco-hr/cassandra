@@ -1,16 +1,19 @@
 {
   long startTime=System.nanoTime();
   try {
+    StorageService ss=StorageService.instance;
     for (    final RowMutation rm : mutations) {
       try {
-        List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(rm.getTable(),rm.key());
-        Map<InetAddress,InetAddress> endpointMap=StorageService.instance.getHintedEndpointMap(rm.getTable(),rm.key(),naturalEndpoints);
+        String table=rm.getTable();
+        AbstractReplicationStrategy rs=ss.getReplicationStrategy(table);
+        List<InetAddress> naturalEndpoints=ss.getNaturalEndpoints(table,rm.key());
+        Multimap<InetAddress,InetAddress> hintedEndpoints=rs.getHintedEndpoints(table,naturalEndpoints);
         Message unhintedMessage=null;
-        for (        Map.Entry<InetAddress,InetAddress> entry : endpointMap.entrySet()) {
-          InetAddress target=entry.getKey();
-          InetAddress hintedTarget=entry.getValue();
-          if (target.equals(hintedTarget)) {
-            if (target.equals(FBUtilities.getLocalAddress())) {
+        for (        Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
+          InetAddress destination=entry.getKey();
+          Collection<InetAddress> targets=entry.getValue();
+          if (targets.size() == 1 && targets.iterator().next().equals(destination)) {
+            if (destination.equals(FBUtilities.getLocalAddress())) {
               if (logger.isDebugEnabled())               logger.debug("insert writing local key " + rm.key());
               Runnable runnable=new WrappedRunnable(){
                 public void runMayThrow() throws IOException {
@@ -22,15 +25,19 @@
             }
  else {
               if (unhintedMessage == null)               unhintedMessage=rm.makeRowMutationMessage();
-              if (logger.isDebugEnabled())               logger.debug("insert writing key " + rm.key() + " to "+ unhintedMessage.getMessageId()+ "@"+ target);
-              MessagingService.instance.sendOneWay(unhintedMessage,target);
+              if (logger.isDebugEnabled())               logger.debug("insert writing key " + rm.key() + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
+              MessagingService.instance.sendOneWay(unhintedMessage,destination);
             }
           }
  else {
             Message hintedMessage=rm.makeRowMutationMessage();
-            hintedMessage.addHeader(RowMutation.HINT,target.getAddress());
-            if (logger.isDebugEnabled())             logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ hintedTarget+ " for "+ target);
-            MessagingService.instance.sendOneWay(hintedMessage,hintedTarget);
+            for (            InetAddress target : targets) {
+              if (!target.equals(destination)) {
+                addHintHeader(hintedMessage,target);
+                if (logger.isDebugEnabled())                 logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
+              }
+            }
+            MessagingService.instance.sendOneWay(hintedMessage,destination);
           }
         }
       }

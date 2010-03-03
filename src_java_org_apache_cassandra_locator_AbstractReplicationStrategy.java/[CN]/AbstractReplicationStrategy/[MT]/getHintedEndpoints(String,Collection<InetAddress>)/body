@@ -1,0 +1,15 @@
+{
+  Multimap<InetAddress,InetAddress> map=HashMultimap.create(targets.size(),1);
+  IEndPointSnitch endPointSnitch=DatabaseDescriptor.getEndPointSnitch(table);
+  for (  InetAddress ep : targets) {
+    if (FailureDetector.instance.isAlive(ep))     map.put(ep,ep);
+  }
+  if (map.size() == targets.size())   return map;
+  InetAddress localAddress=FBUtilities.getLocalAddress();
+  for (  InetAddress ep : targets) {
+    if (map.containsKey(ep))     continue;
+    InetAddress destination=map.isEmpty() ? localAddress : endPointSnitch.getSortedListByProximity(localAddress,map.keySet()).get(0);
+    map.put(destination,ep);
+  }
+  return map;
+}
