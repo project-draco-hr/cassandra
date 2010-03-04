@@ -1,0 +1,23 @@
+{
+  for (  GarbageCollectorMXBean gc : beans) {
+    GcInfo gci=gc.getLastGcInfo();
+    if (gci == null)     continue;
+    Long previous=gctimes.get(gc.getName());
+    if (previous != null && previous == gc.getCollectionTime())     continue;
+    gctimes.put(gc.getName(),gc.getCollectionTime());
+    long previousMemoryUsed=0;
+    long memoryUsed=0;
+    long memoryMax=0;
+    for (    Map.Entry<String,MemoryUsage> entry : gci.getMemoryUsageBeforeGc().entrySet()) {
+      previousMemoryUsed+=entry.getValue().getUsed();
+    }
+    for (    Map.Entry<String,MemoryUsage> entry : gci.getMemoryUsageAfterGc().entrySet()) {
+      MemoryUsage mu=entry.getValue();
+      memoryUsed+=mu.getUsed();
+      memoryMax+=mu.getMax();
+    }
+    String st=String.format("GC for %s: %s ms, %s reclaimed leaving %s used; max is %s",gc.getName(),gci.getDuration(),previousMemoryUsed - memoryUsed,memoryUsed,memoryMax);
+    if (gci.getDuration() > MIN_DURATION)     logger.info(st);
+ else     if (logger.isDebugEnabled())     logger.debug(st);
+  }
+}
