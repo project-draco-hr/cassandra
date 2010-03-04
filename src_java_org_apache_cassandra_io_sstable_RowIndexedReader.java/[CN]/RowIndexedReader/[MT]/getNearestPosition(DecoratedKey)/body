@@ -1,0 +1,25 @@
+{
+  KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
+  if (sampledPosition == null) {
+    return 0;
+  }
+  BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(),"r");
+  input.seek(sampledPosition.position);
+  try {
+    while (true) {
+      DecoratedKey indexDecoratedKey;
+      try {
+        indexDecoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
+      }
+ catch (      EOFException e) {
+        return -1;
+      }
+      long position=input.readLong();
+      int v=indexDecoratedKey.compareTo(decoratedKey);
+      if (v >= 0)       return position;
+    }
+  }
+  finally {
+    input.close();
+  }
+}
