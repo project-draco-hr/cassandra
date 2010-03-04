@@ -1,6 +1,8 @@
 {
   final ColumnFamily columnFamily=cf == null ? ColumnFamily.create(getTableName(),filter.getColumnFamilyName()) : cf.cloneMeShallow();
-  final IColumn columns[]=(cf == null ? columnFamily : cf).getSortedColumns().toArray(new IColumn[columnFamily.getSortedColumns().size()]);
+  Collection<IColumn> rawColumns=(cf == null ? columnFamily : cf).getSortedColumns();
+  Collection<IColumn> filteredColumns=filter.applyPredicate(rawColumns);
+  final IColumn columns[]=filteredColumns.toArray(new IColumn[0]);
   if (filter.reversed)   ArrayUtils.reverse(columns);
   IColumn startIColumn;
   final boolean isStandard=DatabaseDescriptor.getColumnFamilyType(getTableName(),filter.getColumnFamilyName()).equals("Standard");
