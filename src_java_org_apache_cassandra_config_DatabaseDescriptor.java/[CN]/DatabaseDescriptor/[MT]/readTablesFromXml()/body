@@ -74,8 +74,8 @@ catch (      InvocationTargetException e) {
       }
       String xqlTable="/Storage/Keyspaces/Keyspace[@Name='" + ksName + "']/";
       NodeList columnFamilies=xmlUtils.getRequestedNodeList(xqlTable + "ColumnFamily");
-      KSMetaData meta=new KSMetaData(ksName,repStratClass,repFact,epSnitch);
       int size2=columnFamilies.getLength();
+      CFMetaData[] cfDefs=new CFMetaData[size2];
       for (int j=0; j < size2; ++j) {
         Node columnFamily=columnFamilies.item(j);
         String tableName=ksName;
@@ -113,8 +113,9 @@ catch (      InvocationTargetException e) {
           rowCacheSize=FBUtilities.parseDoubleOrPercent(value);
         }
         String comment=xmlUtils.getNodeValue(xqlCF + "Comment");
-        meta.cfMetaData.put(cfName,new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keyCacheSize));
+        cfDefs[j]=new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keyCacheSize);
       }
+      KSMetaData meta=new KSMetaData(ksName,repStratClass,repFact,epSnitch,cfDefs);
       tables.put(meta.name,meta);
     }
   }
