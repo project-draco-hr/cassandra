@@ -1,0 +1,13 @@
+{
+  Table defs=Table.open(Table.DEFINITIONS);
+  ColumnFamilyStore cfStore=defs.getColumnFamilyStore(SCHEMA_CF);
+  SliceQueryFilter filter=new SliceQueryFilter(version.toString(),new QueryPath(SCHEMA_CF),"".getBytes(),"".getBytes(),false,1024);
+  ColumnFamily cf=cfStore.getColumnFamily(filter);
+  Collection<KSMetaData> tables=new ArrayList<KSMetaData>();
+  for (  IColumn col : cf.getSortedColumns()) {
+    String ksName=new String(col.name());
+    KSMetaData ks=KSMetaData.deserialize(new ByteArrayInputStream(col.value()));
+    tables.add(ks);
+  }
+  return tables;
+}
