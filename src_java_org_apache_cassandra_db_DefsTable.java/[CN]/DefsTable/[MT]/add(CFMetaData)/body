@@ -1,22 +1,20 @@
 {
-  Table.openLock.lock();
-  try {
-    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(cfm.tableName);
-    if (ksm == null)     throw new ConfigurationException("Keyspace does not already exist.");
- else     if (ksm.cfMetaData().containsKey(cfm.cfName))     throw new ConfigurationException("CF is already defined in that keyspace.");
-    List<CFMetaData> newCfs=new ArrayList<CFMetaData>(ksm.cfMetaData().values());
-    newCfs.add(cfm);
-    ksm=new KSMetaData(ksm.name,ksm.strategyClass,ksm.replicationFactor,ksm.snitch,newCfs.toArray(new CFMetaData[newCfs.size()]));
-    UUID newVersion=UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress());
-    RowMutation rm=new RowMutation(Table.DEFINITIONS,newVersion.toString());
-    rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes()),KSMetaData.serialize(ksm),System.currentTimeMillis());
-    rm.apply();
-    DatabaseDescriptor.setTableDefinition(ksm,newVersion);
-    Table.close(ksm.name);
-    Table.open(ksm.name);
-    CommitLog.instance().forceNewSegment();
+  return executor.submit(new WrappedRunnable(){
+    protected void runMayThrow() throws Exception {
+      KSMetaData ksm=DatabaseDescriptor.getTableDefinition(cfm.tableName);
+      if (ksm == null)       throw new ConfigurationException("Keyspace does not already exist.");
+ else       if (ksm.cfMetaData().containsKey(cfm.cfName))       throw new ConfigurationException("CF is already defined in that keyspace.");
+      List<CFMetaData> newCfs=new ArrayList<CFMetaData>(ksm.cfMetaData().values());
+      newCfs.add(cfm);
+      ksm=new KSMetaData(ksm.name,ksm.strategyClass,ksm.replicationFactor,ksm.snitch,newCfs.toArray(new CFMetaData[newCfs.size()]));
+      UUID newVersion=UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress());
+      RowMutation rm=new RowMutation(Table.DEFINITIONS,newVersion.toString());
+      rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes()),KSMetaData.serialize(ksm),System.currentTimeMillis());
+      rm.apply();
+      Table.open(ksm.name).addCf(cfm.cfName);
+      DatabaseDescriptor.setTableDefinition(ksm,newVersion);
+      CommitLog.instance().forceNewSegment();
+    }
   }
-  finally {
-    Table.openLock.unlock();
-  }
+);
 }
