@@ -1,0 +1,23 @@
+{
+  ExecutorService mutationStage=StageManager.getStage(StageManager.MUTATION_STAGE);
+  if (mutationStage.isTerminated()) {
+    logger_.warn("Cannot drain node (did it already happen?)");
+    return;
+  }
+  setMode("Starting drain process",true);
+  Gossiper.instance.stop();
+  setMode("Draining: shutting down MessageService",false);
+  MessagingService.shutdown();
+  setMode("Draining: emptying MessageService pools",false);
+  MessagingService.waitFor();
+  setMode("Draining: flushing column families",false);
+  for (  String tableName : DatabaseDescriptor.getNonSystemTables())   for (  Future f : Table.open(tableName).flush())   f.get();
+  setMode("Draining: replaying commit log",false);
+  CommitLog.instance().forceNewSegment();
+  DeletionService.waitFor();
+  CommitLog.recover();
+  setMode("Draining: clearing mutation stage",false);
+  mutationStage.shutdown();
+  while (!mutationStage.isTerminated())   mutationStage.awaitTermination(5,TimeUnit.SECONDS);
+  setMode("Node is drained",true);
+}
