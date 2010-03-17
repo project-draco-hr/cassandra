@@ -1,4 +1,5 @@
 {
+  if (rows != null && i >= rows.size())   rows=null;
   if (rows != null)   return;
   TSocket socket=new TSocket(getLocation(),DatabaseDescriptor.getRpcPort());
   TBinaryProtocol binaryProtocol=new TBinaryProtocol(socket,false,false);
@@ -9,9 +10,24 @@
  catch (  TTransportException e) {
     throw new RuntimeException(e);
   }
-  KeyRange keyRange=new KeyRange(rowCount).setStart_token(split.getStartToken()).setEnd_token(split.getEndToken());
+  if (startToken == null) {
+    startToken=split.getStartToken();
+  }
+ else   if (startToken.equals(split.getEndToken())) {
+    rows=null;
+    return;
+  }
+  KeyRange keyRange=new KeyRange(batchRowCount).setStart_token(startToken).setEnd_token(split.getEndToken());
   try {
     rows=client.get_range_slices(keyspace,new ColumnParent(cfName),predicate,keyRange,ConsistencyLevel.ONE);
+    if (rows.isEmpty()) {
+      rows=null;
+      return;
+    }
+    i=0;
+    KeySlice lastRow=rows.get(rows.size() - 1);
+    IPartitioner p=DatabaseDescriptor.getPartitioner();
+    startToken=p.getTokenFactory().toString(p.getToken(lastRow.getKey()));
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
