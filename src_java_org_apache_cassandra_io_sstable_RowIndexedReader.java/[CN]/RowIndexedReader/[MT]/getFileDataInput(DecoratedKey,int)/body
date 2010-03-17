@@ -2,9 +2,14 @@
   PositionSize info=getPosition(decoratedKey);
   if (info == null)   return null;
   if (buffers == null || (bufferIndex(info.position) != bufferIndex(info.position + info.size))) {
-    BufferedRandomAccessFile file=new BufferedRandomAccessFile(getFilename(),"r",bufferSize);
-    file.seek(info.position);
-    return file;
+    try {
+      BufferedRandomAccessFile file=new BufferedRandomAccessFile(getFilename(),"r",bufferSize);
+      file.seek(info.position);
+      return file;
+    }
+ catch (    IOException e) {
+      throw new IOError(e);
+    }
   }
   return new MappedFileDataInput(buffers[bufferIndex(info.position)],getFilename(),(int)(info.position % BUFFER_SIZE));
 }

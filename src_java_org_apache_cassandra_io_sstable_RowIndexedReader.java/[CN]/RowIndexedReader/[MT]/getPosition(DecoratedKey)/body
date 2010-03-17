@@ -16,15 +16,15 @@
     if (info != null)     return info;
   }
   long p=sampledPosition.position;
-  FileDataInput input;
-  if (indexBuffers == null) {
-    input=new BufferedRandomAccessFile(indexFilename(),"r");
-    ((BufferedRandomAccessFile)input).seek(p);
-  }
- else {
-    input=new MappedFileDataInput(indexBuffers[bufferIndex(p)],indexFilename(),(int)(p % BUFFER_SIZE));
-  }
+  FileDataInput input=null;
   try {
+    if (indexBuffers == null) {
+      input=new BufferedRandomAccessFile(indexFilename(),"r");
+      ((BufferedRandomAccessFile)input).seek(p);
+    }
+ else {
+      input=new MappedFileDataInput(indexBuffers[bufferIndex(p)],indexFilename(),(int)(p % BUFFER_SIZE));
+    }
     int i=0;
     do {
       DecoratedKey indexDecoratedKey;
@@ -53,8 +53,16 @@
     }
  while (++i < INDEX_INTERVAL);
   }
-  finally {
-    input.close();
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+ finally {
+    try {
+      if (input != null)       input.close();
+    }
+ catch (    IOException e) {
+      logger.error("error closing file",e);
+    }
   }
   return null;
 }
