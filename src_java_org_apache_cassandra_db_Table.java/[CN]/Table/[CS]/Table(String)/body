@@ -1,6 +1,17 @@
 {
   name=table;
   waitForCommitLog=DatabaseDescriptor.getCommitLogSync() == DatabaseDescriptor.CommitLogSync.batch;
+  for (  String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
+    try {
+      String keyspaceDir=dataDir + File.separator + table;
+      FileUtils.createDirectory(keyspaceDir);
+      File streamingDir=new File(keyspaceDir,"stream");
+      if (streamingDir.exists())       FileUtils.deleteDir(streamingDir);
+    }
+ catch (    IOException ex) {
+      throw new IOError(ex);
+    }
+  }
   for (  String columnFamily : getColumnFamilies()) {
     columnFamilyStores.put(columnFamily,ColumnFamilyStore.createColumnFamilyStore(table,columnFamily));
   }
