@@ -1,0 +1,23 @@
+{
+  return executor.submit(new WrappedRunnable(){
+    protected void runMayThrow() throws Exception {
+      if (oldKsm == null || DatabaseDescriptor.getTableDefinition(oldKsm.name) != oldKsm)       throw new ConfigurationException("Keyspace either does not exist or does not match the one currently defined.");
+      if (DatabaseDescriptor.getTableDefinition(newName) != null)       throw new ConfigurationException("Keyspace already exists.");
+      KSMetaData newKsm=KSMetaData.rename(oldKsm,newName);
+      UUID newVersion=saveKeyspaceDefs(newKsm,oldKsm);
+      try {
+        renameKsStorageFiles(oldKsm.name,newName);
+      }
+ catch (      IOException e) {
+        ConfigurationException cex=new ConfigurationException("Critical: encountered IOException while attempting to rename KS storage files from " + oldKsm.name + " to "+ newName);
+        throw cex;
+      }
+      DatabaseDescriptor.clearTableDefinition(oldKsm,newVersion);
+      DatabaseDescriptor.setTableDefinition(newKsm,newVersion);
+      Table.clear(oldKsm.name);
+      Table.open(newName);
+      CommitLog.instance().forceNewSegment();
+    }
+  }
+);
+}
