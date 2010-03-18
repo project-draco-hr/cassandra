@@ -7,10 +7,7 @@
       List<CFMetaData> newCfs=new ArrayList<CFMetaData>(ksm.cfMetaData().values());
       newCfs.add(cfm);
       ksm=new KSMetaData(ksm.name,ksm.strategyClass,ksm.replicationFactor,ksm.snitch,newCfs.toArray(new CFMetaData[newCfs.size()]));
-      UUID newVersion=UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress());
-      RowMutation rm=new RowMutation(Table.DEFINITIONS,newVersion.toString());
-      rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes()),KSMetaData.serialize(ksm),System.currentTimeMillis());
-      rm.apply();
+      UUID newVersion=saveKeyspaceDefinition(ksm);
       Table.open(ksm.name).addCf(cfm.cfName);
       DatabaseDescriptor.setTableDefinition(ksm,newVersion);
       CommitLog.instance().forceNewSegment();
