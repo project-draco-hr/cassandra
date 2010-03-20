@@ -7,18 +7,5 @@
   indexFile.writeLong(dataPosition);
   if (logger.isTraceEnabled())   logger.trace("wrote " + decoratedKey + " at "+ dataPosition);
   if (logger.isTraceEnabled())   logger.trace("wrote index of " + decoratedKey + " at "+ indexPosition);
-  boolean spannedIndexEntry=RowIndexedReader.bufferIndex(indexPosition) != RowIndexedReader.bufferIndex(indexFile.getFilePointer());
-  if (keysWritten++ % INDEX_INTERVAL == 0 || spannedIndexEntry) {
-    if (indexPositions == null) {
-      indexPositions=new ArrayList<KeyPosition>();
-    }
-    KeyPosition info=new KeyPosition(decoratedKey,indexPosition);
-    indexPositions.add(info);
-    if (spannedIndexEntry) {
-      if (spannedIndexDataPositions == null) {
-        spannedIndexDataPositions=new HashMap<KeyPosition,PositionSize>();
-      }
-      spannedIndexDataPositions.put(info,new PositionSize(dataPosition,dataSize));
-    }
-  }
+  indexSummary.maybeAddEntry(decoratedKey,dataPosition,dataSize,indexPosition,indexFile.getFilePointer());
 }

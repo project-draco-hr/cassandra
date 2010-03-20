@@ -1,8 +1,7 @@
 {
-  indexPositions=new ArrayList<KeyPosition>();
+  indexSummary=new IndexSummary();
   BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(),"r");
   try {
-    int i=0;
     long indexSize=input.length();
     while (true) {
       long indexPosition=input.getFilePointer();
@@ -12,22 +11,18 @@
       DecoratedKey decoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
       long dataPosition=input.readLong();
       long nextIndexPosition=input.getFilePointer();
-      boolean spannedEntry=bufferIndex(indexPosition) != bufferIndex(nextIndexPosition);
-      if (i++ % INDEX_INTERVAL == 0 || spannedEntry) {
-        KeyPosition info;
-        info=new KeyPosition(decoratedKey,indexPosition);
-        indexPositions.add(info);
-        if (spannedEntry) {
-          if (spannedIndexDataPositions == null) {
-            spannedIndexDataPositions=new HashMap<KeyPosition,PositionSize>();
-          }
-          input.readUTF();
-          long nextDataPosition=input.readLong();
-          input.seek(nextIndexPosition);
-          spannedIndexDataPositions.put(info,new PositionSize(dataPosition,nextDataPosition - dataPosition));
-        }
+      long nextDataPosition;
+      if (input.isEOF()) {
+        nextDataPosition=length();
       }
+ else {
+        input.readUTF();
+        nextDataPosition=input.readLong();
+        input.seek(nextIndexPosition);
+      }
+      indexSummary.maybeAddEntry(decoratedKey,dataPosition,nextDataPosition - dataPosition,indexPosition,nextIndexPosition);
     }
+    indexSummary.complete();
   }
   finally {
     input.close();
