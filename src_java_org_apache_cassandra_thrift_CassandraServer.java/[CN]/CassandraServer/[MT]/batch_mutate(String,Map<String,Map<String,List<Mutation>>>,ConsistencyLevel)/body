@@ -1,6 +1,17 @@
 {
   if (logger.isDebugEnabled())   logger.debug("batch_mutate");
-  checkLoginDone();
+  AccessLevel needed=AccessLevel.READWRITE;
+  TOP:   for (  Map<String,List<Mutation>> submap : mutation_map.values()) {
+    for (    List<Mutation> mutations : submap.values()) {
+      for (      Mutation m : mutations) {
+        if (m.isSetDeletion()) {
+          needed=AccessLevel.FULL;
+          break TOP;
+        }
+      }
+    }
+  }
+  checkLoginAuthorized(needed);
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
   for (  Map.Entry<String,Map<String,List<Mutation>>> mutationEntry : mutation_map.entrySet()) {
     String key=mutationEntry.getKey();
