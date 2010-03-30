@@ -1,24 +1,28 @@
 {
   List<ColumnIterator> iterators=new ArrayList<ColumnIterator>();
+  final ColumnFamily returnCF=ColumnFamily.create(table_,columnFamily_);
   try {
-    final ColumnFamily returnCF;
     ColumnIterator iter;
     Table.flusherLock.readLock().lock();
     try {
-      iter=filter.getMemColumnIterator(memtable_,getComparator());
-      returnCF=iter.getColumnFamily();
+      iter=filter.getMemtableColumnIterator(memtable_,getComparator(),gcBefore);
     }
   finally {
       Table.flusherLock.readLock().unlock();
     }
-    iterators.add(iter);
-    for (    Memtable memtable : getMemtablesPendingFlush()) {
-      iter=filter.getMemColumnIterator(memtable,getComparator());
+    if (iter != null) {
       returnCF.delete(iter.getColumnFamily());
       iterators.add(iter);
     }
+    for (    Memtable memtable : getMemtablesPendingFlush()) {
+      iter=filter.getMemtableColumnIterator(memtable,getComparator(),gcBefore);
+      if (iter != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
+      }
+    }
     for (    SSTableReader sstable : ssTables_) {
-      iter=filter.getSSTableColumnIterator(sstable);
+      iter=filter.getSSTableColumnIterator(sstable,gcBefore);
       if (iter.hasNext()) {
         returnCF.delete(iter.getColumnFamily());
       }
