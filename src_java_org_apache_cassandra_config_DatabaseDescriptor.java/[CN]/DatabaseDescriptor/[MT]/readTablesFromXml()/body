@@ -115,8 +115,15 @@ catch (      InvocationTargetException e) {
         if ((value=XMLUtils.getAttributeValue(columnFamily,"RowsCached")) != null) {
           rowCacheSize=FBUtilities.parseDoubleOrPercent(value);
         }
+        double readRepairChance=CFMetaData.DEFAULT_READ_REPAIR_CHANCE;
+        if ((value=XMLUtils.getAttributeValue(columnFamily,"ReadRepairChance")) != null) {
+          readRepairChance=FBUtilities.parseDoubleOrPercent(value);
+          if (readRepairChance < 0.0 || readRepairChance > 1.0) {
+            throw new ConfigurationException("ReadRepairChance must be between 0.0 and 1.0");
+          }
+        }
         String comment=xmlUtils.getNodeValue(xqlCF + "Comment");
-        cfDefs[j]=new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keyCacheSize);
+        cfDefs[j]=new CFMetaData(tableName,cfName,columnType,comparator,subcolumnComparator,comment,rowCacheSize,keyCacheSize,readRepairChance);
       }
       KSMetaData meta=new KSMetaData(ksName,strategyClass,replicationFactor,snitch,cfDefs);
       tables.put(meta.name,meta);
