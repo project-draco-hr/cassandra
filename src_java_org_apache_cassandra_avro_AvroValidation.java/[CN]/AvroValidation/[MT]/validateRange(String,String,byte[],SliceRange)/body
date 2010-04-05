@@ -1,0 +1,15 @@
+{
+  AbstractType comparator=ColumnFamily.getComparatorFor(keyspace,cfName,superName);
+  byte[] start=range.start.array();
+  byte[] finish=range.finish.array();
+  try {
+    comparator.validate(start);
+    comparator.validate(finish);
+  }
+ catch (  MarshalException me) {
+    throw newInvalidRequestException(me.getMessage());
+  }
+  if (range.count < 0)   throw newInvalidRequestException("Ranges require a non-negative count.");
+  Comparator<byte[]> orderedComparator=range.reversed ? comparator.getReverseComparator() : comparator;
+  if (start.length > 0 && finish.length > 0 && orderedComparator.compare(start,finish) > 0)   throw newInvalidRequestException("range finish must come after start in the order of traversal");
+}
