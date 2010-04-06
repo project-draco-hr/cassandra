@@ -12,8 +12,9 @@
       throw new IOError(ex);
     }
   }
-  for (  String columnFamily : getColumnFamilies()) {
-    columnFamilyStores.put(columnFamily,ColumnFamilyStore.createColumnFamilyStore(table,columnFamily));
+  for (  CFMetaData cfm : DatabaseDescriptor.getTableDefinition(table).cfMetaData().values()) {
+    columnFamilyStores.put(cfm.cfId,ColumnFamilyStore.createColumnFamilyStore(table,cfm.cfName));
+    cfNameMap.put(cfm.cfName,cfm.cfId);
   }
   int checkMs=DatabaseDescriptor.getMemtableLifetimeMS() / 10;
   flushTask=new TimerTask(){
