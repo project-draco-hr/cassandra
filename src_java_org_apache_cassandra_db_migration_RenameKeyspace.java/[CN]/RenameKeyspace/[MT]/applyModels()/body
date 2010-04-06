@@ -1,0 +1,11 @@
+{
+  renameKsStorageFiles(oldName,newName);
+  KSMetaData oldKsm=DatabaseDescriptor.getTableDefinition(oldName);
+  KSMetaData newKsm=KSMetaData.rename(oldKsm,newName,true);
+  DatabaseDescriptor.clearTableDefinition(oldKsm,newVersion);
+  DatabaseDescriptor.setTableDefinition(newKsm,newVersion);
+  Table.clear(oldKsm.name);
+  Table.open(newName);
+  CommitLog.instance().forceNewSegment();
+  HintedHandOffManager.renameHints(oldName,newName);
+}
