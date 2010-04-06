@@ -1,3 +1,40 @@
 {
   checkLoginAuthorized(AccessLevel.FULL);
+  if (StageManager.getStage(StageManager.MIGRATION_STAGE).getQueue().size() > 0)   throw new InvalidRequestException("This node appears to be handling gossiped migrations.");
+  try {
+    Collection<CFMetaData> cfDefs=new ArrayList<CFMetaData>(ks_def.cf_defs.size());
+    for (    CfDef cfDef : ks_def.cf_defs) {
+      CFMetaData cfm=new CFMetaData(cfDef.table,cfDef.name,ColumnFamily.getColumnType(cfDef.column_type),DatabaseDescriptor.getComparator(cfDef.comparator_type),cfDef.subcomparator_type.length() == 0 ? null : DatabaseDescriptor.getComparator(cfDef.subcomparator_type),cfDef.comment,cfDef.row_cache_size,cfDef.key_cache_size);
+      cfDefs.add(cfm);
+    }
+    KSMetaData ksm=new KSMetaData(ks_def.name,(Class<? extends AbstractReplicationStrategy>)Class.forName(ks_def.strategy_class),ks_def.replication_factor,(IEndPointSnitch)Class.forName(ks_def.snitch_class).newInstance(),cfDefs.toArray(new CFMetaData[cfDefs.size()]));
+    AddKeyspace add=new AddKeyspace(ksm);
+    add.apply();
+    add.announce();
+  }
+ catch (  ClassNotFoundException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  InstantiationException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IllegalAccessException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  ConfigurationException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IOException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
 }

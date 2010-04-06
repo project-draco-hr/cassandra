@@ -1,0 +1,18 @@
+def test_system_keyspace_operations(self):
+    ' Test keyspace (add, drop, rename) operations '
+    keyspace = KsDef('CreateKeyspace', 'org.apache.cassandra.locator.RackUnawareStrategy', 1, 'org.apache.cassandra.locator.EndPointSnitch', [CfDef('CreateKeyspace', 'CreateKsCf')])
+    client.system_add_keyspace(keyspace)
+    newks = client.describe_keyspace('CreateKeyspace')
+    assert ('CreateKsCf' in newks)
+    client.system_rename_keyspace('CreateKeyspace', 'RenameKeyspace')
+    renameks = client.describe_keyspace('RenameKeyspace')
+    assert ('CreateKsCf' in renameks)
+
+    def get_first_ks():
+        client.describe_keyspace('CreateKeyspace')
+    _expect_exception(get_first_ks, NotFoundException)
+    client.system_drop_keyspace('RenameKeyspace')
+
+    def get_second_ks():
+        client.describe_keyspace('RenameKeyspace')
+    _expect_exception(get_second_ks, NotFoundException)
