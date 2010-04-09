@@ -1,0 +1,34 @@
+{
+  final DecoratedKey startWith=new DecoratedKey(range.left,null);
+  final DecoratedKey stopAt=new DecoratedKey(range.right,null);
+  final int gcBefore=CompactionManager.getDefaultGCBefore();
+  final QueryPath queryPath=new QueryPath(columnFamily_,superColumn,null);
+  final SortedSet<byte[]> columnNameSet=new TreeSet<byte[]>(getComparator());
+  if (columnNames != null)   columnNameSet.addAll(columnNames);
+  final QueryFilter filter=sliceRange == null ? QueryFilter.getNamesFilter(null,queryPath,columnNameSet) : QueryFilter.getSliceFilter(null,queryPath,sliceRange.start,sliceRange.finish,sliceRange.bitmasks,sliceRange.reversed,sliceRange.count);
+  Collection<Memtable> memtables=new ArrayList<Memtable>(memtablesPendingFlush);
+  Collection<SSTableReader> sstables=new ArrayList<SSTableReader>();
+  Iterables.addAll(sstables,ssTables_);
+  RowIterator iterator=RowIteratorFactory.getIterator(memtable_,memtables,sstables,startWith,stopAt,filter,getComparator(),gcBefore);
+  try {
+    boolean first=true;
+    IPartitioner partitioner=StorageService.getPartitioner();
+    while (iterator.hasNext()) {
+      Row current=iterator.next();
+      DecoratedKey key=partitioner.decorateKey(current.key);
+      if (!stopAt.isEmpty() && stopAt.compareTo(key) < 0)       return true;
+      if (range instanceof Bounds || !first || !key.equals(startWith))       rows.add(current);
+      first=false;
+      if (rows.size() >= maxResults)       return true;
+    }
+    return false;
+  }
+  finally {
+    try {
+      iterator.close();
+    }
+ catch (    IOException e) {
+      throw new IOError(e);
+    }
+  }
+}

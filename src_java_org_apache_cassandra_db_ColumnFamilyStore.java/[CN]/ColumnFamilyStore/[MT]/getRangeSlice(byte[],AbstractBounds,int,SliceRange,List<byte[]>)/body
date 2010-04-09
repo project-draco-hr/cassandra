@@ -1,25 +1,17 @@
 {
-  List<String> keys=new ArrayList<String>();
+  List<Row> rows=new ArrayList<Row>();
   boolean completed;
   if ((range instanceof Bounds || !((Range)range).isWrapAround())) {
-    completed=getKeyRange(keys,range,keyMax);
+    completed=getRangeRows(rows,super_column,range,keyMax,sliceRange,columnNames);
   }
  else {
     Token min=StorageService.getPartitioner().getMinimumToken();
     Range first=new Range(range.left,min);
-    completed=getKeyRange(keys,first,keyMax);
+    completed=getRangeRows(rows,super_column,first,keyMax,sliceRange,columnNames);
     if (!completed && min.compareTo(range.right) < 0) {
       Range second=new Range(min,range.right);
-      getKeyRange(keys,second,keyMax);
+      getRangeRows(rows,super_column,second,keyMax,sliceRange,columnNames);
     }
-  }
-  List<Row> rows=new ArrayList<Row>(keys.size());
-  final QueryPath queryPath=new QueryPath(columnFamily_,super_column,null);
-  final SortedSet<byte[]> columnNameSet=new TreeSet<byte[]>(getComparator());
-  if (columnNames != null)   columnNameSet.addAll(columnNames);
-  for (  String key : keys) {
-    QueryFilter filter=sliceRange == null ? QueryFilter.getNamesFilter(key,queryPath,columnNameSet) : QueryFilter.getSliceFilter(key,queryPath,sliceRange.start,sliceRange.finish,sliceRange.bitmasks,sliceRange.reversed,sliceRange.count);
-    rows.add(new Row(key,getColumnFamily(filter)));
   }
   return new RangeSliceReply(rows);
 }
