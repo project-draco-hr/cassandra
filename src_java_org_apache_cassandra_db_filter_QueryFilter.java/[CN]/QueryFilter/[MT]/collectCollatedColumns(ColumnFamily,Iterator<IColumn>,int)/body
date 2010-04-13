@@ -9,7 +9,12 @@
     }
     protected IColumn getReduced(){
       IColumn c=curCF.getSortedColumns().iterator().next();
-      if (superFilter != null)       c=filter.filterSuperColumn((SuperColumn)c,gcBefore);
+      if (superFilter != null) {
+        long deletedAt=c.getMarkedForDeleteAt();
+        if (returnCF.getMarkedForDeleteAt() > deletedAt)         ((SuperColumn)c).markForDeleteAt(c.getLocalDeletionTime(),returnCF.getMarkedForDeleteAt());
+        c=filter.filterSuperColumn((SuperColumn)c,gcBefore);
+        ((SuperColumn)c).markForDeleteAt(c.getLocalDeletionTime(),deletedAt);
+      }
       curCF.clear();
       return c;
     }
