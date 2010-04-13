@@ -9,18 +9,15 @@
   }
   IndexSummary.KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
   if (sampledPosition == null)   return null;
-  PositionSize info=indexSummary.getSpannedPosition(sampledPosition);
-  if (info != null)   return info;
   long p=sampledPosition.indexPosition;
   FileDataInput input;
-  int bufferIndex=bufferIndex(p);
   try {
     if (indexBuffers == null) {
       input=new BufferedRandomAccessFile(indexFilename(),"r");
       ((BufferedRandomAccessFile)input).seek(p);
     }
  else {
-      input=new MappedFileDataInput(indexBuffers[bufferIndex],indexFilename(),BUFFER_SIZE * bufferIndex,(int)(p % BUFFER_SIZE));
+      input=indexInputAt(p);
     }
   }
  catch (  IOException e) {
@@ -29,16 +26,27 @@
   try {
     int i=0;
     do {
-      if (input.isEOF() || indexSummary.getSpannedPosition(input.getAbsolutePosition()) != null) {
-        if (indexBuffers == null || ++bufferIndex == indexBuffers.length)         break;
-        input=new MappedFileDataInput(indexBuffers[bufferIndex],indexFilename(),BUFFER_SIZE * bufferIndex,0);
+      IndexSummary.KeyPosition kp=indexSummary.getSpannedIndexPosition(input.getAbsolutePosition());
+      if (kp != null && kp.key.equals(decoratedKey))       return indexSummary.getSpannedDataPosition(kp);
+      if (input.isEOF() || kp != null) {
+        if (indexBuffers == null)         break;
+        FileDataInput oldInput=input;
+        if (kp == null) {
+          input=indexInputAt(input.getAbsolutePosition());
+        }
+ else {
+          long nextUnspannedPostion=input.getAbsolutePosition() + 2 + FBUtilities.encodedUTF8Length(StorageService.getPartitioner().convertToDiskFormat(kp.key))+ 8;
+          input=indexInputAt(nextUnspannedPostion);
+        }
+        oldInput.close();
+        if (input == null)         break;
         continue;
       }
       DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
       long dataPosition=input.readLong();
       int v=indexDecoratedKey.compareTo(decoratedKey);
       if (v == 0) {
-        info=getDataPositionSize(input,dataPosition);
+        PositionSize info=getDataPositionSize(input,dataPosition);
         if (keyCache != null && keyCache.getCapacity() > 0)         keyCache.put(unifiedKey,info);
         return info;
       }
