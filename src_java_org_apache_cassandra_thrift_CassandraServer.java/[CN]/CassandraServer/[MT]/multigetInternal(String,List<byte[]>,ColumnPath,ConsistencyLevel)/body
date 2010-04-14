@@ -1,0 +1,23 @@
+{
+  ThriftValidation.validateColumnPath(table,column_path);
+  QueryPath path=new QueryPath(column_path.column_family,column_path.column == null ? null : column_path.super_column);
+  List<byte[]> nameAsList=Arrays.asList(column_path.column == null ? column_path.super_column : column_path.column);
+  List<ReadCommand> commands=new ArrayList<ReadCommand>();
+  for (  byte[] key : keys) {
+    ThriftValidation.validateKey(key);
+    commands.add(new SliceByNamesReadCommand(table,key,path,nameAsList));
+  }
+  Map<byte[],ColumnOrSuperColumn> columnFamiliesMap=new HashMap<byte[],ColumnOrSuperColumn>();
+  Map<byte[],ColumnFamily> cfamilies=readColumnFamily(commands,consistency_level);
+  for (  ReadCommand command : commands) {
+    ColumnFamily cf=cfamilies.get(command.key);
+    if (cf == null) {
+      columnFamiliesMap.put(command.key,new ColumnOrSuperColumn());
+    }
+ else {
+      List<ColumnOrSuperColumn> tcolumns=thriftifyColumnFamily(cf,command.queryPath.superColumnName != null,false);
+      columnFamiliesMap.put(command.key,tcolumns.size() > 0 ? tcolumns.iterator().next() : new ColumnOrSuperColumn());
+    }
+  }
+  return columnFamiliesMap;
+}
