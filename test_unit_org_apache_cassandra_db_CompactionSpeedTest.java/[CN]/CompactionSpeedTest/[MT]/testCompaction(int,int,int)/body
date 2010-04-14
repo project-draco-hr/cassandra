@@ -1,0 +1,24 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Table table=Table.open(TABLE1);
+  ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  ArrayList<SSTableReader> sstables=new ArrayList<SSTableReader>();
+  for (int k=0; k < sstableCount; k++) {
+    SortedMap<String,ColumnFamily> rows=new TreeMap<String,ColumnFamily>();
+    for (int j=0; j < rowsPerSSTable; j++) {
+      String key=String.valueOf(j);
+      IColumn[] cols=new IColumn[colsPerRow];
+      for (int i=0; i < colsPerRow; i++) {
+        cols[i]=Util.column(String.valueOf(i),String.valueOf(i),k);
+      }
+      rows.put(key,SSTableUtils.createCF(Long.MIN_VALUE,Integer.MIN_VALUE,cols));
+    }
+    SSTableReader sstable=SSTableUtils.writeSSTable(rows);
+    sstables.add(sstable);
+    store.addSSTable(sstable);
+  }
+  Thread.sleep(1000);
+  long start=System.currentTimeMillis();
+  CompactionManager.instance.doCompaction(store,sstables,CompactionManager.getDefaultGCBefore());
+  System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",this.getClass().getName(),sstableCount,rowsPerSSTable,colsPerRow,System.currentTimeMillis() - start));
+}
