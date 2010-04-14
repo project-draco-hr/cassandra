@@ -1,0 +1,16 @@
+{
+  boolean temporary=false;
+  if (datafile == null) {
+    datafile=tempSSTableFile(tablename,cfname);
+    temporary=true;
+  }
+  SSTableWriter writer=new SSTableWriter(datafile.getAbsolutePath(),entries.size(),StorageService.getPartitioner());
+  SortedMap<DecoratedKey,byte[]> sortedEntries=new TreeMap<DecoratedKey,byte[]>();
+  for (  Map.Entry<byte[],byte[]> entry : entries.entrySet())   sortedEntries.put(writer.partitioner.decorateKey(entry.getKey()),entry.getValue());
+  for (  Map.Entry<DecoratedKey,byte[]> entry : sortedEntries.entrySet())   writer.append(entry.getKey(),entry.getValue());
+  if (temporary) {
+    new File(writer.indexFilename()).deleteOnExit();
+    new File(writer.filterFilename()).deleteOnExit();
+  }
+  return writer.closeAndOpenReader();
+}

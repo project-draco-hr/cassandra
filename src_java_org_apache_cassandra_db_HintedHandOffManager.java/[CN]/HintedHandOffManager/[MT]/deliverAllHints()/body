@@ -2,18 +2,19 @@
   if (logger_.isDebugEnabled())   logger_.debug("Started deliverAllHints");
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
   for (  String tableName : DatabaseDescriptor.getTables()) {
+    DecoratedKey tableNameKey=StorageService.getPartitioner().decorateKey(tableName.getBytes(UTF8));
     byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
     while (true) {
-      QueryFilter filter=QueryFilter.getSliceFilter(tableName,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,null,false,PAGE_SIZE);
+      QueryFilter filter=QueryFilter.getSliceFilter(tableNameKey,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,null,false,PAGE_SIZE);
       ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
       if (pagingFinished(hintColumnFamily,startColumn))       break;
       Collection<IColumn> keys=hintColumnFamily.getSortedColumns();
       for (      IColumn keyColumn : keys) {
         Collection<IColumn> endpoints=keyColumn.getSubColumns();
-        String keyStr=new String(keyColumn.name(),"UTF-8");
+        byte[] keyBytes=keyColumn.name();
         int deleted=0;
         for (        IColumn endpoint : endpoints) {
-          if (sendMessage(InetAddress.getByAddress(endpoint.name()),tableName,keyStr)) {
+          if (sendMessage(InetAddress.getByAddress(endpoint.name()),tableName,keyBytes)) {
             deleteEndPoint(endpoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
             deleted++;
           }

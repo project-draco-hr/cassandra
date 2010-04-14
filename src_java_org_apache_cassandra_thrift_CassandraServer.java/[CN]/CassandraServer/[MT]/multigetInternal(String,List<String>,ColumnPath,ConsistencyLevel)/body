@@ -5,18 +5,19 @@
   List<ReadCommand> commands=new ArrayList<ReadCommand>();
   for (  String key : keys) {
     ThriftValidation.validateKey(key);
-    commands.add(new SliceByNamesReadCommand(table,key,path,nameAsList));
+    commands.add(new SliceByNamesReadCommand(table,key.getBytes(UTF8),path,nameAsList));
   }
   Map<String,ColumnOrSuperColumn> columnFamiliesMap=new HashMap<String,ColumnOrSuperColumn>();
-  Map<String,ColumnFamily> cfamilies=readColumnFamily(commands,consistency_level);
+  Map<byte[],ColumnFamily> cfamilies=readColumnFamily(commands,consistency_level);
   for (  ReadCommand command : commands) {
     ColumnFamily cf=cfamilies.get(command.key);
+    String skey=new String(command.key,UTF8);
     if (cf == null) {
-      columnFamiliesMap.put(command.key,new ColumnOrSuperColumn());
+      columnFamiliesMap.put(skey,new ColumnOrSuperColumn());
     }
  else {
       List<ColumnOrSuperColumn> tcolumns=thriftifyColumnFamily(cf,command.queryPath.superColumnName != null,false);
-      columnFamiliesMap.put(command.key,tcolumns.size() > 0 ? tcolumns.iterator().next() : new ColumnOrSuperColumn());
+      columnFamiliesMap.put(skey,tcolumns.size() > 0 ? tcolumns.iterator().next() : new ColumnOrSuperColumn());
     }
   }
   return columnFamiliesMap;

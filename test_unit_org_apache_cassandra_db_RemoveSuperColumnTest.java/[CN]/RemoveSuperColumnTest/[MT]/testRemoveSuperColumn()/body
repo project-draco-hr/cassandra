@@ -1,17 +1,18 @@
 {
   ColumnFamilyStore store=Table.open("Keyspace1").getColumnFamilyStore("Super1");
   RowMutation rm;
-  rm=new RowMutation("Keyspace1","key1");
+  DecoratedKey dk=Util.dk("key1");
+  rm=new RowMutation("Keyspace1",dk.key);
   addMutation(rm,"Super1","SC1",1,"val1",0);
   rm.apply();
   store.forceBlockingFlush();
-  rm=new RowMutation("Keyspace1","key1");
+  rm=new RowMutation("Keyspace1",dk.key);
   rm.delete(new QueryPath("Super1","SC1".getBytes()),1);
   rm.apply();
-  validateRemoveTwoSources();
+  validateRemoveTwoSources(dk);
   store.forceBlockingFlush();
-  validateRemoveTwoSources();
+  validateRemoveTwoSources(dk);
   CompactionManager.instance.submitMajor(store).get();
   assertEquals(1,store.getSSTables().size());
-  validateRemoveCompacted();
+  validateRemoveCompacted(dk);
 }

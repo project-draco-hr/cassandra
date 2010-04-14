@@ -13,6 +13,7 @@
         }
       }
     }
+    DecoratedKey key=StorageService.getPartitioner().decorateKey(mutation.key());
     for (    ColumnFamily columnFamily : mutation.getColumnFamilies()) {
       Memtable memtableToFlush;
       ColumnFamilyStore cfs=columnFamilyStores.get(columnFamily.id());
@@ -20,8 +21,8 @@
         logger.error("Attempting to mutate non-existant column family " + columnFamily.name());
       }
  else {
-        if ((memtableToFlush=cfs.apply(mutation.key(),columnFamily)) != null)         memtablesToFlush.put(cfs,memtableToFlush);
-        ColumnFamily cachedRow=cfs.getRawCachedRow(mutation.key());
+        if ((memtableToFlush=cfs.apply(key,columnFamily)) != null)         memtablesToFlush.put(cfs,memtableToFlush);
+        ColumnFamily cachedRow=cfs.getRawCachedRow(key);
         if (cachedRow != null)         cachedRow.addAll(columnFamily);
       }
     }
