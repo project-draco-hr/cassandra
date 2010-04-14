@@ -1,6 +1,9 @@
 {
   indexSummary=new IndexSummary();
   BufferedRandomAccessFile input=new BufferedRandomAccessFile(indexFilename(),"r");
+  if (recreatebloom) {
+    bf=BloomFilter.getFilter((int)(input.length() / 32),15);
+  }
   try {
     long indexSize=input.length();
     while (true) {
@@ -9,6 +12,9 @@
         break;
       }
       DecoratedKey decoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
+      if (recreatebloom) {
+        bf.add(decoratedKey.key);
+      }
       long dataPosition=input.readLong();
       long nextIndexPosition=input.getFilePointer();
       long nextDataPosition;
