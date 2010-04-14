@@ -1,5 +1,5 @@
 {
-  if (!bf.isPresent(partitioner.convertToDiskFormat(decoratedKey)))   return null;
+  if (!bf.isPresent(new String(partitioner.convertToDiskFormat(decoratedKey),FBUtilities.UTF8)))   return null;
   Pair<Descriptor,DecoratedKey> unifiedKey=new Pair<Descriptor,DecoratedKey>(desc,decoratedKey);
   if (keyCache != null && keyCache.getCapacity() > 0) {
     PositionSize cachedPosition=keyCache.get(unifiedKey);
@@ -35,14 +35,15 @@
           input=indexInputAt(input.getAbsolutePosition());
         }
  else {
-          long nextUnspannedPostion=input.getAbsolutePosition() + 2 + FBUtilities.encodedUTF8Length(StorageService.getPartitioner().convertToDiskFormat(kp.key))+ 8;
+          int keylength=StorageService.getPartitioner().convertToDiskFormat(kp.key).length;
+          long nextUnspannedPostion=input.getAbsolutePosition() + DBConstants.shortSize_ + keylength+ DBConstants.longSize_;
           input=indexInputAt(nextUnspannedPostion);
         }
         oldInput.close();
         if (input == null)         break;
         continue;
       }
-      DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(input.readUTF());
+      DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
       long dataPosition=input.readLong();
       int v=indexDecoratedKey.compareTo(decoratedKey);
       if (v == 0) {
