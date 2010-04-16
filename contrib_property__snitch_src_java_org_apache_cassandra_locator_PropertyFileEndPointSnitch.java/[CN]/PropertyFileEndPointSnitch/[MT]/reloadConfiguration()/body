@@ -1,17 +1,15 @@
 {
-  String rackPropertyFilename=System.getProperty("rackFile",DEFAULT_RACK_PROPERTY_FILE);
+  ClassLoader loader=PropertyFileEndPointSnitch.class.getClassLoader();
+  URL scpurl=loader.getResource(RACK_PROPERTY_FILENAME);
+  if (scpurl == null)   throw new ConfigurationException("unable to locate " + RACK_PROPERTY_FILENAME);
+  String rackPropertyFilename=scpurl.getFile();
   try {
     Properties localHostProperties=new Properties();
     localHostProperties.load(new FileReader(rackPropertyFilename));
     hostProperties=localHostProperties;
     runInBaseMode=false;
   }
- catch (  FileNotFoundException fnfe) {
-    logger_.error("Could not find " + rackPropertyFilename + ", using default EndPointSnitch",fnfe);
-    runInBaseMode=true;
-  }
-catch (  IOException ioe) {
-    logger_.error("Could not process " + rackPropertyFilename,ioe);
-    throw ioe;
+ catch (  IOException ioe) {
+    throw new ConfigurationException("Could not process " + rackPropertyFilename,ioe);
   }
 }
