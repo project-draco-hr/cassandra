@@ -4,12 +4,12 @@ def test_cf_remove_column(self):
     _expect_missing((lambda : client.get('Keyspace1', 'key1', ColumnPath('Standard1', column='c1'), ConsistencyLevel.ONE)))
     assert (client.get('Keyspace1', 'key1', ColumnPath('Standard1', column='c2'), ConsistencyLevel.ONE).column == Column('c2', 'value2', 0))
     assert (_big_slice('Keyspace1', 'key1', ColumnParent('Standard1')) == [ColumnOrSuperColumn(column=Column('c2', 'value2', 0))])
-    client.insert('Keyspace1', 'key1', ColumnPath('Standard1', column='c3'), 'value3', 0, ConsistencyLevel.ONE)
+    client.insert('Keyspace1', 'key1', ColumnParent('Standard1'), Column('c3', 'value3', 0), ConsistencyLevel.ONE)
     columns = [result.column for result in _big_slice('Keyspace1', 'key1', ColumnParent('Standard1'))]
     assert (columns == [Column('c2', 'value2', 0), Column('c3', 'value3', 0)]), columns
-    client.insert('Keyspace1', 'key1', ColumnPath('Standard1', column='c1'), 'value1', 0, ConsistencyLevel.ONE)
+    client.insert('Keyspace1', 'key1', ColumnParent('Standard1'), Column('c1', 'value1', 0), ConsistencyLevel.ONE)
     columns = [result.column for result in _big_slice('Keyspace1', 'key1', ColumnParent('Standard1'))]
     assert (columns == [Column('c2', 'value2', 0), Column('c3', 'value3', 0)]), columns
-    client.insert('Keyspace1', 'key1', ColumnPath('Standard1', column='c1'), 'value1', 2, ConsistencyLevel.ONE)
+    client.insert('Keyspace1', 'key1', ColumnParent('Standard1'), Column('c1', 'value1', 2), ConsistencyLevel.ONE)
     columns = [result.column for result in _big_slice('Keyspace1', 'key1', ColumnParent('Standard1'))]
     assert (columns == [Column('c1', 'value1', 2), Column('c2', 'value2', 0), Column('c3', 'value3', 0)]), columns

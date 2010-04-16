@@ -1,14 +1,29 @@
 {
   byte[] name=FBUtilities.readShortByteArray(dis);
-  boolean delete=dis.readBoolean();
-  long ts=dis.readLong();
-  int length=dis.readInt();
-  if (length < 0) {
-    throw new IOException("Corrupt (negative) value length encountered");
+  int b=dis.readUnsignedByte();
+  if (FBUtilities.testBitUsingBitMask(b,EXPIRATION_MASK)) {
+    int ttl=dis.readInt();
+    int expiration=dis.readInt();
+    long ts=dis.readLong();
+    byte[] value=FBUtilities.readByteArray(dis);
+    if ((int)(System.currentTimeMillis() / 1000) > expiration) {
+      ByteBuffer bytes=ByteBuffer.allocate(4);
+      bytes.putInt(expiration);
+      return new DeletedColumn(name,bytes.array(),ts);
+    }
+ else {
+      return new ExpiringColumn(name,value,ts,ttl,expiration);
+    }
   }
-  byte[] value=new byte[length];
-  if (length > 0) {
-    dis.readFully(value);
+ else {
+    boolean delete=FBUtilities.testBitUsingBitMask(b,DELETION_MASK);
+    long ts=dis.readLong();
+    byte[] value=FBUtilities.readByteArray(dis);
+    if (FBUtilities.testBitUsingBitMask(b,DELETION_MASK)) {
+      return new DeletedColumn(name,value,ts);
+    }
+ else {
+      return new Column(name,value,ts);
+    }
   }
-  return delete ? new DeletedColumn(name,value,ts) : new Column(name,value,ts);
 }
