@@ -1,0 +1,31 @@
+{
+  IEndPointSnitch snitch;
+  Class cls;
+  try {
+    cls=Class.forName(endPointSnitchClassName);
+  }
+ catch (  ClassNotFoundException e) {
+    throw new ConfigurationException("Unable to load endpointsnitch class " + endPointSnitchClassName);
+  }
+  Constructor ctor;
+  try {
+    ctor=cls.getConstructor();
+  }
+ catch (  NoSuchMethodException e) {
+    throw new ConfigurationException("No default constructor found in " + endPointSnitchClassName);
+  }
+  try {
+    snitch=(IEndPointSnitch)ctor.newInstance();
+  }
+ catch (  InstantiationException e) {
+    throw new ConfigurationException("endpointsnitch class " + endPointSnitchClassName + "is abstract");
+  }
+catch (  IllegalAccessException e) {
+    throw new ConfigurationException("Access to " + endPointSnitchClassName + " constructor was rejected");
+  }
+catch (  InvocationTargetException e) {
+    if (e.getCause() instanceof ConfigurationException)     throw (ConfigurationException)e.getCause();
+    throw new ConfigurationException("Error instantiating " + endPointSnitchClassName + " "+ e.getMessage());
+  }
+  return snitch;
+}
