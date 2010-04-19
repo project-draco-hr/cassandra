@@ -2,8 +2,8 @@
   TokenMetadata tm=StorageService.instance.getTokenMetadata();
   Multimap<Range,InetAddress> pendingRanges=HashMultimap.create();
   Map<Token,InetAddress> bootstrapTokens=tm.getBootstrapTokens();
-  Set<InetAddress> leavingEndPoints=tm.getLeavingEndPoints();
-  if (bootstrapTokens.isEmpty() && leavingEndPoints.isEmpty()) {
+  Set<InetAddress> leavingEndpoints=tm.getLeavingEndpoints();
+  if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty()) {
     if (logger_.isDebugEnabled())     logger_.debug("No bootstrapping or leaving nodes -> empty pending ranges for {}",table);
     tm.setPendingRanges(table,pendingRanges);
     return;
@@ -11,18 +11,18 @@
   Multimap<InetAddress,Range> addressRanges=strategy.getAddressRanges(table);
   TokenMetadata allLeftMetadata=tm.cloneAfterAllLeft();
   Set<Range> affectedRanges=new HashSet<Range>();
-  for (  InetAddress endPoint : leavingEndPoints)   affectedRanges.addAll(addressRanges.get(endPoint));
+  for (  InetAddress endpoint : leavingEndpoints)   affectedRanges.addAll(addressRanges.get(endpoint));
   for (  Range range : affectedRanges) {
-    List<InetAddress> currentEndPoints=strategy.getNaturalEndpoints(range.right,tm,table);
-    List<InetAddress> newEndPoints=strategy.getNaturalEndpoints(range.right,allLeftMetadata,table);
-    newEndPoints.removeAll(currentEndPoints);
-    pendingRanges.putAll(range,newEndPoints);
+    List<InetAddress> currentEndpoints=strategy.getNaturalEndpoints(range.right,tm,table);
+    List<InetAddress> newEndpoints=strategy.getNaturalEndpoints(range.right,allLeftMetadata,table);
+    newEndpoints.removeAll(currentEndpoints);
+    pendingRanges.putAll(range,newEndpoints);
   }
   for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
-    InetAddress endPoint=entry.getValue();
-    allLeftMetadata.updateNormalToken(entry.getKey(),endPoint);
-    for (    Range range : strategy.getAddressRanges(allLeftMetadata,table).get(endPoint))     pendingRanges.put(range,endPoint);
-    allLeftMetadata.removeEndpoint(endPoint);
+    InetAddress endpoint=entry.getValue();
+    allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
+    for (    Range range : strategy.getAddressRanges(allLeftMetadata,table).get(endpoint))     pendingRanges.put(range,endpoint);
+    allLeftMetadata.removeEndpoint(endpoint);
   }
   tm.setPendingRanges(table,pendingRanges);
   if (logger_.isDebugEnabled())   logger_.debug("Pending ranges:\n" + (pendingRanges.isEmpty() ? "<empty>" : tm.printPendingRanges()));

@@ -3,32 +3,32 @@
   TokenMetadata tmd=new TokenMetadata();
   TokenMetadata oldTmd=StorageServiceAccessor.setTokenMetadata(tmd);
   AbstractReplicationStrategy strategy=new RackUnawareStrategy(tmd,null);
-  Token[] endPointTokens=new Token[RING_SIZE];
+  Token[] endpointTokens=new Token[RING_SIZE];
   Token[] keyTokens=new Token[RING_SIZE];
   for (int i=0; i < RING_SIZE; i++) {
-    endPointTokens[i]=new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i));
+    endpointTokens[i]=new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i));
     keyTokens[i]=new BigIntegerToken(String.valueOf(RING_SIZE * 2 * i + RING_SIZE));
   }
   List<InetAddress> hosts=new ArrayList<InetAddress>();
-  for (int i=0; i < endPointTokens.length; i++) {
+  for (int i=0; i < endpointTokens.length; i++) {
     InetAddress ep=InetAddress.getByName("127.0.0." + String.valueOf(i + 1));
-    tmd.updateNormalToken(endPointTokens[i],ep);
+    tmd.updateNormalToken(endpointTokens[i],ep);
     hosts.add(ep);
   }
   Token bsToken=new BigIntegerToken(String.valueOf(210));
-  InetAddress bootstrapEndPoint=InetAddress.getByName("127.0.0.11");
-  tmd.addBootstrapToken(bsToken,bootstrapEndPoint);
+  InetAddress bootstrapEndpoint=InetAddress.getByName("127.0.0.11");
+  tmd.addBootstrapToken(bsToken,bootstrapEndpoint);
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
     StorageService.calculatePendingRanges(strategy,table);
     int replicationFactor=DatabaseDescriptor.getReplicationFactor(table);
     for (int i=0; i < keyTokens.length; i++) {
-      Collection<InetAddress> endPoints=strategy.getWriteEndpoints(keyTokens[i],table,strategy.getNaturalEndpoints(keyTokens[i],table));
-      assertTrue(endPoints.size() >= replicationFactor);
+      Collection<InetAddress> endpoints=strategy.getWriteEndpoints(keyTokens[i],table,strategy.getNaturalEndpoints(keyTokens[i],table));
+      assertTrue(endpoints.size() >= replicationFactor);
       for (int j=0; j < replicationFactor; j++) {
-        assertTrue(endPoints.contains(hosts.get((i + j + 1) % hosts.size())));
+        assertTrue(endpoints.contains(hosts.get((i + j + 1) % hosts.size())));
       }
-      if (i < RING_SIZE - replicationFactor)       assertFalse(endPoints.contains(bootstrapEndPoint));
- else       assertTrue(endPoints.contains(bootstrapEndPoint));
+      if (i < RING_SIZE - replicationFactor)       assertFalse(endpoints.contains(bootstrapEndpoint));
+ else       assertTrue(endpoints.contains(bootstrapEndpoint));
     }
   }
   StorageServiceAccessor.setTokenMetadata(oldTmd);

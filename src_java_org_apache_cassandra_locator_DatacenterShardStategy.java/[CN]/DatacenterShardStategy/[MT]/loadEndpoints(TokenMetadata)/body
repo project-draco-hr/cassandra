@@ -1,0 +1,32 @@
+{
+  this.tokens=new ArrayList<Token>(metadata.sortedTokens());
+  String localDC=((DatacenterEndPointSnitch)snitch_).getLocation(InetAddress.getLocalHost());
+  dcMap=new HashMap<String,List<Token>>();
+  for (  Token token : this.tokens) {
+    InetAddress endpoint=metadata.getEndpoint(token);
+    String dataCenter=((DatacenterEndPointSnitch)snitch_).getLocation(endpoint);
+    if (dataCenter.equals(localDC)) {
+      localEndpoints.add(endpoint);
+    }
+    List<Token> lst=dcMap.get(dataCenter);
+    if (lst == null) {
+      lst=new ArrayList<Token>();
+    }
+    lst.add(token);
+    dcMap.put(dataCenter,lst);
+  }
+  for (  Entry<String,List<Token>> entry : dcMap.entrySet()) {
+    List<Token> valueList=entry.getValue();
+    Collections.sort(valueList);
+    dcMap.put(entry.getKey(),valueList);
+  }
+  dcReplicationFactor=((DatacenterEndPointSnitch)snitch_).getMapReplicationFactor();
+  for (  Entry<String,Integer> entry : dcReplicationFactor.entrySet()) {
+    String datacenter=entry.getKey();
+    int qFactor=(entry.getValue() / 2 + 1);
+    quorumRepFactor.put(datacenter,qFactor);
+    if (datacenter.equals(localDC)) {
+      locQFactor=qFactor;
+    }
+  }
+}
