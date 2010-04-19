@@ -6,15 +6,15 @@
   try {
     GossipDigestAckMessage gDigestAckMessage=GossipDigestAckMessage.serializer().deserialize(dis);
     List<GossipDigest> gDigestList=gDigestAckMessage.getGossipDigestList();
-    Map<InetAddress,EndPointState> epStateMap=gDigestAckMessage.getEndpointStateMap();
+    Map<InetAddress,EndpointState> epStateMap=gDigestAckMessage.getEndpointStateMap();
     if (epStateMap.size() > 0) {
       Gossiper.instance.notifyFailureDetector(epStateMap);
       Gossiper.instance.applyStateLocally(epStateMap);
     }
-    Map<InetAddress,EndPointState> deltaEpStateMap=new HashMap<InetAddress,EndPointState>();
+    Map<InetAddress,EndpointState> deltaEpStateMap=new HashMap<InetAddress,EndpointState>();
     for (    GossipDigest gDigest : gDigestList) {
       InetAddress addr=gDigest.getEndpoint();
-      EndPointState localEpStatePtr=Gossiper.instance.getStateForVersionBiggerThan(addr,gDigest.getMaxVersion());
+      EndpointState localEpStatePtr=Gossiper.instance.getStateForVersionBiggerThan(addr,gDigest.getMaxVersion());
       if (localEpStatePtr != null)       deltaEpStateMap.put(addr,localEpStatePtr);
     }
     GossipDigestAck2Message gDigestAck2=new GossipDigestAck2Message(deltaEpStateMap);

@@ -1,0 +1,27 @@
+{
+  for (  Entry<InetAddress,EndpointState> entry : epStateMap.entrySet()) {
+    InetAddress ep=entry.getKey();
+    if (ep.equals(localEndpoint_))     continue;
+    EndpointState localEpStatePtr=endpointStateMap_.get(ep);
+    EndpointState remoteState=entry.getValue();
+    if (localEpStatePtr != null) {
+      int localGeneration=localEpStatePtr.getHeartBeatState().getGeneration();
+      int remoteGeneration=remoteState.getHeartBeatState().getGeneration();
+      if (remoteGeneration > localGeneration) {
+        handleGenerationChange(ep,remoteState);
+      }
+ else       if (remoteGeneration == localGeneration) {
+        int localMaxVersion=getMaxEndpointStateVersion(localEpStatePtr);
+        int remoteMaxVersion=getMaxEndpointStateVersion(remoteState);
+        if (remoteMaxVersion > localMaxVersion) {
+          markAlive(ep,localEpStatePtr);
+          applyHeartBeatStateLocally(ep,localEpStatePtr,remoteState);
+          applyApplicationStateLocally(ep,localEpStatePtr,remoteState);
+        }
+      }
+    }
+ else {
+      handleNewJoin(ep,remoteState);
+    }
+  }
+}

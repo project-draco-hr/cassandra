@@ -1,0 +1,34 @@
+{
+  try {
+    String[] dcNames=xmlUtils.getNodeValues("/Endpoints/DataCenter/name");
+    for (    String dcName : dcNames) {
+      String dcXPath="/Endpoints/DataCenter[name='" + dcName + "']";
+      String dcIPQuad=xmlUtils.getNodeValue(dcXPath + "/ip2ndQuad");
+      String replicationFactor=xmlUtils.getNodeValue(dcXPath + "/replicationFactor");
+      byte dcByte=intToByte(Integer.parseInt(dcIPQuad));
+      int dcReF=Integer.parseInt(replicationFactor);
+      dcRepFactor.put(dcName,dcReF);
+      quorumDCMap.put(dcName,(dcReF / 2 + 1));
+      String[] racNames=xmlUtils.getNodeValues(dcXPath + "/rack/name");
+      Map<Byte,String> dcRackMap=ipDC.get(dcByte);
+      if (null == dcRackMap) {
+        dcRackMap=new HashMap<Byte,String>();
+      }
+      Map<Byte,String> rackDcMap=ipRAC.get(dcByte);
+      if (null == rackDcMap) {
+        rackDcMap=new HashMap<Byte,String>();
+      }
+      for (      String racName : racNames) {
+        String racIPQuad=xmlUtils.getNodeValue(dcXPath + "/rack[name = '" + racName+ "']/ip3rdQuad");
+        byte racByte=intToByte(Integer.parseInt(racIPQuad));
+        dcRackMap.put(racByte,dcName);
+        rackDcMap.put(racByte,racName);
+      }
+      ipDC.put(dcByte,dcRackMap);
+      ipRAC.put(dcByte,rackDcMap);
+    }
+  }
+ catch (  Exception ioe) {
+    throw new IOException("Could not process " + DEFAULT_RACK_CONFIG_FILE,ioe);
+  }
+}
