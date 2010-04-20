@@ -10,15 +10,16 @@
   boolean bOtherRack=false;
   while (endpoints.size() < replicas && iter.hasNext()) {
     try {
+      AbstractRackAwareSnitch snitch=(AbstractRackAwareSnitch)snitch_;
       Token t=iter.next();
-      if (!((AbstractRackAwareSnitch)snitch_).isInSameDataCenter(metadata.getEndpoint(primaryToken),metadata.getEndpoint(t))) {
+      if (!snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(snitch.getDatacenter(metadata.getEndpoint(t)))) {
         if (!bDataCenter) {
           endpoints.add(metadata.getEndpoint(t));
           bDataCenter=true;
         }
         continue;
       }
-      if (!((AbstractRackAwareSnitch)snitch_).isOnSameRack(metadata.getEndpoint(primaryToken),metadata.getEndpoint(t)) && ((AbstractRackAwareSnitch)snitch_).isInSameDataCenter(metadata.getEndpoint(primaryToken),metadata.getEndpoint(t))) {
+      if (!snitch.getRack(metadata.getEndpoint(primaryToken)).equals(snitch.getRack(metadata.getEndpoint(t))) && snitch.getDatacenter(metadata.getEndpoint(primaryToken)).equals(snitch.getDatacenter(metadata.getEndpoint(t)))) {
         if (!bOtherRack) {
           endpoints.add(metadata.getEndpoint(t));
           bOtherRack=true;
