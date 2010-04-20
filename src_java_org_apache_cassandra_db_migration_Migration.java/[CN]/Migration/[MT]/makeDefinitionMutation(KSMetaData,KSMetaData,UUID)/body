@@ -3,5 +3,10 @@
   RowMutation rm=new RowMutation(Table.DEFINITIONS,toBytes(versionId));
   if (remove != null)   rm.delete(new QueryPath(SCHEMA_CF,null,remove.name.getBytes()),System.currentTimeMillis());
   if (add != null)   rm.add(new QueryPath(SCHEMA_CF,null,add.name.getBytes()),KSMetaData.serialize(add),now);
+  for (  String tableName : DatabaseDescriptor.getNonSystemTables()) {
+    if (add != null && add.name.equals(tableName) || remove != null && remove.name.equals(tableName))     continue;
+    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(tableName);
+    rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes()),KSMetaData.serialize(ksm),now);
+  }
   return rm;
 }
