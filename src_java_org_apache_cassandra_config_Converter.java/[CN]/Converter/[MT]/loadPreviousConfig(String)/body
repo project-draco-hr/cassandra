@@ -1,0 +1,102 @@
+{
+  try {
+    XMLUtils xmlUtils=new XMLUtils(config);
+    conf.cluster_name=xmlUtils.getNodeValue("/Storage/ClusterName");
+    String syncRaw=xmlUtils.getNodeValue("/Storage/CommitLogSync");
+    conf.commitlog_sync=Config.CommitLogSync.valueOf(syncRaw);
+    if (conf.commitlog_sync != null) {
+      if (conf.commitlog_sync == Config.CommitLogSync.batch)       conf.commitlog_sync_batch_window_in_ms=Double.valueOf(xmlUtils.getNodeValue("/Storage/CommitLogSyncBatchWindowInMS"));
+ else       conf.commitlog_sync_period_in_ms=Integer.valueOf(xmlUtils.getNodeValue("/Storage/CommitLogSyncPeriodInMS"));
+    }
+    String modeRaw=xmlUtils.getNodeValue("/Storage/DiskAccessMode");
+    conf.disk_access_mode=Config.DiskAccessMode.valueOf(modeRaw);
+    conf.authenticator=xmlUtils.getNodeValue("/Storage/Authenticator");
+    conf.partitioner=xmlUtils.getNodeValue("/Storage/Partitioner");
+    conf.job_tracker_host=xmlUtils.getNodeValue("/Storage/JobTrackerHost");
+    conf.job_jar_file_location=xmlUtils.getNodeValue("/Storage/JobJarFileLocation");
+    String gcGrace=xmlUtils.getNodeValue("/Storage/GCGraceSeconds");
+    if (gcGrace != null)     conf.gc_grace_seconds=Integer.parseInt(gcGrace);
+    conf.initial_token=xmlUtils.getNodeValue("/Storage/InitialToken");
+    String rpcTimeout=xmlUtils.getNodeValue("/Storage/RpcTimeoutInMillis");
+    if (rpcTimeout != null)     conf.rpc_timeout_in_ms=Long.parseLong(rpcTimeout);
+    String rawReaders=xmlUtils.getNodeValue("/Storage/ConcurrentReads");
+    if (rawReaders != null) {
+      conf.concurrent_reads=Integer.parseInt(rawReaders);
+    }
+    String rawWriters=xmlUtils.getNodeValue("/Storage/ConcurrentWrites");
+    if (rawWriters != null) {
+      conf.concurrent_writes=Integer.parseInt(rawWriters);
+    }
+    String rawFlushData=xmlUtils.getNodeValue("/Storage/FlushDataBufferSizeInMB");
+    if (rawFlushData != null) {
+      conf.flush_data_buffer_size_in_mb=Double.parseDouble(rawFlushData);
+    }
+    String rawFlushIndex=xmlUtils.getNodeValue("/Storage/FlushIndexBufferSizeInMB");
+    if (rawFlushIndex != null) {
+      conf.flush_index_buffer_size_in_mb=Double.parseDouble(rawFlushIndex);
+    }
+    String rawSlicedBuffer=xmlUtils.getNodeValue("/Storage/SlicedBufferSizeInKB");
+    if (rawSlicedBuffer != null) {
+      conf.sliced_buffer_size_in_kb=Integer.parseInt(rawSlicedBuffer);
+    }
+    String bmtThresh=xmlUtils.getNodeValue("/Storage/BinaryMemtableThroughputInMB");
+    if (bmtThresh != null) {
+      conf.binary_memtable_throughput_in_mb=Integer.parseInt(bmtThresh);
+    }
+    String port=xmlUtils.getNodeValue("/Storage/StoragePort");
+    if (port != null)     conf.storage_port=Integer.parseInt(port);
+    conf.listen_address=xmlUtils.getNodeValue("/Storage/ListenAddress");
+    conf.rpc_address=xmlUtils.getNodeValue("/Storage/RPCAddress");
+    port=xmlUtils.getNodeValue("/Storage/RPCPort");
+    if (port != null)     conf.rpc_port=Integer.parseInt(port);
+    String framedRaw=xmlUtils.getNodeValue("/Storage/ThriftFramedTransport");
+    if (framedRaw != null) {
+      conf.thrift_framed_transport=Boolean.valueOf(framedRaw);
+    }
+    conf.endpoint_snitch=xmlUtils.getNodeValue("/Storage/EndpointSnitch");
+    String sbc=xmlUtils.getNodeValue("/Storage/SnapshotBeforeCompaction");
+    if (sbc != null) {
+      conf.snapshot_before_compaction=Boolean.valueOf(sbc);
+    }
+    String autoBootstr=xmlUtils.getNodeValue("/Storage/AutoBootstrap");
+    if (autoBootstr != null) {
+      conf.auto_bootstrap=Boolean.valueOf(autoBootstr);
+    }
+    String lifetime=xmlUtils.getNodeValue("/Storage/MemtableFlushAfterMinutes");
+    if (lifetime != null)     conf.memtable_flush_after_mins=Integer.parseInt(lifetime);
+    String memtableSize=xmlUtils.getNodeValue("/Storage/MemtableThroughputInMB");
+    if (memtableSize != null)     conf.memtable_throughput_in_mb=Integer.parseInt(memtableSize);
+    String memtableObjectCount=xmlUtils.getNodeValue("/Storage/MemtableOperationsInMillions");
+    if (memtableObjectCount != null)     conf.memtable_operations_in_millions=Double.parseDouble(memtableObjectCount);
+    String columnIndexSize=xmlUtils.getNodeValue("/Storage/ColumnIndexSizeInKB");
+    if (columnIndexSize != null) {
+      conf.column_index_size_in_kb=Integer.parseInt(columnIndexSize);
+    }
+    String rowWarning=xmlUtils.getNodeValue("/Storage/RowWarningThresholdInMB");
+    if (rowWarning != null) {
+      conf.row_warning_threshold_in_mb=Long.parseLong(rowWarning);
+    }
+    conf.data_file_directories=xmlUtils.getNodeValues("/Storage/DataFileDirectories/DataFileDirectory");
+    conf.commitlog_directory=xmlUtils.getNodeValue("/Storage/CommitLogDirectory");
+    String value=xmlUtils.getNodeValue("/Storage/CommitLogRotationThresholdInMB");
+    if (value != null)     conf.commitlog_rotation_threshold_in_mb=Integer.parseInt(value);
+    conf.seeds=xmlUtils.getNodeValues("/Storage/Seeds/Seed");
+    conf.keyspaces=readTablesFromXml(xmlUtils);
+  }
+ catch (  ParserConfigurationException e) {
+    System.out.println("Parser error during previous config load.");
+    throw new ConfigurationException("Parser error during previous config load.");
+  }
+catch (  SAXException e) {
+    System.out.println("SAX error during previous config load.");
+    throw new ConfigurationException("SAX error during previous config load.");
+  }
+catch (  IOException e) {
+    System.out.println("File I/O error during previous config load.");
+    throw new ConfigurationException("File I/O error during previous config load.");
+  }
+catch (  XPathExpressionException e) {
+    System.out.println("XPath error during previous config load.");
+    throw new ConfigurationException("XPath error during previous config load.");
+  }
+}
