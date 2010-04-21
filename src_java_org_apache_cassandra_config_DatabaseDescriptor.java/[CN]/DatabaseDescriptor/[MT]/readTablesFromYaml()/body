@@ -1,0 +1,53 @@
+{
+  List<KSMetaData> defs=new ArrayList<KSMetaData>();
+  for (  Keyspace keyspace : conf.keyspaces) {
+    if (keyspace.name == null) {
+      throw new ConfigurationException("Keyspace name attribute is required");
+    }
+    if (keyspace.name.equalsIgnoreCase(Table.SYSTEM_TABLE)) {
+      throw new ConfigurationException("'system' is a reserved table name for Cassandra internals");
+    }
+    if (keyspace.replica_placement_strategy == null) {
+      throw new ConfigurationException("Missing replica_placement_strategy directive for " + keyspace.name);
+    }
+    Class<? extends AbstractReplicationStrategy> strategyClass=null;
+    try {
+      strategyClass=(Class<? extends AbstractReplicationStrategy>)Class.forName(keyspace.replica_placement_strategy);
+    }
+ catch (    ClassNotFoundException e) {
+      throw new ConfigurationException("Invalid replicaplacementstrategy class " + keyspace.replica_placement_strategy);
+    }
+    if (keyspace.replication_factor == null) {
+      throw new ConfigurationException("Missing replication_factor directory for keyspace " + keyspace.name);
+    }
+    int size2=keyspace.column_families.length;
+    CFMetaData[] cfDefs=new CFMetaData[size2];
+    int j=0;
+    for (    ColumnFamily cf : keyspace.column_families) {
+      if (cf.name == null) {
+        throw new ConfigurationException("ColumnFamily name attribute is required");
+      }
+      if (cf.name.contains("-")) {
+        throw new ConfigurationException("ColumnFamily names cannot contain hyphens");
+      }
+      String columnType=org.apache.cassandra.db.ColumnFamily.getColumnType(cf.column_type);
+      if (columnType == null) {
+        throw new ConfigurationException("ColumnFamily " + cf.name + " has invalid type "+ cf.column_type);
+      }
+      AbstractType comparator=getComparator(cf.compare_with);
+      AbstractType subcolumnComparator=null;
+      if (columnType.equals("Super")) {
+        subcolumnComparator=getComparator(cf.compare_subcolumns_with);
+      }
+ else       if (cf.compare_subcolumns_with != null) {
+        throw new ConfigurationException("compare_subcolumns_with is only a valid attribute on super columnfamilies (not regular columnfamily " + cf.name + ")");
+      }
+      if (cf.read_repair_chance < 0.0 || cf.read_repair_chance > 1.0) {
+        throw new ConfigurationException("read_repair_chance must be between 0.0 and 1.0");
+      }
+      cfDefs[j++]=new CFMetaData(keyspace.name,cf.name,columnType,comparator,subcolumnComparator,cf.comment,cf.rows_cached,cf.keys_cached,cf.read_repair_chance);
+    }
+    defs.add(new KSMetaData(keyspace.name,strategyClass,keyspace.replication_factor,cfDefs));
+  }
+  return defs;
+}
