@@ -1,0 +1,15 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("insert");
+  checkLoginAuthorized(AccessLevel.READWRITE);
+  ThriftValidation.validateKey(key);
+  ThriftValidation.validateColumnParent(keySpace.get(),column_parent);
+  ThriftValidation.validateColumn(keySpace.get(),column_parent,column);
+  RowMutation rm=new RowMutation(keySpace.get(),key);
+  try {
+    rm.add(new QueryPath(column_parent.column_family,column_parent.super_column,column.name),column.value,column.timestamp,column.ttl);
+  }
+ catch (  MarshalException e) {
+    throw new InvalidRequestException(e.getMessage());
+  }
+  doInsert(consistency_level,rm);
+}

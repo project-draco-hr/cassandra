@@ -1,4 +1,5 @@
 def test_batch_mutate_remove_super_columns_with_standard_under(self):
+    _empty_login('Keyspace1')
     column_families = ['Super1', 'Super2']
     keys = [('key_%d' % i) for i in range(11, 21)]
     _insert_super()
@@ -10,9 +11,9 @@ def test_batch_mutate_remove_super_columns_with_standard_under(self):
         mutations.append(Mutation(deletion=Deletion(20, super_column=c.name, predicate=SlicePredicate(column_names=names))))
     mutation_map = dict(((column_family, mutations) for column_family in column_families))
     keyed_mutations = dict(((key, mutation_map) for key in keys))
-    client.batch_mutate('Keyspace1', keyed_mutations, ConsistencyLevel.ZERO)
+    client.batch_mutate(keyed_mutations, ConsistencyLevel.ZERO)
     for column_family in column_families:
         for sc in _SUPER_COLUMNS:
             for c in sc.columns:
                 for key in keys:
-                    waitfor(ZERO_WAIT, _assert_no_columnpath, 'Keyspace1', key, ColumnPath(column_family, super_column=sc.name, column=c.name))
+                    waitfor(ZERO_WAIT, _assert_no_columnpath, key, ColumnPath(column_family, super_column=sc.name, column=c.name))

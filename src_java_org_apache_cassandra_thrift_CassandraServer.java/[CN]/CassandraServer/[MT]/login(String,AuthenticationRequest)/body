@@ -1,5 +1,11 @@
 {
-  AccessLevel level=DatabaseDescriptor.getAuthenticator().login(keyspace,auth_request);
+  AccessLevel level;
+  if (DatabaseDescriptor.getTableDefinition(keyspace) == null) {
+    throw new AuthenticationException("Keyspace does not exist");
+  }
+  level=DatabaseDescriptor.getAuthenticator().login(keyspace,auth_request);
+  if (logger.isDebugEnabled())   logger.debug("login confirmed; access level is " + level);
   loginDone.set(level);
+  keySpace.set(keyspace);
   return level;
 }

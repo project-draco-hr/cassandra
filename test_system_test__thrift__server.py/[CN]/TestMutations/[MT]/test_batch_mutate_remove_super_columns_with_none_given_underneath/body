@@ -1,4 +1,5 @@
 def test_batch_mutate_remove_super_columns_with_none_given_underneath(self):
+    _empty_login('Keyspace1')
     keys = [('key_%d' % i) for i in range(17, 21)]
     for key in keys:
         _insert_super(key)
@@ -9,9 +10,9 @@ def test_batch_mutate_remove_super_columns_with_none_given_underneath(self):
     keyed_mutations = dict(((key, mutation_map) for key in keys))
     for sc in _SUPER_COLUMNS:
         for key in keys:
-            _assert_columnpath_exists('Keyspace1', key, ColumnPath('Super1', super_column=sc.name))
-    client.batch_mutate('Keyspace1', keyed_mutations, ConsistencyLevel.ZERO)
+            _assert_columnpath_exists(key, ColumnPath('Super1', super_column=sc.name))
+    client.batch_mutate(keyed_mutations, ConsistencyLevel.ZERO)
     for sc in _SUPER_COLUMNS:
         for c in sc.columns:
             for key in keys:
-                waitfor(ZERO_WAIT, _assert_no_columnpath, 'Keyspace1', key, ColumnPath('Super1', super_column=sc.name))
+                waitfor(ZERO_WAIT, _assert_no_columnpath, key, ColumnPath('Super1', super_column=sc.name))
