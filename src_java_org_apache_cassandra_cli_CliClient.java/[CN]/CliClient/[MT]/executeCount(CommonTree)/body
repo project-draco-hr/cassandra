@@ -1,10 +1,9 @@
 {
-  if (!CliMain.isConnected())   return;
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
   int childCount=ast.getChildCount();
   assert(childCount == 1);
   CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
   assert(columnFamilySpec.getType() == CliParser.NODE_COLUMN_ACCESS);
-  String tableName=CliCompiler.getTableName(columnFamilySpec);
   String key=CliCompiler.getKey(columnFamilySpec);
   String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
   int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
@@ -18,6 +17,6 @@
   }
   SliceRange range=new SliceRange(ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,Integer.MAX_VALUE);
   SlicePredicate predicate=new SlicePredicate().setColumn_names(null).setSlice_range(range);
-  int count=thriftClient_.get_count(tableName,key.getBytes(),colParent,predicate,ConsistencyLevel.ONE);
+  int count=thriftClient_.get_count(key.getBytes(),colParent,predicate,ConsistencyLevel.ONE);
   css_.out.printf("%d columns\n",count);
 }

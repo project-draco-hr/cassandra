@@ -1,27 +1,20 @@
 {
-  if (!CliMain.isConnected())   return;
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
   int childCount=ast.getChildCount();
   assert(childCount == 1);
   CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
   assert(columnFamilySpec.getType() == CliParser.NODE_COLUMN_ACCESS);
-  String tableName=CliCompiler.getTableName(columnFamilySpec);
   String key=CliCompiler.getKey(columnFamilySpec);
   String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
   int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
   byte[] superColumnName=null;
   byte[] columnName=null;
   boolean isSuper;
-  try {
-    if (!(getCFMetaData(tableName).containsKey(columnFamily))) {
-      css_.out.println("No such column family: " + columnFamily);
-      return;
-    }
-    isSuper=getCFMetaData(tableName).get(columnFamily).get("Type").equals("Super") ? true : false;
-  }
- catch (  NotFoundException nfe) {
-    css_.out.printf("No such keyspace: %s\n",tableName);
+  if (!(keyspacesMap.get(keySpace).containsKey(columnFamily))) {
+    css_.out.println("No such column family: " + columnFamily);
     return;
   }
+  isSuper=keyspacesMap.get(keySpace).get(columnFamily).get("Type").equals("Super") ? true : false;
   if ((columnSpecCnt < 0) || (columnSpecCnt > 2)) {
     css_.out.println("Invalid row, super column, or column specification.");
     return;
@@ -34,6 +27,6 @@
     superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes("UTF-8");
     columnName=CliCompiler.getColumn(columnFamilySpec,1).getBytes("UTF-8");
   }
-  thriftClient_.remove(tableName,key.getBytes(),new ColumnPath(columnFamily).setSuper_column(superColumnName).setColumn(columnName),timestampMicros(),ConsistencyLevel.ONE);
+  thriftClient_.remove(key.getBytes(),new ColumnPath(columnFamily).setSuper_column(superColumnName).setColumn(columnName),timestampMicros(),ConsistencyLevel.ONE);
   css_.out.println(String.format("%s removed.",(columnSpecCnt == 0) ? "row" : "column"));
 }
