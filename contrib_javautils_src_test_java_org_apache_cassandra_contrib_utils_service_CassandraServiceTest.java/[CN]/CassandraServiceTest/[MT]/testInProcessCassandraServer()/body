@@ -1,11 +1,14 @@
 {
   Cassandra.Client client=getClient();
+  client.login("Keyspace1",null);
   String key_user_id="1";
   long timestamp=System.currentTimeMillis();
+  ColumnParent colParent=new ColumnParent("Standard1");
+  Column column=new Column("name".getBytes("utf-8"),"Ran".getBytes("UTF-8"),timestamp);
+  client.insert(key_user_id.getBytes(),colParent,column,ConsistencyLevel.ONE);
   ColumnPath cp=new ColumnPath("Standard1");
   cp.setColumn("name".getBytes("utf-8"));
-  client.insert("Keyspace1",key_user_id,cp,"Ran".getBytes("UTF-8"),timestamp,ConsistencyLevel.ONE);
-  ColumnOrSuperColumn got=client.get("Keyspace1",key_user_id,cp,ConsistencyLevel.ONE);
+  ColumnOrSuperColumn got=client.get(key_user_id.getBytes(),cp,ConsistencyLevel.ONE);
   assertNotNull("Got a null ColumnOrSuperColumn",got);
   assertEquals("Ran",new String(got.getColumn().getValue(),"utf-8"));
 }
