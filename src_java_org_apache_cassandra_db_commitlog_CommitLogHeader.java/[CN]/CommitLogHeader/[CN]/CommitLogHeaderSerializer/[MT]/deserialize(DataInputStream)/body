@@ -1,27 +1,9 @@
 {
-  Checksum checksum=new CRC32();
-  int cfCount=dis.readInt();
-  checksum.update(cfCount);
-  int cfMapLength=dis.readInt();
-  checksum.update(cfMapLength);
-  int lastFlushedAtSize=dis.readInt();
-  checksum.update(lastFlushedAtSize);
-  if (checksum.getValue() != dis.readLong()) {
-    throw new IOException("Invalid or corrupt commitlog header");
-  }
-  byte[] cfMap=new byte[cfMapLength];
-  dis.readFully(cfMap);
-  checksum.update(cfMap,0,cfMap.length);
+  int colCount=dis.readInt();
+  byte[] map=new byte[dis.readInt()];
+  dis.readFully(map);
+  int size=dis.readInt();
   Map<Integer,Integer> lastFlushedAt=new HashMap<Integer,Integer>();
-  for (int i=0; i < lastFlushedAtSize; i++) {
-    int key=dis.readInt();
-    checksum.update(key);
-    int value=dis.readInt();
-    checksum.update(value);
-    lastFlushedAt.put(key,value);
-  }
-  if (checksum.getValue() != dis.readLong()) {
-    throw new IOException("Invalid or corrupt commitlog header");
-  }
-  return new CommitLogHeader(lastFlushedAt,cfMap,cfCount);
+  for (int i=0; i < size; i++)   lastFlushedAt.put(dis.readInt(),dis.readInt());
+  return new CommitLogHeader(lastFlushedAt,map,colCount);
 }
