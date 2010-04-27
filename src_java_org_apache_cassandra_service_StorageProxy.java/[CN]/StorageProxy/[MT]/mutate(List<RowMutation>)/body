@@ -14,7 +14,7 @@
           Collection<InetAddress> targets=entry.getValue();
           if (targets.size() == 1 && targets.iterator().next().equals(destination)) {
             if (destination.equals(FBUtilities.getLocalAddress())) {
-              if (logger.isDebugEnabled())               logger.debug("insert writing local key " + rm.key());
+              if (logger.isDebugEnabled())               logger.debug("insert writing local key " + FBUtilities.bytesToHex(rm.key()) + " (keyspace: "+ rm.getTable()+ ", CFs:"+ rm.columnFamilyNames()+ ")");
               Runnable runnable=new WrappedRunnable(){
                 public void runMayThrow() throws IOException {
                   rm.apply();
@@ -25,7 +25,7 @@
             }
  else {
               if (unhintedMessage == null)               unhintedMessage=rm.makeRowMutationMessage();
-              if (logger.isDebugEnabled())               logger.debug("insert writing key " + rm.key() + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
+              if (logger.isDebugEnabled())               logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
               MessagingService.instance.sendOneWay(unhintedMessage,destination);
             }
           }
@@ -34,7 +34,7 @@
             for (            InetAddress target : targets) {
               if (!target.equals(destination)) {
                 addHintHeader(hintedMessage,target);
-                if (logger.isDebugEnabled())                 logger.debug("insert writing key " + rm.key() + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
+                if (logger.isDebugEnabled())                 logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
               }
             }
             MessagingService.instance.sendOneWay(hintedMessage,destination);
@@ -42,7 +42,7 @@
         }
       }
  catch (      IOException e) {
-        throw new RuntimeException("error inserting key " + rm.key(),e);
+        throw new RuntimeException("error inserting key " + FBUtilities.bytesToHex(rm.key()),e);
       }
     }
   }
