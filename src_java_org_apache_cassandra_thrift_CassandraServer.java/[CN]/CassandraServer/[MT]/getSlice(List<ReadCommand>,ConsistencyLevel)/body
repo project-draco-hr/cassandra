@@ -1,8 +1,8 @@
 {
-  Map<byte[],ColumnFamily> columnFamilies=readColumnFamily(commands,consistency_level);
+  Map<DecoratedKey,ColumnFamily> columnFamilies=readColumnFamily(commands,consistency_level);
   Map<byte[],List<ColumnOrSuperColumn>> columnFamiliesMap=new HashMap<byte[],List<ColumnOrSuperColumn>>();
   for (  ReadCommand command : commands) {
-    ColumnFamily cf=columnFamilies.get(command.key);
+    ColumnFamily cf=columnFamilies.get(StorageService.getPartitioner().decorateKey(command.key));
     boolean reverseOrder=command instanceof SliceFromReadCommand && ((SliceFromReadCommand)command).reversed;
     List<ColumnOrSuperColumn> thriftifiedColumns=thriftifyColumnFamily(cf,command.queryPath.superColumnName != null,reverseOrder);
     columnFamiliesMap.put(command.key,thriftifiedColumns);
