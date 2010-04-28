@@ -1,9 +1,11 @@
 {
   segments.add(new CommitLogSegment());
   if (DatabaseDescriptor.getCommitLogSync() == Config.CommitLogSync.periodic) {
-    final Runnable syncer=new WrappedRunnable(){
-      public void runMayThrow() throws IOException {
+    executor=new PeriodicCommitLogExecutorService();
+    final Callable syncer=new Callable(){
+      public Object call() throws Exception {
         sync();
+        return null;
       }
     }
 ;
@@ -24,5 +26,8 @@ catch (          ExecutionException e) {
       }
     }
 ,"PERIODIC-COMMIT-LOG-SYNCER").start();
+  }
+ else {
+    executor=new BatchCommitLogExecutorService();
   }
 }
