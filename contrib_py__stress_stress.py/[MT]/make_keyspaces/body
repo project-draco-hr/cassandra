@@ -1,0 +1,12 @@
+def make_keyspaces():
+    cfams = [CfDef('Keyspace1', 'Standard1'), CfDef('Keyspace1', 'Super1', 'Super', 'BytesType', 'BytesType')]
+    keyspace = KsDef('Keyspace1', 'org.apache.cassandra.locator.RackUnawareStrategy', 1, cfams)
+    client = get_client(nodes[0], options.port, options.framed)
+    client.transport.open()
+    try:
+        client.system_add_keyspace(keyspace)
+        print ('Created keyspaces.  Sleeping %ss for propagation.' % len(nodes))
+        time.sleep(len(nodes))
+    except InvalidRequestException as e:
+        print e
+    client.transport.close()
