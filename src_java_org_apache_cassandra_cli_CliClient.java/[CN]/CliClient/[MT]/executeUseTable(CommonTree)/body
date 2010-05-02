@@ -15,13 +15,14 @@
   try {
     AuthenticationRequest authRequest;
     Map<String,String> credentials=new HashMap<String,String>();
+    thriftClient_.set_keyspace(tableName);
     if (username != null && password != null) {
       password=password.replace("\'","");
       credentials.put(SimpleAuthenticator.USERNAME_KEY,username);
       credentials.put(SimpleAuthenticator.PASSWORD_KEY,password);
+      authRequest=new AuthenticationRequest(credentials);
+      thriftClient_.login(authRequest);
     }
-    authRequest=new AuthenticationRequest(credentials);
-    thriftClient_.login(tableName,authRequest);
     keySpace=tableName;
     this.username=username != null ? username : "default";
     if (!(keyspacesMap.containsKey(keySpace))) {
@@ -38,8 +39,12 @@ catch (  AuthorizationException e) {
     css_.err.println("You are not authorized to use keyspace: " + tableName);
     return;
   }
+catch (  InvalidRequestException e) {
+    css_.err.println(tableName + " does not exist.");
+    return;
+  }
 catch (  NotFoundException e) {
-    css_.err.println("This keyspace does not exist: " + tableName);
+    css_.err.println(tableName + " does not exist.");
     return;
   }
 catch (  TException e) {
