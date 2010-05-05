@@ -5,6 +5,14 @@
     logger.info("Loading schema version " + uuid.toString());
     Collection<KSMetaData> tableDefs=DefsTable.loadFromStorage(uuid);
     for (    KSMetaData def : tableDefs) {
+      for (      CFMetaData cfm : def.cfMetaData().values()) {
+        try {
+          CFMetaData.map(cfm);
+        }
+ catch (        ConfigurationException ex) {
+          throw new IOError(ex);
+        }
+      }
       DatabaseDescriptor.setTableDefinition(def,uuid);
       Table.open(def.name);
     }

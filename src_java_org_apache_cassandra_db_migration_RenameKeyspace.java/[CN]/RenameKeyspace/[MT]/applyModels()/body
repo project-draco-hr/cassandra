@@ -1,7 +1,16 @@
 {
   if (!clientMode)   renameKsStorageFiles(oldName,newName);
   KSMetaData oldKsm=DatabaseDescriptor.getTableDefinition(oldName);
-  KSMetaData newKsm=KSMetaData.rename(oldKsm,newName,true);
+  for (  CFMetaData cfm : oldKsm.cfMetaData().values())   CFMetaData.purge(cfm);
+  KSMetaData newKsm=rename(oldKsm,newName,true);
+  for (  CFMetaData cfm : newKsm.cfMetaData().values()) {
+    try {
+      CFMetaData.map(cfm);
+    }
+ catch (    ConfigurationException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
   DatabaseDescriptor.clearTableDefinition(oldKsm,newVersion);
   DatabaseDescriptor.setTableDefinition(newKsm,newVersion);
   if (!clientMode) {

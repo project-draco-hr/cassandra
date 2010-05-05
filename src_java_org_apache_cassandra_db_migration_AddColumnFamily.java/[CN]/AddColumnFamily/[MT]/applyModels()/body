@@ -1,6 +1,12 @@
 {
   KSMetaData ksm=DatabaseDescriptor.getTableDefinition(cfm.tableName);
   ksm=makeNewKeyspaceDefinition(ksm);
+  try {
+    CFMetaData.map(cfm);
+  }
+ catch (  ConfigurationException ex) {
+    throw new IOException(ex);
+  }
   if (!clientMode)   Table.open(ksm.name).initCf(cfm.cfId,cfm.cfName);
   DatabaseDescriptor.setTableDefinition(ksm,newVersion);
   if (!clientMode)   CommitLog.instance().forceNewSegment();

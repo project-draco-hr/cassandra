@@ -1,6 +1,14 @@
 {
   if (!clientMode)   renameCfStorageFiles(tableName,oldName,newName);
+  KSMetaData oldKsm=DatabaseDescriptor.getTableDefinition(tableName);
+  CFMetaData.purge(oldKsm.cfMetaData().get(oldName));
   KSMetaData ksm=makeNewKeyspaceDefinition(DatabaseDescriptor.getTableDefinition(tableName));
+  try {
+    CFMetaData.map(ksm.cfMetaData().get(newName));
+  }
+ catch (  ConfigurationException ex) {
+    throw new RuntimeException(ex);
+  }
   DatabaseDescriptor.setTableDefinition(ksm,newVersion);
   if (!clientMode) {
     Table.open(ksm.name).renameCf(cfId,newName);
