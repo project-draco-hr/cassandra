@@ -1,6 +1,6 @@
 {
   ColumnFamily cfamily=ColumnFamily.create(keyspace,cf);
-  String cfType=cfamily.type();
+  ColumnFamilyType cfType=cfamily.getColumnFamilyType();
   IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
   DataOutputBuffer dob=new DataOutputBuffer();
   try {
@@ -9,7 +9,7 @@
     SortedMap<DecoratedKey,String> decoratedKeys=new TreeMap<DecoratedKey,String>();
     for (    String key : (Set<String>)json.keySet())     decoratedKeys.put(partitioner.decorateKey(hexToBytes(key)),key);
     for (    Map.Entry<DecoratedKey,String> rowKey : decoratedKeys.entrySet()) {
-      if (cfType.equals("Super"))       addToSuperCF((JSONObject)json.get(rowKey.getValue()),cfamily);
+      if (cfType == ColumnFamilyType.Super)       addToSuperCF((JSONObject)json.get(rowKey.getValue()),cfamily);
  else       addToStandardCF((JSONArray)json.get(rowKey.getValue()),cfamily);
       ColumnFamily.serializer().serializeWithIndexes(cfamily,dob);
       writer.append(rowKey.getKey(),dob);

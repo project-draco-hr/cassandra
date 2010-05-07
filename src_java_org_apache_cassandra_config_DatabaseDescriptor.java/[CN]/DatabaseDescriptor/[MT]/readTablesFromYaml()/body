@@ -30,13 +30,10 @@
       if (cf.name.contains("-")) {
         throw new ConfigurationException("ColumnFamily names cannot contain hyphens");
       }
-      String columnType=org.apache.cassandra.db.ColumnFamily.getColumnType(cf.column_type);
-      if (columnType == null) {
-        throw new ConfigurationException("ColumnFamily " + cf.name + " has invalid type "+ cf.column_type);
-      }
       AbstractType comparator=getComparator(cf.compare_with);
       AbstractType subcolumnComparator=null;
-      if (columnType.equals("Super")) {
+      ColumnFamilyType cfType=cf.column_type == null ? ColumnFamilyType.Standard : cf.column_type;
+      if (cfType == ColumnFamilyType.Super) {
         subcolumnComparator=getComparator(cf.compare_subcolumns_with);
       }
  else       if (cf.compare_subcolumns_with != null) {
@@ -45,7 +42,7 @@
       if (cf.read_repair_chance < 0.0 || cf.read_repair_chance > 1.0) {
         throw new ConfigurationException("read_repair_chance must be between 0.0 and 1.0");
       }
-      cfDefs[j++]=new CFMetaData(keyspace.name,cf.name,columnType,comparator,subcolumnComparator,cf.comment,cf.rows_cached,cf.preload_row_cache,cf.keys_cached,cf.read_repair_chance);
+      cfDefs[j++]=new CFMetaData(keyspace.name,cf.name,cfType,comparator,subcolumnComparator,cf.comment,cf.rows_cached,cf.preload_row_cache,cf.keys_cached,cf.read_repair_chance);
     }
     defs.add(new KSMetaData(keyspace.name,strategyClass,keyspace.replication_factor,cfDefs));
   }
