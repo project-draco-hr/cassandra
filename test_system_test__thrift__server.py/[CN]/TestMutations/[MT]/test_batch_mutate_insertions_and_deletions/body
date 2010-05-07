@@ -7,13 +7,13 @@ def test_batch_mutate_insertions_and_deletions(self):
     keys = ['key_30', 'key_31']
     for key in keys:
         sc = SuperColumn('sc1', [Column(_i64(22), 'value22', 0), Column(_i64(23), 'value23', 0)])
-        mutation = {'Super1': [ColumnOrSuperColumn(super_column=sc)], }
-        client.batch_insert(key, mutation, ConsistencyLevel.ONE)
+        cfmap = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=sc))], }
+        client.batch_mutate({key: cfmap, }, ConsistencyLevel.ONE)
         sc2 = SuperColumn('sc2', [Column(_i64(22), 'value22', 0), Column(_i64(23), 'value23', 0)])
-        mutation2 = {'Super2': [ColumnOrSuperColumn(super_column=sc2)], }
-        client.batch_insert(key, mutation2, ConsistencyLevel.ONE)
-    mutation_map = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=first_insert)), Mutation(deletion=Deletion(3, **first_deletion))], 'Super2': [Mutation(deletion=Deletion(2, **second_deletion)), Mutation(ColumnOrSuperColumn(super_column=second_insert))], }
-    keyed_mutations = dict(((key, mutation_map) for key in keys))
+        cfmap2 = {'Super2': [Mutation(ColumnOrSuperColumn(super_column=sc2))], }
+        client.batch_mutate({key: cfmap2, }, ConsistencyLevel.ONE)
+    cfmap3 = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=first_insert)), Mutation(deletion=Deletion(3, **first_deletion))], 'Super2': [Mutation(deletion=Deletion(2, **second_deletion)), Mutation(ColumnOrSuperColumn(super_column=second_insert))], }
+    keyed_mutations = dict(((key, cfmap3) for key in keys))
     client.batch_mutate(keyed_mutations, ConsistencyLevel.ONE)
     for key in keys:
         for c in [_i64(22), _i64(23)]:
