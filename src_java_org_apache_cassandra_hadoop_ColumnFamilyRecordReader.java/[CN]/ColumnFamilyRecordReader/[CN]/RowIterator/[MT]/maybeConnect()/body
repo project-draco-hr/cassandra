@@ -1,0 +1,18 @@
+{
+  if (socket != null && socket.isOpen())   return;
+  String location=getLocation();
+  socket=new TSocket(location,DatabaseDescriptor.getRpcPort());
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(socket,false,false);
+  client=new Cassandra.Client(binaryProtocol);
+  socket.open();
+  client.set_keyspace(keyspace);
+  if (!(DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)) {
+    client.login(authRequest);
+  }
+  if (comparator == null) {
+    Map<String,Map<String,String>> desc=client.describe_keyspace(keyspace);
+    Map<String,String> ksProps=desc.get(cfName);
+    String compClass=ksProps.get("CompareWith");
+    comparator=(AbstractType)Class.forName(compClass).newInstance();
+  }
+}
