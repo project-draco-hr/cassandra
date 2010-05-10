@@ -2,8 +2,7 @@
   if (logger.isDebugEnabled())   logger.debug(command.toString());
   long startTime=System.nanoTime();
   final String table=command.keyspace;
-  int responseCount=determineBlockFor(DatabaseDescriptor.getReplicationFactor(table),consistency_level);
-  List<Pair<AbstractBounds,List<InetAddress>>> ranges=getRestrictedRanges(command.range,command.keyspace,responseCount);
+  List<Pair<AbstractBounds,List<InetAddress>>> ranges=getRestrictedRanges(command.range,command.keyspace);
   List<Row> rows=new ArrayList<Row>(command.max_keys);
   for (  Pair<AbstractBounds,List<InetAddress>> pair : getRangeIterator(ranges,command.range.left)) {
     AbstractBounds range=pair.left;
@@ -11,7 +10,8 @@
     RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
     Message message=c2.getMessage();
     RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,endpoints);
-    QuorumResponseHandler<List<Row>> handler=new QuorumResponseHandler<List<Row>>(responseCount,resolver);
+    AbstractReplicationStrategy rs=StorageService.instance.getReplicationStrategy(table);
+    QuorumResponseHandler<List<Row>> handler=rs.getQuorumResponseHandler(resolver,consistency_level,table);
     for (    InetAddress endpoint : endpoints) {
       MessagingService.instance.sendRR(message,endpoint,handler);
       if (logger.isDebugEnabled())       logger.debug("reading " + c2 + " from "+ message.getMessageId()+ "@"+ endpoint);

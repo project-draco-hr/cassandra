@@ -1,0 +1,19 @@
+{
+  Map<String,AtomicInteger> dcEndpoints=new HashMap<String,AtomicInteger>();
+  try {
+    for (    String dc : stategy.getDatacenters(table))     dcEndpoints.put(dc,new AtomicInteger());
+    for (    InetAddress destination : hintedEndpoints.keySet()) {
+      if (!writeEndpoints.contains(destination))       continue;
+      String destinationDC=endpointsnitch.getDatacenter(destination);
+      dcEndpoints.get(destinationDC).incrementAndGet();
+    }
+  }
+ catch (  UnknownHostException e) {
+    throw new UnavailableException();
+  }
+  for (  String dc : stategy.getDatacenters(table)) {
+    if (dcEndpoints.get(dc).get() != dcResponses.get(dc).get()) {
+      throw new UnavailableException();
+    }
+  }
+}
