@@ -1,0 +1,17 @@
+{
+  FileOutputStream fos=new FileOutputStream(filterFilename());
+  DataOutputStream stream=new DataOutputStream(fos);
+  BloomFilter.serializer().serialize(bf,stream);
+  stream.flush();
+  fos.getFD().sync();
+  stream.close();
+  indexFile.getChannel().force(true);
+  indexFile.close();
+  dataFile.close();
+  Descriptor newdesc=desc.asTemporary(false);
+  rename(indexFilename());
+  rename(filterFilename());
+  rename(getFilename());
+  indexSummary.complete();
+  return new RowIndexedReader(newdesc,partitioner,indexSummary,bf,maxDataAge);
+}

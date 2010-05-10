@@ -1,0 +1,24 @@
+{
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore cfs=table.getColumnFamilyStore("Standard1");
+  RowMutation rm;
+  ColumnFamily cf;
+  rm=new RowMutation("Keyspace1","keymulti".getBytes());
+  cf=ColumnFamily.create("Keyspace1","Standard1");
+  cf.addColumn(column("col1","val1",1L));
+  rm.add(cf);
+  rm.apply();
+  assertNotNull(getFromTable(table,"Standard1","keymulti","col1"));
+  cfs.truncate().get();
+  CommitLog.recover();
+  assertNull(getFromTable(table,"Standard1","keymulti","col1"));
+  rm=new RowMutation("Keyspace1","keymulti".getBytes());
+  cf=ColumnFamily.create("Keyspace1","Standard1");
+  cf.addColumn(column("col1","val1",1L));
+  rm.add(cf);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  cfs.truncate().get();
+  CommitLog.recover();
+  assertNull(getFromTable(table,"Standard1","keymulti","col1"));
+}

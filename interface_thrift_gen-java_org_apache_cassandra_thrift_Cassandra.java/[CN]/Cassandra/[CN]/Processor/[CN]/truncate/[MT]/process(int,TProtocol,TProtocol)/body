@@ -1,0 +1,39 @@
+{
+  truncate_args args=new truncate_args();
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("truncate",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  iprot.readMessageEnd();
+  truncate_result result=new truncate_result();
+  try {
+    iface_.truncate(args.keyspace,args.cfname);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  UnavailableException ue) {
+    result.ue=ue;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing truncate",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing truncate");
+    oprot.writeMessageBegin(new TMessage("truncate",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("truncate",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}
