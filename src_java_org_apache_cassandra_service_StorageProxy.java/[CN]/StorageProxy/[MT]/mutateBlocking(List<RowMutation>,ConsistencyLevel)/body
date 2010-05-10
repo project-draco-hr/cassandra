@@ -11,7 +11,9 @@
       List<InetAddress> naturalEndpoints=ss.getNaturalEndpoints(table,rm.key());
       Collection<InetAddress> writeEndpoints=rs.getWriteEndpoints(StorageService.getPartitioner().getToken(rm.key()),table,naturalEndpoints);
       Multimap<InetAddress,InetAddress> hintedEndpoints=rs.getHintedEndpoints(writeEndpoints);
-      final WriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,consistency_level,table);
+      int blockFor=determineBlockFor(writeEndpoints.size(),consistency_level);
+      assureSufficientLiveNodes(blockFor,writeEndpoints,hintedEndpoints,consistency_level);
+      final WriteResponseHandler responseHandler=ss.getWriteResponseHandler(blockFor,consistency_level,table);
       responseHandlers.add(responseHandler);
       Message unhintedMessage=null;
       for (      Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
