@@ -3,8 +3,11 @@
   try {
     Collection<CFMetaData> cfDefs=new ArrayList<CFMetaData>((int)ksDef.cf_defs.size());
     for (    CfDef cfDef : ksDef.cf_defs) {
-      String subComparator=cfDef.subcomparator_type.toString();
-      CFMetaData cfmeta=new CFMetaData(cfDef.keyspace.toString(),cfDef.name.toString(),ColumnFamilyType.create(cfDef.column_type.toString()),DatabaseDescriptor.getComparator(cfDef.comparator_type.toString()),subComparator.length() == 0 ? null : DatabaseDescriptor.getComparator(subComparator),cfDef.comment.toString(),cfDef.row_cache_size,cfDef.preload_row_cache,cfDef.key_cache_size);
+      String cfType, compare, subCompare;
+      cfType=cfDef.column_type == null ? D_CF_CFTYPE : cfDef.column_type.toString();
+      compare=cfDef.comparator_type == null ? D_CF_COMPTYPE : cfDef.comparator_type.toString();
+      subCompare=cfDef.subcomparator_type == null ? D_CF_SUBCOMPTYPE : cfDef.subcomparator_type.toString();
+      CFMetaData cfmeta=new CFMetaData(cfDef.keyspace.toString(),cfDef.name.toString(),ColumnFamilyType.create(cfType),DatabaseDescriptor.getComparator(compare),subCompare.length() == 0 ? null : DatabaseDescriptor.getComparator(subCompare),cfDef.comment == null ? D_CF_COMMENT : cfDef.comment.toString(),cfDef.row_cache_size == null ? D_CF_ROWCACHE : cfDef.row_cache_size,cfDef.preload_row_cache == null ? D_CF_PRELOAD_ROWCACHE : cfDef.preload_row_cache,cfDef.key_cache_size == null ? D_CF_KEYCACHE : cfDef.key_cache_size);
       cfDefs.add(cfmeta);
     }
     KSMetaData ksmeta=new KSMetaData(ksDef.name.toString(),(Class<? extends AbstractReplicationStrategy>)Class.forName(ksDef.strategy_class.toString()),(int)ksDef.replication_factor,cfDefs.toArray(new CFMetaData[cfDefs.size()]));
