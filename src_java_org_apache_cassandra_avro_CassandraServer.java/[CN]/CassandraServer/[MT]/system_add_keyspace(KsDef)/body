@@ -1,0 +1,31 @@
+{
+  if (StageManager.getStage(StageManager.MIGRATION_STAGE).getQueue().size() > 0)   throw newInvalidRequestException("This node appears to be handling gossiped migrations.");
+  try {
+    Collection<CFMetaData> cfDefs=new ArrayList<CFMetaData>((int)ksDef.cf_defs.size());
+    for (    CfDef cfDef : ksDef.cf_defs) {
+      String subComparator=cfDef.subcomparator_type.toString();
+      CFMetaData cfmeta=new CFMetaData(cfDef.keyspace.toString(),cfDef.name.toString(),ColumnFamily.getColumnType(cfDef.column_type.toString()),DatabaseDescriptor.getComparator(cfDef.comparator_type.toString()),subComparator.length() == 0 ? null : DatabaseDescriptor.getComparator(subComparator),cfDef.comment.toString(),cfDef.row_cache_size,cfDef.preload_row_cache,cfDef.key_cache_size);
+      cfDefs.add(cfmeta);
+    }
+    KSMetaData ksmeta=new KSMetaData(ksDef.name.toString(),(Class<? extends AbstractReplicationStrategy>)Class.forName(ksDef.strategy_class.toString()),(int)ksDef.replication_factor,cfDefs.toArray(new CFMetaData[cfDefs.size()]));
+    AddKeyspace add=new AddKeyspace(ksmeta);
+    add.apply();
+    add.announce();
+  }
+ catch (  ClassNotFoundException e) {
+    InvalidRequestException ire=newInvalidRequestException(e.getMessage());
+    ire.initCause(e);
+    throw ire;
+  }
+catch (  ConfigurationException e) {
+    InvalidRequestException ire=newInvalidRequestException(e.getMessage());
+    ire.initCause(e);
+    throw ire;
+  }
+catch (  IOException e) {
+    InvalidRequestException ire=newInvalidRequestException(e.getMessage());
+    ire.initCause(e);
+    throw ire;
+  }
+  return null;
+}
