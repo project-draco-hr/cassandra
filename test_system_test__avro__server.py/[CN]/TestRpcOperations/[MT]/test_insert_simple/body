@@ -1,7 +1,22 @@
 def test_insert_simple(self):
     'setting and getting a simple column'
-    column = random_column()
-    _insert_column(self.client, column['name'], column['value'])
-    result = _get_column(self.client, column['name'])
-    assert_cosc(result)
-    assert_columns_match(result['column'], column)
+    self.client.request('set_keyspace', {'keyspace': 'Keyspace1', })
+    params = dict()
+    params['key'] = 'key1'
+    params['column_parent'] = {'column_family': 'Standard1', }
+    params['column'] = dict()
+    params['column']['name'] = 'c1'
+    params['column']['value'] = 'v1'
+    params['column']['timestamp'] = 0
+    params['column']['ttl'] = 0
+    params['consistency_level'] = 'ONE'
+    self.client.request('insert', params)
+    read_params = dict()
+    read_params['key'] = params['key']
+    read_params['column_path'] = dict()
+    read_params['column_path']['column_family'] = 'Standard1'
+    read_params['column_path']['column'] = params['column']['name']
+    read_params['consistency_level'] = 'ONE'
+    cosc = self.client.request('get', read_params)
+    assert_cosc(cosc)
+    assert_columns_match(cosc['column'], params['column'])
