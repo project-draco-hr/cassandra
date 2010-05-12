@@ -5,6 +5,13 @@
     RowMutation rowMutation=new RowMutation(table,key.key);
     rowMutation.add(diffCf);
     RowMutationMessage rowMutationMessage=new RowMutationMessage(rowMutation);
-    ReadRepairManager.instance.schedule(endpoints.get(i),rowMutationMessage);
+    Message repairMessage;
+    try {
+      repairMessage=rowMutationMessage.makeRowMutationMessage(StorageService.Verb.READ_REPAIR);
+    }
+ catch (    IOException e) {
+      throw new IOError(e);
+    }
+    MessagingService.instance.sendOneWay(repairMessage,endpoints.get(i));
   }
 }
