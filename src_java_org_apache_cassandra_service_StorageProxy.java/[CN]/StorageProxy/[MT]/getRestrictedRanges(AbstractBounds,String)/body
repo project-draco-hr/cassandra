@@ -1,0 +1,19 @@
+{
+  TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
+  Iterator<Token> iter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),queryRange.left);
+  List<Pair<AbstractBounds,List<InetAddress>>> ranges=new ArrayList<Pair<AbstractBounds,List<InetAddress>>>();
+  while (iter.hasNext()) {
+    Token nodeToken=iter.next();
+    Range nodeRange=new Range(tokenMetadata.getPredecessor(nodeToken),nodeToken);
+    List<InetAddress> endpoints=StorageService.instance.getLiveNaturalEndpoints(keyspace,nodeToken);
+    DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),endpoints);
+    Set<AbstractBounds> restrictedRanges=queryRange.restrictTo(nodeRange);
+    for (    AbstractBounds range : restrictedRanges) {
+      for (      AbstractBounds unwrapped : range.unwrap()) {
+        if (logger.isDebugEnabled())         logger.debug("Adding to restricted ranges " + unwrapped + " for "+ nodeRange);
+        ranges.add(new Pair<AbstractBounds,List<InetAddress>>(unwrapped,endpoints));
+      }
+    }
+  }
+  return ranges;
+}

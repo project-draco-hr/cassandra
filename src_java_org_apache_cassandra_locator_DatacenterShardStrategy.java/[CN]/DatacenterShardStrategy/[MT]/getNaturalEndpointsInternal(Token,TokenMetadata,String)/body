@@ -1,0 +1,49 @@
+{
+  ArrayList<InetAddress> endpoints=new ArrayList<InetAddress>();
+  if (metadata.sortedTokens().isEmpty())   return endpoints;
+  if (tokensize != metadata.sortedTokens().size())   loadEndpoints(metadata);
+  for (  String dc : dcTokens.keySet()) {
+    int replicas=getReplicationFactor(dc,table);
+    int dcEpCount=0;
+    List<Token> tokens=dcTokens.get(dc);
+    boolean bOtherRack=false;
+    boolean doneDataCenterItr;
+    Iterator<Token> iter=TokenMetadata.ringIterator(tokens,searchToken);
+    InetAddress primaryHost=metadata.getEndpoint(iter.next());
+    endpoints.add(primaryHost);
+    dcEpCount++;
+    while (dcEpCount < replicas && iter.hasNext()) {
+      Token t=iter.next();
+      InetAddress endPointOfInterest=metadata.getEndpoint(t);
+      if (dcEpCount < replicas - 1) {
+        endpoints.add(endPointOfInterest);
+        dcEpCount++;
+        continue;
+      }
+ else {
+        doneDataCenterItr=true;
+      }
+      if (!bOtherRack) {
+        if (!snitch.getRack(primaryHost).equals(snitch.getRack(endPointOfInterest))) {
+          endpoints.add(metadata.getEndpoint(t));
+          dcEpCount++;
+          bOtherRack=true;
+        }
+      }
+      if (doneDataCenterItr && bOtherRack) {
+        break;
+      }
+    }
+    if (dcEpCount < replicas) {
+      iter=TokenMetadata.ringIterator(tokens,searchToken);
+      while (dcEpCount < replicas && iter.hasNext()) {
+        Token t=iter.next();
+        if (!endpoints.contains(metadata.getEndpoint(t))) {
+          endpoints.add(metadata.getEndpoint(t));
+          dcEpCount++;
+        }
+      }
+    }
+  }
+  return endpoints;
+}
