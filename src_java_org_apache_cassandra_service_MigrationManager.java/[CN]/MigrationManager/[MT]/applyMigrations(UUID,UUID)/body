@@ -1,0 +1,32 @@
+{
+  List<Future> updates=new ArrayList<Future>();
+  Collection<IColumn> migrations=Migration.getLocalMigrations(from,to);
+  for (  IColumn col : migrations) {
+    final Migration migration=Migration.deserialize(new ByteArrayInputStream(col.value()));
+    Future update=StageManager.getStage(StageManager.MIGRATION_STAGE).submit(new Runnable(){
+      public void run(){
+        try {
+          migration.apply();
+        }
+ catch (        ConfigurationException ex) {
+        }
+catch (        IOException ex) {
+          throw new RuntimeException(ex);
+        }
+      }
+    }
+);
+    updates.add(update);
+  }
+  for (  Future f : updates) {
+    try {
+      f.get();
+    }
+ catch (    InterruptedException e) {
+      throw new IOException(e);
+    }
+catch (    ExecutionException e) {
+      throw new IOException(e);
+    }
+  }
+}
