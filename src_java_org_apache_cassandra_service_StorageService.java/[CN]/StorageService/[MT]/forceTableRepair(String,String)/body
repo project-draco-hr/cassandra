@@ -1,9 +1,10 @@
 {
-  final MessagingService ms=MessagingService.instance;
-  final Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tableName);
-  endpoints.add(FBUtilities.getLocalAddress());
-  for (  ColumnFamilyStore cfStore : getValidColumnFamilies(tableName,columnFamilies)) {
-    Message request=TreeRequestVerbHandler.makeVerb(tableName,cfStore.getColumnFamilyName());
-    for (    InetAddress endpoint : endpoints)     ms.sendOneWay(request,endpoint);
+  AntiEntropyService.RepairSession sess=AntiEntropyService.instance.getRepairSession(tableName,columnFamilies);
+  try {
+    sess.start();
+    sess.join();
+  }
+ catch (  InterruptedException e) {
+    throw new IOException("Repair session " + sess + " failed.",e);
   }
 }

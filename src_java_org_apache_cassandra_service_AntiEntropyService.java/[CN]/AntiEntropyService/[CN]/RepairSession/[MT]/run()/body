@@ -1,0 +1,29 @@
+{
+  BlockingQueue<TreeRequest> completed=new LinkedBlockingQueue<TreeRequest>();
+  AntiEntropyService.this.sessions.put(getName(),completed);
+  try {
+    Set<TreeRequest> requests=new HashSet<TreeRequest>();
+    Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename);
+    endpoints.add(FBUtilities.getLocalAddress());
+    for (    String cfname : cfnames) {
+      Message request=TreeRequestVerbHandler.makeVerb(tablename,cfname);
+      for (      InetAddress endpoint : endpoints) {
+        requests.add(new TreeRequest(new CFPair(tablename,cfname),endpoint));
+        MessagingService.instance.sendOneWay(request,endpoint);
+      }
+    }
+    requestsMade.signalAll();
+    logger.info("Waiting for repair requests to: " + requests);
+    while (!requests.isEmpty()) {
+      TreeRequest request=completed.take();
+      logger.info("Repair request to " + request + " completed successfully.");
+      requests.remove(request);
+    }
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException("Interrupted while waiting for repair: repair will continue in the background.");
+  }
+ finally {
+    AntiEntropyService.this.sessions.remove(getName());
+  }
+}
