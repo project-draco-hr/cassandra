@@ -1,6 +1,26 @@
 {
-  if (isMarkedForDelete())   return timestamp < o.timestamp ? -1 : 1;
-  if (o.isMarkedForDelete())   return timestamp > o.timestamp ? 1 : -1;
-  if (timestamp == o.timestamp)   return FBUtilities.compareByteArrays(value,o.value);
-  return timestamp - o.timestamp;
+  ClockRelationship rel=clock.compare(o.clock());
+  if (isMarkedForDelete()) {
+switch (rel) {
+case EQUAL:
+      return ClockRelationship.GREATER_THAN;
+default :
+    return rel;
+}
+}
+if (o.isMarkedForDelete()) {
+switch (rel) {
+case EQUAL:
+  return ClockRelationship.LESS_THAN;
+default :
+return rel;
+}
+}
+if (ClockRelationship.EQUAL == rel) {
+int valRel=FBUtilities.compareByteArrays(value,o.value);
+if (1 == valRel) return ClockRelationship.GREATER_THAN;
+if (0 == valRel) return ClockRelationship.EQUAL;
+return ClockRelationship.LESS_THAN;
+}
+return rel;
 }

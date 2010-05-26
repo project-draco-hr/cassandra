@@ -1,8 +1,14 @@
 {
   for (  byte[] cname : cf.getColumnNames()) {
     IColumn c=cf.getColumnsMap().get(cname);
-    if ((c.isMarkedForDelete() && c.getLocalDeletionTime() <= gcBefore) || c.timestamp() <= cf.getMarkedForDeleteAt()) {
+    if ((c.isMarkedForDelete() && c.getLocalDeletionTime() <= gcBefore)) {
       cf.remove(cname);
+    }
+ else {
+      ClockRelationship rel=c.clock().compare(cf.getMarkedForDeleteAt());
+      if ((ClockRelationship.LESS_THAN == rel) || (ClockRelationship.EQUAL == rel)) {
+        cf.remove(cname);
+      }
     }
   }
 }

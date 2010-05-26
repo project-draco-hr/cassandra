@@ -1,10 +1,17 @@
 {
   for (  byte[] cname : cf.getColumnNames()) {
     IColumn c=cf.getColumnsMap().get(cname);
-    long minTimestamp=Math.max(c.getMarkedForDeleteAt(),cf.getMarkedForDeleteAt());
+    List<IClock> clocks=Arrays.asList(cf.getMarkedForDeleteAt());
+    IClock minClock=c.getMarkedForDeleteAt().getSuperset(clocks);
     for (    IColumn subColumn : c.getSubColumns()) {
-      if (subColumn.timestamp() <= minTimestamp || (subColumn.isMarkedForDelete() && subColumn.getLocalDeletionTime() <= gcBefore)) {
+      if (subColumn.isMarkedForDelete() && subColumn.getLocalDeletionTime() <= gcBefore) {
         ((SuperColumn)c).remove(subColumn.name());
+      }
+ else {
+        ClockRelationship subRel=subColumn.clock().compare(minClock);
+        if ((ClockRelationship.LESS_THAN == subRel) || (ClockRelationship.EQUAL == subRel)) {
+          ((SuperColumn)c).remove(subColumn.name());
+        }
       }
     }
     if (c.getSubColumns().isEmpty() && c.getLocalDeletionTime() <= gcBefore) {

@@ -2,7 +2,7 @@ def test_get_range_slice(self):
     _set_keyspace('Keyspace1')
     for key in ['key1', 'key2', 'key3', 'key4', 'key5']:
         for cname in ['col1', 'col2', 'col3', 'col4', 'col5']:
-            client.insert(key, ColumnParent('Standard1'), Column(cname, ('v-' + cname), 0), ConsistencyLevel.ONE)
+            client.insert(key, ColumnParent('Standard1'), Column(cname, ('v-' + cname), Clock(0)), ConsistencyLevel.ONE)
     cp = ColumnParent('Standard1')
     result = get_range_slice(client, cp, SlicePredicate(column_names=['col1', 'col3']), 'key6', '', 1, ConsistencyLevel.ONE)
     assert (len(result) == 0)
@@ -29,7 +29,7 @@ def test_get_range_slice(self):
     assert (result[0].columns[2].column.name == 'col2')
     result = get_range_slice(client, cp, SlicePredicate(slice_range=SliceRange(start='col2', finish='col4', reversed=False, count=5)), 'key1', 'key2', 1, ConsistencyLevel.ONE)
     assert (len(result) == 1)
-    client.remove('key1', ColumnPath('Standard1', column='col1'), 1, ConsistencyLevel.ONE)
+    client.remove('key1', ColumnPath('Standard1', column='col1'), Clock(1), ConsistencyLevel.ONE)
     result = get_range_slice(client, cp, SlicePredicate(slice_range=SliceRange('', '')), 'key1', 'key2', 5, ConsistencyLevel.ONE)
     assert (len(result) == 2), result
     assert (result[0].columns[0].column.name == 'col2'), result[0].columns[0].column.name

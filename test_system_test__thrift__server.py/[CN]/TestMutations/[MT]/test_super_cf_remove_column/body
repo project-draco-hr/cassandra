@@ -2,19 +2,19 @@ def test_super_cf_remove_column(self):
     _set_keyspace('Keyspace1')
     _insert_simple()
     _insert_super()
-    client.remove('key1', ColumnPath('Super1', 'sc2', _i64(5)), 5, ConsistencyLevel.ONE)
+    client.remove('key1', ColumnPath('Super1', 'sc2', _i64(5)), Clock(5), ConsistencyLevel.ONE)
     _expect_missing((lambda : client.get('key1', ColumnPath('Super1', 'sc2', _i64(5)), ConsistencyLevel.ONE)))
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
-    assert (super_columns == [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)]), SuperColumn(name='sc2', columns=[Column(_i64(6), 'value6', 0)])])
+    assert (super_columns == [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', Clock(0))]), SuperColumn(name='sc2', columns=[Column(_i64(6), 'value6', Clock(0))])])
     _verify_simple()
-    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(7), 'value7', 0), ConsistencyLevel.ONE)
-    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)]), SuperColumn(name='sc2', columns=[Column(_i64(6), 'value6', 0), Column(_i64(7), 'value7', 0)])]
+    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(7), 'value7', Clock(0)), ConsistencyLevel.ONE)
+    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', Clock(0))]), SuperColumn(name='sc2', columns=[Column(_i64(6), 'value6', Clock(0)), Column(_i64(7), 'value7', Clock(0))])]
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
     assert (super_columns == super_columns_expected), actual
-    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', 0), ConsistencyLevel.ONE)
+    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', Clock(0)), ConsistencyLevel.ONE)
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
     assert (super_columns == super_columns_expected), super_columns
-    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', 6), ConsistencyLevel.ONE)
+    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', Clock(6)), ConsistencyLevel.ONE)
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
-    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)]), SuperColumn(name='sc2', columns=[Column(_i64(5), 'value5', 6), Column(_i64(6), 'value6', 0), Column(_i64(7), 'value7', 0)])]
+    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', Clock(0))]), SuperColumn(name='sc2', columns=[Column(_i64(5), 'value5', Clock(6)), Column(_i64(6), 'value6', Clock(0)), Column(_i64(7), 'value7', Clock(0))])]
     assert (super_columns == super_columns_expected), super_columns

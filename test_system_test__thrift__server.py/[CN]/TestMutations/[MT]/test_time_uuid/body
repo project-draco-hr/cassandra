@@ -4,7 +4,7 @@ def test_time_uuid(self):
     _set_keyspace('Keyspace2')
     for i in xrange(500):
         L.append(uuid.uuid1())
-        client.insert('key1', ColumnParent('Super4', 'sc1'), Column(L[(-1)].bytes, ('value%s' % i), i), ConsistencyLevel.ONE)
+        client.insert('key1', ColumnParent('Super4', 'sc1'), Column(L[(-1)].bytes, ('value%s' % i), Clock(i)), ConsistencyLevel.ONE)
     slice = _big_slice('key1', ColumnParent('Super4', 'sc1'))
     assert (len(slice) == 500), len(slice)
     for i in xrange(500):
@@ -14,16 +14,16 @@ def test_time_uuid(self):
     p = SlicePredicate(slice_range=SliceRange('', '', True, 1))
     column_parent = ColumnParent('Super4', 'sc1')
     slice = [result.column for result in client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)]
-    assert (slice == [Column(L[(-1)].bytes, 'value499', 499)]), slice
+    assert (slice == [Column(L[(-1)].bytes, 'value499', Clock(499))]), slice
     p = SlicePredicate(slice_range=SliceRange('', L[2].bytes, False, 1000))
     column_parent = ColumnParent('Super4', 'sc1')
     slice = [result.column for result in client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)]
-    assert (slice == [Column(L[0].bytes, 'value0', 0), Column(L[1].bytes, 'value1', 1), Column(L[2].bytes, 'value2', 2)]), slice
+    assert (slice == [Column(L[0].bytes, 'value0', Clock(0)), Column(L[1].bytes, 'value1', Clock(1)), Column(L[2].bytes, 'value2', Clock(2))]), slice
     p = SlicePredicate(slice_range=SliceRange(L[2].bytes, '', True, 1000))
     column_parent = ColumnParent('Super4', 'sc1')
     slice = [result.column for result in client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)]
-    assert (slice == [Column(L[2].bytes, 'value2', 2), Column(L[1].bytes, 'value1', 1), Column(L[0].bytes, 'value0', 0)]), slice
+    assert (slice == [Column(L[2].bytes, 'value2', Clock(2)), Column(L[1].bytes, 'value1', Clock(1)), Column(L[0].bytes, 'value0', Clock(0))]), slice
     p = SlicePredicate(slice_range=SliceRange(L[2].bytes, '', False, 1))
     column_parent = ColumnParent('Super4', 'sc1')
     slice = [result.column for result in client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)]
-    assert (slice == [Column(L[2].bytes, 'value2', 2)]), slice
+    assert (slice == [Column(L[2].bytes, 'value2', Clock(2))]), slice

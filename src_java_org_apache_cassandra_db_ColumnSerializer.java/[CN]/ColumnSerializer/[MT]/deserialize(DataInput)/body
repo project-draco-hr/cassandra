@@ -4,26 +4,26 @@
   if (FBUtilities.testBitUsingBitMask(b,EXPIRATION_MASK)) {
     int ttl=dis.readInt();
     int expiration=dis.readInt();
-    long ts=dis.readLong();
+    IClock clock=clockType.serializer().deserialize(dis);
     byte[] value=FBUtilities.readByteArray(dis);
     if ((int)(System.currentTimeMillis() / 1000) > expiration) {
       ByteBuffer bytes=ByteBuffer.allocate(4);
       bytes.putInt(expiration);
-      return new DeletedColumn(name,bytes.array(),ts);
+      return new DeletedColumn(name,bytes.array(),clock);
     }
  else {
-      return new ExpiringColumn(name,value,ts,ttl,expiration);
+      return new ExpiringColumn(name,value,clock,ttl,expiration);
     }
   }
  else {
     boolean delete=FBUtilities.testBitUsingBitMask(b,DELETION_MASK);
-    long ts=dis.readLong();
+    IClock clock=clockType.serializer().deserialize(dis);
     byte[] value=FBUtilities.readByteArray(dis);
     if (FBUtilities.testBitUsingBitMask(b,DELETION_MASK)) {
-      return new DeletedColumn(name,value,ts);
+      return new DeletedColumn(name,value,clock);
     }
  else {
-      return new Column(name,value,ts);
+      return new Column(name,value,clock);
     }
   }
 }
