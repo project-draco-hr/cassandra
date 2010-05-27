@@ -2,27 +2,13 @@
   super(tokenMetadata,snitch);
   if ((!(snitch instanceof AbstractRackAwareSnitch)))   throw new IllegalArgumentException("DatacenterShardStrategy requires a rack-aware endpointsnitch");
   this.snitch=(AbstractRackAwareSnitch)snitch;
-  ClassLoader loader=PropertyFileSnitch.class.getClassLoader();
-  URL scpurl=loader.getResource(DATACENTER_PROPERTY_FILENAME);
-  if (scpurl == null) {
-    throw new RuntimeException("unable to locate " + DATACENTER_PROPERTY_FILENAME);
-  }
-  String dcPropertyFile=scpurl.getFile();
-  try {
-    Properties props=new Properties();
-    props.load(new FileReader(dcPropertyFile));
-    for (    Object key : props.keySet()) {
-      String[] keys=((String)key).split(":");
-      Map<String,Integer> map=datacenters.get(keys[0]);
-      if (null == map) {
-        map=new HashMap<String,Integer>();
-      }
-      map.put(keys[1],Integer.parseInt((String)props.get(key)));
-      datacenters.put(keys[0],map);
+  reloadConfiguration();
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws ConfigurationException {
+      reloadConfiguration();
     }
   }
- catch (  IOException ioe) {
-    throw new IOError(ioe);
-  }
+;
+  ResourceWatcher.watch(DATACENTER_PROPERTY_FILENAME,runnable,60 * 1000);
   loadEndpoints(tokenMetadata);
 }
