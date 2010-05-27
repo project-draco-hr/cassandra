@@ -24,6 +24,11 @@
   }
   CommitLog.recover();
   CompactionManager.instance.checkAllColumnFamilies();
+  UUID currentMigration=DatabaseDescriptor.getDefsVersion();
+  UUID lastMigration=Migration.getLastMigrationId();
+  if ((lastMigration != null) && (lastMigration.timestamp() > currentMigration.timestamp())) {
+    MigrationManager.applyMigrations(currentMigration,lastMigration);
+  }
   StorageService.instance.initServer();
   CassandraServer cassandraServer=new CassandraServer();
   Cassandra.Processor processor=new Cassandra.Processor(cassandraServer);
