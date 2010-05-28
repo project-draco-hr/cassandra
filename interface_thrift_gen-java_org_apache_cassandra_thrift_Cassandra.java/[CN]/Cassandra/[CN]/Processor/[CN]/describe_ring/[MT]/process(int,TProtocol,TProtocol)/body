@@ -14,7 +14,21 @@
   }
   iprot.readMessageEnd();
   describe_ring_result result=new describe_ring_result();
-  result.success=iface_.describe_ring(args.keyspace);
+  try {
+    result.success=iface_.describe_ring(args.keyspace);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing describe_ring",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing describe_ring");
+    oprot.writeMessageBegin(new TMessage("describe_ring",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   oprot.writeMessageBegin(new TMessage("describe_ring",TMessageType.REPLY,seqid));
   result.write(oprot);
   oprot.writeMessageEnd();
