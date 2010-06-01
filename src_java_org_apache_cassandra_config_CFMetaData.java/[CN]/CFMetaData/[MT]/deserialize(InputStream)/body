@@ -7,11 +7,18 @@
   AbstractType comparator=DatabaseDescriptor.getComparator(din.readUTF());
   AbstractType subcolumnComparator=null;
   subcolumnComparator=din.readBoolean() ? DatabaseDescriptor.getComparator(din.readUTF()) : null;
+  AbstractReconciler reconciler=null;
+  try {
+    reconciler=(AbstractReconciler)Class.forName(din.readUTF()).newInstance();
+  }
+ catch (  Exception ex) {
+    throw new IOException(ex);
+  }
   String comment=din.readBoolean() ? din.readUTF() : null;
   double rowCacheSize=din.readDouble();
   boolean preloadRowCache=din.readBoolean();
   double keyCacheSize=din.readDouble();
   double readRepairChance=din.readDouble();
   int cfId=din.readInt();
-  return new CFMetaData(tableName,cfName,cfType,clockType,comparator,subcolumnComparator,comment,rowCacheSize,preloadRowCache,keyCacheSize,readRepairChance,cfId);
+  return new CFMetaData(tableName,cfName,cfType,clockType,comparator,subcolumnComparator,reconciler,comment,rowCacheSize,preloadRowCache,keyCacheSize,readRepairChance,cfId);
 }
