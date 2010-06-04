@@ -27,3 +27,7 @@ def test_bad_calls(self):
     _expect_exception((lambda : get_range_slice(client, ColumnParent('Standard1'), SlicePredicate(column_names=['']), 'z', 'a', 1, ConsistencyLevel.ONE)), InvalidRequestException)
     column = Column('cttl1', 'value1', Clock(0), 0)
     _expect_exception((lambda : client.insert('key1', ColumnParent('Standard1'), column, ConsistencyLevel.ONE)), InvalidRequestException)
+    deletion = Deletion(Clock(1), 'supercolumn', None)
+    mutation = Mutation(deletion=deletion)
+    mutations = {'key': {'Standard1': [mutation], }, }
+    _expect_exception((lambda : client.batch_mutate(mutations, ConsistencyLevel.QUORUM)), InvalidRequestException)
