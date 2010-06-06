@@ -1,0 +1,38 @@
+{
+  try {
+    serverTransport_.listen();
+  }
+ catch (  TTransportException ttx) {
+    LOGGER.error("Error occurred during listening.",ttx);
+    return;
+  }
+  stopped_=false;
+  while (!stopped_) {
+    int failureCount=0;
+    try {
+      TTransport client=serverTransport_.accept();
+      WorkerProcess wp=new WorkerProcess(client);
+      executorService_.execute(wp);
+    }
+ catch (    TTransportException ttx) {
+      if (!stopped_) {
+        ++failureCount;
+        LOGGER.warn("Transport error occurred during acceptance of message.",ttx);
+      }
+    }
+  }
+  executorService_.shutdown();
+  long timeoutMS=options_.stopTimeoutUnit.toMillis(options_.stopTimeoutVal);
+  long now=System.currentTimeMillis();
+  while (timeoutMS >= 0) {
+    try {
+      executorService_.awaitTermination(timeoutMS,TimeUnit.MILLISECONDS);
+      break;
+    }
+ catch (    InterruptedException ix) {
+      long newnow=System.currentTimeMillis();
+      timeoutMS-=(newnow - now);
+      now=newnow;
+    }
+  }
+}
