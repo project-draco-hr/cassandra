@@ -8,10 +8,11 @@
   indexFile.getChannel().force(true);
   indexFile.close();
   dataFile.close();
-  Descriptor newdesc=desc.asTemporary(false);
-  rename(indexFilename());
-  rename(filterFilename());
-  rename(getFilename());
+  Descriptor newdesc=rename(desc);
   indexSummary.complete();
-  return new RowIndexedReader(newdesc,partitioner,indexSummary,bf,maxDataAge);
+  SegmentedFile ifile=ibuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_INDEX));
+  SegmentedFile dfile=dbuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_DATA));
+  ibuilder=null;
+  dbuilder=null;
+  return RowIndexedReader.internalOpen(newdesc,partitioner,ifile,dfile,indexSummary,bf,maxDataAge);
 }

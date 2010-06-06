@@ -1,70 +1,41 @@
 {
-  if (!bf.isPresent(partitioner.convertToDiskFormat(decoratedKey)))   return null;
+  if (!bf.isPresent(partitioner.convertToDiskFormat(decoratedKey)))   return -1;
   Pair<Descriptor,DecoratedKey> unifiedKey=new Pair<Descriptor,DecoratedKey>(desc,decoratedKey);
   if (keyCache != null && keyCache.getCapacity() > 0) {
-    PositionSize cachedPosition=keyCache.get(unifiedKey);
+    Long cachedPosition=keyCache.get(unifiedKey);
     if (cachedPosition != null) {
       return cachedPosition;
     }
   }
   IndexSummary.KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
-  if (sampledPosition == null)   return null;
-  long p=sampledPosition.indexPosition;
-  FileDataInput input;
-  try {
-    if (indexBuffers == null) {
-      input=new BufferedRandomAccessFile(indexFilename(),"r");
-      ((BufferedRandomAccessFile)input).seek(p);
-    }
- else {
-      input=indexInputAt(p);
-    }
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
-  try {
-    int i=0;
-    do {
-      IndexSummary.KeyPosition kp=indexSummary.getSpannedIndexPosition(input.getAbsolutePosition());
-      if (kp != null && kp.key.equals(decoratedKey))       return indexSummary.getSpannedDataPosition(kp);
-      if (input.isEOF() || kp != null) {
-        if (indexBuffers == null)         break;
-        FileDataInput oldInput=input;
-        if (kp == null) {
-          input=indexInputAt(input.getAbsolutePosition());
-        }
- else {
-          int keylength=StorageService.getPartitioner().convertToDiskFormat(kp.key).length;
-          long nextUnspannedPostion=input.getAbsolutePosition() + DBConstants.shortSize_ + keylength+ DBConstants.longSize_;
-          input=indexInputAt(nextUnspannedPostion);
-        }
-        oldInput.close();
-        if (input == null)         break;
-        continue;
-      }
-      DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
-      long dataPosition=input.readLong();
-      int v=indexDecoratedKey.compareTo(decoratedKey);
-      if (v == 0) {
-        PositionSize info=getDataPositionSize(input,dataPosition);
-        if (keyCache != null && keyCache.getCapacity() > 0)         keyCache.put(unifiedKey,info);
-        return info;
-      }
-      if (v > 0)       return null;
-    }
- while (++i < IndexSummary.INDEX_INTERVAL);
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
- finally {
+  if (sampledPosition == null)   return -1;
+  int i=0;
+  Iterator<FileDataInput> segments=ifile.iterator(sampledPosition.indexPosition,INDEX_FILE_BUFFER_BYTES);
+  while (segments.hasNext()) {
+    FileDataInput input=segments.next();
     try {
-      if (input != null)       input.close();
+      while (!input.isEOF() && i++ < IndexSummary.INDEX_INTERVAL) {
+        DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
+        long dataPosition=input.readLong();
+        int v=indexDecoratedKey.compareTo(decoratedKey);
+        if (v == 0) {
+          if (keyCache != null && keyCache.getCapacity() > 0)           keyCache.put(unifiedKey,Long.valueOf(dataPosition));
+          return dataPosition;
+        }
+        if (v > 0)         return -1;
+      }
     }
  catch (    IOException e) {
-      logger.error("error closing file",e);
+      throw new IOError(e);
+    }
+ finally {
+      try {
+        input.close();
+      }
+ catch (      IOException e) {
+        logger.error("error closing file",e);
+      }
     }
   }
-  return null;
+  return -1;
 }
