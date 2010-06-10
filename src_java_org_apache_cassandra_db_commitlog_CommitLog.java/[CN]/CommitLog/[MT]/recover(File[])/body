@@ -4,7 +4,14 @@
   for (  File file : clogs) {
     int bufferSize=(int)Math.min(file.length(),32 * 1024 * 1024);
     BufferedRandomAccessFile reader=new BufferedRandomAccessFile(file.getAbsolutePath(),"r",bufferSize);
-    final CommitLogHeader clHeader=CommitLogHeader.readCommitLogHeader(reader);
+    final CommitLogHeader clHeader;
+    try {
+      clHeader=CommitLogHeader.readCommitLogHeader(reader);
+    }
+ catch (    EOFException eofe) {
+      logger.info("Attempted to recover an incomplete CommitLogHeader.  Everything is ok, don't panic.");
+      continue;
+    }
     int lowPos=CommitLogHeader.getLowestPosition(clHeader);
     if (lowPos == 0)     break;
     reader.seek(lowPos);
