@@ -1,12 +1,14 @@
 {
   Properties props=PropertyFileSnitch.resourceToProperties(DATACENTER_PROPERTY_FILENAME);
-  for (  Object key : props.keySet()) {
-    String[] keys=((String)key).split(":");
-    Map<String,Integer> map=datacenters.get(keys[0]);
-    if (null == map) {
-      map=new HashMap<String,Integer>();
-    }
-    map.put(keys[1],Integer.parseInt((String)props.get(key)));
-    datacenters.put(keys[0],map);
+  Map<String,Map<String,Integer>> newDatacenters=new HashMap<String,Map<String,Integer>>();
+  for (  Entry entry : props.entrySet()) {
+    String[] keys=((String)entry.getKey()).split(":");
+    Map<String,Integer> map=newDatacenters.get(keys[0]);
+    if (map == null)     map=new HashMap<String,Integer>();
+    map.put(keys[1],Integer.parseInt((String)entry.getValue()));
+    newDatacenters.put(keys[0],map);
   }
+  datacenters=Collections.unmodifiableMap(newDatacenters);
+  logger.info(DATACENTER_PROPERTY_FILENAME + " changed, clearing endpoint cache");
+  clearCachedEndpoints();
 }

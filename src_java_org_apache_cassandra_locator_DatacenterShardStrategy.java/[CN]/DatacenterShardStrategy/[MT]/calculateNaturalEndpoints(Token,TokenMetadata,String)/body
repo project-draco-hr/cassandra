@@ -1,0 +1,37 @@
+{
+  int totalReplicas=getReplicationfactor(table);
+  Map<String,Integer> remainingReplicas=new HashMap<String,Integer>(datacenters.get(table));
+  Map<String,Set<String>> dcUsedRacks=new HashMap<String,Set<String>>();
+  Set<InetAddress> endpoints=new HashSet<InetAddress>(totalReplicas);
+  for (Iterator<Token> iter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),searchToken); endpoints.size() < totalReplicas && iter.hasNext(); ) {
+    Token token=iter.next();
+    InetAddress endpoint=tokenMetadata.getEndpoint(token);
+    String datacenter=snitch.getDatacenter(endpoint);
+    int remaining=remainingReplicas.containsKey(datacenter) ? remainingReplicas.get(datacenter) : 0;
+    if (remaining > 0) {
+      Set<String> usedRacks=dcUsedRacks.get(datacenter);
+      if (usedRacks == null) {
+        usedRacks=new HashSet<String>();
+        dcUsedRacks.put(datacenter,usedRacks);
+      }
+      String rack=snitch.getRack(endpoint);
+      if (!usedRacks.contains(rack)) {
+        endpoints.add(endpoint);
+        usedRacks.add(rack);
+        remainingReplicas.put(datacenter,remaining - 1);
+      }
+    }
+  }
+  for (Iterator<Token> iter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),searchToken); endpoints.size() < totalReplicas && iter.hasNext(); ) {
+    Token token=iter.next();
+    InetAddress endpoint=tokenMetadata.getEndpoint(token);
+    if (endpoints.contains(endpoint))     continue;
+    String datacenter=snitch.getDatacenter(endpoint);
+    int remaining=remainingReplicas.containsKey(datacenter) ? remainingReplicas.get(datacenter) : 0;
+    if (remaining > 0) {
+      endpoints.add(endpoint);
+      remainingReplicas.put(datacenter,remaining - 1);
+    }
+  }
+  return endpoints;
+}
