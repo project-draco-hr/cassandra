@@ -3,12 +3,13 @@
   try {
     Collection<CFMetaData> cfDefs=new ArrayList<CFMetaData>((int)ksDef.cf_defs.size());
     for (    CfDef cfDef : ksDef.cf_defs) {
-      String cfType, compare, subCompare;
+      String cfType, compare, subCompare, reconcilerName;
       cfType=cfDef.column_type == null ? D_CF_CFTYPE : cfDef.column_type.toString();
       ClockType clockType=ClockType.create(cfDef.clock_type == null ? D_CF_CFCLOCKTYPE : cfDef.clock_type.toString());
       compare=cfDef.comparator_type == null ? D_CF_COMPTYPE : cfDef.comparator_type.toString();
       subCompare=cfDef.subcomparator_type == null ? D_CF_SUBCOMPTYPE : cfDef.subcomparator_type.toString();
-      AbstractReconciler reconciler=DatabaseDescriptor.getReconciler(cfDef.reconciler.toString());
+      reconcilerName=cfDef.reconciler == null ? null : cfDef.reconciler.toString();
+      AbstractReconciler reconciler=DatabaseDescriptor.getReconciler(reconcilerName);
       if (reconciler == null) {
         if (clockType == ClockType.Timestamp)         reconciler=new TimestampReconciler();
  else         throw new ConfigurationException("No reconciler specified for column family " + cfDef.name.toString());
