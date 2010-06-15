@@ -5,7 +5,7 @@
   TokenMetadata tmd=ss.getTokenMetadata();
   tmd.clearUnsafe();
   IPartitioner partitioner=new RandomPartitioner();
-  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,null);
+  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,new SimpleSnitch());
   IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
   Map<String,AbstractReplicationStrategy> oldStrategies=ss.setReplicationStrategyUnsafe(createReplacements(testStrategy));
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
@@ -30,7 +30,7 @@
     }
     final int replicaStart=(LEAVING_NODE - replicationFactor + RING_SIZE) % RING_SIZE;
     for (int i=0; i < keyTokens.size(); ++i) {
-      Collection<InetAddress> endpoints=testStrategy.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
+      Collection<InetAddress> endpoints=tmd.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
       boolean isReplica=(i - replicaStart + RING_SIZE) % RING_SIZE < replicationFactor;
       if (isReplica)       assertTrue(endpoints.size() == replicationFactor + 1);
  else       assertTrue(endpoints.size() == replicationFactor);

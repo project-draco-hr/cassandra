@@ -4,7 +4,7 @@
   TokenMetadata tmd=ss.getTokenMetadata();
   tmd.clearUnsafe();
   IPartitioner partitioner=new RandomPartitioner();
-  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,null);
+  AbstractReplicationStrategy testStrategy=new RackUnawareStrategy(tmd,new SimpleSnitch());
   IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
   Map<String,AbstractReplicationStrategy> oldStrategy=ss.setReplicationStrategyUnsafe(createReplacements(testStrategy));
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
@@ -65,26 +65,26 @@
   expectedEndpoints.get("Keyspace4").putAll(new BigIntegerToken("95"),makeAddrs("127.0.0.1","127.0.0.2","127.0.0.3"));
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
     for (int i=0; i < keyTokens.size(); i++) {
-      endpoints=testStrategy.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
+      endpoints=tmd.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
       assertTrue(expectedEndpoints.get(table).get(keyTokens.get(i)).size() == endpoints.size());
       assertTrue(expectedEndpoints.get(table).get(keyTokens.get(i)).containsAll(endpoints));
     }
     if (DatabaseDescriptor.getReplicationFactor(table) != 3)     continue;
     for (int i=0; i < 3; ++i) {
-      endpoints=testStrategy.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
+      endpoints=tmd.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
       assertTrue(endpoints.size() == 3);
       assertTrue(endpoints.contains(hosts.get(i + 1)));
       assertTrue(endpoints.contains(hosts.get(i + 2)));
       assertTrue(endpoints.contains(hosts.get(i + 3)));
     }
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(3),table,testStrategy.getNaturalEndpoints(keyTokens.get(3),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(3),table,testStrategy.getNaturalEndpoints(keyTokens.get(3),table));
     assertTrue(endpoints.size() == 5);
     assertTrue(endpoints.contains(hosts.get(4)));
     assertTrue(endpoints.contains(hosts.get(5)));
     assertTrue(endpoints.contains(hosts.get(6)));
     assertTrue(endpoints.contains(hosts.get(7)));
     assertTrue(endpoints.contains(boot1));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(4),table,testStrategy.getNaturalEndpoints(keyTokens.get(4),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(4),table,testStrategy.getNaturalEndpoints(keyTokens.get(4),table));
     assertTrue(endpoints.size() == 6);
     assertTrue(endpoints.contains(hosts.get(5)));
     assertTrue(endpoints.contains(hosts.get(6)));
@@ -92,7 +92,7 @@
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(boot1));
     assertTrue(endpoints.contains(boot2));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(5),table,testStrategy.getNaturalEndpoints(keyTokens.get(5),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(5),table,testStrategy.getNaturalEndpoints(keyTokens.get(5),table));
     assertTrue(endpoints.size() == 7);
     assertTrue(endpoints.contains(hosts.get(6)));
     assertTrue(endpoints.contains(hosts.get(7)));
@@ -101,7 +101,7 @@
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(boot1));
     assertTrue(endpoints.contains(boot2));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(6),table,testStrategy.getNaturalEndpoints(keyTokens.get(6),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(6),table,testStrategy.getNaturalEndpoints(keyTokens.get(6),table));
     assertTrue(endpoints.size() == 6);
     assertTrue(endpoints.contains(hosts.get(7)));
     assertTrue(endpoints.contains(hosts.get(8)));
@@ -109,7 +109,7 @@
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(boot2));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(7),table,testStrategy.getNaturalEndpoints(keyTokens.get(7),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(7),table,testStrategy.getNaturalEndpoints(keyTokens.get(7),table));
     assertTrue(endpoints.size() == 6);
     assertTrue(endpoints.contains(hosts.get(8)));
     assertTrue(endpoints.contains(hosts.get(9)));
@@ -117,13 +117,13 @@
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(hosts.get(2)));
     assertTrue(endpoints.contains(boot2));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(8),table,testStrategy.getNaturalEndpoints(keyTokens.get(8),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(8),table,testStrategy.getNaturalEndpoints(keyTokens.get(8),table));
     assertTrue(endpoints.size() == 4);
     assertTrue(endpoints.contains(hosts.get(9)));
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(hosts.get(2)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(9),table,testStrategy.getNaturalEndpoints(keyTokens.get(9),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(9),table,testStrategy.getNaturalEndpoints(keyTokens.get(9),table));
     assertTrue(endpoints.size() == 3);
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
@@ -152,55 +152,55 @@
   expectedEndpoints.get("Keyspace4").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
     for (int i=0; i < keyTokens.size(); i++) {
-      endpoints=testStrategy.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
+      endpoints=tmd.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
       assertTrue(expectedEndpoints.get(table).get(keyTokens.get(i)).size() == endpoints.size());
       assertTrue(expectedEndpoints.get(table).get(keyTokens.get(i)).containsAll(endpoints));
     }
     if (DatabaseDescriptor.getReplicationFactor(table) != 3)     continue;
     for (int i=0; i < 3; ++i) {
-      endpoints=testStrategy.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
+      endpoints=tmd.getWriteEndpoints(keyTokens.get(i),table,testStrategy.getNaturalEndpoints(keyTokens.get(i),table));
       assertTrue(endpoints.size() == 3);
       assertTrue(endpoints.contains(hosts.get(i + 1)));
       assertTrue(endpoints.contains(hosts.get(i + 2)));
       assertTrue(endpoints.contains(hosts.get(i + 3)));
     }
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(3),table,testStrategy.getNaturalEndpoints(keyTokens.get(3),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(3),table,testStrategy.getNaturalEndpoints(keyTokens.get(3),table));
     assertTrue(endpoints.size() == 3);
     assertTrue(endpoints.contains(hosts.get(4)));
     assertTrue(endpoints.contains(hosts.get(5)));
     assertTrue(endpoints.contains(boot1));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(4),table,testStrategy.getNaturalEndpoints(keyTokens.get(4),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(4),table,testStrategy.getNaturalEndpoints(keyTokens.get(4),table));
     assertTrue(endpoints.size() == 3);
     assertTrue(endpoints.contains(hosts.get(5)));
     assertTrue(endpoints.contains(boot1));
     assertTrue(endpoints.contains(hosts.get(7)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(5),table,testStrategy.getNaturalEndpoints(keyTokens.get(5),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(5),table,testStrategy.getNaturalEndpoints(keyTokens.get(5),table));
     assertTrue(endpoints.size() == 5);
     assertTrue(endpoints.contains(boot1));
     assertTrue(endpoints.contains(hosts.get(7)));
     assertTrue(endpoints.contains(boot2));
     assertTrue(endpoints.contains(hosts.get(8)));
     assertTrue(endpoints.contains(hosts.get(0)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(6),table,testStrategy.getNaturalEndpoints(keyTokens.get(6),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(6),table,testStrategy.getNaturalEndpoints(keyTokens.get(6),table));
     assertTrue(endpoints.size() == 5);
     assertTrue(endpoints.contains(hosts.get(7)));
     assertTrue(endpoints.contains(boot2));
     assertTrue(endpoints.contains(hosts.get(8)));
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(7),table,testStrategy.getNaturalEndpoints(keyTokens.get(7),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(7),table,testStrategy.getNaturalEndpoints(keyTokens.get(7),table));
     assertTrue(endpoints.size() == 5);
     assertTrue(endpoints.contains(boot2));
     assertTrue(endpoints.contains(hosts.get(8)));
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(hosts.get(2)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(8),table,testStrategy.getNaturalEndpoints(keyTokens.get(8),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(8),table,testStrategy.getNaturalEndpoints(keyTokens.get(8),table));
     assertTrue(endpoints.size() == 3);
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(hosts.get(2)));
-    endpoints=testStrategy.getWriteEndpoints(keyTokens.get(9),table,testStrategy.getNaturalEndpoints(keyTokens.get(9),table));
+    endpoints=tmd.getWriteEndpoints(keyTokens.get(9),table,testStrategy.getNaturalEndpoints(keyTokens.get(9),table));
     assertTrue(endpoints.size() == 3);
     assertTrue(endpoints.contains(hosts.get(0)));
     assertTrue(endpoints.contains(hosts.get(1)));
