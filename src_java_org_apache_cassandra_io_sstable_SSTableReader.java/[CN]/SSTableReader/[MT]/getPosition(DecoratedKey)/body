@@ -1,0 +1,41 @@
+{
+  if (!bf.isPresent(partitioner.convertToDiskFormat(decoratedKey)))   return -1;
+  Pair<Descriptor,DecoratedKey> unifiedKey=new Pair<Descriptor,DecoratedKey>(desc,decoratedKey);
+  if (keyCache != null && keyCache.getCapacity() > 0) {
+    Long cachedPosition=keyCache.get(unifiedKey);
+    if (cachedPosition != null) {
+      return cachedPosition;
+    }
+  }
+  IndexSummary.KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
+  if (sampledPosition == null)   return -1;
+  int i=0;
+  Iterator<FileDataInput> segments=ifile.iterator(sampledPosition.indexPosition,INDEX_FILE_BUFFER_BYTES);
+  while (segments.hasNext()) {
+    FileDataInput input=segments.next();
+    try {
+      while (!input.isEOF() && i++ < IndexSummary.INDEX_INTERVAL) {
+        DecoratedKey indexDecoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
+        long dataPosition=input.readLong();
+        int v=indexDecoratedKey.compareTo(decoratedKey);
+        if (v == 0) {
+          if (keyCache != null && keyCache.getCapacity() > 0)           keyCache.put(unifiedKey,Long.valueOf(dataPosition));
+          return dataPosition;
+        }
+        if (v > 0)         return -1;
+      }
+    }
+ catch (    IOException e) {
+      throw new IOError(e);
+    }
+ finally {
+      try {
+        input.close();
+      }
+ catch (      IOException e) {
+        logger.error("error closing file",e);
+      }
+    }
+  }
+  return -1;
+}
