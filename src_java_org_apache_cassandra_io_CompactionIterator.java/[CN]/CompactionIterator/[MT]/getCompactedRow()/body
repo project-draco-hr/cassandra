@@ -3,6 +3,9 @@
   for (  SSTableIdentityIterator row : rows) {
     rowSize+=row.getDataSize();
   }
-  if (rowSize > 512 * 1024 * 1024)   return new LazilyCompactedRow(rows,major,gcBefore);
- else   return new PrecompactedRow(rows,major,gcBefore);
+  if (rowSize > DatabaseDescriptor.getInMemoryCompactionLimit()) {
+    logger.info("Compacting large row (" + rowSize + " bytes) incrementally");
+    return new LazilyCompactedRow(rows,major,gcBefore);
+  }
+  return new PrecompactedRow(rows,major,gcBefore);
 }
