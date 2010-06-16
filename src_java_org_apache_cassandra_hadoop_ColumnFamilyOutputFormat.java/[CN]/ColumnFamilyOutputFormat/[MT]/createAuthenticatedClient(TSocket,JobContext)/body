@@ -1,0 +1,12 @@
+{
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(socket,false,false);
+  Cassandra.Client client=new Cassandra.Client(binaryProtocol);
+  socket.open();
+  client.set_keyspace(ConfigHelper.getKeyspace(context.getConfiguration()));
+  Map<String,String> creds=new HashMap<String,String>();
+  creds.put(SimpleAuthenticator.USERNAME_KEY,ConfigHelper.getKeyspaceUserName(context.getConfiguration()));
+  creds.put(SimpleAuthenticator.PASSWORD_KEY,ConfigHelper.getKeyspacePassword(context.getConfiguration()));
+  AuthenticationRequest authRequest=new AuthenticationRequest(creds);
+  if (!(DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator))   client.login(authRequest);
+  return client;
+}

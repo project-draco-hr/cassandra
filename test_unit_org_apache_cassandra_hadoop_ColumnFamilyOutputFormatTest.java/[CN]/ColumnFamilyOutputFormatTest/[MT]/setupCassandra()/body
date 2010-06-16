@@ -1,0 +1,22 @@
+{
+  TSocket socket=new TSocket(DatabaseDescriptor.getListenAddress().getHostName(),DatabaseDescriptor.getRpcPort());
+  TTransport transport;
+  transport=socket;
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(transport,false,false);
+  Cassandra.Client cassandraClient=new Cassandra.Client(binaryProtocol);
+  transport.open();
+  thriftClient=cassandraClient;
+  Set<String> keyspaces=thriftClient.describe_keyspaces();
+  if (!keyspaces.contains(KEYSPACE)) {
+    List<CfDef> cfDefs=new ArrayList<CfDef>();
+    thriftClient.system_add_keyspace(new KsDef(KEYSPACE,"org.apache.cassandra.locator.RackUnawareStrategy",1,cfDefs));
+  }
+  thriftClient.set_keyspace(KEYSPACE);
+  CfDef cfDef=new CfDef(KEYSPACE,COLUMN_FAMILY);
+  try {
+    thriftClient.system_add_column_family(cfDef);
+  }
+ catch (  InvalidRequestException e) {
+    throw new RuntimeException(e);
+  }
+}
