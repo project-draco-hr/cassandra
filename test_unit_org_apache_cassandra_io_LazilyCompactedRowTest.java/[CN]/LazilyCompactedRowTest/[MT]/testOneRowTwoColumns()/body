@@ -1,0 +1,12 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore cfs=table.getColumnFamilyStore("Standard1");
+  byte[] key="k".getBytes();
+  RowMutation rm=new RowMutation("Keyspace1",key);
+  rm.add(new QueryPath("Standard1",null,"c".getBytes()),new byte[0],new TimestampClock(0));
+  rm.add(new QueryPath("Standard1",null,"d".getBytes()),new byte[0],new TimestampClock(0));
+  rm.apply();
+  cfs.forceBlockingFlush();
+  assertBytes(cfs.getSSTables(),Integer.MAX_VALUE,true);
+}
