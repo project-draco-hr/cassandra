@@ -21,7 +21,7 @@
   if (logger.isDebugEnabled())   logger.debug("Expected bloom filter size : " + expectedBloomFilterSize);
   SSTableWriter writer;
   CompactionIterator ci=new CompactionIterator(sstables,gcBefore,major);
-  Iterator<CompactionIterator.CompactedRow> nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
+  Iterator<AbstractCompactedRow> nni=new FilterIterator(ci,PredicateUtils.notNullPredicate());
   executor.beginCompaction(cfs,ci);
   try {
     if (!nni.hasNext()) {
@@ -33,9 +33,9 @@
     AntiEntropyService.IValidator validator=AntiEntropyService.instance.getValidator(table.name,cfs.getColumnFamilyName(),null,major);
     validator.prepare();
     while (nni.hasNext()) {
-      CompactionIterator.CompactedRow row=nni.next();
+      AbstractCompactedRow row=nni.next();
       long prevpos=writer.getFilePointer();
-      writer.append(row.key,row.buffer);
+      writer.append(row);
       validator.add(row);
       totalkeysWritten++;
       long rowsize=writer.getFilePointer() - prevpos;
