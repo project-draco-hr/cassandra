@@ -1,0 +1,11 @@
+{
+  Map<DecoratedKey<?>,ColumnFamily> columnFamilies=readColumnFamily(commands,consistencyLevel);
+  Map<byte[],GenericArray<ColumnOrSuperColumn>> columnFamiliesMap=new HashMap<byte[],GenericArray<ColumnOrSuperColumn>>();
+  for (  ReadCommand cmd : commands) {
+    ColumnFamily cf=columnFamilies.get(StorageService.getPartitioner().decorateKey(cmd.key));
+    boolean reverseOrder=cmd instanceof SliceFromReadCommand && ((SliceFromReadCommand)cmd).reversed;
+    GenericArray<ColumnOrSuperColumn> avroColumns=avronateColumnFamily(cf,cmd.queryPath.superColumnName != null,reverseOrder);
+    columnFamiliesMap.put(cmd.key,avroColumns);
+  }
+  return columnFamiliesMap;
+}

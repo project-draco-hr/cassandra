@@ -1,0 +1,23 @@
+{
+  AvroValidation.validateColumnParent(keyspace,columnParent);
+  AvroValidation.validatePredicate(keyspace,columnParent,predicate);
+  byte[] superName=columnParent.super_column == null ? null : columnParent.super_column.array();
+  QueryPath queryPath=new QueryPath(columnParent.column_family.toString(),superName);
+  List<ReadCommand> commands=new ArrayList<ReadCommand>();
+  if (predicate.column_names != null) {
+    for (    byte[] key : keys) {
+      AvroValidation.validateKey(key);
+      Collection<byte[]> column_names=new ArrayList<byte[]>();
+      for (      ByteBuffer name : predicate.column_names)       column_names.add(name.array());
+      commands.add(new SliceByNamesReadCommand(keyspace,key,queryPath,column_names));
+    }
+  }
+ else {
+    SliceRange range=predicate.slice_range;
+    for (    byte[] key : keys) {
+      AvroValidation.validateKey(key);
+      commands.add(new SliceFromReadCommand(keyspace,key,queryPath,range.start.array(),range.finish.array(),range.reversed,range.count));
+    }
+  }
+  return getSlice(commands,consistencyLevel);
+}
