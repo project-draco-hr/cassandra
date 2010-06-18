@@ -1,18 +1,11 @@
 {
-  FileOutputStream fos=new FileOutputStream(filterFilename());
-  DataOutputStream stream=new DataOutputStream(fos);
-  BloomFilter.serializer().serialize(bf,stream);
-  stream.flush();
-  fos.getFD().sync();
-  stream.close();
-  indexFile.getChannel().force(true);
-  indexFile.close();
+  iwriter.close();
   dataFile.close();
   Descriptor newdesc=rename(desc);
-  indexSummary.complete();
-  SegmentedFile ifile=ibuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_INDEX));
+  SegmentedFile ifile=iwriter.builder.complete(newdesc.filenameFor(SSTable.COMPONENT_INDEX));
   SegmentedFile dfile=dbuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_DATA));
-  ibuilder=null;
+  SSTableReader sstable=SSTableReader.internalOpen(newdesc,partitioner,ifile,dfile,iwriter.summary,iwriter.bf,maxDataAge);
+  iwriter=null;
   dbuilder=null;
-  return SSTableReader.internalOpen(newdesc,partitioner,ifile,dfile,indexSummary,bf,maxDataAge);
+  return sstable;
 }

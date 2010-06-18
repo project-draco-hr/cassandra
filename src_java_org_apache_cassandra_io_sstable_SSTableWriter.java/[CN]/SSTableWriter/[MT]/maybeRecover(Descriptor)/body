@@ -1,0 +1,41 @@
+{
+  File ifile=new File(desc.filenameFor(SSTable.COMPONENT_INDEX));
+  File ffile=new File(desc.filenameFor(SSTable.COMPONENT_FILTER));
+  if (ifile.exists() && ffile.exists())   return;
+  ifile.delete();
+  ffile.delete();
+  BufferedRandomAccessFile dfile=new BufferedRandomAccessFile(desc.filenameFor(SSTable.COMPONENT_DATA),"r",(int)(DatabaseDescriptor.getFlushDataBufferSizeInMB() * 1024 * 1024));
+  IndexWriter iwriter;
+  long estimatedRows;
+  try {
+    estimatedRows=estimateRows(desc,dfile);
+    iwriter=new IndexWriter(desc,StorageService.getPartitioner(),estimatedRows);
+  }
+ catch (  IOException e) {
+    dfile.close();
+    throw e;
+  }
+  long rows=0;
+  try {
+    DecoratedKey key;
+    long dataPosition=0;
+    while (dataPosition < dfile.length()) {
+      key=StorageService.getPartitioner().convertFromDiskFormat(FBUtilities.readShortByteArray(dfile));
+      long dataSize=SSTableReader.readRowSize(dfile,desc);
+      iwriter.afterAppend(key,dataPosition);
+      dataPosition=dfile.getFilePointer() + dataSize;
+      dfile.seek(dataPosition);
+      rows++;
+    }
+  }
+  finally {
+    try {
+      dfile.close();
+      iwriter.close();
+    }
+ catch (    IOException e) {
+      logger.error("Failed to close data or index file during recovery of " + desc,e);
+    }
+  }
+  logger.debug("estimated row count was %s of real count",((double)estimatedRows) / rows);
+}
