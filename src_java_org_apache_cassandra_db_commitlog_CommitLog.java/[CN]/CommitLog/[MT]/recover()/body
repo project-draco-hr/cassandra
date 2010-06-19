@@ -1,7 +1,6 @@
 {
-  String directory=DatabaseDescriptor.getLogFileLocation();
-  File file=new File(directory);
-  File[] files=file.listFiles(new FilenameFilter(){
+  String directory=DatabaseDescriptor.getCommitLogLocation();
+  File[] files=new File(directory).listFiles(new FilenameFilter(){
     public boolean accept(    File dir,    String name){
       return CommitLogSegment.possibleCommitLogFile(name);
     }
@@ -11,6 +10,9 @@
   Arrays.sort(files,new FileUtils.FileComparator());
   logger.info("Replaying " + StringUtils.join(files,", "));
   recover(files);
-  FileUtils.delete(files);
+  for (  File f : files) {
+    FileUtils.delete(CommitLogHeader.getHeaderPathFromSegmentPath(f.getAbsolutePath()));
+    FileUtils.deleteWithConfirm(f);
+  }
   logger.info("Log replay complete");
 }
