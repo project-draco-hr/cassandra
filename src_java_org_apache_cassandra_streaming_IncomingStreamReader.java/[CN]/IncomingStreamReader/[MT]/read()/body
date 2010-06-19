@@ -6,21 +6,18 @@
   FileChannel fc=fos.getChannel();
   long offset=0;
   try {
-    Pair<Long,Long> section;
-    while ((section=pendingFile.currentSection()) != null) {
-      long length=Math.min(FileStreamTask.CHUNK_SIZE,section.right - section.left);
-      long bytesRead=fc.transferFrom(socketChannel,offset,length);
-      pendingFile.update(section.left + bytesRead);
-      offset+=bytesRead;
+    for (    Pair<Long,Long> section : pendingFile.sections) {
+      long length=section.right - section.left;
+      long bytesRead=0;
+      while (bytesRead < length)       bytesRead+=fc.transferFrom(socketChannel,offset + bytesRead,length - bytesRead);
+      offset+=length;
     }
   }
  catch (  IOException ex) {
     logger.debug("Receiving stream: recovering from IO error");
     streamStatus.setAction(FileStatus.Action.STREAM);
     handleFileStatus(remoteAddress.getAddress());
-    File file=new File(pendingFile.getFilename());
-    file.delete();
-    pendingFile.update(0);
+    FileUtils.deleteWithConfirm(new File(pendingFile.getFilename()));
     throw ex;
   }
  finally {
