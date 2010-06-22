@@ -1,0 +1,15 @@
+{
+  Table table=Table.open(TABLE1);
+  ColumnFamilyStore store=table.getColumnFamilyStore("Super3");
+  final int ROWS_PER_SSTABLE=10;
+  Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
+  for (int i=0; i < ROWS_PER_SSTABLE; i++) {
+    DecoratedKey key=Util.dk(String.valueOf(i));
+    RowMutation rm=new RowMutation(TABLE1,key.key);
+    rm.add(new QueryPath("Super3","sc".getBytes(),String.valueOf(i).getBytes()),new byte[ROWS_PER_SSTABLE * 10 - i * 2],new TimestampClock(i));
+    rm.apply();
+    inserted.add(key);
+  }
+  store.forceBlockingFlush();
+  assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(store).size());
+}
