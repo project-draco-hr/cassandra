@@ -8,7 +8,10 @@
     }
   }
   IndexSummary.KeyPosition sampledPosition=getIndexScanPosition(decoratedKey);
-  if (sampledPosition == null)   return op.apply(1) >= 0 ? 0 : -1;
+  if (sampledPosition == null) {
+    if (op == Operator.EQ)     bloomFilterTracker.addFalsePositive();
+    return op.apply(1) >= 0 ? 0 : -1;
+  }
   Iterator<FileDataInput> segments=ifile.iterator(sampledPosition.indexPosition,INDEX_FILE_BUFFER_BYTES);
   while (segments.hasNext()) {
     FileDataInput input=segments.next();
@@ -19,10 +22,16 @@
         int comparison=indexDecoratedKey.compareTo(decoratedKey);
         int v=op.apply(comparison);
         if (v == 0) {
-          if (comparison == 0 && keyCache != null && keyCache.getCapacity() > 0)           keyCache.put(unifiedKey,Long.valueOf(dataPosition));
+          if (comparison == 0 && keyCache != null && keyCache.getCapacity() > 0) {
+            if (op == Operator.EQ)             bloomFilterTracker.addTruePositive();
+            keyCache.put(unifiedKey,Long.valueOf(dataPosition));
+          }
           return dataPosition;
         }
-        if (v < 0)         return -1;
+        if (v < 0) {
+          if (op == Operator.EQ)           bloomFilterTracker.addFalsePositive();
+          return -1;
+        }
       }
     }
  catch (    IOException e) {
@@ -37,5 +46,6 @@
       }
     }
   }
+  if (op == Operator.EQ)   bloomFilterTracker.addFalsePositive();
   return -1;
 }
