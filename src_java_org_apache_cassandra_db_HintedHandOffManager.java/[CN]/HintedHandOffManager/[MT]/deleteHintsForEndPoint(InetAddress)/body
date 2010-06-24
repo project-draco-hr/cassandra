@@ -1,0 +1,14 @@
+{
+  ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,endpoint.getAddress());
+  rm.delete(new QueryPath(HINTS_CF),new TimestampClock(System.currentTimeMillis()));
+  try {
+    logger_.info("Deleting any stored hints for " + endpoint);
+    rm.apply();
+    hintStore.forceFlush();
+    CompactionManager.instance.submitMajor(hintStore,0,Integer.MAX_VALUE).get();
+  }
+ catch (  Exception e) {
+    logger_.warn("Could not delete hints for " + endpoint + ": "+ e);
+  }
+}

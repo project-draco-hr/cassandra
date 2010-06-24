@@ -1,26 +1,19 @@
 {
   if (logger_.isDebugEnabled())   logger_.debug("Started hinted handoff for endpoint " + endpoint);
-  byte[] targetEPBytes=endpoint.getAddress();
+  DecoratedKey epkey=StorageService.getPartitioner().decorateKey(endpoint.getAddress());
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
-  for (  String tableName : DatabaseDescriptor.getTables()) {
-    DecoratedKey tableNameKey=StorageService.getPartitioner().decorateKey(tableName.getBytes(UTF8));
-    byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
-    while (true) {
-      QueryFilter filter=QueryFilter.getSliceFilter(tableNameKey,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,null,false,PAGE_SIZE);
-      ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
-      if (pagingFinished(hintColumnFamily,startColumn))       break;
-      Collection<IColumn> keys=hintColumnFamily.getSortedColumns();
-      for (      IColumn keyColumn : keys) {
-        byte[] keyBytes=keyColumn.name();
-        Collection<IColumn> endpoints=keyColumn.getSubColumns();
-        for (        IColumn hintEndpoint : endpoints) {
-          if (Arrays.equals(hintEndpoint.name(),targetEPBytes) && sendMessage(endpoint,tableName,keyBytes)) {
-            if (endpoints.size() == 1)             deleteHintKey(tableName,keyColumn.name());
- else             deleteEndpoint(hintEndpoint.name(),tableName,keyColumn.name(),System.currentTimeMillis());
-            break;
-          }
-        }
-        startColumn=keyColumn.name();
+  byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
+  while (true) {
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,null,false,PAGE_SIZE);
+    ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
+    if (pagingFinished(hintColumnFamily,startColumn))     break;
+    Collection<IColumn> keyColumns=hintColumnFamily.getSortedColumns();
+    for (    IColumn keyColumn : keyColumns) {
+      startColumn=keyColumn.name();
+      Collection<IColumn> tableCFs=keyColumn.getSubColumns();
+      for (      IColumn tableCF : tableCFs) {
+        String[] parts=getTableAndCFNames(tableCF.name());
+        if (sendMessage(endpoint,parts[0],parts[1],keyColumn.name()))         deleteHintKey(endpoint.getAddress(),keyColumn.name(),tableCF.name());
       }
     }
   }
