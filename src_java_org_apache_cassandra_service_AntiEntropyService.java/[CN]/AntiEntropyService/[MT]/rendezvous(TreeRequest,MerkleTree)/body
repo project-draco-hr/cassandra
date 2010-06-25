@@ -1,0 +1,31 @@
+{
+  InetAddress LOCAL=FBUtilities.getLocalAddress();
+  Map<TreeRequest,TreePair> ctrees=rendezvousPairs(request.sessionid);
+  List<Differencer> differencers=new ArrayList<Differencer>();
+  if (LOCAL.equals(request.endpoint)) {
+    for (    InetAddress neighbor : getNeighbors(request.cf.left)) {
+      TreeRequest remotereq=new TreeRequest(request.sessionid,neighbor,request.cf);
+      TreePair waiting=ctrees.remove(remotereq);
+      if (waiting != null && waiting.right != null) {
+        differencers.add(new Differencer(remotereq,tree,waiting.right));
+        continue;
+      }
+      ctrees.put(remotereq,new TreePair(tree,null));
+      logger.debug("Stored local tree for " + request + " to wait for "+ remotereq);
+    }
+  }
+ else {
+    TreePair waiting=ctrees.remove(request);
+    if (waiting != null && waiting.left != null) {
+      differencers.add(new Differencer(request,waiting.left,tree));
+    }
+ else {
+      ctrees.put(request,new TreePair(null,tree));
+      logger.debug("Stored remote tree for " + request + " to wait for local tree.");
+    }
+  }
+  for (  Differencer differencer : differencers) {
+    logger.info("Queueing comparison " + differencer);
+    StageManager.getStage(StageManager.AE_SERVICE_STAGE).execute(differencer);
+  }
+}

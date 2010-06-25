@@ -1,13 +1,12 @@
 {
   byte[] bytes=message.getMessageBody();
-  ByteArrayInputStream buffer=new ByteArrayInputStream(bytes);
+  DataInputStream buffer=new DataInputStream(new ByteArrayInputStream(bytes));
   try {
-    CFPair cf=this.deserialize(new DataInputStream(buffer));
-    TreeRequest request=new TreeRequest(cf,message.getFrom());
-    String sessionid=request.toString();
-    logger.debug("Queueing validation compaction for session " + sessionid + " request "+ request);
-    ColumnFamilyStore store=Table.open(cf.left).getColumnFamilyStore(cf.right);
-    Validator validator=new Validator(request.left);
+    TreeRequest remotereq=this.deserialize(buffer);
+    TreeRequest request=new TreeRequest(remotereq.sessionid,message.getFrom(),remotereq.cf);
+    ColumnFamilyStore store=Table.open(request.cf.left).getColumnFamilyStore(request.cf.right);
+    Validator validator=new Validator(request);
+    logger.debug("Queueing validation compaction for " + request);
     CompactionManager.instance.submitValidation(store,validator);
   }
  catch (  IOException e) {

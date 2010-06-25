@@ -1,20 +1,21 @@
 {
-  logger.info("Performing streaming repair of " + differences.size() + " ranges to "+ remote+ " for "+ cf);
-  ColumnFamilyStore cfstore=Table.open(cf.left).getColumnFamilyStore(cf.right);
+  logger.info("Performing streaming repair of " + differences.size() + " ranges for "+ request);
+  ColumnFamilyStore cfstore=Table.open(request.cf.left).getColumnFamilyStore(request.cf.right);
   try {
     final List<Range> ranges=new ArrayList<Range>(differences);
     final Collection<SSTableReader> sstables=cfstore.getSSTables();
     Future f=StageManager.getStage(StageManager.STREAM_STAGE).submit(new WrappedRunnable(){
       protected void runMayThrow() throws Exception {
-        StreamOut.transferSSTables(remote,cf.left,sstables,ranges);
-        StreamOutManager.remove(remote);
+        StreamOut.transferSSTables(request.endpoint,request.cf.left,sstables,ranges);
+        StreamOutManager.remove(request.endpoint);
       }
     }
 );
+    StreamIn.requestRanges(request.endpoint,request.cf.left,ranges);
     f.get();
   }
  catch (  Exception e) {
     throw new IOException("Streaming repair failed.",e);
   }
-  logger.info("Finished streaming repair to " + remote + " for "+ cf);
+  logger.info("Finished streaming repair for " + request);
 }

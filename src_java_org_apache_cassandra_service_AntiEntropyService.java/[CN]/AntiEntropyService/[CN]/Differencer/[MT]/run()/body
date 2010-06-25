@@ -1,9 +1,10 @@
 {
+  InetAddress local=FBUtilities.getLocalAddress();
   StorageService ss=StorageService.instance;
   if (ltree.partitioner() == null)   ltree.partitioner(StorageService.getPartitioner());
   if (rtree.partitioner() == null)   rtree.partitioner(StorageService.getPartitioner());
-  Set<Range> interesting=new HashSet(ss.getRangesForEndpoint(cf.left,local));
-  interesting.retainAll(ss.getRangesForEndpoint(cf.left,remote));
+  Set<Range> interesting=new HashSet(ss.getRangesForEndpoint(request.cf.left,local));
+  interesting.retainAll(ss.getRangesForEndpoint(request.cf.left,request.endpoint));
   for (  MerkleTree.TreeRange diff : MerkleTree.difference(ltree,rtree)) {
     for (    Range localrange : interesting) {
       if (diff.intersects(localrange)) {
@@ -14,7 +15,7 @@
   }
   float difference=differenceFraction();
   if (difference == 0.0) {
-    logger.info("Endpoints " + local + " and "+ remote+ " are consistent for "+ cf);
+    logger.info("Endpoints " + local + " and "+ request.endpoint+ " are consistent for "+ request.cf);
   }
  else {
     try {
@@ -24,5 +25,5 @@
       throw new RuntimeException(e);
     }
   }
-  AntiEntropyService.instance.completedRequest(cf,local,remote);
+  AntiEntropyService.instance.completedRequest(request);
 }

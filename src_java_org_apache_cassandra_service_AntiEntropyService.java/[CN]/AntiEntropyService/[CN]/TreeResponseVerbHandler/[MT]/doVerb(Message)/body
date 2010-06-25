@@ -1,9 +1,10 @@
 {
   byte[] bytes=message.getMessageBody();
-  ByteArrayInputStream buffer=new ByteArrayInputStream(bytes);
+  DataInputStream buffer=new DataInputStream(new ByteArrayInputStream(bytes));
   try {
-    Validator rvalidator=this.deserialize(new DataInputStream(buffer));
-    AntiEntropyService.instance.rendezvous(rvalidator.cf,message.getFrom(),rvalidator.tree);
+    Validator response=this.deserialize(buffer);
+    TreeRequest request=new TreeRequest(response.request.sessionid,message.getFrom(),response.request.cf);
+    AntiEntropyService.instance.rendezvous(request,response.tree);
   }
  catch (  IOException e) {
     throw new IOError(e);

@@ -4,13 +4,9 @@
   try {
     Set<TreeRequest> requests=new HashSet<TreeRequest>();
     Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename);
-    endpoints.add(FBUtilities.getLocalAddress());
     for (    String cfname : cfnames) {
-      Message request=TreeRequestVerbHandler.makeVerb(tablename,cfname);
-      for (      InetAddress endpoint : endpoints) {
-        requests.add(new TreeRequest(new CFPair(tablename,cfname),endpoint));
-        MessagingService.instance.sendOneWay(request,endpoint);
-      }
+      for (      InetAddress endpoint : endpoints)       requests.add(AntiEntropyService.this.request(getName(),endpoint,tablename,cfname));
+      AntiEntropyService.this.request(getName(),FBUtilities.getLocalAddress(),tablename,cfname);
     }
     requestsMade.signalAll();
     logger.info("Waiting for repair requests to: " + requests);
