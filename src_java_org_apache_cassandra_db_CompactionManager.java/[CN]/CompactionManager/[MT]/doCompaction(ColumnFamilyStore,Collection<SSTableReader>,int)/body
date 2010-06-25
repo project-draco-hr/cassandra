@@ -30,18 +30,14 @@
     }
     String newFilename=new File(cfs.getTempSSTablePath(compactionFileLocation)).getAbsolutePath();
     writer=new SSTableWriter(newFilename,expectedBloomFilterSize,StorageService.getPartitioner());
-    AntiEntropyService.IValidator validator=AntiEntropyService.instance.getValidator(table.name,cfs.getColumnFamilyName(),null,major);
-    validator.prepare();
     while (nni.hasNext()) {
       AbstractCompactedRow row=nni.next();
       long prevpos=writer.getFilePointer();
       writer.append(row);
-      validator.add(row);
       totalkeysWritten++;
       long rowsize=writer.getFilePointer() - prevpos;
       cfs.addToCompactedRowStats(rowsize);
     }
-    validator.complete();
   }
   finally {
     ci.close();

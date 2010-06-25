@@ -2,10 +2,13 @@
   byte[] bytes=message.getMessageBody();
   ByteArrayInputStream buffer=new ByteArrayInputStream(bytes);
   try {
-    CFPair request=this.deserialize(new DataInputStream(buffer));
-    logger.debug("Queueing readonly compaction for request from " + message.getFrom() + " for "+ request);
-    Table table=Table.open(request.left);
-    CompactionManager.instance.submitReadonly(table.getColumnFamilyStore(request.right),message.getFrom());
+    CFPair cf=this.deserialize(new DataInputStream(buffer));
+    TreeRequest request=new TreeRequest(cf,message.getFrom());
+    String sessionid=request.toString();
+    logger.debug("Queueing validation compaction for session " + sessionid + " request "+ request);
+    ColumnFamilyStore store=Table.open(cf.left).getColumnFamilyStore(cf.right);
+    Validator validator=new Validator(request.left);
+    CompactionManager.instance.submitValidation(store,validator);
   }
  catch (  IOException e) {
     throw new IOError(e);
