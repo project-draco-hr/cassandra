@@ -1,6 +1,7 @@
 {
-  if (logger_.isDebugEnabled())   logger_.debug("Started hinted handoff for endpoint " + endpoint);
+  logger_.info("Started hinted handoff for endpoint " + endpoint);
   DecoratedKey epkey=StorageService.getPartitioner().decorateKey(endpoint.getAddress());
+  int rowsReplayed=0;
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
   byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
   while (true) {
@@ -13,16 +14,22 @@
       Collection<IColumn> tableCFs=keyColumn.getSubColumns();
       for (      IColumn tableCF : tableCFs) {
         String[] parts=getTableAndCFNames(tableCF.name());
-        if (sendMessage(endpoint,parts[0],parts[1],keyColumn.name()))         deleteHintKey(endpoint.getAddress(),keyColumn.name(),tableCF.name());
+        if (sendMessage(endpoint,parts[0],parts[1],keyColumn.name())) {
+          deleteHintKey(endpoint.getAddress(),keyColumn.name(),tableCF.name());
+          rowsReplayed++;
+        }
+        startColumn=keyColumn.name();
       }
     }
   }
-  hintStore.forceFlush();
-  try {
-    CompactionManager.instance.submitMajor(hintStore,0,Integer.MAX_VALUE).get();
+  if (rowsReplayed > 0) {
+    hintStore.forceFlush();
+    try {
+      CompactionManager.instance.submitMajor(hintStore,0,Integer.MAX_VALUE).get();
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
   }
- catch (  Exception e) {
-    throw new RuntimeException(e);
-  }
-  if (logger_.isDebugEnabled())   logger_.debug("Finished hinted handoff for endpoint " + endpoint);
+  logger_.info(String.format("Finished hinted handoff of %s rows to endpoint %s",rowsReplayed,endpoint));
 }
