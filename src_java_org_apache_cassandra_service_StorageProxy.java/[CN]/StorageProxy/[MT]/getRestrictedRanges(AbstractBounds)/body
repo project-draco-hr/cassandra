@@ -1,0 +1,21 @@
+{
+  TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
+  List<AbstractBounds> ranges=new ArrayList<AbstractBounds>();
+  for (  Token nodeToken : tokenMetadata.sortedTokens()) {
+    Range nodeRange=new Range(tokenMetadata.getPredecessor(nodeToken),nodeToken);
+    for (    AbstractBounds range : queryRange.restrictTo(nodeRange)) {
+      for (      AbstractBounds unwrapped : range.unwrap()) {
+        if (logger.isDebugEnabled())         logger.debug("Adding to restricted ranges " + unwrapped + " for "+ nodeRange);
+        ranges.add(unwrapped);
+      }
+    }
+  }
+  Comparator<AbstractBounds> comparator=new Comparator<AbstractBounds>(){
+    public int compare(    AbstractBounds o1,    AbstractBounds o2){
+      return o1.left.compareTo(o2.left);
+    }
+  }
+;
+  Collections.sort(ranges,comparator);
+  return ranges;
+}

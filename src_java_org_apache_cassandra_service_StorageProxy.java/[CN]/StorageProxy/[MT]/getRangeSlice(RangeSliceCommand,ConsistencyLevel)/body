@@ -2,17 +2,17 @@
   if (logger.isDebugEnabled())   logger.debug(command.toString());
   long startTime=System.nanoTime();
   final String table=command.keyspace;
-  List<Pair<AbstractBounds,List<InetAddress>>> ranges=getRestrictedRanges(command.range,command.keyspace);
+  List<AbstractBounds> ranges=getRestrictedRanges(command.range);
   List<Row> rows=new ArrayList<Row>(command.max_keys);
-  for (  Pair<AbstractBounds,List<InetAddress>> pair : getRangeIterator(ranges,command.range.left)) {
-    AbstractBounds range=pair.left;
-    List<InetAddress> endpoints=pair.right;
+  for (  AbstractBounds range : getRangeIterator(ranges,command.range.left)) {
+    List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(command.keyspace,range.right);
+    DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
     RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
     Message message=c2.getMessage();
-    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,endpoints);
+    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
     AbstractReplicationStrategy rs=StorageService.instance.getReplicationStrategy(table);
     QuorumResponseHandler<List<Row>> handler=rs.getQuorumResponseHandler(resolver,consistency_level,table);
-    for (    InetAddress endpoint : endpoints) {
+    for (    InetAddress endpoint : liveEndpoints) {
       MessagingService.instance.sendRR(message,endpoint,handler);
       if (logger.isDebugEnabled())       logger.debug("reading " + c2 + " from "+ message.getMessageId()+ "@"+ endpoint);
     }
