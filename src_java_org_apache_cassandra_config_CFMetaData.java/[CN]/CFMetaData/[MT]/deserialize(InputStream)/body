@@ -20,5 +20,14 @@
   double keyCacheSize=din.readDouble();
   double readRepairChance=din.readDouble();
   int cfId=din.readInt();
-  return new CFMetaData(tableName,cfName,cfType,clockType,comparator,subcolumnComparator,reconciler,comment,rowCacheSize,preloadRowCache,keyCacheSize,readRepairChance,cfId);
+  int columnMetadataSize=din.readInt();
+  Map<ByteArrayKey,ColumnDefinition> column_metadata=new HashMap<ByteArrayKey,ColumnDefinition>(columnMetadataSize);
+  while (columnMetadataSize > 0) {
+    int cdSize=din.readInt();
+    byte[] cdBytes=new byte[cdSize];
+    if (in.read(cdBytes) != cdSize)     throw new IOException("short read of ColumnDefinition");
+    ColumnDefinition cd=ColumnDefinition.deserialize(cdBytes);
+    column_metadata.put(new ByteArrayKey(cd.name),cd);
+  }
+  return new CFMetaData(tableName,cfName,cfType,clockType,comparator,subcolumnComparator,reconciler,comment,rowCacheSize,preloadRowCache,keyCacheSize,readRepairChance,cfId,column_metadata);
 }
