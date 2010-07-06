@@ -1,11 +1,17 @@
 {
-  ColumnDefinition cd=new ColumnDefinition();
   DataInputStream in=new DataInputStream(new ByteArrayInputStream(bytes));
   int nameSize=in.readInt();
-  cd.name=new byte[nameSize];
-  if (in.read(cd.name,0,nameSize) != nameSize)   throw new IOException("short read of ColumnDefinition name");
-  if (in.readBoolean())   cd.validation_class=in.readUTF();
-  if (in.readBoolean())   cd.index_type=in.readUTF();
-  if (in.readBoolean())   cd.index_name=in.readUTF();
-  return cd;
+  byte[] name=new byte[nameSize];
+  in.readFully(name);
+  String validation_class=in.readUTF();
+  String index_type=null;
+  if (in.readBoolean())   index_type=in.readUTF();
+  String index_name=null;
+  if (in.readBoolean())   index_name=in.readUTF();
+  try {
+    return new ColumnDefinition(name,validation_class,index_type,index_name);
+  }
+ catch (  ConfigurationException e) {
+    throw new RuntimeException(e);
+  }
 }
