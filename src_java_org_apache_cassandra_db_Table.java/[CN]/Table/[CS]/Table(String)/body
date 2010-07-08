@@ -1,5 +1,7 @@
 {
   name=table;
+  indexLocks=new Object[DatabaseDescriptor.getConcurrentWriters() * 8];
+  for (int i=0; i < indexLocks.length; i++)   indexLocks[i]=new Object();
   for (  String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
     try {
       String keyspaceDir=dataDir + File.separator + table;
@@ -11,8 +13,18 @@
       throw new IOError(ex);
     }
   }
-  for (  CFMetaData cfm : DatabaseDescriptor.getTableDefinition(table).cfMetaData().values()) {
-    columnFamilyStores.put(cfm.cfId,ColumnFamilyStore.createColumnFamilyStore(table,cfm.cfName));
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  for (  CFMetaData cfm : new ArrayList<CFMetaData>(DatabaseDescriptor.getTableDefinition(table).cfMetaData().values())) {
+    ColumnFamilyStore cfs=ColumnFamilyStore.createColumnFamilyStore(table,cfm.cfName);
+    columnFamilyStores.put(cfm.cfId,cfs);
+    try {
+      ObjectName mbeanName=new ObjectName("org.apache.cassandra.db:type=ColumnFamilyStores,keyspace=" + table + ",columnfamily="+ cfm.cfName);
+      if (mbs.isRegistered(mbeanName))       mbs.unregisterMBean(mbeanName);
+      mbs.registerMBean(cfs,mbeanName);
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
   }
   int checkMs=DatabaseDescriptor.getMemtableLifetimeMS() / 10;
   flushTask=new TimerTask(){

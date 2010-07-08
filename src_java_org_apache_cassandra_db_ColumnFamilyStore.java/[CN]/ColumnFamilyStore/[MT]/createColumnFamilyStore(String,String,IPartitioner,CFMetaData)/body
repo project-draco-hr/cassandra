@@ -1,0 +1,19 @@
+{
+  List<Integer> generations=new ArrayList<Integer>();
+  String[] dataFileDirectories=DatabaseDescriptor.getAllDataFileLocationsForTable(table);
+  for (  String directory : dataFileDirectories) {
+    File fileDir=new File(directory);
+    File[] files=fileDir.listFiles(DB_NAME_FILTER);
+    for (    File file : files) {
+      if (file.isDirectory())       continue;
+      String filename=file.getAbsolutePath();
+      String cfName=getColumnFamilyFromFileName(filename);
+      if (cfName.equals(columnFamily)) {
+        generations.add(getGenerationFromFileName(filename));
+      }
+    }
+  }
+  Collections.sort(generations);
+  int value=(generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
+  return new ColumnFamilyStore(table,columnFamily,partitioner,value,metadata);
+}

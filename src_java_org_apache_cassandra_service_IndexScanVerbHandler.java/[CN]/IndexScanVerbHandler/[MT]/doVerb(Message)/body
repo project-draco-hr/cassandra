@@ -1,0 +1,13 @@
+{
+  try {
+    IndexScanCommand command=IndexScanCommand.read(message);
+    ColumnFamilyStore cfs=Table.open(command.keyspace).getColumnFamilyStore(command.column_family);
+    RangeSliceReply reply=new RangeSliceReply(cfs.scan(command.index_clause,QueryFilter.getFilter(command.predicate,cfs.getComparator())));
+    Message response=reply.getReply(message);
+    if (logger.isDebugEnabled())     logger.debug("Sending " + reply + " to "+ message.getMessageId()+ "@"+ message.getFrom());
+    MessagingService.instance.sendOneWay(response,message.getFrom());
+  }
+ catch (  Exception ex) {
+    throw new RuntimeException(ex);
+  }
+}

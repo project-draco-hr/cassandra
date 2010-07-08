@@ -8,14 +8,13 @@
     final CommitLogSegment.CommitLogContext ctx=writeCommitLog ? CommitLog.instance().getContext() : null;
     logger_.info(columnFamily_ + " has reached its threshold; switching in a fresh Memtable at " + ctx);
     final Condition condition=submitFlush(oldMemtable);
-    memtable_=new Memtable(this);
+    memtable_=new Memtable(this,partitioner_);
     return commitLogUpdater_.submit(new WrappedRunnable(){
       public void runMayThrow() throws InterruptedException, IOException {
         condition.await();
         if (writeCommitLog) {
-          final Integer cfId=DatabaseDescriptor.getTableMetaData(table_).get(columnFamily_).cfId;
-          logger_.debug("Discarding {}",cfId);
-          CommitLog.instance().discardCompletedSegments(cfId,ctx);
+          logger_.debug("Discarding {}",metadata.cfId);
+          CommitLog.instance().discardCompletedSegments(metadata.cfId,ctx);
         }
       }
     }

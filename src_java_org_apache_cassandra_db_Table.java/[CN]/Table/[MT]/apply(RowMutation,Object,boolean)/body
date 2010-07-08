@@ -2,21 +2,52 @@
   HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
   flusherLock.readLock().lock();
   try {
-    if (writeCommitLog) {
-      CommitLog.instance().add(mutation,serializedMutation);
-    }
+    if (writeCommitLog)     CommitLog.instance().add(mutation,serializedMutation);
     DecoratedKey key=StorageService.getPartitioner().decorateKey(mutation.key());
     for (    ColumnFamily columnFamily : mutation.getColumnFamilies()) {
-      Memtable memtableToFlush;
       ColumnFamilyStore cfs=columnFamilyStores.get(columnFamily.id());
       if (cfs == null) {
         logger.error("Attempting to mutate non-existant column family " + columnFamily.id());
+        continue;
+      }
+      ColumnFamily oldIndexedColumns;
+      SortedSet<byte[]> mutatedIndexedColumns=null;
+      for (      byte[] column : cfs.getIndexedColumns()) {
+        if (columnFamily.getColumnNames().contains(column)) {
+          if (mutatedIndexedColumns == null)           mutatedIndexedColumns=new TreeSet<byte[]>(FBUtilities.byteArrayComparator);
+          mutatedIndexedColumns.add(column);
+        }
+      }
+      if (mutatedIndexedColumns == null) {
+        applyCF(cfs,key,columnFamily,memtablesToFlush);
       }
  else {
-        if ((memtableToFlush=cfs.apply(key,columnFamily)) != null)         memtablesToFlush.put(cfs,memtableToFlush);
-        ColumnFamily cachedRow=cfs.getRawCachedRow(key);
-        if (cachedRow != null)         cachedRow.addAll(columnFamily);
+synchronized (indexLocks[Arrays.hashCode(mutation.key()) % indexLocks.length]) {
+          QueryFilter filter=QueryFilter.getNamesFilter(key,new QueryPath(cfs.getColumnFamilyName()),mutatedIndexedColumns);
+          oldIndexedColumns=cfs.getColumnFamily(filter);
+          applyCF(cfs,key,columnFamily,memtablesToFlush);
+          for (          byte[] columnName : mutatedIndexedColumns) {
+            IColumn column=columnFamily.getColumn(columnName);
+            DecoratedKey valueKey=cfs.getIndexKeyFor(columnName,column.value());
+            ColumnFamily cf=cfs.newIndexedColumnFamily(columnName);
+            cf.addColumn(new Column(mutation.key(),ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
+            applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cf,memtablesToFlush);
+          }
+          if (oldIndexedColumns != null) {
+            int localDeletionTime=(int)(System.currentTimeMillis() / 1000);
+            for (            Map.Entry<byte[],IColumn> entry : oldIndexedColumns.getColumnsMap().entrySet()) {
+              byte[] columnName=entry.getKey();
+              IColumn column=entry.getValue();
+              DecoratedKey valueKey=cfs.getIndexKeyFor(columnName,column.value());
+              ColumnFamily cf=cfs.newIndexedColumnFamily(columnName);
+              cf.deleteColumn(mutation.key(),localDeletionTime,column.clock());
+              applyCF(cfs,valueKey,cf,memtablesToFlush);
+            }
+          }
+        }
       }
+      ColumnFamily cachedRow=cfs.getRawCachedRow(key);
+      if (cachedRow != null)       cachedRow.addAll(columnFamily);
     }
   }
   finally {

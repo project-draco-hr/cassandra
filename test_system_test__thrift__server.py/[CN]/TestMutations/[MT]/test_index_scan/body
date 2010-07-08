@@ -1,0 +1,15 @@
+def test_index_scan(self):
+    _set_keyspace('Keyspace1')
+    client.insert('key1', ColumnParent('Indexed1'), Column('birthdate', _i64(1), Clock(0)), ConsistencyLevel.ONE)
+    client.insert('key2', ColumnParent('Indexed1'), Column('birthdate', _i64(2), Clock(0)), ConsistencyLevel.ONE)
+    client.insert('key3', ColumnParent('Indexed1'), Column('b', _i64(3), Clock(0)), ConsistencyLevel.ONE)
+    cp = ColumnParent('Indexed1')
+    expr = IndexExpression('birthdate', IndexOperator.EQ, _i64(1))
+    rp = RowPredicate(index_clause=IndexClause([expr]))
+    sp = SlicePredicate(slice_range=SliceRange('', ''))
+    result = client.scan(cp, rp, sp, ConsistencyLevel.ONE)
+    assert (len(result) == 1), result
+    assert (result[0].key == 'key1')
+    assert (len(result[0].columns) == 1), result[0].columns
+    expr.column_name = 'b'
+    _expect_exception((lambda : client.scan(cp, rp, sp, ConsistencyLevel.ONE)), InvalidRequestException)

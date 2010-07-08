@@ -1,2 +1,23 @@
 {
+  if (metadata.preloadRowCache) {
+    logger_.debug(String.format("Loading cache for keyspace/columnfamily %s/%s",table_,columnFamily_));
+    int ROWS=4096;
+    Token min=partitioner_.getMinimumToken();
+    Token start=min;
+    long i=0;
+    while (i < ssTables_.getRowCache().getCapacity()) {
+      List<Row> result;
+      try {
+        result=getRangeSlice(null,new Bounds(start,min),ROWS,new IdentityQueryFilter());
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+      for (      Row row : result)       ssTables_.getRowCache().put(row.key,row.cf);
+      i+=result.size();
+      if (result.size() < ROWS)       break;
+      start=partitioner_.getToken(result.get(ROWS - 1).key.key);
+    }
+    logger_.info(String.format("Loaded %s rows into the %s cache",i,columnFamily_));
+  }
 }

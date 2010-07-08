@@ -1,29 +1,3 @@
 {
-  List<Integer> generations=new ArrayList<Integer>();
-  String[] dataFileDirectories=DatabaseDescriptor.getAllDataFileLocationsForTable(table);
-  for (  String directory : dataFileDirectories) {
-    File fileDir=new File(directory);
-    File[] files=fileDir.listFiles(DB_NAME_FILTER);
-    for (    File file : files) {
-      if (file.isDirectory())       continue;
-      String filename=file.getAbsolutePath();
-      String cfName=getColumnFamilyFromFileName(filename);
-      if (cfName.equals(columnFamily)) {
-        generations.add(getGenerationFromFileName(filename));
-      }
-    }
-  }
-  Collections.sort(generations);
-  int value=(generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
-  ColumnFamilyStore cfs=new ColumnFamilyStore(table,columnFamily,value);
-  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
-  try {
-    ObjectName mbeanName=new ObjectName("org.apache.cassandra.db:type=ColumnFamilyStores,keyspace=" + table + ",columnfamily="+ columnFamily);
-    if (mbs.isRegistered(mbeanName))     mbs.unregisterMBean(mbeanName);
-    mbs.registerMBean(cfs,mbeanName);
-  }
- catch (  Exception e) {
-    throw new RuntimeException(e);
-  }
-  return cfs;
+  return createColumnFamilyStore(table,columnFamily,StorageService.getPartitioner(),DatabaseDescriptor.getCFMetaData(table,columnFamily));
 }

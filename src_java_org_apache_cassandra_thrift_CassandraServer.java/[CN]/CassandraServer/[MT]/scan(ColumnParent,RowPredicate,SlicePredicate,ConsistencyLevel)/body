@@ -1,0 +1,19 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("scan");
+  checkKeyspaceAndLoginAuthorized(AccessLevel.READONLY);
+  if (row_predicate.keys != null) {
+    Map<byte[],List<ColumnOrSuperColumn>> rowMap=multigetSliceInternal(keySpace.get(),row_predicate.keys,column_parent,column_predicate,consistency_level);
+    List<KeySlice> rows=new ArrayList<KeySlice>(rowMap.size());
+    for (    Map.Entry<byte[],List<ColumnOrSuperColumn>> entry : rowMap.entrySet()) {
+      rows.add(new KeySlice(entry.getKey(),entry.getValue()));
+    }
+    return rows;
+  }
+  if (row_predicate.key_range != null) {
+    return getRangeSlicesInternal(keySpace.get(),column_parent,row_predicate.key_range,column_predicate,consistency_level);
+  }
+  if (row_predicate.index_clause != null) {
+    return scanIndexInternal(keySpace.get(),column_parent,row_predicate.index_clause,column_predicate,consistency_level);
+  }
+  throw new InvalidRequestException("row predicate must specify keys, key_range, or index_clause");
+}
