@@ -1,0 +1,25 @@
+{
+  subsnitch=snitch;
+  TimerTask update=new TimerTask(){
+    public void run(){
+      updateScores();
+    }
+  }
+;
+  TimerTask reset=new TimerTask(){
+    public void run(){
+      reset();
+    }
+  }
+;
+  Timer timer=new Timer("DynamicEndpointSnitch");
+  timer.schedule(update,UPDATE_INTERVAL_IN_MS,UPDATE_INTERVAL_IN_MS);
+  timer.schedule(reset,RESET_INTERVAL_IN_MS,RESET_INTERVAL_IN_MS);
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  try {
+    mbs.registerMBean(this,new ObjectName("org.apache.cassandra.locator:type=DynamicEndpointSnitch"));
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}
