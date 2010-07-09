@@ -11,10 +11,17 @@
     rowMutations.add(getRowMutationFromMutations(curKeyspace.get(),pair.key.array(),cfToMutations));
   }
   if (consistencyLevel == ConsistencyLevel.ZERO) {
-    StorageProxy.mutate(rowMutations);
+    try {
+      schedule();
+      StorageProxy.mutate(rowMutations);
+    }
+  finally {
+      release();
+    }
   }
  else {
     try {
+      schedule();
       StorageProxy.mutateBlocking(rowMutations,thriftConsistencyLevel(consistencyLevel));
     }
  catch (    TimeoutException te) {
@@ -22,6 +29,9 @@
     }
 catch (    org.apache.cassandra.thrift.UnavailableException ue) {
       throw newUnavailableException();
+    }
+ finally {
+      release();
     }
   }
   return null;

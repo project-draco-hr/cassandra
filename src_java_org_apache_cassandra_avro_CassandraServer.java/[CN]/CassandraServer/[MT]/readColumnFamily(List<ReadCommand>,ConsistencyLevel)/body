@@ -3,6 +3,7 @@
   if (consistency == ConsistencyLevel.ZERO)   throw newInvalidRequestException("Consistency level zero may not be applied to read operations");
   List<Row> rows;
   try {
+    schedule();
     rows=StorageProxy.readProtocol(commands,thriftConsistencyLevel(consistency));
   }
  catch (  TimeoutException e) {
@@ -13,6 +14,9 @@ catch (  IOException e) {
   }
 catch (  org.apache.cassandra.thrift.UnavailableException e) {
     throw new UnavailableException();
+  }
+ finally {
+    release();
   }
   for (  Row row : rows) {
     columnFamilyKeyMap.put(row.key,row.cf);

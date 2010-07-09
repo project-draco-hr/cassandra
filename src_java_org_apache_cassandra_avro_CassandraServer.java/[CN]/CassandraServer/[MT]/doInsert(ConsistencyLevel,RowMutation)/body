@@ -1,6 +1,7 @@
 {
   if (consistency != ConsistencyLevel.ZERO) {
     try {
+      schedule();
       StorageProxy.mutateBlocking(Arrays.asList(rm),thriftConsistencyLevel(consistency));
     }
  catch (    TimeoutException e) {
@@ -9,8 +10,17 @@
 catch (    org.apache.cassandra.thrift.UnavailableException thriftE) {
       throw new UnavailableException();
     }
+ finally {
+      release();
+    }
   }
  else {
-    StorageProxy.mutate(Arrays.asList(rm));
+    try {
+      schedule();
+      StorageProxy.mutate(Arrays.asList(rm));
+    }
+  finally {
+      release();
+    }
   }
 }
