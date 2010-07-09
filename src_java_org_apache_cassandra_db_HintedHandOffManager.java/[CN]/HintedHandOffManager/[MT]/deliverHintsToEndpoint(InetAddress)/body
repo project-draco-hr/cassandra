@@ -5,7 +5,7 @@
   int rowsReplayed=0;
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
   byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
-  while (true) {
+  delivery:   while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,null,false,PAGE_SIZE);
     ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
     if (pagingFinished(hintColumnFamily,startColumn))     break;
@@ -16,8 +16,12 @@
       for (      IColumn tableCF : tableCFs) {
         String[] parts=getTableAndCFNames(tableCF.name());
         if (sendMessage(endpoint,parts[0],parts[1],keyColumn.name())) {
-          deleteHintKey(endpoint.getAddress(),keyColumn.name(),tableCF.name());
+          deleteHintKey(endpoint.getAddress(),keyColumn.name(),tableCF.name(),tableCF.clock());
           rowsReplayed++;
+        }
+ else {
+          logger_.info("Could not complete hinted handoff to " + endpoint);
+          break delivery;
         }
         startColumn=keyColumn.name();
       }
