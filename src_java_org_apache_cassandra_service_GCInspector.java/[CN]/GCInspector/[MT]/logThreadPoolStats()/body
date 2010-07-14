@@ -1,0 +1,14 @@
+{
+  ObjectName query=new ObjectName("org.apache.cassandra.concurrent:type=*");
+  Iterator<ObjectName> tpiter=server.queryNames(query,null).iterator();
+  logger.info(String.format("%-25s%10s%10s","Pool Name","Active","Pending"));
+  while (tpiter.hasNext()) {
+    ObjectName objectName=tpiter.next();
+    String poolName=objectName.getKeyProperty("type");
+    IExecutorMBean threadPoolProxy=JMX.newMBeanProxy(server,objectName,IExecutorMBean.class);
+    logger.info(String.format("%-25s%10d%10d",poolName,threadPoolProxy.getActiveCount(),threadPoolProxy.getPendingTasks()));
+  }
+  ObjectName cm=new ObjectName("org.apache.cassandra.db:type=CompactionManager");
+  CompactionManagerMBean cmProxy=JMX.newMBeanProxy(server,cm,CompactionManagerMBean.class);
+  logger.info(String.format("%-25s%10s%10s","CompactionManager","n/a",cmProxy.getPendingTasks()));
+}
