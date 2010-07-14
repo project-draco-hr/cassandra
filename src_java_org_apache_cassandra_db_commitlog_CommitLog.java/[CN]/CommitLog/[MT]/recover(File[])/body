@@ -1,6 +1,6 @@
 {
   Set<Table> tablesRecovered=new HashSet<Table>();
-  final AtomicInteger counter=new AtomicInteger(0);
+  List<Future<?>> futures=new ArrayList<Future<?>>();
   byte[] bytes=new byte[4096];
   for (  File file : clogs) {
     CommitLogHeader clHeader=null;
@@ -57,34 +57,22 @@
           if (!newRm.isEmpty()) {
             Table.open(newRm.getTable()).apply(newRm,null,false);
           }
-          counter.decrementAndGet();
         }
       }
 ;
-      counter.incrementAndGet();
-      StageManager.getStage(StageManager.MUTATION_STAGE).submit(runnable);
+      futures.add(StageManager.getStage(StageManager.MUTATION_STAGE).submit(runnable));
+      if (futures.size() > MAX_OUTSTANDING_REPLAY_COUNT) {
+        FBUtilities.waitOnFutures(futures);
+        futures.clear();
+      }
     }
     reader.close();
-    logger.info("Finished reading " + file);
+    logger.info("Finished reading " + file + " for recovery");
   }
-  while (counter.get() > 0) {
-    try {
-      Thread.sleep(10);
-    }
- catch (    InterruptedException e) {
-      throw new AssertionError(e);
-    }
-  }
-  List<Future<?>> futures=new ArrayList<Future<?>>();
-  for (  Table table : tablesRecovered) {
-    futures.addAll(table.flush());
-  }
-  for (  Future<?> future : futures) {
-    try {
-      future.get();
-    }
- catch (    Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
+  FBUtilities.waitOnFutures(futures);
+  logger.debug("Finished waiting on mutations from recovery");
+  futures.clear();
+  for (  Table table : tablesRecovered)   futures.addAll(table.flush());
+  FBUtilities.waitOnFutures(futures);
+  logger.info("Recovery complete");
 }
