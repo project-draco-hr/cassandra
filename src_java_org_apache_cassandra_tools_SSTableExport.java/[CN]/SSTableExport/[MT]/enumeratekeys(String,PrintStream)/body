@@ -1,8 +1,9 @@
 {
   IPartitioner partitioner=StorageService.getPartitioner();
+  Descriptor desc=Descriptor.fromFilename(ssTableFile);
   BufferedRandomAccessFile input=new BufferedRandomAccessFile(SSTable.indexFilename(ssTableFile),"r");
   while (!input.isEOF()) {
-    DecoratedKey decoratedKey=partitioner.convertFromDiskFormat(FBUtilities.readShortByteArray(input));
+    DecoratedKey decoratedKey=SSTableReader.decodeKey(partitioner,desc,FBUtilities.readShortByteArray(input));
     long dataPosition=input.readLong();
     outs.println(bytesToHex(decoratedKey.key));
   }
