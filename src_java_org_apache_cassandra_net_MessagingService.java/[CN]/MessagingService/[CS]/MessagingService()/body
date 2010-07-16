@@ -5,4 +5,12 @@
   taskCompletionMap_=new ExpiringMap<String,IAsyncResult>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()));
   messageDeserializerExecutor_=new JMXEnabledThreadPoolExecutor(1,Runtime.getRuntime().availableProcessors(),StageManager.KEEPALIVE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new NamedThreadFactory("MESSAGE-DESERIALIZER-POOL"));
   streamExecutor_=new JMXEnabledThreadPoolExecutor("MESSAGE-STREAMING-POOL");
+  TimerTask logDropped=new TimerTask(){
+    public void run(){
+      logDroppedMessages();
+    }
+  }
+;
+  Timer timer=new Timer("DroppedMessagesLogger");
+  timer.schedule(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS);
 }
