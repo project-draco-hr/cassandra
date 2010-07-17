@@ -1,16 +1,16 @@
 {
-  for (  byte[] cname : cf.getColumnNames()) {
-    IColumn c=cf.getColumnsMap().get(cname);
+  for (  Map.Entry<byte[],IColumn> entry : cf.getColumnsMap().entrySet()) {
+    SuperColumn c=(SuperColumn)entry.getValue();
     List<IClock> clocks=Arrays.asList(cf.getMarkedForDeleteAt());
     IClock minClock=c.getMarkedForDeleteAt().getSuperset(clocks);
     for (    IColumn subColumn : c.getSubColumns()) {
       if (subColumn.isMarkedForDelete() && subColumn.getLocalDeletionTime() <= gcBefore) {
-        ((SuperColumn)c).remove(subColumn.name());
+        c.remove(subColumn.name());
       }
  else {
         ClockRelationship subRel=subColumn.clock().compare(minClock);
         if ((ClockRelationship.LESS_THAN == subRel) || (ClockRelationship.EQUAL == subRel)) {
-          ((SuperColumn)c).remove(subColumn.name());
+          c.remove(subColumn.name());
         }
       }
     }
