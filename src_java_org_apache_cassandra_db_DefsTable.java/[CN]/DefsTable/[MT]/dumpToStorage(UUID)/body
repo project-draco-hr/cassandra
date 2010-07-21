@@ -1,13 +1,15 @@
 {
-  byte[] versionKey=Migration.toBytes(version);
-  long now=System.currentTimeMillis();
+  final byte[] versionKey=Migration.toUTF8Bytes(version);
+  Collection<String> ksnames=DatabaseDescriptor.getNonSystemTables();
   RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,versionKey);
-  for (  String tableName : DatabaseDescriptor.getNonSystemTables()) {
-    KSMetaData ks=DatabaseDescriptor.getTableDefinition(tableName);
-    rm.add(new QueryPath(Migration.SCHEMA_CF,null,ks.name.getBytes()),KSMetaData.serialize(ks),new TimestampClock(now));
+  TimestampClock now=new TimestampClock(System.currentTimeMillis());
+  for (  String ksname : ksnames) {
+    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(ksname);
+    rm.add(new QueryPath(Migration.SCHEMA_CF,null,ksm.name.getBytes(UTF_8)),SerDeUtils.serialize(ksm.deflate()),now);
   }
+  rm.add(new QueryPath(Migration.SCHEMA_CF,null,DEFINITION_SCHEMA_COLUMN_NAME),org.apache.cassandra.avro.KsDef.SCHEMA$.toString().getBytes(UTF_8),now);
   rm.apply();
   rm=new RowMutation(Table.SYSTEM_TABLE,Migration.LAST_MIGRATION_KEY);
-  rm.add(new QueryPath(Migration.SCHEMA_CF,null,Migration.LAST_MIGRATION_KEY),UUIDGen.decompose(version),new TimestampClock(now));
+  rm.add(new QueryPath(Migration.SCHEMA_CF,null,Migration.LAST_MIGRATION_KEY),UUIDGen.decompose(version),now);
   rm.apply();
 }

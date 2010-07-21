@@ -1,12 +1,13 @@
 {
-  final long now=System.currentTimeMillis();
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,toBytes(versionId));
-  if (remove != null)   rm.delete(new QueryPath(SCHEMA_CF,null,remove.name.getBytes()),new TimestampClock(System.currentTimeMillis()));
-  if (add != null)   rm.add(new QueryPath(SCHEMA_CF,null,add.name.getBytes()),KSMetaData.serialize(add),new TimestampClock(now));
+  List<KSMetaData> ksms=new ArrayList<KSMetaData>();
   for (  String tableName : DatabaseDescriptor.getNonSystemTables()) {
-    if (add != null && add.name.equals(tableName) || remove != null && remove.name.equals(tableName))     continue;
-    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(tableName);
-    rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes()),KSMetaData.serialize(ksm),new TimestampClock(now));
+    if (remove != null && remove.name.equals(tableName) || add != null && add.name.equals(tableName))     continue;
+    ksms.add(DatabaseDescriptor.getTableDefinition(tableName));
   }
+  if (add != null)   ksms.add(add);
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,toUTF8Bytes(versionId));
+  TimestampClock now=new TimestampClock(System.currentTimeMillis());
+  for (  KSMetaData ksm : ksms)   rm.add(new QueryPath(SCHEMA_CF,null,ksm.name.getBytes(UTF_8)),SerDeUtils.serialize(ksm.deflate()),now);
+  rm.add(new QueryPath(SCHEMA_CF,null,DefsTable.DEFINITION_SCHEMA_COLUMN_NAME),org.apache.cassandra.avro.KsDef.SCHEMA$.toString().getBytes(UTF_8),now);
   return rm;
 }

@@ -1,0 +1,19 @@
+{
+  AbstractType comparator=DatabaseDescriptor.getComparator(cf.comparator_type.toString());
+  AbstractType subcolumnComparator=null;
+  if (cf.subcomparator_type != null)   subcolumnComparator=DatabaseDescriptor.getComparator(cf.subcomparator_type.toString());
+  AbstractReconciler reconciler=null;
+  try {
+    reconciler=(AbstractReconciler)Class.forName(cf.reconciler.toString()).newInstance();
+  }
+ catch (  Exception ex) {
+    throw new ConfigurationException("Could not create Reconciler of type " + cf.reconciler,ex);
+  }
+  Map<byte[],ColumnDefinition> column_metadata=new TreeMap<byte[],ColumnDefinition>(FBUtilities.byteArrayComparator);
+  Iterator<org.apache.cassandra.avro.ColumnDef> cditer=cf.column_metadata.iterator();
+  while (cditer.hasNext()) {
+    ColumnDefinition cd=ColumnDefinition.inflate(cditer.next());
+    column_metadata.put(cd.name,cd);
+  }
+  return new CFMetaData(cf.keyspace.toString(),cf.name.toString(),ColumnFamilyType.create(cf.column_type.toString()),ClockType.create(cf.clock_type.toString()),comparator,subcolumnComparator,reconciler,cf.comment.toString(),cf.row_cache_size,cf.preload_row_cache,cf.key_cache_size,cf.read_repair_chance,cf.id,column_metadata);
+}

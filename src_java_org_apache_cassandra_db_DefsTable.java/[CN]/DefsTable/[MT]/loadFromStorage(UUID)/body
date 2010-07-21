@@ -1,14 +1,22 @@
 {
-  DecoratedKey vkey=StorageService.getPartitioner().decorateKey(Migration.toBytes(version));
+  DecoratedKey vkey=StorageService.getPartitioner().decorateKey(Migration.toUTF8Bytes(version));
   Table defs=Table.open(Table.SYSTEM_TABLE);
   ColumnFamilyStore cfStore=defs.getColumnFamilyStore(Migration.SCHEMA_CF);
-  QueryFilter filter=QueryFilter.getSliceFilter(vkey,new QueryPath(Migration.SCHEMA_CF),"".getBytes(),"".getBytes(),null,false,1024);
+  QueryFilter filter=QueryFilter.getIdentityFilter(vkey,new QueryPath(Migration.SCHEMA_CF));
   ColumnFamily cf=cfStore.getColumnFamily(filter);
-  Collection<KSMetaData> tables=new ArrayList<KSMetaData>();
-  for (  IColumn col : cf.getSortedColumns()) {
-    if (col instanceof DeletedColumn)     continue;
-    KSMetaData ks=KSMetaData.deserialize(new ByteArrayInputStream(col.value()));
-    tables.add(ks);
+  IColumn avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
+  if (avroschema == null)   throw new RuntimeException("Cannot read system table! Are you upgrading a pre-release version?");
+  Schema schema=Schema.parse(new String(avroschema.value()));
+  Collection<KSMetaData> keyspaces=new ArrayList<KSMetaData>();
+  try {
+    for (    IColumn column : cf.getSortedColumns()) {
+      if (Arrays.equals(column.name(),DEFINITION_SCHEMA_COLUMN_NAME))       continue;
+      org.apache.cassandra.avro.KsDef ks=SerDeUtils.<org.apache.cassandra.avro.KsDef>deserialize(schema,column.value());
+      keyspaces.add(KSMetaData.inflate(ks));
+    }
   }
-  return tables;
+ catch (  ConfigurationException e) {
+    throw new IOException(e);
+  }
+  return keyspaces;
 }
