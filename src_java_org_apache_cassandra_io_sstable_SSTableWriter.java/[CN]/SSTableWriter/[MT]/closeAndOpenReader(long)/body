@@ -1,10 +1,17 @@
 {
   iwriter.close();
   dataFile.close();
-  Descriptor newdesc=rename(desc);
+  final Descriptor newdesc=rename(desc);
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws IOException {
+      StatisticsTable.persistSSTableStatistics(newdesc,estimatedRowSize,estimatedColumnCount);
+    }
+  }
+;
+  ColumnFamilyStore.submitPostFlush(runnable);
   SegmentedFile ifile=iwriter.builder.complete(newdesc.filenameFor(SSTable.COMPONENT_INDEX));
   SegmentedFile dfile=dbuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_DATA));
-  SSTableReader sstable=SSTableReader.internalOpen(newdesc,partitioner,ifile,dfile,iwriter.summary,iwriter.bf,maxDataAge);
+  SSTableReader sstable=SSTableReader.internalOpen(newdesc,partitioner,ifile,dfile,iwriter.summary,iwriter.bf,maxDataAge,estimatedRowSize,estimatedColumnCount);
   iwriter=null;
   dbuilder=null;
   return sstable;

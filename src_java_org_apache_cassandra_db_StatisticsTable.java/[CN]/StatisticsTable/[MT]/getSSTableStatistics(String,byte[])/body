@@ -1,0 +1,16 @@
+{
+  long[] rv;
+  String filename=getRelativePath(filepath);
+  QueryPath path=new QueryPath(STATISTICS_CF);
+  QueryFilter filter=QueryFilter.getNamesFilter(decorate(filename.getBytes(UTF_8)),path,superCol);
+  ColumnFamily cf=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(STATISTICS_CF).getColumnFamily(filter);
+  if (cf == null)   return new long[0];
+  IColumn scolumn=cf.getColumn(superCol);
+  rv=new long[scolumn.getSubColumns().size()];
+  int i=0;
+  for (  IColumn col : scolumn.getSubColumns()) {
+    rv[i]=ByteBuffer.wrap(col.value()).getLong();
+    i++;
+  }
+  return rv;
+}

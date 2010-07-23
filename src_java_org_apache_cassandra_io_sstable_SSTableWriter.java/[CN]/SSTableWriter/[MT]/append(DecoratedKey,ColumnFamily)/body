@@ -3,10 +3,12 @@
   FBUtilities.writeShortByteArray(decoratedKey.key,dataFile);
   long sizePosition=dataFile.getFilePointer();
   dataFile.writeLong(-1);
-  ColumnFamily.serializer().serializeWithIndexes(cf,dataFile);
+  int columnCount=ColumnFamily.serializer().serializeWithIndexes(cf,dataFile);
   long endPosition=dataFile.getFilePointer();
   dataFile.seek(sizePosition);
   dataFile.writeLong(endPosition - (sizePosition + 8));
   dataFile.seek(endPosition);
   afterAppend(decoratedKey,startPosition);
+  estimatedRowSize.add(endPosition - startPosition);
+  estimatedColumnCount.add(columnCount);
 }
