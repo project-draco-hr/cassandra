@@ -2,6 +2,9 @@
   List<RawKeyspace> keyspaces=new ArrayList<RawKeyspace>();
   try {
     NodeList tablesxml=xmlUtils.getRequestedNodeList("/Storage/Keyspaces/Keyspace");
+    String gcGrace=xmlUtils.getNodeValue("/Storage/GCGraceSeconds");
+    int gc_grace_seconds=864000;
+    if (gcGrace != null)     gc_grace_seconds=Integer.parseInt(gcGrace);
     int size=tablesxml.getLength();
     for (int i=0; i < size; ++i) {
       String value;
@@ -34,6 +37,7 @@
         if ((value=XMLUtils.getAttributeValue(columnFamily,"ReadRepairChance")) != null) {
           ks.column_families[j].read_repair_chance=FBUtilities.parseDoubleOrPercent(value);
         }
+        ks.column_families[j].gc_grace_seconds=gc_grace_seconds;
         ks.column_families[j].comment=xmlUtils.getNodeValue(xqlCF + "Comment");
       }
       keyspaces.add(ks);
