@@ -1,0 +1,22 @@
+{
+  TSocket socket=new TSocket(ConfigHelper.getInitialAddress(conf),ConfigHelper.getThriftPort(conf));
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(socket,false,false);
+  Cassandra.Client client=new Cassandra.Client(binaryProtocol);
+  try {
+    socket.open();
+  }
+ catch (  TTransportException e) {
+    throw new IOException(e);
+  }
+  List<TokenRange> map;
+  try {
+    map=client.describe_ring(ConfigHelper.getInputKeyspace(conf));
+  }
+ catch (  TException e) {
+    throw new RuntimeException(e);
+  }
+catch (  InvalidRequestException e) {
+    throw new RuntimeException(e);
+  }
+  return map;
+}
