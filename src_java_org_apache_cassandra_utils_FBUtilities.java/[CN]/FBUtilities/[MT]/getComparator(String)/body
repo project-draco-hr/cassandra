@@ -1,0 +1,24 @@
+{
+  String className=compareWith.contains(".") ? compareWith : "org.apache.cassandra.db.marshal." + compareWith;
+  Class<? extends AbstractType> typeClass;
+  try {
+    typeClass=(Class<? extends AbstractType>)Class.forName(className);
+  }
+ catch (  ClassNotFoundException e) {
+    throw new ConfigurationException("Unable to load class " + className);
+  }
+  try {
+    Field field=typeClass.getDeclaredField("instance");
+    return (AbstractType)field.get(null);
+  }
+ catch (  NoSuchFieldException e) {
+    ConfigurationException ex=new ConfigurationException("Invalid comparator: must define a public static instance field.");
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IllegalAccessException e) {
+    ConfigurationException ex=new ConfigurationException("Invalid comparator: must define a public static instance field.");
+    ex.initCause(e);
+    throw ex;
+  }
+}
