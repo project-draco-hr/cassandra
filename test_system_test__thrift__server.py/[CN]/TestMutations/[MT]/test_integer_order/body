@@ -1,0 +1,16 @@
+def test_integer_order(self):
+    _set_keyspace('Keyspace1')
+
+    def long_xrange(start, stop, step):
+        i = start
+        while (i >= stop):
+            yield i
+            i -= step
+    L = []
+    for i in long_xrange(104294967296, 0, 429496729):
+        name = _i64(i)
+        client.insert('key1', ColumnParent('StandardInteger1'), Column(name, 'v', Clock(0)), ConsistencyLevel.ONE)
+        L.append(name)
+    slice = [result.column.name for result in _big_slice('key1', ColumnParent('StandardInteger1'))]
+    L.sort()
+    assert (slice == L), slice
