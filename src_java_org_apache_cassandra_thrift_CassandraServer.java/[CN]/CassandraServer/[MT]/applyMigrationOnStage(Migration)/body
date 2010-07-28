@@ -1,0 +1,28 @@
+{
+  Future f=StageManager.getStage(StageManager.MIGRATION_STAGE).submit(new Callable(){
+    public Object call() throws Exception {
+      m.apply();
+      m.announce();
+      return null;
+    }
+  }
+);
+  try {
+    f.get();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    if (e.getCause() != null) {
+      InvalidRequestException ex=new InvalidRequestException(e.getCause().getMessage());
+      ex.initCause(e.getCause());
+      throw ex;
+    }
+ else {
+      InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+      ex.initCause(e);
+      throw ex;
+    }
+  }
+}
