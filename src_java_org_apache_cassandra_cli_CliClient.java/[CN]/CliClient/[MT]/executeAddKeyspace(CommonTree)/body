@@ -1,0 +1,30 @@
+{
+  if (!CliMain.isConnected()) {
+    return;
+  }
+  CommonTree newKSSpec=(CommonTree)ast.getChild(0);
+  assert(newKSSpec.getChildCount() > 0);
+  assert(newKSSpec.getChildCount() % 2 == 1);
+  String replicaPlacementStrategy="org.apache.cassandra.locator.RackUnawareStrategy";
+  int replicationFactor=2;
+  String keyspaceName=newKSSpec.getChild(0).getText();
+  int argumentLength=newKSSpec.getChildCount();
+  for (int i=1; i < argumentLength; i=i + 2) {
+    AddKeyspaceArgument mArgument=AddKeyspaceArgument.valueOf(newKSSpec.getChild(i).getText().toUpperCase());
+    String mValue=newKSSpec.getChild(i + 1).getText();
+switch (mArgument) {
+case PLACEMENT_STRATEGY:
+      replicaPlacementStrategy=CliUtils.unescapeSQLString(mValue);
+    break;
+case REPLICATION_FACTOR:
+  replicationFactor=Integer.parseInt(mValue);
+break;
+default :
+assert(false);
+}
+}
+List<CfDef> mList=new LinkedList<CfDef>();
+KsDef ks_def=new KsDef(keyspaceName,replicaPlacementStrategy,replicationFactor,mList);
+css_.out.println(thriftClient_.system_add_keyspace(ks_def));
+keyspacesMap.put(keyspaceName,thriftClient_.describe_keyspace(keyspaceName));
+}

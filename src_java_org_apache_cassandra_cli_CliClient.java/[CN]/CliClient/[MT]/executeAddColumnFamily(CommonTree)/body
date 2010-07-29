@@ -1,0 +1,51 @@
+{
+  if (!CliMain.isConnected() || !hasKeySpace()) {
+    return;
+  }
+  CommonTree newCFTree=(CommonTree)ast.getChild(0);
+  assert(newCFTree.getChildCount() > 0);
+  assert(newCFTree.getChildCount() % 2 == 1);
+  String columnName=newCFTree.getChild(0).getText();
+  int argumentLength=newCFTree.getChildCount();
+  CfDef cfDef=new CfDef(keySpace,columnName);
+  for (int i=1; i < argumentLength; i=i + 2) {
+    AddColumnFamilyArgument mArgument=AddColumnFamilyArgument.valueOf(newCFTree.getChild(i).getText().toUpperCase());
+    String mValue=newCFTree.getChild(i + 1).getText();
+switch (mArgument) {
+case COLUMN_TYPE:
+      cfDef.setColumn_type(CliUtils.unescapeSQLString(mValue));
+    break;
+case CLOCK_TYPE:
+  cfDef.setClock_type(CliUtils.unescapeSQLString(mValue));
+break;
+case COMPARATOR:
+cfDef.setComparator_type(CliUtils.unescapeSQLString(mValue));
+break;
+case SUBCOMPARATOR:
+cfDef.setSubcomparator_type(CliUtils.unescapeSQLString(mValue));
+break;
+case RECONCILER:
+cfDef.setReconciler(CliUtils.unescapeSQLString(mValue));
+break;
+case COMMENT:
+cfDef.setComment(CliUtils.unescapeSQLString(mValue));
+break;
+case ROWS_CACHED:
+cfDef.setRow_cache_size(Double.parseDouble(mValue));
+break;
+case PRELOAD_ROW_CACHE:
+cfDef.setPreload_row_cache(Boolean.parseBoolean(CliUtils.unescapeSQLString(mValue)));
+break;
+case KEY_CACHE_SIZE:
+cfDef.setKey_cache_size(Double.parseDouble(mValue));
+break;
+case READ_REPAIR_CHANCE:
+cfDef.setKey_cache_size(Double.parseDouble(CliUtils.unescapeSQLString(mValue)));
+break;
+default :
+assert(false);
+}
+}
+css_.out.println(thriftClient_.system_add_column_family(cfDef));
+keyspacesMap.put(keySpace,thriftClient_.describe_keyspace(keySpace));
+}
