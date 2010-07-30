@@ -1,9 +1,17 @@
 {
+  Class gcBeanClass=null;
+  try {
+    gcBeanClass=Class.forName("com.sun.management.GarbageCollectorMXBean");
+    Class.forName("com.sun.management.GcInfo");
+  }
+ catch (  ClassNotFoundException ex) {
+    logger.warn("Cannot load sun GC monitoring classes. GCInspector is disabled.");
+  }
   MBeanServer server=ManagementFactory.getPlatformMBeanServer();
   try {
     ObjectName gcName=new ObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE + ",*");
     for (    ObjectName name : server.queryNames(gcName,null)) {
-      GarbageCollectorMXBean gc=ManagementFactory.newPlatformMXBeanProxy(server,name.getCanonicalName(),GarbageCollectorMXBean.class);
+      Object gc=ManagementFactory.newPlatformMXBeanProxy(server,name.getCanonicalName(),gcBeanClass);
       beans.add(gc);
     }
   }

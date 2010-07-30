@@ -1,25 +1,25 @@
 {
-  for (  GarbageCollectorMXBean gc : beans) {
-    GcInfo gci=gc.getLastGcInfo();
-    if (gci == null)     continue;
-    Long previous=gctimes.get(gc.getName());
-    if (previous != null && previous == gc.getCollectionTime())     continue;
-    gctimes.put(gc.getName(),gc.getCollectionTime());
+  for (  Object gc : beans) {
+    SunGcWrapper gcw=new SunGcWrapper(gc);
+    if (gcw.isLastGcInfoNull())     continue;
+    Long previous=gctimes.get(gcw.getName());
+    if (previous != null && previous.longValue() == gcw.getCollectionTime().longValue())     continue;
+    gctimes.put(gcw.getName(),gcw.getCollectionTime());
     long previousMemoryUsed=0;
     long memoryUsed=0;
     long memoryMax=0;
-    for (    Map.Entry<String,MemoryUsage> entry : gci.getMemoryUsageBeforeGc().entrySet()) {
+    for (    Map.Entry<String,MemoryUsage> entry : gcw.getMemoryUsageBeforeGc().entrySet()) {
       previousMemoryUsed+=entry.getValue().getUsed();
     }
-    for (    Map.Entry<String,MemoryUsage> entry : gci.getMemoryUsageAfterGc().entrySet()) {
+    for (    Map.Entry<String,MemoryUsage> entry : gcw.getMemoryUsageAfterGc().entrySet()) {
       MemoryUsage mu=entry.getValue();
       memoryUsed+=mu.getUsed();
       memoryMax+=mu.getMax();
     }
-    String st=String.format("GC for %s: %s ms, %s reclaimed leaving %s used; max is %s",gc.getName(),gci.getDuration(),previousMemoryUsed - memoryUsed,memoryUsed,memoryMax);
-    if (gci.getDuration() > MIN_DURATION)     logger.info(st);
+    String st=String.format("GC for %s: %s ms, %s reclaimed leaving %s used; max is %s",gcw.getName(),gcw.getDuration(),previousMemoryUsed - memoryUsed,memoryUsed,memoryMax);
+    if (gcw.getDuration() > MIN_DURATION)     logger.info(st);
  else     if (logger.isDebugEnabled())     logger.debug(st);
-    if (gci.getDuration() > MIN_DURATION_TPSTATS) {
+    if (gcw.getDuration() > MIN_DURATION_TPSTATS) {
       try {
         logThreadPoolStats();
       }
