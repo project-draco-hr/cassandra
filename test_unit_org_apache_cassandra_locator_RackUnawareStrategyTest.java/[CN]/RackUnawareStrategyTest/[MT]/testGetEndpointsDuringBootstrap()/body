@@ -2,7 +2,6 @@
   final int RING_SIZE=10;
   TokenMetadata tmd=new TokenMetadata();
   TokenMetadata oldTmd=StorageServiceAccessor.setTokenMetadata(tmd);
-  AbstractReplicationStrategy strategy=new RackUnawareStrategy(tmd,new SimpleSnitch());
   Token[] endpointTokens=new Token[RING_SIZE];
   Token[] keyTokens=new Token[RING_SIZE];
   for (int i=0; i < RING_SIZE; i++) {
@@ -18,11 +17,13 @@
   Token bsToken=new BigIntegerToken(String.valueOf(210));
   InetAddress bootstrapEndpoint=InetAddress.getByName("127.0.0.11");
   tmd.addBootstrapToken(bsToken,bootstrapEndpoint);
+  AbstractReplicationStrategy strategy=null;
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+    strategy=getStrategy(table,tmd);
     StorageService.calculatePendingRanges(strategy,table);
     int replicationFactor=DatabaseDescriptor.getReplicationFactor(table);
     for (int i=0; i < keyTokens.length; i++) {
-      Collection<InetAddress> endpoints=tmd.getWriteEndpoints(keyTokens[i],table,strategy.getNaturalEndpoints(keyTokens[i],table));
+      Collection<InetAddress> endpoints=tmd.getWriteEndpoints(keyTokens[i],table,strategy.getNaturalEndpoints(keyTokens[i]));
       assertTrue(endpoints.size() >= replicationFactor);
       for (int j=0; j < replicationFactor; j++) {
         assertTrue(endpoints.contains(hosts.get((i + j + 1) % hosts.size())));

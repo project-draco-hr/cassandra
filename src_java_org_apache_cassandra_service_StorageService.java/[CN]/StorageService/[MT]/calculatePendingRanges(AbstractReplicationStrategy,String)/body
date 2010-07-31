@@ -8,20 +8,20 @@
     tm.setPendingRanges(table,pendingRanges);
     return;
   }
-  Multimap<InetAddress,Range> addressRanges=strategy.getAddressRanges(table);
+  Multimap<InetAddress,Range> addressRanges=strategy.getAddressRanges();
   TokenMetadata allLeftMetadata=tm.cloneAfterAllLeft();
   Set<Range> affectedRanges=new HashSet<Range>();
   for (  InetAddress endpoint : leavingEndpoints)   affectedRanges.addAll(addressRanges.get(endpoint));
   for (  Range range : affectedRanges) {
-    Set<InetAddress> currentEndpoints=strategy.calculateNaturalEndpoints(range.right,tm,table);
-    Set<InetAddress> newEndpoints=strategy.calculateNaturalEndpoints(range.right,allLeftMetadata,table);
+    Set<InetAddress> currentEndpoints=strategy.calculateNaturalEndpoints(range.right,tm);
+    Set<InetAddress> newEndpoints=strategy.calculateNaturalEndpoints(range.right,allLeftMetadata);
     newEndpoints.removeAll(currentEndpoints);
     pendingRanges.putAll(range,newEndpoints);
   }
   for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
     InetAddress endpoint=entry.getValue();
     allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
-    for (    Range range : strategy.getAddressRanges(allLeftMetadata,table).get(endpoint))     pendingRanges.put(range,endpoint);
+    for (    Range range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))     pendingRanges.put(range,endpoint);
     allLeftMetadata.removeEndpoint(endpoint);
   }
   tm.setPendingRanges(table,pendingRanges);

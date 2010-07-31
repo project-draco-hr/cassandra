@@ -1,0 +1,12 @@
+{
+  int replicas=getReplicationFactor();
+  ArrayList<Token> tokens=metadata.sortedTokens();
+  Set<InetAddress> endpoints=new LinkedHashSet<InetAddress>(replicas);
+  if (tokens.isEmpty())   return endpoints;
+  Iterator<Token> iter=TokenMetadata.ringIterator(tokens,token);
+  while (endpoints.size() < replicas && iter.hasNext()) {
+    endpoints.add(metadata.getEndpoint(iter.next()));
+  }
+  if (endpoints.size() < replicas)   throw new IllegalStateException(String.format("replication factor (%s) exceeds number of endpoints (%s)",replicas,endpoints.size()));
+  return endpoints;
+}

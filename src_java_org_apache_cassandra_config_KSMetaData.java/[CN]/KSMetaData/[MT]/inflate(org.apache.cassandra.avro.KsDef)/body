@@ -1,14 +1,21 @@
 {
-  Class<AbstractReplicationStrategy> repStratClass=null;
+  Class<AbstractReplicationStrategy> repStratClass;
   try {
     repStratClass=(Class<AbstractReplicationStrategy>)Class.forName(ks.strategy_class.toString());
   }
  catch (  Exception ex) {
     throw new ConfigurationException("Could not create ReplicationStrategy of type " + ks.strategy_class,ex);
   }
+  Map<String,String> strategyOptions=null;
+  if (ks.strategy_options != null) {
+    strategyOptions=new HashMap<String,String>();
+    for (    Map.Entry<Utf8,Utf8> e : ks.strategy_options.entrySet()) {
+      strategyOptions.put(e.getKey().toString(),e.getValue().toString());
+    }
+  }
   int cfsz=(int)ks.cf_defs.size();
   CFMetaData[] cfMetaData=new CFMetaData[cfsz];
   Iterator<org.apache.cassandra.avro.CfDef> cfiter=ks.cf_defs.iterator();
   for (int i=0; i < cfsz; i++)   cfMetaData[i]=CFMetaData.inflate(cfiter.next());
-  return new KSMetaData(ks.name.toString(),repStratClass,ks.replication_factor,cfMetaData);
+  return new KSMetaData(ks.name.toString(),repStratClass,strategyOptions,ks.replication_factor,cfMetaData);
 }
