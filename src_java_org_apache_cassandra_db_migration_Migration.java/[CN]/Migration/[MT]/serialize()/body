@@ -1,0 +1,18 @@
+{
+  org.apache.cassandra.db.migration.avro.Migration mi=new org.apache.cassandra.db.migration.avro.Migration();
+  mi.old_version=new org.apache.cassandra.utils.avro.UUID();
+  mi.old_version.bytes(UUIDGen.decompose(lastVersion));
+  mi.new_version=new org.apache.cassandra.utils.avro.UUID();
+  mi.new_version.bytes(UUIDGen.decompose(newVersion));
+  mi.classname=new org.apache.avro.util.Utf8(this.getClass().getName());
+  DataOutputBuffer dob=new DataOutputBuffer();
+  try {
+    RowMutation.serializer().serialize(rm,dob);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  mi.row_mutation=ByteBuffer.wrap(dob.asByteArray());
+  this.subdeflate(mi);
+  return SerDeUtils.serializeWithSchema(mi);
+}
