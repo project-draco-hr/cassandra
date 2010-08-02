@@ -1,15 +1,7 @@
 {
-  Map<Range,List<String>> rangesToIterate=new HashMap<Range,List<String>>();
-  try {
-    rangesToIterate.putAll(probe.getPendingRangeToEndpoingMap(null));
-    rangesToIterate.putAll(probe.getRangeToEndpointMap(null));
-  }
- catch (  IllegalStateException ise) {
-    outs.println(String.format("Ring information unavailable: %s",ise.getMessage()));
-    return;
-  }
-  List<Range> ranges=new ArrayList<Range>(rangesToIterate.keySet());
-  Collections.sort(ranges);
+  Map<Token,String> tokenToEndpoint=probe.getTokenToEndpointMap();
+  List<Token> sortedTokens=new ArrayList<Token>(tokenToEndpoint.keySet());
+  Collections.sort(sortedTokens);
   Set<String> liveNodes=probe.getLiveNodes();
   Set<String> deadNodes=probe.getUnreachableNodes();
   Set<String> joiningNodes=probe.getJoiningNodes();
@@ -21,17 +13,16 @@
   outs.print(String.format("%-16s","Load"));
   outs.print(String.format("%-44s","Token"));
   outs.println();
-  if (ranges.size() > 1)   outs.println(String.format("%-14s%-11s%-14s%-43s","","","",ranges.get(0).left));
-  for (  Range range : ranges) {
-    List<String> endpoints=rangesToIterate.get(range);
-    String primaryEndpoint=endpoints.get(0);
+  if (sortedTokens.size() > 1)   outs.println(String.format("%-14s%-11s%-14s%-43s","","","",sortedTokens.get(sortedTokens.size() - 1)));
+  for (  Token token : sortedTokens) {
+    String primaryEndpoint=tokenToEndpoint.get(token);
     outs.print(String.format("%-16s",primaryEndpoint));
     String status=liveNodes.contains(primaryEndpoint) ? "Up" : deadNodes.contains(primaryEndpoint) ? "Down" : "?";
     outs.print(String.format("%-7s",status));
     String state=joiningNodes.contains(primaryEndpoint) ? "Joining" : leavingNodes.contains(primaryEndpoint) ? "Leaving" : "Normal";
     outs.print(String.format("%-8s",state));
     outs.print(String.format("%-16s",loadMap.containsKey(primaryEndpoint) ? loadMap.get(primaryEndpoint) : "?"));
-    outs.print(String.format("%-44s",range.right));
+    outs.print(String.format("%-44s",token));
     outs.println();
   }
 }
