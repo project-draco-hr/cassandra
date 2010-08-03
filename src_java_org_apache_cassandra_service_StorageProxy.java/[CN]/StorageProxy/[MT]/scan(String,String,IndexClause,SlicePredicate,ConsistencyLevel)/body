@@ -1,0 +1,30 @@
+{
+  IPartitioner p=StorageService.getPartitioner();
+  Token leftToken=index_clause.start_key == null ? p.getMinimumToken() : p.getToken(index_clause.start_key);
+  List<AbstractBounds> ranges=getRestrictedRanges(new Bounds(leftToken,p.getMinimumToken()));
+  logger.debug("scan ranges are " + StringUtils.join(ranges,","));
+  List<Row> rows=new ArrayList<Row>(index_clause.count);
+  for (  AbstractBounds range : ranges) {
+    List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(keyspace,range.right);
+    DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
+    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace,liveEndpoints);
+    AbstractReplicationStrategy rs=StorageService.instance.getReplicationStrategy(keyspace);
+    QuorumResponseHandler<List<Row>> handler=rs.getQuorumResponseHandler(resolver,consistency_level);
+    IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
+    Message message=command.getMessage();
+    for (    InetAddress endpoint : liveEndpoints) {
+      MessagingService.instance.sendRR(message,endpoint,handler);
+      if (logger.isDebugEnabled())       logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endpoint);
+    }
+    List<Row> theseRows;
+    try {
+      theseRows=handler.get();
+    }
+ catch (    DigestMismatchException e) {
+      throw new RuntimeException(e);
+    }
+    rows.addAll(theseRows);
+    if (rows.size() >= index_clause.count)     return rows.subList(0,index_clause.count);
+  }
+  return rows;
+}
