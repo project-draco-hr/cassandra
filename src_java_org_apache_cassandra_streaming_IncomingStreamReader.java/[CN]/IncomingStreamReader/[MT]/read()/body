@@ -1,7 +1,8 @@
 {
-  logger.debug("Receiving stream");
-  InetSocketAddress remoteAddress=(InetSocketAddress)socketChannel.socket().getRemoteSocketAddress();
-  if (logger.isDebugEnabled())   logger.debug("Creating file for " + pendingFile.getFilename());
+  if (logger.isDebugEnabled()) {
+    logger.debug("Receiving stream");
+    logger.debug("Creating file for {}",pendingFile.getFilename());
+  }
   FileOutputStream fos=new FileOutputStream(pendingFile.getFilename(),true);
   FileChannel fc=fos.getChannel();
   long offset=0;
@@ -15,16 +16,19 @@
   }
  catch (  IOException ex) {
     logger.debug("Receiving stream: recovering from IO error");
-    streamStatus.setAction(FileStatus.Action.STREAM);
-    handleFileStatus(remoteAddress.getAddress());
+    if (initiatedTransfer)     handleFileStatus(FileStatus.Action.STREAM);
+ else     StreamIn.requestFile(context,lastFile);
     FileUtils.deleteWithConfirm(new File(pendingFile.getFilename()));
     throw ex;
   }
  finally {
     fc.close();
-    StreamInManager.activeStreams.remove(remoteAddress.getAddress(),pendingFile);
+    StreamInManager.activeStreams.remove(context,pendingFile);
   }
-  if (logger.isDebugEnabled())   logger.debug("Removing stream context " + pendingFile);
-  streamStatus.setAction(FileStatus.Action.DELETE);
-  handleFileStatus(remoteAddress.getAddress());
+  if (logger.isDebugEnabled())   logger.debug("Removing stream context {}",pendingFile);
+  if (initiatedTransfer)   handleFileStatus(FileStatus.Action.DELETE);
+ else {
+    FileStatusHandler.addSSTable(pendingFile);
+    StreamInManager.get(context).finishAndRequestNext(lastFile);
+  }
 }

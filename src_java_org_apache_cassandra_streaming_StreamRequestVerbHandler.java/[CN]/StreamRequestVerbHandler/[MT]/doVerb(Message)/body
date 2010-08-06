@@ -1,13 +1,17 @@
 {
-  if (logger_.isDebugEnabled())   logger_.debug("Received a StreamRequestMessage from " + message.getFrom());
+  if (logger.isDebugEnabled())   logger.debug("Received a StreamRequestMessage from {}",message.getFrom());
   byte[] body=message.getMessageBody();
   ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
   try {
-    StreamRequestMessage streamRequestMessage=StreamRequestMessage.serializer().deserialize(new DataInputStream(bufIn));
-    StreamRequestMetadata[] streamRequestMetadata=streamRequestMessage.streamRequestMetadata_;
-    for (    StreamRequestMetadata srm : streamRequestMetadata) {
-      if (logger_.isDebugEnabled())       logger_.debug(srm.toString());
-      StreamOut.transferRanges(srm.target_,srm.table_,srm.ranges_,null);
+    StreamRequestMessage srm=StreamRequestMessage.serializer().deserialize(new DataInputStream(bufIn));
+    if (logger.isDebugEnabled())     logger.debug(srm.toString());
+    if (srm.file != null) {
+      StreamHeader header=new StreamHeader(srm.sessionId,srm.file,false);
+      MessagingService.instance.stream(header,message.getFrom());
+      StreamOutManager.get(new StreamContext(message.getFrom(),srm.sessionId)).removePending(srm.file);
+    }
+ else {
+      StreamOut.transferRangesForRequest(new StreamContext(message.getFrom(),srm.sessionId),srm.table,srm.ranges,null);
     }
   }
  catch (  IOException ex) {

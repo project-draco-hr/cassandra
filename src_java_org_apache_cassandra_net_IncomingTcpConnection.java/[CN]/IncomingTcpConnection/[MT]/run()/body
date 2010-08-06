@@ -7,7 +7,11 @@
       boolean isStream=MessagingService.getBits(header,3,1) == 1;
       int version=MessagingService.getBits(header,15,8);
       if (isStream) {
-        new IncomingStreamReader(socket.getChannel()).read();
+        int size=input.readInt();
+        byte[] headerBytes=new byte[size];
+        input.readFully(headerBytes);
+        StreamHeader streamHeader=StreamHeader.serializer().deserialize(new DataInputStream(new ByteArrayInputStream(headerBytes)));
+        new IncomingStreamReader(streamHeader,socket.getChannel()).read();
       }
  else {
         int size=input.readInt();
