@@ -18,11 +18,10 @@
     byte[] row=(rowPrefix + nRows).getBytes();
     ColumnPath col=new ColumnPath("Standard1").setSuper_column(null).setColumn("col1".getBytes());
     ColumnParent parent=new ColumnParent("Standard1").setSuper_column(null);
-    List<InetAddress> endpoints=tester.ringCache.getEndpoint(row);
-    String hosts="";
-    for (int i=0; i < endpoints.size(); i++)     hosts=hosts + ((i > 0) ? "," : "") + endpoints.get(i);
-    System.out.println("hosts with key " + new String(row) + " : "+ hosts+ "; choose "+ endpoints.get(0));
-    tester.setup(endpoints.get(0).getHostAddress(),DatabaseDescriptor.getRpcPort());
+    Collection<InetAddress> endpoints=tester.ringCache.getEndpoint(row);
+    InetAddress firstEndpoint=endpoints.iterator().next();
+    System.out.printf("hosts with key %s : %s; choose %s%n",new String(row),StringUtils.join(endpoints,","),firstEndpoint);
+    tester.setup(firstEndpoint.getHostAddress(),DatabaseDescriptor.getRpcPort());
     tester.thriftClient.set_keyspace(keyspace);
     Clock clock=new Clock();
     clock.setTimestamp(1);

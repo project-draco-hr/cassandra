@@ -6,18 +6,19 @@
       Cassandra.Client client=new Cassandra.Client(binaryProtocol);
       socket.open();
       List<TokenRange> ring=client.describe_ring(keyspace);
-      BiMap<Token,InetAddress> tokenEndpointMap=HashBiMap.create();
+      rangeMap=HashMultimap.create();
       for (      TokenRange range : ring) {
-        Token<?> token=StorageService.getPartitioner().getTokenFactory().fromString(range.start_token);
+        Token<?> left=partitioner_.getTokenFactory().fromString(range.start_token);
+        Token<?> right=partitioner_.getTokenFactory().fromString(range.end_token);
         String host=range.endpoints.get(0);
         try {
-          tokenEndpointMap.put(token,InetAddress.getByName(host));
+          rangeMap.put(new Range(left,right,partitioner_),InetAddress.getByName(host));
         }
  catch (        UnknownHostException e) {
           throw new AssertionError(e);
         }
       }
-      tokenMetadata=new TokenMetadata(tokenEndpointMap);
+      rangeSet=new HashSet(rangeMap.keySet());
       break;
     }
  catch (    InvalidRequestException e) {
