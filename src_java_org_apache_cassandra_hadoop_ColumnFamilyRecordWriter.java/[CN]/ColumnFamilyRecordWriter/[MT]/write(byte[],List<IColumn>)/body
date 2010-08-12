@@ -1,0 +1,51 @@
+{
+  maybeFlush();
+  InetAddress endpoint=getEndpoint(key);
+  Map<byte[],Map<String,List<Mutation>>> mutationsByKey=mutationsByEndpoint.get(endpoint);
+  if (mutationsByKey == null) {
+    mutationsByKey=new HashMap<byte[],Map<String,List<Mutation>>>();
+    mutationsByEndpoint.put(endpoint,mutationsByKey);
+  }
+  Map<String,List<Mutation>> cfMutation=new HashMap<String,List<Mutation>>();
+  mutationsByKey.put(key,cfMutation);
+  Clock clock=new Clock(System.currentTimeMillis());
+  List<Mutation> mutationList=new ArrayList<Mutation>();
+  cfMutation.put(ConfigHelper.getOutputColumnFamily(context.getConfiguration()),mutationList);
+  if (value == null) {
+    Mutation mutation=new Mutation();
+    Deletion deletion=new Deletion(clock);
+    mutation.setDeletion(deletion);
+    mutationList.add(mutation);
+  }
+ else {
+    List<byte[]> columnsToDelete=new ArrayList<byte[]>();
+    for (    IColumn column : value) {
+      Mutation mutation=new Mutation();
+      if (column.value() == null) {
+        if (columnsToDelete.size() != 1 || columnsToDelete.get(0) != null) {
+          if (column.name() == null)           columnsToDelete.clear();
+          columnsToDelete.add(column.name());
+        }
+      }
+ else {
+        ColumnOrSuperColumn cosc=new ColumnOrSuperColumn();
+        cosc.setColumn(new Column(column.name(),column.value(),clock));
+        mutation.setColumn_or_supercolumn(cosc);
+      }
+      mutationList.add(mutation);
+    }
+    if (columnsToDelete.size() > 0) {
+      Mutation mutation=new Mutation();
+      Deletion deletion=new Deletion(clock);
+      if (columnsToDelete.size() != 1 || columnsToDelete.get(0) != null) {
+        deletion.setPredicate(new SlicePredicate().setColumn_names(columnsToDelete));
+      }
+ else {
+        SliceRange range=new SliceRange(new byte[]{},new byte[]{},false,Integer.MAX_VALUE);
+        deletion.setPredicate(new SlicePredicate().setSlice_range(range));
+      }
+      mutation.setDeletion(deletion);
+      mutationList.add(mutation);
+    }
+  }
+}
