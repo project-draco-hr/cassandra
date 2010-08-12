@@ -10,11 +10,16 @@
   byte[] superColumnName=null;
   byte[] columnName=null;
   boolean isSuper;
-  if (!(keyspacesMap.get(keySpace).containsKey(columnFamily))) {
+  List<String> cfnames=new ArrayList<String>();
+  for (  CfDef cfd : keyspacesMap.get(keySpace).cf_defs) {
+    cfnames.add(cfd.name);
+  }
+  int idx=cfnames.indexOf(columnFamily);
+  if (idx == -1) {
     css_.out.println("No such column family: " + columnFamily);
     return;
   }
-  isSuper=keyspacesMap.get(keySpace).get(columnFamily).get("Type").equals("Super");
+  isSuper=keyspacesMap.get(keySpace).cf_defs.get(idx).column_type.equals("Super");
   if ((columnSpecCnt < 0) || (columnSpecCnt > 2)) {
     css_.out.println("Invalid row, super column, or column specification.");
     return;
