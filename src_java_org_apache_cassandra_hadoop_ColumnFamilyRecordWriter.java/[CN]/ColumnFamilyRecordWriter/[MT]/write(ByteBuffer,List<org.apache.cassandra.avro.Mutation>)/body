@@ -1,0 +1,15 @@
+{
+  maybeFlush();
+  byte[] key=copy(keybuff);
+  InetAddress endpoint=getEndpoint(key);
+  Map<byte[],Map<String,List<Mutation>>> mutationsByKey=mutationsByEndpoint.get(endpoint);
+  if (mutationsByKey == null) {
+    mutationsByKey=new TreeMap<byte[],Map<String,List<Mutation>>>(FBUtilities.byteArrayComparator);
+    mutationsByEndpoint.put(endpoint,mutationsByKey);
+  }
+  Map<String,List<Mutation>> cfMutation=new HashMap<String,List<Mutation>>();
+  mutationsByKey.put(key,cfMutation);
+  List<Mutation> mutationList=new ArrayList<Mutation>();
+  cfMutation.put(ConfigHelper.getOutputColumnFamily(context.getConfiguration()),mutationList);
+  for (  org.apache.cassandra.avro.Mutation amut : value)   mutationList.add(avroToThrift(amut));
+}
