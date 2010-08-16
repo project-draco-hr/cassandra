@@ -1,6 +1,6 @@
 {
   long startTime=System.nanoTime();
-  ArrayList<AbstractWriteResponseHandler> responseHandlers=new ArrayList<AbstractWriteResponseHandler>();
+  ArrayList<IWriteResponseHandler> responseHandlers=new ArrayList<IWriteResponseHandler>();
   RowMutation mostRecentRowMutation=null;
   StorageService ss=StorageService.instance;
   try {
@@ -11,7 +11,7 @@
       List<InetAddress> naturalEndpoints=ss.getNaturalEndpoints(table,rm.key());
       Collection<InetAddress> writeEndpoints=ss.getTokenMetadata().getWriteEndpoints(StorageService.getPartitioner().getToken(rm.key()),table,naturalEndpoints);
       Multimap<InetAddress,InetAddress> hintedEndpoints=rs.getHintedEndpoints(writeEndpoints);
-      final AbstractWriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,consistency_level);
+      final IWriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,consistency_level);
       responseHandler.assureSufficientLiveNodes();
       responseHandlers.add(responseHandler);
       Message unhintedMessage=null;
@@ -39,12 +39,12 @@
               if (logger.isDebugEnabled())               logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
             }
           }
-          if (writeEndpoints.contains(destination) || consistency_level == ConsistencyLevel.ANY)           MessagingService.instance.addCallback(responseHandler,hintedMessage.getMessageId());
+          responseHandler.addHintCallback(hintedMessage,destination);
           MessagingService.instance.sendOneWay(hintedMessage,destination);
         }
       }
     }
-    for (    AbstractWriteResponseHandler responseHandler : responseHandlers) {
+    for (    IWriteResponseHandler responseHandler : responseHandlers) {
       responseHandler.get();
     }
   }
