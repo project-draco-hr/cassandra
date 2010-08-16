@@ -37,7 +37,15 @@
     }
     keyspaces.add(rks);
   }
-  YamlWriter writer=new YamlWriter(new FileWriter(filename));
-  writer.write(keyspaces);
-  writer.close();
+  DumperOptions options=new DumperOptions();
+  options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+  SkipNullRepresenter representer=new SkipNullRepresenter();
+  representer.addClassTag(RawColumnFamily.class,Tag.MAP);
+  representer.addClassTag(Keyspaces.class,Tag.MAP);
+  representer.addClassTag(ColumnDefinition.class,Tag.MAP);
+  Dumper dumper=new Dumper(representer,options);
+  Yaml yaml=new Yaml(dumper);
+  Keyspaces ks=new Keyspaces();
+  ks.keyspaces=keyspaces;
+  return yaml.dump(ks);
 }

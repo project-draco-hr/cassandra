@@ -1,5 +1,15 @@
 {
-  YamlWriter writer=new YamlWriter(new FileWriter(outfile));
-  writer.write(conf);
-  writer.close();
+  DumperOptions options=new DumperOptions();
+  options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+  SkipNullRepresenter representer=new SkipNullRepresenter();
+  representer.addClassTag(Config.class,Tag.MAP);
+  representer.addClassTag(RawColumnFamily.class,Tag.MAP);
+  Dumper dumper=new Dumper(representer,options);
+  Yaml yaml=new Yaml(dumper);
+  String output=yaml.dump(conf);
+  BufferedWriter out=new BufferedWriter(new FileWriter(outfile));
+  out.write("# Cassandra YAML generated from previous config\n");
+  out.write("# Configuration wiki: http://wiki.apache.org/cassandra/StorageConfiguration\n");
+  out.write(output);
+  out.close();
 }
