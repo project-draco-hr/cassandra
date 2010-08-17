@@ -28,7 +28,7 @@ synchronized (indexLocks[Arrays.hashCode(mutation.key()) % indexLocks.length]) {
           applyCF(cfs,key,columnFamily,memtablesToFlush);
           for (          byte[] columnName : mutatedIndexedColumns) {
             IColumn column=columnFamily.getColumn(columnName);
-            DecoratedKey valueKey=cfs.getIndexKeyFor(columnName,column.value());
+            DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
             ColumnFamily cf=cfs.newIndexedColumnFamily(columnName);
             cf.addColumn(new Column(mutation.key(),ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
             applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cf,memtablesToFlush);
@@ -38,10 +38,10 @@ synchronized (indexLocks[Arrays.hashCode(mutation.key()) % indexLocks.length]) {
             for (            Map.Entry<byte[],IColumn> entry : oldIndexedColumns.getColumnsMap().entrySet()) {
               byte[] columnName=entry.getKey();
               IColumn column=entry.getValue();
-              DecoratedKey valueKey=cfs.getIndexKeyFor(columnName,column.value());
+              DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
               ColumnFamily cf=cfs.newIndexedColumnFamily(columnName);
               cf.deleteColumn(mutation.key(),localDeletionTime,column.clock());
-              applyCF(cfs,valueKey,cf,memtablesToFlush);
+              applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cf,memtablesToFlush);
             }
           }
         }
