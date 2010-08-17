@@ -1,28 +1,23 @@
 {
-  if (reconcileWith == null || "".equals(reconcileWith)) {
+  if (reconcileWith == null || reconcileWith.length() == 0) {
     return null;
   }
+  String className=reconcileWith.indexOf('.') >= 0 ? reconcileWith : TimestampReconciler.class.getPackage().getName() + '.' + reconcileWith;
   Class<? extends AbstractReconciler> reconcilerClass;
-{
-    String className=reconcileWith.contains(".") ? reconcileWith : TimestampReconciler.class.getPackage().getName() + "." + reconcileWith;
-    try {
-      reconcilerClass=(Class<? extends AbstractReconciler>)Class.forName(className);
-    }
- catch (    ClassNotFoundException e) {
-      throw new ConfigurationException("Unable to load class " + className);
-    }
+  try {
+    reconcilerClass=(Class<? extends AbstractReconciler>)Class.forName(className);
+  }
+ catch (  ClassNotFoundException e) {
+    throw new ConfigurationException("Unable to load class " + className);
   }
   try {
-    return reconcilerClass.getConstructor().newInstance();
+    Field field=reconcilerClass.getDeclaredField("instance");
+    return (AbstractReconciler)field.get(null);
   }
- catch (  InstantiationException e) {
-    ConfigurationException ex=new ConfigurationException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+ catch (  NoSuchFieldException e) {
+    throw new ConfigurationException("Invalid reconciler: must define a public static instance field.",e);
   }
-catch (  Exception e) {
-    ConfigurationException ex=new ConfigurationException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+catch (  IllegalAccessException e) {
+    throw new ConfigurationException("Invalid reconciler: must define a public static instance field.",e);
   }
 }
