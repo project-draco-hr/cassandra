@@ -1,0 +1,22 @@
+{
+  Collection<Runnable> runnables=new ArrayList<Runnable>();
+  for (  File file : files(table,columnFamily)) {
+    if (file.getName().contains("-Data.db")) {
+      if (SSTable.deleteIfCompacted(file.getAbsolutePath())) {
+        final String delPath=file.getAbsolutePath();
+        runnables.add(new Runnable(){
+          public void run(){
+            try {
+              StatisticsTable.deleteSSTableStatistics(delPath);
+            }
+ catch (            IOException ex) {
+              throw new RuntimeException(ex);
+            }
+          }
+        }
+);
+      }
+    }
+  }
+  return runnables;
+}
