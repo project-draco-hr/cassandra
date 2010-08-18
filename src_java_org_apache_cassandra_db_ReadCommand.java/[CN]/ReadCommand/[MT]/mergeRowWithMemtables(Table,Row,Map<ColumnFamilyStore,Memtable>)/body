@@ -1,0 +1,17 @@
+{
+  QueryFilter filter=getQueryFilter();
+  ColumnFamilyStore cfStore=table.getColumnFamilyStore(filter.getColumnFamilyName());
+  Memtable memtable=map.get(cfStore);
+  final ColumnFamily memtableCf=ColumnFamily.create(cfStore.metadata);
+  IColumnIterator iter=filter.getMemtableColumnIterator(memtable,cfStore.getComparator());
+  filter.collectCollatedColumns(memtableCf,iter,(int)(System.currentTimeMillis() / 1000) - cfStore.metadata.gcGraceSeconds);
+  try {
+    iter.close();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  if (row.cf == null)   return new Row(filter.key,memtableCf);
+  row.cf.resolve(memtableCf);
+  return new Row(filter.key,row.cf);
+}

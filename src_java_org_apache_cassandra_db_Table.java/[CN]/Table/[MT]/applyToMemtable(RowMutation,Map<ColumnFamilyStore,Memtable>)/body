@@ -1,0 +1,16 @@
+{
+  for (  ColumnFamily columnFamily : rm.getColumnFamilies()) {
+    ColumnFamilyStore cfs=columnFamilyStores.get(columnFamily.id());
+    if (cfs == null) {
+      logger.error("Attempting to mutate non-existant column family " + columnFamily.id());
+      continue;
+    }
+    DecoratedKey key=StorageService.getPartitioner().decorateKey(rm.key());
+    Memtable memtable=memtables.get(cfs);
+    if (memtable == null) {
+      memtable=new Memtable(cfs,null);
+      memtables.put(cfs,memtable);
+    }
+    memtable.put(key,columnFamily);
+  }
+}
