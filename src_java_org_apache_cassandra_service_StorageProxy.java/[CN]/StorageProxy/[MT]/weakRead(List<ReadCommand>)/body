@@ -1,7 +1,7 @@
 {
   List<Row> rows=new ArrayList<Row>();
   List<Future<Object>> localFutures=null;
-  List<Pair<IAsyncResult,ReadCommand>> remoteResults=null;
+  List<IAsyncResult> remoteResults=null;
   for (  ReadCommand command : commands) {
     InetAddress endPoint=StorageService.instance.findSuitableEndpoint(command.table,command.key);
     if (endPoint.equals(FBUtilities.getLocalAddress())) {
@@ -11,11 +11,11 @@
       localFutures.add(StageManager.getStage(StageManager.READ_STAGE).submit(callable));
     }
  else {
-      if (remoteResults == null)       remoteResults=new ArrayList<Pair<IAsyncResult,ReadCommand>>();
+      if (remoteResults == null)       remoteResults=new ArrayList<IAsyncResult>();
       Message message=command.makeReadMessage();
       if (logger.isDebugEnabled())       logger.debug("weakread reading " + command + " from "+ message.getMessageId()+ "@"+ endPoint);
       if (randomlyReadRepair(command))       message.setHeader(ReadCommand.DO_REPAIR,ReadCommand.DO_REPAIR.getBytes());
-      remoteResults.add(new Pair<IAsyncResult,ReadCommand>(MessagingService.instance.sendRR(message,endPoint),command));
+      remoteResults.add(MessagingService.instance.sendRR(message,endPoint));
     }
   }
   if (localFutures != null) {
@@ -31,14 +31,12 @@
     }
   }
   if (remoteResults != null) {
-    for (    Pair<IAsyncResult,ReadCommand> iar : remoteResults) {
+    for (    IAsyncResult iar : remoteResults) {
       byte[] body;
-      body=iar.left.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+      body=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
       ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
       ReadResponse response=ReadResponse.serializer().deserialize(new DataInputStream(bufIn));
-      Row row=response.row();
-      if (sessionWrites.get() != null)       row=iar.right.mergeRowWithMemtables(Table.open(iar.right.table),row,sessionWrites.get());
-      if (row != null)       rows.add(row);
+      if (response.row() != null)       rows.add(response.row());
     }
   }
   return rows;
