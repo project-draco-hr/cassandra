@@ -1,0 +1,24 @@
+{
+  CfDef cfDef=new CfDef();
+  if (cfMetadata.subcolumnComparator != null) {
+    cfDef.subcomparator_type=cfMetadata.subcolumnComparator.getClass().getName();
+    cfDef.column_type="Super";
+  }
+  cfDef.keyspace=cfMetadata.tableName;
+  cfDef.name=cfMetadata.cfName;
+  cfDef.clock_type=cfMetadata.clockType.name();
+  cfDef.column_type=cfMetadata.cfType.name();
+  cfDef.comment=cfMetadata.comment;
+  cfDef.comparator_type=cfMetadata.comparator.getClass().getName();
+  GenericArray<ColumnDef> column_metadata=new GenericData.Array<ColumnDef>(cfMetadata.column_metadata.size(),Schema.createArray(ColumnDef.SCHEMA$));
+  for (  ColumnDefinition col_definition : cfMetadata.column_metadata.values()) {
+    ColumnDef cdef=new ColumnDef();
+    cdef.name=ByteBuffer.wrap(col_definition.name);
+    cdef.validation_class=col_definition.validator.getClass().getName();
+    cdef.index_name=col_definition.index_name;
+    cdef.index_type=IndexType.valueOf(col_definition.index_type.name());
+    column_metadata.add(cdef);
+  }
+  cfDef.column_metadata=column_metadata;
+  return cfDef;
+}
