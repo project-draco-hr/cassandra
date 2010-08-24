@@ -1,6 +1,7 @@
 {
   List<RawKeyspace> keyspaces=new ArrayList<RawKeyspace>();
   try {
+    String endPointSnitchClassName=null;
     NodeList tablesxml=xmlUtils.getRequestedNodeList("/Storage/Keyspaces/Keyspace");
     String gcGrace=xmlUtils.getNodeValue("/Storage/GCGraceSeconds");
     int gc_grace_seconds=864000;
@@ -11,6 +12,13 @@
       RawKeyspace ks=new RawKeyspace();
       Node table=tablesxml.item(i);
       ks.name=XMLUtils.getAttributeValue(table,"Name");
+      value=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ks.name + "']/EndPointSnitch");
+      if (endPointSnitchClassName == null) {
+        endPointSnitchClassName=value;
+      }
+ else       if (!endPointSnitchClassName.equals(value)) {
+        throw new ConfigurationException("ERROR : EndPointSnitch is global in 0.7 -- multiple choices present.");
+      }
       ks.replica_placement_strategy=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ks.name + "']/ReplicaPlacementStrategy");
       value=xmlUtils.getNodeValue("/Storage/Keyspaces/Keyspace[@Name='" + ks.name + "']/ReplicationFactor");
       if (value != null) {
@@ -42,6 +50,18 @@
       }
       keyspaces.add(ks);
     }
+    if (endPointSnitchClassName.equals("org.apache.cassandra.locator.EndPointSnitch")) {
+      endPointSnitchClassName="org.apache.cassandra.locator.RackInferringSnitch";
+      System.out.println("WARN : org.apache.cassandra.locator.EndPointSnitch has been replaced by org.apache.cassandra.locator.RackInferringSnitch");
+    }
+ else     if (endPointSnitchClassName.equals("org.apache.cassandra.locator.PropertyFileEndpointSnitch")) {
+      endPointSnitchClassName="org.apache.cassandra.locator.PropertyFileSnitch";
+      System.out.println("WARN : org.apache.cassandra.locator.PropertyFileEndpointSnich has been replaced by org.apache.cassandra.locator.PropertyFileSnitch");
+    }
+ else {
+      System.out.println("INFO : EndPointSnitch is global in 0.7 and may need to be updated.");
+    }
+    conf.endpoint_snitch=endPointSnitchClassName;
     return keyspaces;
   }
  catch (  XPathExpressionException e) {
