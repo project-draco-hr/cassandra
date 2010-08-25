@@ -1,9 +1,8 @@
 {
-  if (curKeyspace.get() == null) {
-    throw newInvalidRequestException("You have not assigned a keyspace; please use set_keyspace (and login if necessary)");
+  try {
+    clientState.hasKeyspaceAccess(level);
   }
-  if (!(DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)) {
-    if (loginDone.get() == null)     throw newInvalidRequestException("You have not logged into keyspace " + curKeyspace.get());
-    if (loginDone.get().compareTo(level) < 0)     throw newInvalidRequestException("Your credentials are not sufficient to perform " + level + " operations");
+ catch (  org.apache.cassandra.thrift.InvalidRequestException e) {
+    throw newInvalidRequestException(e.getWhy());
   }
 }
