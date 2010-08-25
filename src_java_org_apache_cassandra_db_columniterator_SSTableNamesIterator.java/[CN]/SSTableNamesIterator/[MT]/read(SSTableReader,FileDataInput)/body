@@ -1,0 +1,15 @@
+{
+  BloomFilter bf=IndexHelper.defreezeBloomFilter(file);
+  List<IndexHelper.IndexInfo> indexList=IndexHelper.deserializeIndex(file);
+  cf=ColumnFamily.serializer().deserializeFromSSTableNoColumns(sstable.createColumnFamily(),file);
+  List<byte[]> filteredColumnNames=new ArrayList<byte[]>(columns.size());
+  for (  byte[] name : columns) {
+    if (bf.isPresent(name)) {
+      filteredColumnNames.add(name);
+    }
+  }
+  if (filteredColumnNames.isEmpty())   return;
+  if (indexList == null)   readSimpleColumns(file,columns,filteredColumnNames);
+ else   readIndexedColumns(sstable,file,columns,filteredColumnNames,indexList);
+  iter=cf.getSortedColumns().iterator();
+}
