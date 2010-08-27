@@ -1,17 +1,8 @@
 {
-  IOException mostRecentProblem=null;
-  Set<String> cfNames=DatabaseDescriptor.getTableDefinition(oldKs).cfMetaData().keySet();
-  for (  String cfName : cfNames) {
-    for (    File existing : DefsTable.getFiles(oldKs,cfName)) {
-      try {
-        File newParent=new File(existing.getParentFile().getParent(),newKs);
-        newParent.mkdirs();
-        FileUtils.renameWithConfirm(existing,new File(newParent,existing.getName()));
-      }
- catch (      IOException ex) {
-        mostRecentProblem=ex;
-      }
-    }
+  ArrayList<File> failed=new ArrayList<File>();
+  for (  String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
+    File ksDir=new File(dataDir,oldKs);
+    if (ksDir.exists())     if (!ksDir.renameTo(new File(dataDir,newKs)))     failed.add(ksDir);
   }
-  if (mostRecentProblem != null)   throw new IOException("One or more IOExceptions encountered while renaming files. Most recent problem is included.",mostRecentProblem);
+  if (!failed.isEmpty())   throw new IOException("One or more problems encountered while renaming " + StringUtils.join(failed,","));
 }
