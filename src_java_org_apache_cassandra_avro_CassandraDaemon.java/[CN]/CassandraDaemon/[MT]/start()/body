@@ -1,8 +1,17 @@
 {
   if (logger.isDebugEnabled())   logger.debug(String.format("Binding avro service to %s:%s",listenAddr,listenPort));
-  SpecificResponder responder=new SpecificResponder(Cassandra.class,new CassandraServer());
+  CassandraServer cassandraServer=new CassandraServer();
+  SpecificResponder responder=new SpecificResponder(Cassandra.class,cassandraServer);
   logger.info("Listening for avro clients...");
   Mx4jTool.maybeLoad();
-  server=new HttpServer(responder,listenPort);
-  server.start();
+  server=new org.mortbay.jetty.Server(listenPort);
+  server.setThreadPool(new CleaningThreadPool(cassandraServer.clientState,MIN_WORKER_THREADS,Integer.MAX_VALUE));
+  try {
+    ResponderServlet servlet=new ResponderServlet(responder);
+    new Context(server,"/").addServlet(new ServletHolder(servlet),"/*");
+    server.start();
+  }
+ catch (  Exception e) {
+    throw new IOException("Could not start Avro server.",e);
+  }
 }
