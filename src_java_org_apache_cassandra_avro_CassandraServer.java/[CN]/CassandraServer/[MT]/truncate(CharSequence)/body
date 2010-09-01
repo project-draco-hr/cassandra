@@ -1,0 +1,24 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("truncating {} in {}",columnFamily,clientState.getKeyspace());
+  try {
+    clientState.hasKeyspaceAccess(Permission.WRITE_VALUE);
+    schedule();
+    StorageProxy.truncateBlocking(clientState.getKeyspace(),columnFamily.toString());
+  }
+ catch (  org.apache.cassandra.thrift.InvalidRequestException e) {
+    throw newInvalidRequestException(e);
+  }
+catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    throw newUnavailableException(e);
+  }
+catch (  TimeoutException e) {
+    throw newUnavailableException(e);
+  }
+catch (  IOException e) {
+    throw newUnavailableException(e);
+  }
+ finally {
+    release();
+  }
+  return null;
+}
