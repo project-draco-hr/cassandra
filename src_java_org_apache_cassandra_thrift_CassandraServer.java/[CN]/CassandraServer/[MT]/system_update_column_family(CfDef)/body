@@ -1,4 +1,22 @@
 {
-  checkKeyspaceAndLoginAuthorized(AccessLevel.FULL);
-  return null;
+  clientState.hasKeyspaceAccess(Permission.WRITE);
+  if (cf_def.keyspace == null || cf_def.name == null)   throw new InvalidRequestException("Keyspace and CF name must be set.");
+  CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(cf_def.keyspace,cf_def.name));
+  if (oldCfm == null)   throw new InvalidRequestException("Could not find column family definition to modify.");
+  try {
+    CFMetaData newCfm=oldCfm.apply(cf_def);
+    UpdateColumnFamily update=new UpdateColumnFamily(oldCfm,newCfm);
+    applyMigrationOnStage(update);
+    return DatabaseDescriptor.getDefsVersion().toString();
+  }
+ catch (  ConfigurationException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IOException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
 }

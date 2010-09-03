@@ -1,0 +1,30 @@
+{
+  org.apache.cassandra.thrift.CfDef def=new org.apache.cassandra.thrift.CfDef(cfm.tableName,cfm.cfName);
+  def.setId(cfm.cfId);
+  def.setColumn_type(cfm.cfType.name());
+  def.setClock_type(cfm.clockType.name());
+  def.setComparator_type(cfm.comparator.getClass().getName());
+  if (cfm.subcolumnComparator != null) {
+    def.setSubcomparator_type(cfm.subcolumnComparator.getClass().getName());
+    def.setColumn_type("Super");
+  }
+  def.setReconciler(cfm.reconciler == null ? "" : cfm.reconciler.getClass().getName());
+  def.setComment(cfm.comment == null ? "" : cfm.comment);
+  def.setRow_cache_size(cfm.rowCacheSize);
+  def.setPreload_row_cache(cfm.preloadRowCache);
+  def.setKey_cache_size(cfm.keyCacheSize);
+  def.setRead_repair_chance(cfm.readRepairChance);
+  def.setGc_grace_seconds(cfm.gcGraceSeconds);
+  def.setDefault_validation_class(cfm.defaultValidator.getClass().getName());
+  List<org.apache.cassandra.thrift.ColumnDef> column_meta=new ArrayList<org.apache.cassandra.thrift.ColumnDef>();
+  for (  ColumnDefinition cd : cfm.column_metadata.values()) {
+    org.apache.cassandra.thrift.ColumnDef tcd=new org.apache.cassandra.thrift.ColumnDef();
+    tcd.setIndex_name(cd.index_name);
+    tcd.setIndex_type(cd.index_type);
+    tcd.setName(cd.name);
+    tcd.setValidation_class(cd.validator.getClass().getName());
+    column_meta.add(tcd);
+  }
+  def.setColumn_metadata(column_meta);
+  return def;
+}

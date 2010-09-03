@@ -2,22 +2,6 @@
   KSMetaData ksm=DatabaseDescriptor.getTableDefinition(table);
   if (ksm == null)   throw new NotFoundException();
   List<CfDef> cfDefs=new ArrayList<CfDef>();
-  for (  CFMetaData cfm : ksm.cfMetaData().values()) {
-    CfDef def=new CfDef(cfm.tableName,cfm.cfName);
-    if (cfm.subcolumnComparator != null) {
-      def.setSubcomparator_type(cfm.subcolumnComparator.getClass().getName());
-      def.setColumn_type("Super");
-    }
-    def.setComparator_type(cfm.comparator.getClass().getName());
-    List<ColumnDef> cdef_list=new ArrayList<ColumnDef>();
-    for (    ColumnDefinition col_definition : cfm.column_metadata.values()) {
-      ColumnDef cdef=new ColumnDef(col_definition.name,col_definition.validator.getClass().getName());
-      cdef.setIndex_name(col_definition.index_name);
-      cdef.setIndex_type(col_definition.index_type);
-      cdef_list.add(cdef);
-    }
-    def.setColumn_metadata(cdef_list);
-    cfDefs.add(def);
-  }
+  for (  CFMetaData cfm : ksm.cfMetaData().values())   cfDefs.add(CFMetaData.convertToThrift(cfm));
   return new KsDef(ksm.name,ksm.strategyClass.getName(),ksm.replicationFactor,cfDefs);
 }
