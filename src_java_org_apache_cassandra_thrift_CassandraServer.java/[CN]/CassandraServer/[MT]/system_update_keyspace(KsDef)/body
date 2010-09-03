@@ -1,3 +1,21 @@
 {
-  throw new InvalidRequestException("Not implemented");
+  checkKeyspaceAndLoginAuthorized(AccessLevel.FULL);
+  if (ks_def.getCf_defs() != null && ks_def.getCf_defs().size() > 0)   throw new InvalidRequestException("Keyspace update must not contain any column family definitions.");
+  if (StorageService.instance.getLiveNodes().size() < ks_def.replication_factor)   throw new InvalidRequestException("Not enough live nodes to support this keyspace");
+  if (DatabaseDescriptor.getTableDefinition(ks_def.name) == null)   throw new InvalidRequestException("Keyspace does not exist.");
+  try {
+    KSMetaData ksm=new KSMetaData(ks_def.name,(Class<? extends AbstractReplicationStrategy>)FBUtilities.<AbstractReplicationStrategy>classForName(ks_def.strategy_class,"keyspace replication strategy"),ks_def.strategy_options,ks_def.replication_factor);
+    applyMigrationOnStage(new UpdateKeyspace(ksm));
+    return DatabaseDescriptor.getDefsVersion().toString();
+  }
+ catch (  ConfigurationException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
+catch (  IOException e) {
+    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+    ex.initCause(e);
+    throw ex;
+  }
 }
