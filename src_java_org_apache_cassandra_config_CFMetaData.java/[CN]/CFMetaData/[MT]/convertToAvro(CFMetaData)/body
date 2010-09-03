@@ -1,0 +1,32 @@
+{
+  org.apache.cassandra.avro.CfDef def=new org.apache.cassandra.avro.CfDef();
+  def.name=cfm.cfName;
+  def.keyspace=cfm.tableName;
+  def.id=cfm.cfId;
+  def.column_type=cfm.cfType.name();
+  def.clock_type=cfm.clockType.name();
+  def.comparator_type=cfm.comparator.getClass().getName();
+  if (cfm.subcolumnComparator != null) {
+    def.subcomparator_type=cfm.subcolumnComparator.getClass().getName();
+    def.column_type="Super";
+  }
+  def.reconciler=cfm.reconciler == null ? "" : cfm.reconciler.getClass().getName();
+  def.comment=cfm.comment == null ? "" : cfm.comment;
+  def.row_cache_size=cfm.rowCacheSize;
+  def.preload_row_cache=cfm.preloadRowCache;
+  def.key_cache_size=cfm.keyCacheSize;
+  def.read_repair_chance=cfm.readRepairChance;
+  def.gc_grace_seconds=cfm.gcGraceSeconds;
+  def.default_validation_class=cfm.defaultValidator.getClass().getName();
+  List<org.apache.cassandra.avro.ColumnDef> column_meta=new ArrayList<org.apache.cassandra.avro.ColumnDef>(cfm.column_metadata.size());
+  for (  ColumnDefinition cd : cfm.column_metadata.values()) {
+    org.apache.cassandra.avro.ColumnDef tcd=new org.apache.cassandra.avro.ColumnDef();
+    tcd.index_name=cd.index_name;
+    tcd.index_type=org.apache.cassandra.avro.IndexType.valueOf(cd.index_type.name());
+    tcd.name=ByteBuffer.wrap(cd.name);
+    tcd.validation_class=cd.validator.getClass().getName();
+    column_meta.add(tcd);
+  }
+  def.column_metadata=column_meta;
+  return def;
+}
