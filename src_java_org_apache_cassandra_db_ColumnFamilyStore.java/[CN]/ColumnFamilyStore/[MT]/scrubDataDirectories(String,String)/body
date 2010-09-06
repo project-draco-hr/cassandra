@@ -1,23 +1,14 @@
 {
-  Pattern auxFilePattern=Pattern.compile("(.*)(-Filter\\.db$|-Index\\.db$)");
-  for (  File file : files(table,columnFamily)) {
-    String filename=file.getName();
-    Matcher matcher=auxFilePattern.matcher(file.getAbsolutePath());
-    if (matcher.matches()) {
-      String basePath=matcher.group(1);
-      if (!new File(basePath + "-Data.db").exists()) {
-        logger.info(String.format("Removing orphan %s",file.getAbsolutePath()));
-        try {
-          FileUtils.deleteWithConfirm(file);
-        }
- catch (        IOException e) {
-          throw new IOError(e);
-        }
-      }
-    }
- else     if (((file.length() == 0 && !filename.endsWith("-Compacted")) || (filename.contains("-" + SSTable.TEMPFILE_MARKER)))) {
+  for (  Map.Entry<Descriptor,Set<Component>> sstableFiles : files(table,columnFamily).entrySet()) {
+    Descriptor desc=sstableFiles.getKey();
+    Set<Component> components=sstableFiles.getValue();
+    if (SSTable.conditionalDelete(desc,components))     continue;
+    File dataFile=new File(desc.filenameFor(Component.DATA));
+    if (components.contains(Component.DATA) && dataFile.length() > 0)     continue;
+    logger.warn("Removing orphans for {}: {}",desc,components);
+    for (    Component component : components) {
       try {
-        FileUtils.deleteWithConfirm(file);
+        FileUtils.deleteWithConfirm(desc.filenameFor(component));
       }
  catch (      IOException e) {
         throw new IOError(e);

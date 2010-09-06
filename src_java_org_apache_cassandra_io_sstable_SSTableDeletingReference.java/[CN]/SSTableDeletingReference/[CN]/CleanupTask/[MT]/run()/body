@@ -1,23 +1,15 @@
 {
-  File datafile=new File(path);
+  File datafile=new File(desc.filenameFor(Component.DATA));
   if (!datafile.delete()) {
     if (attempts++ < DeletionService.MAX_RETRIES) {
       timer.schedule(this,RETRY_DELAY);
       return;
     }
  else {
-      throw new RuntimeException("Unable to delete " + path);
+      throw new RuntimeException("Unable to delete " + datafile);
     }
   }
-  try {
-    FileUtils.deleteWithConfirm(new File(SSTable.indexFilename(path)));
-    FileUtils.deleteWithConfirm(new File(SSTable.filterFilename(path)));
-    FileUtils.deleteWithConfirm(new File(SSTable.statisticsFilename(path)));
-    FileUtils.deleteWithConfirm(new File(SSTable.compactedFilename(path)));
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
+  components.remove(Component.DATA);
+  SSTable.conditionalDelete(desc,components);
   tracker.spaceReclaimed(size);
-  logger.info("Deleted " + path);
 }

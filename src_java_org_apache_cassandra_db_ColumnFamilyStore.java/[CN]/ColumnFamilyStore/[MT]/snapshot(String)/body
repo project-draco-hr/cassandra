@@ -10,19 +10,15 @@ catch (  InterruptedException e) {
   }
   for (  SSTableReader ssTable : ssTables) {
     try {
-      File sourceFile=new File(ssTable.getFilename());
-      File dataDirectory=sourceFile.getParentFile().getParentFile();
+      File dataDirectory=ssTable.getDescriptor().directory.getParentFile();
       String snapshotDirectoryPath=Table.getSnapshotPath(dataDirectory.getAbsolutePath(),table,snapshotName);
       FileUtils.createDirectory(snapshotDirectoryPath);
-      File targetLink=new File(snapshotDirectoryPath,sourceFile.getName());
-      FileUtils.createHardLink(sourceFile,targetLink);
-      sourceFile=new File(ssTable.indexFilename());
-      targetLink=new File(snapshotDirectoryPath,sourceFile.getName());
-      FileUtils.createHardLink(sourceFile,targetLink);
-      sourceFile=new File(ssTable.filterFilename());
-      targetLink=new File(snapshotDirectoryPath,sourceFile.getName());
-      FileUtils.createHardLink(sourceFile,targetLink);
-      if (logger.isDebugEnabled())       logger.debug("Snapshot for " + table + " table data file "+ sourceFile.getAbsolutePath()+ " created as "+ targetLink.getAbsolutePath());
+      for (      Component component : ssTable.getComponents()) {
+        File sourceFile=new File(ssTable.getDescriptor().filenameFor(component));
+        File targetLink=new File(snapshotDirectoryPath,sourceFile.getName());
+        FileUtils.createHardLink(sourceFile,targetLink);
+      }
+      if (logger.isDebugEnabled())       logger.debug("Snapshot for " + table + " keyspace data file "+ ssTable.getFilename()+ " created in "+ snapshotDirectoryPath);
     }
  catch (    IOException e) {
       throw new IOError(e);

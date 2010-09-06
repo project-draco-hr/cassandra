@@ -1,2 +1,21 @@
 {
+  final Map<Descriptor,Set<Component>> sstables=new HashMap<Descriptor,Set<Component>>();
+  for (  String directory : DatabaseDescriptor.getAllDataFileLocationsForTable(keyspace)) {
+    new File(directory).list(new FilenameFilter(){
+      @Override public boolean accept(      File dir,      String name){
+        Pair<Descriptor,Component> component=SSTable.tryComponentFromFilename(dir,name);
+        if (component != null && component.left.cfname.equals(columnFamily)) {
+          Set<Component> components=sstables.get(component.left);
+          if (components == null) {
+            components=new HashSet<Component>();
+            sstables.put(component.left,components);
+          }
+          components.add(component.right);
+        }
+        return false;
+      }
+    }
+);
+  }
+  return sstables;
 }
