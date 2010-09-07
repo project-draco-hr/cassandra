@@ -10,13 +10,13 @@
   MessagingService.shutdown();
   setMode("Draining: emptying MessageService pools",false);
   MessagingService.waitFor();
-  setMode("Draining: flushing column families",false);
-  for (  String tableName : DatabaseDescriptor.getNonSystemTables())   for (  Future f : Table.open(tableName).flush())   f.get();
-  setMode("Draining: replaying commit log",false);
-  DeletionService.waitFor();
-  CommitLog.recover();
   setMode("Draining: clearing mutation stage",false);
   mutationStage.shutdown();
-  while (!mutationStage.isTerminated())   mutationStage.awaitTermination(5,TimeUnit.SECONDS);
+  mutationStage.awaitTermination(3600,TimeUnit.SECONDS);
+  setMode("Draining: flushing column families",false);
+  for (  String tableName : DatabaseDescriptor.getNonSystemTables())   for (  Future f : Table.open(tableName).flush())   f.get();
+  ColumnFamilyStore.postFlushExecutor.shutdown();
+  ColumnFamilyStore.postFlushExecutor.awaitTermination(60,TimeUnit.SECONDS);
+  DeletionService.waitFor();
   setMode("Node is drained",true);
 }
