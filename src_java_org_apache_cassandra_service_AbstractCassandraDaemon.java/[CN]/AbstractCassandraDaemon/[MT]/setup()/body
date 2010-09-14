@@ -1,0 +1,43 @@
+{
+  FBUtilities.tryMlockall();
+  listenPort=DatabaseDescriptor.getRpcPort();
+  listenAddr=DatabaseDescriptor.getRpcAddress();
+  if (listenAddr == null)   listenAddr=FBUtilities.getLocalAddress();
+  Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
+    public void uncaughtException(    Thread t,    Throwable e){
+      logger.error("Fatal exception in thread " + t,e);
+      if (e instanceof OutOfMemoryError) {
+        System.exit(100);
+      }
+    }
+  }
+);
+  try {
+    SystemTable.checkHealth();
+  }
+ catch (  ConfigurationException e) {
+    logger.error("Fatal exception during initialization",e);
+    System.exit(100);
+  }
+  try {
+    DatabaseDescriptor.loadSchemas();
+  }
+ catch (  IOException e) {
+    logger.error("Fatal exception during initialization",e);
+    System.exit(100);
+  }
+  for (  String table : DatabaseDescriptor.getTables()) {
+    if (logger.isDebugEnabled())     logger.debug("opening keyspace " + table);
+    Table.open(table);
+  }
+  CommitLog.recover();
+  CompactionManager.instance.checkAllColumnFamilies();
+  UUID currentMigration=DatabaseDescriptor.getDefsVersion();
+  UUID lastMigration=Migration.getLastMigrationId();
+  if ((lastMigration != null) && (lastMigration.timestamp() > currentMigration.timestamp())) {
+    MigrationManager.applyMigrations(currentMigration,lastMigration);
+  }
+  SystemTable.purgeIncompatibleHints();
+  StorageService.instance.initServer();
+  Mx4jTool.maybeLoad();
+}
