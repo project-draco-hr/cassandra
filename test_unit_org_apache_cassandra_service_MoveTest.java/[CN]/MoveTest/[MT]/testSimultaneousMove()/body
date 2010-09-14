@@ -4,18 +4,18 @@
   TokenMetadata tmd=ss.getTokenMetadata();
   tmd.clearUnsafe();
   IPartitioner partitioner=new RandomPartitioner();
-  ApplicationState.ApplicationStateFactory stateFactory=new ApplicationState.ApplicationStateFactory(partitioner);
+  VersionedValue.VersionedValueFactory valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
   IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
   final int[] LEAVING=new int[]{6,8,9};
-  for (  int leaving : LEAVING)   ss.onChange(hosts.get(leaving),ApplicationState.STATE_MOVE,stateFactory.leaving(endpointTokens.get(leaving)));
+  for (  int leaving : LEAVING)   ss.onChange(hosts.get(leaving),ApplicationState.STATUS,valueFactory.leaving(endpointTokens.get(leaving)));
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
-  ss.onChange(boot1,ApplicationState.STATE_MOVE,stateFactory.bootstrapping(keyTokens.get(5)));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5)));
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
-  ss.onChange(boot2,ApplicationState.STATE_MOVE,stateFactory.bootstrapping(keyTokens.get(7)));
+  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7)));
   Collection<InetAddress> endpoints=null;
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
@@ -134,9 +134,9 @@
     assertTrue(endpoints.contains(hosts.get(1)));
     assertTrue(endpoints.contains(hosts.get(2)));
   }
-  ss.onChange(hosts.get(LEAVING[0]),ApplicationState.STATE_MOVE,stateFactory.left(endpointTokens.get(LEAVING[0])));
-  ss.onChange(hosts.get(LEAVING[2]),ApplicationState.STATE_MOVE,stateFactory.left(endpointTokens.get(LEAVING[2])));
-  ss.onChange(boot1,ApplicationState.STATE_MOVE,stateFactory.normal(keyTokens.get(5)));
+  ss.onChange(hosts.get(LEAVING[0]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[0])));
+  ss.onChange(hosts.get(LEAVING[2]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[2])));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(keyTokens.get(5)));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace2").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
