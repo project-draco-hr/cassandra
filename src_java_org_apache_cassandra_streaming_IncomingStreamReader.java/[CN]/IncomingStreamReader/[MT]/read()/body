@@ -17,18 +17,18 @@
  catch (  IOException ex) {
     logger.debug("Receiving stream: recovering from IO error");
     if (initiatedTransfer)     handleFileStatus(FileStatus.Action.STREAM);
- else     StreamIn.requestFile(context,lastFile);
+ else     session.requestFile(lastFile);
     FileUtils.deleteWithConfirm(new File(pendingFile.getFilename()));
     throw ex;
   }
  finally {
     fc.close();
-    StreamInSession.activeStreams.remove(context,pendingFile);
+    session.removeActiveStream(pendingFile);
   }
   if (logger.isDebugEnabled())   logger.debug("Removing stream context {}",pendingFile);
   if (initiatedTransfer)   handleFileStatus(FileStatus.Action.DELETE);
  else {
     FileStatusHandler.addSSTable(pendingFile);
-    StreamInSession.get(context).finishAndRequestNext(lastFile);
+    session.finishAndRequestNext(lastFile);
   }
 }
