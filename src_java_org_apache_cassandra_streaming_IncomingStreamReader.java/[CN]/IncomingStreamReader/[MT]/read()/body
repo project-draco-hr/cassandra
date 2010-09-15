@@ -1,34 +1,4 @@
 {
-  if (logger.isDebugEnabled()) {
-    logger.debug("Receiving stream");
-    logger.debug("Creating file for {}",pendingFile.getFilename());
-  }
-  FileOutputStream fos=new FileOutputStream(pendingFile.getFilename(),true);
-  FileChannel fc=fos.getChannel();
-  long offset=0;
-  try {
-    for (    Pair<Long,Long> section : pendingFile.sections) {
-      long length=section.right - section.left;
-      long bytesRead=0;
-      while (bytesRead < length)       bytesRead+=fc.transferFrom(socketChannel,offset + bytesRead,length - bytesRead);
-      offset+=length;
-    }
-  }
- catch (  IOException ex) {
-    logger.debug("Receiving stream: recovering from IO error");
-    if (initiatedTransfer)     handleFileStatus(FileStatus.Action.STREAM);
- else     session.requestFile(lastFile);
-    FileUtils.deleteWithConfirm(new File(pendingFile.getFilename()));
-    throw ex;
-  }
- finally {
-    fc.close();
-    session.removeActiveStream(pendingFile);
-  }
-  if (logger.isDebugEnabled())   logger.debug("Removing stream context {}",pendingFile);
-  if (initiatedTransfer)   handleFileStatus(FileStatus.Action.DELETE);
- else {
-    addSSTable(pendingFile);
-    session.finishAndRequestNext(lastFile);
-  }
+  if (remoteFile != null)   readFile();
+  session.closeIfFinished();
 }

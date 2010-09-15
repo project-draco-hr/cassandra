@@ -1,0 +1,28 @@
+{
+  if (logger.isDebugEnabled()) {
+    logger.debug("Receiving stream");
+    logger.debug("Creating file for {}",localFile.getFilename());
+  }
+  FileOutputStream fos=new FileOutputStream(localFile.getFilename(),true);
+  FileChannel fc=fos.getChannel();
+  long offset=0;
+  try {
+    for (    Pair<Long,Long> section : localFile.sections) {
+      long length=section.right - section.left;
+      long bytesRead=0;
+      while (bytesRead < length)       bytesRead+=fc.transferFrom(socketChannel,offset + bytesRead,length - bytesRead);
+      offset+=length;
+    }
+  }
+ catch (  IOException ex) {
+    logger.debug("Receiving stream: recovering from IO error");
+    handleFileStatus(FileStatus.Action.RETRY);
+    FileUtils.deleteWithConfirm(new File(localFile.getFilename()));
+    throw ex;
+  }
+ finally {
+    fc.close();
+  }
+  if (logger.isDebugEnabled())   logger.debug("Removing stream context {}",remoteFile);
+  handleFileStatus(FileStatus.Action.FINISHED);
+}
