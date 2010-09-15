@@ -5,12 +5,15 @@
       @Override public boolean accept(      File dir,      String name){
         Pair<Descriptor,Component> component=SSTable.tryComponentFromFilename(dir,name);
         if (component != null && component.left.cfname.equals(columnFamily)) {
-          Set<Component> components=sstables.get(component.left);
-          if (components == null) {
-            components=new HashSet<Component>();
-            sstables.put(component.left,components);
+          if (includeCompacted || !new File(component.left.filenameFor(Component.COMPACTED_MARKER)).exists()) {
+            Set<Component> components=sstables.get(component.left);
+            if (components == null) {
+              components=new HashSet<Component>();
+              sstables.put(component.left,components);
+            }
+            components.add(component.right);
           }
-          components.add(component.right);
+ else           logger.debug("not including compacted sstable " + component.left.cfname + "-"+ component.left.generation);
         }
         return false;
       }
