@@ -1,0 +1,17 @@
+def test_cf_recreate(self):
+    'ensures that keyspaces and column familes can be dropped and recreated in short order'
+    for x in range(1):
+        keyspace = 'test_cf_recreate'
+        cf_name = 'recreate_cf'
+        newcf = {'keyspace': keyspace, 'name': cf_name, }
+        newks = {'name': keyspace, 'strategy_class': 'org.apache.cassandra.locator.SimpleStrategy', 'strategy_options': {}, 'replication_factor': 1, 'cf_defs': [newcf], }
+        self.client.request('system_add_keyspace', {'ks_def': newks, })
+        self.client.request('set_keyspace', {'keyspace': keyspace, })
+        self.client.request('insert', {'key': 'key0', 'column_parent': ColumnParent(cf_name), 'column': Column('colA', 'colA-value', Clock(0)), 'consistency_level': 'ONE', })
+        col1 = self.client.request('get_slice', {'key': 'key0', 'column_parent': ColumnParent(cf_name), 'predicate': SlicePredicate(slice_range=SliceRange('', '', False, 100)), 'consistency_level': 'ONE', })[0]['column']
+        assert ((col1['name'] == 'colA') and (col1['value'] == 'colA-value')), col1
+        self.client.request('system_drop_column_family', {'column_family': cf_name, })
+        self.client.request('system_add_column_family', {'cf_def': newcf, })
+        cosc_list = self.client.request('get_slice', {'key': 'key0', 'column_parent': ColumnParent(cf_name), 'predicate': SlicePredicate(slice_range=SliceRange('', '', False, 100)), 'consistency_level': 'ONE', })
+        assert (len(cosc_list) == 0), 'cosc length test failed'
+        self.client.request('system_drop_keyspace', {'keyspace': keyspace, })
