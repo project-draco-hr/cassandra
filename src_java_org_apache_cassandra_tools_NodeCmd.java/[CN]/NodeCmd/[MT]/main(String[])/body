@@ -110,7 +110,7 @@
   }
  else   if (cmdName.equals("setcachecapacity")) {
     if (cmd.getArgs().length != 5) {
-      System.err.println("cacheinfo requires keyspace and column family name arguments, followed by key cache capacity and row cache capacity, in rows");
+      System.err.println("cacheinfo requires: Keyspace name, ColumnFamily name, key cache capacity (in keys), and row cache capacity (in rows)");
     }
     String tableName=cmd.getArgs()[1];
     String cfName=cmd.getArgs()[2];
@@ -119,18 +119,27 @@
     probe.setCacheCapacities(tableName,cfName,keyCacheCapacity,rowCacheCapacity);
   }
  else   if (cmdName.equals("getcompactionthreshold")) {
-    probe.getCompactionThreshold(System.out);
-  }
- else   if (cmdName.equals("setcompactionthreshold")) {
-    if (arguments.length < 2) {
-      System.err.println("Missing threshold value(s)");
+    if (arguments.length < 3) {
+      System.err.println("Missing keyspace/cfname");
       printUsage();
       System.exit(1);
     }
-    int minthreshold=Integer.parseInt(arguments[1]);
-    int maxthreshold=CompactionManager.instance.getMaximumCompactionThreshold();
-    if (arguments.length > 2) {
-      maxthreshold=Integer.parseInt(arguments[2]);
+    probe.getCompactionThreshold(System.out,cmd.getArgs()[1],cmd.getArgs()[2]);
+  }
+ else   if (cmdName.equals("setcompactionthreshold")) {
+    if (cmd.getArgs().length != 5) {
+      System.err.println("setcompactionthreshold requires: Keyspace name, ColumnFamily name, " + "min threshold, and max threshold.");
+      printUsage();
+      System.exit(1);
+    }
+    String ks=cmd.getArgs()[1];
+    String cf=cmd.getArgs()[2];
+    int minthreshold=Integer.parseInt(arguments[3]);
+    int maxthreshold=Integer.parseInt(arguments[4]);
+    if ((minthreshold < 0) || (maxthreshold < 0)) {
+      System.err.println("Thresholds must be positive integers.");
+      printUsage();
+      System.exit(1);
     }
     if (minthreshold > maxthreshold) {
       System.err.println("Min threshold can't be greater than Max threshold");
@@ -142,7 +151,7 @@
       printUsage();
       System.exit(1);
     }
-    probe.setCompactionThreshold(minthreshold,maxthreshold);
+    probe.setCompactionThreshold(ks,cf,minthreshold,maxthreshold);
   }
  else   if (cmdName.equals("streams")) {
     String otherHost=arguments.length > 1 ? arguments[1] : null;
