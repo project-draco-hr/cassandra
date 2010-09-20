@@ -1,29 +1,32 @@
 def run(self):
     p = SlicePredicate(slice_range=SliceRange('', '', False, columns_per_key))
+    offset = (self.idx * keys_per_thread)
+    count = ((((self.idx + 1) * keys_per_thread) - offset) / options.rangecount)
     if ('super' == options.cftype):
-        keys = [key_generator() for i in xrange(keys_per_thread)]
-        for j in xrange(supers_per_key):
-            parent = ColumnParent('Super1', ('S' + str(j)))
-            start = time.time()
-            try:
-                r = self.cclient.multiget_slice(keys, parent, p, consistency)
-                if (not r):
-                    raise RuntimeError(('Keys %s not found' % keys))
-            except KeyboardInterrupt:
-                raise
-            except Exception as e:
-                if options.ignore:
-                    print e
-                else:
+        for x in xrange(count):
+            keys = [key_generator() for i in xrange(offset, (offset + options.rangecount))]
+            for j in xrange(supers_per_key):
+                parent = ColumnParent('Super1', ('S' + str(j)))
+                start = time.time()
+                try:
+                    r = self.cclient.multiget_slice(keys, parent, p, consistency)
+                    if (not r):
+                        raise RuntimeError(('Keys %s not found' % keys))
+                except KeyboardInterrupt:
                     raise
-            self.latencies[self.idx] += (time.time() - start)
-            self.opcounts[self.idx] += 1
-            self.keycounts[self.idx] += len(keys)
+                except Exception as e:
+                    if options.ignore:
+                        print e
+                    else:
+                        raise
+                self.latencies[self.idx] += (time.time() - start)
+                self.opcounts[self.idx] += 1
+                self.keycounts[self.idx] += len(keys)
+                offset += options.rangecount
     else:
         parent = ColumnParent('Standard1')
-        for zslab in xrange(n_threads):
-            kpt = (keys_per_thread / n_threads)
-            keys = [key_generator() for i in xrange((kpt * zslab), (kpt * (zslab + 1)))]
+        for x in xrange(count):
+            keys = [key_generator() for i in xrange(offset, (offset + options.rangecount))]
             start = time.time()
             try:
                 r = self.cclient.multiget_slice(keys, parent, p, consistency)
@@ -39,3 +42,4 @@ def run(self):
             self.latencies[self.idx] += (time.time() - start)
             self.opcounts[self.idx] += 1
             self.keycounts[self.idx] += len(keys)
+            offset += options.rangecount
