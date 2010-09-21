@@ -1,7 +1,7 @@
 def test_bad_calls(self):
     _set_keyspace('Keyspace1')
     _expect_exception((lambda : client.insert(None, None, None, None)), TApplicationException)
-    _expect_exception((lambda : client.insert('key1', ColumnParent('Standard1', 'x'), Column('y', 'value', Clock(0)), ConsistencyLevel.ONE)), InvalidRequestException)
+    _expect_exception((lambda : client.insert('key1', ColumnParent('Standard1', 'x'), Column('y', 'value', 0), ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : client.get(('x' * (2 ** 16)), ColumnPath('Standard1', column='c1'), ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : client.get('', ColumnPath('Standard1', column='c1'), ConsistencyLevel.ONE)), InvalidRequestException)
     cfmap = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=c)) for c in _SUPER_COLUMNS], 'Super2': [Mutation(ColumnOrSuperColumn(super_column=c)) for c in _SUPER_COLUMNS], }
@@ -11,7 +11,7 @@ def test_bad_calls(self):
     _expect_exception((lambda : client.get('key1', ColumnPath('Standard1', 'x', 'y'), ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : client.get('key1', ColumnPath('Super1'), ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : get_range_slice(client, ColumnParent('S'), SlicePredicate(column_names=['', '']), '', '', 5, ConsistencyLevel.ONE)), InvalidRequestException)
-    _expect_exception((lambda : client.insert('key1', ColumnParent('Super1', 'sc1'), Column('x', 'value', Clock(0)), ConsistencyLevel.ONE)), InvalidRequestException)
+    _expect_exception((lambda : client.insert('key1', ColumnParent('Super1', 'sc1'), Column('x', 'value', 0), ConsistencyLevel.ONE)), InvalidRequestException)
     p = SlicePredicate(slice_range=SliceRange('x', '', False, 1))
     column_parent = ColumnParent('StandardLong1')
     _expect_exception((lambda : client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)), InvalidRequestException)
@@ -25,9 +25,9 @@ def test_bad_calls(self):
     column_parent = ColumnParent('Super1', 'sc1')
     _expect_exception((lambda : client.get_slice('key1', column_parent, p, ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : get_range_slice(client, ColumnParent('Standard1'), SlicePredicate(column_names=['']), 'z', 'a', 1, ConsistencyLevel.ONE)), InvalidRequestException)
-    column = Column('cttl1', 'value1', Clock(0), 0)
+    column = Column('cttl1', 'value1', 0, 0)
     _expect_exception((lambda : client.insert('key1', ColumnParent('Standard1'), column, ConsistencyLevel.ONE)), InvalidRequestException)
-    deletion = Deletion(Clock(1), 'supercolumn', None)
+    deletion = Deletion(1, 'supercolumn', None)
     mutation = Mutation(deletion=deletion)
     mutations = {'key': {'Standard1': [mutation], }, }
     _expect_exception((lambda : client.batch_mutate(mutations, ConsistencyLevel.QUORUM)), InvalidRequestException)

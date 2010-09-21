@@ -2,21 +2,21 @@ def test_super_cf_remove_supercolumn(self):
     _set_keyspace('Keyspace1')
     _insert_simple()
     _insert_super()
-    client.remove('key1', ColumnPath('Super1', 'sc2'), Clock(5), ConsistencyLevel.ONE)
+    client.remove('key1', ColumnPath('Super1', 'sc2'), 5, ConsistencyLevel.ONE)
     _expect_missing((lambda : client.get('key1', ColumnPath('Super1', 'sc2', _i64(5)), ConsistencyLevel.ONE)))
     super_columns = _big_slice('key1', ColumnParent('Super1', 'sc2'))
     assert (super_columns == []), super_columns
-    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', Clock(0))])]
+    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)])]
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
     assert (super_columns == super_columns_expected), super_columns
     _verify_simple()
-    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', Clock(1)), ConsistencyLevel.ONE)
+    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', 1), ConsistencyLevel.ONE)
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
     assert (super_columns == super_columns_expected), super_columns
-    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', Clock(6)), ConsistencyLevel.ONE)
+    client.insert('key1', ColumnParent('Super1', 'sc2'), Column(_i64(5), 'value5', 6), ConsistencyLevel.ONE)
     super_columns = [result.super_column for result in _big_slice('key1', ColumnParent('Super1'))]
-    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', Clock(0))]), SuperColumn(name='sc2', columns=[Column(_i64(5), 'value5', Clock(6))])]
+    super_columns_expected = [SuperColumn(name='sc1', columns=[Column(_i64(4), 'value4', 0)]), SuperColumn(name='sc2', columns=[Column(_i64(5), 'value5', 6)])]
     assert (super_columns == super_columns_expected), super_columns
     p = SlicePredicate(slice_range=SliceRange('', '', False, 1000))
     columns = [result.column for result in client.get_slice('key1', ColumnParent('Super1', 'sc2'), p, ConsistencyLevel.ONE)]
-    assert (columns == [Column(_i64(5), 'value5', Clock(6))]), columns
+    assert (columns == [Column(_i64(5), 'value5', 6)]), columns
