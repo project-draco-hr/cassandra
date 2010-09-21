@@ -1,7 +1,8 @@
 {
   checkKeyspaceAndLoginAuthorized(Permission.WRITE);
   if (ks_def.cf_defs != null && ks_def.cf_defs.size() > 0)   throw newInvalidRequestException("Keyspace update must not contain any column family definitions.");
-  if (StorageService.instance.getLiveNodes().size() < ks_def.replication_factor)   throw newInvalidRequestException("Not enough live nodes to support this keyspace");
+  int totalNodes=Gossiper.instance.getLiveMembers().size() + Gossiper.instance.getUnreachableMembers().size();
+  if (totalNodes < ks_def.replication_factor)   throw newInvalidRequestException(String.format("%s live nodes are not enough to support replication factor %s",totalNodes,ks_def.replication_factor));
   if (DatabaseDescriptor.getTableDefinition(ks_def.name.toString()) == null)   throw newInvalidRequestException("Keyspace does not exist.");
   try {
     Map<String,String> strategyOptions=null;

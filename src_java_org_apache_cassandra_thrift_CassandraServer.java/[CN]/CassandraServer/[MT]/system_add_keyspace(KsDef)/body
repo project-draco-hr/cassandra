@@ -1,6 +1,7 @@
 {
   if (!(DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator))   throw new InvalidRequestException("Unable to create new keyspace while authentication is enabled.");
-  if (StorageService.instance.getLiveNodes().size() < ks_def.replication_factor)   throw new InvalidRequestException("Not enough live nodes to support this keyspace");
+  int totalNodes=Gossiper.instance.getLiveMembers().size() + Gossiper.instance.getUnreachableMembers().size();
+  if (totalNodes < ks_def.replication_factor)   throw new InvalidRequestException(String.format("%s live nodes are not enough to support replication factor %s",totalNodes,ks_def.replication_factor));
   for (  CfDef cf : ks_def.cf_defs) {
     if (!cf.getKeyspace().equals(ks_def.getName())) {
       throw new InvalidRequestException("CsDef (" + cf.getName() + ") had a keyspace definition that did not match KsDef");
