@@ -1,0 +1,17 @@
+{
+  while (iter.hasNext()) {
+    DecoratedKey key=iter.next();
+    HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
+    flusherLock.readLock().lock();
+    try {
+synchronized (indexLockFor(key.key)) {
+        ColumnFamily cf=readCurrentIndexedColumns(key,cfs,cfs.getIndexedColumns());
+        applyIndexUpdates(key.key,memtablesToFlush,cf,cfs,cf.getColumnNames(),null);
+      }
+    }
+  finally {
+      flusherLock.readLock().unlock();
+    }
+    for (    Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())     entry.getKey().maybeSwitchMemtable(entry.getValue(),false);
+  }
+}

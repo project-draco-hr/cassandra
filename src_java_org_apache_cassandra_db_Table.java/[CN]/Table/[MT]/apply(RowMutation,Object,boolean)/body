@@ -22,36 +22,10 @@
       }
  else {
 synchronized (indexLockFor(mutation.key())) {
-          QueryFilter filter=QueryFilter.getNamesFilter(key,new QueryPath(cfs.getColumnFamilyName()),mutatedIndexedColumns);
-          ColumnFamily oldIndexedColumns=cfs.getColumnFamily(filter);
-          if (oldIndexedColumns != null) {
-            for (            IColumn oldColumn : oldIndexedColumns) {
-              if (cfs.metadata.reconciler.reconcile((Column)oldColumn,(Column)cf.getColumn(oldColumn.name())).equals(oldColumn)) {
-                cf.remove(oldColumn.name());
-                mutatedIndexedColumns.remove(oldColumn.name());
-                oldIndexedColumns.remove(oldColumn.name());
-              }
-            }
-          }
+          ColumnFamily oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
+          ignoreObsoleteMutations(cf,cfs.metadata.reconciler,mutatedIndexedColumns,oldIndexedColumns);
           applyCF(cfs,key,cf,memtablesToFlush);
-          for (          byte[] columnName : mutatedIndexedColumns) {
-            IColumn column=cf.getColumn(columnName);
-            DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
-            ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
-            cfi.addColumn(new Column(mutation.key(),ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
-            applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
-          }
-          if (oldIndexedColumns != null) {
-            int localDeletionTime=(int)(System.currentTimeMillis() / 1000);
-            for (            Map.Entry<byte[],IColumn> entry : oldIndexedColumns.getColumnsMap().entrySet()) {
-              byte[] columnName=entry.getKey();
-              IColumn column=entry.getValue();
-              DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
-              ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
-              cfi.deleteColumn(mutation.key(),localDeletionTime,column.clock());
-              applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
-            }
-          }
+          applyIndexUpdates(mutation.key(),memtablesToFlush,cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
         }
       }
       ColumnFamily cachedRow=cfs.getRawCachedRow(key);

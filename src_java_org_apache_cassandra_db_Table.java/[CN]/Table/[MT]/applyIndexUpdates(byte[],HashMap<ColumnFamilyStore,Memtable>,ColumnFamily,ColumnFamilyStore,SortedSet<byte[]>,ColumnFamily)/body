@@ -1,0 +1,20 @@
+{
+  for (  byte[] columnName : mutatedIndexedColumns) {
+    IColumn column=cf.getColumn(columnName);
+    DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
+    ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
+    cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
+    applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
+  }
+  if (oldIndexedColumns != null) {
+    int localDeletionTime=(int)(System.currentTimeMillis() / 1000);
+    for (    Map.Entry<byte[],IColumn> entry : oldIndexedColumns.getColumnsMap().entrySet()) {
+      byte[] columnName=entry.getKey();
+      IColumn column=entry.getValue();
+      DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
+      ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
+      cfi.deleteColumn(key,localDeletionTime,column.clock());
+      applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
+    }
+  }
+}
