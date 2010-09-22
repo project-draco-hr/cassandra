@@ -1,5 +1,5 @@
 {
-  HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
+  List<Memtable> memtablesToFlush=Collections.emptyList();
   flusherLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.instance().add(mutation,serializedMutation);
@@ -18,14 +18,16 @@
         }
       }
       if (mutatedIndexedColumns == null) {
-        applyCF(cfs,key,cf,memtablesToFlush);
+        Memtable fullMemtable=cfs.apply(key,cf);
+        if (fullMemtable != null)         memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
       }
  else {
 synchronized (indexLockFor(mutation.key())) {
           ColumnFamily oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
           ignoreObsoleteMutations(cf,cfs.metadata.reconciler,mutatedIndexedColumns,oldIndexedColumns);
-          applyCF(cfs,key,cf,memtablesToFlush);
-          applyIndexUpdates(mutation.key(),memtablesToFlush,cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
+          Memtable fullMemtable=cfs.apply(key,cf);
+          if (fullMemtable != null)           memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
+          applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
         }
       }
       ColumnFamily cachedRow=cfs.getRawCachedRow(key);
@@ -35,5 +37,5 @@ synchronized (indexLockFor(mutation.key())) {
   finally {
     flusherLock.readLock().unlock();
   }
-  for (  Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())   entry.getKey().maybeSwitchMemtable(entry.getValue(),writeCommitLog);
+  for (  Memtable memtable : memtablesToFlush)   memtable.cfs.maybeSwitchMemtable(memtable,writeCommitLog);
 }

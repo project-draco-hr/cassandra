@@ -1,10 +1,12 @@
 {
+  List<Memtable> fullMemtables=Collections.emptyList();
   for (  byte[] columnName : mutatedIndexedColumns) {
     IColumn column=cf.getColumn(columnName);
     DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
     ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
     cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
-    applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
+    Memtable fullMemtable=cfs.getIndexedColumnFamilyStore(columnName).apply(valueKey,cfi);
+    if (fullMemtable != null)     fullMemtables=addFullMemtable(fullMemtables,fullMemtable);
   }
   if (oldIndexedColumns != null) {
     int localDeletionTime=(int)(System.currentTimeMillis() / 1000);
@@ -14,7 +16,9 @@
       DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
       ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
       cfi.deleteColumn(key,localDeletionTime,column.clock());
-      applyCF(cfs.getIndexedColumnFamilyStore(columnName),valueKey,cfi,memtablesToFlush);
+      Memtable fullMemtable=cfs.getIndexedColumnFamilyStore(columnName).apply(valueKey,cfi);
+      if (fullMemtable != null)       fullMemtables=addFullMemtable(fullMemtables,fullMemtable);
     }
   }
+  return fullMemtables;
 }
