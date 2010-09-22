@@ -1,17 +1,24 @@
 {
   while (iter.hasNext()) {
     DecoratedKey key=iter.next();
+    logger.debug("Indexing row {} ",key);
     HashMap<ColumnFamilyStore,Memtable> memtablesToFlush=new HashMap<ColumnFamilyStore,Memtable>(2);
     flusherLock.readLock().lock();
     try {
 synchronized (indexLockFor(key.key)) {
-        ColumnFamily cf=readCurrentIndexedColumns(key,cfs,cfs.getIndexedColumns());
+        ColumnFamily cf=readCurrentIndexedColumns(key,cfs,columns);
         applyIndexUpdates(key.key,memtablesToFlush,cf,cfs,cf.getColumnNames(),null);
       }
     }
   finally {
       flusherLock.readLock().unlock();
     }
-    for (    Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())     entry.getKey().maybeSwitchMemtable(entry.getValue(),false);
+    for (    Map.Entry<ColumnFamilyStore,Memtable> entry : memtablesToFlush.entrySet())     entry.getKey().maybeSwitchMemtable(entry.getValue(),false,null);
+  }
+  try {
+    iter.close();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
   }
 }
