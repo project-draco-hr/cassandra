@@ -15,8 +15,9 @@
     }
   }
  catch (  IOException ex) {
-    logger.debug("Receiving stream: recovering from IO error");
-    handleFileStatus(FileStatus.Action.RETRY);
+    StreamReply reply=new StreamReply(remoteFile.getFilename(),session.getSessionId(),StreamReply.Status.FILE_RETRY);
+    logger.info("Streaming of file {} from {} failed: requesting a retry.",remoteFile,session);
+    MessagingService.instance.sendOneWay(reply.createMessage(),session.getHost());
     FileUtils.deleteWithConfirm(new File(localFile.getFilename()));
     throw ex;
   }
@@ -24,5 +25,9 @@
     fc.close();
   }
   if (logger.isDebugEnabled())   logger.debug("Removing stream context {}",remoteFile);
-  handleFileStatus(FileStatus.Action.FINISHED);
+  StreamReply reply=new StreamReply(remoteFile.getFilename(),session.getSessionId(),StreamReply.Status.FILE_FINISHED);
+  addSSTable(localFile);
+  session.remove(remoteFile);
+  if (logger.isDebugEnabled())   logger.debug("Sending a streaming finished message for {} to {}",remoteFile,session);
+  MessagingService.instance.sendOneWay(reply.createMessage(),session.getHost());
 }

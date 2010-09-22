@@ -1,0 +1,23 @@
+{
+  byte[] body=message.getMessageBody();
+  ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
+  try {
+    StreamReply reply=StreamReply.serializer.deserialize(new DataInputStream(bufIn));
+    StreamOutSession session=StreamOutSession.get(message.getFrom(),reply.sessionId);
+    session.validateCurrentFile(reply.file);
+switch (reply.action) {
+case FILE_FINISHED:
+      session.startNext();
+    break;
+case FILE_RETRY:
+  logger.warn("Need to re-stream file {} to {}",reply.file,message.getFrom());
+session.retry();
+break;
+default :
+throw new RuntimeException("Cannot handle FileStatus.Action: " + reply.action);
+}
+}
+ catch (IOException ex) {
+throw new IOError(ex);
+}
+}
