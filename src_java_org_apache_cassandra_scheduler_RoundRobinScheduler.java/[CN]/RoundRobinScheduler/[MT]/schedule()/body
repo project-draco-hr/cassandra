@@ -1,10 +1,18 @@
 {
+  int weight;
+  SynchronousQueue<Thread> queue;
+  Thread t;
   queueSize.acquireUninterruptibly();
-  for (  SynchronousQueue<Thread> queue : queues.values()) {
-    Thread t=queue.poll();
-    if (t != null) {
-      taskCount.acquireUninterruptibly();
-      queueSize.acquireUninterruptibly();
+  for (  Map.Entry<String,Pair<Integer,SynchronousQueue<Thread>>> request : queues.entrySet()) {
+    weight=request.getValue().left;
+    queue=request.getValue().right;
+    for (int i=0; i < weight; i++) {
+      t=queue.poll();
+      if (t == null)       break;
+ else {
+        taskCount.acquireUninterruptibly();
+        queueSize.acquireUninterruptibly();
+      }
     }
   }
   queueSize.release();
