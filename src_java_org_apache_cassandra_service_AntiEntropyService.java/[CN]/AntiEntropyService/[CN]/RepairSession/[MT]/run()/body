@@ -1,25 +1,17 @@
 {
-  BlockingQueue<TreeRequest> completed=new LinkedBlockingQueue<TreeRequest>();
-  AntiEntropyService.this.sessions.put(getName(),completed);
+  Callback callback=new Callback();
+  AntiEntropyService.this.sessions.put(getName(),callback);
   try {
-    Set<TreeRequest> requests=new HashSet<TreeRequest>();
     Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename);
     for (    String cfname : cfnames) {
-      for (      InetAddress endpoint : endpoints)       requests.add(AntiEntropyService.this.request(getName(),endpoint,tablename,cfname));
+      for (      InetAddress endpoint : endpoints)       requests.put(AntiEntropyService.this.request(getName(),endpoint,tablename,cfname),this);
       AntiEntropyService.this.request(getName(),FBUtilities.getLocalAddress(),tablename,cfname);
     }
+    logger.info("Waiting for repair requests: " + requests.keySet());
     requestsMade.signalAll();
-    logger.info("Waiting for repair requests to: " + requests);
-    while (!requests.isEmpty()) {
-      TreeRequest request=completed.take();
-      logger.info("Repair request to " + request + " completed successfully.");
-      requests.remove(request);
-    }
+    callback.completed.await();
   }
  catch (  InterruptedException e) {
     throw new RuntimeException("Interrupted while waiting for repair: repair will continue in the background.");
-  }
- finally {
-    AntiEntropyService.this.sessions.remove(getName());
   }
 }
