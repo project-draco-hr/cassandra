@@ -10,7 +10,12 @@
     for (    Pair<Long,Long> section : localFile.sections) {
       long length=section.right - section.left;
       long bytesRead=0;
-      while (bytesRead < length)       bytesRead+=fc.transferFrom(socketChannel,offset + bytesRead,length - bytesRead);
+      while (bytesRead < length) {
+        long toRead=Math.min(FileStreamTask.CHUNK_SIZE,length - bytesRead);
+        long lastRead=fc.transferFrom(socketChannel,offset + bytesRead,toRead);
+        bytesRead+=lastRead;
+        remoteFile.progress+=lastRead;
+      }
       offset+=length;
     }
   }
