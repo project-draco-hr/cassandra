@@ -1,21 +1,11 @@
 {
-  maybeFlush();
   byte[] key=copy(keybuff);
-  InetAddress endpoint=getEndpoint(key);
-  Map<byte[],Map<String,List<Mutation>>> mutationsByKey=mutationsByEndpoint.get(endpoint);
-  if (mutationsByKey == null) {
-    mutationsByKey=new TreeMap<byte[],Map<String,List<Mutation>>>(FBUtilities.byteArrayComparator);
-    mutationsByEndpoint.put(endpoint,mutationsByKey);
+  Range range=ringCache.getRange(key);
+  RangeClient client=clients.get(range);
+  if (client == null) {
+    client=new RangeClient(ringCache.getEndpoint(range));
+    client.start();
+    clients.put(range,client);
   }
-  Map<String,List<Mutation>> cfMutation=mutationsByKey.get(key);
-  if (cfMutation == null) {
-    cfMutation=new HashMap<String,List<Mutation>>();
-    mutationsByKey.put(key,cfMutation);
-  }
-  List<Mutation> mutationList=cfMutation.get(ConfigHelper.getOutputColumnFamily(conf));
-  if (mutationList == null) {
-    mutationList=new ArrayList<Mutation>();
-    cfMutation.put(ConfigHelper.getOutputColumnFamily(conf),mutationList);
-  }
-  for (  org.apache.cassandra.avro.Mutation amut : value)   mutationList.add(avroToThrift(amut));
+  for (  org.apache.cassandra.avro.Mutation amut : value)   client.put(new Pair<byte[],Mutation>(key,avroToThrift(amut)));
 }

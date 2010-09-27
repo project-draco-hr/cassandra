@@ -1,0 +1,43 @@
+{
+  outer:   while (run || !queue.isEmpty()) {
+    Pair<byte[],Mutation> mutation;
+    try {
+      mutation=queue.take();
+    }
+ catch (    InterruptedException e) {
+      continue;
+    }
+    Map<byte[],Map<String,List<Mutation>>> batch=new HashMap<byte[],Map<String,List<Mutation>>>();
+    while (batch.size() < batchThreshold) {
+      Map<String,List<Mutation>> subBatch=Collections.singletonMap(columnFamily,Arrays.asList(mutation.right));
+      batch.put(mutation.left,subBatch);
+      if ((mutation=queue.poll()) == null)       break;
+    }
+    Iterator<InetAddress> iter=endpoints.iterator();
+    while (true) {
+      try {
+        thriftClient.batch_mutate(batch,ConsistencyLevel.ONE);
+        break;
+      }
+ catch (      Exception e) {
+        close();
+        if (!iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+      try {
+        InetAddress address=iter.next();
+        thriftSocket=new TSocket(address.getHostName(),ConfigHelper.getRpcPort(conf));
+        thriftClient=ColumnFamilyOutputFormat.createAuthenticatedClient(thriftSocket,conf);
+      }
+ catch (      Exception e) {
+        close();
+        if ((!(e instanceof TException)) || !iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+    }
+  }
+}
