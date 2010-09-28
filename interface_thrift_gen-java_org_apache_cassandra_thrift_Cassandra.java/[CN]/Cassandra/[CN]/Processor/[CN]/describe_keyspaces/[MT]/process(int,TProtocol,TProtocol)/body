@@ -14,7 +14,21 @@
   }
   iprot.readMessageEnd();
   describe_keyspaces_result result=new describe_keyspaces_result();
-  result.success=iface_.describe_keyspaces();
+  try {
+    result.success=iface_.describe_keyspaces();
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing describe_keyspaces",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing describe_keyspaces");
+    oprot.writeMessageBegin(new TMessage("describe_keyspaces",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   oprot.writeMessageBegin(new TMessage("describe_keyspaces",TMessageType.REPLY,seqid));
   result.write(oprot);
   oprot.writeMessageEnd();
