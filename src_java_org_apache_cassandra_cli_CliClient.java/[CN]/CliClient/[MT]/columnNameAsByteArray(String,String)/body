@@ -1,0 +1,24 @@
+{
+  List<String> cfnames=new ArrayList<String>();
+  for (  CfDef cfd : keyspacesMap.get(keySpace).cf_defs) {
+    cfnames.add(cfd.name);
+  }
+  int idx=cfnames.indexOf(columnFamily);
+  if (idx == -1) {
+    throw new NoSuchFieldException("No such column family: " + columnFamily);
+  }
+  final String comparatorClass=keyspacesMap.get(keySpace).cf_defs.get(idx).comparator_type;
+  final AbstractType comparator=getFormatTypeForColumn(comparatorClass);
+  if (comparator instanceof LongType) {
+    return FBUtilities.toByteArray(Long.valueOf(column));
+  }
+ else   if (comparator instanceof IntegerType) {
+    return new BigInteger(column).toByteArray();
+  }
+ else   if (comparator instanceof AsciiType) {
+    return column.getBytes("US-ASCII");
+  }
+ else {
+    return column.getBytes("UTF-8");
+  }
+}
