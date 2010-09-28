@@ -1,6 +1,6 @@
 {
   if (logger.isDebugEnabled())   logger.debug("batch_mutate");
-  clientState.hasKeyspaceAccess(Permission.WRITE_VALUE);
+  state().hasKeyspaceAccess(Permission.WRITE_VALUE);
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
   for (  Map.Entry<byte[],Map<String,List<Mutation>>> mutationEntry : mutation_map.entrySet()) {
     byte[] key=mutationEntry.getKey();
@@ -9,10 +9,10 @@
     for (    Map.Entry<String,List<Mutation>> columnFamilyMutations : columnFamilyToMutations.entrySet()) {
       String cfName=columnFamilyMutations.getKey();
       for (      Mutation mutation : columnFamilyMutations.getValue()) {
-        ThriftValidation.validateMutation(clientState.getKeyspace(),cfName,mutation);
+        ThriftValidation.validateMutation(state().getKeyspace(),cfName,mutation);
       }
     }
-    rowMutations.add(RowMutation.getRowMutationFromMutations(clientState.getKeyspace(),key,columnFamilyToMutations));
+    rowMutations.add(RowMutation.getRowMutationFromMutations(state().getKeyspace(),key,columnFamilyToMutations));
   }
   doInsert(consistency_level,rowMutations);
 }
