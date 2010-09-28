@@ -1,0 +1,19 @@
+{
+  InetAddress myAddress=FBUtilities.getLocalAddress();
+  Multimap<Range,InetAddress> rangeAddresses=getReplicationStrategy(table).getRangeAddresses(tokenMetadata_);
+  Multimap<InetAddress,Range> sourceRanges=HashMultimap.create();
+  IFailureDetector failureDetector=FailureDetector.instance;
+  for (  Range range : ranges) {
+    Collection<InetAddress> possibleRanges=rangeAddresses.get(range);
+    IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+    List<InetAddress> sources=snitch.getSortedListByProximity(myAddress,possibleRanges);
+    assert(!sources.contains(myAddress));
+    for (    InetAddress source : sources) {
+      if (failureDetector.isAlive(source)) {
+        sourceRanges.put(source,range);
+        break;
+      }
+    }
+  }
+  return sourceRanges;
+}

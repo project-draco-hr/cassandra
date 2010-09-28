@@ -1,0 +1,32 @@
+{
+  IPartitioner partitioner=ss.getPartitioner();
+  final String token=partitioner.getTokenFactory().toString(endpointTokens.get(5));
+  ReplicationSink rSink=new ReplicationSink();
+  SinkManager.addMessageSink(rSink);
+  final AtomicBoolean success=new AtomicBoolean(false);
+  Thread remover=new Thread(){
+    public void run(){
+      try {
+        ss.removeToken(token);
+      }
+ catch (      Exception e) {
+        System.err.println(e);
+        e.printStackTrace();
+        return;
+      }
+      success.set(true);
+    }
+  }
+;
+  remover.start();
+  Thread.sleep(1000);
+  assertTrue(tmd.isLeaving(hosts.get(5)));
+  assertEquals(1,tmd.getLeavingEndpoints().size());
+  for (  InetAddress host : hosts) {
+    Message msg=new Message(host,StorageService.Verb.REPLICATION_FINISHED,new byte[0]);
+    MessagingService.instance.sendRR(msg,FBUtilities.getLocalAddress());
+  }
+  remover.join();
+  assertTrue(success.get());
+  assertTrue(tmd.getLeavingEndpoints().isEmpty());
+}
