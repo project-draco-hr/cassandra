@@ -1,6 +1,6 @@
 def run(self):
-    data = md5(str(get_ident())).hexdigest()
-    columns = [Column(('C' + str(j)), data, (time.time() * 1000000)) for j in xrange(columns_per_key)]
+    values = generate_values()
+    columns = [Column(('C' + str(j)), 'unset', (time.time() * 1000000)) for j in xrange(columns_per_key)]
     fmt = (('%0' + str(len(str(total_keys)))) + 'd')
     if ('super' == options.cftype):
         supers = [SuperColumn(('S' + str(j)), columns) for j in xrange(supers_per_key)]
@@ -10,6 +10,9 @@ def run(self):
             cfmap = {key: {'Super1': [Mutation(ColumnOrSuperColumn(super_column=s)) for s in supers], }, }
         else:
             cfmap = {key: {'Standard1': [Mutation(ColumnOrSuperColumn(column=c)) for c in columns], }, }
+        value = values[(i % len(values))]
+        for column in columns:
+            column.value = value
         start = time.time()
         try:
             self.cclient.batch_mutate(cfmap, consistency)

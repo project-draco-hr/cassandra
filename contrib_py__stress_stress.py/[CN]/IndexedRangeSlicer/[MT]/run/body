@@ -1,0 +1,33 @@
+def run(self):
+    fmt = (('%0' + str(len(str(total_keys)))) + 'd')
+    p = SlicePredicate(slice_range=SliceRange('', '', False, columns_per_key))
+    values = generate_values()
+    parent = ColumnParent('Standard1')
+    expected_per_value = (total_keys // len(values))
+    valuebegin = (self.range[0] // expected_per_value)
+    valuecount = (len(self.range) // expected_per_value)
+    for valueidx in xrange(valuebegin, (valuebegin + valuecount)):
+        received = 0
+        start = (fmt % 0)
+        value = values[(valueidx % len(values))]
+        expressions = [IndexExpression(column_name='C1', op=IndexOperator.EQ, value=value)]
+        while (received < expected_per_value):
+            clause = IndexClause(start_key=start, count=options.rangecount, expressions=expressions)
+            begin = time.time()
+            try:
+                r = self.cclient.get_indexed_slices(parent, clause, p, consistency)
+                if (not r):
+                    raise RuntimeError('No indexed values from offset received:', start)
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                if options.ignore:
+                    print e
+                    continue
+                else:
+                    raise
+            received += len(r)
+            start = (fmt % (1 + max([int(keyslice.key) for keyslice in r])))
+            self.latencies[self.idx] += (time.time() - begin)
+            self.opcounts[self.idx] += 1
+            self.keycounts[self.idx] += len(r)
