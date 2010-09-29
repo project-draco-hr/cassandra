@@ -1,0 +1,13 @@
+{
+  logger.info(String.format("%-25s%10s%10s","Pool Name","Active","Pending"));
+  for (  ObjectName objectName : server.queryNames(new ObjectName("org.apache.cassandra.concurrent:type=*"),null)) {
+    String poolName=objectName.getKeyProperty("type");
+    IExecutorMBean threadPoolProxy=JMX.newMBeanProxy(server,objectName,IExecutorMBean.class);
+    logger.info(String.format("%-25s%10s%10s",poolName,threadPoolProxy.getActiveCount(),threadPoolProxy.getPendingTasks()));
+  }
+  logger.info(String.format("%-25s%10s%10s","CompactionManager","n/a",CompactionManager.instance.getPendingTasks()));
+  logger.info(String.format("%-25s%20s%20s%20s","ColumnFamily","Memtable ops,data","Row cache size/cap","Key cache size/cap"));
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    logger.info(String.format("%-25s%20s%20s%20s",cfs.table.name + "." + cfs.columnFamily,cfs.getMemtableColumnsCount() + "," + cfs.getMemtableDataSize(),cfs.getRowCacheSize() + "/" + cfs.getRowCacheCapacity(),cfs.getKeyCacheSize() + "/" + cfs.getKeyCacheCapacity()));
+  }
+}
