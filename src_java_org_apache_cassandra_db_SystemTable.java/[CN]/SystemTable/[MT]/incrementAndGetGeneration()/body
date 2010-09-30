@@ -1,0 +1,28 @@
+{
+  Table table=Table.open(Table.SYSTEM_TABLE);
+  QueryFilter filter=QueryFilter.getNamesFilter(decorate(LOCATION_KEY),new QueryPath(STATUS_CF),TOKEN);
+  ColumnFamily cf=table.getColumnFamilyStore(STATUS_CF).getColumnFamily(filter);
+  int generation;
+  if (cf == null) {
+    generation=(int)(System.currentTimeMillis() / 1000);
+  }
+ else {
+    generation=Math.max(FBUtilities.byteArrayToInt(cf.getColumn(GENERATION).value()) + 1,(int)(System.currentTimeMillis() / 1000));
+  }
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCATION_KEY);
+  cf=ColumnFamily.create(Table.SYSTEM_TABLE,SystemTable.STATUS_CF);
+  TimestampClock genClock=new TimestampClock(FBUtilities.timestampMicros());
+  cf.addColumn(new Column(GENERATION,FBUtilities.toByteArray(generation),genClock));
+  rm.add(cf);
+  rm.apply();
+  try {
+    table.getColumnFamilyStore(SystemTable.STATUS_CF).forceBlockingFlush();
+  }
+ catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+  return generation;
+}
