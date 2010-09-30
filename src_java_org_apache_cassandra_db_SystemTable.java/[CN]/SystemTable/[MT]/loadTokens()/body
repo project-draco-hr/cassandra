@@ -1,0 +1,18 @@
+{
+  HashMap<Token,InetAddress> tokenMap=new HashMap<Token,InetAddress>();
+  IPartitioner p=StorageService.getPartitioner();
+  Table table=Table.open(Table.SYSTEM_TABLE);
+  QueryFilter filter=QueryFilter.getIdentityFilter(decorate(RING_KEY),new QueryPath(STATUS_CF));
+  ColumnFamily cf=table.getColumnFamilyStore(STATUS_CF).getColumnFamily(filter);
+  if (cf != null) {
+    for (    IColumn column : cf.getSortedColumns()) {
+      try {
+        tokenMap.put(p.getTokenFactory().fromByteArray(column.name()),InetAddress.getByAddress(column.value()));
+      }
+ catch (      UnknownHostException e) {
+        throw new IOError(e);
+      }
+    }
+  }
+  return tokenMap;
+}
