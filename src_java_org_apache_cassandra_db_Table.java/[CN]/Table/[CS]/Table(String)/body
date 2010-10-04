@@ -18,7 +18,7 @@
     initCf(cfm.cfId,cfm.cfName);
   }
   int checkMs=DatabaseDescriptor.getMemtableLifetimeMS() / 10;
-  flushTask=new TimerTask(){
+  Runnable runnable=new Runnable(){
     public void run(){
       for (      ColumnFamilyStore cfs : columnFamilyStores.values()) {
         cfs.forceFlushIfExpired();
@@ -26,5 +26,5 @@
     }
   }
 ;
-  flushTimer.schedule(flushTask,checkMs,checkMs);
+  flushTask=StorageService.scheduledTasks.scheduleWithFixedDelay(runnable,checkMs,checkMs,TimeUnit.MILLISECONDS);
 }

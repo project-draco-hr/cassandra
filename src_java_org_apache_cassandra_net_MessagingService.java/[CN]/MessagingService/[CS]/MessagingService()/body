@@ -4,14 +4,13 @@
   callbackMap_=new ExpiringMap<String,IAsyncCallback>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()));
   taskCompletionMap_=new ExpiringMap<String,IAsyncResult>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()));
   streamExecutor_=new DebuggableThreadPoolExecutor("Streaming",DatabaseDescriptor.getCompactionThreadPriority());
-  TimerTask logDropped=new TimerTask(){
+  Runnable logDropped=new Runnable(){
     public void run(){
       logDroppedMessages();
     }
   }
 ;
-  Timer timer=new Timer("DroppedMessagesLogger");
-  timer.schedule(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS);
+  StorageService.scheduledTasks.scheduleWithFixedDelay(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS,TimeUnit.MILLISECONDS);
   MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
   try {
     mbs.registerMBean(this,new ObjectName("org.apache.cassandra.net:type=MessagingService"));
