@@ -12,16 +12,11 @@
     for (    CfDef cfDef : ks_def.cf_defs) {
       cfDefs.add(convertToCFMetaData(cfDef));
     }
-    KSMetaData ksm=new KSMetaData(ks_def.name,(Class<? extends AbstractReplicationStrategy>)Class.forName(ks_def.strategy_class),ks_def.strategy_options,ks_def.replication_factor,cfDefs.toArray(new CFMetaData[cfDefs.size()]));
+    KSMetaData ksm=new KSMetaData(ks_def.name,FBUtilities.<AbstractReplicationStrategy>classForName(ks_def.strategy_class,"keyspace replication strategy"),ks_def.strategy_options,ks_def.replication_factor,cfDefs.toArray(new CFMetaData[cfDefs.size()]));
     applyMigrationOnStage(new AddKeyspace(ksm));
     return DatabaseDescriptor.getDefsVersion().toString();
   }
- catch (  ClassNotFoundException e) {
-    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
-  }
-catch (  ConfigurationException e) {
+ catch (  ConfigurationException e) {
     InvalidRequestException ex=new InvalidRequestException(e.getMessage());
     ex.initCause(e);
     throw ex;
