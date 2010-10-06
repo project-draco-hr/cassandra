@@ -1,0 +1,16 @@
+{
+  if (oldIndexedColumns == null)   return;
+  ColumnFamily cf2=cf.cloneMe();
+  for (  IColumn oldColumn : oldIndexedColumns) {
+    cf2.addColumn(oldColumn);
+  }
+  ColumnFamily resolved=ColumnFamilyStore.removeDeleted(cf2,Integer.MAX_VALUE);
+  for (  IColumn oldColumn : oldIndexedColumns) {
+    IColumn resolvedColumn=resolved == null ? null : resolved.getColumn(oldColumn.name());
+    if (resolvedColumn != null && resolvedColumn.equals(oldColumn)) {
+      cf.remove(oldColumn.name());
+      mutatedIndexedColumns.remove(oldColumn.name());
+      oldIndexedColumns.remove(oldColumn.name());
+    }
+  }
+}

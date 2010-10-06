@@ -2,13 +2,16 @@
   List<Memtable> fullMemtables=Collections.emptyList();
   for (  byte[] columnName : mutatedIndexedColumns) {
     IColumn column=cf.getColumn(columnName);
+    if (column == null || column.isMarkedForDelete())     continue;
     DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
     ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
     if (column instanceof ExpiringColumn) {
       ExpiringColumn ec=(ExpiringColumn)column;
       cfi.addColumn(new ExpiringColumn(key,ArrayUtils.EMPTY_BYTE_ARRAY,ec.clock(),ec.getTimeToLive(),ec.getLocalDeletionTime()));
     }
- else     cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
+ else {
+      cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
+    }
     Memtable fullMemtable=cfs.getIndexedColumnFamilyStore(columnName).apply(valueKey,cfi);
     if (fullMemtable != null)     fullMemtables=addFullMemtable(fullMemtables,fullMemtable);
   }
@@ -17,6 +20,7 @@
     for (    Map.Entry<byte[],IColumn> entry : oldIndexedColumns.getColumnsMap().entrySet()) {
       byte[] columnName=entry.getKey();
       IColumn column=entry.getValue();
+      if (column.isMarkedForDelete())       continue;
       DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
       ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
       cfi.deleteColumn(key,localDeletionTime,column.clock());
