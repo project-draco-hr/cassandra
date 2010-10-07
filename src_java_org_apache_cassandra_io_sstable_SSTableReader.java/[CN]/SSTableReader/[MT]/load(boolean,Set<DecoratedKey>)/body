@@ -4,6 +4,7 @@
   indexSummary=new IndexSummary();
   BufferedRandomAccessFile input=new BufferedRandomAccessFile(descriptor.filenameFor(Component.PRIMARY_INDEX),"r");
   try {
+    if (keyCache != null && keyCache.getCapacity() - keyCache.getSize() < keysToLoadInCache.size())     keyCache.updateCapacity(keyCache.getSize() + keysToLoadInCache.size());
     long indexSize=input.length();
     if (recreatebloom)     bf=BloomFilter.getFilter((int)(input.length() / 32),15);
     while (true) {
@@ -15,6 +16,7 @@
       indexSummary.maybeAddEntry(decoratedKey,indexPosition);
       ibuilder.addPotentialBoundary(indexPosition);
       dbuilder.addPotentialBoundary(dataPosition);
+      if (keyCache != null && keysToLoadInCache.contains(decoratedKey))       keyCache.put(new Pair<Descriptor,DecoratedKey>(descriptor,decoratedKey),dataPosition);
     }
     indexSummary.complete();
   }

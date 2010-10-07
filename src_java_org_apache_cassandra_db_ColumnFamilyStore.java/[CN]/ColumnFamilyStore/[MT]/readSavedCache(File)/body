@@ -1,0 +1,22 @@
+{
+  Set<DecoratedKey> keys=new TreeSet<DecoratedKey>();
+  try {
+    long start=System.currentTimeMillis();
+    if (path.exists()) {
+      if (logger.isDebugEnabled())       logger.debug(String.format("reading saved cache from %s",path));
+      ObjectInputStream in=new ObjectInputStream(new BufferedInputStream(new FileInputStream(path)));
+      while (in.available() > 0) {
+        int size=in.readInt();
+        byte[] bytes=new byte[size];
+        in.readFully(bytes);
+        keys.add(StorageService.getPartitioner().decorateKey(bytes));
+      }
+      in.close();
+      if (logger.isDebugEnabled())       logger.debug(String.format("completed reading (%d ms; %d keys) from saved cache at %s",System.currentTimeMillis() - start,keys.size(),path));
+    }
+  }
+ catch (  IOException ioe) {
+    logger.warn(String.format("error reading saved cache at %s",path.getAbsolutePath()),ioe);
+  }
+  return keys;
+}
