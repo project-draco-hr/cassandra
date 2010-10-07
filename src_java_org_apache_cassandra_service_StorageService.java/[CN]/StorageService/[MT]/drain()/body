@@ -14,7 +14,16 @@
   mutationStage.shutdown();
   mutationStage.awaitTermination(3600,TimeUnit.SECONDS);
   setMode("Draining: flushing column families",false);
-  for (  String tableName : DatabaseDescriptor.getNonSystemTables())   for (  Future f : Table.open(tableName).flush())   f.get();
+  List<ColumnFamilyStore> cfses=new ArrayList<ColumnFamilyStore>();
+  for (  String tableName : DatabaseDescriptor.getNonSystemTables()) {
+    Table table=Table.open(tableName);
+    cfses.addAll(table.getColumnFamilyStores());
+  }
+  totalCFs=remainingCFs=cfses.size();
+  for (  ColumnFamilyStore cfs : cfses) {
+    cfs.forceBlockingFlush();
+    remainingCFs--;
+  }
   ColumnFamilyStore.postFlushExecutor.shutdown();
   ColumnFamilyStore.postFlushExecutor.awaitTermination(60,TimeUnit.SECONDS);
   DeletionService.waitFor();
