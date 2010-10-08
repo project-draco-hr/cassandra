@@ -5,9 +5,9 @@
   CommonTree newCFTree=(CommonTree)ast.getChild(0);
   assert(newCFTree.getChildCount() > 0);
   assert(newCFTree.getChildCount() % 2 == 1);
-  String columnName=newCFTree.getChild(0).getText();
-  int argumentLength=newCFTree.getChildCount();
-  CfDef cfDef=new CfDef(keySpace,columnName);
+  final String columnName=newCFTree.getChild(0).getText();
+  final int argumentLength=newCFTree.getChildCount();
+  final CfDef cfDef=new CfDef(keySpace,columnName);
   for (int i=1; i < argumentLength; i=i + 2) {
     AddColumnFamilyArgument mArgument=AddColumnFamilyArgument.valueOf(newCFTree.getChild(i).getText().toUpperCase());
     String mValue=newCFTree.getChild(i + 1).getText();
@@ -38,6 +38,13 @@ cfDef.setRead_repair_chance(Double.parseDouble(mValue));
 break;
 case GC_GRACE_SECONDS:
 cfDef.setGc_grace_seconds(Integer.parseInt(mValue));
+break;
+case COLUMN_METADATA:
+final Tree arrayOfMetaAttributes=newCFTree.getChild(i + 1);
+if (!arrayOfMetaAttributes.getText().equals("ARRAY")) {
+throw new RuntimeException("'column_metadata' format - [{ k:v, k:v, ..}, { ... }, ...]");
+}
+cfDef.setColumn_metadata(getCFColumnMetaFromTree(arrayOfMetaAttributes));
 break;
 default :
 assert(false);

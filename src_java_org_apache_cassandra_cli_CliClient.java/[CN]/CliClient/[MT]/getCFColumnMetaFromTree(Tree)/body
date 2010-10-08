@@ -1,0 +1,37 @@
+{
+  final List<ColumnDef> columnDefinitions=new ArrayList<ColumnDef>();
+  for (int i=0; i < meta.getChildCount(); i++) {
+    Tree metaHash=meta.getChild(i);
+    final ColumnDef columnDefinition=new ColumnDef();
+    for (int j=0; j < metaHash.getChildCount(); j++) {
+      Tree metaPair=metaHash.getChild(j);
+      String metaKey=CliUtils.unescapeSQLString(metaPair.getChild(0).getText());
+      String metaVal=CliUtils.unescapeSQLString(metaPair.getChild(1).getText());
+      if (metaKey.equals("column_name")) {
+        try {
+          columnDefinition.setName(metaVal.getBytes("UTF-8"));
+        }
+ catch (        UnsupportedEncodingException e) {
+          throw new RuntimeException(e.getMessage(),e);
+        }
+      }
+ else       if (metaKey.equals("validation_class")) {
+        columnDefinition.setValidation_class(metaVal);
+      }
+ else       if (metaKey.equals("index_type")) {
+        columnDefinition.setIndex_type(getIndexTypeFromString(metaVal));
+      }
+ else       if (metaKey.equals("index_name")) {
+        columnDefinition.setIndex_name(metaVal);
+      }
+    }
+    try {
+      columnDefinition.validate();
+    }
+ catch (    TException e) {
+      throw new RuntimeException(e.getMessage(),e);
+    }
+    columnDefinitions.add(columnDefinition);
+  }
+  return columnDefinitions;
+}
