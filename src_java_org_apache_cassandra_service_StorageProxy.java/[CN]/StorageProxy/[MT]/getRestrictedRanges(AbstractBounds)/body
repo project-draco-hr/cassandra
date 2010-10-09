@@ -1,2 +1,20 @@
 {
+  if (queryRange instanceof Bounds && queryRange.left.equals(queryRange.right)) {
+    if (logger.isDebugEnabled())     logger.debug("restricted single token match for query " + queryRange);
+    return Collections.singletonList(queryRange);
+  }
+  TokenMetadata tokenMetadata=StorageService.instance.getTokenMetadata();
+  List<AbstractBounds> ranges=new ArrayList<AbstractBounds>();
+  Iterator<Token> ringIter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),queryRange.left,true);
+  AbstractBounds remainder=queryRange;
+  while (ringIter.hasNext()) {
+    Token token=ringIter.next();
+    if (remainder == null || !remainder.contains(token))     break;
+    Pair<AbstractBounds,AbstractBounds> splits=remainder.split(token);
+    ranges.add(splits.left);
+    remainder=splits.right;
+  }
+  if (remainder != null)   ranges.add(remainder);
+  if (logger.isDebugEnabled())   logger.debug("restricted ranges for query " + queryRange + " are "+ ranges);
+  return ranges;
 }

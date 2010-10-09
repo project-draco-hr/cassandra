@@ -1,0 +1,20 @@
+{
+  final boolean insertMin=(includeMin && !ring.get(0).equals(StorageService.getPartitioner().getMinimumToken())) ? true : false;
+  final int startIndex=firstTokenIndex(ring,start,insertMin);
+  return new AbstractIterator<Token>(){
+    int j=startIndex;
+    protected Token computeNext(){
+      if (j < -1)       return endOfData();
+      try {
+        if (j == -1)         return StorageService.getPartitioner().getMinimumToken();
+        return ring.get(j);
+      }
+  finally {
+        j++;
+        if (j == ring.size())         j=insertMin ? -1 : 0;
+        if (j == startIndex)         j=-2;
+      }
+    }
+  }
+;
+}
