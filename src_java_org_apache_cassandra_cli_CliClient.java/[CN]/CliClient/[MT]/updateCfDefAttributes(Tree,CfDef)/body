@@ -1,16 +1,9 @@
 {
-  if (!CliMain.isConnected() || !hasKeySpace()) {
-    return;
-  }
-  CommonTree newCFTree=(CommonTree)ast.getChild(0);
-  assert(newCFTree.getChildCount() > 0);
-  assert(newCFTree.getChildCount() % 2 == 1);
-  final String columnName=newCFTree.getChild(0).getText();
-  final int argumentLength=newCFTree.getChildCount();
-  final CfDef cfDef=new CfDef(keySpace,columnName);
-  for (int i=1; i < argumentLength; i=i + 2) {
-    AddColumnFamilyArgument mArgument=AddColumnFamilyArgument.valueOf(newCFTree.getChild(i).getText().toUpperCase());
-    String mValue=newCFTree.getChild(i + 1).getText();
+  final CfDef cfDef=new CfDef(cfDefToUpdate);
+  for (int i=1; i < statement.getChildCount(); i+=2) {
+    final String currentArgument=statement.getChild(i).getText().toUpperCase();
+    final AddColumnFamilyArgument mArgument=AddColumnFamilyArgument.valueOf(currentArgument);
+    final String mValue=statement.getChild(i + 1).getText();
 switch (mArgument) {
 case COLUMN_TYPE:
       cfDef.setColumn_type(CliUtils.unescapeSQLString(mValue));
@@ -40,7 +33,7 @@ case GC_GRACE_SECONDS:
 cfDef.setGc_grace_seconds(Integer.parseInt(mValue));
 break;
 case COLUMN_METADATA:
-final Tree arrayOfMetaAttributes=newCFTree.getChild(i + 1);
+final Tree arrayOfMetaAttributes=statement.getChild(i + 1);
 if (!arrayOfMetaAttributes.getText().equals("ARRAY")) {
 throw new RuntimeException("'column_metadata' format - [{ k:v, k:v, ..}, { ... }, ...]");
 }
@@ -50,6 +43,5 @@ default :
 assert(false);
 }
 }
-css_.out.println(thriftClient_.system_add_column_family(cfDef));
-keyspacesMap.put(keySpace,thriftClient_.describe_keyspace(keySpace));
+return cfDef;
 }
