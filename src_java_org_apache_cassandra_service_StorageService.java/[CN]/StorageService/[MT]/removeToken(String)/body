@@ -7,9 +7,17 @@
   if (endpoint.equals(myAddress))   throw new UnsupportedOperationException("Cannot remove node's own token");
   if (Gossiper.instance.getLiveMembers().contains(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is alive and owns this token. Use decommission command to remove it from the ring");
   if (tokenMetadata_.isLeaving(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is already being removed.");
-  if (replicatingNodes != null || replicateLatch != null)   throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete.");
-  replicatingNodes=Collections.synchronizedSet(getNewEndpoints(endpoint));
-  replicateLatch=new CountDownLatch(replicatingNodes.size());
+  if (this.replicatingNodes != null || replicateLatch != null)   throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete.");
+  replicatingNodes=Collections.synchronizedSet(new HashSet<InetAddress>());
+  for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+    Multimap<Range,InetAddress> changedRanges=getChangedRangesForLeaving(table,endpoint);
+    IFailureDetector failureDetector=FailureDetector.instance;
+    for (    InetAddress ep : changedRanges.values()) {
+      if (failureDetector.isAlive(ep))       replicatingNodes.add(ep);
+ else       logger_.warn("Endpoint " + ep + " is down and will not receive data for re-replication of "+ endpoint);
+    }
+  }
+  replicateLatch=new CountDownLatch(this.replicatingNodes.size());
   removingNode=endpoint;
   tokenMetadata_.addLeavingEndpoint(endpoint);
   calculatePendingRanges();
@@ -27,8 +35,8 @@
   HintedHandOffManager.deleteHintsForEndPoint(endpoint);
   calculatePendingRanges();
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.removedNonlocal(localToken,token));
-  if (!replicatingNodes.isEmpty())   logger_.error("Failed to recieve removal confirmation for " + StringUtils.join(replicatingNodes,","));
-  replicatingNodes=null;
+  if (!this.replicatingNodes.isEmpty())   logger_.error("Failed to recieve removal confirmation for " + StringUtils.join(this.replicatingNodes,","));
+  this.replicatingNodes=null;
   removingNode=null;
   replicateLatch=null;
 }
