@@ -7,10 +7,10 @@
     ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
     if (column instanceof ExpiringColumn) {
       ExpiringColumn ec=(ExpiringColumn)column;
-      cfi.addColumn(new ExpiringColumn(key,ArrayUtils.EMPTY_BYTE_ARRAY,ec.clock(),ec.getTimeToLive(),ec.getLocalDeletionTime()));
+      cfi.addColumn(new ExpiringColumn(key,ArrayUtils.EMPTY_BYTE_ARRAY,ec.timestamp,ec.getTimeToLive(),ec.getLocalDeletionTime()));
     }
  else {
-      cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.clock()));
+      cfi.addColumn(new Column(key,ArrayUtils.EMPTY_BYTE_ARRAY,column.timestamp()));
     }
     Memtable fullMemtable=cfs.getIndexedColumnFamilyStore(columnName).apply(valueKey,cfi);
     if (fullMemtable != null)     fullMemtables=addFullMemtable(fullMemtables,fullMemtable);
@@ -23,7 +23,7 @@
       if (column.isMarkedForDelete())       continue;
       DecoratedKey<LocalToken> valueKey=cfs.getIndexKeyFor(columnName,column.value());
       ColumnFamily cfi=cfs.newIndexedColumnFamily(columnName);
-      cfi.deleteColumn(key,localDeletionTime,column.clock());
+      cfi.addTombstone(key,localDeletionTime,column.timestamp());
       Memtable fullMemtable=cfs.getIndexedColumnFamilyStore(columnName).apply(valueKey,cfi);
       if (fullMemtable != null)       fullMemtables=addFullMemtable(fullMemtables,fullMemtable);
     }

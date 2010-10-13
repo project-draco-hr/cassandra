@@ -2,14 +2,8 @@
   for (  Map.Entry<byte[],IColumn> entry : cf.getColumnsMap().entrySet()) {
     byte[] cname=entry.getKey();
     IColumn c=entry.getValue();
-    if ((c.isMarkedForDelete() && c.getLocalDeletionTime() <= gcBefore)) {
+    if ((c.isMarkedForDelete() && c.getLocalDeletionTime() <= gcBefore) || c.timestamp() <= cf.getMarkedForDeleteAt()) {
       cf.remove(cname);
-    }
- else {
-      ClockRelationship rel=c.clock().compare(cf.getMarkedForDeleteAt());
-      if ((ClockRelationship.LESS_THAN == rel) || (ClockRelationship.EQUAL == rel)) {
-        cf.remove(cname);
-      }
     }
   }
 }

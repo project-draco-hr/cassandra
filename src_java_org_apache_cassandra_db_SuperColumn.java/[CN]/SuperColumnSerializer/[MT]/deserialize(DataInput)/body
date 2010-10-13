@@ -1,14 +1,14 @@
 {
   byte[] name=FBUtilities.readShortByteArray(dis);
-  SuperColumn superColumn=new SuperColumn(name,comparator,clockType,reconciler);
+  SuperColumn superColumn=new SuperColumn(name,comparator);
   int localDeleteTime=dis.readInt();
   if (localDeleteTime != Integer.MIN_VALUE && localDeleteTime <= 0) {
     throw new IOException("Invalid localDeleteTime read: " + localDeleteTime);
   }
-  superColumn.markForDeleteAt(localDeleteTime,clockType.serializer().deserialize(dis));
+  superColumn.markForDeleteAt(localDeleteTime,dis.readLong());
   int size=dis.readInt();
   for (int i=0; i < size; ++i) {
-    IColumn subColumn=Column.serializer(clockType).deserialize(dis);
+    IColumn subColumn=Column.serializer().deserialize(dis);
     superColumn.addColumn(subColumn);
   }
   return superColumn;
