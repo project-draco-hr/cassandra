@@ -4,8 +4,17 @@
     String endPointSnitchClassName=null;
     NodeList tablesxml=xmlUtils.getRequestedNodeList("/Storage/Keyspaces/Keyspace");
     String gcGrace=xmlUtils.getNodeValue("/Storage/GCGraceSeconds");
-    int gc_grace_seconds=864000;
+    int gc_grace_seconds=CFMetaData.DEFAULT_GC_GRACE_SECONDS;
     if (gcGrace != null)     gc_grace_seconds=Integer.parseInt(gcGrace);
+    String lifetime=xmlUtils.getNodeValue("/Storage/MemtableFlushAfterMinutes");
+    int memtime=CFMetaData.DEFAULT_MEMTABLE_LIFETIME_IN_MINS;
+    if (lifetime != null)     memtime=Integer.parseInt(lifetime);
+    String memtableSize=xmlUtils.getNodeValue("/Storage/MemtableThroughputInMB");
+    int memsize=CFMetaData.DEFAULT_MEMTABLE_THROUGHPUT_IN_MB;
+    if (memtableSize != null)     memsize=Integer.parseInt(memtableSize);
+    String memtableOps=xmlUtils.getNodeValue("/Storage/MemtableOperationsInMillions");
+    double memops=CFMetaData.DEFAULT_MEMTABLE_OPERATIONS_IN_MILLIONS;
+    if (memtableOps != null)     memops=Double.parseDouble(memtableOps);
     int size=tablesxml.getLength();
     for (int i=0; i < size; ++i) {
       String value;
@@ -52,6 +61,9 @@
           ks.column_families[j].read_repair_chance=FBUtilities.parseDoubleOrPercent(value);
         }
         ks.column_families[j].gc_grace_seconds=gc_grace_seconds;
+        ks.column_families[j].memtable_flush_after_mins=memtime;
+        ks.column_families[j].memtable_throughput_in_mb=memsize;
+        ks.column_families[j].memtable_operations_in_millions=memops;
         ks.column_families[j].comment=xmlUtils.getNodeValue(xqlCF + "Comment");
       }
       keyspaces.add(ks);

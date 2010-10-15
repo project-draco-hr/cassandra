@@ -17,7 +17,10 @@
     logger.debug("Initializing {}.{}",name,cfm.cfName);
     initCf(cfm.cfId,cfm.cfName);
   }
-  int checkMs=DatabaseDescriptor.getMemtableLifetimeMS() / 10;
+  int minCheckMs=Integer.MAX_VALUE;
+  for (  ColumnFamilyStore cfs : columnFamilyStores.values()) {
+    minCheckMs=Math.min(minCheckMs,cfs.metadata.memtableFlushAfterMins * 60 * 1000);
+  }
   Runnable runnable=new Runnable(){
     public void run(){
       for (      ColumnFamilyStore cfs : columnFamilyStores.values()) {
@@ -26,5 +29,5 @@
     }
   }
 ;
-  flushTask=StorageService.scheduledTasks.scheduleWithFixedDelay(runnable,checkMs,checkMs,TimeUnit.MILLISECONDS);
+  flushTask=StorageService.scheduledTasks.scheduleWithFixedDelay(runnable,minCheckMs,minCheckMs,TimeUnit.MILLISECONDS);
 }
