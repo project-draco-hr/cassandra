@@ -1,2 +1,50 @@
 {
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
+  CommonTree columnFamilySpec=(CommonTree)ast.getChild(0);
+  String key=CliCompiler.getKey(columnFamilySpec);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  CfDef columnFamilyDef=getCfDef(columnFamily);
+  boolean isSuper=columnFamilyDef.comparator_type.equals("Super");
+  byte[] superColumnName=null;
+  String columnName;
+  if (columnSpecCnt == 0) {
+    doSlice(keySpace,key,columnFamily,superColumnName);
+    return;
+  }
+  if (columnSpecCnt == 1) {
+    if (isSuper) {
+      superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes("UTF-8");
+      doSlice(keySpace,key,columnFamily,superColumnName);
+      return;
+    }
+ else {
+      columnName=CliCompiler.getColumn(columnFamilySpec,0);
+    }
+  }
+ else   if (columnSpecCnt == 2) {
+    superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes("UTF-8");
+    columnName=CliCompiler.getColumn(columnFamilySpec,1);
+  }
+ else {
+    css_.out.println("Invalid row, super column, or column specification.");
+    return;
+  }
+  byte[] columnNameInBytes=columnNameAsByteArray(columnName,columnFamily);
+  AbstractType validator=getValidatorForValue(columnFamilyDef,columnNameInBytes);
+  ColumnPath path=new ColumnPath(columnFamily).setSuper_column(superColumnName).setColumn(columnNameInBytes);
+  Column column=thriftClient_.get(key.getBytes(),path,ConsistencyLevel.ONE).column;
+  byte[] columnValue=column.getValue();
+  String valueAsString;
+  if (ast.getChildCount() == 2) {
+    Tree typeTree=ast.getChild(1).getChild(0);
+    String typeName=CliUtils.unescapeSQLString(typeTree.getText());
+    AbstractType valueValidator=getFormatTypeForColumn(typeName);
+    valueAsString=valueValidator.getString(columnValue);
+    updateColumnMetaData(columnFamilyDef,columnNameInBytes,valueValidator.getClass().getName());
+  }
+ else {
+    valueAsString=(validator == null) ? new String(columnValue,"UTF-8") : validator.getString(columnValue);
+  }
+  css_.out.printf("=> (column=%s, value=%s, timestamp=%d)\n",formatColumnName(keySpace,columnFamily,column),valueAsString,column.timestamp);
 }
