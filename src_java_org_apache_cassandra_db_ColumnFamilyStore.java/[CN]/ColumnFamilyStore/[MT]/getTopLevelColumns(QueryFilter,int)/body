@@ -15,13 +15,17 @@
         iterators.add(iter);
       }
     }
+    int sstablesToIterate=0;
     for (    SSTableReader sstable : ssTables) {
       iter=filter.getSSTableColumnIterator(sstable);
       if (iter.getColumnFamily() != null) {
         returnCF.delete(iter.getColumnFamily());
         iterators.add(iter);
+        sstablesToIterate++;
       }
     }
+    recentSSTablesPerRead.add(sstablesToIterate);
+    sstablesPerRead.add(sstablesToIterate);
     Comparator<IColumn> comparator=filter.filter.getColumnComparator(getComparator());
     Iterator collated=IteratorUtils.collatedIterator(comparator,iterators);
     filter.collectCollatedColumns(returnCF,collated,gcBefore);
