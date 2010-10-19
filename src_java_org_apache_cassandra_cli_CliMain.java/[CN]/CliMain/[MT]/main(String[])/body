@@ -1,15 +1,21 @@
 {
   CliOptions cliOptions=new CliOptions();
-  cliOptions.processArgs(css_,args);
-  if (css_.hostName != null) {
-    connect(css_.hostName,css_.thriftPort);
+  cliOptions.processArgs(sessionState,args);
+  if (sessionState.hostName != null) {
+    try {
+      connect(sessionState.hostName,sessionState.thriftPort);
+    }
+ catch (    RuntimeException e) {
+      sessionState.err.println(e.getMessage());
+      System.exit(-1);
+    }
   }
-  if (cliClient_ == null) {
-    cliClient_=new CliClient(css_,null);
+  if (cliClient == null) {
+    cliClient=new CliClient(sessionState,null);
   }
   ConsoleReader reader=new ConsoleReader();
-  if (!css_.batch) {
-    reader.addCompletor(completer_);
+  if (!sessionState.batch) {
+    reader.addCompletor(completer);
     reader.setBellEnabled(false);
     String historyFile=System.getProperty("user.home") + File.separator + HISTORYFILE;
     try {
@@ -17,15 +23,15 @@
       reader.setHistory(history);
     }
  catch (    IOException exp) {
-      css_.err.printf("Unable to open %s for writing %n",historyFile);
+      sessionState.err.printf("Unable to open %s for writing %n",historyFile);
     }
   }
  else {
-    css_.out.close();
+    sessionState.out.close();
   }
   printBanner();
   String line;
-  while ((line=reader.readLine("[" + cliClient_.getUsername() + "@"+ cliClient_.getKeySpace()+ "] ")) != null) {
-    processCLIStmt(line);
+  while ((line=reader.readLine(getPrompt(cliClient))) != null) {
+    processStatement(line);
   }
 }

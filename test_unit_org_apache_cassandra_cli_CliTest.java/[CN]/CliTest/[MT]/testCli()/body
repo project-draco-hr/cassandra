@@ -1,0 +1,25 @@
+{
+  setup();
+  ByteArrayOutputStream errStream=new ByteArrayOutputStream();
+  ByteArrayOutputStream outStream=new ByteArrayOutputStream();
+  CliMain.connect("127.0.0.1",9170);
+  CliMain.sessionState.setOut(new PrintStream(outStream));
+  CliMain.sessionState.setErr(new PrintStream(errStream));
+  CliMain.processStatement("drop keyspace TestKeySpace");
+  CliMain.processStatement("create keyspace TestKeySpace");
+  for (  String statement : statements) {
+    CliMain.processStatement(statement);
+    String result=outStream.toString();
+    if (statement.startsWith("drop ") || statement.startsWith("create ") || statement.startsWith("update ")) {
+      assertTrue(result.matches("(.{8})-(.{4})-(.{4})-(.{4})-(.{12})\n"));
+    }
+ else     if (statement.startsWith("set ")) {
+      assertEquals(result,"Value inserted.\n");
+    }
+ else     if (statement.startsWith("get ")) {
+      assertTrue(result.startsWith("=> (column="));
+    }
+    outStream.reset();
+    errStream.reset();
+  }
+}
