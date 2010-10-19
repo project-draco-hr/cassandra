@@ -1,21 +1,21 @@
 {
+  if (logger_.isDebugEnabled())   logger_.debug("resolving " + responses.size() + " responses");
   long startTime=System.currentTimeMillis();
   List<ColumnFamily> versions=new ArrayList<ColumnFamily>(responses.size());
   List<InetAddress> endpoints=new ArrayList<InetAddress>(responses.size());
   DecoratedKey key=null;
   byte[] digest=new byte[0];
   boolean isDigestQuery=false;
-  for (  Message response : responses) {
-    byte[] body=response.getMessageBody();
-    ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
-    ReadResponse result=ReadResponse.serializer().deserialize(new DataInputStream(bufIn));
+  for (  Message message : responses) {
+    ReadResponse result=results.get(message);
+    if (result == null)     continue;
     if (result.isDigestQuery()) {
       digest=result.digest();
       isDigestQuery=true;
     }
  else {
       versions.add(result.row().cf);
-      endpoints.add(response.getFrom());
+      endpoints.add(message.getFrom());
       key=result.row().key;
     }
   }
@@ -26,9 +26,17 @@
         throw new DigestMismatchException(s);
       }
     }
+    if (logger_.isDebugEnabled())     logger_.debug("digests verified");
   }
-  ColumnFamily resolved=resolveSuperset(versions);
-  maybeScheduleRepairs(resolved,table,key,versions,endpoints);
+  ColumnFamily resolved;
+  if (versions.size() > 1) {
+    resolved=resolveSuperset(versions);
+    if (logger_.isDebugEnabled())     logger_.debug("versions merged");
+    maybeScheduleRepairs(resolved,table,key,versions,endpoints);
+  }
+ else {
+    resolved=versions.get(0);
+  }
   if (logger_.isDebugEnabled())   logger_.debug("resolve: " + (System.currentTimeMillis() - startTime) + " ms.");
   return new Row(key,resolved);
 }
