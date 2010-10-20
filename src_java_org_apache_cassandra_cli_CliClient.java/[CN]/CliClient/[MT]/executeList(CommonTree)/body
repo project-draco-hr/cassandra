@@ -1,2 +1,46 @@
 {
+  if (!CliMain.isConnected())   return;
+  Iterator<CommonTree> iter=ast.getChildren().iterator();
+  String columnFamily=iter.next().getText();
+  String startKey="";
+  String endKey="";
+  int limitCount=Integer.MAX_VALUE;
+  while (iter.hasNext()) {
+    CommonTree child=iter.next();
+    if (child.getType() == CliParser.NODE_KEY_RANGE) {
+      if (child.getChildCount() > 0) {
+        startKey=CliUtils.unescapeSQLString(child.getChild(0).getText());
+        if (child.getChildCount() > 1)         endKey=CliUtils.unescapeSQLString(child.getChild(1).getText());
+      }
+    }
+ else {
+      if (child.getChildCount() != 1) {
+        css_.out.println("Invalid limit clause");
+        return;
+      }
+      limitCount=Integer.parseInt(child.getChild(0).getText());
+      if (limitCount <= 0) {
+        css_.out.println("Invalid limit " + limitCount);
+        return;
+      }
+    }
+  }
+  if (limitCount == Integer.MAX_VALUE) {
+    limitCount=100;
+    css_.out.println("Using default limit of 100");
+  }
+  CfDef columnFamilyDef=getCfDef(columnFamily);
+  SlicePredicate predicate=new SlicePredicate();
+  SliceRange sliceRange=new SliceRange();
+  sliceRange.setStart(new byte[0]).setFinish(new byte[0]);
+  predicate.setSlice_range(sliceRange);
+  KeyRange range=new KeyRange(limitCount);
+  range.setStart_key(startKey.getBytes()).setEnd_key(endKey.getBytes());
+  ColumnParent columnParent=new ColumnParent(columnFamily);
+  List<KeySlice> keySlices=thriftClient_.get_range_slices(columnParent,predicate,range,ConsistencyLevel.ONE);
+  int toIndex=keySlices.size();
+  if (limitCount < keySlices.size()) {
+    toIndex=limitCount;
+  }
+  printSliceList(columnFamilyDef,keySlices.subList(0,toIndex));
 }

@@ -1,0 +1,54 @@
+{
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
+  IndexClause clause=new IndexClause();
+  String columnFamily=statement.getChild(0).getText();
+  Tree conditions=statement.getChild(1);
+  CfDef columnFamilyDef=getCfDef(columnFamily);
+  SlicePredicate predicate=new SlicePredicate();
+  SliceRange sliceRange=new SliceRange();
+  sliceRange.setStart(new byte[0]).setFinish(new byte[0]);
+  predicate.setSlice_range(sliceRange);
+  for (int i=0; i < conditions.getChildCount(); i++) {
+    Tree condition=conditions.getChild(i);
+    String operator=condition.getChild(0).getText();
+    String columnNameString=CliUtils.unescapeSQLString(condition.getChild(1).getText());
+    Tree valueTree=condition.getChild(2);
+    try {
+      byte[] value;
+      byte[] columnName=columnNameAsByteArray(columnNameString,columnFamily);
+      if (valueTree.getType() == CliParser.FUNCTION_CALL) {
+        value=convertValueByFunction(valueTree,columnFamilyDef,columnName);
+      }
+ else {
+        String valueString=CliUtils.unescapeSQLString(valueTree.getText());
+        value=columnValueAsByteArray(columnName,columnFamily,valueString);
+      }
+      IndexOperator idxOperator=CliUtils.getIndexOperator(operator);
+      clause.addToExpressions(new IndexExpression(columnName,idxOperator,value));
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e.getMessage());
+    }
+  }
+  List<KeySlice> slices;
+  clause.setStart_key(new byte[]{});
+  if (statement.getChildCount() == 3) {
+    Tree limitNode=statement.getChild(2);
+    int limitValue=Integer.valueOf(limitNode.getChild(0).getText());
+    if (limitValue == 0) {
+      throw new IllegalArgumentException("LIMIT should be greater than zero.");
+    }
+    clause.setCount(limitValue);
+  }
+  try {
+    ColumnParent parent=new ColumnParent(columnFamily);
+    slices=thriftClient_.get_indexed_slices(parent,clause,predicate,ConsistencyLevel.ONE);
+    printSliceList(columnFamilyDef,slices);
+  }
+ catch (  InvalidRequestException e) {
+    throw new RuntimeException(e.getWhy());
+  }
+catch (  Exception e) {
+    throw new RuntimeException(e.getMessage());
+  }
+}
