@@ -2,10 +2,17 @@
   KSMetaData ksm=DatabaseDescriptor.getTableDefinition(name);
   Table table=Table.clear(ksm.name);
   if (table == null)   throw new IOException("Table is not active. " + ksm.name);
-  for (  CFMetaData cfm : ksm.cfMetaData().values()) {
-    CFMetaData.purge(cfm);
-    if (!clientMode) {
-      table.dropCf(cfm.cfId);
+  for (  CFMetaData cfm : ksm.cfMetaData().values())   CFMetaData.purge(cfm);
+  if (!clientMode) {
+    try {
+      CompactionManager.instance.submitDrop(table.getColumnFamilyStores().toArray(new ColumnFamilyStore[0])).get();
+    }
+ catch (    InterruptedException ex) {
+      throw new IOException(ex);
+    }
+catch (    ExecutionException ex) {
+      if (ex.getCause() instanceof IOException)       throw (IOException)ex.getCause();
+ else       throw new IOException(ex);
     }
   }
   DatabaseDescriptor.clearTableDefinition(ksm,newVersion);
