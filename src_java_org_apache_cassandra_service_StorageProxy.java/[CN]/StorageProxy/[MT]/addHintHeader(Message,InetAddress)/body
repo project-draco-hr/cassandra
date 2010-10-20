@@ -1,6 +1,10 @@
 {
-  byte[] oldHint=message.getHeader(RowMutation.HINT);
-  byte[] address=target.getHostAddress().getBytes(UTF_8);
-  byte[] hint=oldHint == null ? address : ArrayUtils.addAll(oldHint,address);
-  message.setHeader(RowMutation.HINT,hint);
+  ByteArrayOutputStream bos=new ByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(bos);
+  byte[] previousHints=message.getHeader(RowMutation.HINT);
+  if (previousHints != null) {
+    dos.write(previousHints);
+  }
+  FBUtilities.writeShortByteArray(target.getHostAddress().getBytes(UTF_8),dos);
+  message.setHeader(RowMutation.HINT,bos.toByteArray());
 }
