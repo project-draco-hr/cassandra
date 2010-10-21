@@ -2,11 +2,14 @@
   String directory=DatabaseDescriptor.getCommitLogLocation();
   File[] files=new File(directory).listFiles(new FilenameFilter(){
     public boolean accept(    File dir,    String name){
-      return CommitLogSegment.possibleCommitLogFile(name);
+      return CommitLogSegment.possibleCommitLogFile(name) && !instance.manages(name);
     }
   }
 );
-  if (files.length == 0)   return;
+  if (files.length == 0) {
+    logger.info("No commitlog files found; skipping replay");
+    return;
+  }
   Arrays.sort(files,new FileUtils.FileComparator());
   logger.info("Replaying " + StringUtils.join(files,", "));
   recover(files);
