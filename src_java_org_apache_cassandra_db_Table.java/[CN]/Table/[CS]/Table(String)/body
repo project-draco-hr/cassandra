@@ -1,5 +1,12 @@
 {
   name=table;
+  KSMetaData ksm=DatabaseDescriptor.getKSMetaData(table);
+  try {
+    replicationStrategy=AbstractReplicationStrategy.createReplicationStrategy(table,ksm.strategyClass,StorageService.instance.getTokenMetadata(),DatabaseDescriptor.getEndpointSnitch(),ksm.strategyOptions);
+  }
+ catch (  ConfigurationException e) {
+    throw new RuntimeException(e);
+  }
   indexLocks=new Object[DatabaseDescriptor.getConcurrentWriters() * 8];
   for (int i=0; i < indexLocks.length; i++)   indexLocks[i]=new Object();
   for (  String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
