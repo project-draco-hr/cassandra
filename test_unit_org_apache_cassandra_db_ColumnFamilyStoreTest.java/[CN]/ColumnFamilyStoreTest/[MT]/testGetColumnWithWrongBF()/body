@@ -1,15 +1,15 @@
 {
   List<RowMutation> rms=new LinkedList<RowMutation>();
   RowMutation rm;
-  rm=new RowMutation("Keyspace1","key1".getBytes());
-  rm.add(new QueryPath("Standard1",null,"Column1".getBytes()),"asdf".getBytes(),0);
-  rm.add(new QueryPath("Standard1",null,"Column2".getBytes()),"asdf".getBytes(),0);
+  rm=new RowMutation("Keyspace1",ByteBuffer.wrap("key1".getBytes()));
+  rm.add(new QueryPath("Standard1",null,ByteBuffer.wrap("Column1".getBytes())),ByteBuffer.wrap("asdf".getBytes()),0);
+  rm.add(new QueryPath("Standard1",null,ByteBuffer.wrap("Column2".getBytes())),ByteBuffer.wrap("asdf".getBytes()),0);
   rms.add(rm);
   ColumnFamilyStore store=Util.writeColumnFamily(rms);
   Table table=Table.open("Keyspace1");
   List<SSTableReader> ssTables=table.getAllSSTables();
   assertEquals(1,ssTables.size());
   ssTables.get(0).forceFilterFailures();
-  ColumnFamily cf=store.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"),new QueryPath("Standard1",null,"Column1".getBytes())));
+  ColumnFamily cf=store.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"),new QueryPath("Standard1",null,ByteBuffer.wrap("Column1".getBytes()))));
   assertNull(cf);
 }

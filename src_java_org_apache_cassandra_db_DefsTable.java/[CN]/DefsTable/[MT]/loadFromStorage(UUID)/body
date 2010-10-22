@@ -6,10 +6,10 @@
   ColumnFamily cf=cfStore.getColumnFamily(filter);
   IColumn avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
   if (avroschema == null)   throw new RuntimeException("Cannot read system table! Are you upgrading a pre-release version?");
-  Schema schema=Schema.parse(new String(avroschema.value()));
+  Schema schema=Schema.parse(new String(avroschema.value().array(),avroschema.value().position() + avroschema.value().arrayOffset(),avroschema.value().remaining()));
   Collection<KSMetaData> keyspaces=new ArrayList<KSMetaData>();
   for (  IColumn column : cf.getSortedColumns()) {
-    if (Arrays.equals(column.name(),DEFINITION_SCHEMA_COLUMN_NAME))     continue;
+    if (column.name().equals(DEFINITION_SCHEMA_COLUMN_NAME))     continue;
     org.apache.cassandra.avro.KsDef ks=SerDeUtils.deserialize(schema,column.value(),new org.apache.cassandra.avro.KsDef());
     keyspaces.add(KSMetaData.inflate(ks));
   }

@@ -1,0 +1,18 @@
+{
+  if (superColumnName != null) {
+    if (superColumnName.remaining() > IColumn.MAX_NAME_LENGTH)     throw newInvalidRequestException("supercolumn name length must not be greater than " + IColumn.MAX_NAME_LENGTH);
+    if (superColumnName.remaining() == 0)     throw newInvalidRequestException("supercolumn name must not be empty");
+    if (DatabaseDescriptor.getColumnFamilyType(keyspace,cfName) == ColumnFamilyType.Standard)     throw newInvalidRequestException("supercolumn specified to ColumnFamily " + cfName + " containing normal columns");
+  }
+  AbstractType comparator=ColumnFamily.getComparatorFor(keyspace,cfName,superColumnName);
+  for (  ByteBuffer buff : columnNames) {
+    if (buff.remaining() > IColumn.MAX_NAME_LENGTH)     throw newInvalidRequestException("column name length must not be greater than " + IColumn.MAX_NAME_LENGTH);
+    if (buff.remaining() == 0)     throw newInvalidRequestException("column name must not be empty");
+    try {
+      comparator.validate(buff);
+    }
+ catch (    MarshalException e) {
+      throw newInvalidRequestException(e.getMessage());
+    }
+  }
+}

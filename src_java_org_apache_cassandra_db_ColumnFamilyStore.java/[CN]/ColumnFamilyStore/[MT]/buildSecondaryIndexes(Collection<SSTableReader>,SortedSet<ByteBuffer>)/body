@@ -1,0 +1,15 @@
+{
+  logger.debug("Submitting index build to compactionmanager");
+  Table.IndexBuilder builder=table.createIndexBuilder(this,columns,new ReducingKeyIterator(sstables));
+  Future future=CompactionManager.instance.submitIndexBuild(this,builder);
+  try {
+    future.get();
+    for (    ByteBuffer column : columns)     getIndexedColumnFamilyStore(column).forceBlockingFlush();
+  }
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+}

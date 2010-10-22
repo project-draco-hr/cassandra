@@ -4,7 +4,7 @@
   List<ColumnFamily> versions=new ArrayList<ColumnFamily>(responses.size());
   List<InetAddress> endpoints=new ArrayList<InetAddress>(responses.size());
   DecoratedKey key=null;
-  byte[] digest=new byte[0];
+  ByteBuffer digest=FBUtilities.EMPTY_BYTE_BUFFER;
   boolean isDigestQuery=false;
   for (  Message message : responses) {
     ReadResponse result=results.get(message);
@@ -21,7 +21,7 @@
   }
   if (isDigestQuery) {
     for (    ColumnFamily cf : versions) {
-      if (!Arrays.equals(ColumnFamily.digest(cf),digest)) {
+      if (!ColumnFamily.digest(cf).equals(digest)) {
         String s=String.format("Mismatch for key %s (%s vs %s)",key,FBUtilities.bytesToHex(ColumnFamily.digest(cf)),FBUtilities.bytesToHex(digest));
         throw new DigestMismatchException(s);
       }

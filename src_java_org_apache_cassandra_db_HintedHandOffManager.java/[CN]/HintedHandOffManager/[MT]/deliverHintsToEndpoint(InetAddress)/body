@@ -1,12 +1,12 @@
 {
   logger_.info("Started hinted handoff for endpoint " + endpoint);
   queuedDeliveries.remove(endpoint);
-  DecoratedKey epkey=StorageService.getPartitioner().decorateKey(endpoint.getHostAddress().getBytes(UTF_8));
+  DecoratedKey epkey=StorageService.getPartitioner().decorateKey(ByteBuffer.wrap(endpoint.getHostAddress().getBytes(UTF_8)));
   int rowsReplayed=0;
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
-  byte[] startColumn=ArrayUtils.EMPTY_BYTE_ARRAY;
+  ByteBuffer startColumn=FBUtilities.EMPTY_BYTE_BUFFER;
   delivery:   while (true) {
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(HINTS_CF),startColumn,ArrayUtils.EMPTY_BYTE_ARRAY,false,PAGE_SIZE);
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(HINTS_CF),startColumn,FBUtilities.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
     ColumnFamily hintColumnFamily=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),Integer.MAX_VALUE);
     if (pagingFinished(hintColumnFamily,startColumn))     break;
     Collection<IColumn> keyColumns=hintColumnFamily.getSortedColumns();
@@ -16,7 +16,7 @@
       for (      IColumn tableCF : tableCFs) {
         String[] parts=getTableAndCFNames(tableCF.name());
         if (sendMessage(endpoint,parts[0],parts[1],keyColumn.name())) {
-          deleteHintKey(endpoint.getHostAddress().getBytes(UTF_8),keyColumn.name(),tableCF.name(),tableCF.timestamp());
+          deleteHintKey(ByteBuffer.wrap(endpoint.getHostAddress().getBytes(UTF_8)),keyColumn.name(),tableCF.name(),tableCF.timestamp());
           rowsReplayed++;
         }
  else {

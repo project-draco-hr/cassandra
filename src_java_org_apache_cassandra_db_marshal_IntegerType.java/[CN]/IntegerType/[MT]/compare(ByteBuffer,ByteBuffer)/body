@@ -1,0 +1,26 @@
+{
+  int lhsLen=lhs.remaining();
+  int rhsLen=rhs.remaining();
+  if (lhsLen == 0)   return rhsLen == 0 ? 0 : -1;
+  if (rhsLen == 0)   return 1;
+  int lhsMsbIdx=findMostSignificantByte(lhs);
+  int rhsMsbIdx=findMostSignificantByte(rhs);
+  int lhsLenDiff=lhsLen - lhsMsbIdx;
+  int rhsLenDiff=rhsLen - rhsMsbIdx;
+  byte lhsMsb=lhs.array()[lhs.position() + lhs.arrayOffset() + lhsMsbIdx];
+  byte rhsMsb=rhs.array()[rhs.position() + rhs.arrayOffset() + rhsMsbIdx];
+  if (lhsLenDiff != rhsLenDiff) {
+    if (lhsMsb < 0)     return rhsMsb < 0 ? rhsLenDiff - lhsLenDiff : -1;
+    if (rhsMsb < 0)     return 1;
+    return lhsLenDiff - rhsLenDiff;
+  }
+  if (lhsMsb != rhsMsb)   return lhsMsb - rhsMsb;
+  lhsMsbIdx++;
+  rhsMsbIdx++;
+  while (lhsMsbIdx < lhsLen) {
+    lhsMsb=lhs.array()[lhs.position() + lhs.arrayOffset() + lhsMsbIdx++];
+    rhsMsb=rhs.array()[rhs.position() + rhs.arrayOffset() + rhsMsbIdx++];
+    if (lhsMsb != rhsMsb)     return (lhsMsb & 0xFF) - (rhsMsb & 0xFF);
+  }
+  return 0;
+}

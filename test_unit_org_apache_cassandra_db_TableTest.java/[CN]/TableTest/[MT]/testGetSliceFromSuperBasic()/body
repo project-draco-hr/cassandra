@@ -4,16 +4,16 @@
   final DecoratedKey ROW=Util.dk("row2");
   RowMutation rm=new RowMutation("Keyspace1",ROW.key);
   ColumnFamily cf=ColumnFamily.create("Keyspace1","Super1");
-  SuperColumn sc=new SuperColumn("sc1".getBytes(),LongType.instance);
-  sc.addColumn(new Column(getBytes(1),"val1".getBytes(),1L));
+  SuperColumn sc=new SuperColumn(ByteBuffer.wrap("sc1".getBytes()),LongType.instance);
+  sc.addColumn(new Column(getBytes(1),ByteBuffer.wrap("val1".getBytes()),1L));
   cf.addColumn(sc);
   rm.add(cf);
   rm.apply();
   Runnable verify=new WrappedRunnable(){
     public void runMayThrow() throws Exception {
-      ColumnFamily cf=cfStore.getColumnFamily(ROW,new QueryPath("Super1"),ArrayUtils.EMPTY_BYTE_ARRAY,ArrayUtils.EMPTY_BYTE_ARRAY,false,10);
+      ColumnFamily cf=cfStore.getColumnFamily(ROW,new QueryPath("Super1"),FBUtilities.EMPTY_BYTE_BUFFER,FBUtilities.EMPTY_BYTE_BUFFER,false,10);
       assertColumns(cf,"sc1");
-      assertEquals(new String(cf.getColumn("sc1".getBytes()).getSubColumn(getBytes(1)).value()),"val1");
+      assertEquals(new String(cf.getColumn(ByteBuffer.wrap("sc1".getBytes())).getSubColumn(getBytes(1)).value().array()),"val1");
     }
   }
 ;

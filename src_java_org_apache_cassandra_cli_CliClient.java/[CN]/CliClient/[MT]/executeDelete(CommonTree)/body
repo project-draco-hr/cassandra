@@ -32,6 +32,9 @@
     superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes("UTF-8");
     columnName=CliCompiler.getColumn(columnFamilySpec,1).getBytes("UTF-8");
   }
-  thriftClient_.remove(key.getBytes(),new ColumnPath(columnFamily).setSuper_column(superColumnName).setColumn(columnName),FBUtilities.timestampMicros(),ConsistencyLevel.ONE);
+  ColumnPath path=new ColumnPath(columnFamily);
+  if (superColumnName != null)   path.setSuper_column(superColumnName);
+  if (columnName != null)   path.setColumn(columnName);
+  thriftClient_.remove(ByteBuffer.wrap(key.getBytes("UTF-8")),path,FBUtilities.timestampMicros(),ConsistencyLevel.ONE);
   css_.out.println(String.format("%s removed.",(columnSpecCnt == 0) ? "row" : "column"));
 }

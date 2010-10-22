@@ -1,0 +1,35 @@
+{
+  if (!Gossiper.instance.isKnownEndpoint(endpoint)) {
+    logger_.warn("Hints found for endpoint " + endpoint + " which is not part of the gossip network.  discarding.");
+    return true;
+  }
+  if (!FailureDetector.instance.isAlive(endpoint)) {
+    return false;
+  }
+  Table table=Table.open(tableName);
+  DecoratedKey dkey=StorageService.getPartitioner().decorateKey(key);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
+  ByteBuffer startColumn=FBUtilities.EMPTY_BYTE_BUFFER;
+  while (true) {
+    QueryFilter filter=QueryFilter.getSliceFilter(dkey,new QueryPath(cfs.getColumnFamilyName()),startColumn,FBUtilities.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
+    ColumnFamily cf=cfs.getColumnFamily(filter);
+    if (pagingFinished(cf,startColumn))     break;
+    if (cf.getColumnNames().isEmpty()) {
+      logger_.debug("Nothing to hand off for {}",dkey);
+      break;
+    }
+    startColumn=cf.getColumnNames().last();
+    RowMutation rm=new RowMutation(tableName,key);
+    rm.add(cf);
+    Message message=rm.makeRowMutationMessage();
+    IWriteResponseHandler responseHandler=WriteResponseHandler.create(endpoint);
+    MessagingService.instance.sendRR(message,new InetAddress[]{endpoint},responseHandler);
+    try {
+      responseHandler.get();
+    }
+ catch (    TimeoutException e) {
+      return false;
+    }
+  }
+  return true;
+}
