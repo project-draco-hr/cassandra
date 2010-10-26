@@ -1,0 +1,27 @@
+{
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
+  Tree columnFamilySpec=statement.getChild(0);
+  String key=CliCompiler.getKey(columnFamilySpec);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  byte[] superColumnName=null;
+  byte[] columnName=null;
+  boolean isSuper=getCfDef(columnFamily).column_type.equals("Super");
+  if ((columnSpecCnt < 0) || (columnSpecCnt > 2)) {
+    sessionState.out.println("Invalid row, super column, or column specification.");
+    return;
+  }
+  if (columnSpecCnt == 1) {
+    if (isSuper)     superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
+ else     columnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
+  }
+ else   if (columnSpecCnt == 2) {
+    superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
+    columnName=CliCompiler.getColumn(columnFamilySpec,1).getBytes(Charsets.UTF_8);
+  }
+  ColumnPath path=new ColumnPath(columnFamily);
+  if (superColumnName != null)   path.setSuper_column(superColumnName);
+  if (columnName != null)   path.setColumn(columnName);
+  thriftClient.remove(ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)),path,FBUtilities.timestampMicros(),ConsistencyLevel.ONE);
+  sessionState.out.println(String.format("%s removed.",(columnSpecCnt == 0) ? "row" : "column"));
+}
