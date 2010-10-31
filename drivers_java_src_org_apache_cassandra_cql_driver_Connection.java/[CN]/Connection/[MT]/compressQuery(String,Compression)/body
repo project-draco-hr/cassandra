@@ -1,9 +1,14 @@
 {
+  byte[] data=queryStr.getBytes();
   Deflater compressor=new Deflater();
-  compressor.setInput(queryStr.getBytes());
+  compressor.setInput(data);
   compressor.finish();
-  byte[] compressedQuery=new byte[100];
-  int compressedSize=compressor.deflate(compressedQuery);
-  logger.trace("Compressed query statement {} bytes in length to {} bytes",queryStr.length(),compressedSize);
-  return ByteBuffer.wrap(compressedQuery);
+  ByteArrayOutputStream byteArray=new ByteArrayOutputStream();
+  byte[] buffer=new byte[1024];
+  while (!compressor.finished()) {
+    int size=compressor.deflate(buffer);
+    byteArray.write(buffer,0,size);
+  }
+  logger.trace("Compressed query statement {} bytes in length to {} bytes",data.length,byteArray.size());
+  return ByteBuffer.wrap(byteArray.toByteArray());
 }

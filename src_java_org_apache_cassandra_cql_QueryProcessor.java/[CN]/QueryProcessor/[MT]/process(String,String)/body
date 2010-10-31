@@ -1,4 +1,5 @@
 {
+  logger.debug("CQL QUERY: {}",queryString);
   CqlParser parser=getParser(queryString);
   CQLStatement statement=parser.query();
   CqlResult avroResult=new CqlResult();
@@ -39,6 +40,47 @@ avroRows.add(avroRow);
 }
 }
  else {
+List<org.apache.cassandra.db.Row> rows=null;
+IPartitioner<?> p=StorageService.getPartitioner();
+AbstractBounds bounds=new Bounds(p.getToken(select.getKeyPredicates().getStart().getBytes()),p.getToken(select.getKeyPredicates().getFinish().getBytes()));
+SlicePredicate thriftSlicePredicate=new SlicePredicate();
+if (select.getColumnPredicates().isRange() || select.getColumnPredicates().getTerms().size() == 0) {
+SliceRange sliceRange=new SliceRange();
+sliceRange.start=select.getColumnPredicates().getStart().getBytes();
+sliceRange.finish=select.getColumnPredicates().getFinish().getBytes();
+sliceRange.reversed=false;
+sliceRange.count=select.getNumColumns();
+thriftSlicePredicate.slice_range=sliceRange;
+}
+ else {
+List<byte[]> columnNames=new ArrayList<byte[]>();
+for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getBytes());
+thriftSlicePredicate.column_names=columnNames;
+}
+try {
+rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,select.getColumnFamily(),null,thriftSlicePredicate,bounds,select.getNumRecords()),select.getConsistencyLevel());
+}
+ catch (IOException e) {
+throw new RuntimeException(e);
+}
+catch (org.apache.cassandra.thrift.UnavailableException e) {
+throw new UnavailableException();
+}
+catch (TimeoutException e) {
+throw new TimedOutException();
+}
+for (org.apache.cassandra.db.Row row : rows) {
+CqlRow avroRow=new CqlRow();
+avroRow.key=ByteBuffer.wrap(row.key.key);
+avroRow.columns=new ArrayList<Column>();
+for (IColumn column : row.cf.getSortedColumns()) {
+Column avroColumn=new Column();
+avroColumn.name=ByteBuffer.wrap(column.name());
+avroColumn.value=ByteBuffer.wrap(column.value());
+avroRow.columns.add(avroColumn);
+}
+avroRows.add(avroRow);
+}
 }
 avroResult.rows=avroRows;
 return avroResult;
