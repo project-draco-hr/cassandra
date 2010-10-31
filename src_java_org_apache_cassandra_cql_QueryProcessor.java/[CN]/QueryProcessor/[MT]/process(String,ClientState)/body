@@ -13,15 +13,15 @@ List<CqlRow> avroRows=new ArrayList<CqlRow>();
 avroResult.type=CqlResultType.ROWS;
 if (!select.getKeyPredicates().isRange()) {
 for (Term keyName : select.getKeyPredicates().getTerms()) {
-byte[] key=keyName.getBytes();
+ByteBuffer key=keyName.getByteBuffer();
 validateKey(key);
 if (!select.getColumnPredicates().isRange()) {
-Collection<byte[]> columnNames=new ArrayList<byte[]>();
-for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getBytes());
+Collection<ByteBuffer> columnNames=new ArrayList<ByteBuffer>();
+for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getByteBuffer());
 commands.add(new SliceByNamesReadCommand(keyspace,key,queryPath,columnNames));
 }
  else {
-commands.add(new SliceFromReadCommand(keyspace,key,queryPath,select.getColumnPredicates().getStart().getBytes(),select.getColumnPredicates().getFinish().getBytes(),select.reversed(),select.getNumColumns()));
+commands.add(new SliceFromReadCommand(keyspace,key,queryPath,select.getColumnPredicates().getStart().getByteBuffer(),select.getColumnPredicates().getFinish().getByteBuffer(),select.reversed(),select.getNumColumns()));
 }
 Map<DecoratedKey<?>,ColumnFamily> columnFamilies=readColumnFamily(commands,select.getConsistencyLevel());
 List<Column> avroColumns=new ArrayList<Column>();
@@ -29,13 +29,13 @@ for (ReadCommand cmd : commands) {
 ColumnFamily cf=columnFamilies.get(StorageService.getPartitioner().decorateKey(cmd.key));
 for (IColumn column : cf.getSortedColumns()) {
   Column avroColumn=new Column();
-  avroColumn.name=ByteBuffer.wrap(column.name());
-  avroColumn.value=ByteBuffer.wrap(column.value());
+  avroColumn.name=column.name();
+  avroColumn.value=column.value();
   avroColumns.add(avroColumn);
 }
 }
 CqlRow avroRow=new CqlRow();
-avroRow.key=ByteBuffer.wrap(key);
+avroRow.key=key;
 avroRow.columns=avroColumns;
 avroRows.add(avroRow);
 }
@@ -43,19 +43,19 @@ avroRows.add(avroRow);
  else {
 List<org.apache.cassandra.db.Row> rows=null;
 IPartitioner<?> p=StorageService.getPartitioner();
-AbstractBounds bounds=new Bounds(p.getToken(select.getKeyPredicates().getStart().getBytes()),p.getToken(select.getKeyPredicates().getFinish().getBytes()));
+AbstractBounds bounds=new Bounds(p.getToken(select.getKeyPredicates().getStart().getByteBuffer()),p.getToken(select.getKeyPredicates().getFinish().getByteBuffer()));
 SlicePredicate thriftSlicePredicate=new SlicePredicate();
 if (select.getColumnPredicates().isRange() || select.getColumnPredicates().getTerms().size() == 0) {
 SliceRange sliceRange=new SliceRange();
-sliceRange.start=select.getColumnPredicates().getStart().getBytes();
-sliceRange.finish=select.getColumnPredicates().getFinish().getBytes();
+sliceRange.start=select.getColumnPredicates().getStart().getByteBuffer();
+sliceRange.finish=select.getColumnPredicates().getFinish().getByteBuffer();
 sliceRange.reversed=false;
 sliceRange.count=select.getNumColumns();
 thriftSlicePredicate.slice_range=sliceRange;
 }
  else {
-List<byte[]> columnNames=new ArrayList<byte[]>();
-for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getBytes());
+List<ByteBuffer> columnNames=new ArrayList<ByteBuffer>();
+for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getByteBuffer());
 thriftSlicePredicate.column_names=columnNames;
 }
 try {
@@ -72,12 +72,12 @@ throw new TimedOutException();
 }
 for (org.apache.cassandra.db.Row row : rows) {
 CqlRow avroRow=new CqlRow();
-avroRow.key=ByteBuffer.wrap(row.key.key);
+avroRow.key=row.key.key;
 avroRow.columns=new ArrayList<Column>();
 for (IColumn column : row.cf.getSortedColumns()) {
 Column avroColumn=new Column();
-avroColumn.name=ByteBuffer.wrap(column.name());
-avroColumn.value=ByteBuffer.wrap(column.value());
+avroColumn.name=column.name();
+avroColumn.value=column.value();
 avroRow.columns.add(avroColumn);
 }
 avroRows.add(avroRow);
@@ -90,9 +90,9 @@ UpdateStatement update=(UpdateStatement)statement.statement;
 avroResult.type=CqlResultType.VOID;
 List<RowMutation> rowMutations=new ArrayList<RowMutation>();
 for (Row row : update.getRows()) {
-RowMutation rm=new RowMutation(keyspace,row.getKey().getBytes());
+RowMutation rm=new RowMutation(keyspace,row.getKey().getByteBuffer());
 for (org.apache.cassandra.cql.Column col : row.getColumns()) {
-rm.add(new QueryPath(update.getColumnFamily(),null,col.getName().getBytes()),col.getValue().getBytes(),System.currentTimeMillis());
+rm.add(new QueryPath(update.getColumnFamily(),null,col.getName().getByteBuffer()),col.getValue().getByteBuffer(),System.currentTimeMillis());
 rowMutations.add(rm);
 }
 }
