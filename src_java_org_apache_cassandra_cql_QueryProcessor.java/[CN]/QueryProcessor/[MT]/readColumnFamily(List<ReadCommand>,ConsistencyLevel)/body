@@ -1,0 +1,25 @@
+{
+  Map<DecoratedKey<?>,ColumnFamily> columnFamilyKeyMap=new HashMap<DecoratedKey<?>,ColumnFamily>();
+  List<org.apache.cassandra.db.Row> rows;
+  try {
+    rows=StorageProxy.readProtocol(commands,cLevel);
+  }
+ catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    UnavailableException error=new UnavailableException();
+    error.initCause(e);
+    throw error;
+  }
+catch (  org.apache.cassandra.thrift.InvalidRequestException e) {
+    InvalidRequestException error=new InvalidRequestException();
+    error.initCause(e);
+    throw error;
+  }
+  for (  org.apache.cassandra.db.Row row : rows)   columnFamilyKeyMap.put(row.key,row.cf);
+  return columnFamilyKeyMap;
+}

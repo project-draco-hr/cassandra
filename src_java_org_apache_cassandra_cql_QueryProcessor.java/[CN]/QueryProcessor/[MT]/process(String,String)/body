@@ -1,0 +1,68 @@
+{
+  CqlParser parser=getParser(queryString);
+  CQLStatement statement=parser.query();
+  CqlResult avroResult=new CqlResult();
+switch (statement.type) {
+case SELECT:
+    SelectStatement select=(SelectStatement)statement.statement;
+  QueryPath queryPath=new QueryPath(select.getColumnFamily());
+List<ReadCommand> commands=new ArrayList<ReadCommand>();
+List<CqlRow> avroRows=new ArrayList<CqlRow>();
+avroResult.type=CqlResultType.ROWS;
+if (!select.getKeyPredicates().isRange()) {
+for (Term keyName : select.getKeyPredicates().getTerms()) {
+byte[] key=keyName.getBytes();
+validateKey(key);
+if (!select.getColumnPredicates().isRange()) {
+Collection<byte[]> columnNames=new ArrayList<byte[]>();
+for (Term column : select.getColumnPredicates().getTerms()) columnNames.add(column.getBytes());
+commands.add(new SliceByNamesReadCommand(keyspace,key,queryPath,columnNames));
+}
+ else {
+commands.add(new SliceFromReadCommand(keyspace,key,queryPath,select.getColumnPredicates().getStart().getBytes(),select.getColumnPredicates().getFinish().getBytes(),select.reversed(),select.getNumColumns()));
+}
+Map<DecoratedKey<?>,ColumnFamily> columnFamilies=readColumnFamily(commands,select.getConsistencyLevel());
+List<Column> avroColumns=new ArrayList<Column>();
+for (ReadCommand cmd : commands) {
+ColumnFamily cf=columnFamilies.get(StorageService.getPartitioner().decorateKey(cmd.key));
+for (IColumn column : cf.getSortedColumns()) {
+  Column avroColumn=new Column();
+  avroColumn.name=ByteBuffer.wrap(column.name());
+  avroColumn.value=ByteBuffer.wrap(column.value());
+  avroColumns.add(avroColumn);
+}
+}
+CqlRow avroRow=new CqlRow();
+avroRow.key=ByteBuffer.wrap(key);
+avroRow.columns=avroColumns;
+avroRows.add(avroRow);
+}
+}
+ else {
+}
+avroResult.rows=avroRows;
+return avroResult;
+case UPDATE:
+UpdateStatement update=(UpdateStatement)statement.statement;
+avroResult.type=CqlResultType.VOID;
+List<RowMutation> rowMutations=new ArrayList<RowMutation>();
+for (Row row : update.getRows()) {
+RowMutation rm=new RowMutation(keyspace,row.getKey().getBytes());
+for (org.apache.cassandra.cql.Column col : row.getColumns()) {
+rm.add(new QueryPath(update.getColumnFamily(),null,col.getName().getBytes()),col.getValue().getBytes(),System.currentTimeMillis());
+rowMutations.add(rm);
+}
+}
+try {
+StorageProxy.mutate(rowMutations,update.getConsistencyLevel());
+}
+ catch (org.apache.cassandra.thrift.UnavailableException e) {
+throw new UnavailableException();
+}
+catch (TimeoutException e) {
+throw new TimedOutException();
+}
+return avroResult;
+}
+return null;
+}
