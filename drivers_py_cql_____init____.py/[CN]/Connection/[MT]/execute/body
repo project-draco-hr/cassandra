@@ -1,0 +1,10 @@
+def execute(self, query, compression=None):
+    compress = (((compression is None) and DEFAULT_COMPRESSION) or compression.upper())
+    if (not (compress in COMPRESSION_SCHEMES)):
+        raise InvalidCompressionScheme(compress)
+    compressed_query = Connection.compress_query(query, compress)
+    request_params = dict(query=compressed_query, compression=compress)
+    response = self.requestor.request('execute_cql_query', request_params)
+    if (response['type'] == 'ROWS'):
+        return response['rows']
+    return None
