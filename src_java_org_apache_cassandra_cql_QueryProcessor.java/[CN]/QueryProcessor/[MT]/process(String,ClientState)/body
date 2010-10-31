@@ -1,7 +1,8 @@
 {
-  logger.debug("CQL QUERY: {}",queryString);
+  logger.trace("CQL QUERY: {}",queryString);
   CqlParser parser=getParser(queryString);
   CQLStatement statement=parser.query();
+  parser.throwLastRecognitionError();
   String keyspace=clientState.getKeyspace();
   CqlResult avroResult=new CqlResult();
 switch (statement.type) {
@@ -19,6 +20,7 @@ for (IColumn column : row.cf.getSortedColumns()) {
 Column avroColumn=new Column();
 avroColumn.name=column.name();
 avroColumn.value=column.value();
+avroColumn.timestamp=column.timestamp();
 avroColumns.add(avroColumn);
 }
 CqlRow avroRow=new CqlRow();
@@ -30,14 +32,16 @@ avroResult.rows=avroRows;
 return avroResult;
 case UPDATE:
 UpdateStatement update=(UpdateStatement)statement.statement;
+validateColumnFamily(keyspace,update.getColumnFamily());
 avroResult.type=CqlResultType.VOID;
 List<RowMutation> rowMutations=new ArrayList<RowMutation>();
 for (Row row : update.getRows()) {
+validateKey(row.getKey().getByteBuffer());
 RowMutation rm=new RowMutation(keyspace,row.getKey().getByteBuffer());
 for (org.apache.cassandra.cql.Column col : row.getColumns()) {
 rm.add(new QueryPath(update.getColumnFamily(),null,col.getName().getByteBuffer()),col.getValue().getByteBuffer(),System.currentTimeMillis());
-rowMutations.add(rm);
 }
+rowMutations.add(rm);
 }
 try {
 StorageProxy.mutate(rowMutations,update.getConsistencyLevel());
