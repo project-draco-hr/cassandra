@@ -1,5 +1,6 @@
 {
   List<Memtable> memtablesToFlush=Collections.emptyList();
+  if (logger.isDebugEnabled())   logger.debug("applying mutation of {}",FBUtilities.bytesToHex(mutation.key()));
   flusherLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.instance.add(mutation,serializedMutation);
@@ -15,6 +16,7 @@
         if (cf.getColumnNames().contains(column) || cf.isMarkedForDelete()) {
           if (mutatedIndexedColumns == null)           mutatedIndexedColumns=new TreeSet<ByteBuffer>();
           mutatedIndexedColumns.add(column);
+          if (logger.isDebugEnabled())           logger.debug("mutating indexed column " + cf.getComparator().getString(column));
         }
       }
 synchronized (indexLockFor(mutation.key())) {
