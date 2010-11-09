@@ -6,18 +6,19 @@
   int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
   byte[] superColumnName=null;
   byte[] columnName=null;
-  boolean isSuper=getCfDef(columnFamily).column_type.equals("Super");
+  CfDef cfDef=getCfDef(columnFamily);
+  boolean isSuper=cfDef.column_type.equals("Super");
   if ((columnSpecCnt < 0) || (columnSpecCnt > 2)) {
     sessionState.out.println("Invalid row, super column, or column specification.");
     return;
   }
   if (columnSpecCnt == 1) {
-    if (isSuper)     superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
- else     columnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
+    if (isSuper)     superColumnName=columnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
+ else     columnName=columnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
   }
  else   if (columnSpecCnt == 2) {
-    superColumnName=CliCompiler.getColumn(columnFamilySpec,0).getBytes(Charsets.UTF_8);
-    columnName=CliCompiler.getColumn(columnFamilySpec,1).getBytes(Charsets.UTF_8);
+    superColumnName=columnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
+    columnName=subColumnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,1),cfDef);
   }
   ColumnPath path=new ColumnPath(columnFamily);
   if (superColumnName != null)   path.setSuper_column(superColumnName);

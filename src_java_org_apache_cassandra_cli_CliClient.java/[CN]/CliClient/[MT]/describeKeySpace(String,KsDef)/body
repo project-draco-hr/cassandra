@@ -11,14 +11,12 @@
         sessionState.out.printf("    \"%s\"\n",cf_def.comment);
       }
       sessionState.out.printf("      Columns sorted by: %s%s\n",cf_def.comparator_type,cf_def.column_type.equals("Super") ? "/" + cf_def.subcomparator_type : "");
-      if (cf_def.subcomparator_type != null) {
-        sessionState.out.println("      Subcolumns sorted by: " + cf_def.comparator_type);
-      }
       sessionState.out.printf("      Row cache size / save period: %s/%s\n",cf_def.row_cache_size,cf_def.row_cache_save_period_in_seconds);
       sessionState.out.printf("      Key cache size / save period: %s/%s\n",cf_def.key_cache_size,cf_def.key_cache_save_period_in_seconds);
       sessionState.out.printf("      Memtable thresholds: %s/%s/%s\n",cf_def.memtable_operations_in_millions,cf_def.memtable_throughput_in_mb,cf_def.memtable_flush_after_mins);
       sessionState.out.printf("      GC grace seconds: %s\n",cf_def.gc_grace_seconds);
       sessionState.out.printf("      Compaction min/max thresholds: %s/%s\n",cf_def.min_compaction_threshold,cf_def.max_compaction_threshold);
+      sessionState.out.printf("      Read repair chance: %s\n",cf_def.read_repair_chance);
       if (cf_def.getColumn_metadataSize() != 0) {
         String leftSpace="      ";
         String columnLeftSpace=leftSpace + "    ";
@@ -26,6 +24,14 @@
         sessionState.out.println(leftSpace + "Column Metadata:");
         for (        ColumnDef columnDef : cf_def.getColumn_metadata()) {
           String columnName=columnNameValidator.getString(columnDef.name);
+          if (columnNameValidator instanceof BytesType) {
+            try {
+              String columnString=UTF8Type.instance.getString(columnDef.name);
+              columnName=columnString + " (" + columnName+ ")";
+            }
+ catch (            MarshalException e) {
+            }
+          }
           sessionState.out.println(leftSpace + "  Column Name: " + columnName);
           sessionState.out.println(columnLeftSpace + "Validation Class: " + columnDef.getValidation_class());
           if (columnDef.isSetIndex_name()) {
