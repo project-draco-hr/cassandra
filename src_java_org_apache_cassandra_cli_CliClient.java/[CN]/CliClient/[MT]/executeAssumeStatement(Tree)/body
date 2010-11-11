@@ -1,0 +1,33 @@
+{
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
+  CfDef columnFamily=getCfDef(statement.getChild(0).getText());
+  String assumptionElement=statement.getChild(1).getText().toUpperCase();
+  AbstractType comparator;
+  String defaultType=statement.getChild(2).getText();
+  try {
+    comparator=Function.valueOf(defaultType.toUpperCase()).getValidator();
+  }
+ catch (  Exception e) {
+    String functions=Function.getFunctionNames();
+    sessionState.out.println("Type '" + defaultType + "' was not found. Available: "+ functions);
+    return;
+  }
+  if (assumptionElement.equals("COMPARATOR")) {
+    columnFamily.setComparator_type(defaultType);
+  }
+ else   if (assumptionElement.equals("SUB_COMPARATOR")) {
+    columnFamily.setSubcomparator_type(defaultType);
+  }
+ else   if (assumptionElement.equals("VALIDATOR")) {
+    columnFamily.setDefault_validation_class(defaultType);
+  }
+ else   if (assumptionElement.equals("KEYS")) {
+    this.cfKeysComparators.put(columnFamily.getName(),comparator);
+  }
+ else {
+    String elements="VALIDATOR, COMPARATOR, KEYS, SUB_COMPARATOR.";
+    sessionState.out.println(String.format("'%s' is invalid. Available: %s",assumptionElement,elements));
+    return;
+  }
+  sessionState.out.println(String.format("Assumption for column family '%s' added successfully.",columnFamily.getName()));
+}

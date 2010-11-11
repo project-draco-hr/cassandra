@@ -1,8 +1,8 @@
 {
   if (!CliMain.isConnected() || !hasKeySpace())   return;
   Tree columnFamilySpec=statement.getChild(0);
-  String key=CliCompiler.getKey(columnFamilySpec);
   String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec);
+  ByteBuffer key=getKeyAsBytes(columnFamily,columnFamilySpec.getChild(1));
   int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
   CfDef cfDef=getCfDef(columnFamily);
   boolean isSuper=cfDef.comparator_type.equals("Super");
@@ -13,18 +13,16 @@
     return;
   }
  else   if (columnSpecCnt == 1) {
+    columnName=getColumnName(columnFamily,columnFamilySpec.getChild(2));
     if (isSuper) {
-      superColumnName=columnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
+      superColumnName=columnName.array();
       doSlice(keySpace,key,columnFamily,superColumnName);
       return;
     }
- else {
-      columnName=columnNameAsBytes(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
-    }
   }
  else   if (columnSpecCnt == 2) {
-    superColumnName=columnNameAsByteArray(CliCompiler.getColumn(columnFamilySpec,0),cfDef);
-    columnName=subColumnNameAsBytes(CliCompiler.getColumn(columnFamilySpec,1),cfDef);
+    superColumnName=getColumnName(columnFamily,columnFamilySpec.getChild(2)).array();
+    columnName=getSubColumnName(columnFamily,columnFamilySpec.getChild(3));
   }
  else {
     sessionState.out.println("Invalid row, super column, or column specification.");
@@ -36,7 +34,7 @@
   path.setColumn(columnName);
   Column column;
   try {
-    column=thriftClient.get(ByteBuffer.wrap(key.getBytes(Charsets.UTF_8)),path,ConsistencyLevel.ONE).column;
+    column=thriftClient.get(key,path,ConsistencyLevel.ONE).column;
   }
  catch (  NotFoundException e) {
     sessionState.out.println("Value was not found");

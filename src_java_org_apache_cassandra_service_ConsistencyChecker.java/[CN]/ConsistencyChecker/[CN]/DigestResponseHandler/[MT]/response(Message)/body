@@ -5,14 +5,12 @@
     ByteArrayInputStream bufIn=new ByteArrayInputStream(body);
     ReadResponse result=ReadResponse.serializer().deserialize(new DataInputStream(bufIn));
     ByteBuffer digest=result.digest();
-    if (!ColumnFamily.digest(row_.cf).equals(digest)) {
-      IResponseResolver<Row> readResponseResolver=new ReadResponseResolver(table_);
-      IAsyncCallback responseHandler;
-      if (replicas_.contains(FBUtilities.getLocalAddress()))       responseHandler=new DataRepairHandler(row_,replicas_.size(),readResponseResolver);
- else       responseHandler=new DataRepairHandler(replicas_.size(),readResponseResolver);
+    if (!localDigest.equals(digest)) {
+      ReadResponseResolver readResponseResolver=new ReadResponseResolver(table_);
+      IAsyncCallback responseHandler=new DataRepairHandler(row_,replicas_.size(),readResponseResolver);
       ReadCommand readCommand=constructReadMessage(false);
       Message message=readCommand.makeReadMessage();
-      if (logger_.isDebugEnabled())       logger_.debug("Performing read repair for " + readCommand_.key + " to "+ message.getMessageId()+ "@["+ StringUtils.join(replicas_,", ")+ "]");
+      if (logger_.isDebugEnabled())       logger_.debug("Digest mismatch; re-reading " + readCommand_.key + " from "+ message.getMessageId()+ "@["+ StringUtils.join(replicas_,", ")+ "]");
       MessagingService.instance.addCallback(responseHandler,message.getMessageId());
       for (      InetAddress endpoint : replicas_) {
         if (!endpoint.equals(FBUtilities.getLocalAddress()))         MessagingService.instance.sendOneWay(message,endpoint);

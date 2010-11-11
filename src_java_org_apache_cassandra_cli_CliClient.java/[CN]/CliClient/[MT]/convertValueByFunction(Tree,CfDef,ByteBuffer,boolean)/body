@@ -1,17 +1,9 @@
 {
   String functionName=functionCall.getChild(0).getText();
-  String functionArg=CliUtils.unescapeSQLString(functionCall.getChild(1).getText());
-  Function function;
+  Tree argumentTree=functionCall.getChild(1);
+  String functionArg=(argumentTree == null) ? "" : CliUtils.unescapeSQLString(argumentTree.getText());
+  AbstractType validator=getTypeByFunction(functionName);
   try {
-    function=Function.valueOf(functionName.toUpperCase());
-  }
- catch (  IllegalArgumentException e) {
-    StringBuilder errorMessage=new StringBuilder("Function '" + functionName + "' not found. ");
-    errorMessage.append("Available functions: ");
-    throw new RuntimeException(errorMessage.append(Function.getFunctionNames()).toString());
-  }
-  try {
-    AbstractType validator=function.getValidator();
     ByteBuffer value=getBytesAccordingToType(functionArg,validator);
     if (withUpdate) {
       updateColumnMetaData(columnFamily,columnName,validator.getClass().getName());

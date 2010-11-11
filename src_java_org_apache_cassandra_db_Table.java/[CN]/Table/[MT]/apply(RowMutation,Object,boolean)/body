@@ -1,6 +1,6 @@
 {
   List<Memtable> memtablesToFlush=Collections.emptyList();
-  if (logger.isDebugEnabled())   logger.debug("applying mutation of {}",FBUtilities.bytesToHex(mutation.key()));
+  if (logger.isDebugEnabled())   logger.debug("applying mutation of row {}",FBUtilities.bytesToHex(mutation.key()));
   flusherLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.instance.add(mutation,serializedMutation);
@@ -16,13 +16,17 @@
         if (cf.getColumnNames().contains(column) || cf.isMarkedForDelete()) {
           if (mutatedIndexedColumns == null)           mutatedIndexedColumns=new TreeSet<ByteBuffer>();
           mutatedIndexedColumns.add(column);
-          if (logger.isDebugEnabled())           logger.debug("mutating indexed column " + cf.getComparator().getString(column));
+          if (logger.isDebugEnabled()) {
+            ByteBuffer value=cf.getColumn(column) == null ? null : cf.getColumn(column).value();
+            logger.debug(String.format("mutating indexed column %s value %s",cf.getComparator().getString(column),value == null ? "null" : FBUtilities.bytesToHex(value)));
+          }
         }
       }
 synchronized (indexLockFor(mutation.key())) {
         ColumnFamily oldIndexedColumns=null;
         if (mutatedIndexedColumns != null) {
           oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
+          logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
           ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
         }
         Memtable fullMemtable=cfs.apply(key,cf);
