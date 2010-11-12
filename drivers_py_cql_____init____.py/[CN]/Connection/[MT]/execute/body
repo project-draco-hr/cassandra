@@ -4,7 +4,10 @@ def execute(self, query, compression=None):
         raise InvalidCompressionScheme(compress)
     compressed_query = Connection.compress_query(query, compress)
     request_params = dict(query=compressed_query, compression=compress)
-    response = self.requestor.request('execute_cql_query', request_params)
+    try:
+        response = self.requestor.request('execute_cql_query', request_params)
+    except AvroRemoteException as are:
+        raise CQLException(are)
     if (response['type'] == 'ROWS'):
         return response['rows']
     return None
