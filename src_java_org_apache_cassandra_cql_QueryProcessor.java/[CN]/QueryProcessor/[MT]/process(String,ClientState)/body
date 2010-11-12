@@ -8,16 +8,21 @@
 switch (statement.type) {
 case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
-  List<CqlRow> avroRows=new ArrayList<CqlRow>();
+  validateColumnFamily(keyspace,select.getColumnFamily());
+validateSelect(keyspace,select);
+List<CqlRow> avroRows=new ArrayList<CqlRow>();
 avroResult.type=CqlResultType.ROWS;
 List<org.apache.cassandra.db.Row> rows=null;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
-if (select.getKeys().size() > 1) throw newInvalidRequestException("SELECTs can contain only one by-key clause (i.e. KEY = TERM)");
 rows=getSlice(keyspace,select);
 }
  else {
-if (select.getColumnRelations().size() > 0) throw newInvalidRequestException("You cannot combine key ranges and by-column clauses " + "(i.e. \"name\" = \"value\") in a SELECT statement");
+if ((select.getKeyFinish() != null) || (select.getColumnRelations().size() == 0)) {
 rows=multiRangeSlice(keyspace,select);
+}
+ else {
+rows=getIndexedSlices(keyspace,select);
+}
 }
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
