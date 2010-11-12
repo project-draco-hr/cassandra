@@ -1,19 +1,19 @@
 {
   List<org.apache.cassandra.db.Row> rows=null;
   IPartitioner<?> p=StorageService.getPartitioner();
-  AbstractBounds bounds=new Bounds(p.getToken(select.getKeyPredicates().getStart().getByteBuffer()),p.getToken(select.getKeyPredicates().getFinish().getByteBuffer()));
+  AbstractBounds bounds=new Bounds(p.getToken(select.getKeyStart().getByteBuffer()),p.getToken(select.getKeyFinish().getByteBuffer()));
   SlicePredicate thriftSlicePredicate=new SlicePredicate();
-  if (select.getColumnPredicates().isRange() || select.getColumnPredicates().getTerms().size() == 0) {
+  if (select.isColumnRange() || select.getColumnNames().size() == 0) {
     SliceRange sliceRange=new SliceRange();
-    sliceRange.start=select.getColumnPredicates().getStart().getByteBuffer();
-    sliceRange.finish=select.getColumnPredicates().getFinish().getByteBuffer();
+    sliceRange.start=select.getColumnStart().getByteBuffer();
+    sliceRange.finish=select.getColumnFinish().getByteBuffer();
     sliceRange.reversed=false;
-    sliceRange.count=select.getNumColumns();
+    sliceRange.count=select.getColumnsLimit();
     thriftSlicePredicate.slice_range=sliceRange;
   }
  else {
     List<ByteBuffer> columnNames=new ArrayList<ByteBuffer>();
-    for (    Term column : select.getColumnPredicates().getTerms())     columnNames.add(column.getByteBuffer());
+    for (    Term column : select.getColumnNames())     columnNames.add(column.getByteBuffer());
     thriftSlicePredicate.column_names=columnNames;
   }
   try {

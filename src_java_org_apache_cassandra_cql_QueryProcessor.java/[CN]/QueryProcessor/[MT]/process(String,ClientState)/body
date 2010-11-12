@@ -11,8 +11,22 @@ case SELECT:
   List<CqlRow> avroRows=new ArrayList<CqlRow>();
 avroResult.type=CqlResultType.ROWS;
 List<org.apache.cassandra.db.Row> rows=null;
-if (!select.getKeyPredicates().isRange()) rows=multiSlice(keyspace,select);
- else rows=multiRangeSlice(keyspace,select);
+if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
+if (select.getKeys().size() > 1) {
+InvalidRequestException invalidRequest=new InvalidRequestException();
+invalidRequest.why="SELECTs can contain only one by-key clause (i.e. KEY = TERM)";
+throw invalidRequest;
+}
+rows=getSlice(keyspace,select);
+}
+ else {
+if (select.getColumnRelations().size() > 0) {
+InvalidRequestException invalidRequest=new InvalidRequestException();
+invalidRequest.why="You cannot combine key ranges and by-column clauses " + "(i.e. \"name\" = \"value\") in a SELECT statement";
+throw invalidRequest;
+}
+rows=multiRangeSlice(keyspace,select);
+}
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
 List<Column> avroColumns=new ArrayList<Column>();
