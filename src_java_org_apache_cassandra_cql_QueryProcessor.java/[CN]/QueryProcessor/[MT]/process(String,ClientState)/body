@@ -10,11 +10,15 @@ case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
   validateColumnFamily(keyspace,select.getColumnFamily());
 validateSelect(keyspace,select);
-List<CqlRow> avroRows=new ArrayList<CqlRow>();
-avroResult.type=CqlResultType.ROWS;
 List<org.apache.cassandra.db.Row> rows=null;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
 rows=getSlice(keyspace,select);
+if (select.isCountOperation()) {
+avroResult.type=CqlResultType.INT;
+if (rows.size() > 0) avroResult.num=rows.get(0).cf != null ? rows.get(0).cf.getSortedColumns().size() : 0;
+ else avroResult.num=0;
+return avroResult;
+}
 }
  else {
 if ((select.getKeyFinish() != null) || (select.getColumnRelations().size() == 0)) {
@@ -24,6 +28,8 @@ rows=multiRangeSlice(keyspace,select);
 rows=getIndexedSlices(keyspace,select);
 }
 }
+List<CqlRow> avroRows=new ArrayList<CqlRow>();
+avroResult.type=CqlResultType.ROWS;
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
 List<Column> avroColumns=new ArrayList<Column>();
