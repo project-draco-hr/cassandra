@@ -1,5 +1,8 @@
 {
   try {
+    if (StorageService.instance.isBootstrapMode()) {
+      throw new RuntimeException("Cannot service reads while bootstrapping!");
+    }
     RangeSliceCommand command=RangeSliceCommand.read(message);
     ColumnFamilyStore cfs=Table.open(command.keyspace).getColumnFamilyStore(command.column_family);
     RangeSliceReply reply=new RangeSliceReply(cfs.getRangeSlice(command.super_column,command.range,command.max_keys,QueryFilter.getFilter(command.predicate,cfs.getComparator())));

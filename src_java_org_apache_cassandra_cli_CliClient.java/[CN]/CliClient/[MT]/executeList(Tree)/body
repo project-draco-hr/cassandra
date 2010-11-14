@@ -1,5 +1,5 @@
 {
-  if (!CliMain.isConnected())   return;
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
   String columnFamily=statement.getChild(0).getText();
   String startKey="";
   String endKey="";
@@ -32,10 +32,11 @@
   SlicePredicate predicate=new SlicePredicate();
   SliceRange sliceRange=new SliceRange();
   sliceRange.setStart(new byte[0]).setFinish(new byte[0]);
-  sliceRange.setCount(limitCount);
+  sliceRange.setCount(Integer.MAX_VALUE);
   predicate.setSlice_range(sliceRange);
   KeyRange range=new KeyRange(limitCount);
-  range.setStart_key(startKey.getBytes()).setEnd_key(endKey.getBytes());
+  AbstractType keyComparator=this.cfKeysComparators.get(columnFamily);
+  range.setStart_key(getBytesAccordingToType(startKey,keyComparator)).setEnd_key(getBytesAccordingToType(endKey,keyComparator));
   ColumnParent columnParent=new ColumnParent(columnFamily);
   List<KeySlice> keySlices=thriftClient.get_range_slices(columnParent,predicate,range,ConsistencyLevel.ONE);
   printSliceList(columnFamilyDef,keySlices);
