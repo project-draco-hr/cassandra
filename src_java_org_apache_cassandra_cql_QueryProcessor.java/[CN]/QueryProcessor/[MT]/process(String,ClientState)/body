@@ -50,7 +50,13 @@ avroResult.rows=avroRows;
 return avroResult;
 case UPDATE:
 UpdateStatement update=(UpdateStatement)statement.statement;
-batchUpdate(keyspace,Collections.singletonList(update));
+batchUpdate(keyspace,Collections.singletonList(update),update.getConsistencyLevel());
+avroResult.type=CqlResultType.VOID;
+return avroResult;
+case BATCH_UPDATE:
+BatchUpdateStatement batch=(BatchUpdateStatement)statement.statement;
+for (UpdateStatement up : batch.getUpdates()) if (up.isSetConsistencyLevel()) throw newInvalidRequestException("Consistency level must be set on the BATCH, not individual UPDATE statements");
+batchUpdate(keyspace,batch.getUpdates(),batch.getConsistencyLevel());
 avroResult.type=CqlResultType.VOID;
 return avroResult;
 case USE:
