@@ -1,0 +1,23 @@
+{
+  ConsistencyLevel consistency=updateStatements.get(0).getConsistencyLevel();
+  List<RowMutation> rowMutations=new ArrayList<RowMutation>();
+  for (  UpdateStatement update : updateStatements) {
+    ByteBuffer key=update.getKey().getByteBuffer();
+    validateKey(key);
+    validateColumnFamily(keyspace,update.getColumnFamily());
+    RowMutation rm=new RowMutation(keyspace,key);
+    for (    Map.Entry<Term,Term> column : update.getColumns().entrySet()) {
+      rm.add(new QueryPath(update.getColumnFamily(),null,column.getKey().getByteBuffer()),column.getValue().getByteBuffer(),System.currentTimeMillis());
+    }
+    rowMutations.add(rm);
+  }
+  try {
+    StorageProxy.mutate(rowMutations,consistency);
+  }
+ catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    throw new UnavailableException();
+  }
+catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+}
