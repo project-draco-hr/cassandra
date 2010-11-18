@@ -9,11 +9,13 @@
   snapshot(Table.getTimestampedSnapshotName("before-truncate"));
   Runnable runnable=new WrappedRunnable(){
     public void runMayThrow() throws InterruptedException, IOException {
-      List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
-      for (      SSTableReader sstable : ssTables.getSSTables()) {
-        if (!sstable.newSince(truncatedAt))         truncatedSSTables.add(sstable);
+      for (      ColumnFamilyStore cfs : Iterables.concat(indexedColumns.values(),Arrays.asList(ColumnFamilyStore.this))) {
+        List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
+        for (        SSTableReader sstable : cfs.getSSTables()) {
+          if (!sstable.newSince(truncatedAt))           truncatedSSTables.add(sstable);
+        }
+        cfs.markCompacted(truncatedSSTables);
       }
-      markCompacted(truncatedSSTables);
       invalidateRowCache();
     }
   }
