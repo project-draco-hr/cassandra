@@ -10,6 +10,7 @@
     RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace,liveEndpoints);
     AbstractReplicationStrategy rs=Table.open(keyspace).replicationStrategy;
     QuorumResponseHandler<List<Row>> handler=rs.getQuorumResponseHandler(resolver,consistency_level);
+    if (handler.blockfor > liveEndpoints.size())     throw new UnavailableException();
     IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
     Message message=command.getMessage();
     for (    InetAddress endpoint : liveEndpoints) {
