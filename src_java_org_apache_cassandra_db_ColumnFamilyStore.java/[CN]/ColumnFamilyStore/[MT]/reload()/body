@@ -1,2 +1,20 @@
 {
+  if (!minCompactionThreshold.isModified())   minCompactionThreshold=new DefaultInteger(metadata.getMinCompactionThreshold());
+  if (!maxCompactionThreshold.isModified())   maxCompactionThreshold=new DefaultInteger(metadata.getMaxCompactionThreshold());
+  if (!memtime.isModified())   memtime=new DefaultInteger(metadata.getMemtableFlushAfterMins());
+  if (!memsize.isModified())   memsize=new DefaultInteger(metadata.getMemtableThroughputInMb());
+  if (!memops.isModified())   memops=new DefaultDouble(metadata.getMemtableOperationsInMillions());
+  ssTables.updateCacheSizes();
+  for (  ByteBuffer indexName : indexedColumns.keySet()) {
+    if (!metadata.getColumn_metadata().containsKey(indexName)) {
+      ColumnFamilyStore indexCfs=indexedColumns.remove(indexName);
+      if (indexCfs == null) {
+        logger.debug("index {} already removed; ignoring",FBUtilities.bytesToHex(indexName));
+        continue;
+      }
+      SystemTable.setIndexRemoved(metadata.tableName,metadata.cfName);
+      indexCfs.removeAllSSTables();
+    }
+  }
+  for (  ColumnDefinition cdef : metadata.getColumn_metadata().values())   if (!indexedColumns.containsKey(cdef.name) && cdef.getIndexType() != null)   addIndex(cdef);
 }
