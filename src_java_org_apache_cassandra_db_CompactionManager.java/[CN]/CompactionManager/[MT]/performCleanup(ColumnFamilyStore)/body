@@ -1,8 +1,14 @@
 {
   Callable<Object> runnable=new Callable<Object>(){
     public Object call() throws IOException {
-      doCleanupCompaction(cfStore);
-      return this;
+      compactionLock.lock();
+      try {
+        if (!cfStore.isInvalid())         doCleanupCompaction(cfStore);
+        return this;
+      }
+  finally {
+        compactionLock.unlock();
+      }
     }
   }
 ;

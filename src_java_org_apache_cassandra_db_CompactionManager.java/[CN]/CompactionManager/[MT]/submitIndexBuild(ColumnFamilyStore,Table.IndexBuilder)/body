@@ -1,10 +1,18 @@
 {
   Runnable runnable=new Runnable(){
     public void run(){
-      executor.beginCompaction(cfs,builder);
-      builder.build();
+      compactionLock.lock();
+      try {
+        if (cfs.isInvalid())         return;
+        executor.beginCompaction(cfs,builder);
+        builder.build();
+      }
+  finally {
+        compactionLock.unlock();
+      }
     }
   }
 ;
-  return executor.submit(runnable);
+  if (compactionLock.isHeldByCurrentThread())   return new SimpleFuture(runnable);
+ else   return executor.submit(runnable);
 }

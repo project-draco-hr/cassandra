@@ -1,20 +1,27 @@
 {
   Callable<Integer> callable=new Callable<Integer>(){
     public Integer call() throws IOException {
-      Integer minThreshold=cfs.getMinimumCompactionThreshold();
-      Integer maxThreshold=cfs.getMaximumCompactionThreshold();
-      if (minThreshold == 0 || maxThreshold == 0) {
-        logger.debug("Compaction is currently disabled.");
-        return 0;
-      }
-      logger.debug("Checking to see if compaction of " + cfs.columnFamily + " would be useful");
-      Set<List<SSTableReader>> buckets=getBuckets(convertSSTablesToPairs(cfs.getSSTables()),50L * 1024L * 1024L);
-      updateEstimateFor(cfs,buckets);
-      for (      List<SSTableReader> sstables : buckets) {
-        if (sstables.size() >= minThreshold) {
-          Collections.sort(sstables);
-          return doCompaction(cfs,sstables.subList(0,Math.min(sstables.size(),maxThreshold)),(int)(System.currentTimeMillis() / 1000) - cfs.metadata.gcGraceSeconds);
+      compactionLock.lock();
+      try {
+        if (cfs.isInvalid())         return 0;
+        Integer minThreshold=cfs.getMinimumCompactionThreshold();
+        Integer maxThreshold=cfs.getMaximumCompactionThreshold();
+        if (minThreshold == 0 || maxThreshold == 0) {
+          logger.debug("Compaction is currently disabled.");
+          return 0;
         }
+        logger.debug("Checking to see if compaction of " + cfs.columnFamily + " would be useful");
+        Set<List<SSTableReader>> buckets=getBuckets(convertSSTablesToPairs(cfs.getSSTables()),50L * 1024L * 1024L);
+        updateEstimateFor(cfs,buckets);
+        for (        List<SSTableReader> sstables : buckets) {
+          if (sstables.size() >= minThreshold) {
+            Collections.sort(sstables);
+            return doCompaction(cfs,sstables.subList(0,Math.min(sstables.size(),maxThreshold)),(int)(System.currentTimeMillis() / 1000) - cfs.metadata.getGcGraceSeconds());
+          }
+        }
+      }
+  finally {
+        compactionLock.unlock();
       }
       return 0;
     }

@@ -1,8 +1,14 @@
 {
   Callable<Object> callable=new Callable<Object>(){
     public Object call() throws IOException {
-      doValidationCompaction(cfStore,validator);
-      return this;
+      compactionLock.lock();
+      try {
+        if (!cfStore.isInvalid())         doValidationCompaction(cfStore,validator);
+        return this;
+      }
+  finally {
+        compactionLock.unlock();
+      }
     }
   }
 ;

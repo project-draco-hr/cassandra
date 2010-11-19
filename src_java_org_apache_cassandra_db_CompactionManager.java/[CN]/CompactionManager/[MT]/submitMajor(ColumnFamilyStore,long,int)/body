@@ -1,20 +1,27 @@
 {
   Callable<Object> callable=new Callable<Object>(){
     public Object call() throws IOException {
-      Collection<SSTableReader> sstables;
-      if (skip > 0) {
-        sstables=new ArrayList<SSTableReader>();
-        for (        SSTableReader sstable : cfStore.getSSTables()) {
-          if (sstable.length() < skip * 1024L * 1024L* 1024L) {
-            sstables.add(sstable);
+      compactionLock.lock();
+      try {
+        if (cfStore.isInvalid())         return this;
+        Collection<SSTableReader> sstables;
+        if (skip > 0) {
+          sstables=new ArrayList<SSTableReader>();
+          for (          SSTableReader sstable : cfStore.getSSTables()) {
+            if (sstable.length() < skip * 1024L * 1024L* 1024L) {
+              sstables.add(sstable);
+            }
           }
         }
-      }
  else {
-        sstables=cfStore.getSSTables();
+          sstables=cfStore.getSSTables();
+        }
+        doCompaction(cfStore,sstables,gcBefore);
+        return this;
       }
-      doCompaction(cfStore,sstables,gcBefore);
-      return this;
+  finally {
+        compactionLock.unlock();
+      }
     }
   }
 ;
