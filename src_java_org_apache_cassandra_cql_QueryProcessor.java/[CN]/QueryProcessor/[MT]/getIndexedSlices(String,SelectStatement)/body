@@ -10,7 +10,13 @@
   try {
     rows=StorageProxy.scan(keyspace,select.getColumnFamily(),thriftIndexClause,thriftSlicePredicate,select.getConsistencyLevel());
   }
- catch (  IOException e) {
+ catch (  org.apache.cassandra.thrift.UnavailableException ex) {
+    UnavailableException avroEx=new UnavailableException();
+    avroEx.why=ex.getMessage();
+    if (avroEx.why == null || avroEx.why.length() == 0)     avroEx.why="StorageProxy.scan() failed because of insufficent responses.";
+    throw avroEx;
+  }
+catch (  IOException e) {
     throw new RuntimeException(e);
   }
 catch (  TimeoutException e) {
