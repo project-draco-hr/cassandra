@@ -22,11 +22,7 @@
       sessionState.err.println(e.getMessage());
       return;
     }
-    BufferedReader reader=new BufferedReader(fileReader);
-    String statement;
-    while ((statement=reader.readLine()) != null) {
-      processStatement(statement);
-    }
+    evaluateFileStatements(new BufferedReader(fileReader));
     return;
   }
   ConsoleReader reader=new ConsoleReader();
@@ -46,8 +42,23 @@
     sessionState.out.close();
   }
   printBanner();
-  String line;
-  while ((line=reader.readLine(getPrompt(cliClient))) != null) {
-    processStatement(line);
+  String prompt;
+  String line="";
+  String currentStatement="";
+  boolean inCompoundStatement=false;
+  while (line != null) {
+    prompt=(inCompoundStatement) ? "\t" : getPrompt(cliClient);
+    line=reader.readLine(prompt).trim();
+    if (line.isEmpty())     continue;
+    currentStatement+=line;
+    if (line.endsWith(";")) {
+      processStatement(currentStatement);
+      currentStatement="";
+      inCompoundStatement=false;
+    }
+ else {
+      currentStatement+=" ";
+      inCompoundStatement=true;
+    }
   }
 }
