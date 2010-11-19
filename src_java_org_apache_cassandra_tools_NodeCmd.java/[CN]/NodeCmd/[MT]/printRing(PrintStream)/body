@@ -7,13 +7,15 @@
   Collection<String> joiningNodes=probe.getJoiningNodes();
   Collection<String> leavingNodes=probe.getLeavingNodes();
   Map<String,String> loadMap=probe.getLoadMap();
-  outs.printf("%-16s%-7s%-8s%-16s%-44s\n","Address","Status","State","Load","Token");
-  if (sortedTokens.size() > 1)   outs.printf("%-14s%-11s%-14s%-43s\n","","","",sortedTokens.get(sortedTokens.size() - 1));
+  outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s\n","Address","Status","State","Load","Owns","Token");
+  if (sortedTokens.size() > 1)   outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s\n","","","","","",sortedTokens.get(sortedTokens.size() - 1));
+  Map<Token,Float> ownerships=probe.getOwnership();
   for (  Token token : sortedTokens) {
     String primaryEndpoint=tokenToEndpoint.get(token);
     String status=liveNodes.contains(primaryEndpoint) ? "Up" : deadNodes.contains(primaryEndpoint) ? "Down" : "?";
     String state=joiningNodes.contains(primaryEndpoint) ? "Joining" : leavingNodes.contains(primaryEndpoint) ? "Leaving" : "Normal";
     String load=loadMap.containsKey(primaryEndpoint) ? loadMap.get(primaryEndpoint) : "?";
-    outs.printf("%-16s%-7s%-8s%-16s%-44s\n",primaryEndpoint,status,state,load,token);
+    String owns=new DecimalFormat("##0.00%").format(ownerships.get(token));
+    outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s\n",primaryEndpoint,status,state,load,owns,token);
   }
 }

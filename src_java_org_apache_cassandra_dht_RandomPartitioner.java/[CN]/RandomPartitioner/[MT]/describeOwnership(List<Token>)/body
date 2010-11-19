@@ -1,0 +1,27 @@
+{
+  Map<Token,Float> ownerships=new HashMap<Token,Float>();
+  Iterator i=sortedTokens.iterator();
+  if (!i.hasNext()) {
+    throw new RuntimeException("No nodes present in the cluster. How did you call this?");
+  }
+  if (sortedTokens.size() == 1) {
+    ownerships.put((Token)i.next(),new Float(1.0));
+  }
+ else {
+    final BigInteger ri=new BigInteger("2").pow(127);
+    final BigDecimal r=new BigDecimal(ri);
+    Token start=(Token)i.next();
+    BigInteger ti=((BigIntegerToken)start).token;
+    Token t;
+    BigInteger tim1=ti;
+    while (i.hasNext()) {
+      t=(Token)i.next();
+      ti=((BigIntegerToken)t).token;
+      float x=new BigDecimal(ti.subtract(tim1)).divide(r).floatValue();
+      ownerships.put(t,x);
+      tim1=ti;
+    }
+    ownerships.put(start,new BigDecimal(((BigIntegerToken)start).token.subtract(ti).add(ri).mod(ri)).divide(r).floatValue());
+  }
+  return ownerships;
+}
