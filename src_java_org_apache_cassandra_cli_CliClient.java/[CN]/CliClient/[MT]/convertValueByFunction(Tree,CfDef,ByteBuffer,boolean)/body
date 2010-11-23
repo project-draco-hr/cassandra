@@ -4,7 +4,24 @@
   String functionArg=(argumentTree == null) ? "" : CliUtils.unescapeSQLString(argumentTree.getText());
   AbstractType validator=getTypeByFunction(functionName);
   try {
-    ByteBuffer value=getBytesAccordingToType(functionArg,validator);
+    ByteBuffer value;
+    if (functionArg.isEmpty()) {
+      if (validator instanceof TimeUUIDType) {
+        value=ByteBuffer.wrap(UUIDGenerator.getInstance().generateTimeBasedUUID().asByteArray());
+      }
+ else       if (validator instanceof LexicalUUIDType) {
+        value=ByteBuffer.wrap(UUIDGen.decompose(UUID.randomUUID()));
+      }
+ else       if (validator instanceof BytesType) {
+        value=ByteBuffer.wrap(new byte[0]);
+      }
+ else {
+        throw new RuntimeException(String.format("Argument for '%s' could not be empty.",functionName));
+      }
+    }
+ else {
+      value=getBytesAccordingToType(functionArg,validator);
+    }
     if (withUpdate) {
       updateColumnMetaData(columnFamily,columnName,validator.getClass().getName());
     }
