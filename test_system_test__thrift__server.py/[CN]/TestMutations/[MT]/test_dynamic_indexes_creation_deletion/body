@@ -1,0 +1,33 @@
+def test_dynamic_indexes_creation_deletion(self):
+    _set_keyspace('Keyspace1')
+    cfdef = CfDef('Keyspace1', 'BlankCF')
+    client.system_add_column_family(cfdef)
+    ks1 = client.describe_keyspace('Keyspace1')
+    cfid = [x.id for x in ks1.cf_defs if (x.name == 'BlankCF')][0]
+    modified_cd = ColumnDef('birthdate', 'BytesType', IndexType.KEYS, 'birthdate_index')
+    modified_cf = CfDef('Keyspace1', 'BlankCF', column_metadata=[modified_cd])
+    modified_cf.id = cfid
+    client.system_update_column_family(modified_cf)
+    birthdate_coldef = ColumnDef('birthdate', 'BytesType', IndexType.KEYS, 'birthdate_index')
+    age_coldef = ColumnDef('age', 'BytesType', IndexType.KEYS, 'age_index')
+    cfdef = CfDef('Keyspace1', 'BlankCF2', column_metadata=[birthdate_coldef, age_coldef])
+    client.system_add_column_family(cfdef)
+    ks1 = client.describe_keyspace('Keyspace1')
+    cfdef = [x for x in ks1.cf_defs if (x.name == 'BlankCF2')][0]
+    name_coldef = ColumnDef('name', 'BytesType', IndexType.KEYS, 'name_index')
+    cfdef.column_metadata.append(name_coldef)
+    client.system_update_column_family(cfdef)
+    ks1 = client.describe_keyspace('Keyspace1')
+    cfdef = [x for x in ks1.cf_defs if (x.name == 'BlankCF2')][0]
+    birthdate_coldef = ColumnDef('birthdate', 'BytesType', None, None)
+    age_coldef = ColumnDef('age', 'BytesType', None, None)
+    name_coldef = ColumnDef('name', 'BytesType', None, None)
+    cfdef.column_metadata = [birthdate_coldef, age_coldef, name_coldef]
+    client.system_update_column_family(cfdef)
+    ks1 = client.describe_keyspace('Keyspace1')
+    cfdef = [x for x in ks1.cf_defs if (x.name == 'BlankCF')][0]
+    birthdate_coldef = ColumnDef('birthdate', 'BytesType', None, None)
+    cfdef.column_metadata = [birthdate_coldef]
+    client.system_update_column_family(cfdef)
+    client.system_drop_column_family('BlankCF')
+    client.system_drop_column_family('BlankCF2')
