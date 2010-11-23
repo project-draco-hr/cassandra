@@ -1,0 +1,25 @@
+{
+  Map<Token,Float> alltokens=new HashMap<Token,Float>();
+  List<Range> sorted_ranges=new ArrayList<Range>();
+  Token last_t=sortedTokens.get(sortedTokens.size() - 1);
+  for (  Token node : sortedTokens) {
+    alltokens.put(node,new Float(0.0));
+    sorted_ranges.add(new Range(last_t,node));
+    last_t=node;
+  }
+  for (  String ks : DatabaseDescriptor.getTables()) {
+    for (    CFMetaData cfmd : DatabaseDescriptor.getKSMetaData(ks).cfMetaData().values()) {
+      for (      Range r : sorted_ranges) {
+        alltokens.put(r.right,alltokens.get(r.right) + StorageService.instance.getSplits(ks,cfmd.cfName,r,1).size());
+      }
+    }
+  }
+  Float total=new Float(0.0);
+  for (  Float f : alltokens.values()) {
+    total+=f;
+  }
+  for (  Map.Entry<Token,Float> row : alltokens.entrySet()) {
+    alltokens.put(row.getKey(),row.getValue() / total);
+  }
+  return alltokens;
+}
