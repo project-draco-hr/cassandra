@@ -7,23 +7,25 @@
     if (ks_def.strategy_class.endsWith(".NetworkTopologyStrategy"))     sessionState.out.println("    Options: " + FBUtilities.toString(ks_def.strategy_options));
  else     sessionState.out.println("    Replication Factor: " + ks_def.replication_factor);
     sessionState.out.println("  Column Families:");
+    boolean isSuper;
     Collections.sort(ks_def.cf_defs,new CfDefNamesComparator());
     for (    CfDef cf_def : ks_def.cf_defs) {
-      sessionState.out.printf("    ColumnFamily: %s%s\n",cf_def.name,cf_def.column_type.equals("Super") ? " (Super)" : "");
+      isSuper=cf_def.column_type.equals("Super");
+      sessionState.out.printf("    ColumnFamily: %s%s%n",cf_def.name,isSuper ? " (Super)" : "");
       if (cf_def.comment != null && !cf_def.comment.isEmpty()) {
-        sessionState.out.printf("    \"%s\"\n",cf_def.comment);
+        sessionState.out.printf("    \"%s\"%n",cf_def.comment);
       }
-      sessionState.out.printf("      Columns sorted by: %s%s\n",cf_def.comparator_type,cf_def.column_type.equals("Super") ? "/" + cf_def.subcomparator_type : "");
-      sessionState.out.printf("      Row cache size / save period: %s/%s\n",cf_def.row_cache_size,cf_def.row_cache_save_period_in_seconds);
-      sessionState.out.printf("      Key cache size / save period: %s/%s\n",cf_def.key_cache_size,cf_def.key_cache_save_period_in_seconds);
-      sessionState.out.printf("      Memtable thresholds: %s/%s/%s\n",cf_def.memtable_operations_in_millions,cf_def.memtable_throughput_in_mb,cf_def.memtable_flush_after_mins);
-      sessionState.out.printf("      GC grace seconds: %s\n",cf_def.gc_grace_seconds);
-      sessionState.out.printf("      Compaction min/max thresholds: %s/%s\n",cf_def.min_compaction_threshold,cf_def.max_compaction_threshold);
-      sessionState.out.printf("      Read repair chance: %s\n",cf_def.read_repair_chance);
+      sessionState.out.printf("      Columns sorted by: %s%s%n",cf_def.comparator_type,cf_def.column_type.equals("Super") ? "/" + cf_def.subcomparator_type : "");
+      sessionState.out.printf("      Row cache size / save period: %s/%s%n",cf_def.row_cache_size,cf_def.row_cache_save_period_in_seconds);
+      sessionState.out.printf("      Key cache size / save period: %s/%s%n",cf_def.key_cache_size,cf_def.key_cache_save_period_in_seconds);
+      sessionState.out.printf("      Memtable thresholds: %s/%s/%s%n",cf_def.memtable_operations_in_millions,cf_def.memtable_throughput_in_mb,cf_def.memtable_flush_after_mins);
+      sessionState.out.printf("      GC grace seconds: %s%n",cf_def.gc_grace_seconds);
+      sessionState.out.printf("      Compaction min/max thresholds: %s/%s%n",cf_def.min_compaction_threshold,cf_def.max_compaction_threshold);
+      sessionState.out.printf("      Read repair chance: %s%n",cf_def.read_repair_chance);
       if (cf_def.getColumn_metadataSize() != 0) {
         String leftSpace="      ";
         String columnLeftSpace=leftSpace + "    ";
-        AbstractType columnNameValidator=getFormatTypeForColumn(cf_def.comparator_type);
+        AbstractType columnNameValidator=getFormatTypeForColumn(isSuper ? cf_def.subcomparator_type : cf_def.comparator_type);
         sessionState.out.println(leftSpace + "Column Metadata:");
         for (        ColumnDef columnDef : cf_def.getColumn_metadata()) {
           String columnName=columnNameValidator.getString(columnDef.name);

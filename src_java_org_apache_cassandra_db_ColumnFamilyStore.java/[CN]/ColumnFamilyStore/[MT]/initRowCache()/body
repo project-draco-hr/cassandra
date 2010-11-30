@@ -1,12 +1,10 @@
 {
-  String msgSuffix=String.format(" row cache for %s of %s",columnFamily,table.name);
   int rowCacheSavePeriodInSeconds=DatabaseDescriptor.getTableMetaData(table.name).get(columnFamily).getRowCacheSavePeriodInSeconds();
   int keyCacheSavePeriodInSeconds=DatabaseDescriptor.getTableMetaData(table.name).get(columnFamily).getKeyCacheSavePeriodInSeconds();
   long start=System.currentTimeMillis();
-  logger.info(String.format("loading%s",msgSuffix));
   Set<DecoratedKey> savedKeys=readSavedCache(DatabaseDescriptor.getSerializedRowCachePath(table.name,columnFamily));
   for (  DecoratedKey key : savedKeys)   cacheRow(key);
-  logger.info(String.format("completed loading (%d ms; %d keys) %s",System.currentTimeMillis() - start,ssTables.getRowCache().getSize(),msgSuffix));
+  if (ssTables.getRowCache().getSize() > 0)   logger.info(String.format("completed loading (%d ms; %d keys) row cache for %s.%s",System.currentTimeMillis() - start,ssTables.getRowCache().getSize(),table.name,columnFamily));
   if (rowCacheSavePeriodInSeconds > 0) {
     cacheSavingExecutor.scheduleWithFixedDelay(rowCacheSaverTask,rowCacheSavePeriodInSeconds,rowCacheSavePeriodInSeconds,TimeUnit.SECONDS);
   }
