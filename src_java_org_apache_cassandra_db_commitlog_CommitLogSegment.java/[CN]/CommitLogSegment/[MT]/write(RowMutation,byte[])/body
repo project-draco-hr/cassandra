@@ -1,0 +1,32 @@
+{
+  long currentPosition=-1L;
+  try {
+    currentPosition=logWriter.getFilePointer();
+    CommitLogSegment.CommitLogContext cLogCtx=new CommitLogSegment.CommitLogContext(currentPosition);
+    for (    ColumnFamily columnFamily : rowMutation.getColumnFamilies()) {
+      CFMetaData cfm=DatabaseDescriptor.getCFMetaData(columnFamily.id());
+      if (cfm == null) {
+        logger.error("Attempted to write commit log entry for unrecognized column family: " + columnFamily.id());
+      }
+ else {
+        Integer id=cfm.cfId;
+        if (!header.isDirty(id)) {
+          header.turnOn(id,logWriter.getFilePointer());
+          writeHeader();
+        }
+      }
+    }
+    Checksum checksum=new CRC32();
+    checksum.update(serializedRow.length);
+    logWriter.writeInt(serializedRow.length);
+    logWriter.writeLong(checksum.getValue());
+    logWriter.write(serializedRow);
+    checksum.update(serializedRow,0,serializedRow.length);
+    logWriter.writeLong(checksum.getValue());
+    return cLogCtx;
+  }
+ catch (  IOException e) {
+    if (currentPosition != -1)     logWriter.seek(currentPosition);
+    throw e;
+  }
+}
