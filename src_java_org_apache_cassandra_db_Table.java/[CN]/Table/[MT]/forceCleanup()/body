@@ -1,4 +1,14 @@
 {
-  if (name.equals(SYSTEM_TABLE))   throw new RuntimeException("Cleanup of the system table is neither necessary nor wise");
-  for (  ColumnFamilyStore cfStore : columnFamilyStores.values())   cfStore.forceCleanup();
+  if (name.equals(SYSTEM_TABLE))   throw new UnsupportedOperationException("Cleanup of the system table is neither necessary nor wise");
+  List<ColumnFamilyStore> sortedColumnFamilies=new ArrayList<ColumnFamilyStore>(columnFamilyStores.values());
+  Collections.sort(sortedColumnFamilies,new Comparator<ColumnFamilyStore>(){
+    public int compare(    ColumnFamilyStore cf1,    ColumnFamilyStore cf2){
+      long diff=(cf1.getTotalDiskSpaceUsed() - cf2.getTotalDiskSpaceUsed());
+      if (diff > 0)       return 1;
+      if (diff < 0)       return -1;
+      return cf1.columnFamily.compareTo(cf2.columnFamily);
+    }
+  }
+);
+  for (  ColumnFamilyStore cfs : sortedColumnFamilies)   cfs.forceCleanup();
 }
