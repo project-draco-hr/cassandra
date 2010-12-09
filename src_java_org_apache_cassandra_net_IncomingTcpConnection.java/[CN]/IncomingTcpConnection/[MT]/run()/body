@@ -1,8 +1,7 @@
 {
   while (true) {
     try {
-      MessagingService.validateMagic(input.readInt());
-      int header=input.readInt();
+      int header=readHeader(input);
       int type=MessagingService.getBits(header,1,2);
       boolean isStream=MessagingService.getBits(header,3,1) == 1;
       int version=MessagingService.getBits(header,15,8);
@@ -14,10 +13,7 @@
         new IncomingStreamReader(streamHeader,socket.getChannel()).read();
       }
  else {
-        int size=input.readInt();
-        byte[] contentBytes=new byte[size];
-        input.readFully(contentBytes);
-        Message message=Message.serializer().deserialize(new DataInputStream(new ByteArrayInputStream(contentBytes)));
+        Message message=readMessage(input);
         MessagingService.receive(message);
       }
     }
