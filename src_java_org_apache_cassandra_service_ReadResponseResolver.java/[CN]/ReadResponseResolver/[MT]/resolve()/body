@@ -4,14 +4,18 @@
   List<ColumnFamily> versions=new ArrayList<ColumnFamily>();
   List<InetAddress> endpoints=new ArrayList<InetAddress>();
   DecoratedKey key=null;
-  ByteBuffer digest=FBUtilities.EMPTY_BYTE_BUFFER;
-  boolean isDigestQuery=false;
+  ByteBuffer digest=null;
   for (  Map.Entry<Message,ReadResponse> entry : results.entrySet()) {
     ReadResponse result=entry.getValue();
     Message message=entry.getKey();
     if (result.isDigestQuery()) {
-      digest=result.digest();
-      isDigestQuery=true;
+      if (digest == null) {
+        digest=result.digest();
+      }
+ else {
+        ByteBuffer digest2=result.digest();
+        if (!digest.equals(digest2))         throw new DigestMismatchException(key,digest,digest2);
+      }
     }
  else {
       versions.add(result.row().cf);
@@ -19,12 +23,10 @@
       key=result.row().key;
     }
   }
-  if (isDigestQuery) {
+  if (digest != null) {
     for (    ColumnFamily cf : versions) {
-      if (!ColumnFamily.digest(cf).equals(digest)) {
-        String s=String.format("Mismatch for key %s (%s vs %s)",key,FBUtilities.bytesToHex(ColumnFamily.digest(cf)),FBUtilities.bytesToHex(digest));
-        throw new DigestMismatchException(s);
-      }
+      ByteBuffer digest2=ColumnFamily.digest(cf);
+      if (!digest.equals(digest2))       throw new DigestMismatchException(key,digest,digest2);
     }
     if (logger_.isDebugEnabled())     logger_.debug("digests verified");
   }
