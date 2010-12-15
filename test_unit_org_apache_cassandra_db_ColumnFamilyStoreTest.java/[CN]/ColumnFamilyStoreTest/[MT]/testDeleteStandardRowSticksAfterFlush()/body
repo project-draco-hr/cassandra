@@ -1,0 +1,29 @@
+{
+  String tableName="Keyspace1";
+  String cfName="Standard1";
+  Table table=Table.open(tableName);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
+  DecoratedKey key=Util.dk("f-flush-resurrection");
+  SlicePredicate sp=new SlicePredicate();
+  sp.setSlice_range(new SliceRange());
+  sp.getSlice_range().setCount(100);
+  sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
+  sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
+  putColsStandard(cfs,key,column("col1","val1",1),column("col2","val2",1));
+  assertRowAndColCount(1,2,null,false,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  cfs.forceBlockingFlush();
+  putColsStandard(cfs,key,column("col3","val3",1),column("col4","val4",1));
+  assertRowAndColCount(1,4,null,false,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  RowMutation rm=new RowMutation(table.name,key.key);
+  rm.delete(new QueryPath(cfs.columnFamily,null,null),2);
+  rm.apply();
+  assertRowAndColCount(1,0,null,true,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  cfs.forceBlockingFlush();
+  assertRowAndColCount(1,0,null,true,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  putColsStandard(cfs,key,column("col5","val5",1),column("col2","val2",1));
+  assertRowAndColCount(1,0,null,true,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  putColsStandard(cfs,key,column("col6","val6",3),column("col7","val7",3));
+  assertRowAndColCount(1,2,null,true,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+  cfs.forceBlockingFlush();
+  assertRowAndColCount(1,2,null,true,cfs.getRangeSlice(null,Util.range("f","g"),100,QueryFilter.getFilter(sp,cfs.getComparator())));
+}
