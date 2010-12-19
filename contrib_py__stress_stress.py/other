@@ -1,3 +1,4 @@
+from __future__ import with_statement
 have_multiproc = False
 try:
     from multiprocessing import Array as array, Process as Thread
@@ -41,6 +42,7 @@ parser.add_option('-c', '--columns', type='int', dest='columns', help='Number of
 parser.add_option('-S', '--column-size', type='int', dest='column_size', help='Size of column values in bytes', default=34)
 parser.add_option('-C', '--cardinality', type='int', dest='cardinality', help='Number of unique values stored in columns', default=50)
 parser.add_option('-d', '--nodes', type='string', dest='nodes', help='Host nodes (comma separated)', default='localhost')
+parser.add_option('-D', '--nodefile', type='string', dest='nodefile', help='File containing list of nodes (one per line)', default=None)
 parser.add_option('-s', '--stdev', type='float', dest='stdev', default=0.1, help='standard deviation factor')
 parser.add_option('-r', '--random', action='store_true', dest='random', help='use random key generator (stdev will have no effect)')
 parser.add_option('-f', '--file', type='string', dest='file', help='write output to file')
@@ -62,6 +64,9 @@ keys_per_thread = (total_keys / n_threads)
 columns_per_key = options.columns
 supers_per_key = options.supers
 nodes = options.nodes.split(',')
+if (options.nodefile != None):
+    with open(options.nodefile) as f:
+        nodes = [n.strip() for n in f.readlines() if (len(n.strip()) > 0)]
 stdev = (total_keys * options.stdev)
 mean = (total_keys / 2)
 consistency = getattr(ConsistencyLevel, options.consistency, None)
