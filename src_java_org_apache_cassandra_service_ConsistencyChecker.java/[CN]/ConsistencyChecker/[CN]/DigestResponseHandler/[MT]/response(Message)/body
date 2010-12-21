@@ -6,14 +6,12 @@
     ReadResponse result=ReadResponse.serializer().deserialize(new DataInputStream(bufIn));
     ByteBuffer digest=result.digest();
     if (!localDigest.equals(digest)) {
-      ReadResponseResolver readResponseResolver=new ReadResponseResolver(table_);
-      IAsyncCallback responseHandler=new DataRepairHandler(row_,replicas_.size(),readResponseResolver);
       ReadCommand readCommand=constructReadMessage(false);
       Message message=readCommand.makeReadMessage();
       if (logger_.isDebugEnabled())       logger_.debug("Digest mismatch; re-reading " + readCommand_.key + " from "+ message.getMessageId()+ "@["+ StringUtils.join(replicas_,", ")+ "]");
-      MessagingService.instance.addCallback(responseHandler,message.getMessageId());
+      MessagingService.instance.addCallback(new DataRepairHandler(),message.getMessageId());
       for (      InetAddress endpoint : replicas_) {
-        if (!endpoint.equals(FBUtilities.getLocalAddress()))         MessagingService.instance.sendOneWay(message,endpoint);
+        if (!endpoint.equals(dataSource))         MessagingService.instance.sendOneWay(message,endpoint);
       }
       repairInvoked=true;
     }
