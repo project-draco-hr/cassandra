@@ -1,5 +1,11 @@
 {
-  logger.debug("Updating " + metadata + " to "+ metadata);
+  logger.debug("Updating " + DatabaseDescriptor.getCFMetaData(metadata.cfId) + " to "+ metadata);
+  try {
+    DatabaseDescriptor.getCFMetaData(metadata.cfId).apply(CFMetaData.convertToAvro(metadata));
+  }
+ catch (  ConfigurationException ex) {
+    throw new IOException(ex);
+  }
   DatabaseDescriptor.setTableDefinition(null,newVersion);
   if (!clientMode) {
     Table table=Table.open(metadata.tableName);
