@@ -1,0 +1,40 @@
+{
+  Map<FBUtilities.ByteArrayWrapper,CounterNode> contextsMap=new HashMap<FBUtilities.ByteArrayWrapper,CounterNode>();
+  for (int offset=0; offset < left.length; offset+=stepLength) {
+    FBUtilities.ByteArrayWrapper id=new FBUtilities.ByteArrayWrapper(ArrayUtils.subarray(left,offset,offset + idLength));
+    long clock=FBUtilities.byteArrayToLong(left,offset + idLength);
+    long count=FBUtilities.byteArrayToLong(left,offset + idLength + clockLength);
+    contextsMap.put(id,new CounterNode(clock,count));
+  }
+  for (int offset=0; offset < right.length; offset+=stepLength) {
+    FBUtilities.ByteArrayWrapper id=new FBUtilities.ByteArrayWrapper(ArrayUtils.subarray(right,offset,offset + idLength));
+    long clock=FBUtilities.byteArrayToLong(right,offset + idLength);
+    long count=FBUtilities.byteArrayToLong(right,offset + idLength + clockLength);
+    if (!contextsMap.containsKey(id)) {
+      contextsMap.put(id,new CounterNode(clock,count));
+      continue;
+    }
+    CounterNode node=contextsMap.get(id);
+    if (this.idWrapper.equals(id)) {
+      contextsMap.put(id,new CounterNode(clock + node.clock,count + node.count));
+      continue;
+    }
+    if (node.clock < clock) {
+      contextsMap.put(id,new CounterNode(clock,count));
+    }
+  }
+  List<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>> contextsList=new ArrayList<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>>(contextsMap.entrySet());
+  Collections.sort(contextsList,new Comparator<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>>(){
+    public int compare(    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> e1,    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> e2){
+      return e2.getValue().compareClockTo(e1.getValue());
+    }
+  }
+);
+  int length=contextsList.size();
+  byte[] merged=new byte[length * stepLength];
+  for (int i=0; i < length; i++) {
+    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> entry=contextsList.get(i);
+    writeElementAtStepOffset(merged,i,entry.getKey().data,entry.getValue().clock,entry.getValue().count);
+  }
+  return merged;
+}

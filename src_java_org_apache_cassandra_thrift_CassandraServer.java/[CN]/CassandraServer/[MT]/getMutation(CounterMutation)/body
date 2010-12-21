@@ -1,0 +1,27 @@
+{
+  Mutation mutation=new Mutation();
+  if (counterMutation.isSetCounter()) {
+    Counter counter=counterMutation.counter;
+    ColumnOrSuperColumn cosc=new ColumnOrSuperColumn();
+    if (counter.isSetColumn()) {
+      Column c=new Column(counter.column.name,FBUtilities.toByteBuffer(counter.column.value),System.currentTimeMillis());
+      cosc.setColumn(c);
+    }
+    if (counter.isSetSuper_column()) {
+      List<Column> subcolumns=new ArrayList<Column>(counter.super_column.columns.size());
+      for (      CounterColumn subcol : counter.super_column.columns) {
+        subcolumns.add(new Column(subcol.name,FBUtilities.toByteBuffer(subcol.value),System.currentTimeMillis()));
+      }
+      SuperColumn sc=new SuperColumn(counter.super_column.name,subcolumns);
+      cosc.setSuper_column(sc);
+    }
+    mutation.setColumn_or_supercolumn(cosc);
+  }
+  if (counterMutation.isSetDeletion()) {
+    Deletion deletion=new Deletion(System.currentTimeMillis());
+    if (counterMutation.deletion.isSetSuper_column())     deletion.setSuper_column(counterMutation.deletion.super_column);
+    if (counterMutation.deletion.isSetPredicate())     deletion.setPredicate(counterMutation.deletion.predicate);
+    mutation.setDeletion(deletion);
+  }
+  return mutation;
+}

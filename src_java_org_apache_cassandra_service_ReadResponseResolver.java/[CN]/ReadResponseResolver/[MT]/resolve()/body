@@ -8,23 +8,26 @@
     ReadResponse result=entry.getValue();
     Message message=entry.getKey();
     if (result.isDigestQuery()) {
-      if (digest == null) {
-        digest=result.digest();
-      }
- else {
-        ByteBuffer digest2=result.digest();
-        if (!digest.equals(digest2))         throw new DigestMismatchException(key,digest,digest2);
-      }
+      if (digest != null)       checkDigest(key,digest,result.digest());
+      digest=result.digest();
     }
  else {
-      versions.add(result.row().cf);
-      endpoints.add(message.getFrom());
+      ColumnFamily cf=result.row().cf;
+      InetAddress from=message.getFrom();
+      if (cf != null) {
+        AbstractType defaultValidator=cf.metadata().getDefaultValidator();
+        if (!FBUtilities.getLocalAddress().equals(from) && cf != null && defaultValidator.isCommutative()) {
+          cf=cf.cloneMe();
+          ((AbstractCommutativeType)defaultValidator).cleanContext(cf,FBUtilities.getLocalAddress());
+        }
+      }
+      versions.add(cf);
+      endpoints.add(from);
     }
   }
   if (digest != null) {
     for (    ColumnFamily cf : versions) {
-      ByteBuffer digest2=ColumnFamily.digest(cf);
-      if (!digest.equals(digest2))       throw new DigestMismatchException(key,digest,digest2);
+      checkDigest(key,digest,ColumnFamily.digest(cf));
     }
     if (logger_.isDebugEnabled())     logger_.debug("digests verified");
   }

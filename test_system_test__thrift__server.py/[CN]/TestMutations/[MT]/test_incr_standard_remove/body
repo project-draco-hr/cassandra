@@ -1,0 +1,17 @@
+def test_incr_standard_remove(self):
+    _set_keyspace('Keyspace1')
+    d1 = 124
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c1', d1), ConsistencyLevel.ONE)
+    time.sleep(5)
+    rv1 = client.get_counter('key1', ColumnPath(column_family='Counter1', column='c1'), ConsistencyLevel.ONE)
+    assert (rv1.column.value == d1)
+    client.remove_counter('key1', ColumnPath(column_family='Counter1', column='c1'), ConsistencyLevel.ONE)
+    time.sleep(5)
+    _assert_no_columnpath('key1', ColumnPath(column_family='Counter1', column='c1'))
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c1', d1), ConsistencyLevel.ONE)
+    time.sleep(5)
+    rv2 = client.get_counter('key1', ColumnPath(column_family='Counter1', column='c1'), ConsistencyLevel.ONE)
+    assert (rv2.column.value == d1)
+    client.remove_counter('key1', ColumnPath(column_family='Counter1'), ConsistencyLevel.ONE)
+    time.sleep(5)
+    _assert_no_columnpath('key1', ColumnPath(column_family='Counter1', column='c1'))

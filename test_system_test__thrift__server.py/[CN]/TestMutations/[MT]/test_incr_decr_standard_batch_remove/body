@@ -1,0 +1,22 @@
+def test_incr_decr_standard_batch_remove(self):
+    _set_keyspace('Keyspace1')
+    d1 = 12
+    d2 = (-21)
+    update_map = {'key1': {'Counter1': [CounterMutation(counter=Counter(column=CounterColumn('c1', d1))), CounterMutation(counter=Counter(column=CounterColumn('c1', d2)))], }, }
+    client.batch_add(update_map, ConsistencyLevel.ONE)
+    time.sleep(5)
+    rv1 = client.get_counter('key1', ColumnPath(column_family='Counter1', column='c1'), ConsistencyLevel.ONE)
+    assert (rv1.column.value == (d1 + d2))
+    update_map = {'key1': {'Counter1': [CounterMutation(deletion=CounterDeletion(predicate=SlicePredicate(column_names=['c1'])))], }, }
+    client.batch_add(update_map, ConsistencyLevel.ONE)
+    time.sleep(5)
+    _assert_no_columnpath('key1', ColumnPath(column_family='Counter1', column='c1'))
+    update_map = {'key1': {'Counter1': [CounterMutation(counter=Counter(column=CounterColumn('c1', d1))), CounterMutation(counter=Counter(column=CounterColumn('c1', d2)))], }, }
+    client.batch_add(update_map, ConsistencyLevel.ONE)
+    time.sleep(5)
+    rv2 = client.get_counter('key1', ColumnPath(column_family='Counter1', column='c1'), ConsistencyLevel.ONE)
+    assert (rv2.column.value == (d1 + d2))
+    update_map = {'key1': {'Counter1': [CounterMutation(deletion=CounterDeletion())], }, }
+    client.batch_add(update_map, ConsistencyLevel.ONE)
+    time.sleep(5)
+    _assert_no_columnpath('key1', ColumnPath(column_family='Counter1', column='c1'))

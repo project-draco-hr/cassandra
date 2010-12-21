@@ -1,0 +1,14 @@
+def test_incr_decr_standard_slice(self):
+    _set_keyspace('Keyspace1')
+    d1 = 12
+    d2 = (-21)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c1', d1), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c2', d1), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c3', d1), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c3', d2), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c4', d1), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='Counter1'), CounterColumn('c5', d1), ConsistencyLevel.ONE)
+    time.sleep(0.1)
+    counters = client.get_counter_slice('key1', ColumnParent('Counter1'), SlicePredicate(['c3', 'c4']), ConsistencyLevel.ONE)
+    assert (counters[0].column.value == (d1 + d2))
+    assert (counters[1].column.value == d1)

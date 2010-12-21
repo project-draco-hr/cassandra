@@ -1,0 +1,19 @@
+def test_incr_decr_super_add(self):
+    _set_keyspace('Keyspace1')
+    d1 = (-234)
+    d2 = 52345
+    d3 = 3123
+    client.add('key1', ColumnParent(column_family='SuperCounter1', super_column='sc1'), CounterColumn('c1', d1), ConsistencyLevel.ONE)
+    client.add('key1', ColumnParent(column_family='SuperCounter1', super_column='sc1'), CounterColumn('c2', d2), ConsistencyLevel.ONE)
+    time.sleep(0.1)
+    rv1 = client.get_counter('key1', ColumnPath(column_family='SuperCounter1', super_column='sc1'), ConsistencyLevel.ONE)
+    assert (rv1.super_column.columns[0].value == d1)
+    assert (rv1.super_column.columns[1].value == d2)
+    client.add('key1', ColumnParent(column_family='SuperCounter1', super_column='sc1'), CounterColumn('c1', d2), ConsistencyLevel.ONE)
+    time.sleep(0.1)
+    rv2 = client.get_counter('key1', ColumnPath('SuperCounter1', 'sc1', 'c1'), ConsistencyLevel.ONE)
+    assert (rv2.column.value == (d1 + d2))
+    client.add('key1', ColumnParent(column_family='SuperCounter1', super_column='sc1'), CounterColumn('c1', d3), ConsistencyLevel.ONE)
+    time.sleep(0.1)
+    rv3 = client.get_counter('key1', ColumnPath(column_family='SuperCounter1', super_column='sc1', column='c1'), ConsistencyLevel.ONE)
+    assert (rv3.column.value == ((d1 + d2) + d3))

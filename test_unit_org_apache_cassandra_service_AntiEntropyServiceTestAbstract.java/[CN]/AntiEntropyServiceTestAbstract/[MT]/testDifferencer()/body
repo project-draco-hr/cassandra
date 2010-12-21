@@ -1,0 +1,20 @@
+{
+  Validator validator=new Validator(request);
+  validator.prepare(store);
+  validator.complete();
+  MerkleTree ltree=validator.tree;
+  validator=new Validator(request);
+  validator.prepare(store);
+  validator.complete();
+  MerkleTree rtree=validator.tree;
+  Token ltoken=StorageService.instance.getLocalToken();
+  ltree.invalidate(ltoken);
+  MerkleTree.TreeRange changed=ltree.invalids(StorageService.instance.getLocalPrimaryRange()).next();
+  changed.hash("non-empty hash!".getBytes());
+  Set<Range> interesting=new HashSet<Range>();
+  interesting.add(new Range(changed.left,ltoken));
+  interesting.add(new Range(ltoken,changed.right));
+  Differencer diff=new Differencer(request,ltree,rtree);
+  diff.run();
+  assertEquals("Wrong differing ranges",interesting,new HashSet<Range>(diff.differences));
+}

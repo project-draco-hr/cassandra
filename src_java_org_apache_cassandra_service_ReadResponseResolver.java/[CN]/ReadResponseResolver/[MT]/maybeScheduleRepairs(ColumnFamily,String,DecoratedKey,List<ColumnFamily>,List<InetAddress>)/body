@@ -3,6 +3,9 @@
     ColumnFamily diffCf=ColumnFamily.diff(versions.get(i),resolved);
     if (diffCf == null)     continue;
     RowMutation rowMutation=new RowMutation(table,key.key);
+    AbstractType defaultValidator=diffCf.metadata().getDefaultValidator();
+    if (defaultValidator.isCommutative())     ((AbstractCommutativeType)defaultValidator).cleanContext(diffCf,endpoints.get(i));
+    if (diffCf.getColumnsMap().isEmpty() && !diffCf.isMarkedForDelete())     continue;
     rowMutation.add(diffCf);
     RowMutationMessage rowMutationMessage=new RowMutationMessage(rowMutation);
     Message repairMessage;

@@ -1,0 +1,21 @@
+{
+  logger.debug("batch_add");
+  if (ConsistencyLevel.ONE != consistency_level) {
+    throw new InvalidRequestException("Commutative CFs only support ConsistencyLevel.ONE");
+  }
+  String keyspace=state().getKeyspace();
+  Map<ByteBuffer,Map<String,List<Mutation>>> mutation_map=new HashMap<ByteBuffer,Map<String,List<Mutation>>>();
+  for (  Entry<ByteBuffer,Map<String,List<CounterMutation>>> entry : updateMap.entrySet()) {
+    Map<String,List<Mutation>> valueMap=new HashMap<String,List<Mutation>>(entry.getValue().size());
+    for (    Entry<String,List<CounterMutation>> innerEntry : entry.getValue().entrySet()) {
+      ThriftValidation.validateCommutative(keyspace,innerEntry.getKey());
+      List<Mutation> mutations=new ArrayList<Mutation>(innerEntry.getValue().size());
+      for (      CounterMutation cm : innerEntry.getValue()) {
+        mutations.add(getMutation(cm));
+      }
+      valueMap.put(innerEntry.getKey(),mutations);
+    }
+    mutation_map.put(entry.getKey(),valueMap);
+  }
+  internal_batch_mutate(mutation_map,consistency_level);
+}

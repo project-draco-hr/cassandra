@@ -1,0 +1,17 @@
+{
+  final SSTableWriter.Builder builder=SSTableWriter.createBuilder(desc,type);
+  Callable<SSTableReader> callable=new Callable<SSTableReader>(){
+    public SSTableReader call() throws IOException {
+      compactionLock.lock();
+      try {
+        executor.beginCompaction(builder.cfs,builder);
+        return builder.build();
+      }
+  finally {
+        compactionLock.unlock();
+      }
+    }
+  }
+;
+  return executor.submit(callable);
+}

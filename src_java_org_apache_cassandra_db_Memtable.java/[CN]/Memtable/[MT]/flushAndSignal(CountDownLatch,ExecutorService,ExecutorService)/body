@@ -2,8 +2,14 @@
   cfs.getMemtablesPendingFlush().add(this);
   writer.submit(new WrappedRunnable(){
     public void runMayThrow() throws IOException {
-      cfs.addSSTable(writeSortedContents());
-      cfs.getMemtablesPendingFlush().remove(Memtable.this);
+      if (!cfs.reverseReadWriteOrder()) {
+        cfs.addSSTable(writeSortedContents());
+        cfs.getMemtablesPendingFlush().remove(Memtable.this);
+      }
+ else {
+        cfs.getMemtablesPendingFlush().remove(Memtable.this);
+        cfs.addSSTable(writeSortedContents());
+      }
       latch.countDown();
     }
   }

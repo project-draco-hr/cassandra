@@ -1,0 +1,12 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("multiget_counter_slice");
+  String keyspace=state().getKeyspace();
+  ThriftValidation.validateCommutative(keyspace,column_parent.column_family);
+  state().hasColumnFamilyAccess(column_parent.column_family,Permission.READ);
+  Map<ByteBuffer,List<ColumnOrSuperColumn>> slices=multigetSliceInternal(state().getKeyspace(),keys,column_parent,predicate,consistency_level);
+  Map<ByteBuffer,List<Counter>> rv=new HashMap<ByteBuffer,List<Counter>>(slices.size());
+  for (  Entry<ByteBuffer,List<ColumnOrSuperColumn>> entry : slices.entrySet()) {
+    rv.put(entry.getKey(),getCounters(entry.getValue()));
+  }
+  return rv;
+}

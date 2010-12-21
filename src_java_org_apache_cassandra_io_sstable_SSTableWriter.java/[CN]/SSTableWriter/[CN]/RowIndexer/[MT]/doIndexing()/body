@@ -1,0 +1,21 @@
+{
+  EstimatedHistogram rowSizes=SSTable.defaultRowHistogram();
+  EstimatedHistogram columnCounts=SSTable.defaultColumnHistogram();
+  long rows=0;
+  DecoratedKey key;
+  long rowPosition=0;
+  while (rowPosition < dfile.length()) {
+    key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,FBUtilities.readShortByteArray(dfile));
+    iwriter.afterAppend(key,rowPosition);
+    long dataSize=SSTableReader.readRowSize(dfile,desc);
+    rowPosition=dfile.getFilePointer() + dataSize;
+    IndexHelper.skipBloomFilter(dfile);
+    IndexHelper.skipIndex(dfile);
+    ColumnFamily.serializer().deserializeFromSSTableNoColumns(ColumnFamily.create(metadata),dfile);
+    rowSizes.add(dataSize);
+    columnCounts.add(dfile.readInt());
+    dfile.seek(rowPosition);
+    rows++;
+  }
+  return rows;
+}
