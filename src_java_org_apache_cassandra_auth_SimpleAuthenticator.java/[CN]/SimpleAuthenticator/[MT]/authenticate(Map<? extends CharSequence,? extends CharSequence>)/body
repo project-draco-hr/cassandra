@@ -22,11 +22,11 @@
   if (null == pass)   throw new AuthenticationException("Authentication request was missing the required key '" + PASSWORD_KEY + "'");
  else   password=pass.toString();
   boolean authenticated=false;
+  InputStream in=null;
   try {
-    FileInputStream in=new FileInputStream(pfilename);
+    in=new BufferedInputStream(new FileInputStream(pfilename));
     Properties props=new Properties();
     props.load(in);
-    in.close();
     if (null == props.getProperty(username))     throw new AuthenticationException(authenticationErrorMessage(mode,username));
 switch (mode) {
 case PLAIN:
@@ -47,6 +47,9 @@ throw new RuntimeException("Authentication table file given by property " + PASS
 }
 catch (Exception e) {
 throw new RuntimeException("Unexpected authentication problem",e);
+}
+ finally {
+FileUtils.closeQuietly(in);
 }
 if (!authenticated) throw new AuthenticationException(authenticationErrorMessage(mode,username));
 return new AuthenticatedUser(username);
