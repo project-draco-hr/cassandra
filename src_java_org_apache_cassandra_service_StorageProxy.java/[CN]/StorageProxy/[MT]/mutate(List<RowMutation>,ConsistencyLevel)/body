@@ -1,8 +1,9 @@
 {
   long startTime=System.nanoTime();
-  ArrayList<IWriteResponseHandler> responseHandlers=new ArrayList<IWriteResponseHandler>();
+  List<IWriteResponseHandler> responseHandlers=new ArrayList<IWriteResponseHandler>();
   RowMutation mostRecentRowMutation=null;
   StorageService ss=StorageService.instance;
+  String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getLocalAddress());
   try {
     for (    RowMutation rm : mutations) {
       mostRecentRowMutation=rm;
@@ -14,10 +15,12 @@
       final IWriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,consistency_level);
       responseHandler.assureSufficientLiveNodes();
       responseHandlers.add(responseHandler);
+      Multimap<String,Pair<Message,InetAddress>> dcMessages=HashMultimap.create(hintedEndpoints.size(),10);
       Message unhintedMessage=null;
       for (      Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
         InetAddress destination=entry.getKey();
         Collection<InetAddress> targets=entry.getValue();
+        String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
         if (targets.size() == 1 && targets.iterator().next().equals(destination)) {
           if (destination.equals(FBUtilities.getLocalAddress())) {
             insertLocalMessage(rm,responseHandler);
@@ -28,7 +31,7 @@
               MessagingService.instance.addCallback(responseHandler,unhintedMessage.getMessageId());
             }
             if (logger.isDebugEnabled())             logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
-            MessagingService.instance.sendOneWay(unhintedMessage,destination);
+            dcMessages.put(dc,new Pair<Message,InetAddress>(unhintedMessage,destination));
           }
         }
  else {
@@ -40,13 +43,12 @@
             }
           }
           responseHandler.addHintCallback(hintedMessage,destination);
-          MessagingService.instance.sendOneWay(hintedMessage,destination);
+          dcMessages.put(dc,new Pair<Message,InetAddress>(hintedMessage,destination));
         }
       }
+      sendMessages(localDataCenter,dcMessages);
     }
-    for (    IWriteResponseHandler responseHandler : responseHandlers) {
-      responseHandler.get();
-    }
+    for (    IWriteResponseHandler responseHandler : responseHandlers)     responseHandler.get();
   }
  catch (  IOException e) {
     if (mostRecentRowMutation == null)     throw new RuntimeException("no mutations were seen but found an error during write anyway",e);
