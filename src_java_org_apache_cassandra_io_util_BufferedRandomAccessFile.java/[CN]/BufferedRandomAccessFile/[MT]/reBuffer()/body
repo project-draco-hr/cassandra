@@ -1,11 +1,24 @@
 {
-  this.flush();
-  this.lo_=this.curr_;
-  this.maxHi_=this.lo_ + (long)this.buff_.length;
-  if (this.diskPos_ != this.lo_) {
-    super.seek(this.lo_);
-    this.diskPos_=this.lo_;
+  flush();
+  buffer.clear();
+  bufferOffset=current;
+  if (bufferOffset > channel.size()) {
+    buffer.rewind();
+    bufferEnd=bufferOffset;
+    hitEOF=true;
+    return 0;
   }
-  int n=this.fillBuffer();
-  this.hi_=this.lo_ + (long)n;
+  if (bufferOffset < minBufferOffset)   minBufferOffset=bufferOffset;
+  channel.position(bufferOffset);
+  long bytesRead=channel.read(buffer);
+  hitEOF=(bytesRead < maxBufferSize);
+  bufferEnd=bufferOffset + bytesRead;
+  buffer.rewind();
+  bytesSinceCacheFlush+=bytesRead;
+  if (skipCache && bytesSinceCacheFlush >= MAX_BYTES_IN_PAGE_CACHE) {
+    CLibrary.trySkipCache(this.fd,(int)minBufferOffset,0);
+    bytesSinceCacheFlush=0;
+    minBufferOffset=Long.MAX_VALUE;
+  }
+  return bytesRead;
 }
