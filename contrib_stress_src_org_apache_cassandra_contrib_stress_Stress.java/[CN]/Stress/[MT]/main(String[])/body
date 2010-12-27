@@ -1,0 +1,63 @@
+{
+  int epoch, total, oldTotal, latency, keyCount, oldKeyCount, oldLatency;
+  try {
+    session=new Session(arguments);
+  }
+ catch (  IllegalArgumentException e) {
+    printHelpMessage();
+    return;
+  }
+  if (session.getOperation() == Stress.Operation.INSERT) {
+    session.createKeySpaces();
+  }
+  int threadCount=session.getThreads();
+  Thread[] threads=new Thread[threadCount];
+  PrintStream out=session.getOutputStream();
+  try {
+    for (int i=0; i < threadCount; i++) {
+      threads[i]=createOperation(i);
+    }
+  }
+ catch (  Exception e) {
+    System.err.println(e.getMessage());
+    return;
+  }
+  for (int i=0; i < threadCount; i++) {
+    threads[i].start();
+  }
+  boolean terminate=false;
+  epoch=total=latency=keyCount=0;
+  int interval=session.getProgressInterval();
+  int epochIntervals=session.getProgressInterval() * 10;
+  long testStartTime=System.currentTimeMillis();
+  out.println("total,interval_op_rate,interval_key_rate,avg_latency,elapsed_time");
+  while (!terminate) {
+    Thread.sleep(100);
+    int alive=0;
+    for (    Thread thread : threads)     if (thread.isAlive())     alive++;
+    if (alive == 0)     terminate=true;
+    epoch++;
+    if (terminate || epoch > epochIntervals) {
+      epoch=0;
+      oldTotal=total;
+      oldLatency=latency;
+      oldKeyCount=keyCount;
+      int currentTotal=0, currentKeyCount=0, currentLatency=0;
+      for (      Thread t : threads) {
+        OperationThread thread=(OperationThread)t;
+        currentTotal+=session.operationCount.get(thread.index);
+        currentKeyCount+=session.keyCount.get(thread.index);
+        currentLatency+=session.latencies.get(thread.index);
+      }
+      total=currentTotal;
+      keyCount=currentKeyCount;
+      latency=currentLatency;
+      int opDelta=total - oldTotal;
+      int keyDelta=keyCount - oldKeyCount;
+      double latencyDelta=latency - oldLatency;
+      long currentTimeInSeconds=(System.currentTimeMillis() - testStartTime) / 1000;
+      String formattedDelta=(opDelta > 0) ? Double.toString(latencyDelta / (opDelta * 1000)) : "NaN";
+      out.println(String.format("%d,%d,%d,%s,%d",total,opDelta / interval,keyDelta / interval,formattedDelta,currentTimeInSeconds));
+    }
+  }
+}

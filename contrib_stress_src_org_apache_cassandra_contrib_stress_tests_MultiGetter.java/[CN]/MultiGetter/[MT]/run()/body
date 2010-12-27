@@ -1,0 +1,58 @@
+{
+  SlicePredicate predicate=new SlicePredicate().setSlice_range(new SliceRange(ByteBuffer.wrap(new byte[]{}),ByteBuffer.wrap(new byte[]{}),false,session.getColumnsPerKey()));
+  int offset=index * session.getKeysPerThread();
+  Map<ByteBuffer,List<ColumnOrSuperColumn>> results=null;
+  int count=(((index + 1) * session.getKeysPerThread()) - offset) / session.getKeysPerCall();
+  if (session.getColumnFamilyType() == ColumnFamilyType.Super) {
+    for (int i=0; i < count; i++) {
+      List<ByteBuffer> keys=generateKeys(offset,offset + session.getKeysPerCall());
+      for (int j=0; j < session.getSuperColumns(); j++) {
+        ColumnParent parent=new ColumnParent("Super1").setSuper_column(("S" + j).getBytes());
+        long start=System.currentTimeMillis();
+        try {
+          results=client.multiget_slice(keys,parent,predicate,session.getConsistencyLevel());
+          if (results.size() == 0) {
+            throw new RuntimeException(String.format("Keys %s not found",keys));
+          }
+        }
+ catch (        InvalidRequestException e) {
+          System.err.println(e.getWhy());
+          if (!session.ignoreErrors())           return;
+        }
+catch (        Exception e) {
+          System.err.println(e.getMessage());
+          if (!session.ignoreErrors())           return;
+        }
+        session.operationCount.getAndIncrement(index);
+        session.keyCount.getAndAdd(index,keys.size());
+        session.latencies.getAndAdd(index,System.currentTimeMillis() - start);
+        offset+=session.getKeysPerCall();
+      }
+    }
+  }
+ else {
+    ColumnParent parent=new ColumnParent("Standard1");
+    for (int i=0; i < count; i++) {
+      List<ByteBuffer> keys=generateKeys(offset,offset + session.getKeysPerCall());
+      long start=System.currentTimeMillis();
+      try {
+        results=client.multiget_slice(keys,parent,predicate,session.getConsistencyLevel());
+        if (results.size() == 0) {
+          throw new RuntimeException(String.format("Keys %s not found",keys));
+        }
+      }
+ catch (      InvalidRequestException e) {
+        System.err.println(e.getWhy());
+        if (!session.ignoreErrors())         return;
+      }
+catch (      Exception e) {
+        System.err.println(e.getMessage());
+        if (!session.ignoreErrors())         return;
+      }
+      session.operationCount.getAndIncrement(index);
+      session.keyCount.getAndAdd(index,keys.size());
+      session.latencies.getAndAdd(index,System.currentTimeMillis() - start);
+      offset+=session.getKeysPerCall();
+    }
+  }
+}

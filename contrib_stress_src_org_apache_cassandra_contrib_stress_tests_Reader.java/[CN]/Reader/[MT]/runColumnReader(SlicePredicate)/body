@@ -1,0 +1,22 @@
+{
+  ColumnParent parent=new ColumnParent("Standard1");
+  for (int i=0; i < session.getKeysPerThread(); i++) {
+    byte[] key=generateKey();
+    ByteBuffer keyBuffer=ByteBuffer.wrap(key);
+    long start=System.currentTimeMillis();
+    try {
+      List<ColumnOrSuperColumn> columns;
+      columns=client.get_slice(keyBuffer,parent,predicate,session.getConsistencyLevel());
+      if (columns == null) {
+        throw new RuntimeException(String.format("Key %s not found.",key.toString()));
+      }
+    }
+ catch (    Exception e) {
+      System.err.println(e.getMessage());
+      if (!session.ignoreErrors())       break;
+    }
+    session.operationCount.getAndIncrement(index);
+    session.keyCount.getAndIncrement(index);
+    session.latencies.getAndAdd(index,System.currentTimeMillis() - start);
+  }
+}
