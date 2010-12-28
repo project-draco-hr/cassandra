@@ -1,10 +1,10 @@
 {
-  File datafile=tempSSTableFile(tablename,cfname,generation);
+  File datafile=(dest == null) ? tempSSTableFile(ksname,cfname,generation) : new File(dest.filenameFor(Component.DATA));
   SSTableWriter writer=new SSTableWriter(datafile.getAbsolutePath(),entries.size());
   SortedMap<DecoratedKey,ByteBuffer> sortedEntries=new TreeMap<DecoratedKey,ByteBuffer>();
   for (  Map.Entry<ByteBuffer,ByteBuffer> entry : entries.entrySet())   sortedEntries.put(writer.partitioner.decorateKey(entry.getKey()),entry.getValue());
   for (  Map.Entry<DecoratedKey,ByteBuffer> entry : sortedEntries.entrySet())   writer.append(entry.getKey(),entry.getValue());
-  new File(writer.descriptor.filenameFor(Component.PRIMARY_INDEX)).deleteOnExit();
-  new File(writer.descriptor.filenameFor(Component.FILTER)).deleteOnExit();
-  return writer.closeAndOpenReader();
+  SSTableReader reader=writer.closeAndOpenReader();
+  if (cleanup)   for (  Component comp : reader.components)   new File(reader.descriptor.filenameFor(comp)).deleteOnExit();
+  return reader;
 }
