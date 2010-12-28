@@ -1,4 +1,6 @@
 {
+  NodeProbe probe=sessionState.getNodeProbe();
+  CompactionManagerMBean compactionManagerMBean=(probe == null) ? null : probe.getCompactionManagerProxy();
   sessionState.out.println("Keyspace: " + keySpaceName + ":");
   try {
     KsDef ks_def;
@@ -10,6 +12,7 @@
     boolean isSuper;
     Collections.sort(ks_def.cf_defs,new CfDefNamesComparator());
     for (    CfDef cf_def : ks_def.cf_defs) {
+      ColumnFamilyStoreMBean cfMBean=(probe == null) ? null : probe.getCfsProxy(ks_def.getName(),cf_def.getName());
       isSuper=cf_def.column_type.equals("Super");
       sessionState.out.printf("    ColumnFamily: %s%s%n",cf_def.name,isSuper ? " (Super)" : "");
       if (cf_def.comment != null && !cf_def.comment.isEmpty()) {
@@ -22,6 +25,9 @@
       sessionState.out.printf("      GC grace seconds: %s%n",cf_def.gc_grace_seconds);
       sessionState.out.printf("      Compaction min/max thresholds: %s/%s%n",cf_def.min_compaction_threshold,cf_def.max_compaction_threshold);
       sessionState.out.printf("      Read repair chance: %s%n",cf_def.read_repair_chance);
+      if (cfMBean != null) {
+        sessionState.out.printf("      Built indexes: %s%n",cfMBean.getBuiltIndexes());
+      }
       if (cf_def.getColumn_metadataSize() != 0) {
         String leftSpace="      ";
         String columnLeftSpace=leftSpace + "    ";
@@ -48,11 +54,24 @@
         }
       }
     }
+    if (compactionManagerMBean != null) {
+      String compactionType=compactionManagerMBean.getCompactionType();
+      if (compactionType != null && compactionType.contains("index build")) {
+        String indexName=compactionManagerMBean.getColumnFamilyInProgress();
+        long bytesCompacted=compactionManagerMBean.getBytesCompacted();
+        long totalBytesToProcess=compactionManagerMBean.getBytesTotalInProgress();
+        sessionState.out.printf("%nCurrently building index %s, completed %d of %d bytes.%n",indexName,bytesCompacted,totalBytesToProcess);
+      }
+    }
+    if (probe != null)     probe.close();
   }
  catch (  InvalidRequestException e) {
     sessionState.out.println("Invalid request: " + e);
   }
 catch (  NotFoundException e) {
     sessionState.out.println("Keyspace " + keySpaceName + " could not be found.");
+  }
+catch (  IOException e) {
+    sessionState.out.println("Error while closing JMX connection: " + e.getMessage());
   }
 }
