@@ -7,16 +7,10 @@
   for (  Map.Entry<Message,ReadResponse> entry : results.entrySet()) {
     ReadResponse result=entry.getValue();
     Message message=entry.getKey();
-    if (result.isDigestQuery()) {
-      if (digest == null) {
-        digest=result.digest();
-      }
- else {
-        ByteBuffer digest2=result.digest();
-        if (!digest.equals(digest2))         throw new DigestMismatchException(key,digest,digest2);
-      }
-    }
- else {
+    ByteBuffer resultDigest=result.isDigestQuery() ? result.digest() : ColumnFamily.digest(result.row().cf);
+    if (digest == null)     digest=resultDigest;
+ else     if (!digest.equals(resultDigest))     throw new DigestMismatchException(key,digest,resultDigest);
+    if (!result.isDigestQuery()) {
       ColumnFamily cf=result.row().cf;
       InetAddress from=message.getFrom();
       if (cf != null) {
@@ -30,13 +24,7 @@
       endpoints.add(from);
     }
   }
-  if (digest != null) {
-    for (    ColumnFamily cf : versions) {
-      ByteBuffer digest2=ColumnFamily.digest(cf);
-      if (!digest2.equals(digest))       throw new DigestMismatchException(key,digest,digest2);
-    }
-    if (logger_.isDebugEnabled())     logger_.debug("digests verified");
-  }
+  if (logger_.isDebugEnabled())   logger_.debug("digests verified");
   ColumnFamily resolved;
   if (versions.size() > 1) {
     resolved=resolveSuperset(versions);
