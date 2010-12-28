@@ -1,0 +1,24 @@
+{
+  for (int i=0; i < session.getKeysPerThread(); i++) {
+    ByteBuffer key=ByteBuffer.wrap(generateKey());
+    for (int j=0; j < session.getSuperColumns(); j++) {
+      String superColumn='S' + Integer.toString(j);
+      ColumnParent parent=new ColumnParent("Super1").setSuper_column(superColumn.getBytes());
+      long start=System.currentTimeMillis();
+      try {
+        List<ColumnOrSuperColumn> columns;
+        columns=client.get_slice(key,parent,predicate,session.getConsistencyLevel());
+        if (columns == null) {
+          throw new RuntimeException(String.format("Key %s not found.",superColumn));
+        }
+      }
+ catch (      Exception e) {
+        System.err.println(e.getMessage());
+        if (!session.ignoreErrors())         break;
+      }
+      session.operationCount.getAndIncrement(index);
+      session.keyCount.getAndIncrement(index);
+      session.latencies.getAndAdd(index,System.currentTimeMillis() - start);
+    }
+  }
+}
