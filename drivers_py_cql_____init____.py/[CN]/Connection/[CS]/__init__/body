@@ -1,6 +1,8 @@
 def __init__(self, keyspace, host, port=9160):
-    client = HTTPTransceiver(host, port)
-    client.conn.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    self.requestor = Requestor(_load_protocol(), client)
+    socket = TSocket.TSocket(host, port)
+    self.transport = TTransport.TFramedTransport(socket)
+    protocol = TBinaryProtocol.TBinaryProtocolAccelerated(self.transport)
+    self.client = Cassandra.Client(protocol)
+    socket.open()
     if keyspace:
         self.execute(('USE %s' % keyspace))

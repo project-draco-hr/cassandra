@@ -1,15 +1,17 @@
 def execute(self, query, compression=None):
     compress = (((compression is None) and DEFAULT_COMPRESSION) or compression.upper())
-    if (not (compress in COMPRESSION_SCHEMES)):
-        raise InvalidCompressionScheme(compress)
     compressed_query = Connection.compress_query(query, compress)
-    request_params = dict(query=compressed_query, compression=compress)
+    request_compression = getattr(Compression, compress)
     try:
-        response = self.requestor.request('execute_cql_query', request_params)
-    except AvroRemoteException as are:
-        raise CQLException(are)
-    if (response['type'] == 'ROWS'):
-        return response['rows']
-    if (response['type'] == 'INT'):
-        return response['num']
+        response = self.client.execute_cql_query(compressed_query, request_compression)
+    except InvalidRequestException as ire:
+        raise CQLException(('Bad Request: %s' % ire.why))
+    except TApplicationException as tapp:
+        raise CQLException('Internal application error')
+    except Exception as exc:
+        raise CQLException(exc)
+    if (response.type == CqlResultType.ROWS):
+        return response.rows
+    if (response.type == CqlResultType.INT):
+        return response.num
     return None
