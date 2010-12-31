@@ -1,0 +1,36 @@
+{
+  String queryString=null;
+  try {
+switch (compression) {
+case GZIP:
+      ByteArrayOutputStream byteArray=new ByteArrayOutputStream();
+    byte[] outBuffer=new byte[1024], inBuffer=new byte[1024];
+  Inflater decompressor=new Inflater();
+int lenRead=0;
+while (true) {
+if (decompressor.needsInput()) lenRead=query.remaining() < 1024 ? query.remaining() : 1024;
+query.get(inBuffer,0,lenRead);
+decompressor.setInput(inBuffer,0,lenRead);
+int lenWrite=0;
+while ((lenWrite=decompressor.inflate(outBuffer)) != 0) byteArray.write(outBuffer,0,lenWrite);
+if (decompressor.finished()) break;
+}
+decompressor.end();
+queryString=new String(byteArray.toByteArray(),0,byteArray.size(),"UTF-8");
+}
+}
+ catch (DataFormatException e) {
+throw new InvalidRequestException("Error deflating query string.");
+}
+catch (UnsupportedEncodingException e) {
+throw new InvalidRequestException("Unknown query string encoding.");
+}
+try {
+return QueryProcessor.process(queryString,state());
+}
+ catch (RecognitionException e) {
+InvalidRequestException ire=new InvalidRequestException("Invalid or malformed CQL query string");
+ire.initCause(e);
+throw ire;
+}
+}

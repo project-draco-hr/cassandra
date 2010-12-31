@@ -15,8 +15,8 @@ if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
 rows=getSlice(keyspace,select);
 if (select.isCountOperation()) {
 avroResult.type=CqlResultType.INT;
-if (rows.size() > 0) avroResult.num=rows.get(0).cf != null ? rows.get(0).cf.getSortedColumns().size() : 0;
- else avroResult.num=0;
+if (rows.size() > 0) avroResult.setNum(rows.get(0).cf != null ? rows.get(0).cf.getSortedColumns().size() : 0);
+ else avroResult.setNum(0);
 return avroResult;
 }
 }
@@ -56,7 +56,7 @@ avroResult.type=CqlResultType.VOID;
 return avroResult;
 case BATCH_UPDATE:
 BatchUpdateStatement batch=(BatchUpdateStatement)statement.statement;
-for (UpdateStatement up : batch.getUpdates()) if (up.isSetConsistencyLevel()) throw newInvalidRequestException("Consistency level must be set on the BATCH, not individual UPDATE statements");
+for (UpdateStatement up : batch.getUpdates()) if (up.isSetConsistencyLevel()) throw new InvalidRequestException("Consistency level must be set on the BATCH, not individual UPDATE statements");
 batchUpdate(keyspace,batch.getUpdates(),batch.getConsistencyLevel());
 avroResult.type=CqlResultType.VOID;
 return avroResult;
@@ -69,14 +69,11 @@ String columnFamily=(String)statement.statement;
 try {
 StorageProxy.truncateBlocking(keyspace,columnFamily);
 }
- catch (org.apache.cassandra.thrift.UnavailableException e) {
-throw newUnavailableException(e);
-}
-catch (TimeoutException e) {
-throw newUnavailableException(e);
+ catch (TimeoutException e) {
+throw (UnavailableException)new UnavailableException().initCause(e);
 }
 catch (IOException e) {
-throw newUnavailableException(e);
+throw (UnavailableException)new UnavailableException().initCause(e);
 }
 avroResult.type=CqlResultType.VOID;
 return avroResult;
@@ -94,10 +91,7 @@ rowMutations.add(rm);
 try {
 StorageProxy.mutate(rowMutations,delete.getConsistencyLevel());
 }
- catch (org.apache.cassandra.thrift.UnavailableException e) {
-throw newUnavailableException(e);
-}
-catch (TimeoutException e) {
+ catch (TimeoutException e) {
 throw new TimedOutException();
 }
 avroResult.type=CqlResultType.VOID;
