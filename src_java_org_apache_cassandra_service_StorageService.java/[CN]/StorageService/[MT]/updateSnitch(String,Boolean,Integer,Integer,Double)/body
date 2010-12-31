@@ -1,0 +1,15 @@
+{
+  IEndpointSnitch oldSnitch=DatabaseDescriptor.getEndpointSnitch();
+  IEndpointSnitch newSnitch=FBUtilities.construct(epSnitchClassName,"snitch");
+  if (dynamic) {
+    DatabaseDescriptor.setDynamicUpdateInterval(dynamicUpdateInterval);
+    DatabaseDescriptor.setDynamicResetInterval(dynamicResetInterval);
+    DatabaseDescriptor.setDynamicBadnessThreshold(dynamicBadnessThreshold);
+    newSnitch=new DynamicEndpointSnitch(newSnitch);
+  }
+  DatabaseDescriptor.setEndpointSnitch(newSnitch);
+  for (  String ks : DatabaseDescriptor.getTables()) {
+    Table.open(ks).getReplicationStrategy().snitch=newSnitch;
+  }
+  if (oldSnitch instanceof DynamicEndpointSnitch)   ((DynamicEndpointSnitch)oldSnitch).unregisterMBean();
+}
