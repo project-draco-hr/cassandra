@@ -15,7 +15,7 @@
       final IWriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,consistency_level);
       responseHandler.assureSufficientLiveNodes();
       responseHandlers.add(responseHandler);
-      Multimap<String,Pair<Message,InetAddress>> dcMessages=HashMultimap.create(hintedEndpoints.size(),10);
+      Map<String,Multimap<Message,InetAddress>> dcMessages=new HashMap<String,Multimap<Message,InetAddress>>(hintedEndpoints.size());
       Message unhintedMessage=null;
       for (      Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
         InetAddress destination=entry.getKey();
@@ -31,7 +31,12 @@
               MessagingService.instance().addCallback(responseHandler,unhintedMessage.getMessageId());
             }
             if (logger.isDebugEnabled())             logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
-            dcMessages.put(dc,new Pair<Message,InetAddress>(unhintedMessage,destination));
+            Multimap<Message,InetAddress> messages=dcMessages.get(dc);
+            if (messages == null) {
+              messages=HashMultimap.create();
+              dcMessages.put(dc,messages);
+            }
+            messages.put(unhintedMessage,destination);
           }
         }
  else {
@@ -43,7 +48,12 @@
             }
           }
           responseHandler.addHintCallback(hintedMessage,destination);
-          dcMessages.put(dc,new Pair<Message,InetAddress>(hintedMessage,destination));
+          Multimap<Message,InetAddress> messages=dcMessages.get(dc);
+          if (messages == null) {
+            messages=HashMultimap.create();
+            dcMessages.put(dc,messages);
+          }
+          messages.put(hintedMessage,destination);
         }
       }
       sendMessages(localDataCenter,dcMessages);
