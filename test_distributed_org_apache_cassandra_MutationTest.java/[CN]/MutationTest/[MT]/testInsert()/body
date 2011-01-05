@@ -1,0 +1,15 @@
+{
+  List<InetAddress> hosts=controller.getHosts();
+  final String keyspace="TestInsert";
+  addKeyspace(keyspace,3);
+  Cassandra.Client client=controller.createClient(hosts.get(0));
+  client.set_keyspace(keyspace);
+  ByteBuffer key=newKey();
+  insert(client,key,"Standard1","c1","v1",0,ConsistencyLevel.ONE);
+  insert(client,key,"Standard1","c2","v2",0,ConsistencyLevel.ONE);
+  assertColumnEqual("c1","v1",0,getColumn(client,key,"Standard1","c1",ConsistencyLevel.ONE));
+  assertColumnEqual("c2","v2",0,getColumn(client,key,"Standard1","c2",ConsistencyLevel.ONE));
+  List<ColumnOrSuperColumn> coscs=get_slice(client,key,"Standard1",ConsistencyLevel.ONE);
+  assertColumnEqual("c1","v1",0,coscs.get(0).column);
+  assertColumnEqual("c2","v2",0,coscs.get(1).column);
+}

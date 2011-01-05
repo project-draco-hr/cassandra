@@ -1,0 +1,23 @@
+{
+  File file=new File(filename);
+  String container=getContainer(config);
+  String provider=getProvider(config);
+  String blobName=System.nanoTime() + "/" + file.getName();
+  BlobStoreContext context=getContext(config,spec);
+  try {
+    InputStreamMap map=context.createInputStreamMap(container);
+    map.putFile(blobName,file);
+    if (provider.equals("s3")) {
+      S3Client sss=context.<S3Client,S3AsyncClient>getProviderSpecificContext().getApi();
+      String ownerId=sss.getObjectACL(container,blobName).getOwner().getId();
+      sss.putObjectACL(container,blobName,AccessControlList.fromCannedAccessPolicy(CannedAccessPolicy.PUBLIC_READ,ownerId));
+    }
+ else     LOG.warn(provider + " may not be properly supported for tarball transfer.");
+    BlobMetadata blob=context.getBlobStore().blobMetadata(container,blobName);
+    URI uri=context.getProviderSpecificContext().getEndpoint().resolve("/" + container + "/"+ blob.getName());
+    return new Pair<BlobMetadata,URI>(blob,uri);
+  }
+  finally {
+    context.close();
+  }
+}

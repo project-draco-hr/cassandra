@@ -1,0 +1,32 @@
+{
+  LOG.info("Starting up cluster...");
+  config=new CompositeConfiguration();
+  if (System.getProperty("whirr.config") != null) {
+    config.addConfiguration(new PropertiesConfiguration(System.getProperty("whirr.config")));
+  }
+  config.addConfiguration(new PropertiesConfiguration("whirr-default.properties"));
+  clusterSpec=new ClusterSpec(config);
+  if (clusterSpec.getPrivateKey() == null) {
+    Map<String,String> pair=KeyPair.generate();
+    clusterSpec.setPublicKey(pair.get("public"));
+    clusterSpec.setPrivateKey(pair.get("private"));
+  }
+  if (System.getProperty("whirr.cassandra_tarball") != null) {
+    Pair<BlobMetadata,URI> blob=BlobUtils.storeBlob(config,clusterSpec,System.getProperty("whirr.cassandra_tarball"));
+    tarball=blob.left;
+    config.setProperty(CassandraClusterActionHandler.BIN_TARBALL,blob.right.toURL().toString());
+    config.setProperty(CassandraClusterActionHandler.MAJOR_VERSION,"0.7");
+  }
+  service=(CassandraService)new ServiceFactory().create(clusterSpec.getServiceName());
+  cluster=service.launchCluster(clusterSpec);
+  computeService=ComputeServiceContextBuilder.build(clusterSpec).getComputeService();
+  hosts=new ArrayList<InetAddress>();
+  for (  Instance instance : cluster.getInstances()) {
+    hosts.add(instance.getPublicAddress());
+    credentials=instance.getLoginCredentials();
+  }
+  waitForClusterInitialization();
+  ShutdownHook shutdownHook=new ShutdownHook(this);
+  Runtime.getRuntime().addShutdownHook(shutdownHook);
+  running=true;
+}

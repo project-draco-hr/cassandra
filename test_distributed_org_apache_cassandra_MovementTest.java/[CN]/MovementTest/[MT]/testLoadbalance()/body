@@ -1,0 +1,12 @@
+{
+  final String keyspace="TestLoadbalance";
+  addKeyspace(keyspace,1);
+  List<InetAddress> hosts=controller.getHosts();
+  Cassandra.Client client=controller.createClient(hosts.get(0));
+  client.set_keyspace(keyspace);
+  Map<ByteBuffer,List<ColumnOrSuperColumn>> rows=insertBatch(client);
+  Thread.sleep(100);
+  controller.nodetool("loadbalance",hosts.get(0));
+  for (  InetAddress host : hosts)   controller.nodetool("cleanup",host);
+  verifyBatch(client,rows);
+}
