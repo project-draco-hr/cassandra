@@ -1,40 +1,64 @@
 {
-  Map<FBUtilities.ByteArrayWrapper,CounterNode> contextsMap=new HashMap<FBUtilities.ByteArrayWrapper,CounterNode>();
-  for (int offset=0; offset < left.length; offset+=stepLength) {
-    FBUtilities.ByteArrayWrapper id=new FBUtilities.ByteArrayWrapper(ArrayUtils.subarray(left,offset,offset + idLength));
-    long clock=FBUtilities.byteArrayToLong(left,offset + idLength);
-    long count=FBUtilities.byteArrayToLong(left,offset + idLength + clockLength);
-    contextsMap.put(id,new CounterNode(clock,count));
+  if (left.length > right.length) {
+    byte[] tmp=right;
+    right=left;
+    left=tmp;
   }
-  for (int offset=0; offset < right.length; offset+=stepLength) {
-    FBUtilities.ByteArrayWrapper id=new FBUtilities.ByteArrayWrapper(ArrayUtils.subarray(right,offset,offset + idLength));
-    long clock=FBUtilities.byteArrayToLong(right,offset + idLength);
-    long count=FBUtilities.byteArrayToLong(right,offset + idLength + clockLength);
-    if (!contextsMap.containsKey(id)) {
-      contextsMap.put(id,new CounterNode(clock,count));
-      continue;
+  int size=0;
+  int leftOffset=0;
+  int rightOffset=0;
+  while ((leftOffset < left.length) && (rightOffset < right.length)) {
+    int cmp=FBUtilities.compareByteSubArrays(left,leftOffset,right,rightOffset,idLength);
+    if (cmp == 0) {
+      ++size;
+      rightOffset+=stepLength;
+      leftOffset+=stepLength;
     }
-    CounterNode node=contextsMap.get(id);
-    if (this.idWrapper.equals(id)) {
-      contextsMap.put(id,new CounterNode(clock + node.clock,count + node.count));
-      continue;
+ else     if (cmp > 0) {
+      ++size;
+      rightOffset+=stepLength;
     }
-    if (node.clock < clock) {
-      contextsMap.put(id,new CounterNode(clock,count));
-    }
-  }
-  List<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>> contextsList=new ArrayList<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>>(contextsMap.entrySet());
-  Collections.sort(contextsList,new Comparator<Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode>>(){
-    public int compare(    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> e1,    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> e2){
-      return e2.getValue().compareClockTo(e1.getValue());
+ else {
+      ++size;
+      leftOffset+=stepLength;
     }
   }
-);
-  int length=contextsList.size();
-  byte[] merged=new byte[length * stepLength];
-  for (int i=0; i < length; i++) {
-    Map.Entry<FBUtilities.ByteArrayWrapper,CounterNode> entry=contextsList.get(i);
-    writeElementAtStepOffset(merged,i,entry.getKey().data,entry.getValue().clock,entry.getValue().count);
+  size+=(left.length - leftOffset) / stepLength;
+  size+=(right.length - rightOffset) / stepLength;
+  byte[] merged=new byte[size * stepLength];
+  int mergedOffset=0;
+  leftOffset=0;
+  rightOffset=0;
+  while ((leftOffset < left.length) && (rightOffset < right.length)) {
+    int cmp=FBUtilities.compareByteSubArrays(left,leftOffset,right,rightOffset,idLength);
+    if (cmp == 0) {
+      long leftClock=FBUtilities.byteArrayToLong(left,leftOffset + idLength);
+      long rightClock=FBUtilities.byteArrayToLong(right,rightOffset + idLength);
+      if (FBUtilities.compareByteSubArrays(left,leftOffset,localId,0,idLength) == 0) {
+        long leftCount=FBUtilities.byteArrayToLong(left,leftOffset + idLength + clockLength);
+        long rightCount=FBUtilities.byteArrayToLong(right,rightOffset + idLength + clockLength);
+        writeElementAtStepOffset(merged,mergedOffset / stepLength,localId,leftClock + rightClock,leftCount + rightCount);
+      }
+ else {
+        if (leftClock >= rightClock)         System.arraycopy(left,leftOffset,merged,mergedOffset,stepLength);
+ else         System.arraycopy(right,rightOffset,merged,mergedOffset,stepLength);
+      }
+      mergedOffset+=stepLength;
+      rightOffset+=stepLength;
+      leftOffset+=stepLength;
+    }
+ else     if (cmp > 0) {
+      System.arraycopy(right,rightOffset,merged,mergedOffset,stepLength);
+      mergedOffset+=stepLength;
+      rightOffset+=stepLength;
+    }
+ else {
+      System.arraycopy(left,leftOffset,merged,mergedOffset,stepLength);
+      mergedOffset+=stepLength;
+      leftOffset+=stepLength;
+    }
   }
+  if (leftOffset < left.length)   System.arraycopy(left,leftOffset,merged,mergedOffset,left.length - leftOffset);
+  if (rightOffset < right.length)   System.arraycopy(right,rightOffset,merged,mergedOffset,right.length - rightOffset);
   return merged;
 }

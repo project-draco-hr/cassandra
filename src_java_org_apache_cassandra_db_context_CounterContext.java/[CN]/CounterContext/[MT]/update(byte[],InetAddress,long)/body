@@ -1,16 +1,18 @@
 {
   byte[] nodeId=node.getAddress();
-  for (int offset=0; offset < context.length; offset+=stepLength) {
-    if (FBUtilities.compareByteSubArrays(nodeId,0,context,offset,idLength) != 0)     continue;
-    long clock=FBUtilities.byteArrayToLong(context,offset + idLength);
-    long count=FBUtilities.byteArrayToLong(context,offset + idLength + clockLength);
-    System.arraycopy(context,0,context,stepLength,offset);
-    writeElement(context,nodeId,clock + 1L,count + delta);
-    return context;
+  int idCount=context.length / stepLength;
+  for (int stepOffset=0; stepOffset < idCount; ++stepOffset) {
+    int offset=stepOffset * stepLength;
+    int cmp=FBUtilities.compareByteSubArrays(nodeId,0,context,offset,idLength);
+    if (cmp == 0) {
+      long clock=FBUtilities.byteArrayToLong(context,offset + idLength);
+      long count=FBUtilities.byteArrayToLong(context,offset + idLength + clockLength);
+      writeElementAtStepOffset(context,stepOffset,nodeId,clock + 1L,count + delta);
+      return context;
+    }
+    if (cmp < 0) {
+      return insertElementAtStepOffset(context,stepOffset,nodeId,1L,delta);
+    }
   }
-  byte[] previous=context;
-  context=new byte[previous.length + stepLength];
-  writeElement(context,nodeId,1L,delta);
-  System.arraycopy(previous,0,context,stepLength,previous.length);
-  return context;
+  return insertElementAtStepOffset(context,idCount,nodeId,1L,delta);
 }
