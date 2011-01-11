@@ -11,7 +11,7 @@
   StorageService.scheduledTasks.scheduleWithFixedDelay(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS,TimeUnit.MILLISECONDS);
   Function<String,?> timeoutReporter=new Function<String,Object>(){
     public Object apply(    String messageId){
-      Collection<InetAddress> addresses=targets.removeAll(messageId);
+      Collection<InetAddress> addresses=targets.remove(messageId);
       if (addresses == null)       return null;
       for (      InetAddress address : addresses) {
         for (        ILatencySubscriber subscriber : subscribers)         subscriber.receiveTiming(address,(double)DatabaseDescriptor.getRpcTimeout());
@@ -20,7 +20,6 @@
     }
   }
 ;
-  targets=ArrayListMultimap.create();
   callbacks=new ExpiringMap<String,IMessageCallback>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()),timeoutReporter);
   MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
   try {
