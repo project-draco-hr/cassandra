@@ -1,0 +1,32 @@
+{
+  Callable<Object> callable=new Callable<Object>(){
+    public Object call() throws IOException {
+      compactionLock.lock();
+      try {
+        if (cfs.isInvalid())         return this;
+        Collection<SSTableReader> sstables=new ArrayList<SSTableReader>();
+        for (        Descriptor desc : dataFiles) {
+          SSTableReader sstable=lookupSSTable(cfs,desc);
+          if (sstable == null) {
+            logger.info("Will not compact {}: it is not an active sstable",desc);
+          }
+ else {
+            sstables.add(sstable);
+          }
+        }
+        if (sstables.isEmpty()) {
+          logger.error("No file to compact for user defined compaction");
+        }
+ else {
+          doCompaction(cfs,sstables,gcBefore);
+        }
+        return this;
+      }
+  finally {
+        compactionLock.unlock();
+      }
+    }
+  }
+;
+  return executor.submit(callable);
+}

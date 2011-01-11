@@ -1,0 +1,22 @@
+{
+  if (!DatabaseDescriptor.getTables().contains(ksname))   throw new IllegalArgumentException("Unknown keyspace " + ksname);
+  File directory=new File(ksname);
+  String[] filenames=dataFiles.split(",");
+  Collection<Descriptor> descriptors=new ArrayList<Descriptor>(filenames.length);
+  String cfname=null;
+  for (  String filename : filenames) {
+    Pair<Descriptor,String> p=Descriptor.fromFilename(directory,filename.trim());
+    if (!p.right.equals(Component.DATA.name())) {
+      throw new IllegalArgumentException(filename + " does not appear to be a data file");
+    }
+    if (cfname == null) {
+      cfname=p.left.cfname;
+    }
+ else     if (!cfname.equals(p.left.cfname)) {
+      throw new IllegalArgumentException("All provided sstables should be for the same column family");
+    }
+    descriptors.add(p.left);
+  }
+  ColumnFamilyStore cfs=Table.open(ksname).getColumnFamilyStore(cfname);
+  submitUserDefined(cfs,descriptors,(int)(System.currentTimeMillis() / 1000) - cfs.metadata.getGcGraceSeconds());
+}
