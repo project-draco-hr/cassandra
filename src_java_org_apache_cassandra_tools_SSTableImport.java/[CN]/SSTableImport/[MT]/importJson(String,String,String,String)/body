@@ -1,21 +1,6 @@
 {
-  ColumnFamily cfamily=ColumnFamily.create(keyspace,cf);
-  ColumnFamilyType cfType=cfamily.getColumnFamilyType();
+  ColumnFamily columnFamily=ColumnFamily.create(keyspace,cf);
   IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
-  try {
-    JSONObject json=(JSONObject)JSONValue.parseWithException(new FileReader(jsonFile));
-    SSTableWriter writer=new SSTableWriter(ssTablePath,json.size());
-    SortedMap<DecoratedKey,String> decoratedKeys=new TreeMap<DecoratedKey,String>();
-    for (    String key : (Set<String>)json.keySet())     decoratedKeys.put(partitioner.decorateKey(ByteBuffer.wrap(hexToBytes(key))),key);
-    for (    Map.Entry<DecoratedKey,String> rowKey : decoratedKeys.entrySet()) {
-      if (cfType == ColumnFamilyType.Super)       addToSuperCF((JSONObject)json.get(rowKey.getValue()),cfamily);
- else       addToStandardCF((JSONArray)json.get(rowKey.getValue()),cfamily);
-      writer.append(rowKey.getKey(),cfamily);
-      cfamily.clear();
-    }
-    writer.closeAndOpenReader();
-  }
- catch (  ClassCastException cce) {
-    throw new RuntimeException("Invalid JSON input, or incorrect column family.",cce);
-  }
+  int importedKeys=(isSorted) ? importSorted(jsonFile,columnFamily,ssTablePath,partitioner) : importUnsorted(getParser(jsonFile),columnFamily,ssTablePath,partitioner);
+  if (importedKeys != -1)   System.out.printf("%d keys imported successfully.%n",importedKeys);
 }

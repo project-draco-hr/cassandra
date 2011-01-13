@@ -3,14 +3,15 @@
   Set<String> excludeSet=new HashSet<String>();
   if (excludes != null)   excludeSet=new HashSet<String>(Arrays.asList(excludes));
   outs.println("{");
+  SSTableIdentityIterator row;
+  boolean elementWritten=false;
   while (scanner.hasNext()) {
-    SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+    row=(SSTableIdentityIterator)scanner.next();
     if (excludeSet.contains(bytesToHex(row.getKey().key)))     continue;
+ else     if (elementWritten)     outs.println(",");
     try {
       serializeRow(outs,row);
-      outs.print("  ");
-      if (scanner.hasNext())       outs.println(",");
- else       outs.println();
+      if (!elementWritten)       elementWritten=true;
     }
  catch (    IOException ioexcep) {
       System.err.println("WARNING: Corrupt row " + bytesToHex(row.getKey().key) + " (skipping).");
@@ -21,6 +22,6 @@ catch (    OutOfMemoryError oom) {
       continue;
     }
   }
-  outs.println("}");
+  outs.printf("%n}%n");
   outs.flush();
 }

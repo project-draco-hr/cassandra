@@ -1,28 +1,40 @@
 {
-  String usage=String.format("Usage: %s -K keyspace -c column_family <json> <sstable>%n",SSTableImport.class.getName());
   CommandLineParser parser=new PosixParser();
   try {
     cmd=parser.parse(options,args);
   }
- catch (  org.apache.commons.cli.ParseException e1) {
-    System.err.println(e1.getMessage());
-    System.err.println(usage);
+ catch (  org.apache.commons.cli.ParseException e) {
+    System.err.println(e.getMessage());
+    printProgramUsage();
     System.exit(1);
   }
   if (cmd.getArgs().length != 2) {
-    System.err.println(usage);
+    printProgramUsage();
     System.exit(1);
   }
   String json=cmd.getArgs()[0];
   String ssTable=cmd.getArgs()[1];
   String keyspace=cmd.getOptionValue(KEYSPACE_OPTION);
-  String cfamily=cmd.getOptionValue(COLFAM_OPTION);
+  String cfamily=cmd.getOptionValue(COLUMN_FAMILY_OPTION);
+  if (cmd.hasOption(KEY_COUNT_OPTION)) {
+    keyCountToImport=Integer.valueOf(cmd.getOptionValue(KEY_COUNT_OPTION));
+  }
+  if (cmd.hasOption(IS_SORTED_OPTION)) {
+    isSorted=true;
+  }
   DatabaseDescriptor.loadSchemas();
   if (DatabaseDescriptor.getNonSystemTables().size() < 1) {
     String msg="no non-system tables are defined";
     System.err.println(msg);
     throw new ConfigurationException(msg);
   }
-  importJson(json,keyspace,cfamily,ssTable);
+  try {
+    importJson(json,keyspace,cfamily,ssTable);
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    System.err.println("ERROR: " + e.getMessage());
+    System.exit(-1);
+  }
   System.exit(0);
 }
