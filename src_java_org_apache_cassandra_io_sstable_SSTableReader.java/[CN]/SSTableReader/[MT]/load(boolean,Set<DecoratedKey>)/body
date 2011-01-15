@@ -16,10 +16,10 @@
       ByteBuffer key=(ByteBuffer)((shouldAddEntry || cacheLoading || recreatebloom) ? FBUtilities.readShortByteArray(input) : FBUtilities.skipShortByteArray(input));
       long dataPosition=input.readLong();
       if (key != null) {
-        DecoratedKey decoratedKey=decodeKey(partitioner,descriptor,key);
+        DecoratedKey decoratedKey=decodeKey(partitioner,descriptor,ByteBufferUtil.clone(key));
         if (recreatebloom)         bf.add(decoratedKey.key);
         if (shouldAddEntry)         indexSummary.addEntry(decoratedKey,indexPosition);
-        if (cacheLoading && keysToLoadInCache.contains(decoratedKey))         keyCache.put(new Pair(descriptor,decoratedKey),dataPosition);
+        if (cacheLoading && keysToLoadInCache.contains(decoratedKey))         keyCache.put(new Pair<Descriptor,DecoratedKey>(descriptor,decoratedKey),dataPosition);
       }
       indexSummary.incrementRowid();
       ibuilder.addPotentialBoundary(indexPosition);

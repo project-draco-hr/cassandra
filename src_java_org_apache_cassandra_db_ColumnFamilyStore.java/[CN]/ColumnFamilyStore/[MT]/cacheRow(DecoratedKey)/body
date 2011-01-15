@@ -2,7 +2,28 @@
   ColumnFamily cached;
   if ((cached=ssTables.getRowCache().get(key)) == null) {
     cached=getTopLevelColumns(QueryFilter.getIdentityFilter(key,new QueryPath(columnFamily)),Integer.MIN_VALUE);
-    if (cached == null)     return null;
+    if (cached == null) {
+      return null;
+    }
+    for (    IColumn column : cached.getSortedColumns()) {
+      if (cached.isSuper()) {
+        if (!column.name().hasArray()) {
+          cached.deepCopyColumn(column);
+        }
+ else {
+          SuperColumn superColumn=(SuperColumn)column;
+          for (          IColumn subColumn : column.getSubColumns()) {
+            if (!subColumn.name().hasArray() || !subColumn.value().hasArray()) {
+              superColumn.remove(subColumn.name());
+              superColumn.addColumn(subColumn.deepCopy());
+            }
+          }
+        }
+      }
+ else       if (!column.name().hasArray() || !column.value().hasArray()) {
+        cached.deepCopyColumn(column);
+      }
+    }
     ssTables.getRowCache().put(key,cached);
   }
   return cached;
