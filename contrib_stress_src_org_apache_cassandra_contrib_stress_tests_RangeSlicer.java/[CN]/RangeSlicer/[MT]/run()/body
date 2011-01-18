@@ -18,15 +18,12 @@
         try {
           slices=client.get_range_slices(parent,predicate,range,session.getConsistencyLevel());
           if (slices.size() == 0) {
-            throw new RuntimeException(String.format("Key %s not found.",superColumnName));
+            System.err.printf("Range %s->%s not found in Super Column %s.%n",new String(start),new String(end),superColumnName);
+            if (!session.ignoreErrors())             break;
           }
         }
- catch (        InvalidRequestException e) {
-          System.err.println(e.getWhy());
-          if (!session.ignoreErrors())           return;
-        }
-catch (        Exception e) {
-          System.err.println(e.getMessage());
+ catch (        Exception e) {
+          System.err.printf("Error while reading Super Column %s - %s%n",superColumnName,getExceptionMessage(e));
           if (!session.ignoreErrors())           return;
         }
         session.operationCount.getAndIncrement(index);
@@ -48,15 +45,12 @@ catch (        Exception e) {
       try {
         slices=client.get_range_slices(parent,predicate,range,session.getConsistencyLevel());
         if (slices.size() == 0) {
-          throw new RuntimeException(String.format("Range %s %s not found.",String.format(format,current),String.format(format,last)));
+          System.err.printf("Range %s->%s not found.%n",String.format(format,current),String.format(format,last));
+          if (!session.ignoreErrors())           break;
         }
       }
- catch (      InvalidRequestException e) {
-        System.err.println(e.getWhy());
-        if (!session.ignoreErrors())         return;
-      }
-catch (      Exception e) {
-        System.err.println(e.getMessage());
+ catch (      Exception e) {
+        System.err.printf("Error while reading range %s->%s - %s%n",String.format(format,current),String.format(format,last),getExceptionMessage(e));
         if (!session.ignoreErrors())         return;
       }
       current+=slices.size() + 1;
