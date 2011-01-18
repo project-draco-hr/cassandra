@@ -26,19 +26,19 @@
   memtableOperationsInMillions=cf_def.memtable_operations_in_millions;
   Set<ByteBuffer> toRemove=new HashSet<ByteBuffer>();
   Set<ByteBuffer> newIndexNames=new HashSet<ByteBuffer>();
-  Set<org.apache.cassandra.avro.ColumnDef> toAdd=new HashSet<org.apache.cassandra.avro.ColumnDef>();
-  for (  org.apache.cassandra.avro.ColumnDef def : cf_def.column_metadata) {
+  Set<org.apache.cassandra.db.migration.avro.ColumnDef> toAdd=new HashSet<org.apache.cassandra.db.migration.avro.ColumnDef>();
+  for (  org.apache.cassandra.db.migration.avro.ColumnDef def : cf_def.column_metadata) {
     newIndexNames.add(def.name);
     if (!column_metadata.containsKey(def.name))     toAdd.add(def);
   }
   for (  ByteBuffer indexName : column_metadata.keySet())   if (!newIndexNames.contains(indexName))   toRemove.add(indexName);
   for (  ByteBuffer indexName : toRemove)   column_metadata.remove(indexName);
-  for (  org.apache.cassandra.avro.ColumnDef def : cf_def.column_metadata) {
+  for (  org.apache.cassandra.db.migration.avro.ColumnDef def : cf_def.column_metadata) {
     if (!column_metadata.containsKey(def.name))     continue;
     column_metadata.get(def.name).setIndexType(def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.name()));
     column_metadata.get(def.name).setIndexName(def.index_name == null ? null : def.index_name.toString());
   }
-  for (  org.apache.cassandra.avro.ColumnDef def : toAdd) {
+  for (  org.apache.cassandra.db.migration.avro.ColumnDef def : toAdd) {
     ColumnDefinition cd=new ColumnDefinition(def.name,def.validation_class.toString(),def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.toString()),def.index_name == null ? null : def.index_name.toString());
     column_metadata.put(cd.name,cd);
   }
