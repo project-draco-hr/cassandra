@@ -1,0 +1,44 @@
+{
+  Map<String,Multimap<Message,InetAddress>> dcMessages=new HashMap<String,Multimap<Message,InetAddress>>(hintedEndpoints.size());
+  Message unhintedMessage=null;
+  for (  Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
+    InetAddress destination=entry.getKey();
+    Collection<InetAddress> targets=entry.getValue();
+    String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
+    if (targets.size() == 1 && targets.iterator().next().equals(destination)) {
+      if (destination.equals(FBUtilities.getLocalAddress())) {
+        if (insertLocalMessages)         insertLocalMessage(rm,responseHandler);
+      }
+ else {
+        if (unhintedMessage == null) {
+          unhintedMessage=rm.makeRowMutationMessage();
+          MessagingService.instance().addCallback(responseHandler,unhintedMessage.getMessageId());
+        }
+        if (logger.isDebugEnabled())         logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ unhintedMessage.getMessageId()+ "@"+ destination);
+        Multimap<Message,InetAddress> messages=dcMessages.get(dc);
+        if (messages == null) {
+          messages=HashMultimap.create();
+          dcMessages.put(dc,messages);
+        }
+        messages.put(unhintedMessage,destination);
+      }
+    }
+ else {
+      Message hintedMessage=rm.makeRowMutationMessage();
+      for (      InetAddress target : targets) {
+        if (!target.equals(destination)) {
+          addHintHeader(hintedMessage,target);
+          if (logger.isDebugEnabled())           logger.debug("insert writing key " + FBUtilities.bytesToHex(rm.key()) + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
+        }
+      }
+      responseHandler.addHintCallback(hintedMessage,destination);
+      Multimap<Message,InetAddress> messages=dcMessages.get(dc);
+      if (messages == null) {
+        messages=HashMultimap.create();
+        dcMessages.put(dc,messages);
+      }
+      messages.put(hintedMessage,destination);
+    }
+  }
+  sendMessages(localDataCenter,dcMessages);
+}

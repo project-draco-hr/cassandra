@@ -1,0 +1,38 @@
+{
+  long startTime=System.nanoTime();
+  ArrayList<IWriteResponseHandler> responseHandlers=new ArrayList<IWriteResponseHandler>();
+  CounterMutation mostRecentMutation=null;
+  StorageService ss=StorageService.instance;
+  try {
+    for (    CounterMutation cm : mutations) {
+      mostRecentMutation=cm;
+      InetAddress endpoint=ss.findSuitableEndpoint(cm.getTable(),cm.key());
+      if (endpoint.equals(FBUtilities.getLocalAddress())) {
+        applyCounterMutationOnLeader(cm);
+      }
+ else {
+        String table=cm.getTable();
+        AbstractReplicationStrategy rs=Table.open(table).getReplicationStrategy();
+        Collection<InetAddress> writeEndpoints=getWriteEndpoints(table,cm.key());
+        Multimap<InetAddress,InetAddress> hintedEndpoints=rs.getHintedEndpoints(writeEndpoints);
+        rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,cm.consistency()).assureSufficientLiveNodes();
+        IWriteResponseHandler responseHandler=WriteResponseHandler.create(endpoint);
+        responseHandlers.add(responseHandler);
+        Message msg=cm.makeMutationMessage();
+        MessagingService.instance().addCallback(responseHandler,msg.getMessageId());
+        if (logger.isDebugEnabled())         logger.debug("forwarding counter update of key " + FBUtilities.bytesToHex(cm.key()) + " to "+ msg.getMessageId()+ "@"+ endpoint);
+        MessagingService.instance().sendOneWay(msg,endpoint);
+      }
+    }
+    for (    IWriteResponseHandler responseHandler : responseHandlers) {
+      responseHandler.get();
+    }
+  }
+ catch (  IOException e) {
+    if (mostRecentMutation == null)     throw new RuntimeException("no mutations were seen but found an error during write anyway",e);
+ else     throw new RuntimeException("error writing key " + FBUtilities.bytesToHex(mostRecentMutation.key()),e);
+  }
+ finally {
+    counterWriteStats.addNano(System.nanoTime() - startTime);
+  }
+}

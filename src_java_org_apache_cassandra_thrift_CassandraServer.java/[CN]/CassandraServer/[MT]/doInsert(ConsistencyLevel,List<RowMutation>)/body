@@ -2,7 +2,18 @@
   try {
     schedule();
     try {
-      StorageProxy.mutate(mutations,consistency_level);
+      if (!mutations.isEmpty()) {
+        if (mutations.iterator().next().getColumnFamilies().iterator().next().metadata().getDefaultValidator().isCommutative()) {
+          List<org.apache.cassandra.db.CounterMutation> cmutations=new ArrayList<org.apache.cassandra.db.CounterMutation>(mutations.size());
+          for (          RowMutation mutation : mutations) {
+            cmutations.add(new org.apache.cassandra.db.CounterMutation(mutation,consistency_level));
+          }
+          StorageProxy.mutateCounters(cmutations);
+        }
+ else {
+          StorageProxy.mutate(mutations,consistency_level);
+        }
+      }
     }
  catch (    TimeoutException e) {
       logger.debug("... timed out");
