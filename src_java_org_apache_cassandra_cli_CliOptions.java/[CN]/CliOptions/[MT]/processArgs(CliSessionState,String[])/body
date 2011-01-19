@@ -1,12 +1,12 @@
 {
-  CommandLineParser parser=new PosixParser();
+  CommandLineParser parser=new GnuParser();
   try {
-    CommandLine cmd=parser.parse(options,args);
-    if (!cmd.hasOption(HOST_OPTION)) {
-      css.hostName=null;
+    CommandLine cmd=parser.parse(options,args,false);
+    if (cmd.hasOption(HOST_OPTION)) {
+      css.hostName=cmd.getOptionValue(HOST_OPTION);
     }
  else {
-      css.hostName=cmd.getOptionValue(HOST_OPTION);
+      css.hostName=null;
     }
     if (cmd.hasOption(UNFRAME_OPTION)) {
       css.framed=false;
@@ -42,10 +42,17 @@
       printUsage();
       System.exit(1);
     }
+    if (cmd.getArgs().length > 0) {
+      System.err.printf("Unknown argument: %s\n",cmd.getArgs()[0]);
+      System.err.println();
+      printUsage();
+      System.exit(1);
+    }
   }
  catch (  ParseException e) {
+    System.err.println(e.getMessage());
+    System.err.println();
     printUsage();
-    System.err.println("\n" + e.getMessage());
     System.exit(1);
   }
 }
