@@ -1,25 +1,2 @@
 {
-  if (files.isEmpty()) {
-    List<SSTableReader> sstables=new ArrayList<SSTableReader>(buildFutures.size());
-    for (    Future<SSTableReader> future : buildFutures) {
-      try {
-        SSTableReader sstable=future.get();
-        if (sstable == null)         continue;
-        cfs.addSSTable(sstable);
-        sstables.add(sstable);
-      }
- catch (      InterruptedException e) {
-        throw new AssertionError(e);
-      }
-catch (      ExecutionException e) {
-        throw new RuntimeException(e);
-      }
-    }
-    if (cfs != null && !cfs.getIndexedColumns().isEmpty())     cfs.buildSecondaryIndexes(sstables,cfs.getIndexedColumns());
-    StreamReply reply=new StreamReply("",getSessionId(),StreamReply.Status.SESSION_FINISHED);
-    logger.info("Finished streaming session {} from {}",getSessionId(),getHost());
-    MessagingService.instance().sendOneWay(reply.createMessage(),getHost());
-    if (callback != null)     callback.run();
-    sessions.remove(context);
-  }
 }
