@@ -1,2 +1,28 @@
 {
+  List<InetAddress> hosts=controller.getHosts();
+  Cassandra.Client client=controller.createClient(hosts.get(0));
+  final String keyspace="TestWriteQuorumReadQuorum";
+  addKeyspace(keyspace,3);
+  client.set_keyspace(keyspace);
+  ByteBuffer key=newKey();
+  List<InetAddress> endpoints=endpointsForKey(hosts.get(0),key,keyspace);
+  InetAddress coordinator=nonEndpointForKey(hosts.get(0),key,keyspace);
+  Failure failure=controller.failHosts(endpoints.subList(1,endpoints.size()));
+  client=controller.createClient(coordinator);
+  client.set_keyspace(keyspace);
+  try {
+    new Insert(client,"Standard1",key).name("c1").value("v1").expecting(UnavailableException.class).perform(ConsistencyLevel.QUORUM);
+  }
+  finally {
+    failure.resolve();
+  }
+  new Insert(client,"Standard1",key).name("c2").value("v2").perform(ConsistencyLevel.QUORUM);
+  failure=controller.failHosts(endpoints.get(0));
+  try {
+    new Get(client,"Standard1",key).name("c2").value("v2").perform(ConsistencyLevel.QUORUM);
+  }
+  finally {
+    failure.resolve();
+    Thread.sleep(10000);
+  }
 }

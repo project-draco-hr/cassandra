@@ -1,2 +1,23 @@
 {
+  List<InetAddress> hosts=controller.getHosts();
+  Cassandra.Client client=controller.createClient(hosts.get(0));
+  final String keyspace="TestWriteAllReadOne";
+  addKeyspace(keyspace,3);
+  client.set_keyspace(keyspace);
+  ByteBuffer key=newKey();
+  insert(client,key,"Standard1","c1","v1",0,ConsistencyLevel.ALL);
+  assertColumnEqual("c1","v1",0,getColumn(client,key,"Standard1","c1",ConsistencyLevel.ONE));
+  List<InetAddress> endpoints=endpointsForKey(hosts.get(0),key,keyspace);
+  InetAddress coordinator=nonEndpointForKey(hosts.get(0),key,keyspace);
+  Failure failure=controller.failHosts(endpoints.subList(1,endpoints.size()));
+  try {
+    client=controller.createClient(coordinator);
+    client.set_keyspace(keyspace);
+    new Get(client,"Standard1",key).name("c1").value("v1").perform(ConsistencyLevel.ONE);
+    new Insert(client,"Standard1",key).name("c3").value("v3").expecting(UnavailableException.class).perform(ConsistencyLevel.ALL);
+  }
+  finally {
+    failure.resolve();
+    Thread.sleep(10000);
+  }
 }
