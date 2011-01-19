@@ -1,0 +1,15 @@
+{
+  final ServerSocket ss;
+  if (DatabaseDescriptor.getEncryptionOptions().internode_encryption == EncryptionOptions.InternodeEncryption.all) {
+    ss=SSLFactory.getServerSocket(DatabaseDescriptor.getEncryptionOptions(),localEp,DatabaseDescriptor.getStoragePort());
+    logger_.info("Starting Encrypted Messaging Service on port {}",DatabaseDescriptor.getStoragePort());
+  }
+ else {
+    ServerSocketChannel serverChannel=ServerSocketChannel.open();
+    ss=serverChannel.socket();
+    ss.setReuseAddress(true);
+    ss.bind(new InetSocketAddress(localEp,DatabaseDescriptor.getStoragePort()));
+    logger_.info("Starting Messaging Service on port {}",DatabaseDescriptor.getStoragePort());
+  }
+  return ss;
+}

@@ -1,0 +1,22 @@
+{
+  ByteBuffer buffer=MessagingService.instance().constructStreamHeader(header,false);
+  writeHeader(buffer);
+  if (header.file == null)   return;
+  RandomAccessFile raf=new RandomAccessFile(new File(header.file.getFilename()),"r");
+  try {
+    FileChannel fc=raf.getChannel();
+    for (    Pair<Long,Long> section : header.file.sections) {
+      long length=section.right - section.left;
+      long bytesTransferred=0;
+      while (bytesTransferred < length) {
+        long lastWrite=write(fc,section,length,bytesTransferred);
+        bytesTransferred+=lastWrite;
+        header.file.progress+=lastWrite;
+      }
+      if (logger.isDebugEnabled())       logger.debug("Bytes transferred " + bytesTransferred + "/"+ header.file.size);
+    }
+  }
+  finally {
+    FileUtils.closeQuietly(raf);
+  }
+}
