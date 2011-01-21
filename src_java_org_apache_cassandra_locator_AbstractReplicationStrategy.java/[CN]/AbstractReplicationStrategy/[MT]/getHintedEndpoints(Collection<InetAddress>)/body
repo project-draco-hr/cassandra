@@ -7,6 +7,10 @@
   InetAddress localAddress=FBUtilities.getLocalAddress();
   for (  InetAddress ep : targets) {
     if (map.containsKey(ep))     continue;
+    if (!StorageProxy.shouldHint(ep)) {
+      if (logger.isDebugEnabled())       logger.debug("not hinting " + ep + " which has been down "+ Gossiper.instance.getEndpointDowntime(ep)+ "ms");
+      continue;
+    }
     InetAddress destination=map.isEmpty() ? localAddress : snitch.getSortedListByProximity(localAddress,map.keySet()).get(0);
     map.put(destination,ep);
   }
