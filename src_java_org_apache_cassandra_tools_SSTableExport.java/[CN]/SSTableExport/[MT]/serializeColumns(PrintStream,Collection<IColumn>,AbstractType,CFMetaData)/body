@@ -1,12 +1,14 @@
 {
   outs.print("[");
-  Iterator<IColumn> iter=cols.iterator();
+  Iterator<IColumn> iter=columns.iterator();
   while (iter.hasNext()) {
     outs.print("[");
     IColumn column=iter.next();
-    outs.print(quote(bytesToHex(column.name())));
+    ByteBuffer name=column.name();
+    AbstractType validator=cfMetaData.getValueValidator(name);
+    outs.print(quote(comparator.getString(name)));
     outs.print(", ");
-    outs.print(quote(bytesToHex(column.value())));
+    outs.print(quote(validator.getString(column.value())));
     outs.print(", ");
     outs.print(column.timestamp());
     outs.print(", ");
@@ -18,7 +20,9 @@
       outs.print(column.getLocalDeletionTime());
     }
     outs.print("]");
-    if (iter.hasNext())     outs.print(", ");
+    if (iter.hasNext()) {
+      outs.print(", ");
+    }
   }
   outs.print("]");
 }

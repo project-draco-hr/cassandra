@@ -1,25 +1,28 @@
 {
-  ColumnFamily cf=row.getColumnFamilyWithColumns();
-  AbstractType comparator=cf.getComparator();
-  outs.print(asKey(bytesToHex(row.getKey().key)));
-  if (cf.isSuper()) {
+  ColumnFamily columnFamily=row.getColumnFamilyWithColumns();
+  CFMetaData cfMetaData=columnFamily.metadata();
+  AbstractType comparator=columnFamily.getComparator();
+  outs.print("  " + asKey(bytesToHex(row.getKey().key)));
+  if (columnFamily.isSuper()) {
     outs.print("{ ");
-    Iterator<IColumn> iter=cf.getSortedColumns().iterator();
+    Iterator<IColumn> iter=columnFamily.getSortedColumns().iterator();
     while (iter.hasNext()) {
       IColumn column=iter.next();
-      outs.print(asKey(bytesToHex(column.name())));
+      outs.print(asKey(comparator.getString(column.name())));
       outs.print("{");
       outs.print(asKey("deletedAt"));
       outs.print(column.getMarkedForDeleteAt());
       outs.print(", ");
       outs.print(asKey("subColumns"));
-      serializeColumns(outs,column.getSubColumns(),comparator);
+      serializeColumns(outs,column.getSubColumns(),columnFamily.getSubComparator(),cfMetaData);
       outs.print("}");
-      if (iter.hasNext())       outs.print(", ");
+      if (iter.hasNext()) {
+        outs.print(", ");
+      }
     }
     outs.print("}");
   }
  else {
-    serializeColumns(outs,cf.getSortedColumns(),comparator);
+    serializeColumns(outs,columnFamily.getSortedColumns(),comparator,cfMetaData);
   }
 }
