@@ -1,2 +1,29 @@
 {
+  logger_.info("Cassandra version: " + FBUtilities.getReleaseVersionString());
+  logger_.info("Thrift API version: " + Constants.VERSION);
+  if (initialized) {
+    if (isClientMode)     throw new UnsupportedOperationException("StorageService does not support switching modes.");
+    return;
+  }
+  initialized=true;
+  isClientMode=false;
+  try {
+    GCInspector.instance.start();
+  }
+ catch (  Throwable t) {
+    logger_.warn("Unable to start GCInspector (currently only supported on the Sun JVM)");
+  }
+  if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
+    logger_.info("Loading persisted ring state");
+    for (    Map.Entry<Token,InetAddress> entry : SystemTable.loadTokens().entrySet()) {
+      tokenMetadata_.updateNormalToken(entry.getKey(),entry.getValue());
+      Gossiper.instance.addSavedEndpoint(entry.getValue());
+    }
+  }
+  if (Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))) {
+    joinTokenRing();
+  }
+ else {
+    logger_.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
+  }
 }
