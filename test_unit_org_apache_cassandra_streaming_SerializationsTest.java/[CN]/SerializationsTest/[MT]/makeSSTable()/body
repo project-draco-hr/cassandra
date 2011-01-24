@@ -1,0 +1,20 @@
+{
+  Table t=Table.open("Keyspace1");
+  for (int i=0; i < 100; i++) {
+    RowMutation rm=new RowMutation(t.name,ByteBuffer.wrap(Long.toString(System.nanoTime()).getBytes()));
+    rm.add(new QueryPath("Standard1",null,ByteBuffer.wrap("cola".getBytes())),ByteBuffer.wrap("value".getBytes()),0);
+    try {
+      rm.apply();
+    }
+ catch (    IOException ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+  try {
+    t.getColumnFamilyStore("Standard1").forceBlockingFlush();
+    return t.getColumnFamilyStore("Standard1").getSSTables().iterator().next();
+  }
+ catch (  Exception any) {
+    throw new RuntimeException(any);
+  }
+}
