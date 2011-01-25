@@ -1,0 +1,30 @@
+{
+  Map<String,List<String>> versions;
+  long start=System.currentTimeMillis();
+  long limit=start + sessionState.schema_mwt;
+  boolean inAgreement=false;
+  while (limit - start >= 0) {
+    try {
+      versions=thriftClient.describe_schema_versions();
+    }
+ catch (    Exception e) {
+      sessionState.err.println((e instanceof InvalidRequestException) ? ((InvalidRequestException)e).getWhy() : e.getMessage());
+      continue;
+    }
+    boolean currentlyInAgreement=true;
+    for (    String version : versions.keySet()) {
+      if (!version.equals(currentVersionId)) {
+        currentlyInAgreement=false;
+        break;
+      }
+    }
+    if (currentlyInAgreement) {
+      inAgreement=true;
+      break;
+    }
+  }
+  if (!inAgreement) {
+    sessionState.err.printf("The schema has not settled in %d seconds and further migrations are ill-advised until it does.%n",sessionState.schema_mwt / 1000);
+    System.exit(-1);
+  }
+}
