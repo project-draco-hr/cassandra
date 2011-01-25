@@ -6,9 +6,8 @@
   if (endpoint == null)   throw new UnsupportedOperationException("Token not found.");
   if (endpoint.equals(myAddress))   throw new UnsupportedOperationException("Cannot remove node's own token");
   if (Gossiper.instance.getLiveMembers().contains(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is alive and owns this token. Use decommission command to remove it from the ring");
-  if (tokenMetadata_.isLeaving(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is already being removed.");
-  if (replicatingNodes != null)   throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete.");
-  replicatingNodes=Collections.synchronizedSet(new HashSet<InetAddress>());
+  if (tokenMetadata_.isLeaving(endpoint))   logger_.warn("Node " + endpoint + " is already being removed, continuing removal anyway");
+  if (!replicatingNodes.isEmpty())   throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete, or use 'removetoken force' if this has failed.");
   for (  String table : DatabaseDescriptor.getNonSystemTables()) {
     if (Table.open(table).getReplicationStrategy().getReplicationFactor() == 1)     continue;
     Multimap<Range,InetAddress> changedRanges=getChangedRangesForLeaving(table,endpoint);
@@ -33,6 +32,6 @@
   }
   excise(token,endpoint);
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.removedNonlocal(localToken,token));
-  replicatingNodes=null;
+  replicatingNodes.clear();
   removingNode=null;
 }
