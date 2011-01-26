@@ -20,6 +20,18 @@
       Gossiper.instance.addSavedEndpoint(entry.getValue());
     }
   }
+  Thread drainOnShutdown=new Thread(new WrappedRunnable(){
+    public void runMayThrow() throws ExecutionException, InterruptedException, IOException {
+      ThreadPoolExecutor mutationStage=StageManager.getStage(Stage.MUTATION);
+      if (!mutationStage.isShutdown()) {
+        mutationStage.shutdown();
+        mutationStage.awaitTermination(1,TimeUnit.SECONDS);
+        CommitLog.instance.shutdownBlocking();
+      }
+    }
+  }
+);
+  Runtime.getRuntime().addShutdownHook(drainOnShutdown);
   if (Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))) {
     joinTokenRing();
   }

@@ -1,0 +1,42 @@
+{
+  queue=new LinkedBlockingQueue<Runnable>(1024 * Runtime.getRuntime().availableProcessors());
+  Runnable runnable=new WrappedRunnable(){
+    public void runMayThrow() throws Exception {
+      while (run) {
+        Runnable r=queue.poll(100,TimeUnit.MILLISECONDS);
+        if (r == null)         continue;
+        r.run();
+        completedTaskCount++;
+      }
+      commitLog.sync();
+    }
+  }
+;
+  appendingThread=new Thread(runnable,"COMMIT-LOG-WRITER");
+  appendingThread.start();
+  final Callable syncer=new Callable(){
+    public Object call() throws Exception {
+      commitLog.sync();
+      return null;
+    }
+  }
+;
+  new Thread(new Runnable(){
+    public void run(){
+      while (run) {
+        try {
+          submit(syncer).get();
+          Thread.sleep(DatabaseDescriptor.getCommitLogSyncPeriod());
+        }
+ catch (        InterruptedException e) {
+          throw new AssertionError(e);
+        }
+catch (        ExecutionException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    }
+  }
+,"PERIODIC-COMMIT-LOG-SYNCER").start();
+  AbstractCommitLogExecutorService.registerMBean(this);
+}
