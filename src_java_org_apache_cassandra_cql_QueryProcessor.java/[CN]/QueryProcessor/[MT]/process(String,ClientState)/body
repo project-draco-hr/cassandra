@@ -96,6 +96,25 @@ throw new TimedOutException();
 }
 avroResult.type=CqlResultType.VOID;
 return avroResult;
+case CREATE_KEYSPACE:
+CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
+create.validate();
+try {
+KSMetaData ksm=new KSMetaData(create.getName(),AbstractReplicationStrategy.getClass(create.getStrategyClass()),create.getStrategyOptions(),create.getReplicationFactor());
+applyMigrationOnStage(new AddKeyspace(ksm));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+avroResult.type=CqlResultType.VOID;
+return avroResult;
 }
 return null;
 }
