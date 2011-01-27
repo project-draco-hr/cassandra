@@ -9,18 +9,15 @@
   }
 ;
   StorageService.scheduledTasks.scheduleWithFixedDelay(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS,TimeUnit.MILLISECONDS);
-  Function<String,?> timeoutReporter=new Function<String,Object>(){
-    public Object apply(    String messageId){
-      Collection<InetAddress> addresses=targets.remove(messageId);
-      if (addresses == null)       return null;
-      for (      InetAddress address : addresses) {
-        for (        ILatencySubscriber subscriber : subscribers)         subscriber.receiveTiming(address,(double)DatabaseDescriptor.getRpcTimeout());
-      }
+  Function<Pair<String,Pair<InetAddress,IMessageCallback>>,?> timeoutReporter=new Function<Pair<String,Pair<InetAddress,IMessageCallback>>,Object>(){
+    public Object apply(    Pair<String,Pair<InetAddress,IMessageCallback>> pair){
+      Pair<InetAddress,IMessageCallback> expiredValue=pair.right;
+      maybeAddLatency(expiredValue.right,expiredValue.left,(double)DatabaseDescriptor.getRpcTimeout());
       return null;
     }
   }
 ;
-  callbacks=new ExpiringMap<String,IMessageCallback>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()),timeoutReporter);
+  callbacks=new ExpiringMap<String,Pair<InetAddress,IMessageCallback>>((long)(1.1 * DatabaseDescriptor.getRpcTimeout()),timeoutReporter);
   MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
   try {
     mbs.registerMBean(this,new ObjectName("org.apache.cassandra.net:type=MessagingService"));

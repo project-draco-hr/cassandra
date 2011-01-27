@@ -2,17 +2,20 @@
   final String myVersion=DatabaseDescriptor.getDefsVersion().toString();
   final Map<InetAddress,UUID> versions=new ConcurrentHashMap<InetAddress,UUID>();
   final Set<InetAddress> liveHosts=Gossiper.instance.getLiveMembers();
-  final Message msg=new Message(FBUtilities.getLocalAddress(),StorageService.Verb.SCHEMA_CHECK,ArrayUtils.EMPTY_BYTE_ARRAY);
   final CountDownLatch latch=new CountDownLatch(liveHosts.size());
-  MessagingService.instance().sendRR(msg,liveHosts,new IAsyncCallback(){
-    public void response(    Message msg){
-      logger.debug("Received schema check response from " + msg.getFrom().getHostAddress());
-      UUID theirVersion=UUID.fromString(new String(msg.getMessageBody()));
-      versions.put(msg.getFrom(),theirVersion);
+  IAsyncCallback cb=new IAsyncCallback(){
+    public void response(    Message message){
+      logger.debug("Received schema check response from " + message.getFrom().getHostAddress());
+      UUID theirVersion=UUID.fromString(new String(message.getMessageBody()));
+      versions.put(message.getFrom(),theirVersion);
       latch.countDown();
     }
   }
-);
+;
+  for (  InetAddress endpoint : liveHosts) {
+    Message message=new Message(FBUtilities.getLocalAddress(),StorageService.Verb.SCHEMA_CHECK,ArrayUtils.EMPTY_BYTE_ARRAY);
+    MessagingService.instance().sendRR(message,endpoint,cb);
+  }
   try {
     latch.await(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
   }

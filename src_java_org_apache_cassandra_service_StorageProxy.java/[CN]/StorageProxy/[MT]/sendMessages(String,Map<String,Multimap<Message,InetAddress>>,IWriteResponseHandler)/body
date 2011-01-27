@@ -3,9 +3,8 @@
     String dataCenter=entry.getKey();
     for (    Map.Entry<Message,Collection<InetAddress>> messages : entry.getValue().asMap().entrySet()) {
       Message message=messages.getKey();
-      message.removeHeader(RowMutation.FORWARD_HEADER);
       if (dataCenter.equals(localDataCenter)) {
-        for (        InetAddress destination : messages.getValue())         MessagingService.instance().sendOneWay(message,destination);
+        for (        InetAddress destination : messages.getValue())         MessagingService.instance().sendRR(message,destination,handler);
       }
  else {
         Iterator<InetAddress> iter=messages.getValue().iterator();
@@ -19,7 +18,7 @@
           dos.write(destination.getAddress());
           message.setHeader(RowMutation.FORWARD_HEADER,bos.toByteArray());
         }
-        MessagingService.instance().sendOneWay(message,target);
+        MessagingService.instance().sendRR(message,target,handler);
       }
     }
   }

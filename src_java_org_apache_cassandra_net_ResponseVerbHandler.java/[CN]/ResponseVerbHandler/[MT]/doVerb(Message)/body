@@ -1,10 +1,10 @@
 {
   String messageId=message.getMessageId();
-  MessagingService.instance().responseReceivedFrom(messageId,message.getFrom());
   double age=System.currentTimeMillis() - MessagingService.instance().getRegisteredCallbackAge(messageId);
-  IMessageCallback cb=MessagingService.instance().getRegisteredCallback(messageId);
-  if (cb == null)   return;
-  for (  ILatencySubscriber subscriber : subscribers)   subscriber.receiveTiming(message.getFrom(),age);
+  Pair<InetAddress,IMessageCallback> pair=MessagingService.instance().removeRegisteredCallback(messageId);
+  if (pair == null)   return;
+  IMessageCallback cb=pair.right;
+  MessagingService.instance().maybeAddLatency(cb,message.getFrom(),age);
   if (cb instanceof IAsyncCallback) {
     if (logger_.isDebugEnabled())     logger_.debug("Processing response on a callback from " + message.getMessageId() + "@"+ message.getFrom());
     ((IAsyncCallback)cb).response(message);
