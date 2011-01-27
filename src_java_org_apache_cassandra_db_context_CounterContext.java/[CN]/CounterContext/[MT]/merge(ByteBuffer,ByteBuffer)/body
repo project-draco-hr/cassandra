@@ -1,0 +1,59 @@
+{
+  int size=0;
+  int leftOffset=left.position();
+  int rightOffset=right.position();
+  while ((leftOffset < left.limit()) && (rightOffset < right.limit())) {
+    int cmp=ByteBufferUtil.compareSubArrays(left,leftOffset,right,rightOffset,idLength);
+    if (cmp == 0) {
+      ++size;
+      rightOffset+=stepLength;
+      leftOffset+=stepLength;
+    }
+ else     if (cmp > 0) {
+      ++size;
+      rightOffset+=stepLength;
+    }
+ else {
+      ++size;
+      leftOffset+=stepLength;
+    }
+  }
+  size+=(left.limit() - leftOffset) / stepLength;
+  size+=(right.limit() - rightOffset) / stepLength;
+  ByteBuffer merged=ByteBuffer.allocate(size * stepLength);
+  int mergedOffset=merged.position();
+  leftOffset=left.position();
+  rightOffset=right.position();
+  while ((leftOffset < left.limit()) && (rightOffset < right.limit())) {
+    int cmp=ByteBufferUtil.compareSubArrays(left,leftOffset,right,rightOffset,idLength);
+    if (cmp == 0) {
+      long leftClock=left.getLong(leftOffset + idLength);
+      long rightClock=right.getLong(rightOffset + idLength);
+      if (ByteBufferUtil.compareSubArrays(left,leftOffset,wrappedLocalId,0,idLength) == 0) {
+        long leftCount=left.getLong(leftOffset + idLength + clockLength);
+        long rightCount=right.getLong(rightOffset + idLength + clockLength);
+        writeElementAtOffset(merged,mergedOffset,localId,leftClock + rightClock,leftCount + rightCount);
+      }
+ else {
+        if (leftClock >= rightClock)         ByteBufferUtil.arrayCopy(left,leftOffset,merged,mergedOffset,stepLength);
+ else         ByteBufferUtil.arrayCopy(right,rightOffset,merged,mergedOffset,stepLength);
+      }
+      mergedOffset+=stepLength;
+      rightOffset+=stepLength;
+      leftOffset+=stepLength;
+    }
+ else     if (cmp > 0) {
+      ByteBufferUtil.arrayCopy(right,rightOffset,merged,mergedOffset,stepLength);
+      mergedOffset+=stepLength;
+      rightOffset+=stepLength;
+    }
+ else {
+      ByteBufferUtil.arrayCopy(left,leftOffset,merged,mergedOffset,stepLength);
+      mergedOffset+=stepLength;
+      leftOffset+=stepLength;
+    }
+  }
+  if (leftOffset < left.limit())   ByteBufferUtil.arrayCopy(left,leftOffset,merged,mergedOffset,left.limit() - leftOffset);
+  if (rightOffset < right.limit())   ByteBufferUtil.arrayCopy(right,rightOffset,merged,mergedOffset,right.limit() - rightOffset);
+  return merged;
+}

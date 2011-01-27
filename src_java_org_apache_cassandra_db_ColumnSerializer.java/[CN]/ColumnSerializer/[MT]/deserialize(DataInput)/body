@@ -4,11 +4,9 @@
   int b=dis.readUnsignedByte();
   if ((b & COUNTER_MASK) != 0) {
     long timestampOfLastDelete=dis.readLong();
-    ByteBuffer pc=ByteBufferUtil.readWithShortLength(dis);
-    byte[] partitionedCounter=ByteBufferUtil.getArray(pc);
-    long timestamp=dis.readLong();
+    long ts=dis.readLong();
     ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return new CounterColumn(name,value,timestamp,partitionedCounter,timestampOfLastDelete);
+    return new CounterColumn(name,value,ts,timestampOfLastDelete);
   }
  else   if ((b & EXPIRATION_MASK) != 0) {
     int ttl=dis.readInt();
@@ -28,6 +26,6 @@
  else {
     long ts=dis.readLong();
     ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return (b & DELETION_MASK) == 0 ? new Column(name,value,ts) : new DeletedColumn(name,value,ts);
+    return (b & COUNTER_UPDATE_MASK) != 0 ? new CounterUpdateColumn(name,value,ts) : ((b & DELETION_MASK) == 0 ? new Column(name,value,ts) : new DeletedColumn(name,value,ts));
   }
 }

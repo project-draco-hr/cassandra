@@ -1,0 +1,17 @@
+{
+  ByteBuffer nodeId=ByteBuffer.wrap(node.getAddress());
+  for (int offset=0; offset < context.remaining(); offset+=stepLength) {
+    int cmp=ByteBufferUtil.compareSubArrays(context,context.position() + offset,nodeId,0,idLength);
+    if (cmp < 0)     continue;
+ else     if (cmp == 0) {
+      ByteBuffer truncatedContext=ByteBuffer.allocate(context.remaining() - stepLength);
+      ByteBufferUtil.arrayCopy(context,context.position(),truncatedContext,0,offset);
+      ByteBufferUtil.arrayCopy(context,context.position() + offset + stepLength,truncatedContext,offset,context.remaining() - (offset + stepLength));
+      return truncatedContext;
+    }
+ else {
+      break;
+    }
+  }
+  return context;
+}
