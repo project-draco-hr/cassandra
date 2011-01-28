@@ -18,10 +18,9 @@
         rs.getWriteResponseHandler(writeEndpoints,hintedEndpoints,cm.consistency()).assureSufficientLiveNodes();
         IWriteResponseHandler responseHandler=WriteResponseHandler.create(endpoint);
         responseHandlers.add(responseHandler);
-        Message msg=cm.makeMutationMessage();
-        MessagingService.instance().addCallback(responseHandler,msg.getMessageId());
-        if (logger.isDebugEnabled())         logger.debug("forwarding counter update of key " + ByteBufferUtil.bytesToHex(cm.key()) + " to "+ msg.getMessageId()+ "@"+ endpoint);
-        MessagingService.instance().sendOneWay(msg,endpoint);
+        Message message=cm.makeMutationMessage();
+        if (logger.isDebugEnabled())         logger.debug("forwarding counter update of key " + ByteBufferUtil.bytesToHex(cm.key()) + " to "+ message.getMessageId()+ "@"+ endpoint);
+        MessagingService.instance().sendRR(message,endpoint,responseHandler);
       }
     }
     for (    IWriteResponseHandler responseHandler : responseHandlers) {
