@@ -1,0 +1,25 @@
+{
+  List<InetAddress> hosts=controller.getHosts();
+  Cassandra.Client client=controller.createClient(hosts.get(0));
+  client.system_add_keyspace(new KsDef(name,"org.apache.cassandra.locator.SimpleStrategy",rf,Arrays.asList(cfdef)));
+  for (  InetAddress host : hosts) {
+    try {
+      client=controller.createClient(host);
+      poll:       while (true) {
+        List<KsDef> ksDefList=client.describe_keyspaces();
+        for (        KsDef ks : ksDefList) {
+          if (ks.name.equals(name))           break poll;
+        }
+        try {
+          Thread.sleep(1000);
+        }
+ catch (        InterruptedException e) {
+          break poll;
+        }
+      }
+    }
+ catch (    TException te) {
+      continue;
+    }
+  }
+}
