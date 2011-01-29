@@ -1,0 +1,14 @@
+{
+  List<InetAddress> hosts=controller.getHosts();
+  final String keyspace="TestOneNodeWrite";
+  keyspace(keyspace).rf(3).validator("CounterColumnType").create();
+  for (  InetAddress host : hosts) {
+    Cassandra.Client client=controller.createClient(host);
+    client.set_keyspace(keyspace);
+    ByteBuffer key=newKey();
+    add(client,key,"Standard1","c1",1,ConsistencyLevel.ONE);
+    add(client,key,"Standard1","c2",2,ConsistencyLevel.ONE);
+    new CounterGet(client,"Standard1",key).name("c1").value(1L).perform(ConsistencyLevel.ALL);
+    new CounterGet(client,"Standard1",key).name("c2").value(2L).perform(ConsistencyLevel.ALL);
+  }
+}
