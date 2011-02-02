@@ -1,17 +1,18 @@
 {
+  final String ipaddr=endpoint.getHostAddress();
   final ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
-  final RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,ByteBuffer.wrap(endpoint.getAddress()));
+  final RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,ByteBuffer.wrap(ipaddr.getBytes()));
   rm.delete(new QueryPath(HINTS_CF),System.currentTimeMillis());
   Runnable runnable=new Runnable(){
     public void run(){
       try {
-        logger_.info("Deleting any stored hints for " + endpoint);
+        logger_.info("Deleting any stored hints for " + ipaddr);
         rm.apply();
         hintStore.forceFlush();
         CompactionManager.instance.submitMajor(hintStore,0,Integer.MAX_VALUE);
       }
  catch (      Exception e) {
-        logger_.warn("Could not delete hints for " + endpoint + ": "+ e);
+        logger_.warn("Could not delete hints for " + ipaddr + ": "+ e);
       }
     }
   }

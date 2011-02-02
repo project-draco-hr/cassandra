@@ -1,0 +1,20 @@
+{
+  ColumnParent parent=new ColumnParent(HINTS_CF);
+  SlicePredicate predicate=new SlicePredicate();
+  SliceRange sliceRange=new SliceRange();
+  sliceRange.setStart(new byte[0]).setFinish(new byte[0]);
+  sliceRange.setCount(column_count);
+  predicate.setSlice_range(sliceRange);
+  IPartitioner partitioner=StorageService.getPartitioner();
+  ByteBuffer empty=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  Range range=new Range(partitioner.getToken(empty),partitioner.getToken(empty));
+  List<Row> rows;
+  try {
+    rows=StorageProxy.getRangeSlice(new RangeSliceCommand("system",parent,predicate,range,LARGE_NUMBER),ConsistencyLevel.ONE);
+  }
+ catch (  Exception e) {
+    logger_.info("HintsCF getEPPendingHints timed out.");
+    throw new RuntimeException(e);
+  }
+  return rows;
+}
