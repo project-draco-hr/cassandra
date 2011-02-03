@@ -1,4 +1,15 @@
 {
+  logger_.info("Checking remote schema before delivering hints");
+  int waited=waitForSchemaAgreement(endpoint);
+  if (waited == 0) {
+    int sleep=new Random().nextInt(60000);
+    logger_.info("Sleeping {}ms to stagger hint delivery",sleep);
+    Thread.sleep(sleep);
+  }
+  if (!Gossiper.instance.getEndpointStateForEndpoint(endpoint).isAlive()) {
+    logger_.info("Endpoint {} died before hint delivery, aborting",endpoint);
+    return;
+  }
   logger_.info("Started hinted handoff for endpoint " + endpoint);
   queuedDeliveries.remove(endpoint);
   ByteBuffer endpointAsUTF8=ByteBuffer.wrap(endpoint.getHostAddress().getBytes(UTF_8));
