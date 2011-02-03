@@ -1,4 +1,17 @@
 {
   super.afterExecute(r,t);
-  logTaskException(r,t);
+  if (r instanceof FutureTask) {
+    try {
+      ((FutureTask)r).get();
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+catch (    ExecutionException e) {
+      if (Thread.getDefaultUncaughtExceptionHandler() != null)       Thread.getDefaultUncaughtExceptionHandler().uncaughtException(Thread.currentThread(),e.getCause());
+    }
+  }
+  if (t != null) {
+    logger.error("Error in ThreadPoolExecutor",t);
+  }
 }
