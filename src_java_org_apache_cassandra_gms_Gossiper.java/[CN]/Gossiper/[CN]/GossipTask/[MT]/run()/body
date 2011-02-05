@@ -1,19 +1,20 @@
 {
   try {
     MessagingService.instance().waitUntilListening();
-    endpointStateMap_.get(localEndpoint_).getHeartBeatState().updateHeartBeat();
+    endpointStateMap.get(FBUtilities.getLocalAddress()).getHeartBeatState().updateHeartBeat();
+    if (logger.isTraceEnabled())     logger.trace("My heartbeat is now " + endpointStateMap.get(FBUtilities.getLocalAddress()).getHeartBeatState().getHeartBeatVersion());
     List<GossipDigest> gDigests=new ArrayList<GossipDigest>();
     Gossiper.instance.makeRandomGossipDigest(gDigests);
     if (gDigests.size() > 0) {
       Message message=makeGossipDigestSynMessage(gDigests);
       boolean gossipedToSeed=doGossipToLiveMember(message);
       doGossipToUnreachableMember(message);
-      if (!gossipedToSeed || liveEndpoints_.size() < seeds_.size())       doGossipToSeed(message);
-      if (logger_.isTraceEnabled())       logger_.trace("Performing status check ...");
+      if (!gossipedToSeed || liveEndpoints.size() < seeds.size())       doGossipToSeed(message);
+      if (logger.isTraceEnabled())       logger.trace("Performing status check ...");
       doStatusCheck();
     }
   }
  catch (  Exception e) {
-    logger_.error("Gossip error",e);
+    logger.error("Gossip error",e);
   }
 }

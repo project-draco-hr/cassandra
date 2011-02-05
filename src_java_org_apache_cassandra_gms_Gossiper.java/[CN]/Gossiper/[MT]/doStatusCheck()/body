@@ -1,30 +1,29 @@
 {
   long now=System.currentTimeMillis();
-  Set<InetAddress> eps=endpointStateMap_.keySet();
+  Set<InetAddress> eps=endpointStateMap.keySet();
   for (  InetAddress endpoint : eps) {
-    if (endpoint.equals(localEndpoint_))     continue;
+    if (endpoint.equals(FBUtilities.getLocalAddress()))     continue;
     FailureDetector.instance.interpret(endpoint);
-    EndpointState epState=endpointStateMap_.get(endpoint);
+    EndpointState epState=endpointStateMap.get(endpoint);
     if (epState != null) {
       long duration=now - epState.getUpdateTimestamp();
-      if (!epState.getHasToken() && !epState.isAlive() && (duration > FatClientTimeout_)) {
+      if (!epState.getHasToken() && !epState.isAlive() && (duration > FatClientTimeout)) {
         if (StorageService.instance.getTokenMetadata().isMember(endpoint))         epState.setHasToken(true);
  else {
-          logger_.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout_+ "ms, removing from gossip");
+          logger.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout+ "ms, removing from gossip");
           removeEndpoint(endpoint);
         }
       }
-      if (!epState.isAlive() && (duration > aVeryLongTime_)) {
+      if (!epState.isAlive() && (duration > aVeryLongTime)) {
         evictFromMembership(endpoint);
       }
     }
   }
-  if (!justRemovedEndpoints_.isEmpty()) {
-    Map<InetAddress,Long> copy=new HashMap<InetAddress,Long>(justRemovedEndpoints_);
-    for (    Map.Entry<InetAddress,Long> entry : copy.entrySet()) {
+  if (!justRemovedEndpoints.isEmpty()) {
+    for (    Map.Entry<InetAddress,Long> entry : justRemovedEndpoints.entrySet()) {
       if ((now - entry.getValue()) > QUARANTINE_DELAY) {
-        if (logger_.isDebugEnabled())         logger_.debug(QUARANTINE_DELAY + " elapsed, " + entry.getKey()+ " gossip quarantine over");
-        justRemovedEndpoints_.remove(entry.getKey());
+        if (logger.isDebugEnabled())         logger.debug(QUARANTINE_DELAY + " elapsed, " + entry.getKey()+ " gossip quarantine over");
+        justRemovedEndpoints.remove(entry.getKey());
       }
     }
   }

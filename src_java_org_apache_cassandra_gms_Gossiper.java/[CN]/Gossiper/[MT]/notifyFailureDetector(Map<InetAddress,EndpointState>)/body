@@ -1,23 +1,5 @@
 {
-  IFailureDetector fd=FailureDetector.instance;
   for (  Entry<InetAddress,EndpointState> entry : remoteEpStateMap.entrySet()) {
-    InetAddress endpoint=entry.getKey();
-    EndpointState remoteEndpointState=entry.getValue();
-    EndpointState localEndpointState=endpointStateMap_.get(endpoint);
-    if (localEndpointState != null) {
-      int localGeneration=localEndpointState.getHeartBeatState().generation_;
-      int remoteGeneration=remoteEndpointState.getHeartBeatState().generation_;
-      if (remoteGeneration > localGeneration) {
-        fd.report(endpoint);
-        continue;
-      }
-      if (remoteGeneration == localGeneration) {
-        int localVersion=getMaxEndpointStateVersion(localEndpointState);
-        int remoteVersion=remoteEndpointState.getHeartBeatState().getHeartBeatVersion();
-        if (remoteVersion > localVersion) {
-          fd.report(endpoint);
-        }
-      }
-    }
+    notifyFailureDetector(entry.getKey(),entry.getValue());
   }
 }

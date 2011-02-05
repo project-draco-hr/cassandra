@@ -1,27 +1,32 @@
 {
   for (  Entry<InetAddress,EndpointState> entry : epStateMap.entrySet()) {
     InetAddress ep=entry.getKey();
-    if (ep.equals(localEndpoint_))     continue;
-    EndpointState localEpStatePtr=endpointStateMap_.get(ep);
+    if (ep.equals(FBUtilities.getLocalAddress()))     continue;
+    if (justRemovedEndpoints.containsKey(ep)) {
+      if (logger.isTraceEnabled())       logger.trace("Ignoring gossip for " + ep + " because it is quarantined");
+      continue;
+    }
+    EndpointState localEpStatePtr=endpointStateMap.get(ep);
     EndpointState remoteState=entry.getValue();
     if (localEpStatePtr != null) {
       int localGeneration=localEpStatePtr.getHeartBeatState().getGeneration();
       int remoteGeneration=remoteState.getHeartBeatState().getGeneration();
+      if (logger.isTraceEnabled())       logger.trace(ep + "local generation " + localGeneration+ ", remote generation "+ remoteGeneration);
       if (remoteGeneration > localGeneration) {
-        handleGenerationChange(ep,remoteState);
+        if (logger.isTraceEnabled())         logger.trace("Updating heartbeat state generation to " + remoteGeneration + " from "+ localGeneration+ " for "+ ep);
+        handleMajorStateChange(ep,remoteState);
       }
  else       if (remoteGeneration == localGeneration) {
         int localMaxVersion=getMaxEndpointStateVersion(localEpStatePtr);
         int remoteMaxVersion=getMaxEndpointStateVersion(remoteState);
         if (remoteMaxVersion > localMaxVersion) {
-          markAlive(ep,localEpStatePtr);
-          applyHeartBeatStateLocally(ep,localEpStatePtr,remoteState);
-          applyApplicationStateLocally(ep,localEpStatePtr,remoteState);
+          applyNewStates(ep,localEpStatePtr,remoteState);
         }
+ else         if (logger.isTraceEnabled())         logger.trace("Ignoring remote version " + remoteMaxVersion + " <= "+ localMaxVersion+ " for "+ ep);
       }
     }
  else {
-      handleNewJoin(ep,remoteState);
+      handleMajorStateChange(ep,remoteState);
     }
   }
 }
