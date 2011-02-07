@@ -1,0 +1,18 @@
+{
+  double age=System.currentTimeMillis() - MessagingService.instance().getRegisteredCallbackAge(id);
+  Pair<InetAddress,IMessageCallback> pair=MessagingService.instance().removeRegisteredCallback(id);
+  if (pair == null) {
+    logger_.debug("Callback already removed for {}",id);
+    return;
+  }
+  IMessageCallback cb=pair.right;
+  MessagingService.instance().maybeAddLatency(cb,message.getFrom(),age);
+  if (cb instanceof IAsyncCallback) {
+    if (logger_.isDebugEnabled())     logger_.debug("Processing response on a callback from " + id + "@"+ message.getFrom());
+    ((IAsyncCallback)cb).response(message);
+  }
+ else {
+    if (logger_.isDebugEnabled())     logger_.debug("Processing response on an async result from " + id + "@"+ message.getFrom());
+    ((IAsyncResult)cb).result(message);
+  }
+}

@@ -23,13 +23,13 @@ catch (        InterruptedException e) {
  else {
         DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
         RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
+        Message message=c2.getMessage();
         RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
         AbstractReplicationStrategy rs=Table.open(command.keyspace).getReplicationStrategy();
         ReadCallback<List<Row>> handler=getReadCallback(resolver,command.keyspace,consistency_level);
         for (        InetAddress endpoint : liveEndpoints) {
-          Message message=c2.getMessage();
           MessagingService.instance().sendRR(message,endpoint,handler);
-          if (logger.isDebugEnabled())           logger.debug("reading " + c2 + " from "+ message.getMessageId()+ "@"+ endpoint);
+          if (logger.isDebugEnabled())           logger.debug("reading " + c2 + " from "+ endpoint);
         }
         try {
           if (logger.isDebugEnabled()) {

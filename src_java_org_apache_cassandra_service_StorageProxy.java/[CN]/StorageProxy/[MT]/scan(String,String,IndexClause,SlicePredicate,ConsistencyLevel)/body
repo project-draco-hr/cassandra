@@ -11,10 +11,10 @@
     ReadCallback<List<Row>> handler=getReadCallback(resolver,keyspace,consistency_level);
     if (handler.blockfor > liveEndpoints.size())     throw new UnavailableException();
     IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
+    Message message=command.getMessage();
     for (    InetAddress endpoint : liveEndpoints) {
-      Message message=command.getMessage();
       MessagingService.instance().sendRR(message,endpoint,handler);
-      if (logger.isDebugEnabled())       logger.debug("reading " + command + " from "+ message.getMessageId()+ "@"+ endpoint);
+      if (logger.isDebugEnabled())       logger.debug("reading " + command + " from "+ endpoint);
     }
     List<Row> theseRows;
     try {
