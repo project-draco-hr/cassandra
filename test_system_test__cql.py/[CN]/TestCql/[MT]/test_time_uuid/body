@@ -1,0 +1,23 @@
+def test_time_uuid(self):
+    'store and retrieve time-based (type 1) uuids'
+    conn = init()
+    timeuuid = uuid.uuid1()
+    conn.execute(('\n            UPDATE Standard2 SET timeuuid("%s") = 10 WHERE KEY = "uuidtest"\n        ' % str(timeuuid)))
+    r = conn.execute(('\n            SELECT timeuuid("%s") FROM Standard2 WHERE KEY = "uuidtest"\n        ' % str(timeuuid)))
+    assert (r[0].columns[0].name == timeuuid.bytes)
+    ms = uuid1bytes_to_millis(uuid.uuid1().bytes)
+    conn.execute(('\n            UPDATE Standard2 SET "id" = timeuuid(%d) WHERE KEY = "uuidtest"\n        ' % ms))
+    r = conn.execute('SELECT "id" FROM Standard2 WHERE KEY = "uuidtest"')
+    assert (uuid1bytes_to_millis(r[0].columns[0].value) == ms)
+    conn.execute('\n            UPDATE Standard2 SET "id2" = timeuuid("2011-01-31 17:00:00-0000")\n                    WHERE KEY = "uuidtest"\n        ')
+    r = conn.execute('SELECT "id2" FROM Standard2 WHERE KEY = "uuidtest"')
+    ms = uuid1bytes_to_millis(r[0].columns[0].value)
+    assert (ms == 1296493200000), ('%d != 1296493200000 (2011-01-31 17:00:00-0000)' % ms)
+    conn.execute('\n            UPDATE Standard2 SET "id3" = timeuuid() WHERE KEY = "uuidtest"\n        ')
+    r = conn.execute('SELECT "id3" FROM Standard2 WHERE KEY = "uuidtest"')
+    ms = uuid1bytes_to_millis(r[0].columns[0].value)
+    assert (((time.time() * 1000.0) - ms) < 100), 'timeuuid() not within 100ms of now (UPDATE vs. SELECT)'
+    conn.execute('\n            UPDATE Standard2 SET "id4" = timeuuid("now") WHERE KEY = "uuidtest"\n        ')
+    r = conn.execute('SELECT "id4" FROM Standard2 WHERE KEY = "uuidtest"')
+    ms = uuid1bytes_to_millis(r[0].columns[0].value)
+    assert (((time.time() * 1000.0) - ms) < 100), 'timeuuid("now") not within 100ms of now (UPDATE vs. SELECT)'

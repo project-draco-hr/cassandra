@@ -23,6 +23,37 @@ return ByteBuffer.wrap(text.getBytes("UTF-8"));
  catch (UnsupportedEncodingException e) {
 throw new RuntimeException(e);
 }
+case UUID:
+try {
+return LexicalUUIDType.instance.fromString(text);
+}
+ catch (IllegalArgumentException e) {
+throw new InvalidRequestException(text + " is not valid for type uuid");
+}
+case TIMEUUID:
+if (text.equals("") || text.toLowerCase().equals("now")) {
+return ByteBuffer.wrap(UUIDGen.decompose(UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress())));
+}
+if (text.matches("^\\d+$")) {
+try {
+return ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(Long.parseLong(text)));
+}
+ catch (NumberFormatException e) {
+throw new InvalidRequestException(text + " is not valid for type timeuuid");
+}
+}
+try {
+long timestamp=DateUtils.parseDate(text,iso8601Patterns).getTime();
+return ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(timestamp));
+}
+ catch (ParseException e1) {
+}
+try {
+return TimeUUIDType.instance.fromString(text);
+}
+ catch (IllegalArgumentException e) {
+throw new InvalidRequestException(text + " is not valid for type timeuuid");
+}
 }
 return null;
 }
