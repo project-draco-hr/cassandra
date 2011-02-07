@@ -1,0 +1,19 @@
+{
+  long sessionId=dis.readLong();
+  InetAddress target=CompactEndpointSerializationHelper.deserialize(dis);
+  boolean singleFile=dis.readBoolean();
+  if (singleFile) {
+    PendingFile file=PendingFile.serializer().deserialize(dis,version);
+    return new StreamRequestMessage(target,file,sessionId);
+  }
+ else {
+    String table=dis.readUTF();
+    int size=dis.readInt();
+    List<Range> ranges=(size == 0) ? null : new ArrayList<Range>();
+    for (int i=0; i < size; ++i) {
+      ranges.add((Range)AbstractBounds.serializer().deserialize(dis));
+    }
+    OperationType type=OperationType.valueOf(dis.readUTF());
+    return new StreamRequestMessage(target,ranges,table,sessionId,type);
+  }
+}
