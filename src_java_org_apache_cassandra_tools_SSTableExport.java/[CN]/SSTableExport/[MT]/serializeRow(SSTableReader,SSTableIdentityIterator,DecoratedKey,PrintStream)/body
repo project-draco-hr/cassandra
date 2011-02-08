@@ -1,0 +1,25 @@
+{
+  ColumnFamily columnFamily=row.getColumnFamily();
+  boolean isSuperCF=columnFamily.isSuper();
+  ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  out.print(asKey(bytesToHex(key.key)));
+  out.print(isSuperCF ? "{" : "[");
+  while (true) {
+    QueryFilter filter=QueryFilter.getSliceFilter(key,new QueryPath(columnFamily.metadata().tableName),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
+    IColumnIterator columns=filter.getSSTableColumnIterator(reader);
+    int columnCount=0;
+    while (columns.hasNext()) {
+      startColumn=columns.next().name();
+      columnCount++;
+    }
+    try {
+      columns=filter.getSSTableColumnIterator(reader);
+      serializeRow(columns,isSuperCF,out);
+    }
+ catch (    IOException e) {
+      System.err.println("WARNING: Corrupt row " + key + " (skipping).");
+    }
+    if (columnCount < PAGE_SIZE)     break;
+  }
+  out.print(isSuperCF ? "}" : "]");
+}
