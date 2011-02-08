@@ -6,7 +6,7 @@
     String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
     if (targets.size() == 1 && targets.iterator().next().equals(destination)) {
       if (destination.equals(FBUtilities.getLocalAddress())) {
-        if (insertLocalMessages)         insertLocalMessage(rm,responseHandler);
+        if (insertLocalMessages)         insertLocal(rm,responseHandler);
       }
  else {
         Message unhintedMessage=rm.getMessage(Gossiper.instance.getVersion(destination));
@@ -24,17 +24,11 @@
       for (      InetAddress target : targets) {
         if (!target.equals(destination)) {
           addHintHeader(hintedMessage,target);
-          if (logger.isDebugEnabled())           logger.debug("insert writing key " + ByteBufferUtil.bytesToHex(rm.key()) + " to "+ hintedMessage.getMessageId()+ "@"+ destination+ " for "+ target);
+          if (logger.isDebugEnabled())           logger.debug("insert writing key " + ByteBufferUtil.bytesToHex(rm.key()) + " to "+ destination+ " for "+ target);
         }
       }
       if (targets.contains(destination) || consistency_level == ConsistencyLevel.ANY)       MessagingService.instance().sendRR(hintedMessage,destination,responseHandler);
  else       MessagingService.instance().sendOneWay(hintedMessage,destination);
-      Multimap<Message,InetAddress> messages=dcMessages.get(dc);
-      if (messages == null) {
-        messages=HashMultimap.create();
-        dcMessages.put(dc,messages);
-      }
-      messages.put(hintedMessage,destination);
     }
     sendMessages(localDataCenter,dcMessages,responseHandler);
   }
