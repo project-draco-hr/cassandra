@@ -1,8 +1,11 @@
-def __init__(self, host, port=9160, keyspace=None):
+def __init__(self, host, port=9160, keyspace=None, username=None, password=None):
     socket = TSocket.TSocket(host, port)
     self.transport = TTransport.TFramedTransport(socket)
     protocol = TBinaryProtocol.TBinaryProtocolAccelerated(self.transport)
     self.client = Cassandra.Client(protocol)
     socket.open()
+    if (username and password):
+        credentials = {'username': username, 'password': password, }
+        self.client.login(AuthenticationRequest(credentials=credentials))
     if keyspace:
         self.execute(('USE %s;' % keyspace))
