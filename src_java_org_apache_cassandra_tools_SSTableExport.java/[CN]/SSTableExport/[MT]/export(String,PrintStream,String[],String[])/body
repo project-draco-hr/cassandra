@@ -1,26 +1,35 @@
 {
   SSTableReader reader=SSTableReader.open(Descriptor.fromFilename(ssTableFile));
-  SSTableScanner scanner=reader.getDirectScanner(BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE);
-  IPartitioner<?> partitioner=StorageService.getPartitioner();
-  for (  String toExclude : excludes) {
-    toExport.remove(toExclude);
-  }
-  outs.println("{");
+  SSTableScanner scanner=reader.getDirectScanner(INPUT_FILE_BUFFER_SIZE);
+  IPartitioner<?> partitioner=DatabaseDescriptor.getPartitioner();
+  Set<String> excludeSet=new HashSet<String>();
   int i=0;
+  if (excludes != null)   excludeSet=new HashSet<String>(Arrays.asList(excludes));
+  outs.println("{");
   DecoratedKey lastKey=null;
-  for (  String key : toExport) {
+  for (  String key : keys) {
     if (excludeSet.contains(key))     continue;
     DecoratedKey<?> dk=partitioner.decorateKey(hexToBytes(key));
     if (lastKey != null && lastKey.compareTo(dk) > 0)     throw new IOException("Key out of order! " + lastKey + " > "+ dk);
     lastKey=dk;
-    lastKey=decoratedKey;
-    scanner.seekTo(decoratedKey);
-    if (!scanner.hasNext())     continue;
-    serializeRow(reader,(SSTableIdentityIterator)scanner.next(),decoratedKey,outs);
-    if (i != 0)     outs.println(",");
+    scanner.seekTo(dk);
     i++;
+    if (scanner.hasNext()) {
+      SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+      try {
+        serializeRow(outs,row);
+      }
+ catch (      IOException ioexc) {
+        System.err.println("WARNING: Corrupt row " + key + " (skipping).");
+        continue;
+      }
+catch (      OutOfMemoryError oom) {
+        System.err.println("ERROR: Out of memory deserializing row " + key);
+        continue;
+      }
+      if (i != 1)       outs.println(",");
+    }
   }
   outs.println("\n}");
   outs.flush();
-  scanner.close();
 }
