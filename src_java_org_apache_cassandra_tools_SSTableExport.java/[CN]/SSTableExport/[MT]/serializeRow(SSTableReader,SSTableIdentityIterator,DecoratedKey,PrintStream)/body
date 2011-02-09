@@ -4,7 +4,7 @@
   AbstractType comparator=columnFamily.getComparator();
   outs.print("  " + asKey(bytesToHex(row.getKey().key)));
   if (columnFamily.isSuper()) {
-    outs.print("{ ");
+    QueryFilter filter=QueryFilter.getSliceFilter(key,new QueryPath(columnFamily.metadata().tableName),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
     Iterator<IColumn> iter=columnFamily.getSortedColumns().iterator();
     while (iter.hasNext()) {
       IColumn column=iter.next();
@@ -20,9 +20,14 @@
         outs.print(", ");
       }
     }
-    outs.print("}");
+    try {
+      columns=filter.getSSTableColumnIterator(reader);
+      serializeRow(columns,isSuperCF,out);
+    }
+ catch (    IOException e) {
+      System.err.println("WARNING: Corrupt row " + key + " (skipping).");
+    }
+    if (columnCount < PAGE_SIZE)     break;
   }
- else {
-    serializeColumns(outs,columnFamily.getSortedColumns(),comparator,cfMetaData);
-  }
+  out.print(isSuperCF ? "}" : "]");
 }
