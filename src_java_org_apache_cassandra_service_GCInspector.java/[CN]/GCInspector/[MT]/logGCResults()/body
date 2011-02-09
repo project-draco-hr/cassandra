@@ -20,5 +20,17 @@
     if (gcw.getDuration() > MIN_DURATION)     logger.info(st);
  else     if (logger.isDebugEnabled())     logger.debug(st);
     if (gcw.getDuration() > MIN_DURATION_TPSTATS)     StatusLogger.log();
+    if (gcw.getName().equals("ConcurrentMarkSweep")) {
+      double usage=(double)memoryUsed / memoryMax;
+      if (memoryUsed > DatabaseDescriptor.getReduceCacheSizesAt() * memoryMax && !cacheSizesReduced) {
+        cacheSizesReduced=true;
+        logger.warn("Heap is " + usage + " full.  You may need to reduce memtable and/or cache sizes.  Cassandra is now reducing cache sizes to free up memory.  Adjust reduce_cache_sizes_at threshold in cassandra.yaml if you don't want Cassandra to do this automatically");
+        StorageService.instance.reduceCacheSizes();
+      }
+      if (memoryUsed > DatabaseDescriptor.getFlushLargestMemtablesAt() * memoryMax) {
+        logger.warn("Heap is " + usage + " full.  You may need to reduce memtable and/or cache sizes.  Cassandra will now flush up to the two largest memtables to free up memory.  Adjust flush_largest_memtables_at threshold in cassandra.yaml if you don't want Cassandra to do this automatically");
+        StorageService.instance.flushLargestMemtables();
+      }
+    }
   }
 }
