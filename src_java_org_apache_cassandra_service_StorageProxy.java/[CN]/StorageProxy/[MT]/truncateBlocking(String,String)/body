@@ -8,10 +8,10 @@
   int blockFor=allEndpoints.size();
   final TruncateResponseHandler responseHandler=new TruncateResponseHandler(blockFor);
   logger.debug("Starting to send truncate messages to hosts {}",allEndpoints);
-  Truncation truncation=new Truncation(keyspace,cfname);
+  final Truncation truncation=new Truncation(keyspace,cfname);
+  MessageProducer prod=new CacheingMessageProducer(truncation);
   for (  InetAddress endpoint : allEndpoints) {
-    Message message=truncation.getMessage(Gossiper.instance.getVersion(endpoint));
-    MessagingService.instance().sendRR(message,endpoint,responseHandler);
+    MessagingService.instance().sendRR(prod,endpoint,responseHandler);
   }
   logger.debug("Sent all truncate messages, now waiting for {} responses",blockFor);
   responseHandler.get();

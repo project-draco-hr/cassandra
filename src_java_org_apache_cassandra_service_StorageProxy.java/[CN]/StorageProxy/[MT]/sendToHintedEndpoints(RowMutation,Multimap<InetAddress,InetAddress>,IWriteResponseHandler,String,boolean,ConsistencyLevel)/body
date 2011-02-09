@@ -1,5 +1,6 @@
 {
   Map<String,Multimap<Message,InetAddress>> dcMessages=new HashMap<String,Multimap<Message,InetAddress>>(hintedEndpoints.size());
+  MessageProducer prod=new CacheingMessageProducer(rm);
   for (  Map.Entry<InetAddress,Collection<InetAddress>> entry : hintedEndpoints.asMap().entrySet()) {
     InetAddress destination=entry.getKey();
     Collection<InetAddress> targets=entry.getValue();
@@ -9,14 +10,13 @@
         insertLocal(rm,responseHandler);
       }
  else {
-        Message unhintedMessage=rm.getMessage(Gossiper.instance.getVersion(destination));
         if (logger.isDebugEnabled())         logger.debug("insert writing key " + ByteBufferUtil.bytesToHex(rm.key()) + " to "+ destination);
         Multimap<Message,InetAddress> messages=dcMessages.get(dc);
         if (messages == null) {
           messages=HashMultimap.create();
           dcMessages.put(dc,messages);
         }
-        messages.put(unhintedMessage,destination);
+        messages.put(prod.getMessage(Gossiper.instance.getVersion(destination)),destination);
       }
     }
  else {
