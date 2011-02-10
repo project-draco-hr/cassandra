@@ -1,27 +1,19 @@
 {
-  SSTableScanner scanner=reader.getDirectScanner(INPUT_FILE_BUFFER_SIZE);
   Set<String> excludeSet=new HashSet<String>();
   if (excludes != null)   excludeSet=new HashSet<String>(Arrays.asList(excludes));
-  outs.println("{");
   SSTableIdentityIterator row;
-  boolean elementWritten=false;
+  SSTableScanner scanner=reader.getDirectScanner(BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE);
+  outs.println("{");
+  int i=0;
   while (scanner.hasNext()) {
     row=(SSTableIdentityIterator)scanner.next();
-    if (excludeSet.contains(bytesToHex(row.getKey().key)))     continue;
- else     if (elementWritten)     outs.println(",");
-    try {
-      serializeRow(outs,row);
-      if (!elementWritten)       elementWritten=true;
-    }
- catch (    IOException ioexcep) {
-      System.err.println("WARNING: Corrupt row " + bytesToHex(row.getKey().key) + " (skipping).");
-      elementWritten=false;
-    }
-catch (    OutOfMemoryError oom) {
-      System.err.println("ERROR: Out of memory deserializing row " + bytesToHex(row.getKey().key));
-      elementWritten=false;
-    }
+    String currentKey=bytesToHex(row.getKey().key);
+    if (excludeSet.contains(currentKey))     continue;
+ else     if (i != 0)     outs.println(",");
+    serializeRow(reader,row,row.getKey(),outs);
+    i++;
   }
-  outs.printf("%n}%n");
+  outs.println("\n}");
   outs.flush();
+  scanner.close();
 }
