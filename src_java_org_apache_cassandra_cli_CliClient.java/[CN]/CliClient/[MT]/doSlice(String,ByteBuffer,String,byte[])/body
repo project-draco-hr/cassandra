@@ -5,6 +5,7 @@
   List<ColumnOrSuperColumn> columns=thriftClient.get_slice(key,parent,new SlicePredicate().setColumn_names(null).setSlice_range(range),ConsistencyLevel.ONE);
   AbstractType validator;
   CfDef cfDef=getCfDef(columnFamily);
+  boolean isSuperCF=cfDef.column_type.equals("Super");
   for (  ColumnOrSuperColumn cosc : columns) {
     if (cosc.isSetSuper_column()) {
       SuperColumn superColumn=cosc.super_column;
@@ -18,7 +19,8 @@
  else {
       Column column=cosc.column;
       validator=getValidatorForValue(cfDef,column.getName());
-      sessionState.out.printf("=> (column=%s, value=%s, timestamp=%d%s)%n",formatColumnName(keyspace,columnFamily,column),validator.getString(column.value),column.timestamp,column.isSetTtl() ? String.format(", ttl=%d",column.getTtl()) : "");
+      String formattedName=isSuperCF ? formatSubcolumnName(keyspace,columnFamily,column) : formatColumnName(keyspace,columnFamily,column);
+      sessionState.out.printf("=> (column=%s, value=%s, timestamp=%d%s)%n",formattedName,validator.getString(column.value),column.timestamp,column.isSetTtl() ? String.format(", ttl=%d",column.getTtl()) : "");
     }
   }
   sessionState.out.println("Returned " + columns.size() + " results.");
