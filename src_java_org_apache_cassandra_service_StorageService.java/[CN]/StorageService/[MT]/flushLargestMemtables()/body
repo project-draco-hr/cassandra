@@ -1,0 +1,18 @@
+{
+  ColumnFamilyStore largestByOps=null;
+  ColumnFamilyStore largestByThroughput=null;
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    if (largestByOps == null || cfs.getMemtableColumnsCount() > largestByOps.getMemtableColumnsCount())     largestByOps=cfs;
+    if (largestByThroughput == null || cfs.getMemtableThroughputInMB() > largestByThroughput.getMemtableThroughputInMB())     largestByThroughput=cfs;
+  }
+  if (largestByOps == null) {
+    logger_.error("Unable to reduce heap usage since there are no column families defined");
+    return;
+  }
+  logger_.warn("Flushing " + largestByOps + " to relieve memory pressure");
+  largestByOps.forceFlush();
+  if (largestByThroughput != largestByOps) {
+    logger_.warn("Flushing " + largestByThroughput + " to relieve memory pressure");
+    largestByThroughput.forceFlush();
+  }
+}
