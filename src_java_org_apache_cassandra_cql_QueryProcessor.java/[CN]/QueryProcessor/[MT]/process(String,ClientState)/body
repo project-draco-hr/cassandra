@@ -119,6 +119,23 @@ throw ex;
 }
 avroResult.type=CqlResultType.VOID;
 return avroResult;
+case CREATE_COLUMNFAMILY:
+CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
+try {
+applyMigrationOnStage(new AddColumnFamily(createCf.getCFMetaData(keyspace)));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+avroResult.type=CqlResultType.VOID;
+return avroResult;
 }
 return null;
 }
