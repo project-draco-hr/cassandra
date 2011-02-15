@@ -1,0 +1,13 @@
+{
+  try {
+    resolver.resolve();
+  }
+ catch (  DigestMismatchException e) {
+    if (logger.isDebugEnabled())     logger.debug("Digest mismatch:",e);
+    ReadCommand readCommand=(ReadCommand)command;
+    final RowRepairResolver repairResolver=new RowRepairResolver(readCommand.table,readCommand.key);
+    IAsyncCallback repairHandler=new AsyncRepairCallback(repairResolver,endpoints.size());
+    Message messageRepair=readCommand.makeReadMessage();
+    for (    InetAddress endpoint : endpoints)     MessagingService.instance().sendRR(messageRepair,endpoint,repairHandler);
+  }
+}

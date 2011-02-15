@@ -25,8 +25,8 @@ catch (        InterruptedException e) {
         RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
         Message message=c2.getMessage();
         RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
-        AbstractReplicationStrategy rs=Table.open(command.keyspace).getReplicationStrategy();
-        ReadCallback<List<Row>> handler=getReadCallback(resolver,command.keyspace,consistency_level);
+        ReadCallback<List<Row>> handler=getReadCallback(resolver,command,consistency_level,liveEndpoints);
+        handler.assureSufficientLiveNodes();
         for (        InetAddress endpoint : liveEndpoints) {
           MessagingService.instance().sendRR(message,endpoint,handler);
           if (logger.isDebugEnabled())           logger.debug("reading " + c2 + " from "+ endpoint);

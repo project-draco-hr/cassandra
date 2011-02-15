@@ -11,7 +11,7 @@
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
   HashMultimap<InetAddress,InetAddress> hintedNodes=HashMultimap.create();
   AbstractReplicationStrategy strategy;
-  for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+  for (  final String table : DatabaseDescriptor.getNonSystemTables()) {
     strategy=getStrategy(table,tmd);
     StorageService.calculatePendingRanges(strategy,table);
     int replicationFactor=strategy.getReplicationFactor();
@@ -24,7 +24,14 @@
           hintedNodes.put(hosts.get(j),hosts.get(j));
         }
         IWriteResponseHandler writeHandler=strategy.getWriteResponseHandler(hosts,hintedNodes,c);
-        ReadCallback<Row> readHandler=StorageProxy.getReadCallback(new ReadResponseResolver(table,ByteBufferUtil.bytes("foo")),table,c);
+        IReadCommand command=new IReadCommand(){
+          public String getKeyspace(){
+            return table;
+          }
+        }
+;
+        RowRepairResolver resolver=new RowRepairResolver(table,ByteBufferUtil.bytes("foo"));
+        ReadCallback<Row> readHandler=StorageProxy.getReadCallback(resolver,command,c,new ArrayList<InetAddress>(hintedNodes.keySet()));
         boolean isWriteUnavailable=false;
         boolean isReadUnavailable=false;
         try {
@@ -34,7 +41,7 @@
           isWriteUnavailable=true;
         }
         try {
-          readHandler.assureSufficientLiveNodes(hintedNodes.asMap().keySet());
+          readHandler.assureSufficientLiveNodes();
         }
  catch (        UnavailableException e) {
           isReadUnavailable=true;
