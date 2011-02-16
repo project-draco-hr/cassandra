@@ -1,31 +1,3 @@
 {
-  ByteBuffer name=ByteBufferUtil.readWithShortLength(dis);
-  if (name.remaining() <= 0)   throw new CorruptColumnException("invalid column name length " + name.remaining());
-  int b=dis.readUnsignedByte();
-  if ((b & COUNTER_MASK) != 0) {
-    long timestampOfLastDelete=dis.readLong();
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return new CounterColumn(name,value,ts,timestampOfLastDelete);
-  }
- else   if ((b & EXPIRATION_MASK) != 0) {
-    int ttl=dis.readInt();
-    int expiration=dis.readInt();
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    if ((int)(System.currentTimeMillis() / 1000) > expiration) {
-      ByteBuffer bytes=ByteBuffer.allocate(4);
-      bytes.putInt(expiration);
-      bytes.rewind();
-      return new DeletedColumn(name,bytes,ts);
-    }
- else {
-      return new ExpiringColumn(name,value,ts,ttl,expiration);
-    }
-  }
- else {
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return (b & COUNTER_UPDATE_MASK) != 0 ? new CounterUpdateColumn(name,value,ts) : ((b & DELETION_MASK) == 0 ? new Column(name,value,ts) : new DeletedColumn(name,value,ts));
-  }
+  return deserialize(dis,null);
 }
