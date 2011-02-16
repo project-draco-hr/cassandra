@@ -8,12 +8,18 @@
     List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(keyspace,range.right);
     DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
     RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace,liveEndpoints);
-    ReadCallback<List<Row>> handler=getReadCallback(resolver,keyspace,consistency_level);
-    if (handler.blockfor > liveEndpoints.size())     throw new UnavailableException();
+    IReadCommand iCommand=new IReadCommand(){
+      public String getKeyspace(){
+        return keyspace;
+      }
+    }
+;
+    ReadCallback<List<Row>> handler=getReadCallback(resolver,iCommand,consistency_level,liveEndpoints);
+    handler.assureSufficientLiveNodes();
     IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
-    MessageProducer prod=new CachingMessageProducer(command);
+    MessageProducer producer=new CachingMessageProducer(command);
     for (    InetAddress endpoint : liveEndpoints) {
-      MessagingService.instance().sendRR(prod,endpoint,handler);
+      MessagingService.instance().sendRR(producer,endpoint,handler);
       if (logger.isDebugEnabled())       logger.debug("reading " + command + " from "+ endpoint);
     }
     List<Row> theseRows;

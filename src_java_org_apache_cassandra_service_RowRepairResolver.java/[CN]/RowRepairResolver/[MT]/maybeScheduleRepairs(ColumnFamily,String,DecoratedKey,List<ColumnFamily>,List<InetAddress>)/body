@@ -1,0 +1,16 @@
+{
+  for (int i=0; i < versions.size(); i++) {
+    ColumnFamily diffCf=ColumnFamily.diff(versions.get(i),resolved);
+    if (diffCf == null)     continue;
+    RowMutation rowMutation=new RowMutation(table,key.key);
+    rowMutation.add(diffCf);
+    Message repairMessage;
+    try {
+      repairMessage=rowMutation.getMessage(Gossiper.instance.getVersion(endpoints.get(i)));
+    }
+ catch (    IOException e) {
+      throw new IOError(e);
+    }
+    MessagingService.instance().sendOneWay(repairMessage,endpoints.get(i));
+  }
+}
