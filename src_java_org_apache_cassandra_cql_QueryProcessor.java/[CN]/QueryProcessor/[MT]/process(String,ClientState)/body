@@ -136,6 +136,42 @@ throw ex;
 }
 avroResult.type=CqlResultType.VOID;
 return avroResult;
+case CREATE_INDEX:
+CreateIndexStatement createIdx=(CreateIndexStatement)statement.statement;
+CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(keyspace,createIdx.getColumnFamily()));
+if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
+ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
+ColumnDefinition columnDef=oldCfm.getColumn_metadata().get(columnName);
+if (columnDef != null) {
+if (columnDef.getIndexType() != null) throw new InvalidRequestException("Index exists");
+columnDef.setIndexName(createIdx.getIndexName());
+columnDef.setIndexType(org.apache.cassandra.thrift.IndexType.KEYS);
+}
+ else {
+try {
+columnDef=new ColumnDefinition(columnName,null,org.apache.cassandra.thrift.IndexType.KEYS,createIdx.getIndexName());
+}
+ catch (ConfigurationException e) {
+throw new RuntimeException("Unexpected error creating ColumnDefinition",e);
+}
+}
+CfDef cfamilyDef=CFMetaData.convertToAvro(oldCfm);
+cfamilyDef.column_metadata.add(columnDef.deflate());
+try {
+applyMigrationOnStage(new UpdateColumnFamily(cfamilyDef));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+avroResult.type=CqlResultType.VOID;
+return avroResult;
 }
 return null;
 }
