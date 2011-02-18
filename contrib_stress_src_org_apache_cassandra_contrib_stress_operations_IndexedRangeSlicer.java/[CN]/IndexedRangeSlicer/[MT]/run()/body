@@ -14,15 +14,21 @@
       IndexClause clause=new IndexClause(Arrays.asList(expression),ByteBuffer.wrap(startOffset.getBytes()),session.getKeysPerCall());
       List<KeySlice> results=null;
       long start=System.currentTimeMillis();
-      try {
-        results=client.get_indexed_slices(parent,clause,predicate,session.getConsistencyLevel());
-        if (results.size() == 0) {
-          System.err.printf("No indexed values from offset received: %s%n",startOffset);
-          if (!session.ignoreErrors())           break;
+      boolean success=false;
+      String exceptionMessage=null;
+      for (int t=0; t < session.getRetryTimes(); t++) {
+        if (success)         break;
+        try {
+          results=client.get_indexed_slices(parent,clause,predicate,session.getConsistencyLevel());
+          success=(results.size() != 0);
+        }
+ catch (        Exception e) {
+          exceptionMessage=getExceptionMessage(e);
+          success=false;
         }
       }
- catch (      Exception e) {
-        System.err.printf("Error on get_indexed_slices call for offset  %s - %s%n",startOffset,getExceptionMessage(e));
+      if (!success) {
+        System.err.printf("Thread [%d] retried %d times - error on calling get_indexed_slices for offset %s %s%n",index,session.getRetryTimes(),startOffset,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")");
         if (!session.ignoreErrors())         return;
       }
       received+=results.size();

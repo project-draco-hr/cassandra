@@ -4,17 +4,23 @@
     byte[] key=generateKey();
     ByteBuffer keyBuffer=ByteBuffer.wrap(key);
     long start=System.currentTimeMillis();
-    try {
-      List<ColumnOrSuperColumn> columns;
-      columns=client.get_slice(keyBuffer,parent,predicate,session.getConsistencyLevel());
-      if (columns.size() == 0) {
-        System.err.println(String.format("Key %s not found.",new String(key)));
-        if (!session.ignoreErrors())         break;
+    boolean success=false;
+    String exceptionMessage=null;
+    for (int t=0; t < session.getRetryTimes(); t++) {
+      if (success)       break;
+      try {
+        List<ColumnOrSuperColumn> columns;
+        columns=client.get_slice(keyBuffer,parent,predicate,session.getConsistencyLevel());
+        success=(columns.size() != 0);
+      }
+ catch (      Exception e) {
+        exceptionMessage=getExceptionMessage(e);
+        success=false;
       }
     }
- catch (    Exception e) {
-      System.err.printf("Error while reading key %s - %s%n",new String(key),getExceptionMessage(e));
-      if (!session.ignoreErrors())       break;
+    if (!success) {
+      System.err.printf("Thread [%d] retried %d times - error reading key %s %s%n",index,session.getRetryTimes(),new String(key),(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")");
+      if (!session.ignoreErrors())       return;
     }
     session.operationCount.getAndIncrement(index);
     session.keyCount.getAndIncrement(index);

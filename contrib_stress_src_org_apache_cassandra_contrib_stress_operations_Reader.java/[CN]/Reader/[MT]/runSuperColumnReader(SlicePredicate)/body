@@ -1,26 +1,28 @@
 {
   for (int i=0; i < session.getKeysPerThread(); i++) {
-    ByteBuffer key=ByteBuffer.wrap(generateKey());
+    byte[] rawKey=generateKey();
+    ByteBuffer key=ByteBuffer.wrap(rawKey);
     for (int j=0; j < session.getSuperColumns(); j++) {
       String superColumn='S' + Integer.toString(j);
       ColumnParent parent=new ColumnParent("Super1").setSuper_column(superColumn.getBytes());
       long start=System.currentTimeMillis();
-      try {
-        List<ColumnOrSuperColumn> columns;
-        columns=client.get_slice(key,parent,predicate,session.getConsistencyLevel());
-        if (columns.size() == 0) {
-          System.err.printf("Key %s not found in Super Column %s.%n",ByteBufferUtil.string(key),superColumn);
-          if (!session.ignoreErrors())           break;
+      boolean success=false;
+      String exceptionMessage=null;
+      for (int t=0; t < session.getRetryTimes(); t++) {
+        if (success)         break;
+        try {
+          List<ColumnOrSuperColumn> columns;
+          columns=client.get_slice(key,parent,predicate,session.getConsistencyLevel());
+          success=(columns.size() != 0);
+        }
+ catch (        Exception e) {
+          exceptionMessage=getExceptionMessage(e);
+          success=false;
         }
       }
- catch (      Exception e) {
-        try {
-          System.err.printf("Error while reading Super Column %s key %s - %s%n",superColumn,ByteBufferUtil.string(key),getExceptionMessage(e));
-        }
- catch (        CharacterCodingException e1) {
-          throw new AssertionError(e1);
-        }
-        if (!session.ignoreErrors())         break;
+      if (!success) {
+        System.err.printf("Thread [%d] retried %d times - error reading key %s %s%n",index,session.getRetryTimes(),new String(rawKey),(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")");
+        if (!session.ignoreErrors())         return;
       }
       session.operationCount.getAndIncrement(index);
       session.keyCount.getAndIncrement(index);
