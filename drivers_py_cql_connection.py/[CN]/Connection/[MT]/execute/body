@@ -4,7 +4,7 @@ def execute(self, query, *args, **kwargs):
         compress = kwargs.get('compression').upper()
     else:
         compress = DEFAULT_COMPRESSION
-    compressed_query = Connection.compress_query(prepare(query, *args), compress)
+    compressed_query = Connection.compress_query(self.prepare(query, *args), compress)
     request_compression = getattr(Compression, compress)
     try:
         response = self.client.execute_cql_query(compressed_query, request_compression)
@@ -15,7 +15,7 @@ def execute(self, query, *args, **kwargs):
     except Exception as exc:
         raise CQLException(exc)
     if (response.type == CqlResultType.ROWS):
-        return response.rows
+        return RowsProxy(response.rows, self._cur_keyspace, self._cur_column_family, self.decoder)
     if (response.type == CqlResultType.INT):
         return response.num
     return None
