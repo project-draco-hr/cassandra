@@ -1,7 +1,13 @@
 {
   Filter bf=IndexHelper.defreezeBloomFilter(file,sstable.descriptor.usesOldBloomFilter);
   List<IndexHelper.IndexInfo> indexList=IndexHelper.deserializeIndex(file);
-  cf=ColumnFamily.serializer().deserializeFromSSTableNoColumns(ColumnFamily.create(sstable.metadata),file);
+  ColumnFamilySerializer serializer=ColumnFamily.serializer();
+  try {
+    cf=serializer.deserializeFromSSTableNoColumns(ColumnFamily.create(sstable.metadata),file);
+  }
+ catch (  Exception e) {
+    throw new IOException(serializer + " failed to deserialize " + sstable.getColumnFamilyName()+ " with "+ sstable.metadata+ " from "+ file,e);
+  }
   List<ByteBuffer> filteredColumnNames=new ArrayList<ByteBuffer>(columns.size());
   for (  ByteBuffer name : columns) {
     if (bf.isPresent(name)) {

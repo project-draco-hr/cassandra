@@ -5,6 +5,10 @@
   if (ksm == null)   throw new ConfigurationException("No such keyspace: " + cfm.tableName);
  else   if (ksm.cfMetaData().containsKey(cfm.cfName))   throw new ConfigurationException(String.format("%s already exists in keyspace %s",cfm.cfName,cfm.tableName));
  else   if (!Migration.isLegalName(cfm.cfName))   throw new ConfigurationException("Invalid column family name: " + cfm.cfName);
+  for (  Map.Entry<ByteBuffer,ColumnDefinition> entry : cfm.getColumn_metadata().entrySet()) {
+    String indexName=entry.getValue().getIndexName();
+    if (indexName != null && !Migration.isLegalName(indexName))     throw new ConfigurationException("Invalid index name: " + indexName);
+  }
   KSMetaData newKsm=makeNewKeyspaceDefinition(ksm);
   rm=Migration.makeDefinitionMutation(newKsm,null,newVersion);
 }

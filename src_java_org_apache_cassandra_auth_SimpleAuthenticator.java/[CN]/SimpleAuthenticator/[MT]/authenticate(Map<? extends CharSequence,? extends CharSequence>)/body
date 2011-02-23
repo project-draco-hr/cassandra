@@ -33,16 +33,13 @@ case PLAIN:
       authenticated=password.equals(props.getProperty(username));
     break;
 case MD5:
-  authenticated=MessageDigest.isEqual(MessageDigest.getInstance("MD5").digest(password.getBytes()),FBUtilities.hexToBytes(props.getProperty(username)));
+  authenticated=MessageDigest.isEqual(FBUtilities.threadLocalMD5Digest().digest(password.getBytes()),FBUtilities.hexToBytes(props.getProperty(username)));
 break;
 default :
 throw new RuntimeException("Unknown PasswordMode " + mode);
 }
 }
- catch (NoSuchAlgorithmException e) {
-throw new RuntimeException("You requested MD5 checking but the MD5 digest algorithm is not available: " + e.getMessage());
-}
-catch (IOException e) {
+ catch (IOException e) {
 throw new RuntimeException("Authentication table file given by property " + PASSWD_FILENAME_PROPERTY + " could not be opened: "+ e.getMessage());
 }
 catch (Exception e) {

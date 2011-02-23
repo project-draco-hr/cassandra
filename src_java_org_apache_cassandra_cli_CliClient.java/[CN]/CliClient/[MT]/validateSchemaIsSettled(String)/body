@@ -1,9 +1,9 @@
 {
-  Map<String,List<String>> versions;
-  long start=System.currentTimeMillis();
-  long limit=start + sessionState.schema_mwt;
+  sessionState.out.println("Waiting for schema agreement...");
+  Map<String,List<String>> versions=null;
+  long limit=System.currentTimeMillis() + sessionState.schema_mwt;
   boolean inAgreement=false;
-  while (limit - start >= 0) {
+  outer:   while (limit - System.currentTimeMillis() >= 0 && !inAgreement) {
     try {
       versions=thriftClient.describe_schema_versions();
     }
@@ -11,21 +11,15 @@
       sessionState.err.println((e instanceof InvalidRequestException) ? ((InvalidRequestException)e).getWhy() : e.getMessage());
       continue;
     }
-    boolean currentlyInAgreement=true;
     for (    String version : versions.keySet()) {
-      if (!version.equals(currentVersionId)) {
-        currentlyInAgreement=false;
-        break;
-      }
+      if (!version.equals(currentVersionId) && !version.equals(StorageProxy.UNREACHABLE))       continue outer;
     }
-    if (currentlyInAgreement) {
-      inAgreement=true;
-      break;
-    }
-    start=System.currentTimeMillis();
+    inAgreement=true;
   }
+  if (versions.containsKey(StorageProxy.UNREACHABLE))   sessionState.err.printf("Warning: unreachable nodes %s",Joiner.on(", ").join(versions.get(StorageProxy.UNREACHABLE)));
   if (!inAgreement) {
-    sessionState.err.printf("The schema has not settled in %d seconds and further migrations are ill-advised until it does.%n",sessionState.schema_mwt / 1000);
+    sessionState.err.printf("The schema has not settled in %d seconds; further migrations are ill-advised until it does.%nVersions are %s%n",sessionState.schema_mwt / 1000,FBUtilities.toString(versions));
     System.exit(-1);
   }
+  sessionState.out.println("... schemas agree across the cluster");
 }
