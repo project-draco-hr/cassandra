@@ -1,0 +1,35 @@
+{
+  this.sstable=sstable;
+  this.file=file;
+  this.key=key;
+  this.dataStart=dataStart;
+  this.dataSize=dataSize;
+  finishedAt=dataStart + dataSize;
+  try {
+    file.seek(this.dataStart);
+    if (deserializeRowHeader) {
+      try {
+        IndexHelper.defreezeBloomFilter(file,sstable.descriptor.usesOldBloomFilter);
+      }
+ catch (      Exception e) {
+        logger.info("Invalid bloom filter in " + sstable + "; will rebuild it");
+      }
+      try {
+        IndexHelper.deserializeIndex(file);
+      }
+ catch (      Exception e) {
+        logger.info("Invalid row summary in " + sstable + "; will rebuild it");
+      }
+      file.seek(this.dataStart);
+    }
+    IndexHelper.skipBloomFilter(file);
+    IndexHelper.skipIndex(file);
+    columnFamily=sstable.createColumnFamily();
+    ColumnFamily.serializer().deserializeFromSSTableNoColumns(columnFamily,file);
+    columnCount=file.readInt();
+    columnPosition=file.getFilePointer();
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+}
