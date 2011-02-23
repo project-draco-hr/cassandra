@@ -1,0 +1,40 @@
+{
+  List<String> values=generateValues();
+  List<Column> columns=new ArrayList<Column>();
+  List<SuperColumn> superColumns=new ArrayList<SuperColumn>();
+  String format="%0" + session.getTotalKeysLength() + "d";
+  for (int i=0; i < session.getColumnsPerKey(); i++) {
+    String columnName=("C" + Integer.toString(i));
+    String columnValue=values.get(index % values.size());
+    columns.add(new Column(ByteBufferUtil.bytes(columnName),ByteBufferUtil.bytes(columnValue),System.currentTimeMillis()));
+  }
+  if (session.getColumnFamilyType() == ColumnFamilyType.Super) {
+    for (int i=0; i < session.getSuperColumns(); i++) {
+      String superColumnName="S" + Integer.toString(i);
+      superColumns.add(new SuperColumn(ByteBuffer.wrap(superColumnName.getBytes()),columns));
+    }
+  }
+  String rawKey=String.format(format,index);
+  Map<ByteBuffer,Map<String,List<Mutation>>> record=new HashMap<ByteBuffer,Map<String,List<Mutation>>>();
+  record.put(ByteBufferUtil.bytes(rawKey),session.getColumnFamilyType() == ColumnFamilyType.Super ? getSuperColumnsMutationMap(superColumns) : getColumnsMutationMap(columns));
+  long start=System.currentTimeMillis();
+  boolean success=false;
+  String exceptionMessage=null;
+  for (int t=0; t < session.getRetryTimes(); t++) {
+    if (success)     break;
+    try {
+      client.batch_mutate(record,session.getConsistencyLevel());
+      success=true;
+    }
+ catch (    Exception e) {
+      exceptionMessage=getExceptionMessage(e);
+      success=false;
+    }
+  }
+  if (!success) {
+    error(String.format("Operation [%d] retried %d times - error inserting key %s %s%n",index,session.getRetryTimes(),rawKey,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+  }
+  session.operations.getAndIncrement();
+  session.keys.getAndIncrement();
+  session.latency.getAndAdd(System.currentTimeMillis() - start);
+}

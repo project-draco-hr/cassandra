@@ -1,5 +1,6 @@
 {
-  int epoch, total, oldTotal, latency, keyCount, oldKeyCount, oldLatency;
+  long latency, oldLatency;
+  int epoch, total, oldTotal, keyCount, oldKeyCount;
   try {
     session=new Session(arguments);
   }
@@ -7,34 +8,33 @@
     printHelpMessage();
     return;
   }
-  if (session.getOperation() == Stress.Operation.INSERT) {
+  if (session.getOperation() == Stress.Operations.INSERT) {
     session.createKeySpaces();
   }
   int threadCount=session.getThreads();
-  Thread[] threads=new Thread[threadCount];
+  Thread[] consumers=new Thread[threadCount];
   PrintStream out=session.getOutputStream();
-  try {
-    for (int i=0; i < threadCount; i++) {
-      threads[i]=createOperation(i);
-    }
-  }
- catch (  Exception e) {
-    System.err.println(e.getMessage());
-    return;
-  }
+  out.println("total,interval_op_rate,interval_key_rate,avg_latency,elapsed_time");
+  int itemsPerThread=session.getKeysPerThread();
+  int modulo=session.getNumKeys() % threadCount;
   for (int i=0; i < threadCount; i++) {
-    threads[i].start();
+    if (i == threadCount - 1)     itemsPerThread+=modulo;
+    consumers[i]=new Consumer(itemsPerThread);
+  }
+  new Producer().start();
+  for (int i=0; i < threadCount; i++) {
+    consumers[i].start();
   }
   boolean terminate=false;
-  epoch=total=latency=keyCount=0;
+  latency=0;
+  epoch=total=keyCount=0;
   int interval=session.getProgressInterval();
   int epochIntervals=session.getProgressInterval() * 10;
   long testStartTime=System.currentTimeMillis();
-  out.println("total,interval_op_rate,interval_key_rate,avg_latency,elapsed_time");
   while (!terminate) {
     Thread.sleep(100);
     int alive=0;
-    for (    Thread thread : threads)     if (thread.isAlive())     alive++;
+    for (    Thread thread : consumers)     if (thread.isAlive())     alive++;
     if (alive == 0)     terminate=true;
     epoch++;
     if (terminate || epoch > epochIntervals) {
@@ -42,16 +42,9 @@
       oldTotal=total;
       oldLatency=latency;
       oldKeyCount=keyCount;
-      int currentTotal=0, currentKeyCount=0, currentLatency=0;
-      for (      Thread t : threads) {
-        OperationThread thread=(OperationThread)t;
-        currentTotal+=session.operationCount.get(thread.index);
-        currentKeyCount+=session.keyCount.get(thread.index);
-        currentLatency+=session.latencies.get(thread.index);
-      }
-      total=currentTotal;
-      keyCount=currentKeyCount;
-      latency=currentLatency;
+      total=session.operations.get();
+      keyCount=session.keys.get();
+      latency=session.latency.get();
       int opDelta=total - oldTotal;
       int keyDelta=keyCount - oldKeyCount;
       double latencyDelta=latency - oldLatency;
