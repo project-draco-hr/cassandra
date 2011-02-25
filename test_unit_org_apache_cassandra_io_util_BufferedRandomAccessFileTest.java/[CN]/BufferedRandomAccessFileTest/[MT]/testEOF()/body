@@ -1,8 +1,25 @@
 {
   for (  String mode : Arrays.asList("r","rw")) {
-    for (    int buf : Arrays.asList(8,16,32,0)) {
-      for (      int off : Arrays.asList(0,8)) {
-        expectException(32,off,17,new BufferedRandomAccessFile(writeTemporaryFile(new byte[16]),mode,buf));
+    for (    int bufferSize : Arrays.asList(1,2,3,5,8,64)) {
+      final byte[] target=new byte[32];
+      for (      final int offset : Arrays.asList(0,8)) {
+        final BufferedRandomAccessFile file=new BufferedRandomAccessFile(writeTemporaryFile(new byte[16]),mode,bufferSize);
+        expectEOF(new Callable<Object>(){
+          public Object call() throws IOException {
+            file.readFully(target,offset,17);
+            return null;
+          }
+        }
+);
+      }
+      for (      final int n : Arrays.asList(1,2,4,8)) {
+        final BufferedRandomAccessFile file=new BufferedRandomAccessFile(writeTemporaryFile(new byte[16]),mode,bufferSize);
+        expectEOF(new Callable<Object>(){
+          public Object call() throws IOException {
+            while (true)             file.readFully(target,0,n);
+          }
+        }
+);
       }
     }
   }

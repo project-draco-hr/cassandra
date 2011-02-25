@@ -1,24 +1,23 @@
 {
   flush();
-  buffer.clear();
   bufferOffset=current;
   if (bufferOffset >= channel.size()) {
-    buffer.rewind();
-    bufferEnd=bufferOffset;
-    hitEOF=true;
-    return 0;
+    validBufferBytes=0;
+    return;
   }
   if (bufferOffset < minBufferOffset)   minBufferOffset=bufferOffset;
   channel.position(bufferOffset);
-  long bytesRead=channel.read(buffer);
-  hitEOF=(bytesRead < buffer.capacity());
-  bufferEnd=bufferOffset + bytesRead;
-  buffer.rewind();
-  bytesSinceCacheFlush+=bytesRead;
+  int read=0;
+  while (read < buffer.length) {
+    int n=super.read(buffer,read,buffer.length - read);
+    if (n < 0)     break;
+    read+=n;
+  }
+  validBufferBytes=read;
+  bytesSinceCacheFlush+=read;
   if (skipCache && bytesSinceCacheFlush >= MAX_BYTES_IN_PAGE_CACHE) {
     CLibrary.trySkipCache(this.fd,(int)minBufferOffset,0);
     bytesSinceCacheFlush=0;
     minBufferOffset=Long.MAX_VALUE;
   }
-  return bytesRead;
 }
