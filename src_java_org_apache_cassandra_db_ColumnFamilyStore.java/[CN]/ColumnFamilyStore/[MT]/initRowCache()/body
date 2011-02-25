@@ -5,22 +5,5 @@
   Set<DecoratedKey> savedKeys=readSavedCache(DatabaseDescriptor.getSerializedRowCachePath(table.name,columnFamily));
   for (  DecoratedKey key : savedKeys)   cacheRow(key);
   if (ssTables.getRowCache().getSize() > 0)   logger.info(String.format("completed loading (%d ms; %d keys) row cache for %s.%s",System.currentTimeMillis() - start,ssTables.getRowCache().getSize(),table.name,columnFamily));
-  if (rowCacheSavePeriodInSeconds > 0) {
-    Runnable runnable=new WrappedRunnable(){
-      public void runMayThrow(){
-        submitRowCacheWrite();
-      }
-    }
-;
-    StorageService.scheduledTasks.scheduleWithFixedDelay(runnable,rowCacheSavePeriodInSeconds,rowCacheSavePeriodInSeconds,TimeUnit.SECONDS);
-  }
-  if (keyCacheSavePeriodInSeconds > 0) {
-    Runnable runnable=new WrappedRunnable(){
-      public void runMayThrow(){
-        submitKeyCacheWrite();
-      }
-    }
-;
-    StorageService.scheduledTasks.scheduleWithFixedDelay(runnable,keyCacheSavePeriodInSeconds,keyCacheSavePeriodInSeconds,TimeUnit.SECONDS);
-  }
+  scheduleCacheSaving(rowCacheSavePeriodInSeconds,keyCacheSavePeriodInSeconds);
 }
