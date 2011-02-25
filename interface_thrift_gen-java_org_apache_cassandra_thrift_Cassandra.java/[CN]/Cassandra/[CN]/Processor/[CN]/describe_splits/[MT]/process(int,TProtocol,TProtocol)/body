@@ -14,7 +14,21 @@
   }
   iprot.readMessageEnd();
   describe_splits_result result=new describe_splits_result();
-  result.success=iface_.describe_splits(args.cfName,args.start_token,args.end_token,args.keys_per_split);
+  try {
+    result.success=iface_.describe_splits(args.cfName,args.start_token,args.end_token,args.keys_per_split);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing describe_splits",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing describe_splits");
+    oprot.writeMessageBegin(new TMessage("describe_splits",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
   oprot.writeMessageBegin(new TMessage("describe_splits",TMessageType.REPLY,seqid));
   result.write(oprot);
   oprot.writeMessageEnd();
