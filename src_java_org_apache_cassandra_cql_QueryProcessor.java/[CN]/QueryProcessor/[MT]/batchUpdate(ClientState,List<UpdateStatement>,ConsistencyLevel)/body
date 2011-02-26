@@ -1,6 +1,12 @@
 {
+  String keyspace=clientState.getKeyspace();
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
+  List<String> cfamsSeen=new ArrayList<String>();
   for (  UpdateStatement update : updateStatements) {
+    if (!(cfamsSeen.contains(update.getColumnFamily()))) {
+      clientState.hasColumnFamilyAccess(update.getColumnFamily(),Permission.WRITE);
+      cfamsSeen.add(update.getColumnFamily());
+    }
     ByteBuffer key=update.getKey().getByteBuffer();
     validateKey(key);
     validateColumnFamily(keyspace,update.getColumnFamily());
