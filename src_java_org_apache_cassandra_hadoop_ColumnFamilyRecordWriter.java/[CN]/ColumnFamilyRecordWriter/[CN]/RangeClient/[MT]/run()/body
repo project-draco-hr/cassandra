@@ -8,14 +8,15 @@
       continue;
     }
     Map<ByteBuffer,Map<String,List<Mutation>>> batch=new HashMap<ByteBuffer,Map<String,List<Mutation>>>();
-    while (batch.size() < batchThreshold) {
+    while (mutation != null) {
       Map<String,List<Mutation>> subBatch=batch.get(mutation.left);
       if (subBatch == null) {
         subBatch=Collections.singletonMap(columnFamily,(List<Mutation>)new ArrayList<Mutation>());
         batch.put(mutation.left,subBatch);
       }
       subBatch.get(columnFamily).add(mutation.right);
-      if ((mutation=queue.poll()) == null)       break;
+      if (batch.size() >= batchThreshold)       break;
+      mutation=queue.poll();
     }
     Iterator<InetAddress> iter=endpoints.iterator();
     while (true) {
