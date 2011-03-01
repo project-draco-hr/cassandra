@@ -3,15 +3,9 @@
     DecoratedKey<?> key=iter.next();
     logger.debug("Indexing row {} ",key);
     List<Memtable> memtablesToFlush=Collections.emptyList();
-    flusherLock.readLock().lock();
-    try {
 synchronized (indexLockFor(key.key)) {
-        ColumnFamily cf=readCurrentIndexedColumns(key,cfs,columns);
-        if (cf != null)         memtablesToFlush=applyIndexUpdates(key.key,cf,cfs,cf.getColumnNames(),null);
-      }
-    }
-  finally {
-      flusherLock.readLock().unlock();
+      ColumnFamily cf=readCurrentIndexedColumns(key,cfs,columns);
+      if (cf != null)       memtablesToFlush=applyIndexUpdates(key.key,cf,cfs,cf.getColumnNames(),null);
     }
     for (    Memtable memtable : memtablesToFlush)     memtable.cfs.maybeSwitchMemtable(memtable,false);
   }

@@ -1,44 +1,38 @@
 {
   List<Memtable> memtablesToFlush=Collections.emptyList();
   if (logger.isDebugEnabled())   logger.debug("applying mutation of row {}",ByteBufferUtil.bytesToHex(mutation.key()));
-  flusherLock.readLock().lock();
-  try {
-    if (writeCommitLog)     CommitLog.instance.add(mutation);
-    DecoratedKey<?> key=StorageService.getPartitioner().decorateKey(mutation.key());
-    for (    ColumnFamily cf : mutation.getColumnFamilies()) {
-      ColumnFamilyStore cfs=columnFamilyStores.get(cf.id());
-      if (cfs == null) {
-        logger.error("Attempting to mutate non-existant column family " + cf.id());
-        continue;
-      }
-      SortedSet<ByteBuffer> mutatedIndexedColumns=null;
-      for (      ByteBuffer column : cfs.getIndexedColumns()) {
-        if (cf.getColumnNames().contains(column) || cf.isMarkedForDelete()) {
-          if (mutatedIndexedColumns == null)           mutatedIndexedColumns=new TreeSet<ByteBuffer>();
-          mutatedIndexedColumns.add(column);
-          if (logger.isDebugEnabled()) {
-            ByteBuffer value=cf.getColumn(column) == null ? null : cf.getColumn(column).value();
-            logger.debug(String.format("mutating indexed column %s value %s",cf.getComparator().getString(column),value == null ? "null" : ByteBufferUtil.bytesToHex(value)));
-          }
-        }
-      }
-synchronized (indexLockFor(mutation.key())) {
-        ColumnFamily oldIndexedColumns=null;
-        if (mutatedIndexedColumns != null) {
-          oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
-          logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
-          ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
-        }
-        Memtable fullMemtable=cfs.apply(key,cf);
-        if (fullMemtable != null)         memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
-        if (mutatedIndexedColumns != null) {
-          applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
+  if (writeCommitLog)   CommitLog.instance.add(mutation);
+  DecoratedKey<?> key=StorageService.getPartitioner().decorateKey(mutation.key());
+  for (  ColumnFamily cf : mutation.getColumnFamilies()) {
+    ColumnFamilyStore cfs=columnFamilyStores.get(cf.id());
+    if (cfs == null) {
+      logger.error("Attempting to mutate non-existant column family " + cf.id());
+      continue;
+    }
+    SortedSet<ByteBuffer> mutatedIndexedColumns=null;
+    for (    ByteBuffer column : cfs.getIndexedColumns()) {
+      if (cf.getColumnNames().contains(column) || cf.isMarkedForDelete()) {
+        if (mutatedIndexedColumns == null)         mutatedIndexedColumns=new TreeSet<ByteBuffer>();
+        mutatedIndexedColumns.add(column);
+        if (logger.isDebugEnabled()) {
+          ByteBuffer value=cf.getColumn(column) == null ? null : cf.getColumn(column).value();
+          logger.debug(String.format("mutating indexed column %s value %s",cf.getComparator().getString(column),value == null ? "null" : ByteBufferUtil.bytesToHex(value)));
         }
       }
     }
-  }
-  finally {
-    flusherLock.readLock().unlock();
+synchronized (indexLockFor(mutation.key())) {
+      ColumnFamily oldIndexedColumns=null;
+      if (mutatedIndexedColumns != null) {
+        oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
+        logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
+        ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
+      }
+      Memtable fullMemtable=cfs.apply(key,cf);
+      if (fullMemtable != null)       memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
+      if (mutatedIndexedColumns != null) {
+        applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
+      }
+    }
   }
   for (  Memtable memtable : memtablesToFlush)   memtable.cfs.maybeSwitchMemtable(memtable,writeCommitLog);
 }
