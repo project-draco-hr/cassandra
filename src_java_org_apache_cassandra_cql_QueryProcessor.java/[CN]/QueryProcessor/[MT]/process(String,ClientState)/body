@@ -179,6 +179,44 @@ throw ex;
 }
 avroResult.type=CqlResultType.VOID;
 return avroResult;
+case DROP_KEYSPACE:
+String deleteKeyspace=(String)statement.statement;
+clientState.hasKeyspaceListAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new DropKeyspace(deleteKeyspace));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+avroResult.type=CqlResultType.VOID;
+return avroResult;
+case DROP_COLUMNFAMILY:
+String deleteColumnFamily=(String)statement.statement;
+clientState.hasColumnFamilyListAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new DropColumnFamily(keyspace,deleteColumnFamily));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+avroResult.type=CqlResultType.VOID;
+return avroResult;
 }
 return null;
 }
