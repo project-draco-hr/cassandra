@@ -1,34 +1,12 @@
 {
-  final CountDownLatch latch=new CountDownLatch(DatabaseDescriptor.getNonSystemTables().size());
+  Map<String,Multimap<Range,InetAddress>> rangesToStream=new HashMap<String,Multimap<Range,InetAddress>>();
   for (  final String table : DatabaseDescriptor.getNonSystemTables()) {
     Multimap<Range,InetAddress> rangesMM=getChangedRangesForLeaving(table,FBUtilities.getLocalAddress());
     if (logger_.isDebugEnabled())     logger_.debug("Ranges needing transfer are [" + StringUtils.join(rangesMM.keySet(),",") + "]");
-    if (rangesMM.isEmpty()) {
-      latch.countDown();
-      continue;
-    }
-    setMode("Leaving: streaming data to other nodes",true);
-    final Set<Map.Entry<Range,InetAddress>> pending=new HashSet<Map.Entry<Range,InetAddress>>(rangesMM.entries());
-    for (    final Map.Entry<Range,InetAddress> entry : rangesMM.entries()) {
-      final Range range=entry.getKey();
-      final InetAddress newEndpoint=entry.getValue();
-      final Runnable callback=new Runnable(){
-        public void run(){
-synchronized (pending) {
-            pending.remove(entry);
-            if (pending.isEmpty())             latch.countDown();
-          }
-        }
-      }
-;
-      StageManager.getStage(Stage.STREAM).execute(new Runnable(){
-        public void run(){
-          StreamOut.transferRanges(newEndpoint,table,Arrays.asList(range),callback,OperationType.UNBOOTSTRAP);
-        }
-      }
-);
-    }
+    rangesToStream.put(table,rangesMM);
   }
+  setMode("Leaving: streaming data to other nodes",true);
+  CountDownLatch latch=streamRanges(rangesToStream);
   logger_.debug("waiting for stream aks.");
   try {
     latch.await();

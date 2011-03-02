@@ -1,0 +1,31 @@
+{
+  final CountDownLatch latch=new CountDownLatch(rangesToStreamByTable.keySet().size());
+  for (  final String table : rangesToStreamByTable.keySet()) {
+    Multimap<Range,InetAddress> rangesWithEndpoints=rangesToStreamByTable.get(table);
+    if (rangesWithEndpoints.isEmpty()) {
+      latch.countDown();
+      continue;
+    }
+    final Set<Map.Entry<Range,InetAddress>> pending=new HashSet<Map.Entry<Range,InetAddress>>(rangesWithEndpoints.entries());
+    for (    final Map.Entry<Range,InetAddress> entry : rangesWithEndpoints.entries()) {
+      final Range range=entry.getKey();
+      final InetAddress newEndpoint=entry.getValue();
+      final Runnable callback=new Runnable(){
+        public void run(){
+synchronized (pending) {
+            pending.remove(entry);
+            if (pending.isEmpty())             latch.countDown();
+          }
+        }
+      }
+;
+      StageManager.getStage(Stage.STREAM).execute(new Runnable(){
+        public void run(){
+          StreamOut.transferRanges(newEndpoint,table,Arrays.asList(range),callback,OperationType.UNBOOTSTRAP);
+        }
+      }
+);
+    }
+  }
+  return latch;
+}

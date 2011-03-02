@@ -1,0 +1,43 @@
+{
+  StorageService ss=StorageService.instance;
+  final int RING_SIZE=10;
+  final int MOVING_NODE=3;
+  TokenMetadata tmd=ss.getTokenMetadata();
+  tmd.clearUnsafe();
+  IPartitioner partitioner=new RandomPartitioner();
+  VersionedValue.VersionedValueFactory valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
+  IPartitioner oldPartitioner=ss.setPartitionerUnsafe(partitioner);
+  ArrayList<Token> endpointTokens=new ArrayList<Token>();
+  ArrayList<Token> keyTokens=new ArrayList<Token>();
+  List<InetAddress> hosts=new ArrayList<InetAddress>();
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
+  Map<Token,List<InetAddress>> expectedEndpoints=new HashMap<Token,List<InetAddress>>();
+  for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+    for (    Token token : keyTokens) {
+      List<InetAddress> endpoints=new ArrayList<InetAddress>();
+      Iterator<Token> tokenIter=TokenMetadata.ringIterator(tmd.sortedTokens(),token,false);
+      while (tokenIter.hasNext()) {
+        endpoints.add(tmd.getEndpoint(tokenIter.next()));
+      }
+      expectedEndpoints.put(token,endpoints);
+    }
+  }
+  Token newToken=positionToken(MOVING_NODE);
+  ss.onChange(hosts.get(MOVING_NODE),ApplicationState.STATUS,valueFactory.moving(newToken));
+  assertTrue(tmd.isMoving(hosts.get(MOVING_NODE)));
+  AbstractReplicationStrategy strategy;
+  for (  String table : DatabaseDescriptor.getNonSystemTables()) {
+    strategy=getStrategy(table,tmd);
+    for (    Token token : keyTokens) {
+      int replicationFactor=strategy.getReplicationFactor();
+      HashSet<InetAddress> actual=new HashSet<InetAddress>(tmd.getWriteEndpoints(token,table,strategy.calculateNaturalEndpoints(token,tmd)));
+      HashSet<InetAddress> expected=new HashSet<InetAddress>();
+      for (int i=0; i < replicationFactor; i++) {
+        expected.add(expectedEndpoints.get(token).get(i));
+      }
+      assertEquals("mismatched endpoint sets",expected,actual);
+    }
+  }
+  ss.onChange(hosts.get(MOVING_NODE),ApplicationState.STATUS,valueFactory.normal(newToken));
+  ss.setPartitionerUnsafe(oldPartitioner);
+}

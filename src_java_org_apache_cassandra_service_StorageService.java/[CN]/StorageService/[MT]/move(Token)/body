@@ -1,23 +1,63 @@
 {
-  for (  String table : DatabaseDescriptor.getTables()) {
-    if (tokenMetadata_.getPendingRanges(table,FBUtilities.getLocalAddress()).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
+  if (newToken == null)   throw new IOException("Can't move to the undefined (null) token.");
+  if (tokenMetadata_.sortedTokens().contains(newToken))   throw new IOException("target token " + newToken + " is already owned by another node.");
+  InetAddress localAddress=FBUtilities.getLocalAddress();
+  List<String> tablesToProcess=DatabaseDescriptor.getNonSystemTables();
+  for (  String table : tablesToProcess) {
+    if (tokenMetadata_.getPendingRanges(table,localAddress).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
   }
-  if (token != null && tokenMetadata_.sortedTokens().contains(token))   throw new IOException("target token " + token + " is already owned by another node");
-  if (logger_.isDebugEnabled())   logger_.debug("Leaving: old token was " + getLocalToken());
-  startLeaving();
-  setMode("Leaving: sleeping " + RING_DELAY + " ms for pending range setup",true);
-  Thread.sleep(RING_DELAY);
-  Runnable finishMoving=new WrappedRunnable(){
-    public void runMayThrow() throws IOException {
-      Token bootstrapToken=token;
-      if (bootstrapToken == null) {
-        StorageLoadBalancer.instance.waitForLoadInfo();
-        bootstrapToken=BootStrapper.getBalancedToken(tokenMetadata_,StorageLoadBalancer.instance.getLoadInfo());
+  Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.moving(newToken));
+  logger_.info(String.format("Moving %s from %s to %s.",localAddress,getLocalToken(),newToken));
+  IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+  Map<String,Multimap<InetAddress,Range>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range>>();
+  Map<String,Multimap<Range,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range,InetAddress>>();
+  TokenMetadata tokenMetaClone=tokenMetadata_.cloneAfterAllSettled();
+  for (  String table : tablesToProcess) {
+    AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
+    Collection<Range> currentRanges=getRangesForEndpoint(table,localAddress);
+    Collection<Range> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata_,newToken,localAddress);
+    Multimap<Range,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetaClone);
+    Pair<Set<Range>,Set<Range>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
+    Multimap<Range,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
+    for (    Range toFetch : rangesPerTable.right) {
+      for (      Range range : rangeAddresses.keySet()) {
+        if (range.contains(toFetch)) {
+          List<InetAddress> endpoints=snitch.getSortedListByProximity(localAddress,rangeAddresses.get(range));
+          rangesToFetchWithPreferredEndpoints.putAll(toFetch,endpoints);
+        }
       }
-      logger_.info("re-bootstrapping to new token {}",bootstrapToken);
-      bootstrap(bootstrapToken);
+    }
+    Multimap<Range,InetAddress> rangeWithEndpoints=HashMultimap.create();
+    for (    Range toStream : rangesPerTable.left) {
+      List<InetAddress> endpoints=strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone);
+      rangeWithEndpoints.putAll(toStream,endpoints);
+    }
+    rangesToStreamByTable.put(table,rangeWithEndpoints);
+    Multimap<InetAddress,Range> workMap=BootStrapper.getWorkMap(rangesToFetchWithPreferredEndpoints);
+    rangesToFetch.put(table,workMap);
+    if (logger_.isDebugEnabled())     logger_.debug("Table {}: work map {}.",table,workMap);
+  }
+  if (!rangesToStreamByTable.isEmpty() || !rangesToFetch.isEmpty()) {
+    logger_.info("Sleeping {} ms before start streaming/fetching ranges.",RING_DELAY);
+    try {
+      Thread.sleep(RING_DELAY);
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException("Sleep interrupted " + e.getMessage());
+    }
+    setMode("Moving: fetching new ranges and streaming old ranges",true);
+    if (logger_.isDebugEnabled())     logger_.debug("[Move->STREAMING] Work Map: " + rangesToStreamByTable);
+    CountDownLatch streamLatch=streamRanges(rangesToStreamByTable);
+    if (logger_.isDebugEnabled())     logger_.debug("[Move->FETCHING] Work Map: " + rangesToFetch);
+    CountDownLatch fetchLatch=requestRanges(rangesToFetch);
+    try {
+      streamLatch.await();
+      fetchLatch.await();
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException("Interrupted latch while waiting for stream/fetch ranges to finish: " + e.getMessage());
     }
   }
-;
-  unbootstrap(finishMoving);
+  setToken(newToken);
+  if (logger_.isDebugEnabled())   logger_.debug("Successfully moved to new token {}",getLocalToken());
 }

@@ -1,0 +1,24 @@
+{
+  final CountDownLatch latch=new CountDownLatch(ranges.keySet().size());
+  for (  final String table : ranges.keySet()) {
+    Multimap<InetAddress,Range> endpointWithRanges=ranges.get(table);
+    if (endpointWithRanges.isEmpty()) {
+      latch.countDown();
+      continue;
+    }
+    final Set<InetAddress> pending=new HashSet<InetAddress>(endpointWithRanges.keySet());
+    for (    final InetAddress source : endpointWithRanges.keySet()) {
+      Collection<Range> toFetch=endpointWithRanges.get(source);
+      final Runnable callback=new Runnable(){
+        public void run(){
+          pending.remove(source);
+          if (pending.isEmpty())           latch.countDown();
+        }
+      }
+;
+      if (logger_.isDebugEnabled())       logger_.debug("Requesting from " + source + " ranges "+ StringUtils.join(toFetch,", "));
+      StreamIn.requestRanges(source,table,toFetch,callback,OperationType.BOOTSTRAP);
+    }
+  }
+  return latch;
+}

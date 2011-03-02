@@ -6,6 +6,7 @@
   Collection<String> deadNodes=probe.getUnreachableNodes();
   Collection<String> joiningNodes=probe.getJoiningNodes();
   Collection<String> leavingNodes=probe.getLeavingNodes();
+  Collection<String> movingNodes=probe.getMovingNodes();
   Map<String,String> loadMap=probe.getLoadMap();
   outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n","Address","Status","State","Load","Owns","Token");
   if (sortedTokens.size() > 1)   outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n","","","","","",sortedTokens.get(sortedTokens.size() - 1));
@@ -13,7 +14,10 @@
   for (  Token token : sortedTokens) {
     String primaryEndpoint=tokenToEndpoint.get(token);
     String status=liveNodes.contains(primaryEndpoint) ? "Up" : deadNodes.contains(primaryEndpoint) ? "Down" : "?";
-    String state=joiningNodes.contains(primaryEndpoint) ? "Joining" : leavingNodes.contains(primaryEndpoint) ? "Leaving" : "Normal";
+    String state="Normal";
+    if (joiningNodes.contains(primaryEndpoint))     state="Joining";
+ else     if (leavingNodes.contains(primaryEndpoint))     state="Leaving";
+ else     if (movingNodes.contains(primaryEndpoint))     state="Moving";
     String load=loadMap.containsKey(primaryEndpoint) ? loadMap.get(primaryEndpoint) : "?";
     String owns=new DecimalFormat("##0.00%").format(ownerships.get(token));
     outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n",primaryEndpoint,status,state,load,owns,token);
