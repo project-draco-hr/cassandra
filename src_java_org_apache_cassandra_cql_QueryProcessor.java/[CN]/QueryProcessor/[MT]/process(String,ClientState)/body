@@ -108,6 +108,7 @@ case CREATE_KEYSPACE:
 CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
 create.validate();
 clientState.hasKeyspaceListAccess(Permission.WRITE);
+validateSchemaAgreement();
 try {
 KSMetaData ksm=new KSMetaData(create.getName(),AbstractReplicationStrategy.getClass(create.getStrategyClass()),create.getStrategyOptions(),create.getReplicationFactor());
 applyMigrationOnStage(new AddKeyspace(ksm));
@@ -127,6 +128,7 @@ return avroResult;
 case CREATE_COLUMNFAMILY:
 CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
 clientState.hasColumnFamilyListAccess(Permission.WRITE);
+validateSchemaAgreement();
 try {
 applyMigrationOnStage(new AddColumnFamily(createCf.getCFMetaData(keyspace)));
 }
@@ -145,6 +147,7 @@ return avroResult;
 case CREATE_INDEX:
 CreateIndexStatement createIdx=(CreateIndexStatement)statement.statement;
 clientState.hasColumnFamilyListAccess(Permission.WRITE);
+validateSchemaAgreement();
 CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(keyspace,createIdx.getColumnFamily()));
 if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
 ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
