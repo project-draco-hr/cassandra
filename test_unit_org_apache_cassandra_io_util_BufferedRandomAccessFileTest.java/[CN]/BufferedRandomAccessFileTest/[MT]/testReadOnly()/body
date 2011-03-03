@@ -1,0 +1,60 @@
+{
+  BufferedRandomAccessFile file=createTempFile("brafReadOnlyTest");
+  byte[] data=new byte[20];
+  for (int i=0; i < data.length; i++)   data[i]='c';
+  file.write(data);
+  file.sync();
+  final BufferedRandomAccessFile copy=new BufferedRandomAccessFile(file.getPath(),"r");
+  copy.seek(copy.length());
+  assertTrue(copy.bytesRemaining() == 0 && copy.isEOF());
+  expectEOF(new Callable<Object>(){
+    public Object call() throws IOException {
+      copy.seek(copy.length() + 1);
+      return null;
+    }
+  }
+);
+  expectException(new Callable<Object>(){
+    public Object call() throws IOException {
+      copy.write(1);
+      return null;
+    }
+  }
+,IOException.class);
+  expectException(new Callable<Object>(){
+    public Object call() throws IOException {
+      copy.write(new byte[1]);
+      return null;
+    }
+  }
+,IOException.class);
+  expectException(new Callable<Object>(){
+    public Object call() throws IOException {
+      copy.write(new byte[3],0,2);
+      return null;
+    }
+  }
+,IOException.class);
+  copy.seek(0);
+  copy.skipBytes(5);
+  assertEquals(copy.bytesRemaining(),15);
+  assertEquals(copy.getFilePointer(),5);
+  assertTrue(!copy.isEOF());
+  copy.seek(0);
+  ByteBuffer contents=copy.readBytes((int)copy.length());
+  assertEquals(contents.limit(),copy.length());
+  assertTrue(ByteBufferUtil.compare(contents,data) == 0);
+  copy.seek(0);
+  int count=0;
+  while (!copy.isEOF()) {
+    assertEquals((byte)copy.read(),'c');
+    count++;
+  }
+  assertEquals(count,copy.length());
+  copy.seek(0);
+  byte[] content=new byte[10];
+  copy.read(content);
+  assertEquals(new String(content),"cccccccccc");
+  file.close();
+  copy.close();
+}

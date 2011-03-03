@@ -9,16 +9,17 @@
     file.seek(this.dataStart);
     if (deserializeRowHeader) {
       try {
-        IndexHelper.defreezeBloomFilter(file,sstable.descriptor.usesOldBloomFilter);
+        IndexHelper.defreezeBloomFilter(file,dataSize,sstable.descriptor.usesOldBloomFilter);
       }
  catch (      Exception e) {
-        logger.info("Invalid bloom filter in " + sstable + "; will rebuild it");
+        if (e instanceof EOFException)         throw (EOFException)e;
+        logger.debug("Invalid bloom filter in {}; will rebuild it",sstable);
       }
       try {
         IndexHelper.deserializeIndex(file);
       }
  catch (      Exception e) {
-        logger.info("Invalid row summary in " + sstable + "; will rebuild it");
+        logger.debug("Invalid row summary in {}; will rebuild it",sstable);
       }
       file.seek(this.dataStart);
     }
