@@ -1,20 +1,9 @@
 {
-  String ksname, cfname;
-  try {
-    if (!location.startsWith("cassandra://"))     throw new Exception("Bad scheme.");
-    String[] parts=location.split("/+");
-    ksname=parts[1];
-    cfname=parts[2];
-  }
- catch (  Exception e) {
-    throw new IOException("Expected 'cassandra://<keyspace>/<columnfamily>': " + e.getMessage());
-  }
   SliceRange range=new SliceRange(BOUND,BOUND,false,LIMIT);
   SlicePredicate predicate=new SlicePredicate().setSlice_range(range);
   conf=job.getConfiguration();
   ConfigHelper.setInputSlicePredicate(conf,predicate);
-  ConfigHelper.setInputColumnFamily(conf,ksname,cfname);
-  if (System.getenv(PIG_RPC_PORT) != null)   ConfigHelper.setRpcPort(conf,System.getenv(PIG_RPC_PORT));
-  if (System.getenv(PIG_INITIAL_ADDRESS) != null)   ConfigHelper.setInitialAddress(conf,System.getenv(PIG_INITIAL_ADDRESS));
-  if (System.getenv(PIG_PARTITIONER) != null)   ConfigHelper.setPartitioner(conf,System.getenv(PIG_PARTITIONER));
+  String[] names=parseLocation(location);
+  ConfigHelper.setInputColumnFamily(conf,names[0],names[1]);
+  setConnectionInformation();
 }

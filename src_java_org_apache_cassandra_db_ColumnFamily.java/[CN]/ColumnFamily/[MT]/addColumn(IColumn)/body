@@ -1,16 +1,14 @@
 {
   ByteBuffer name=column.name();
-  IColumn oldColumn=columns.putIfAbsent(name,column);
-  if (oldColumn != null) {
+  IColumn oldColumn;
+  while ((oldColumn=columns.putIfAbsent(name,column)) != null) {
     if (oldColumn instanceof SuperColumn) {
       ((SuperColumn)oldColumn).putColumn(column);
+      break;
     }
  else {
       IColumn reconciledColumn=column.reconcile(oldColumn);
-      while (!columns.replace(name,oldColumn,reconciledColumn)) {
-        oldColumn=columns.get(name);
-        reconciledColumn=column.reconcile(oldColumn);
-      }
+      if (columns.replace(name,oldColumn,reconciledColumn))       break;
     }
   }
 }

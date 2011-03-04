@@ -1,0 +1,59 @@
+{
+  ByteBuffer key=objToBB(t.get(0));
+  DefaultDataBag pairs=(DefaultDataBag)t.get(1);
+  ArrayList<Mutation> mutationList=new ArrayList<Mutation>();
+  try {
+    for (    Tuple pair : pairs) {
+      Mutation mutation=new Mutation();
+      if (DataType.findType(pair.get(1)) == DataType.BAG) {
+        org.apache.cassandra.avro.SuperColumn sc=new org.apache.cassandra.avro.SuperColumn();
+        sc.name=objToBB(pair.get(0));
+        ArrayList<org.apache.cassandra.avro.Column> columns=new ArrayList<org.apache.cassandra.avro.Column>();
+        for (        Tuple subcol : (DefaultDataBag)pair.get(1)) {
+          org.apache.cassandra.avro.Column column=new org.apache.cassandra.avro.Column();
+          column.name=objToBB(subcol.get(0));
+          column.value=objToBB(subcol.get(1));
+          column.timestamp=System.currentTimeMillis() * 1000;
+          columns.add(column);
+        }
+        if (columns.isEmpty()) {
+          mutation.deletion=new Deletion();
+          mutation.deletion.super_column=objToBB(pair.get(0));
+          mutation.deletion.timestamp=System.currentTimeMillis() * 1000;
+        }
+ else {
+          sc.columns=columns;
+          mutation.column_or_supercolumn=new ColumnOrSuperColumn();
+          mutation.column_or_supercolumn.super_column=sc;
+        }
+      }
+ else {
+        if (pair.get(1) == null) {
+          mutation.deletion=new Deletion();
+          mutation.deletion.predicate=new org.apache.cassandra.avro.SlicePredicate();
+          mutation.deletion.predicate.column_names=Arrays.asList(objToBB(pair.get(0)));
+          mutation.deletion.timestamp=System.currentTimeMillis() * 1000;
+        }
+ else {
+          org.apache.cassandra.avro.Column column=new org.apache.cassandra.avro.Column();
+          column.name=objToBB(pair.get(0));
+          column.value=objToBB(pair.get(1));
+          column.timestamp=System.currentTimeMillis() * 1000;
+          mutation.column_or_supercolumn=new ColumnOrSuperColumn();
+          mutation.column_or_supercolumn.column=column;
+          mutationList.add(mutation);
+        }
+      }
+      mutationList.add(mutation);
+    }
+  }
+ catch (  ClassCastException e) {
+    throw new IOException(e + " Output must be (key, {(column,value)...}) for ColumnFamily or (key, {supercolumn:{(column,value)...}...}) for SuperColumnFamily");
+  }
+  try {
+    writer.write(key,mutationList);
+  }
+ catch (  InterruptedException e) {
+    throw new IOException(e);
+  }
+}
