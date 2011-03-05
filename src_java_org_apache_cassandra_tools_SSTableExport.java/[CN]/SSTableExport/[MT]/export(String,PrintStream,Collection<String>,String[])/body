@@ -2,9 +2,7 @@
   SSTableReader reader=SSTableReader.open(Descriptor.fromFilename(ssTableFile));
   SSTableScanner scanner=reader.getDirectScanner(BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE);
   IPartitioner<?> partitioner=StorageService.getPartitioner();
-  for (  String toExclude : excludes) {
-    toExport.remove(toExclude);
-  }
+  if (excludes != null)   toExport.removeAll(Arrays.asList(excludes));
   outs.println("{");
   int i=0;
   DecoratedKey lastKey=null;
@@ -14,7 +12,9 @@
     lastKey=decoratedKey;
     scanner.seekTo(decoratedKey);
     if (!scanner.hasNext())     continue;
-    serializeRow(reader,(SSTableIdentityIterator)scanner.next(),decoratedKey,outs);
+    SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+    if (!row.getKey().equals(decoratedKey))     continue;
+    serializeRow(reader,row,decoratedKey,outs);
     if (i != 0)     outs.println(",");
     i++;
   }
