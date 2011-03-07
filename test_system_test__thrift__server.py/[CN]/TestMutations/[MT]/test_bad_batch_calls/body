@@ -1,0 +1,27 @@
+def test_bad_batch_calls(self):
+
+    def too_full():
+        _set_keyspace('Keyspace1')
+        col = ColumnOrSuperColumn(column=Column('foo', 'bar', 0))
+        dele = Deletion(2, predicate=SlicePredicate(column_names=['baz']))
+        client.batch_mutate({'key_34': {'Standard1': [Mutation(col, dele)], }, }, ConsistencyLevel.ONE)
+    _expect_exception(too_full, InvalidRequestException)
+
+    def send_range():
+        _set_keyspace('Keyspace1')
+        sp = SlicePredicate(slice_range=SliceRange(start='0', finish='', count=10))
+        d = Deletion(2, predicate=sp)
+        client.batch_mutate({'key_35': {'Standard1': [Mutation(deletion=d)], }, }, ConsistencyLevel.ONE)
+    _expect_exception(send_range, InvalidRequestException)
+
+    def bad_cf():
+        _set_keyspace('Keyspace1')
+        col = ColumnOrSuperColumn(column=Column('foo', 'bar', 0))
+        client.batch_mutate({'key_36': {'Undefined': [Mutation(col)], }, }, ConsistencyLevel.ONE)
+    _expect_exception(bad_cf, InvalidRequestException)
+
+    def bad_cf():
+        _set_keyspace('Keyspace1')
+        d = Deletion(2, predicate=SlicePredicate(column_names=['baz']))
+        client.batch_mutate({'key_37': {'Undefined': [Mutation(deletion=d)], }, }, ConsistencyLevel.ONE)
+    _expect_exception(bad_cf, InvalidRequestException)
