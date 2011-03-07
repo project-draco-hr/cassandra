@@ -1,11 +1,14 @@
 {
+  PageCacheInformer pci=dos instanceof PageCacheInformer ? (PageCacheInformer)dos : null;
   try {
     serializeCFInfo(columnFamily,dos);
     Collection<IColumn> columns=columnFamily.getSortedColumns();
     int count=columns.size();
     dos.writeInt(count);
     for (    IColumn column : columns) {
+      long startAt=pci != null ? pci.getCurrentPosition() : -1;
       columnFamily.getColumnSerializer().serialize(column,dos);
+      if (column.isInPageCache() && pci != null)       pci.keepCacheWindow(startAt);
     }
     return count;
   }

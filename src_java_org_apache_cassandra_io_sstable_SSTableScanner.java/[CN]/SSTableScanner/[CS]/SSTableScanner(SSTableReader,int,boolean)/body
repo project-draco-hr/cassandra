@@ -1,9 +1,15 @@
 {
+  PageCacheMetrics pageCacheMetrics=null;
   try {
-    this.file=new BufferedRandomAccessFile(new File(sstable.getFilename()),"r",bufferSize,skipCache);
+    File sstableFile=new File(sstable.getFilename());
+    file=new BufferedRandomAccessFile(sstableFile,"r",bufferSize,skipCache,false);
+    if (skipCache) {
+      pageCacheMetrics=CLibrary.getCachedPages(file);
+    }
   }
  catch (  IOException e) {
     throw new IOError(e);
   }
   this.sstable=sstable;
+  this.pageCacheMetrics=pageCacheMetrics;
 }
