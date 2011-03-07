@@ -1,6 +1,12 @@
 {
   try {
-    return sstable.getColumnSerializer().deserialize(file);
+    long columnStartAt=file.getFilePointer();
+    IColumn col=sstable.getColumnSerializer().deserialize(file);
+    long columnEndAt=file.getFilePointer();
+    if (pageCacheMetrics != null) {
+      col.setIsInPageCache(pageCacheMetrics.isRangeInCache(columnStartAt,columnEndAt));
+    }
+    return col;
   }
  catch (  IOException e) {
     throw new IOError(e);

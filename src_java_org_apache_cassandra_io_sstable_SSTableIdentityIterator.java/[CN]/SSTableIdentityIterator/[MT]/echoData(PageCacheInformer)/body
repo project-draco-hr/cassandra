@@ -1,0 +1,28 @@
+{
+  file.seek(dataStart);
+  if (pageCacheMetrics == null) {
+    while (file.getFilePointer() < finishedAt) {
+      out.write(file.readByte());
+    }
+  }
+ else {
+    int chunkSize=(int)(finishedAt - dataStart) / 128;
+    chunkSize=chunkSize >= pageCacheMetrics.pageSize ? chunkSize : pageCacheMetrics.pageSize;
+    long chunkStart=0;
+    long chunkEnd=0;
+    boolean isChunkInPageCache=false;
+    while (file.getFilePointer() < finishedAt) {
+      if (file.getFilePointer() >= chunkEnd) {
+        if (isChunkInPageCache) {
+          out.keepCacheWindow(out.getCurrentPosition() - chunkSize);
+        }
+        chunkStart=file.getFilePointer();
+        chunkEnd=chunkStart + chunkSize;
+        if (chunkEnd > finishedAt)         chunkEnd=finishedAt;
+        isChunkInPageCache=pageCacheMetrics.isRangeInCache(chunkStart,chunkEnd);
+      }
+      out.write(file.readByte());
+    }
+    if (isChunkInPageCache)     out.keepCacheWindow(out.getCurrentPosition() - (file.getFilePointer() - chunkStart));
+  }
+}
