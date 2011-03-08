@@ -4,11 +4,14 @@
   try {
     IColumnIterator iter;
     int sstablesToIterate=0;
-    if (!reverseReadWriteOrder()) {
-      iter=filter.getMemtableColumnIterator(getMemtableThreadSafe(),getComparator());
-      if (iter != null) {
-        returnCF.delete(iter.getColumnFamily());
-        iterators.add(iter);
+    if (reverseReadWriteOrder()) {
+      for (      SSTableReader sstable : ssTables) {
+        iter=filter.getSSTableColumnIterator(sstable);
+        if (iter.getColumnFamily() != null) {
+          returnCF.delete(iter.getColumnFamily());
+          iterators.add(iter);
+          sstablesToIterate++;
+        }
       }
       for (      Memtable memtable : memtablesPendingFlush) {
         iter=filter.getMemtableColumnIterator(memtable,getComparator());
@@ -17,23 +20,17 @@
           iterators.add(iter);
         }
       }
-      for (      SSTableReader sstable : ssTables) {
-        iter=filter.getSSTableColumnIterator(sstable);
-        if (iter.getColumnFamily() != null) {
-          returnCF.delete(iter.getColumnFamily());
-          iterators.add(iter);
-          sstablesToIterate++;
-        }
+      iter=filter.getMemtableColumnIterator(getMemtableThreadSafe(),getComparator());
+      if (iter != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
       }
     }
  else {
-      for (      SSTableReader sstable : ssTables) {
-        iter=filter.getSSTableColumnIterator(sstable);
-        if (iter.getColumnFamily() != null) {
-          returnCF.delete(iter.getColumnFamily());
-          iterators.add(iter);
-          sstablesToIterate++;
-        }
+      iter=filter.getMemtableColumnIterator(getMemtableThreadSafe(),getComparator());
+      if (iter != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
       }
       for (      Memtable memtable : memtablesPendingFlush) {
         iter=filter.getMemtableColumnIterator(memtable,getComparator());
@@ -42,10 +39,13 @@
           iterators.add(iter);
         }
       }
-      iter=filter.getMemtableColumnIterator(getMemtableThreadSafe(),getComparator());
-      if (iter != null) {
-        returnCF.delete(iter.getColumnFamily());
-        iterators.add(iter);
+      for (      SSTableReader sstable : ssTables) {
+        iter=filter.getSSTableColumnIterator(sstable);
+        if (iter.getColumnFamily() != null) {
+          returnCF.delete(iter.getColumnFamily());
+          iterators.add(iter);
+          sstablesToIterate++;
+        }
       }
     }
     recentSSTablesPerRead.add(sstablesToIterate);
