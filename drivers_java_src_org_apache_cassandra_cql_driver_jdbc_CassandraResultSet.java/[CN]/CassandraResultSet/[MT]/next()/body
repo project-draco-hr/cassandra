@@ -4,13 +4,14 @@
     valueMap.clear();
   }
   if (rSetIter != null && rSetIter.hasNext()) {
-    row=rSetIter.next();
+    CqlRow row=rSetIter.next();
     List<Column> cols=row.getColumns();
     for (    Column col : cols) {
-      String name=new String(col.getName());
-      String value=new String(col.getValue());
-      values.add(value);
-      valueMap.put(name,value);
+      byte[] name=col.getName();
+      byte[] value=col.getValue();
+      Col c=decoder.makeCol(keyspace,columnFamily,name,value);
+      values.add(c);
+      valueMap.put(decoder.colNameAsString(keyspace,columnFamily,name),c.getValue());
     }
     return !(values.isEmpty() && valueMap.isEmpty());
   }
