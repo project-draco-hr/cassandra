@@ -84,14 +84,15 @@ return avroResult;
 case DELETE:
 DeleteStatement delete=(DeleteStatement)statement.statement;
 clientState.hasColumnFamilyAccess(delete.getColumnFamily(),Permission.WRITE);
+AbstractType<?> comparator=DatabaseDescriptor.getComparator(keyspace,delete.getColumnFamily());
 List<RowMutation> rowMutations=new ArrayList<RowMutation>();
 for (Term key : delete.getKeys()) {
-RowMutation rm=new RowMutation(keyspace,key.getByteBuffer());
+RowMutation rm=new RowMutation(keyspace,key.getByteBuffer(AsciiType.instance));
 if (delete.getColumns().size() < 1) rm.delete(new QueryPath(delete.getColumnFamily()),System.currentTimeMillis());
  else {
 for (Term column : delete.getColumns()) {
-validateColumnName(keyspace,delete.getColumnFamily(),column.getByteBuffer());
-rm.delete(new QueryPath(delete.getColumnFamily(),null,column.getByteBuffer()),System.currentTimeMillis());
+validateColumnName(keyspace,delete.getColumnFamily(),column.getByteBuffer(comparator));
+rm.delete(new QueryPath(delete.getColumnFamily(),null,column.getByteBuffer(comparator)),System.currentTimeMillis());
 }
 }
 rowMutations.add(rm);

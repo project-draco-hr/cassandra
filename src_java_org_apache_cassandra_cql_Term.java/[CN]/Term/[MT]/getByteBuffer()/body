@@ -1,52 +1,15 @@
 {
 switch (type) {
 case STRING:
-    return ByteBuffer.wrap(text.getBytes());
+    return AsciiType.instance.fromString(text);
 case INTEGER:
-  try {
-    return ByteBufferUtil.bytes(Integer.parseInt(text));
-  }
- catch (  NumberFormatException e) {
-    throw new InvalidRequestException(text + " is not valid for type int");
-  }
+  return IntegerType.instance.fromString(text);
 case UNICODE:
-try {
-  return ByteBuffer.wrap(text.getBytes("UTF-8"));
-}
- catch (UnsupportedEncodingException e) {
-  throw new RuntimeException(e);
-}
+return UTF8Type.instance.fromString(text);
 case UUID:
-try {
 return LexicalUUIDType.instance.fromString(text);
-}
- catch (IllegalArgumentException e) {
-throw new InvalidRequestException(text + " is not valid for type uuid");
-}
 case TIMEUUID:
-if (text.equals("") || text.toLowerCase().equals("now")) {
-return ByteBuffer.wrap(UUIDGen.decompose(UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress())));
-}
-if (text.matches("^\\d+$")) {
-try {
-return ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(Long.parseLong(text)));
-}
- catch (NumberFormatException e) {
-throw new InvalidRequestException(text + " is not valid for type timeuuid");
-}
-}
-try {
-long timestamp=DateUtils.parseDate(text,iso8601Patterns).getTime();
-return ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(timestamp));
-}
- catch (ParseException e1) {
-}
-try {
 return TimeUUIDType.instance.fromString(text);
-}
- catch (IllegalArgumentException e) {
-throw new InvalidRequestException(text + " is not valid for type timeuuid");
-}
 }
 return null;
 }

@@ -1,11 +1,14 @@
 {
-  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select);
+  AbstractType<?> comparator=select.getComparator(keyspace);
+  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,comparator);
   validateSlicePredicate(keyspace,select.getColumnFamily(),thriftSlicePredicate);
   List<IndexExpression> expressions=new ArrayList<IndexExpression>();
   for (  Relation columnRelation : select.getColumnRelations()) {
-    expressions.add(new IndexExpression(columnRelation.getEntity().getByteBuffer(),IndexOperator.valueOf(columnRelation.operator().toString()),columnRelation.getValue().getByteBuffer()));
+    ByteBuffer entity=columnRelation.getEntity().getByteBuffer(comparator);
+    ByteBuffer value=columnRelation.getValue().getByteBuffer(select.getValueValidator(keyspace,entity));
+    expressions.add(new IndexExpression(entity,IndexOperator.valueOf(columnRelation.operator().toString()),value));
   }
-  ByteBuffer startKey=(!select.isKeyRange()) ? (new Term()).getByteBuffer() : select.getKeyStart().getByteBuffer();
+  ByteBuffer startKey=(!select.isKeyRange()) ? (new Term()).getByteBuffer() : select.getKeyStart().getByteBuffer(AsciiType.instance);
   IndexClause thriftIndexClause=new IndexClause(expressions,startKey,select.getNumRecords());
   List<org.apache.cassandra.db.Row> rows;
   try {
