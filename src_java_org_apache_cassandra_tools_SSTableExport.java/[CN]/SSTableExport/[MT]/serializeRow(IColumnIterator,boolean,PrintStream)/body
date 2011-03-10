@@ -3,8 +3,11 @@
   CFMetaData cfMetaData=columnFamily.metadata();
   AbstractType comparator=columnFamily.getComparator();
   if (isSuper) {
+    int n=0;
+    IColumn column=null;
     while (columns.hasNext()) {
-      IColumn column=columns.next();
+      column=columns.next();
+      n++;
       out.print(asKey(comparator.getString(column.name())));
       out.print("{");
       out.print(asKey("deletedAt"));
@@ -12,13 +15,14 @@
       out.print(", ");
       out.print(asKey("subColumns"));
       out.print("[");
-      serializeColumns(column.getSubColumns(),out,columnFamily.getSubComparator(),cfMetaData);
+      serializeColumns(column.getSubColumns().iterator(),out,columnFamily.getSubComparator(),cfMetaData);
       out.print("]");
       out.print("}");
       if (columns.hasNext())       out.print(", ");
     }
+    return new Pair<Integer,ByteBuffer>(n,column == null ? null : column.name());
   }
  else {
-    serializeColumns(columns,out,comparator,cfMetaData);
+    return serializeColumns(columns,out,comparator,cfMetaData);
   }
 }
