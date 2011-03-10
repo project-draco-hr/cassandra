@@ -1,0 +1,26 @@
+{
+  ColumnParent parent=new ColumnParent("Counter1");
+  byte[] key=generateKey();
+  ByteBuffer keyBuffer=ByteBuffer.wrap(key);
+  long start=System.currentTimeMillis();
+  boolean success=false;
+  String exceptionMessage=null;
+  for (int t=0; t < session.getRetryTimes(); t++) {
+    if (success)     break;
+    try {
+      List<Counter> counters;
+      counters=client.get_counter_slice(keyBuffer,parent,predicate,session.getConsistencyLevel());
+      success=(counters.size() != 0);
+    }
+ catch (    Exception e) {
+      exceptionMessage=getExceptionMessage(e);
+      success=false;
+    }
+  }
+  if (!success) {
+    error(String.format("Operation [%d] retried %d times - error reading counter key %s %s%n",index,session.getRetryTimes(),new String(key),(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+  }
+  session.operations.getAndIncrement();
+  session.keys.getAndIncrement();
+  session.latency.getAndAdd(System.currentTimeMillis() - start);
+}

@@ -1,0 +1,38 @@
+{
+  List<CounterColumn> columns=new ArrayList<CounterColumn>();
+  List<CounterSuperColumn> superColumns=new ArrayList<CounterSuperColumn>();
+  String format="%0" + session.getTotalKeysLength() + "d";
+  for (int i=0; i < session.getColumnsPerKey(); i++) {
+    String columnName=("C" + Integer.toString(i));
+    columns.add(new CounterColumn(ByteBufferUtil.bytes(columnName),1L));
+  }
+  if (session.getColumnFamilyType() == ColumnFamilyType.Super) {
+    for (int i=0; i < session.getSuperColumns(); i++) {
+      String superColumnName="S" + Integer.toString(i);
+      superColumns.add(new CounterSuperColumn(ByteBuffer.wrap(superColumnName.getBytes()),columns));
+    }
+  }
+  String rawKey=String.format(format,index);
+  Map<ByteBuffer,Map<String,List<CounterMutation>>> record=new HashMap<ByteBuffer,Map<String,List<CounterMutation>>>();
+  record.put(ByteBufferUtil.bytes(rawKey),session.getColumnFamilyType() == ColumnFamilyType.Super ? getSuperColumnsMutationMap(superColumns) : getColumnsMutationMap(columns));
+  long start=System.currentTimeMillis();
+  boolean success=false;
+  String exceptionMessage=null;
+  for (int t=0; t < session.getRetryTimes(); t++) {
+    if (success)     break;
+    try {
+      client.batch_add(record,session.getConsistencyLevel());
+      success=true;
+    }
+ catch (    Exception e) {
+      exceptionMessage=getExceptionMessage(e);
+      success=false;
+    }
+  }
+  if (!success) {
+    error(String.format("Operation [%d] retried %d times - error incrementing key %s %s%n",index,session.getRetryTimes(),rawKey,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+  }
+  session.operations.getAndIncrement();
+  session.keys.getAndIncrement();
+  session.latency.getAndAdd(System.currentTimeMillis() - start);
+}
