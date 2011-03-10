@@ -7,19 +7,23 @@
   while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(key,new QueryPath(columnFamily.metadata().tableName),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
     IColumnIterator columns=filter.getSSTableColumnIterator(reader);
-    int columnCount=0;
-    while (columns.hasNext()) {
-      startColumn=columns.next().name();
-      columnCount++;
-    }
+    Pair<Integer,ByteBuffer> serialized;
     try {
-      columns=filter.getSSTableColumnIterator(reader);
-      serializeRow(columns,isSuperCF,out);
+      serialized=serializeRow(columns,isSuperCF,out);
     }
  catch (    IOException e) {
       System.err.println("WARNING: Corrupt row " + key + " (skipping).");
+      continue;
     }
-    if (columnCount < PAGE_SIZE)     break;
+ finally {
+      try {
+        columns.close();
+      }
+ catch (      IOException e) {
+        throw new IOError(e);
+      }
+    }
+    if (serialized.left < PAGE_SIZE)     break;
     out.print(",");
   }
   out.print(isSuperCF ? "}" : "]");
