@@ -1,0 +1,13 @@
+{
+  ColumnFamily cf=row.cf;
+  if (cf.metadata().getMergeShardsChance() > random.get().nextDouble()) {
+    ColumnFamily merger=computeShardMerger(cf);
+    if (merger != null) {
+      RowMutation localMutation=new RowMutation(table,row.key.key);
+      localMutation.add(merger);
+      localMutation.apply();
+      cf.addAll(merger);
+    }
+  }
+  return row;
+}

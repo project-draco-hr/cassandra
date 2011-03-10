@@ -59,6 +59,9 @@
       if (cf.memtable_operations_in_millions != null && cf.memtable_operations_in_millions <= 0) {
         throw new ConfigurationException("memtable_operations_in_millions must be a positive double");
       }
+      if (cf.merge_shards_chance < 0.0 || cf.merge_shards_chance > 1.0) {
+        throw new ConfigurationException("merge_shards_chance must be between 0.0 and 1.0 (0% and 100%)");
+      }
       Map<ByteBuffer,ColumnDefinition> metadata=new TreeMap<ByteBuffer,ColumnDefinition>();
       for (      RawColumnDefinition rcd : cf.column_metadata) {
         if (rcd.name == null) {
@@ -73,7 +76,7 @@
         ByteBuffer columnName=ByteBuffer.wrap(rcd.name.getBytes(Charsets.UTF_8));
         metadata.put(columnName,new ColumnDefinition(columnName,rcd.validator_class,rcd.index_type,rcd.index_name));
       }
-      cfDefs[j++]=new CFMetaData(keyspace.name,cf.name,cfType,comparator,subcolumnComparator,cf.comment,cf.rows_cached,cf.keys_cached,cf.read_repair_chance,cf.replicate_on_write,cf.gc_grace_seconds,default_validator,cf.min_compaction_threshold,cf.max_compaction_threshold,cf.row_cache_save_period_in_seconds,cf.key_cache_save_period_in_seconds,cf.memtable_flush_after_mins,cf.memtable_throughput_in_mb,cf.memtable_operations_in_millions,metadata);
+      cfDefs[j++]=new CFMetaData(keyspace.name,cf.name,cfType,comparator,subcolumnComparator,cf.comment,cf.rows_cached,cf.keys_cached,cf.read_repair_chance,cf.replicate_on_write,cf.gc_grace_seconds,default_validator,cf.min_compaction_threshold,cf.max_compaction_threshold,cf.row_cache_save_period_in_seconds,cf.key_cache_save_period_in_seconds,cf.memtable_flush_after_mins,cf.memtable_throughput_in_mb,cf.memtable_operations_in_millions,cf.merge_shards_chance,metadata);
     }
     defs.add(new KSMetaData(keyspace.name,strategyClass,keyspace.strategy_options,keyspace.replication_factor,cfDefs));
   }

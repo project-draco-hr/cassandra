@@ -1,24 +1,21 @@
 {
+  ContextState state=new ContextState(context,headerLength(context));
   StringBuilder sb=new StringBuilder();
   sb.append("[");
-  for (int offset=context.position(); offset < context.limit(); offset+=stepLength) {
-    if (offset > context.position()) {
+  while (state.hasRemaining()) {
+    if (state.elementIdx() > 0) {
       sb.append(",");
     }
     sb.append("{");
-    try {
-      int absOffset=context.arrayOffset() + offset;
-      InetAddress address=InetAddress.getByAddress(ArrayUtils.subarray(context.array(),absOffset,absOffset + idLength));
-      sb.append(address.getHostAddress());
-    }
- catch (    UnknownHostException uhe) {
-      sb.append("?.?.?.?");
-    }
-    sb.append(", ");
-    sb.append(context.getLong(offset + idLength));
-    sb.append(", ");
-    sb.append(context.getLong(offset + idLength + clockLength));
+    sb.append(state.getNodeId().toString()).append(", ");
+    sb.append(state.getClock()).append(", ");
+    ;
+    sb.append(state.getCount());
     sb.append("}");
+    if (state.isDelta()) {
+      sb.append("*");
+    }
+    state.moveToNext();
   }
   sb.append("]");
   return sb.toString();

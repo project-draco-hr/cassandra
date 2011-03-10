@@ -2,36 +2,14 @@
   List<ReadCommand> readCommands=new LinkedList<ReadCommand>();
   for (  ColumnFamily columnFamily : rowMutation.getColumnFamilies()) {
     if (!columnFamily.metadata().getReplicateOnWrite())     continue;
-    if (!columnFamily.isSuper()) {
-      QueryPath queryPath=new QueryPath(columnFamily.metadata().cfName);
-      ReadCommand readCommand=new SliceByNamesReadCommand(rowMutation.getTable(),rowMutation.key(),queryPath,columnFamily.getColumnNames());
-      readCommands.add(readCommand);
-      continue;
-    }
-    for (    IColumn superColumn : columnFamily.getSortedColumns()) {
-      QueryPath queryPath=new QueryPath(columnFamily.metadata().cfName,superColumn.name());
-      Collection<IColumn> subColumns=superColumn.getSubColumns();
-      Collection<ByteBuffer> subColNames=new HashSet<ByteBuffer>(subColumns.size());
-      for (      IColumn subCol : subColumns) {
-        subColNames.add(subCol.name());
-      }
-      ReadCommand readCommand=new SliceByNamesReadCommand(rowMutation.getTable(),rowMutation.key(),queryPath,subColNames);
-      readCommands.add(readCommand);
-    }
+    addReadCommandFromColumnFamily(rowMutation.getTable(),rowMutation.key(),columnFamily,readCommands);
   }
-  List<InetAddress> foreignReplicas=StorageService.instance.getLiveNaturalEndpoints(rowMutation.getTable(),rowMutation.key());
-  foreignReplicas.remove(FBUtilities.getLocalAddress());
   RowMutation replicationMutation=new RowMutation(rowMutation.getTable(),rowMutation.key());
   for (  ReadCommand readCommand : readCommands) {
     Table table=Table.open(readCommand.table);
     Row row=readCommand.getRow(table);
     if (row == null || row.cf == null)     continue;
-    AbstractType defaultValidator=row.cf.metadata().getDefaultValidator();
-    if (defaultValidator.isCommutative()) {
-      for (      InetAddress foreignNode : foreignReplicas) {
-        ((AbstractCommutativeType)defaultValidator).cleanContext(row.cf,foreignNode);
-      }
-    }
+    row=mergeOldShards(readCommand.table,row);
     replicationMutation.add(row.cf);
   }
   return replicationMutation;

@@ -1,0 +1,21 @@
+{
+  long now=System.currentTimeMillis();
+  ByteBuffer ip=ByteBuffer.wrap(FBUtilities.getLocalAddress().getAddress());
+  ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,NODE_ID_CF);
+  cf.addColumn(new Column(newNodeId.bytes(),ip,now));
+  ColumnFamily cf2=cf.cloneMe();
+  if (oldNodeId != null) {
+    cf2.addColumn(new DeletedColumn(oldNodeId.bytes(),(int)(now / 1000),now));
+  }
+  RowMutation rmCurrent=new RowMutation(Table.SYSTEM_TABLE,CURRENT_LOCAL_NODE_ID_KEY);
+  RowMutation rmAll=new RowMutation(Table.SYSTEM_TABLE,ALL_LOCAL_NODE_ID_KEY);
+  rmCurrent.add(cf2);
+  rmAll.add(cf);
+  try {
+    rmCurrent.apply();
+    rmAll.apply();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

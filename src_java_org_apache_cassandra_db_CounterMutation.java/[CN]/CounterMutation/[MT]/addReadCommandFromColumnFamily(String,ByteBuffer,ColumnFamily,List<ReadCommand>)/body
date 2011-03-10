@@ -1,0 +1,17 @@
+{
+  if (!columnFamily.isSuper()) {
+    QueryPath queryPath=new QueryPath(columnFamily.metadata().cfName);
+    commands.add(new SliceByNamesReadCommand(table,key,queryPath,columnFamily.getColumnNames()));
+  }
+ else {
+    for (    IColumn superColumn : columnFamily.getSortedColumns()) {
+      QueryPath queryPath=new QueryPath(columnFamily.metadata().cfName,superColumn.name());
+      Collection<IColumn> subColumns=superColumn.getSubColumns();
+      Collection<ByteBuffer> subColNames=new HashSet<ByteBuffer>(subColumns.size());
+      for (      IColumn subCol : subColumns) {
+        subColNames.add(subCol.name());
+      }
+      commands.add(new SliceByNamesReadCommand(table,key,queryPath,subColNames));
+    }
+  }
+}

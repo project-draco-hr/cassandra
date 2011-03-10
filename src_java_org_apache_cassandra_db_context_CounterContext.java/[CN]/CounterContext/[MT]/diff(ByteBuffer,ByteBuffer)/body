@@ -1,18 +1,18 @@
 {
   ContextRelationship relationship=ContextRelationship.EQUAL;
-  int leftIndex=left.position();
-  int rightIndex=right.position();
-  while (leftIndex < left.remaining() && rightIndex < right.remaining()) {
-    int compareId=ByteBufferUtil.compareSubArrays(left,leftIndex,right,rightIndex,idLength);
+  ContextState leftState=new ContextState(left,headerLength(left));
+  ContextState rightState=new ContextState(right,headerLength(right));
+  while (leftState.hasRemaining() && rightState.hasRemaining()) {
+    int compareId=leftState.compareIdTo(rightState);
     if (compareId == 0) {
-      long leftClock=left.getLong(leftIndex + idLength);
-      long rightClock=right.getLong(rightIndex + idLength);
-      leftIndex+=stepLength;
-      rightIndex+=stepLength;
+      long leftClock=leftState.getClock();
+      long rightClock=rightState.getClock();
+      leftState.moveToNext();
+      rightState.moveToNext();
       if (leftClock == rightClock) {
         continue;
       }
- else       if (leftClock > rightClock) {
+ else       if ((leftClock >= 0 && rightClock > 0 && leftClock > rightClock) || (leftClock < 0 && (rightClock > 0 || leftClock < rightClock))) {
         if (relationship == ContextRelationship.EQUAL) {
           relationship=ContextRelationship.GREATER_THAN;
         }
@@ -36,7 +36,7 @@
       }
     }
  else     if (compareId > 0) {
-      rightIndex+=stepLength;
+      rightState.moveToNext();
       if (relationship == ContextRelationship.EQUAL) {
         relationship=ContextRelationship.LESS_THAN;
       }
@@ -48,7 +48,7 @@
       }
     }
  else {
-      leftIndex+=stepLength;
+      leftState.moveToNext();
       if (relationship == ContextRelationship.EQUAL) {
         relationship=ContextRelationship.GREATER_THAN;
       }
@@ -60,7 +60,7 @@
       }
     }
   }
-  if (leftIndex < left.remaining()) {
+  if (leftState.hasRemaining()) {
     if (relationship == ContextRelationship.EQUAL) {
       return ContextRelationship.GREATER_THAN;
     }
@@ -68,7 +68,7 @@
       return ContextRelationship.DISJOINT;
     }
   }
- else   if (rightIndex < right.remaining()) {
+ else   if (rightState.hasRemaining()) {
     if (relationship == ContextRelationship.EQUAL) {
       return ContextRelationship.LESS_THAN;
     }

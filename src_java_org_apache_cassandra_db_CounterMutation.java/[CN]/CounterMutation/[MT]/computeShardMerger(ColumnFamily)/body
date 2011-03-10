@@ -1,0 +1,31 @@
+{
+  ColumnFamily merger=null;
+  if (!cf.isSuper()) {
+    for (    IColumn column : cf.getSortedColumns()) {
+      if (!(column instanceof CounterColumn))       continue;
+      IColumn c=((CounterColumn)column).computeOldShardMerger();
+      if (c != null) {
+        if (merger == null)         merger=cf.cloneMeShallow();
+        merger.addColumn(c);
+      }
+    }
+  }
+ else {
+    for (    IColumn superColumn : cf.getSortedColumns()) {
+      IColumn mergerSuper=null;
+      for (      IColumn column : superColumn.getSubColumns()) {
+        if (!(column instanceof CounterColumn))         continue;
+        IColumn c=((CounterColumn)column).computeOldShardMerger();
+        if (c != null) {
+          if (mergerSuper == null)           mergerSuper=((SuperColumn)superColumn).cloneMeShallow();
+          mergerSuper.addColumn(c);
+        }
+      }
+      if (mergerSuper != null) {
+        if (merger == null)         merger=cf.cloneMeShallow();
+        merger.addColumn(mergerSuper);
+      }
+    }
+  }
+  return merger;
+}

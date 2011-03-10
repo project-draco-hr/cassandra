@@ -1,0 +1,42 @@
+{
+  long now=System.currentTimeMillis();
+  int hlength=headerLength(context);
+  if (oldIds.size() < 2 || now - oldIds.get(0).timestamp < MIN_MERGE_DELAY || now - oldIds.get(1).timestamp < MIN_MERGE_DELAY || context.remaining() - hlength < 2 * STEP_LENGTH)   return null;
+  Iterator<NodeId.NodeIdRecord> recordIterator=oldIds.iterator();
+  NodeId.NodeIdRecord currRecord=recordIterator.next();
+  ContextState state=new ContextState(context,hlength);
+  ContextState foundState=null;
+  while (state.hasRemaining() && currRecord != null) {
+    if (now - currRecord.timestamp < MIN_MERGE_DELAY)     return context;
+    int c=state.getNodeId().compareTo(currRecord.id);
+    if (c == 0) {
+      if (foundState == null) {
+        if (state.getClock() < 0)         return null;
+        foundState=state.duplicate();
+        currRecord=recordIterator.hasNext() ? recordIterator.next() : null;
+        state.moveToNext();
+      }
+ else {
+        int nbDelta=foundState.isDelta() ? 1 : 0;
+        nbDelta+=state.isDelta() ? 1 : 0;
+        ContextState merger=ContextState.allocate(2,nbDelta);
+        long fclock=foundState.getClock();
+        long fcount=foundState.getCount();
+        long clock=state.getClock();
+        long count=state.getCount();
+        if (foundState.isDelta())         merger.writeElement(foundState.getNodeId(),-now - fclock,-fcount,true);
+ else         merger.writeElement(foundState.getNodeId(),-now,0);
+        if (state.isDelta())         merger.writeElement(state.getNodeId(),fclock + clock,fcount,true);
+ else         merger.writeElement(state.getNodeId(),fclock + clock,fcount + count);
+        return merger.context;
+      }
+    }
+ else     if (c < 0) {
+      state.moveToNext();
+    }
+ else {
+      currRecord=recordIterator.hasNext() ? recordIterator.next() : null;
+    }
+  }
+  return null;
+}
