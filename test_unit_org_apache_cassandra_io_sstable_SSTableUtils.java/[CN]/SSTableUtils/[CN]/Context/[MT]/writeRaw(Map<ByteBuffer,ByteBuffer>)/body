@@ -1,10 +1,16 @@
 {
   File datafile=(dest == null) ? tempSSTableFile(ksname,cfname,generation) : new File(dest.filenameFor(Component.DATA));
   SSTableWriter writer=new SSTableWriter(datafile.getAbsolutePath(),entries.size());
-  SortedMap<DecoratedKey,ByteBuffer> sortedEntries=new TreeMap<DecoratedKey,ByteBuffer>();
-  for (  Map.Entry<ByteBuffer,ByteBuffer> entry : entries.entrySet())   sortedEntries.put(writer.partitioner.decorateKey(entry.getKey()),entry.getValue());
-  for (  Map.Entry<DecoratedKey,ByteBuffer> entry : sortedEntries.entrySet())   writer.append(entry.getKey(),entry.getValue());
-  SSTableReader reader=writer.closeAndOpenReader();
-  if (cleanup)   for (  Component comp : reader.components)   new File(reader.descriptor.filenameFor(comp)).deleteOnExit();
-  return reader;
+  SortedMap<DecoratedKey,ByteBuffer> sorted=new TreeMap<DecoratedKey,ByteBuffer>();
+  for (  Map.Entry<ByteBuffer,ByteBuffer> entry : entries.entrySet())   sorted.put(writer.partitioner.decorateKey(entry.getKey()),entry.getValue());
+  final Iterator<Map.Entry<DecoratedKey,ByteBuffer>> iter=sorted.entrySet().iterator();
+  return write(sorted.size(),new Appender(){
+    @Override public boolean append(    SSTableWriter writer) throws IOException {
+      if (!iter.hasNext())       return false;
+      Map.Entry<DecoratedKey,ByteBuffer> entry=iter.next();
+      writer.append(entry.getKey(),entry.getValue());
+      return true;
+    }
+  }
+);
 }

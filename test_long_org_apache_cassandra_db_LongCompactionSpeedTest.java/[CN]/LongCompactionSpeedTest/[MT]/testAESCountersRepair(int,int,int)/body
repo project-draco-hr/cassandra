@@ -1,0 +1,28 @@
+{
+  final String cfName="Counter1";
+  CompactionManager.instance.disableAutoCompaction();
+  ArrayList<SSTableReader> sstables=new ArrayList<SSTableReader>();
+  for (int k=0; k < sstableCount; k++) {
+    final int sstableNum=k;
+    SSTableReader sstable=SSTableUtils.prepare().ks(TABLE1).cf(cfName).write(rowsPerSSTable,new SSTableUtils.Appender(){
+      int written=0;
+      public boolean append(      SSTableWriter writer) throws IOException {
+        if (written > rowsPerSSTable)         return false;
+        DecoratedKey key=Util.dk(String.format("%020d",written));
+        ColumnFamily cf=ColumnFamily.create(TABLE1,cfName);
+        for (int i=0; i < colsPerRow; i++)         cf.addColumn(createCounterColumn(String.valueOf(i)));
+        writer.append(key,cf);
+        written++;
+        return true;
+      }
+    }
+);
+    FileUtils.deleteWithConfirm(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+    FileUtils.deleteWithConfirm(sstable.descriptor.filenameFor(Component.FILTER));
+    sstables.add(sstable);
+  }
+  Thread.sleep(1000);
+  long start=System.currentTimeMillis();
+  for (  SSTableReader sstable : sstables)   CompactionManager.instance.submitSSTableBuild(sstable.descriptor,OperationType.AES).get();
+  System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",this.getClass().getName(),sstableCount,rowsPerSSTable,colsPerRow,System.currentTimeMillis() - start));
+}

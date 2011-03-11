@@ -6,8 +6,10 @@
   DecoratedKey key;
   long readRowPosition=0L;
   long writeRowPosition=0L;
-  while (readRowPosition < dfile.length()) {
-    dfile.seek(readRowPosition);
+  writerDfile.seek(writeRowPosition);
+  dfile.seek(readRowPosition);
+  long dfileLength=dfile.length();
+  while (readRowPosition < dfileLength) {
     diskKey=ByteBufferUtil.readWithShortLength(dfile);
     long dataSize=SSTableReader.readRowSize(dfile,desc);
     dfile.skipBytes(dfile.readInt());
@@ -20,22 +22,21 @@
     readRowPosition=dfile.getFilePointer();
     key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,diskKey);
     iwriter.afterAppend(key,writeRowPosition);
-    dfile.seek(writeRowPosition);
-    ByteBufferUtil.writeWithShortLength(diskKey,dfile);
-    long writeSizePosition=dfile.getFilePointer();
-    dfile.writeLong(-1L);
-    ColumnFamily.serializer().serializeWithIndexes(cf,dfile);
-    long writeEndPosition=dfile.getFilePointer();
-    dfile.seek(writeSizePosition);
-    dfile.writeLong(writeEndPosition - (writeSizePosition + 8L));
+    ByteBufferUtil.writeWithShortLength(diskKey,writerDfile);
+    long writeSizePosition=writerDfile.getFilePointer();
+    writerDfile.writeLong(-1L);
+    ColumnFamily.serializer().serializeWithIndexes(cf,writerDfile);
+    long writeEndPosition=writerDfile.getFilePointer();
+    writerDfile.seek(writeSizePosition);
+    writerDfile.writeLong(writeEndPosition - (writeSizePosition + 8L));
     writeRowPosition=writeEndPosition;
+    writerDfile.seek(writeRowPosition);
     rows++;
-    dfile.sync();
   }
   writeStatistics(desc,rowSizes,columnCounts);
   if (writeRowPosition != readRowPosition) {
-    dfile.setLength(writeRowPosition);
-    dfile.sync();
+    writerDfile.setLength(writeRowPosition);
   }
+  writerDfile.sync();
   return rows;
 }

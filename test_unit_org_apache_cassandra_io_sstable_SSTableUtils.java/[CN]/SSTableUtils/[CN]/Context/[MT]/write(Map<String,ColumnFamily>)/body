@@ -1,9 +1,14 @@
 {
-  Map<ByteBuffer,ByteBuffer> map=new HashMap<ByteBuffer,ByteBuffer>();
-  for (  Map.Entry<String,ColumnFamily> entry : entries.entrySet()) {
-    DataOutputBuffer buffer=new DataOutputBuffer();
-    ColumnFamily.serializer().serializeWithIndexes(entry.getValue(),buffer);
-    map.put(ByteBuffer.wrap(entry.getKey().getBytes()),ByteBuffer.wrap(buffer.asByteArray()));
+  SortedMap<DecoratedKey,ColumnFamily> sorted=new TreeMap<DecoratedKey,ColumnFamily>();
+  for (  Map.Entry<String,ColumnFamily> entry : entries.entrySet())   sorted.put(Util.dk(entry.getKey()),entry.getValue());
+  final Iterator<Map.Entry<DecoratedKey,ColumnFamily>> iter=sorted.entrySet().iterator();
+  return write(sorted.size(),new Appender(){
+    @Override public boolean append(    SSTableWriter writer) throws IOException {
+      if (!iter.hasNext())       return false;
+      Map.Entry<DecoratedKey,ColumnFamily> entry=iter.next();
+      writer.append(entry.getKey(),entry.getValue());
+      return true;
+    }
   }
-  return writeRaw(map);
+);
 }
