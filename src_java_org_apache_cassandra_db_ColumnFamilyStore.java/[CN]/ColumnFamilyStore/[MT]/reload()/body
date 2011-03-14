@@ -8,17 +8,8 @@
   if (!keyCacheSaveInSeconds.isModified())   keyCacheSaveInSeconds=new DefaultInteger(metadata.getKeyCacheSavePeriodInSeconds());
   ssTables.updateCacheSizes();
   scheduleCacheSaving(rowCacheSaveInSeconds.value(),keyCacheSaveInSeconds.value());
-  for (  ByteBuffer indexName : indexedColumns.keySet()) {
-    if (!metadata.getColumn_metadata().containsKey(indexName)) {
-      ColumnFamilyStore indexCfs=indexedColumns.remove(indexName);
-      if (indexCfs == null) {
-        logger.debug("index {} already removed; ignoring",ByteBufferUtil.bytesToHex(indexName));
-        continue;
-      }
-      indexCfs.unregisterMBean();
-      SystemTable.setIndexRemoved(metadata.tableName,metadata.cfName);
-      indexCfs.removeAllSSTables();
-    }
+  for (  ByteBuffer indexedColumn : indexedColumns.keySet()) {
+    if (!metadata.getColumn_metadata().containsKey(indexedColumn))     removeIndex(indexedColumn);
   }
   for (  ColumnDefinition cdef : metadata.getColumn_metadata().values())   if (cdef.getIndexType() != null && !indexedColumns.containsKey(cdef.name))   addIndex(cdef);
 }
