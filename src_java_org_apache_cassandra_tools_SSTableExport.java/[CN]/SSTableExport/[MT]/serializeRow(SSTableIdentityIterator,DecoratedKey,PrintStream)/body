@@ -1,0 +1,26 @@
+{
+  ColumnFamily columnFamily=row.getColumnFamily();
+  boolean isSuperCF=columnFamily.isSuper();
+  out.print(asKey(bytesToHex(key.key)));
+  out.print(isSuperCF ? "{" : "[");
+  if (isSuperCF) {
+    while (row.hasNext()) {
+      IColumn column=row.next();
+      out.print(asKey(bytesToHex(column.name())));
+      out.print("{");
+      out.print(asKey("deletedAt"));
+      out.print(column.getMarkedForDeleteAt());
+      out.print(", ");
+      out.print(asKey("subColumns"));
+      out.print("[");
+      serializeColumns(column.getSubColumns().iterator(),out);
+      out.print("]");
+      out.print("}");
+      if (row.hasNext())       out.print(", ");
+    }
+  }
+ else {
+    serializeColumns(row,out);
+  }
+  out.print(isSuperCF ? "}" : "]");
+}
