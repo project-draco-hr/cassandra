@@ -1,13 +1,13 @@
 {
-  ColumnFamily columnFamily=columns.getColumnFamily();
+  ColumnFamily columnFamily=row.getColumnFamily();
+  boolean isSuperCF=columnFamily.isSuper();
   CFMetaData cfMetaData=columnFamily.metadata();
   AbstractType comparator=columnFamily.getComparator();
-  if (isSuper) {
-    int n=0;
-    IColumn column=null;
-    while (columns.hasNext()) {
-      column=columns.next();
-      n++;
+  out.print(asKey(bytesToHex(key.key)));
+  out.print(isSuperCF ? "{" : "[");
+  if (isSuperCF) {
+    while (row.hasNext()) {
+      IColumn column=row.next();
       out.print(asKey(comparator.getString(column.name())));
       out.print("{");
       out.print(asKey("deletedAt"));
@@ -18,11 +18,11 @@
       serializeColumns(column.getSubColumns().iterator(),out,columnFamily.getSubComparator(),cfMetaData);
       out.print("]");
       out.print("}");
-      if (columns.hasNext())       out.print(", ");
+      if (row.hasNext())       out.print(", ");
     }
-    return new Pair<Integer,ByteBuffer>(n,column == null ? null : column.name());
   }
  else {
-    return serializeColumns(columns,out,comparator,cfMetaData);
+    serializeColumns(row,out,comparator,cfMetaData);
   }
+  out.print(isSuperCF ? "}" : "]");
 }

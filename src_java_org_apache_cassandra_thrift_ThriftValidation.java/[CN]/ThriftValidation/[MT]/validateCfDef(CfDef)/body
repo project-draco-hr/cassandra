@@ -8,7 +8,11 @@
     if (cfType != ColumnFamilyType.Super && cf_def.subcomparator_type != null)     throw new InvalidRequestException("subcomparator_type is invalid for standard columns");
     if (cf_def.column_metadata == null)     return;
     AbstractType comparator=cfType == ColumnFamilyType.Standard ? DatabaseDescriptor.getComparator(cf_def.comparator_type) : DatabaseDescriptor.getComparator(cf_def.subcomparator_type);
+    Set<String> indexNames=new HashSet<String>();
     for (    ColumnDef c : cf_def.column_metadata) {
+      String idxName=CFMetaData.indexName(cf_def.name,ColumnDefinition.fromColumnDef(c));
+      if (indexNames.contains(idxName))       throw new InvalidRequestException("Duplicate index names " + idxName);
+      indexNames.add(idxName);
       DatabaseDescriptor.getComparator(c.validation_class);
       try {
         comparator.validate(c.name);

@@ -7,7 +7,8 @@
     List<AbstractBounds> ranges=getRestrictedRanges(command.range);
     for (    AbstractBounds range : ranges) {
       List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(command.keyspace,range.right);
-      if (consistency_level == ConsistencyLevel.ONE && liveEndpoints.contains(FBUtilities.getLocalAddress())) {
+      DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
+      if (consistency_level == ConsistencyLevel.ONE && !liveEndpoints.isEmpty() && liveEndpoints.get(0).equals(FBUtilities.getLocalAddress())) {
         if (logger.isDebugEnabled())         logger.debug("local range slice");
         ColumnFamilyStore cfs=Table.open(command.keyspace).getColumnFamilyStore(command.column_family);
         try {
@@ -21,7 +22,6 @@ catch (        InterruptedException e) {
         }
       }
  else {
-        DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getLocalAddress(),liveEndpoints);
         RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
         RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
         ReadCallback<List<Row>> handler=getReadCallback(resolver,command,consistency_level,liveEndpoints);
