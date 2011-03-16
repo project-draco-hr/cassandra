@@ -1,0 +1,19 @@
+def process_execute_cql_query(self, seqid, iprot, oprot):
+    args = execute_cql_query_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = execute_cql_query_result()
+    try:
+        result.success = self._handler.execute_cql_query(args.query, args.compression)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    except SchemaDisagreementException as sde:
+        result.sde = sde
+    oprot.writeMessageBegin('execute_cql_query', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
