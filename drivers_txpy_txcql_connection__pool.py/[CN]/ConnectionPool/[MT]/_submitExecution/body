@@ -1,0 +1,31 @@
+def _submitExecution(self, proto):
+
+    def reqError(err, req, d, r):
+        if (err.check(InvalidRequestException) or (r < 1)):
+            if (err.tb is None):
+                try:
+                    raise err.value
+                except Exception:
+                    (t, v, tb) = exc_info()
+                    err = failure.Failure(v, t, tb)
+            d.errback(err)
+            self._pending.remove(d)
+        else:
+            self.queue.put((req, d, r))
+
+    def reqSuccess(res, d):
+        d.callback(res)
+        self._pending.remove(d)
+
+    def _process((request, deferred, retries)):
+        if (not (proto in self._protos)):
+            self.queue.put((request, deferred, retries))
+        else:
+            try:
+                d = proto.execute(request[0], *request[1], **request[2])
+            except Exception:
+                proto.abort()
+                d = defer.fail()
+            retries -= 1
+            d.addCallbacks(reqSuccess, reqError, callbackArgs=[deferred], errbackArgs=[request, deferred, retries])
+    return self.queue.get().addCallback(_process)
