@@ -1,0 +1,17 @@
+def recv_describe_keyspace(self, iprot, mtype, rseqid):
+    d = self._reqs.pop(rseqid)
+    if (mtype == TMessageType.EXCEPTION):
+        x = TApplicationException()
+        x.read(iprot)
+        iprot.readMessageEnd()
+        return d.errback(x)
+    result = describe_keyspace_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    if (result.success != None):
+        return d.callback(result.success)
+    if (result.nfe != None):
+        return d.errback(result.nfe)
+    if (result.ire != None):
+        return d.errback(result.ire)
+    return d.errback(TApplicationException(TApplicationException.MISSING_RESULT, 'describe_keyspace failed: unknown result'))

@@ -1,0 +1,21 @@
+def recv_get(self, iprot, mtype, rseqid):
+    d = self._reqs.pop(rseqid)
+    if (mtype == TMessageType.EXCEPTION):
+        x = TApplicationException()
+        x.read(iprot)
+        iprot.readMessageEnd()
+        return d.errback(x)
+    result = get_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    if (result.success != None):
+        return d.callback(result.success)
+    if (result.ire != None):
+        return d.errback(result.ire)
+    if (result.nfe != None):
+        return d.errback(result.nfe)
+    if (result.ue != None):
+        return d.errback(result.ue)
+    if (result.te != None):
+        return d.errback(result.te)
+    return d.errback(TApplicationException(TApplicationException.MISSING_RESULT, 'get failed: unknown result'))

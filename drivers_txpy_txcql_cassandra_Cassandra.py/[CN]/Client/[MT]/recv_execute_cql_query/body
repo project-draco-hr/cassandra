@@ -1,0 +1,21 @@
+def recv_execute_cql_query(self, iprot, mtype, rseqid):
+    d = self._reqs.pop(rseqid)
+    if (mtype == TMessageType.EXCEPTION):
+        x = TApplicationException()
+        x.read(iprot)
+        iprot.readMessageEnd()
+        return d.errback(x)
+    result = execute_cql_query_result()
+    result.read(iprot)
+    iprot.readMessageEnd()
+    if (result.success != None):
+        return d.callback(result.success)
+    if (result.ire != None):
+        return d.errback(result.ire)
+    if (result.ue != None):
+        return d.errback(result.ue)
+    if (result.te != None):
+        return d.errback(result.te)
+    if (result.sde != None):
+        return d.errback(result.sde)
+    return d.errback(TApplicationException(TApplicationException.MISSING_RESULT, 'execute_cql_query failed: unknown result'))
