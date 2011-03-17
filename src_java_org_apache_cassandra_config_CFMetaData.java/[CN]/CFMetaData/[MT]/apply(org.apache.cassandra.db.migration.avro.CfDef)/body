@@ -1,6 +1,6 @@
 {
   if (!cf_def.id.equals(cfId))   throw new ConfigurationException("ids do not match.");
-  if (!cf_def.keyspace.toString().equals(tableName))   throw new ConfigurationException("keyspaces do not match.");
+  if (!cf_def.keyspace.toString().equals(ksName))   throw new ConfigurationException("keyspaces do not match.");
   if (!cf_def.name.toString().equals(cfName))   throw new ConfigurationException("names do not match.");
   if (!cf_def.column_type.toString().equals(cfType.name()))   throw new ConfigurationException("types do not match.");
   if (comparator != DatabaseDescriptor.getComparator(cf_def.comparator_type))   throw new ConfigurationException("comparators do not match.");
@@ -40,7 +40,8 @@
     column_metadata.get(def.name).setIndexName(def.index_name == null ? null : def.index_name.toString());
   }
   for (  org.apache.cassandra.db.migration.avro.ColumnDef def : toAdd) {
-    ColumnDefinition cd=new ColumnDefinition(def.name,def.validation_class.toString(),def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.toString()),def.index_name == null ? null : def.index_name.toString());
+    AbstractType dValidClass=DatabaseDescriptor.getComparator(def.validation_class);
+    ColumnDefinition cd=new ColumnDefinition(def.name,dValidClass,def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.toString()),def.index_name == null ? null : def.index_name.toString());
     column_metadata.put(cd.name,cd);
   }
 }
