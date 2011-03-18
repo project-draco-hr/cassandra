@@ -1,0 +1,17 @@
+{
+  ByteBuffer name=ByteBufferUtil.readWithShortLength(dis);
+  int localDeleteTime=dis.readInt();
+  if (localDeleteTime != Integer.MIN_VALUE && localDeleteTime <= 0) {
+    throw new IOException("Invalid localDeleteTime read: " + localDeleteTime);
+  }
+  long markedForDeleteAt=dis.readLong();
+  int size=dis.readInt();
+  ColumnSerializer serializer=Column.serializer();
+  ColumnSortedMap preSortedMap=new ColumnSortedMap(comparator,serializer,dis,size,expireBefore);
+  SuperColumn superColumn=new SuperColumn(name,new ConcurrentSkipListMap<ByteBuffer,IColumn>(preSortedMap));
+  if (localDeleteTime != Integer.MIN_VALUE && localDeleteTime <= 0) {
+    throw new IOException("Invalid localDeleteTime read: " + localDeleteTime);
+  }
+  superColumn.markForDeleteAt(localDeleteTime,markedForDeleteAt);
+  return superColumn;
+}
