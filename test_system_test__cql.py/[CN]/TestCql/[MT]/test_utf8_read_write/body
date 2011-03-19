@@ -1,0 +1,17 @@
+def test_utf8_read_write(self):
+    'reading and writing utf8 values'
+    conn = init()
+    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xbf')
+    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xa9')
+    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xae')
+    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xa2')
+    r = conn.execute('SELECT * FROM StandardUtf82 WHERE KEY = k1')
+    assert (r[0][0].name == '\xc2\xa2')
+    assert (r[0][1].name == '\xc2\xa9')
+    assert (r[0][2].name == '\xc2\xae')
+    assert (r[0][3].name == '\xc2\xbf')
+    r = conn.execute("SELECT ?..'' FROM StandardUtf82 WHERE KEY = k1", '\xc2\xa9')
+    assert (len(r[0]) == 3)
+    assert (r[0][0].name == '\xc2\xa9')
+    assert (r[0][1].name == '\xc2\xae')
+    assert (r[0][2].name == '\xc2\xbf')
