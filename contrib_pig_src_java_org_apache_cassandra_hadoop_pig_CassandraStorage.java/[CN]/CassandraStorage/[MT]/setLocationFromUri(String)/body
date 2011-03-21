@@ -1,0 +1,22 @@
+{
+  String names[];
+  try {
+    if (!location.startsWith("cassandra://"))     throw new Exception("Bad scheme.");
+    String[] urlParts=location.split("\\?");
+    if (urlParts.length > 1) {
+      for (      String param : urlParts[1].split("&")) {
+        String[] pair=param.split("=");
+        if (pair[0].equals("slice_start"))         slice_start=ByteBufferUtil.bytes(pair[1]);
+ else         if (pair[0].equals("slice_end"))         slice_end=ByteBufferUtil.bytes(pair[1]);
+ else         if (pair[0].equals("reversed"))         slice_reverse=Boolean.parseBoolean(pair[1]);
+ else         if (pair[0].equals("limit"))         limit=Integer.parseInt(pair[1]);
+      }
+    }
+    String[] parts=urlParts[0].split("/+");
+    keyspace=parts[1];
+    column_family=parts[2];
+  }
+ catch (  Exception e) {
+    throw new IOException("Expected 'cassandra://<keyspace>/<columnfamily>[?slice_start=<start>&slice_end=<end>[&reversed=true][&limit=1]]': " + e.getMessage());
+  }
+}
