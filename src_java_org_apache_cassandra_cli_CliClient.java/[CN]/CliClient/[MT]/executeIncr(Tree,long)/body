@@ -1,0 +1,41 @@
+{
+  if (!CliMain.isConnected() || !hasKeySpace())   return;
+  Tree columnFamilySpec=statement.getChild(0);
+  String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec,keyspacesMap.get(keySpace).cf_defs);
+  ByteBuffer key=getKeyAsBytes(columnFamily,columnFamilySpec.getChild(1));
+  int columnSpecCnt=CliCompiler.numColumnSpecifiers(columnFamilySpec);
+  CfDef cfDef=getCfDef(columnFamily);
+  boolean isSuper=cfDef.column_type.equals("Super");
+  byte[] superColumnName=null;
+  ByteBuffer columnName;
+  if (columnSpecCnt == 1) {
+    columnName=getColumnName(columnFamily,columnFamilySpec.getChild(2));
+  }
+ else   if (columnSpecCnt == 2) {
+    superColumnName=getColumnName(columnFamily,columnFamilySpec.getChild(2)).array();
+    columnName=getSubColumnName(columnFamily,columnFamilySpec.getChild(3));
+  }
+ else {
+    sessionState.out.println("Invalid row, super column, or column specification.");
+    return;
+  }
+  ColumnParent parent=new ColumnParent(columnFamily);
+  if (superColumnName != null)   parent.setSuper_column(superColumnName);
+  long value=1L;
+  if (statement.getChildCount() == 2) {
+    String byValue=statement.getChild(1).getText();
+    try {
+      value=Long.parseLong(byValue);
+    }
+ catch (    NumberFormatException e) {
+      sessionState.err.println(String.format("'%s' is an invalid value, should be an integer.",byValue));
+      return;
+    }
+catch (    Exception e) {
+      throw new RuntimeException(e.getMessage());
+    }
+  }
+  CounterColumn columnToInsert=new CounterColumn(columnName,multiplier * value);
+  thriftClient.add(key,parent,columnToInsert,consistencyLevel);
+  sessionState.out.printf("Value %s%n",multiplier < 0 ? "decremented." : "incremented.");
+}
