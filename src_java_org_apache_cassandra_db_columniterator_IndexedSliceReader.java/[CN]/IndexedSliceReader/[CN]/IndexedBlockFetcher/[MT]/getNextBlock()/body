@@ -1,2 +1,23 @@
 {
+  if (curRangeIndex < 0 || curRangeIndex >= indexes.size())   return false;
+  IndexHelper.IndexInfo curColPosition=indexes.get(curRangeIndex);
+  if (reversed) {
+    if ((finishColumn.remaining() > 0 && comparator.compare(finishColumn,curColPosition.lastName) > 0) || (startColumn.remaining() > 0 && comparator.compare(startColumn,curColPosition.firstName) < 0))     return false;
+  }
+ else {
+    if ((startColumn.remaining() > 0 && comparator.compare(startColumn,curColPosition.lastName) > 0) || (finishColumn.remaining() > 0 && comparator.compare(finishColumn,curColPosition.firstName) < 0))     return false;
+  }
+  boolean outOfBounds=false;
+  file.reset(mark);
+  FileUtils.skipBytesFully(file,curColPosition.offset);
+  while (file.bytesPastMark(mark) < curColPosition.offset + curColPosition.width && !outOfBounds) {
+    IColumn column=emptyColumnFamily.getColumnSerializer().deserialize(file);
+    if (reversed)     blockColumns.addFirst(column);
+ else     blockColumns.addLast(column);
+    if (!reversed && finishColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),finishColumn) >= 0;
+ else     if (reversed && startColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),startColumn) >= 0;
+  }
+  if (reversed)   curRangeIndex--;
+ else   curRangeIndex++;
+  return true;
 }

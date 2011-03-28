@@ -1,2 +1,23 @@
 {
+  file.readInt();
+  AbstractType comparator=metadata.comparator;
+  SortedSet<IndexHelper.IndexInfo> ranges=new TreeSet<IndexHelper.IndexInfo>(IndexHelper.getComparator(comparator,false));
+  for (  ByteBuffer name : filteredColumnNames) {
+    int index=IndexHelper.indexFor(name,indexList,comparator,false);
+    if (index == indexList.size())     continue;
+    IndexHelper.IndexInfo indexInfo=indexList.get(index);
+    if (comparator.compare(name,indexInfo.firstName) < 0)     continue;
+    ranges.add(indexInfo);
+  }
+  FileMark mark=file.mark();
+  for (  IndexHelper.IndexInfo indexInfo : ranges) {
+    file.reset(mark);
+    FileUtils.skipBytesFully(file,indexInfo.offset);
+    while (file.bytesPastMark(mark) < indexInfo.offset + indexInfo.width) {
+      IColumn column=cf.getColumnSerializer().deserialize(file);
+      if (columnNames.contains(column.name())) {
+        cf.addColumn(column);
+      }
+    }
+  }
 }
