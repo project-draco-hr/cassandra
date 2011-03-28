@@ -1,16 +1,20 @@
 {
-  acquireLocks();
-  try {
-    KSMetaData existing=DatabaseDescriptor.getTableDefinition(tableName);
-    CFMetaData cfm=existing.cfMetaData().get(cfName);
-    KSMetaData ksm=makeNewKeyspaceDefinition(existing);
-    CFMetaData.purge(cfm);
-    DatabaseDescriptor.setTableDefinition(ksm,newVersion);
-    if (!clientMode) {
+  ColumnFamilyStore cfs=Table.open(tableName).getColumnFamilyStore(cfName);
+  KSMetaData existing=DatabaseDescriptor.getTableDefinition(tableName);
+  CFMetaData cfm=existing.cfMetaData().get(cfName);
+  KSMetaData ksm=makeNewKeyspaceDefinition(existing);
+  CFMetaData.purge(cfm);
+  DatabaseDescriptor.setTableDefinition(ksm,newVersion);
+  if (!clientMode) {
+    CompactionManager.instance.getCompactionLock().lock();
+    cfs.flushLock.lock();
+    try {
+      cfs.snapshot(Table.getTimestampedSnapshotName(null));
       Table.open(ksm.name).dropCf(cfm.cfId);
     }
-  }
   finally {
-    releaseLocks();
+      cfs.flushLock.unlock();
+      CompactionManager.instance.getCompactionLock().unlock();
+    }
   }
 }
