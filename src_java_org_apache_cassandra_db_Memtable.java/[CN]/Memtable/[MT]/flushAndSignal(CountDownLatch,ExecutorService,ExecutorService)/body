@@ -1,16 +1,8 @@
 {
-  cfs.getMemtablesPendingFlush().add(this);
   writer.execute(new WrappedRunnable(){
     public void runMayThrow() throws IOException {
       waitForWriters();
-      if (!cfs.reverseReadWriteOrder()) {
-        cfs.addSSTable(writeSortedContents());
-        cfs.getMemtablesPendingFlush().remove(Memtable.this);
-      }
- else {
-        cfs.getMemtablesPendingFlush().remove(Memtable.this);
-        cfs.addSSTable(writeSortedContents());
-      }
+      cfs.replaceFlushed(Memtable.this,writeSortedContents());
       latch.countDown();
     }
   }
