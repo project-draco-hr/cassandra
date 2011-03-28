@@ -3,13 +3,15 @@
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
   List<String> cfamsSeen=new ArrayList<String>();
   for (  UpdateStatement update : updateStatements) {
+    String cfname=update.getColumnFamily();
     if (!(cfamsSeen.contains(update.getColumnFamily()))) {
       clientState.hasColumnFamilyAccess(update.getColumnFamily(),Permission.WRITE);
       cfamsSeen.add(update.getColumnFamily());
     }
     ByteBuffer key=update.getKey().getByteBuffer(AsciiType.instance);
     validateKey(key);
-    validateColumnFamily(keyspace,update.getColumnFamily());
+    validateColumnFamily(keyspace,cfname);
+    validateKeyType(key,keyspace,cfname);
     AbstractType<?> comparator=update.getComparator(keyspace);
     RowMutation rm=new RowMutation(keyspace,key);
     for (    Map.Entry<Term,Term> column : update.getColumns().entrySet()) {
