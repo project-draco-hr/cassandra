@@ -1,7 +1,7 @@
 {
   List<Memtable> memtablesToFlush=Collections.emptyList();
   if (logger.isDebugEnabled())   logger.debug("applying mutation of row {}",ByteBufferUtil.bytesToHex(mutation.key()));
-  flusherLock.readLock().lock();
+  switchLock.readLock().lock();
   try {
     if (writeCommitLog)     CommitLog.instance.add(mutation,serializedMutation);
     DecoratedKey key=StorageService.getPartitioner().decorateKey(mutation.key());
@@ -38,7 +38,7 @@ synchronized (indexLockFor(mutation.key())) {
     }
   }
   finally {
-    flusherLock.readLock().unlock();
+    switchLock.readLock().unlock();
   }
   for (  Memtable memtable : memtablesToFlush)   memtable.cfs.maybeSwitchMemtable(memtable,writeCommitLog);
 }

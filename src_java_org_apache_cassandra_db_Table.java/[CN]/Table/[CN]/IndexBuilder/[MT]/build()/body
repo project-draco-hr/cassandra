@@ -3,7 +3,7 @@
     DecoratedKey key=iter.next();
     logger.debug("Indexing row {} ",key);
     List<Memtable> memtablesToFlush=Collections.emptyList();
-    flusherLock.readLock().lock();
+    switchLock.readLock().lock();
     try {
 synchronized (indexLockFor(key.key)) {
         ColumnFamily cf=readCurrentIndexedColumns(key,cfs,columns);
@@ -11,7 +11,7 @@ synchronized (indexLockFor(key.key)) {
       }
     }
   finally {
-      flusherLock.readLock().unlock();
+      switchLock.readLock().unlock();
     }
     for (    Memtable memtable : memtablesToFlush)     memtable.cfs.maybeSwitchMemtable(memtable,false);
   }
