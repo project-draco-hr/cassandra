@@ -1,7 +1,8 @@
 {
   List<org.apache.cassandra.db.Row> rows=null;
-  ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(AsciiType.instance) : (new Term()).getByteBuffer();
-  ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(AsciiType.instance) : (new Term()).getByteBuffer();
+  AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,select.getColumnFamily()).getKeyValidator();
+  ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
+  ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
   IPartitioner<?> p=StorageService.getPartitioner();
   AbstractBounds bounds=new Bounds(p.getToken(startKey),p.getToken(finishKey));
   CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
