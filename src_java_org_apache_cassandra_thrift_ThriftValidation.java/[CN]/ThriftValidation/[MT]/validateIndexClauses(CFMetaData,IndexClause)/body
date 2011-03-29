@@ -1,0 +1,23 @@
+{
+  if (index_clause.expressions.isEmpty())   throw new InvalidRequestException("index clause list may not be empty");
+  Set<ByteBuffer> indexedColumns=Table.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).getIndexedColumns();
+  AbstractType nameValidator=ColumnFamily.getComparatorFor(metadata.ksName,metadata.cfName,null);
+  boolean isIndexed=false;
+  for (  IndexExpression expression : index_clause.expressions) {
+    try {
+      nameValidator.validate(expression.column_name);
+    }
+ catch (    MarshalException me) {
+      throw new InvalidRequestException(String.format("[%s]=[%s] failed name validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
+    }
+    AbstractType valueValidator=DatabaseDescriptor.getValueValidator(metadata.ksName,metadata.cfName,expression.column_name);
+    try {
+      valueValidator.validate(expression.value);
+    }
+ catch (    MarshalException me) {
+      throw new InvalidRequestException(String.format("[%s]=[%s] failed value validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
+    }
+    isIndexed|=expression.op.equals(IndexOperator.EQ) && indexedColumns.contains(expression.column_name);
+  }
+  if (!isIndexed)   throw new InvalidRequestException("No indexed columns present in index clause with operator EQ");
+}
