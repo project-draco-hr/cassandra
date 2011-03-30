@@ -1,0 +1,16 @@
+{
+  String keyspace=connection.getKeyspace(cql);
+  String columnFamily=connection.getColumnFamily(cql);
+  ParameterIterator params=new ParameterIterator();
+  String left=cql.substring(0,pivot);
+  AbstractType leftComp=connection.decoder.getComparator(keyspace,columnFamily,ColumnDecoder.Specifier.Comparator,null);
+  if (leftComp == null)   throw new SQLException("Could not find comparator for " + keyspace + "."+ columnFamily);
+  AbstractType leftVald=connection.decoder.getComparator(keyspace,columnFamily,ColumnDecoder.Specifier.Validator,null);
+  if (leftVald == null)   throw new SQLException("Could not find validator for " + keyspace + "."+ columnFamily);
+  left=applyDualBindings(left,leftComp,leftVald,params);
+  String right=cql.substring(pivot);
+  AbstractType keyVald=connection.decoder.getComparator(keyspace,columnFamily,ColumnDecoder.Specifier.Key,null);
+  if (keyVald == null)   throw new SQLException("Could not find key validator for " + keyspace + "."+ columnFamily);
+  right=applySimpleBindings(right,keyVald,params);
+  return left + right;
+}
