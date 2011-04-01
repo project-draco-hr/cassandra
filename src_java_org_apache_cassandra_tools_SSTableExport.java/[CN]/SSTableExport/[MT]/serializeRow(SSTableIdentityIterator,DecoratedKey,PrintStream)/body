@@ -1,0 +1,28 @@
+{
+  ColumnFamily columnFamily=row.getColumnFamily();
+  boolean isSuperCF=columnFamily.isSuper();
+  CFMetaData cfMetaData=columnFamily.metadata();
+  AbstractType comparator=columnFamily.getComparator();
+  out.print(asKey(bytesToHex(key.key)));
+  out.print(isSuperCF ? "{" : "[");
+  if (isSuperCF) {
+    while (row.hasNext()) {
+      IColumn column=row.next();
+      out.print(asKey(comparator.getString(column.name())));
+      out.print("{");
+      out.print(asKey("deletedAt"));
+      out.print(column.getMarkedForDeleteAt());
+      out.print(", ");
+      out.print(asKey("subColumns"));
+      out.print("[");
+      serializeColumns(column.getSubColumns().iterator(),out,columnFamily.getSubComparator(),cfMetaData);
+      out.print("]");
+      out.print("}");
+      if (row.hasNext())       out.print(", ");
+    }
+  }
+ else {
+    serializeColumns(row,out,comparator,cfMetaData);
+  }
+  out.print(isSuperCF ? "}" : "]");
+}

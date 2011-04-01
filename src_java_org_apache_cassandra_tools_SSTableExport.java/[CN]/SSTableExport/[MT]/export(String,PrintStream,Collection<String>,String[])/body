@@ -1,0 +1,24 @@
+{
+  SSTableReader reader=SSTableReader.open(Descriptor.fromFilename(ssTableFile));
+  SSTableScanner scanner=reader.getDirectScanner(BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE);
+  IPartitioner<?> partitioner=StorageService.getPartitioner();
+  if (excludes != null)   toExport.removeAll(Arrays.asList(excludes));
+  outs.println("{");
+  int i=0;
+  DecoratedKey lastKey=null;
+  for (  String key : toExport) {
+    DecoratedKey decoratedKey=partitioner.decorateKey(hexToBytes(key));
+    if (lastKey != null && lastKey.compareTo(decoratedKey) > 0)     throw new IOException("Key out of order! " + lastKey + " > "+ decoratedKey);
+    lastKey=decoratedKey;
+    scanner.seekTo(decoratedKey);
+    if (!scanner.hasNext())     continue;
+    SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+    if (!row.getKey().equals(decoratedKey))     continue;
+    serializeRow(row,decoratedKey,outs);
+    if (i != 0)     outs.println(",");
+    i++;
+  }
+  outs.println("\n}");
+  outs.flush();
+  scanner.close();
+}
