@@ -3,16 +3,36 @@
   String container=getContainer(config);
   String provider=getProvider(config);
   String blobName=System.nanoTime() + "/" + file.getName();
+  String blobNameChecksum=blobName + ".md5";
   BlobStoreContext context=getContext(config,spec);
+  File checksumFile;
+  try {
+    checksumFile=File.createTempFile("dtchecksum","md5");
+    checksumFile.deleteOnExit();
+    FileWriter checksumWriter=new FileWriter(checksumFile);
+    String checksum=FBUtilities.bytesToHex(Files.getDigest(file,MessageDigest.getInstance("MD5")));
+    checksumWriter.write(String.format("%s  %s",checksum,file.getName()));
+    checksumWriter.close();
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Can't create a checksum of the file: " + filename);
+  }
+catch (  NoSuchAlgorithmException e) {
+    throw new RuntimeException(e.getMessage());
+  }
   try {
     InputStreamMap map=context.createInputStreamMap(container);
     map.putFile(blobName,file);
-    if (provider.equals("s3")) {
+    map.putFile(blobNameChecksum,checksumFile);
+    if (provider.contains("s3")) {
       S3Client sss=context.<S3Client,S3AsyncClient>getProviderSpecificContext().getApi();
       String ownerId=sss.getObjectACL(container,blobName).getOwner().getId();
       sss.putObjectACL(container,blobName,AccessControlList.fromCannedAccessPolicy(CannedAccessPolicy.PUBLIC_READ,ownerId));
+      sss.putObjectACL(container,blobNameChecksum,AccessControlList.fromCannedAccessPolicy(CannedAccessPolicy.PUBLIC_READ,ownerId));
     }
- else     LOG.warn(provider + " may not be properly supported for tarball transfer.");
+ else {
+      LOG.warn(provider + " may not be properly supported for tarball transfer.");
+    }
     BlobMetadata blob=context.getBlobStore().blobMetadata(container,blobName);
     URI uri=context.getProviderSpecificContext().getEndpoint().resolve("/" + container + "/"+ blob.getName());
     return new Pair<BlobMetadata,URI>(blob,uri);
