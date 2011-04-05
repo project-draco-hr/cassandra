@@ -1,0 +1,31 @@
+{
+  Cassandra.Client client=null;
+  try {
+    client=createConnection(ConfigHelper.getInitialAddress(conf),ConfigHelper.getRpcPort(conf),true);
+    CfDef cfDef=null;
+    client.set_keyspace(keyspace);
+    KsDef ksDef=client.describe_keyspace(keyspace);
+    List<CfDef> defs=ksDef.getCf_defs();
+    for (    CfDef def : defs) {
+      if (column_family.equalsIgnoreCase(def.getName())) {
+        cfDef=def;
+        break;
+      }
+    }
+    UDFContext context=UDFContext.getUDFContext();
+    Properties property=context.getUDFProperties(ResourceSchema.class);
+    property.setProperty(UDFCONTEXT_SCHEMA_KEY,cfdefToString(cfDef));
+  }
+ catch (  TException e) {
+    throw new RuntimeException(e);
+  }
+catch (  InvalidRequestException e) {
+    throw new RuntimeException(e);
+  }
+catch (  NotFoundException e) {
+    throw new RuntimeException(e);
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
