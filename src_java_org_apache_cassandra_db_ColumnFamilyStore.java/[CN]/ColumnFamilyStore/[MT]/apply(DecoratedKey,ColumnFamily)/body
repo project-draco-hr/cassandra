@@ -3,8 +3,13 @@
   Memtable mt=getMemtableThreadSafe();
   boolean flushRequested=mt.isThresholdViolated();
   mt.put(key,columnFamily);
-  ColumnFamily cachedRow=getRawCachedRow(key);
-  if (cachedRow != null)   cachedRow.addAll(columnFamily);
-  writeStats.addNano(System.nanoTime() - start);
+  if (rowCache.isPutCopying()) {
+    invalidateCachedRow(key);
+  }
+ else {
+    ColumnFamily cachedRow=getRawCachedRow(key);
+    if (cachedRow != null)     cachedRow.addAll(columnFamily);
+    writeStats.addNano(System.nanoTime() - start);
+  }
   return flushRequested ? mt : null;
 }
