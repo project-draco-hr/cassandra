@@ -1,0 +1,33 @@
+{
+  Runnable runnable=new Runnable(){
+    public void run(){
+      activelyMeasuring=Memtable.this;
+      long start=System.currentTimeMillis();
+      long deepSize=meter.measure(columnFamilies);
+      int objects=0;
+      for (      Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet()) {
+        deepSize+=meter.measureDeep(entry.getKey()) + meter.measureDeep(entry.getValue());
+        objects+=entry.getValue().getColumnCount();
+      }
+      double newRatio=(double)deepSize / currentThroughput.get();
+      if (newRatio < MIN_SANE_LIVE_RATIO) {
+        logger.warn("setting live ratio to minimum of 1.0 instead of {}",newRatio);
+        newRatio=MIN_SANE_LIVE_RATIO;
+      }
+      if (newRatio > MAX_SANE_LIVE_RATIO) {
+        logger.warn("setting live ratio to maximum of 64 instead of {}, newRatio");
+        newRatio=MAX_SANE_LIVE_RATIO;
+      }
+      cfs.liveRatio=Math.max(cfs.liveRatio,newRatio);
+      logger.info("{} liveRatio is {} (just-counted was {}).  calculation took {}ms for {} columns",new Object[]{cfs,cfs.liveRatio,newRatio,System.currentTimeMillis() - start,objects});
+      activelyMeasuring=null;
+    }
+  }
+;
+  try {
+    meterExecutor.submit(runnable);
+  }
+ catch (  RejectedExecutionException e) {
+    logger.debug("Meter thread is busy; skipping liveRatio update for {}",cfs);
+  }
+}
