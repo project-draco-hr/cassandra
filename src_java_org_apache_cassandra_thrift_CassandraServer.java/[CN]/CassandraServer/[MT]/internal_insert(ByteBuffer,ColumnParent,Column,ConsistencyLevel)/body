@@ -1,0 +1,14 @@
+{
+  state().hasColumnFamilyAccess(column_parent.column_family,Permission.WRITE);
+  CFMetaData metadata=ThriftValidation.validateColumnFamily(state().getKeyspace(),column_parent.column_family,false);
+  ThriftValidation.validateColumnNames(metadata,column_parent,Arrays.asList(column.name));
+  ThriftValidation.validateColumnData(metadata,column);
+  RowMutation rm=new RowMutation(state().getKeyspace(),key);
+  try {
+    rm.add(new QueryPath(column_parent.column_family,column_parent.super_column,column.name),column.value,column.timestamp,column.ttl);
+  }
+ catch (  MarshalException e) {
+    throw new InvalidRequestException(e.getMessage());
+  }
+  doInsert(consistency_level,Arrays.asList(rm));
+}
