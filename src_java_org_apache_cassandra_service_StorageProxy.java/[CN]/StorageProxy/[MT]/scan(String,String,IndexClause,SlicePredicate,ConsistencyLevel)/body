@@ -14,7 +14,7 @@
       }
     }
 ;
-    ReadCallback<List<Row>> handler=getReadCallback(resolver,iCommand,consistency_level,liveEndpoints);
+    ReadCallback<Iterable<Row>> handler=getReadCallback(resolver,iCommand,consistency_level,liveEndpoints);
     handler.assureSufficientLiveNodes();
     IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
     MessageProducer producer=new CachingMessageProducer(command);
@@ -22,16 +22,14 @@
       MessagingService.instance().sendRR(producer,endpoint,handler);
       if (logger.isDebugEnabled())       logger.debug("reading " + command + " from "+ endpoint);
     }
-    List<Row> theseRows;
     try {
-      theseRows=handler.get();
+      for (      Row row : handler.get()) {
+        rows.add(row);
+        logger.debug("read {}",row);
+      }
     }
  catch (    DigestMismatchException e) {
       throw new RuntimeException(e);
-    }
-    rows.addAll(theseRows);
-    if (logger.isDebugEnabled()) {
-      for (      Row row : theseRows)       logger.debug("read " + row);
     }
     if (rows.size() >= index_clause.count)     return rows.subList(0,index_clause.count);
   }

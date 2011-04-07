@@ -24,19 +24,17 @@ catch (        InterruptedException e) {
  else {
         RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
         RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
-        ReadCallback<List<Row>> handler=getReadCallback(resolver,command,consistency_level,liveEndpoints);
+        ReadCallback<Iterable<Row>> handler=getReadCallback(resolver,command,consistency_level,liveEndpoints);
         handler.assureSufficientLiveNodes();
         for (        InetAddress endpoint : liveEndpoints) {
           MessagingService.instance().sendRR(c2,endpoint,handler);
           if (logger.isDebugEnabled())           logger.debug("reading " + c2 + " from "+ endpoint);
         }
         try {
-          if (logger.isDebugEnabled()) {
-            for (            Row row : handler.get()) {
-              logger.debug("range slices read " + row.key);
-            }
+          for (          Row row : handler.get()) {
+            rows.add(row);
+            logger.debug("range slices read {}",row.key);
           }
-          rows.addAll(handler.get());
         }
  catch (        DigestMismatchException e) {
           throw new AssertionError(e);
