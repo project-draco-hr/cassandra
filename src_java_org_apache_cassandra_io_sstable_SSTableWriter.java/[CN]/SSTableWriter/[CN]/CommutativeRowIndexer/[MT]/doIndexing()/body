@@ -2,40 +2,31 @@
   EstimatedHistogram rowSizes=SSTable.defaultRowHistogram();
   EstimatedHistogram columnCounts=SSTable.defaultColumnHistogram();
   long rows=0L;
-  ByteBuffer diskKey;
   DecoratedKey key;
-  long readRowPosition=0L;
-  long writeRowPosition=0L;
-  writerDfile.seek(writeRowPosition);
-  dfile.seek(readRowPosition);
+  CompactionController controller=CompactionController.getBasicController(true);
   long dfileLength=dfile.length();
-  while (readRowPosition < dfileLength) {
-    diskKey=ByteBufferUtil.readWithShortLength(dfile);
+  while (!dfile.isEOF()) {
+    key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,ByteBufferUtil.readWithShortLength(dfile));
     long dataSize=SSTableReader.readRowSize(dfile,desc);
-    dfile.skipBytes(dfile.readInt());
-    dfile.skipBytes(dfile.readInt());
-    ColumnFamily cf=ColumnFamily.create(desc.ksname,desc.cfname);
-    ColumnFamily.serializer().deserializeFromSSTableNoColumns(cf,dfile);
-    ColumnFamily.serializer().deserializeColumns(dfile,cf,false,true);
+    SSTableIdentityIterator iter=new SSTableIdentityIterator(metadata,dfile,key,dfile.getFilePointer(),dataSize,true);
+    AbstractCompactedRow row;
+    if (dataSize > DatabaseDescriptor.getInMemoryCompactionLimit()) {
+      logger.info(String.format("Rebuilding post-streaming large counter row %s (%d bytes) incrementally",ByteBufferUtil.bytesToHex(key.key),dataSize));
+      row=new LazilyCompactedRow(controller,Collections.singletonList(iter));
+    }
+ else {
+      row=new PrecompactedRow(controller,Collections.singletonList(iter));
+    }
     rowSizes.add(dataSize);
-    columnCounts.add(cf.getEstimatedColumnCount());
-    readRowPosition=dfile.getFilePointer();
-    key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,diskKey);
-    iwriter.afterAppend(key,writeRowPosition);
-    ByteBufferUtil.writeWithShortLength(diskKey,writerDfile);
-    long writeSizePosition=writerDfile.getFilePointer();
-    writerDfile.writeLong(-1L);
-    ColumnFamily.serializer().serializeWithIndexes(cf,writerDfile);
-    long writeEndPosition=writerDfile.getFilePointer();
-    writerDfile.seek(writeSizePosition);
-    writerDfile.writeLong(writeEndPosition - (writeSizePosition + 8L));
-    writeRowPosition=writeEndPosition;
-    writerDfile.seek(writeRowPosition);
+    columnCounts.add(row.columnCount());
+    iwriter.afterAppend(key,writerDfile.getFilePointer());
+    ByteBufferUtil.writeWithShortLength(key.key,writerDfile);
+    row.write(writerDfile);
     rows++;
   }
   writeStatistics(desc,rowSizes,columnCounts);
-  if (writeRowPosition != readRowPosition) {
-    writerDfile.setLength(writeRowPosition);
+  if (writerDfile.getFilePointer() != dfile.getFilePointer()) {
+    writerDfile.setLength(writerDfile.getFilePointer());
   }
   writerDfile.sync();
   return rows;

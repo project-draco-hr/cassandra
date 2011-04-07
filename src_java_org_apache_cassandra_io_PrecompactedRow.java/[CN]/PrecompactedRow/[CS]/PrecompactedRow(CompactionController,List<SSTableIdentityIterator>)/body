@@ -1,0 +1,24 @@
+{
+  super(rows.get(0).getKey());
+  ColumnFamily cf=null;
+  for (  SSTableIdentityIterator row : rows) {
+    ColumnFamily thisCF;
+    try {
+      thisCF=row.getColumnFamilyWithColumns();
+    }
+ catch (    IOException e) {
+      logger.error("Skipping row " + key + " in "+ row.getPath(),e);
+      continue;
+    }
+    if (cf == null) {
+      cf=thisCF;
+    }
+ else {
+      cf.addAll(thisCF);
+    }
+  }
+  compactedCf=controller.shouldPurge(key) ? ColumnFamilyStore.removeDeleted(cf,controller.gcBefore) : cf;
+  if (compactedCf != null && compactedCf.metadata().getDefaultValidator().isCommutative()) {
+    CounterColumn.removeOldShards(compactedCf,controller.gcBefore);
+  }
+}
