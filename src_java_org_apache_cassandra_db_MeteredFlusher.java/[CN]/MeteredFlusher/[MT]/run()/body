@@ -1,0 +1,45 @@
+{
+  Memtable activelyMeasuring=Memtable.activelyMeasuring;
+  long flushingBytes=activelyMeasuring == null ? 0 : activelyMeasuring.getLiveSize();
+  flushingBytes+=countFlushingBytes();
+  long liveBytes=0;
+  try {
+    for (    ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+      long size=cfs.getTotalMemtableLiveSize();
+      int maxInFlight=(int)Math.ceil((double)(1 + 1 + DatabaseDescriptor.getFlushWriters()+ DatabaseDescriptor.getFlushQueueSize()) / (1 + cfs.getIndexedColumns().size()));
+      if (size > (DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L - flushingBytes) / maxInFlight) {
+        logger.info("flushing high-traffic column family {}",cfs);
+        cfs.forceFlush();
+      }
+ else {
+        liveBytes+=size;
+      }
+    }
+    if (flushingBytes + liveBytes <= DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L)     return;
+    logger.info("estimated {} bytes used by all memtables pre-flush",liveBytes);
+    List<ColumnFamilyStore> sorted=new ArrayList<ColumnFamilyStore>();
+    Iterables.addAll(sorted,ColumnFamilyStore.all());
+    Collections.sort(sorted,new Comparator<ColumnFamilyStore>(){
+      public int compare(      ColumnFamilyStore o1,      ColumnFamilyStore o2){
+        long size1=o1.getTotalMemtableLiveSize();
+        long size2=o2.getTotalMemtableLiveSize();
+        if (size1 < size2)         return -1;
+        if (size1 > size2)         return 1;
+        return 0;
+      }
+    }
+);
+    while (true) {
+      flushingBytes=countFlushingBytes();
+      if (liveBytes + flushingBytes <= DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L || sorted.isEmpty())       break;
+      ColumnFamilyStore cfs=sorted.remove(sorted.size() - 1);
+      long size=cfs.getTotalMemtableLiveSize();
+      logger.info("flushing {} to free up {} bytes",cfs,size);
+      liveBytes-=size;
+      cfs.forceFlush();
+    }
+  }
+  finally {
+    logger.debug("memtable memory usage is {} bytes with {} live",liveBytes + flushingBytes,liveBytes);
+  }
+}
