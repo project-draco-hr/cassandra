@@ -3,7 +3,7 @@ def test_create_column_family(self):
     conn = init()
     conn.execute("\n            CREATE KEYSPACE CreateCFKeyspace WITH replication_factor = 1\n                AND strategy_class = 'SimpleStrategy';\n        ")
     conn.execute('USE CreateCFKeyspace;')
-    conn.execute("\n            CREATE COLUMNFAMILY NewCf1 (\n                KEY int PRIMARY KEY,\n                'username' utf8,\n                'age' int,\n                'birthdate' long,\n                'id' uuid\n            ) WITH comparator = utf8 AND comment = 'shiny, new, cf' AND\n                    default_validation = ascii;\n        ")
+    conn.execute("\n            CREATE COLUMNFAMILY NewCf1 (\n                KEY varint PRIMARY KEY,\n                'username' text,\n                'age' varint,\n                'birthdate' bigint,\n                'id' uuid\n            ) WITH comparator = text AND comment = 'shiny, new, cf' AND\n                    default_validation = ascii;\n        ")
     ksdef = thrift_client.describe_keyspace('CreateCFKeyspace')
     assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
     cfam = ksdef.cf_defs[0]
@@ -13,17 +13,17 @@ def test_create_column_family(self):
     assert (cfam.comparator_type == 'org.apache.cassandra.db.marshal.UTF8Type')
     assert (cfam.key_validation_class == 'org.apache.cassandra.db.marshal.IntegerType')
     assert_raises(CQLException, conn.execute, 'CREATE COLUMNFAMILY NewCf2')
-    assert_raises(CQLException, conn.execute, 'CREATE COLUMNFAMILY NewCf2\n                             (KEY int PRIMARY KEY, KEY utf8 PRIMARY KEY)')
-    conn.execute('CREATE COLUMNFAMILY NewCf3\n                            (KEY int PRIMARY KEY) WITH comparator = long')
+    assert_raises(CQLException, conn.execute, 'CREATE COLUMNFAMILY NewCf2\n                             (KEY varint PRIMARY KEY, KEY text PRIMARY KEY)')
+    conn.execute('CREATE COLUMNFAMILY NewCf3\n                            (KEY varint PRIMARY KEY) WITH comparator = bigint')
     ksdef = thrift_client.describe_keyspace('CreateCFKeyspace')
     assert (len(ksdef.cf_defs) == 2), ('expected 3 column families total, found %d' % len(ksdef.cf_defs))
     cfam = [i for i in ksdef.cf_defs if (i.name == 'NewCf3')][0]
     assert (cfam.comparator_type == 'org.apache.cassandra.db.marshal.LongType')
-    conn.execute("CREATE COLUMNFAMILY NewCf4\n                            (KEY int PRIMARY KEY, 'a' int, 'b' int);")
+    conn.execute("CREATE COLUMNFAMILY NewCf4\n                            (KEY varint PRIMARY KEY, 'a' varint, 'b' varint)\n                            WITH comparator = text;")
     ksdef = thrift_client.describe_keyspace('CreateCFKeyspace')
     assert (len(ksdef.cf_defs) == 3), ('expected 4 column families total, found %d' % len(ksdef.cf_defs))
     cfam = [i for i in ksdef.cf_defs if (i.name == 'NewCf4')][0]
     assert (len(cfam.column_metadata) == 2), ('expected 2 columns, found %d' % len(cfam.column_metadata))
     for coldef in cfam.column_metadata:
-        assert (coldef.name in ('a', 'b')), 'Unknown column name'
+        assert (coldef.name in ('a', 'b')), ('Unknown column name ' + coldef.name)
         assert coldef.validation_class.endswith('marshal.IntegerType')

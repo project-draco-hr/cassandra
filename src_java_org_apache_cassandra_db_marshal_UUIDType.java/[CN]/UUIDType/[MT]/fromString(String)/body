@@ -1,3 +1,35 @@
 {
-  return LexicalUUIDType.instance.fromString(source);
+  if (source.isEmpty())   return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  ByteBuffer idBytes=null;
+  if (TimeUUIDType.regexPattern.matcher(source).matches()) {
+    UUID uuid;
+    try {
+      uuid=UUID.fromString(source);
+      idBytes=ByteBuffer.wrap(UUIDGen.decompose(uuid));
+    }
+ catch (    IllegalArgumentException e) {
+      throw new MarshalException(String.format("unable to make UUID from '%s'",source),e);
+    }
+  }
+ else   if (source.toLowerCase().equals("now")) {
+    idBytes=ByteBuffer.wrap(UUIDGen.decompose(UUIDGen.makeType1UUIDFromHost(FBUtilities.getLocalAddress())));
+  }
+ else   if (source.matches("^\\d+$")) {
+    try {
+      idBytes=ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(Long.parseLong(source)));
+    }
+ catch (    NumberFormatException e) {
+      throw new MarshalException(String.format("unable to make version 1 UUID from '%s'",source),e);
+    }
+  }
+ else {
+    try {
+      long timestamp=DateUtils.parseDate(source,TimeUUIDType.iso8601Patterns).getTime();
+      idBytes=ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes(timestamp));
+    }
+ catch (    ParseException e1) {
+      throw new MarshalException(String.format("unable to coerce '%s' to version 1 UUID",source),e1);
+    }
+  }
+  return idBytes;
 }
