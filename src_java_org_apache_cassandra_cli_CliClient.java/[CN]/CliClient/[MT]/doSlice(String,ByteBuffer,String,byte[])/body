@@ -5,10 +5,6 @@
   SlicePredicate predicate=new SlicePredicate().setColumn_names(null).setSlice_range(range);
   CfDef cfDef=getCfDef(columnFamily);
   boolean isSuperCF=cfDef.column_type.equals("Super");
-  if (isCounterCF(cfDef)) {
-    doCounterSlice(keyspace,key,parent,predicate,isSuperCF);
-    return;
-  }
   List<ColumnOrSuperColumn> columns=thriftClient.get_slice(key,parent,predicate,consistencyLevel);
   AbstractType validator;
   for (  ColumnOrSuperColumn cosc : columns) {
@@ -21,11 +17,24 @@
       }
       sessionState.out.println(")");
     }
- else {
+ else     if (cosc.isSetColumn()) {
       Column column=cosc.column;
       validator=getValidatorForValue(cfDef,column.getName());
       String formattedName=isSuperCF ? formatSubcolumnName(keyspace,columnFamily,column.name) : formatColumnName(keyspace,columnFamily,column.name);
       sessionState.out.printf("=> (column=%s, value=%s, timestamp=%d%s)%n",formattedName,validator.getString(column.value),column.timestamp,column.isSetTtl() ? String.format(", ttl=%d",column.getTtl()) : "");
+    }
+ else     if (cosc.isSetCounter_super_column()) {
+      CounterSuperColumn superColumn=cosc.counter_super_column;
+      sessionState.out.printf("=> (super_column=%s,",formatColumnName(keyspace,columnFamily,superColumn.name));
+      for (      CounterColumn col : superColumn.getColumns()) {
+        sessionState.out.printf("%n     (counter=%s, value=%s)",formatSubcolumnName(keyspace,columnFamily,col.name),col.value);
+      }
+      sessionState.out.println(")");
+    }
+ else {
+      CounterColumn column=cosc.counter_column;
+      String formattedName=isSuperCF ? formatSubcolumnName(keyspace,columnFamily,column.name) : formatColumnName(keyspace,columnFamily,column.name);
+      sessionState.out.printf("=> (counter=%s, value=%s)%n",formattedName,column.value);
     }
   }
   sessionState.out.println("Returned " + columns.size() + " results.");

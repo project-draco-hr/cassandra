@@ -1,24 +1,16 @@
 {
   ColumnOrSuperColumn cosc=mut.column_or_supercolumn;
   Deletion del=mut.deletion;
-  Counter counter=mut.counter;
-  boolean isCommutative=metadata.getDefaultValidator().isCommutative();
   int nulls=0;
   if (cosc == null)   nulls++;
   if (del == null)   nulls++;
-  if (counter == null)   nulls++;
-  if (nulls != 2) {
-    throw new InvalidRequestException("mutation must have one and only one of column_or_supercolumn, deletion, counter or counter_deletion");
+  if (nulls != 1) {
+    throw new InvalidRequestException("mutation must have one and only one of column_or_supercolumn or deletion");
   }
   if (cosc != null) {
-    if (isCommutative)     throw new InvalidRequestException("invalid operation for commutative columnfamily " + metadata.cfName);
     validateColumnOrSuperColumn(metadata,cosc);
   }
-  if (counter != null) {
-    if (!isCommutative)     throw new InvalidRequestException("invalid operation for non commutative columnfamily " + metadata.cfName);
-    validateCounter(metadata,counter);
-  }
-  if (del != null) {
+ else {
     validateDeletion(metadata,del);
   }
 }
