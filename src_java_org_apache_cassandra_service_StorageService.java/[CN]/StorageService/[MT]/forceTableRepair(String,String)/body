@@ -1,21 +1,17 @@
 {
-  String[] families;
-  if (columnFamilies.length == 0) {
-    ArrayList<String> names=new ArrayList<String>();
-    for (    ColumnFamilyStore cfStore : getValidColumnFamilies(tableName)) {
-      names.add(cfStore.getColumnFamilyName());
+  List<AntiEntropyService.RepairSession> sessions=new ArrayList<AntiEntropyService.RepairSession>();
+  for (  Range range : getLocalRanges(tableName)) {
+    sessions.add(forceTableRepair(range,tableName,columnFamilies));
+  }
+  boolean failedSession=false;
+  for (  AntiEntropyService.RepairSession sess : sessions) {
+    try {
+      sess.join();
     }
-    families=names.toArray(new String[]{});
+ catch (    InterruptedException e) {
+      logger_.error("Repair session " + sess + " failed.",e);
+      failedSession=true;
+    }
   }
- else {
-    families=columnFamilies;
-  }
-  AntiEntropyService.RepairSession sess=AntiEntropyService.instance.getRepairSession(tableName,families);
-  try {
-    sess.start();
-    sess.join();
-  }
- catch (  InterruptedException e) {
-    throw new IOException("Repair session " + sess + " failed.",e);
-  }
+  if (failedSession)   throw new IOException("Some Repair session(s) failed.");
 }

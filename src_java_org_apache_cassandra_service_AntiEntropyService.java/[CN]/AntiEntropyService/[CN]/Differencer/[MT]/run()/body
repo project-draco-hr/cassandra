@@ -1,12 +1,9 @@
 {
   InetAddress local=FBUtilities.getLocalAddress();
-  StorageService ss=StorageService.instance;
   if (ltree.partitioner() == null)   ltree.partitioner(StorageService.getPartitioner());
   if (rtree.partitioner() == null)   rtree.partitioner(StorageService.getPartitioner());
-  Set<Range> interesting=new HashSet(ss.getRangesForEndpoint(request.cf.left,local));
-  interesting.retainAll(ss.getRangesForEndpoint(request.cf.left,request.endpoint));
-  for (  MerkleTree.TreeRange diff : MerkleTree.difference(ltree,rtree))   for (  Range localrange : interesting)   differences.addAll(diff.intersectionWith(localrange));
-  String format="Endpoints " + local + " and "+ request.endpoint+ " %s for "+ request.cf;
+  differences.addAll(MerkleTree.difference(ltree,rtree));
+  String format="Endpoints " + local + " and "+ request.endpoint+ " %s for "+ request.cf+ " on "+ request.range;
   if (differences.isEmpty()) {
     logger.info(String.format(format,"are consistent"));
     AntiEntropyService.instance.completedRequest(request);

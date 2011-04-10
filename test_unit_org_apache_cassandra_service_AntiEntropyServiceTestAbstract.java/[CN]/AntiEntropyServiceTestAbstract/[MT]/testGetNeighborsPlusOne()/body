@@ -1,5 +1,10 @@
 {
   Set<InetAddress> expected=addTokens(1 + Table.open(tablename).getReplicationStrategy().getReplicationFactor());
   expected.remove(FBUtilities.getLocalAddress());
-  assertEquals(expected,AntiEntropyService.getNeighbors(tablename));
+  Collection<Range> ranges=StorageService.instance.getLocalRanges(tablename);
+  Set<InetAddress> neighbors=new HashSet<InetAddress>();
+  for (  Range range : ranges) {
+    neighbors.addAll(AntiEntropyService.getNeighbors(tablename,range));
+  }
+  assertEquals(expected,neighbors);
 }

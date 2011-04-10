@@ -1,0 +1,33 @@
+{
+  final List<IndexSummary.KeyPosition> samples=indexSummary.getIndexPositions();
+  final List<Pair<Integer,Integer>> indexRanges=getSampleIndexesForRanges(samples,Collections.singletonList(range));
+  if (indexRanges.isEmpty())   return Collections.emptyList();
+  return new Iterable<DecoratedKey>(){
+    public Iterator<DecoratedKey> iterator(){
+      return new Iterator<DecoratedKey>(){
+        private Iterator<Pair<Integer,Integer>> rangeIter=indexRanges.iterator();
+        private Pair<Integer,Integer> current;
+        private int idx;
+        public boolean hasNext(){
+          if (current == null || idx > current.right) {
+            if (rangeIter.hasNext()) {
+              current=rangeIter.next();
+              idx=current.left;
+              return true;
+            }
+            return false;
+          }
+          return true;
+        }
+        public DecoratedKey next(){
+          return samples.get(idx++).key;
+        }
+        public void remove(){
+          throw new UnsupportedOperationException();
+        }
+      }
+;
+    }
+  }
+;
+}

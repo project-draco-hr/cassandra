@@ -1,15 +1,16 @@
 {
-  Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename);
+  Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename,range);
   if (endpoints.isEmpty()) {
-    logger.info("No neighbors to repair with: " + getName() + " completed.");
+    requestsMade.signalAll();
+    logger.info("No neighbors to repair with for " + tablename + " on "+ range+ ": "+ getName()+ " completed.");
     return;
   }
   Callback callback=new Callback();
   AntiEntropyService.instance.sessions.put(getName(),callback);
   try {
     for (    String cfname : cfnames) {
-      for (      InetAddress endpoint : endpoints)       requests.put(AntiEntropyService.instance.request(getName(),endpoint,tablename,cfname),this);
-      AntiEntropyService.instance.request(getName(),FBUtilities.getLocalAddress(),tablename,cfname);
+      for (      InetAddress endpoint : endpoints)       requests.put(AntiEntropyService.instance.request(getName(),endpoint,range,tablename,cfname),this);
+      AntiEntropyService.instance.request(getName(),FBUtilities.getLocalAddress(),range,tablename,cfname);
     }
     logger.info("Waiting for repair requests: " + requests.keySet());
     requestsMade.signalAll();
