@@ -1,7 +1,7 @@
 {
   Callable<Object> callable=new Callable<Object>(){
     public Object call() throws IOException {
-      compactionLock.lock();
+      compactionLock.writeLock().lock();
       try {
         if (cfStore.isInvalid())         return this;
         Collection<SSTableReader> sstables;
@@ -16,11 +16,25 @@
  else {
           sstables=cfStore.getSSTables();
         }
-        doCompaction(cfStore,sstables,gcBefore);
+        Collection<SSTableReader> tocompact=cfStore.getDataTracker().markCompacting(sstables,0,Integer.MAX_VALUE);
+        if (tocompact == null || tocompact.isEmpty())         return this;
+        try {
+          compactionLock.readLock().lock();
+          compactionLock.writeLock().unlock();
+          try {
+            doCompaction(cfStore,tocompact,gcBefore);
+          }
+  finally {
+            compactionLock.readLock().unlock();
+          }
+        }
+  finally {
+          cfStore.getDataTracker().unmarkCompacting(tocompact);
+        }
         return this;
       }
   finally {
-        compactionLock.unlock();
+        if (compactionLock.writeLock().isHeldByCurrentThread())         compactionLock.writeLock().unlock();
       }
     }
   }

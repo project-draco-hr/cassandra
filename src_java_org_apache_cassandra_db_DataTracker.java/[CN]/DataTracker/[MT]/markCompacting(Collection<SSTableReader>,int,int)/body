@@ -1,0 +1,18 @@
+{
+  if (max < min || max < 1)   return null;
+  View currentView, newView;
+  Set<SSTableReader> subset=null;
+  Set<SSTableReader> remaining=new LinkedHashSet<SSTableReader>(tomark);
+  do {
+    currentView=view.get();
+    remaining.removeAll(currentView.compacting);
+    remaining.retainAll(currentView.sstables);
+    if (remaining.size() < min)     return null;
+    subset=new HashSet<SSTableReader>();
+    Iterator<SSTableReader> iter=remaining.iterator();
+    for (int added=0; added < max && iter.hasNext(); added++)     subset.add(iter.next());
+    newView=currentView.markCompacting(subset);
+  }
+ while (!view.compareAndSet(currentView,newView));
+  return subset;
+}

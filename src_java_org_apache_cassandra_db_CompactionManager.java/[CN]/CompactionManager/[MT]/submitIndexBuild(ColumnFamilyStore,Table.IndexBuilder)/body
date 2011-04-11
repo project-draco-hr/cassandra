@@ -1,18 +1,23 @@
 {
   Runnable runnable=new Runnable(){
     public void run(){
-      compactionLock.lock();
+      compactionLock.readLock().lock();
       try {
         if (cfs.isInvalid())         return;
-        executor.beginCompaction(cfs.columnFamily,builder);
-        builder.build();
+        executor.beginCompaction(builder);
+        try {
+          builder.build();
+        }
+  finally {
+          executor.finishCompaction(builder);
+        }
       }
   finally {
-        compactionLock.unlock();
+        compactionLock.readLock().unlock();
       }
     }
   }
 ;
-  if (compactionLock.isHeldByCurrentThread())   return new SimpleFuture(runnable);
+  if (compactionLock.isWriteLockedByCurrentThread())   return new SimpleFuture(runnable);
  else   return executor.submit(runnable);
 }

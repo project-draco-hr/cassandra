@@ -1,7 +1,7 @@
 {
   Callable<Object> callable=new Callable<Object>(){
     public Object call() throws IOException {
-      compactionLock.lock();
+      compactionLock.readLock().lock();
       try {
         if (cfs.isInvalid())         return this;
         Collection<SSTableReader> sstables=new ArrayList<SSTableReader>();
@@ -17,13 +17,21 @@
         if (sstables.isEmpty()) {
           logger.error("No file to compact for user defined compaction");
         }
+ else         if ((sstables=cfs.getDataTracker().markCompacting(sstables,1,Integer.MAX_VALUE)) != null) {
+          try {
+            doCompaction(cfs,sstables,gcBefore);
+          }
+  finally {
+            cfs.getDataTracker().unmarkCompacting(sstables);
+          }
+        }
  else {
-          doCompaction(cfs,sstables,gcBefore);
+          logger.error("SSTables for user defined compaction are already being compacted.");
         }
         return this;
       }
   finally {
-        compactionLock.unlock();
+        compactionLock.readLock().unlock();
       }
     }
   }
