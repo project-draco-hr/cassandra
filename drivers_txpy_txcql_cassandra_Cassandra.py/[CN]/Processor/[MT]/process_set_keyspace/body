@@ -3,7 +3,11 @@ def process_set_keyspace(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = set_keyspace_result()
-    d = defer.maybeDeferred(self._handler.set_keyspace, args.keyspace)
-    d.addCallback(self.write_results_success_set_keyspace, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_set_keyspace, result, seqid, oprot)
-    return d
+    try:
+        self._handler.set_keyspace(args.keyspace)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    oprot.writeMessageBegin('set_keyspace', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

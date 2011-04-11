@@ -3,7 +3,11 @@ def process_describe_splits(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = describe_splits_result()
-    d = defer.maybeDeferred(self._handler.describe_splits, args.cfName, args.start_token, args.end_token, args.keys_per_split)
-    d.addCallback(self.write_results_success_describe_splits, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_describe_splits, result, seqid, oprot)
-    return d
+    try:
+        result.success = self._handler.describe_splits(args.cfName, args.start_token, args.end_token, args.keys_per_split)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    oprot.writeMessageBegin('describe_splits', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

@@ -3,7 +3,11 @@ def process_describe_keyspaces(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = describe_keyspaces_result()
-    d = defer.maybeDeferred(self._handler.describe_keyspaces)
-    d.addCallback(self.write_results_success_describe_keyspaces, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_describe_keyspaces, result, seqid, oprot)
-    return d
+    try:
+        result.success = self._handler.describe_keyspaces()
+    except InvalidRequestException as ire:
+        result.ire = ire
+    oprot.writeMessageBegin('describe_keyspaces', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

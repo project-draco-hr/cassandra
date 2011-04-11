@@ -3,7 +3,15 @@ def process_remove(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = remove_result()
-    d = defer.maybeDeferred(self._handler.remove, args.key, args.column_path, args.timestamp, args.consistency_level)
-    d.addCallback(self.write_results_success_remove, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_remove, result, seqid, oprot)
-    return d
+    try:
+        self._handler.remove(args.key, args.column_path, args.timestamp, args.consistency_level)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    oprot.writeMessageBegin('remove', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

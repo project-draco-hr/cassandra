@@ -3,7 +3,15 @@ def process_get_indexed_slices(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = get_indexed_slices_result()
-    d = defer.maybeDeferred(self._handler.get_indexed_slices, args.column_parent, args.index_clause, args.column_predicate, args.consistency_level)
-    d.addCallback(self.write_results_success_get_indexed_slices, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_get_indexed_slices, result, seqid, oprot)
-    return d
+    try:
+        result.success = self._handler.get_indexed_slices(args.column_parent, args.index_clause, args.column_predicate, args.consistency_level)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    oprot.writeMessageBegin('get_indexed_slices', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

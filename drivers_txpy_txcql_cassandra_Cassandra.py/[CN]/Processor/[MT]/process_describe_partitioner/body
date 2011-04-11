@@ -3,6 +3,8 @@ def process_describe_partitioner(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = describe_partitioner_result()
-    d = defer.maybeDeferred(self._handler.describe_partitioner)
-    d.addCallback(self.write_results_success_describe_partitioner, result, seqid, oprot)
-    return d
+    result.success = self._handler.describe_partitioner()
+    oprot.writeMessageBegin('describe_partitioner', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()
