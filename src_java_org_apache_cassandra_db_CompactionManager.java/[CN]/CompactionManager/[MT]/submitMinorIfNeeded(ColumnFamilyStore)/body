@@ -1,7 +1,7 @@
 {
   Callable<Integer> callable=new Callable<Integer>(){
     public Integer call() throws IOException {
-      compactionLock.lock();
+      compactionLock.readLock().lock();
       try {
         if (cfs.isInvalid())         return 0;
         Integer minThreshold=cfs.getMinimumCompactionThreshold();
@@ -13,16 +13,22 @@
         logger.debug("Checking to see if compaction of " + cfs.columnFamily + " would be useful");
         Set<List<SSTableReader>> buckets=getBuckets(convertSSTablesToPairs(cfs.getSSTables()),50L * 1024L * 1024L);
         updateEstimateFor(cfs,buckets);
+        int gcBefore=cfs.isIndex() ? Integer.MAX_VALUE : getDefaultGcBefore(cfs);
         for (        List<SSTableReader> sstables : buckets) {
-          if (sstables.size() >= minThreshold) {
-            Collections.sort(sstables);
-            int gcBefore=cfs.isIndex() ? Integer.MAX_VALUE : getDefaultGcBefore(cfs);
-            return doCompaction(cfs,sstables.subList(0,Math.min(sstables.size(),maxThreshold)),gcBefore);
+          if (sstables.size() < minThreshold)           continue;
+          Collections.sort(sstables);
+          Collection<SSTableReader> tocompact=cfs.getDataTracker().markCompacting(sstables,minThreshold,maxThreshold);
+          if (tocompact == null)           continue;
+          try {
+            return doCompaction(cfs,tocompact,gcBefore);
+          }
+  finally {
+            cfs.getDataTracker().unmarkCompacting(tocompact);
           }
         }
       }
   finally {
-        compactionLock.unlock();
+        compactionLock.readLock().unlock();
       }
       return 0;
     }

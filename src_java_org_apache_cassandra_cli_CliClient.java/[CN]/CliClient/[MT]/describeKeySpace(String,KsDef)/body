@@ -58,12 +58,9 @@
       }
     }
     if (compactionManagerMBean != null) {
-      String compactionType=compactionManagerMBean.getCompactionType();
-      if (compactionType != null && compactionType.contains("index build")) {
-        String indexName=compactionManagerMBean.getColumnFamilyInProgress();
-        long bytesCompacted=compactionManagerMBean.getBytesCompacted();
-        long totalBytesToProcess=compactionManagerMBean.getBytesTotalInProgress();
-        sessionState.out.printf("%nCurrently building index %s, completed %d of %d bytes.%n",indexName,bytesCompacted,totalBytesToProcess);
+      for (      CompactionInfo info : compactionManagerMBean.getCompactions()) {
+        if (!info.getTaskType().contains("index build"))         continue;
+        sessionState.out.printf("%nCurrently building index %s, completed %d of %d bytes.%n",info.getColumnFamily(),info.getBytesComplete(),info.getTotalBytes());
       }
     }
     if (probe != null)     probe.close();

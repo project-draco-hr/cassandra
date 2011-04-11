@@ -1,13 +1,28 @@
 {
   Callable<Object> runnable=new Callable<Object>(){
     public Object call() throws IOException {
-      compactionLock.lock();
+      compactionLock.writeLock().lock();
       try {
-        if (!cfStore.isInvalid())         doScrub(cfStore);
+        if (cfStore.isInvalid())         return this;
+        Collection<SSTableReader> toscrub=cfStore.getDataTracker().markCompacting(cfStore.getSSTables(),1,Integer.MAX_VALUE);
+        if (toscrub == null || toscrub.isEmpty())         return this;
+        try {
+          compactionLock.readLock().lock();
+          compactionLock.writeLock().unlock();
+          try {
+            doScrub(cfStore,toscrub);
+          }
+  finally {
+            compactionLock.readLock().unlock();
+          }
+        }
+  finally {
+          cfStore.getDataTracker().unmarkCompacting(toscrub);
+        }
         return this;
       }
   finally {
-        compactionLock.unlock();
+        if (compactionLock.writeLock().isHeldByCurrentThread())         compactionLock.writeLock().unlock();
       }
     }
   }

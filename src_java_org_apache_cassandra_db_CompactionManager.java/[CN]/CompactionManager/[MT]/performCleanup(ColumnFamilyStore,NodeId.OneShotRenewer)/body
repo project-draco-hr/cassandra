@@ -1,13 +1,28 @@
 {
   Callable<Object> runnable=new Callable<Object>(){
     public Object call() throws IOException {
-      compactionLock.lock();
+      compactionLock.writeLock().lock();
       try {
-        if (!cfStore.isInvalid())         doCleanupCompaction(cfStore,renewer);
+        if (cfStore.isInvalid())         return this;
+        Collection<SSTableReader> tocleanup=cfStore.getDataTracker().markCompacting(cfStore.getSSTables(),1,Integer.MAX_VALUE);
+        if (tocleanup == null || tocleanup.isEmpty())         return this;
+        try {
+          compactionLock.readLock().lock();
+          compactionLock.writeLock().unlock();
+          try {
+            doCleanupCompaction(cfStore,tocleanup,renewer);
+          }
+  finally {
+            compactionLock.readLock().unlock();
+          }
+        }
+  finally {
+          cfStore.getDataTracker().unmarkCompacting(tocleanup);
+        }
         return this;
       }
   finally {
-        compactionLock.unlock();
+        if (compactionLock.writeLock().isHeldByCurrentThread())         compactionLock.writeLock().unlock();
       }
     }
   }
