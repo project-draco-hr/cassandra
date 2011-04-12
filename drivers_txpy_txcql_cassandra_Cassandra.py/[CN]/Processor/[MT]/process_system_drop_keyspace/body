@@ -3,7 +3,13 @@ def process_system_drop_keyspace(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = system_drop_keyspace_result()
-    d = defer.maybeDeferred(self._handler.system_drop_keyspace, args.keyspace)
-    d.addCallback(self.write_results_success_system_drop_keyspace, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_system_drop_keyspace, result, seqid, oprot)
-    return d
+    try:
+        result.success = self._handler.system_drop_keyspace(args.keyspace)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except SchemaDisagreementException as sde:
+        result.sde = sde
+    oprot.writeMessageBegin('system_drop_keyspace', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

@@ -3,6 +3,8 @@ def process_describe_snitch(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = describe_snitch_result()
-    d = defer.maybeDeferred(self._handler.describe_snitch)
-    d.addCallback(self.write_results_success_describe_snitch, result, seqid, oprot)
-    return d
+    result.success = self._handler.describe_snitch()
+    oprot.writeMessageBegin('describe_snitch', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

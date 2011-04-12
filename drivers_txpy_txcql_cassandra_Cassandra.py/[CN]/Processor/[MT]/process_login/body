@@ -3,7 +3,13 @@ def process_login(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = login_result()
-    d = defer.maybeDeferred(self._handler.login, args.auth_request)
-    d.addCallback(self.write_results_success_login, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_login, result, seqid, oprot)
-    return d
+    try:
+        self._handler.login(args.auth_request)
+    except AuthenticationException as authnx:
+        result.authnx = authnx
+    except AuthorizationException as authzx:
+        result.authzx = authzx
+    oprot.writeMessageBegin('login', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

@@ -3,7 +3,15 @@ def process_multiget_count(self, seqid, iprot, oprot):
     args.read(iprot)
     iprot.readMessageEnd()
     result = multiget_count_result()
-    d = defer.maybeDeferred(self._handler.multiget_count, args.keys, args.column_parent, args.predicate, args.consistency_level)
-    d.addCallback(self.write_results_success_multiget_count, result, seqid, oprot)
-    d.addErrback(self.write_results_exception_multiget_count, result, seqid, oprot)
-    return d
+    try:
+        result.success = self._handler.multiget_count(args.keys, args.column_parent, args.predicate, args.consistency_level)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    oprot.writeMessageBegin('multiget_count', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

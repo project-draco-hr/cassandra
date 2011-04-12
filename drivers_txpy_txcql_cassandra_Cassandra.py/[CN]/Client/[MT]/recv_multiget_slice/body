@@ -1,19 +1,19 @@
-def recv_multiget_slice(self, iprot, mtype, rseqid):
-    d = self._reqs.pop(rseqid)
+def recv_multiget_slice(self):
+    (fname, mtype, rseqid) = self._iprot.readMessageBegin()
     if (mtype == TMessageType.EXCEPTION):
         x = TApplicationException()
-        x.read(iprot)
-        iprot.readMessageEnd()
-        return d.errback(x)
+        x.read(self._iprot)
+        self._iprot.readMessageEnd()
+        raise x
     result = multiget_slice_result()
-    result.read(iprot)
-    iprot.readMessageEnd()
+    result.read(self._iprot)
+    self._iprot.readMessageEnd()
     if (result.success != None):
-        return d.callback(result.success)
+        return result.success
     if (result.ire != None):
-        return d.errback(result.ire)
+        raise result.ire
     if (result.ue != None):
-        return d.errback(result.ue)
+        raise result.ue
     if (result.te != None):
-        return d.errback(result.te)
-    return d.errback(TApplicationException(TApplicationException.MISSING_RESULT, 'multiget_slice failed: unknown result'))
+        raise result.te
+    raise TApplicationException(TApplicationException.MISSING_RESULT, 'multiget_slice failed: unknown result')
