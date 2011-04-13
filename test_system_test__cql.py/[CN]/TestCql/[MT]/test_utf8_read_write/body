@@ -1,17 +1,20 @@
 def test_utf8_read_write(self):
     'reading and writing utf8 values'
-    conn = init()
-    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xbf')
-    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xa9')
-    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xae')
-    conn.execute('UPDATE StandardUtf82 SET ? = v1 WHERE KEY = k1', '\xc2\xa2')
-    r = conn.execute('SELECT * FROM StandardUtf82 WHERE KEY = k1')
-    assert (r[0][0].name == u'\xa2')
-    assert (r[0][1].name == u'\xa9')
-    assert (r[0][2].name == u'\xae')
-    assert (r[0][3].name == u'\xbf')
-    r = conn.execute("SELECT ?..'' FROM StandardUtf82 WHERE KEY = k1", '\xc2\xa9')
-    assert (len(r[0]) == 3)
-    assert (r[0][0].name == u'\xa9')
-    assert (r[0][1].name == u'\xae')
-    assert (r[0][2].name == u'\xbf')
+    cursor = init()
+    cursor.execute('UPDATE StandardUtf82 SET :name = v1 WHERE KEY = k1', dict(name='\xc2\xbf'))
+    cursor.execute('UPDATE StandardUtf82 SET :name = v1 WHERE KEY = k1', dict(name='\xc2\xa9'))
+    cursor.execute('UPDATE StandardUtf82 SET :name = v1 WHERE KEY = k1', dict(name='\xc2\xae'))
+    cursor.execute('UPDATE StandardUtf82 SET :name = v1 WHERE KEY = k1', dict(name='\xc2\xa2'))
+    cursor.execute('SELECT * FROM StandardUtf82 WHERE KEY = k1')
+    d = cursor.description
+    assert (d[1][0] == u'\xa2'), d[1][0]
+    assert (d[2][0] == u'\xa9'), d[2][0]
+    assert (d[3][0] == u'\xae'), d[3][0]
+    assert (d[4][0] == u'\xbf'), d[4][0]
+    cursor.execute("SELECT :start..'' FROM StandardUtf82 WHERE KEY = k1", dict(start='\xc2\xa9'))
+    r = cursor.fetchone()
+    assert (len(r) == 4)
+    d = cursor.description
+    assert (d[1][0] == u'\xa9')
+    assert (d[2][0] == u'\xae')
+    assert (d[3][0] == u'\xbf')
