@@ -1,8 +1,11 @@
 def test_compression_disabled(self):
     'reading and writing w/ compression disabled'
-    conn = init()
-    conn.execute('UPDATE StandardString1 SET ? = ? WHERE KEY = ?', 'some_name', 'some_value', 'compression_test', compression='NONE')
-    r = conn.execute('SELECT ? FROM StandardString1 WHERE KEY = ?', 'some_name', 'compression_test', compression='NONE')
-    assert (len(r) == 1), ('expected 1 result, got %d' % len(r))
-    assert (r[0][0].name == 'some_name'), ("unrecognized name '%s'" % r[0][0].name)
-    assert (r[0][0].value == 'some_value'), ("unrecognized value '%s'" % r[0][0].value)
+    cursor = init()
+    cursor.compression = 'NONE'
+    cursor.execute('UPDATE StandardString1 SET :name = :val WHERE KEY = :key', dict(name='some_name', val='some_value', key='compression_test'))
+    cursor.execute('SELECT :name FROM StandardString1 WHERE KEY = :key', dict(name='some_name', key='compression_test'))
+    assert (cursor.rowcount == 1), ('expected 1 result, got %d' % cursor.rowcount)
+    colnames = [col_d[0] for col_d in cursor.description]
+    assert (colnames[1] == 'some_name'), ("unrecognized name '%s'" % colnames[1])
+    r = cursor.fetchone()
+    assert (r[1] == 'some_value'), ("unrecognized value '%s'" % r[1])

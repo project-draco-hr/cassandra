@@ -1,0 +1,15 @@
+def prepare(self, query, params):
+    prepared_query = prepare(query, params)
+    match = Cursor._cfamily_re.match(prepared_query)
+    if match:
+        self._query_cf = match.group(1)
+        return prepared_query
+    match = Cursor._keyspace_re.match(prepared_query)
+    if match:
+        self._query_ks = match.group(1)
+        return prepared_query
+    match = Cursor._ddl_re.match(prepared_query)
+    if match:
+        if isinstance(self.decoder, SchemaDecoder):
+            self.decoder.schema = self.__get_schema()
+    return prepared_query

@@ -1,11 +1,13 @@
 def test_write_using_insert(self):
     'peforming writes using "insert"'
-    conn = init()
-    conn.execute('INSERT INTO StandardUtf82 (KEY, ?, ?) VALUES (?, ?, ?)', 'pork', 'beef', 'meat', 'bacon', 'brisket')
-    r = conn.execute('SELECT * FROM StandardUtf82 WHERE KEY = ?', 'meat')
-    assert (r[0][0].name == 'beef')
-    assert (r[0][0].value == 'brisket')
-    assert (r[0][1].name == 'pork')
-    assert (r[0][1].value == 'bacon')
-    assert_raises(CQLException, conn.execute, 'INSERT INTO StandardUtf82 (KEY, ?) VALUES (?, ?, ?)', 'name1', 'key0', 'value1', 'value2')
-    assert_raises(CQLException, conn.execute, 'INSERT INTO StandardUtf82 (KEY, ?, ?) VALUES (?, ?)', 'name1', 'name2', 'key0', 'value1')
+    cursor = init()
+    cursor.execute('INSERT INTO StandardUtf82 (KEY, :c1, :c2) VALUES (:key, :v1, :v2)', dict(c1='pork', c2='beef', key='meat', v1='bacon', v2='brisket'))
+    cursor.execute('SELECT * FROM StandardUtf82 WHERE KEY = :key', dict(key='meat'))
+    r = cursor.fetchone()
+    d = cursor.description
+    assert (d[1][0] == 'beef')
+    assert (r[1] == 'brisket')
+    assert (d[2][0] == 'pork')
+    assert (r[2] == 'bacon')
+    assert_raises(cql.ProgrammingError, cursor.execute, 'INSERT INTO StandardUtf82 (KEY, :c1) VALUES (:key, :v1, :v2)', dict(c1='name1', key='key0', v1='value1', v2='value2'))
+    assert_raises(cql.ProgrammingError, cursor.execute, 'INSERT INTO StandardUtf82 (KEY, :c1, :c2) VALUES (:key, :v1)', dict(c1='name1', c2='name2', key='key0', v1='value1'))

@@ -1,18 +1,5 @@
-def prepare(query, *args):
-    result = StringIO()
-    index = query.find('?')
-    oldindex = 0
-    count = 0
-    while (index >= 0):
-        result.write(query[oldindex:index])
-        try:
-            result.write(marshal(args[count]))
-        except IndexError:
-            raise InvalidQueryFormat('not enough arguments in substitution')
-        oldindex = (index + 1)
-        index = query.find('?', (index + 1))
-        count += 1
-    result.write(query[oldindex:])
-    if (count < len(args)):
-        raise InvalidQueryFormat('too many arguments in substitution')
-    return result.getvalue()
+def prepare(query, params):
+    (new, count) = re.subn(_param_re, (lambda m: marshal(params[m.group(1)[1:]])), query)
+    if (len(params) > count):
+        raise cql.ProgrammingError('More keywords were provided than parameters')
+    return new

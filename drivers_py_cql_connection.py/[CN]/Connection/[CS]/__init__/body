@@ -1,19 +1,18 @@
-def __init__(self, host, port=9160, keyspace=None, username=None, password=None, decoder=None):
-    '\n        Params:\n        * host .........: hostname of Cassandra node.\n        * port .........: port number to connect to (optional).\n        * keyspace .....: keyspace name (optional).\n        * username .....: username used in authentication (optional).\n        * password .....: password used in authentication (optional).\n        * decoder ......: result decoder instance (optional, defaults to none).\n        '
+def __init__(self, host, port, keyspace, user=None, password=None):
+    '\n        Params:\n        * host .........: hostname of Cassandra node.\n        * port .........: port number to connect to.\n        * keyspace .....: keyspace to connect to.\n        * user .........: username used in authentication (optional).\n        * password .....: password used in authentication (optional).\n        '
+    self.host = host
+    self.port = port
+    self.keyspace = keyspace
     socket = TSocket.TSocket(host, port)
     self.transport = TTransport.TFramedTransport(socket)
     protocol = TBinaryProtocol.TBinaryProtocolAccelerated(self.transport)
     self.client = Cassandra.Client(protocol)
     socket.open()
-    self._cur_keyspace = None
-    self._cur_column_family = None
-    if (username and password):
-        credentials = {'username': username, 'password': password, }
+    self.open_socket = True
+    if (user and password):
+        credentials = {'username': user, 'password': password, }
         self.client.login(AuthenticationRequest(credentials=credentials))
     if keyspace:
-        self.execute(('USE %s;' % keyspace))
-        self._cur_keyspace = keyspace
-    if (not decoder):
-        self.decoder = SchemaDecoder(self.__get_schema())
-    else:
-        self.decoder = decoder
+        c = self.cursor()
+        c.execute(('USE %s;' % keyspace))
+        c.close()
