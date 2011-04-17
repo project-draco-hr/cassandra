@@ -5,11 +5,14 @@
   if (StatementType.requiresKeyspace.contains(statement.type))   keyspace=clientState.getKeyspace();
   CqlResult result=new CqlResult();
   logger.debug("CQL statement type: {}",statement.type.toString());
+  CFMetaData metadata;
+  AbstractType<?> comparator;
 switch (statement.type) {
 case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
   clientState.hasColumnFamilyAccess(select.getColumnFamily(),Permission.READ);
-validateColumnFamily(keyspace,select.getColumnFamily(),false);
+metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
+comparator=metadata.getComparatorFor(null);
 validateSelect(keyspace,select);
 List<org.apache.cassandra.db.Row> rows=null;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
@@ -33,15 +36,7 @@ List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 result.type=CqlResultType.ROWS;
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
-List<Column> thriftColumns=new ArrayList<Column>();
-for (IColumn column : row.cf.getSortedColumns()) {
-if (column.isMarkedForDelete()) continue;
-Column c=new Column();
-c.name=column.name();
-c.value=column.value();
-c.timestamp=column.timestamp();
-thriftColumns.add(c);
-}
+List<Column> thriftColumns=extractThriftColumns(select,comparator,row);
 CqlRow cqlRow=new CqlRow();
 cqlRow.key=row.key.key;
 cqlRow.columns=thriftColumns;
@@ -83,8 +78,8 @@ return result;
 case DELETE:
 DeleteStatement delete=(DeleteStatement)statement.statement;
 clientState.hasColumnFamilyAccess(delete.getColumnFamily(),Permission.WRITE);
-CFMetaData metadata=validateColumnFamily(keyspace,delete.getColumnFamily(),false);
-AbstractType<?> comparator=metadata.getComparatorFor(null);
+metadata=validateColumnFamily(keyspace,delete.getColumnFamily(),false);
+comparator=metadata.getComparatorFor(null);
 AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,delete.getColumnFamily()).getKeyValidator();
 List<RowMutation> rowMutations=new ArrayList<RowMutation>();
 for (Term key : delete.getKeys()) {

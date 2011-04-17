@@ -1,0 +1,24 @@
+{
+  List<Column> thriftColumns=new ArrayList<Column>();
+  if (select.isColumnRange()) {
+    for (    IColumn c : row.cf.getSortedColumns()) {
+      if (c.isMarkedForDelete())       continue;
+      thriftColumns.add(new Column(c.name()).setValue(c.value()).setTimestamp(c.timestamp()));
+    }
+  }
+ else {
+    for (    Term term : select.getColumnNames()) {
+      ByteBuffer name;
+      try {
+        name=term.getByteBuffer(comparator);
+      }
+ catch (      InvalidRequestException e) {
+        throw new AssertionError(e);
+      }
+      IColumn c=row.cf.getColumn(name);
+      if (c == null || c.isMarkedForDelete())       thriftColumns.add(new Column().setName(name));
+ else       thriftColumns.add(new Column(c.name()).setValue(c.value()).setTimestamp(c.timestamp()));
+    }
+  }
+  return thriftColumns;
+}
