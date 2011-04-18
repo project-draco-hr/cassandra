@@ -7,11 +7,14 @@
     EndpointState epState=endpointStateMap_.get(endpoint);
     if (epState != null) {
       long duration=now - epState.getUpdateTimestamp();
-      if (StorageService.instance.getTokenMetadata().isMember(endpoint))       epState.setHasToken(true);
-      if (!epState.getHasToken() && !epState.isAlive() && !justRemovedEndpoints_.containsKey(endpoint)&& (duration > FatClientTimeout_)) {
-        logger_.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout_+ "ms, removing from gossip");
-        removeEndpoint(endpoint);
-        evictFromMembership(endpoint);
+      if (!epState.getHasToken() && !epState.isAlive() && (duration > FatClientTimeout_)) {
+        if (StorageService.instance.getTokenMetadata().isMember(endpoint))         epState.setHasToken(true);
+ else {
+          if (!justRemovedEndpoints_.containsKey(endpoint)) {
+            logger_.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout_+ "ms, removing from gossip");
+            removeEndpoint(endpoint);
+          }
+        }
       }
       if (!epState.isAlive() && (duration > aVeryLongTime_)) {
         evictFromMembership(endpoint);
@@ -24,6 +27,7 @@
       if ((now - entry.getValue()) > QUARANTINE_DELAY) {
         if (logger_.isDebugEnabled())         logger_.debug(QUARANTINE_DELAY + " elapsed, " + entry.getKey()+ " gossip quarantine over");
         justRemovedEndpoints_.remove(entry.getKey());
+        endpointStateMap_.remove(entry.getKey());
       }
     }
   }
