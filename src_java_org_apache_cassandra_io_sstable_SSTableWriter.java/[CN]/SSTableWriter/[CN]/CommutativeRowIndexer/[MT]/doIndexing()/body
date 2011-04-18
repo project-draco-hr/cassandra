@@ -8,7 +8,7 @@
   while (!dfile.isEOF()) {
     key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,ByteBufferUtil.readWithShortLength(dfile));
     long dataSize=SSTableReader.readRowSize(dfile,desc);
-    SSTableIdentityIterator iter=new SSTableIdentityIterator(metadata,dfile,key,dfile.getFilePointer(),dataSize,true);
+    SSTableIdentityIterator iter=new SSTableIdentityIterator(cfs.metadata,dfile,key,dfile.getFilePointer(),dataSize,true);
     AbstractCompactedRow row;
     if (dataSize > DatabaseDescriptor.getInMemoryCompactionLimit()) {
       logger.info(String.format("Rebuilding post-streaming large counter row %s (%d bytes) incrementally",ByteBufferUtil.bytesToHex(key.key),dataSize));
@@ -17,6 +17,7 @@
  else {
       row=new PrecompactedRow(controller,Collections.singletonList(iter));
     }
+    updateCache(key,dataSize,row);
     rowSizes.add(dataSize);
     columnCounts.add(row.columnCount());
     iwriter.afterAppend(key,writerDfile.getFilePointer());
