@@ -1,8 +1,13 @@
 {
   try {
-    return sstable.getColumnSerializer().deserialize(file,expireBefore);
+    IColumn column=sstable.getColumnSerializer().deserialize(file,expireBefore);
+    if (validateColumns)     column.validateFields(sstable.metadata);
+    return column;
   }
  catch (  IOException e) {
     throw new IOError(e);
+  }
+catch (  MarshalException e) {
+    throw new IOError(new IOException("Error validating row " + key,e));
   }
 }
