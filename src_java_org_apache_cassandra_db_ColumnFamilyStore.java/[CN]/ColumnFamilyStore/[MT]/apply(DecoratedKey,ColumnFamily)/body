@@ -3,14 +3,8 @@
   Memtable mt=getMemtableThreadSafe();
   boolean flushRequested=mt.isThresholdViolated();
   mt.put(key,columnFamily);
-  if (rowCache.isPutCopying()) {
-    invalidateCachedRow(key);
-  }
- else {
-    ColumnFamily cachedRow=getRawCachedRow(key);
-    if (cachedRow != null)     cachedRow.addAll(columnFamily);
-    writeStats.addNano(System.nanoTime() - start);
-  }
+  updateRowCache(key,columnFamily);
+  writeStats.addNano(System.nanoTime() - start);
   if (DatabaseDescriptor.estimatesRealMemtableSize()) {
     while (true) {
       long last=liveRatioComputedAt.get();
