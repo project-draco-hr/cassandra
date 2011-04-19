@@ -1,5 +1,6 @@
 def prepare(self, query, params):
     prepared_query = prepare(query, params)
+    self._schema_update_needed = False
     match = Cursor._cfamily_re.match(prepared_query)
     if match:
         self._query_cf = match.group(1)
@@ -10,6 +11,5 @@ def prepare(self, query, params):
         return prepared_query
     match = Cursor._ddl_re.match(prepared_query)
     if match:
-        if isinstance(self.decoder, SchemaDecoder):
-            self.decoder.schema = self.__get_schema()
+        self._schema_update_needed = True
     return prepared_query

@@ -1,5 +1,8 @@
 def execute(self, cql_query, params={}):
     self.__checksock()
+    self.rs_idx = 0
+    self.rowcount = 0
+    self.description = None
     try:
         prepared_q = self.prepare(cql_query, params)
     except KeyError as e:
@@ -18,6 +21,8 @@ def execute(self, cql_query, params={}):
         raise cql.IntegrityError('Schema versions disagree, (try again later).')
     except TApplicationException as tapp:
         raise cql.InternalError('Internal application error')
+    if (self._schema_update_needed and isinstance(self.decoder, SchemaDecoder)):
+        self.decoder.schema = self.__get_schema()
     if (response.type == CqlResultType.ROWS):
         self.result = ResultSet(response.rows, self._query_ks, self._query_cf, self.decoder)
         self.rs_idx = 0
