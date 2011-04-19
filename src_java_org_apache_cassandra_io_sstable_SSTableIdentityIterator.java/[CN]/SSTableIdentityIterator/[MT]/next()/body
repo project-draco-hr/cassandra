@@ -1,8 +1,13 @@
 {
   try {
-    return columnFamily.getColumnSerializer().deserialize(file,null,fromRemote,expireBefore);
+    IColumn column=columnFamily.getColumnSerializer().deserialize(file,null,fromRemote,expireBefore);
+    if (validateColumns)     column.validateFields(columnFamily.metadata());
+    return column;
   }
  catch (  IOException e) {
     throw new IOError(e);
+  }
+catch (  MarshalException e) {
+    throw new IOError(new IOException("Error validating row " + key,e));
   }
 }
