@@ -1,10 +1,14 @@
 {
+  if (session.averageSizeValues) {
+    return generateRandomizedValues();
+  }
   List<ByteBuffer> values=new ArrayList<ByteBuffer>();
-  int limit=2 * session.getColumnSize();
   for (int i=0; i < session.getCardinality(); i++) {
-    byte[] value=new byte[Stress.randomizer.nextInt(limit)];
-    Stress.randomizer.nextBytes(value);
-    values.add(ByteBuffer.wrap(value));
+    String hash=getMD5(Integer.toString(i));
+    int times=session.getColumnSize() / hash.length();
+    int sumReminder=session.getColumnSize() % hash.length();
+    String value=new StringBuilder(multiplyString(hash,times)).append(hash.substring(0,sumReminder)).toString();
+    values.add(ByteBuffer.wrap(value.getBytes()));
   }
   return values;
 }
