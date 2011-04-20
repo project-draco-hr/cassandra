@@ -1,2 +1,13 @@
 {
+  Map<String,AtomicInteger> dcEndpoints=new HashMap<String,AtomicInteger>();
+  for (  String dc : strategy.getDatacenters())   dcEndpoints.put(dc,new AtomicInteger());
+  for (  InetAddress destination : hintedEndpoints.keySet()) {
+    if (writeEndpoints.contains(destination)) {
+      String destinationDC=snitch.getDatacenter(destination);
+      dcEndpoints.get(destinationDC).incrementAndGet();
+    }
+  }
+  for (  String dc : strategy.getDatacenters()) {
+    if (dcEndpoints.get(dc).get() != responses.get(dc).get())     throw new UnavailableException();
+  }
 }
