@@ -39,9 +39,11 @@
   for (  ByteBuffer indexName : column_metadata.keySet())   if (!newIndexNames.contains(indexName))   toRemove.add(indexName);
   for (  ByteBuffer indexName : toRemove)   column_metadata.remove(indexName);
   for (  org.apache.cassandra.db.migration.avro.ColumnDef def : cf_def.column_metadata) {
-    if (!column_metadata.containsKey(def.name))     continue;
-    column_metadata.get(def.name).setIndexType(def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.name()));
-    column_metadata.get(def.name).setIndexName(def.index_name == null ? null : def.index_name.toString());
+    ColumnDefinition oldDef=column_metadata.get(def.name);
+    if (oldDef == null)     continue;
+    oldDef.setValidator(DatabaseDescriptor.getComparator(def.validation_class));
+    oldDef.setIndexType(def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.name()));
+    oldDef.setIndexName(def.index_name == null ? null : def.index_name.toString());
   }
   for (  org.apache.cassandra.db.migration.avro.ColumnDef def : toAdd) {
     AbstractType dValidClass=DatabaseDescriptor.getComparator(def.validation_class);
