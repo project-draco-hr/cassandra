@@ -1,6 +1,9 @@
 {
   logger.info("Writing " + this);
-  SSTableWriter writer=cfs.createFlushWriter(columnFamilies.size());
+  long keySize=0;
+  for (  DecoratedKey key : columnFamilies.keySet())   keySize+=key.key.remaining();
+  long estimatedSize=(long)((keySize + keySize + currentThroughput.get()) * 1.2);
+  SSTableWriter writer=cfs.createFlushWriter(columnFamilies.size(),estimatedSize);
   for (  Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet())   writer.append(entry.getKey(),entry.getValue());
   SSTableReader ssTable=writer.closeAndOpenReader();
   logger.info(String.format("Completed flushing %s (%d bytes)",ssTable.getFilename(),new File(ssTable.getFilename()).length()));
