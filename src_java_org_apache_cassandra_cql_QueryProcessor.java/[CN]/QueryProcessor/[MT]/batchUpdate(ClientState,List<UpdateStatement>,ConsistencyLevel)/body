@@ -3,22 +3,11 @@
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
   List<String> cfamsSeen=new ArrayList<String>();
   for (  UpdateStatement update : updateStatements) {
-    CFMetaData metadata=validateColumnFamily(keyspace,update.getColumnFamily(),false);
     if (!(cfamsSeen.contains(update.getColumnFamily()))) {
       clientState.hasColumnFamilyAccess(update.getColumnFamily(),Permission.WRITE);
       cfamsSeen.add(update.getColumnFamily());
     }
-    ByteBuffer key=update.getKey().getByteBuffer(update.getKeyType(keyspace));
-    validateKey(key);
-    AbstractType<?> comparator=update.getComparator(keyspace);
-    RowMutation rm=new RowMutation(keyspace,key);
-    for (    Map.Entry<Term,Term> column : update.getColumns().entrySet()) {
-      ByteBuffer colName=column.getKey().getByteBuffer(comparator);
-      ByteBuffer colValue=column.getValue().getByteBuffer(update.getValueValidator(keyspace,colName));
-      validateColumn(metadata,colName,colValue);
-      rm.add(new QueryPath(update.getColumnFamily(),null,colName),colValue,System.currentTimeMillis());
-    }
-    rowMutations.add(rm);
+    rowMutations.addAll(update.prepareRowMutations(keyspace,clientState));
   }
   try {
     StorageProxy.mutate(rowMutations,consistency);

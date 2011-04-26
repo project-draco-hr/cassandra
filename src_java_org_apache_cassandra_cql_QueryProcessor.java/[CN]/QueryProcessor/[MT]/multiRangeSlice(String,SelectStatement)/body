@@ -1,5 +1,4 @@
 {
-  List<org.apache.cassandra.db.Row> rows=null;
   AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,select.getColumnFamily()).getKeyValidator();
   ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
   ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
@@ -10,7 +9,7 @@
   SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,comparator);
   validateSlicePredicate(metadata,thriftSlicePredicate);
   try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,select.getColumnFamily(),null,thriftSlicePredicate,bounds,select.getNumRecords()),select.getConsistencyLevel());
+    return StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,select.getColumnFamily(),null,thriftSlicePredicate,bounds,select.getNumRecords()),select.getConsistencyLevel());
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
@@ -21,5 +20,4 @@ catch (  org.apache.cassandra.thrift.UnavailableException e) {
 catch (  TimeoutException e) {
     throw new TimedOutException();
   }
-  return rows;
 }
