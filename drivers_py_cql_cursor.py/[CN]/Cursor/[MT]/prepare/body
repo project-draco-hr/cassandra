@@ -1,0 +1,15 @@
+def prepare(self, query, params):
+    prepared_query = prepare(query, params)
+    self._schema_update_needed = False
+    match = Cursor._cfamily_re.match(prepared_query)
+    if match:
+        self._query_cf = match.group(1)
+        return prepared_query
+    match = Cursor._keyspace_re.match(prepared_query)
+    if match:
+        self._query_ks = match.group(1)
+        return prepared_query
+    match = Cursor._ddl_re.match(prepared_query)
+    if match:
+        self._schema_update_needed = True
+    return prepared_query
