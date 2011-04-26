@@ -19,6 +19,10 @@ def execute(self, cql_query, params={}):
         raise cql.ProgrammingError(('Bad Request: %s' % ire.why))
     except SchemaDisagreementException as sde:
         raise cql.IntegrityError('Schema versions disagree, (try again later).')
+    except UnavailableException:
+        raise cql.OperationalError('Unable to complete request: one or more nodes were unavailable.')
+    except TimedOutException:
+        raise cql.OperationalError('Request did not complete within rpc_timeout.')
     except TApplicationException as tapp:
         raise cql.InternalError('Internal application error')
     if (self._schema_update_needed and isinstance(self.decoder, SchemaDecoder)):
