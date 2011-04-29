@@ -2,6 +2,9 @@ def test_bad_calls(self):
     _set_keyspace('Keyspace1')
     _expect_exception((lambda : client.insert(None, None, None, None)), TApplicationException)
     _expect_exception((lambda : client.insert('key1', ColumnParent('Standard1', 'x'), Column('y', 'value', 0), ConsistencyLevel.ONE)), InvalidRequestException)
+    _expect_exception((lambda : client.insert('key1', ColumnParent('Super1'), Column('y', 'value', 0), ConsistencyLevel.ONE)), InvalidRequestException)
+    _expect_exception((lambda : client.remove('key1', ColumnPath('Super1', column='x'), 0, ConsistencyLevel.ONE)), InvalidRequestException)
+    _expect_exception((lambda : client.remove('key1', ColumnPath('Standard1', 'y', 'x'), 0, ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : client.get(('x' * (2 ** 16)), ColumnPath('Standard1', column='c1'), ConsistencyLevel.ONE)), InvalidRequestException)
     _expect_exception((lambda : client.get('', ColumnPath('Standard1', column='c1'), ConsistencyLevel.ONE)), InvalidRequestException)
     cfmap = {'Super1': [Mutation(ColumnOrSuperColumn(super_column=c)) for c in _SUPER_COLUMNS], 'Super2': [Mutation(ColumnOrSuperColumn(super_column=c)) for c in _SUPER_COLUMNS], }
@@ -30,4 +33,8 @@ def test_bad_calls(self):
     deletion = Deletion(1, 'supercolumn', None)
     mutation = Mutation(deletion=deletion)
     mutations = {'key': {'Standard1': [mutation], }, }
+    _expect_exception((lambda : client.batch_mutate(mutations, ConsistencyLevel.QUORUM)), InvalidRequestException)
+    deletion = Deletion(1, 'x', None)
+    mutation = Mutation(deletion=deletion)
+    mutations = {'key': {'Super5': [mutation], }, }
     _expect_exception((lambda : client.batch_mutate(mutations, ConsistencyLevel.QUORUM)), InvalidRequestException)
