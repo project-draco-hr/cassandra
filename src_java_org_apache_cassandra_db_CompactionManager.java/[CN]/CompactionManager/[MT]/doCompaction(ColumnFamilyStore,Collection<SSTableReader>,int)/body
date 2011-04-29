@@ -1,2 +1,12 @@
 {
+  Table table=cfs.table;
+  Set<SSTableReader> smallerSSTables=new HashSet<SSTableReader>(sstables);
+  while (smallerSSTables.size() > 1) {
+    String compactionFileLocation=table.getDataFileLocation(cfs.getExpectedCompactedFileSize(smallerSSTables));
+    if (compactionFileLocation != null)     return doCompactionWithoutSizeEstimation(cfs,smallerSSTables,gcBefore,compactionFileLocation);
+    logger.warn("insufficient space to compact all requested files " + StringUtils.join(smallerSSTables,", "));
+    smallerSSTables.remove(cfs.getMaxSizeFile(smallerSSTables));
+  }
+  logger.error("insufficient space to compact even the two smallest files, aborting");
+  return 0;
 }
