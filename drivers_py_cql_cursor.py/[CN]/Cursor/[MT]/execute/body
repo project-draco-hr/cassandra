@@ -28,13 +28,14 @@ def execute(self, cql_query, params={}):
     if (self._schema_update_needed and isinstance(self.decoder, SchemaDecoder)):
         self.decoder.schema = self.__get_schema()
     if (response.type == CqlResultType.ROWS):
-        self.result = ResultSet(response.rows, self._query_ks, self._query_cf, self.decoder)
+        self.result = response.rows
         self.rs_idx = 0
         self.rowcount = len(self.result)
-        self.description = self.result.description
+        if self.result:
+            self.description = self.decoder.decode_description(self._query_ks, self._query_cf, self.result[0])
     if (response.type == CqlResultType.INT):
         self.result = [(response.num,)]
         self.rs_idx = 0
         self.rowcount = 1
-        self.description = (None, None, None, None, None, None, None)
+        self.description = _COUNT_DESCRIPTION
     return True
