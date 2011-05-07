@@ -1,16 +1,17 @@
 {
-  List<org.apache.cassandra.db.Row> rows=null;
+  List<org.apache.cassandra.db.Row> rows;
+  IPartitioner<?> p=StorageService.getPartitioner();
   AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,select.getColumnFamily()).getKeyValidator();
   ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
   ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
-  IPartitioner<?> p=StorageService.getPartitioner();
   AbstractBounds bounds=new Bounds(p.getToken(startKey),p.getToken(finishKey));
   CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
   AbstractType<?> comparator=metadata.getComparatorFor(null);
   SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,comparator);
   validateSlicePredicate(metadata,thriftSlicePredicate);
+  int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();
   try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,select.getColumnFamily(),null,thriftSlicePredicate,bounds,select.getNumRecords()),select.getConsistencyLevel());
+    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace,select.getColumnFamily(),null,thriftSlicePredicate,bounds,limit),select.getConsistencyLevel());
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
@@ -21,5 +22,12 @@ catch (  org.apache.cassandra.thrift.UnavailableException e) {
 catch (  TimeoutException e) {
     throw new TimedOutException();
   }
-  return rows;
+  if (select.getKeyStart() != null && !select.includeStartKey()) {
+    if (rows.get(0).key.key.equals(startKey))     rows.remove(0);
+  }
+  if (select.getKeyFinish() != null && !select.includeFinishKey()) {
+    int lastIndex=rows.size() - 1;
+    if (rows.get(lastIndex).key.key.equals(finishKey))     rows.remove(lastIndex);
+  }
+  return rows.subList(0,select.getNumRecords() < rows.size() ? select.getNumRecords() : rows.size());
 }
