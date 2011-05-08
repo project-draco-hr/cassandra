@@ -1,0 +1,21 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("discard completed log segments for " + context + ", column family "+ id+ ".");
+  Iterator<CommitLogSegment> iter=segments.iterator();
+  while (iter.hasNext()) {
+    CommitLogSegment segment=iter.next();
+    if (segment.id == context.segment) {
+      segment.turnOn(id);
+      break;
+    }
+    segment.turnOff(id);
+    if (segment.isSafeToDelete() && iter.hasNext()) {
+      logger.info("Discarding obsolete commit log:" + segment);
+      segment.close();
+      DeletionService.executeDelete(segment.getPath());
+      iter.remove();
+    }
+ else {
+      if (logger.isDebugEnabled())       logger.debug("Not safe to delete commit log " + segment + "; dirty is "+ segment.dirtyString()+ "; hasNext: "+ iter.hasNext());
+    }
+  }
+}

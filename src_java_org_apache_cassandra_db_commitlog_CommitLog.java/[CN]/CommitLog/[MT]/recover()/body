@@ -8,14 +8,14 @@
 );
   if (files.length == 0) {
     logger.info("No commitlog files found; skipping replay");
-    return;
+    return 0;
   }
   Arrays.sort(files,new FileUtils.FileComparator());
   logger.info("Replaying " + StringUtils.join(files,", "));
-  recover(files);
+  int replayed=recover(files);
   for (  File f : files) {
-    FileUtils.delete(CommitLogHeader.getHeaderPathFromSegmentPath(f.getAbsolutePath()));
     if (!f.delete())     logger.error("Unable to remove " + f + "; you should remove it manually or next restart will replay it again (harmless, but time-consuming)");
   }
-  logger.info("Log replay complete");
+  logger.info("Log replay complete, " + replayed + " replayed mutations");
+  return replayed;
 }
