@@ -1,11 +1,10 @@
 {
   CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
-  AbstractType<?> comparator=metadata.getComparatorFor(null);
-  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,comparator);
+  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,metadata);
   validateSlicePredicate(metadata,thriftSlicePredicate);
   List<IndexExpression> expressions=new ArrayList<IndexExpression>();
   for (  Relation columnRelation : select.getColumnRelations()) {
-    ByteBuffer entity=columnRelation.getEntity().getByteBuffer(comparator);
+    ByteBuffer entity=columnRelation.getEntity().getByteBuffer(metadata.comparator);
     ByteBuffer value=columnRelation.getValue().getByteBuffer(select.getValueValidator(keyspace,entity));
     expressions.add(new IndexExpression(entity,IndexOperator.valueOf(columnRelation.operator().toString()),value));
   }

@@ -1,16 +1,25 @@
 {
   List<Column> thriftColumns=new ArrayList<Column>();
   if (select.isColumnRange()) {
+    if (select.isWildcard()) {
+      thriftColumns.add(new Column(metadata.getKeyName()).setValue(row.key.key).setTimestamp(-1));
+    }
     for (    IColumn c : row.cf.getSortedColumns()) {
       if (c.isMarkedForDelete())       continue;
       thriftColumns.add(new Column(c.name()).setValue(c.value()).setTimestamp(c.timestamp()));
     }
   }
  else {
+    String keyString=getKeyString(metadata);
     for (    Term term : select.getColumnNames()) {
+      if (term.getText().equalsIgnoreCase(keyString)) {
+        ByteBuffer requestedKey=ByteBufferUtil.bytes(term.getText());
+        thriftColumns.add(new Column(requestedKey).setValue(row.key.key).setTimestamp(-1));
+        continue;
+      }
       ByteBuffer name;
       try {
-        name=term.getByteBuffer(comparator);
+        name=term.getByteBuffer(metadata.comparator);
       }
  catch (      InvalidRequestException e) {
         throw new AssertionError(e);

@@ -1,8 +1,10 @@
 def decode_description(self, keyspace, column_family, row):
-    key_type = self.__keytype_for(keyspace, column_family)
-    description = [(cql.ROW_KEY, key_type, None, None, None, None, None, False)]
+    description = []
     comparator = self.__comparator_for(keyspace, column_family)
     unmarshal = unmarshallers.get(comparator, unmarshal_noop)
     for column in row.columns:
-        description.append((unmarshal(column.name), comparator, None, None, None, None, True))
+        if (column.name == self.__get_column_family_def(keyspace, column_family)['key_alias']):
+            description.append((column.name, 'text', None, None, None, None, True))
+        else:
+            description.append((unmarshal(column.name), comparator, None, None, None, None, True))
     return description
