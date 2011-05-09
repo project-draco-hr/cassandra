@@ -6,13 +6,11 @@
   CqlResult result=new CqlResult();
   logger.debug("CQL statement type: {}",statement.type.toString());
   CFMetaData metadata;
-  AbstractType<?> comparator;
 switch (statement.type) {
 case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
   clientState.hasColumnFamilyAccess(select.getColumnFamily(),Permission.READ);
 metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
-comparator=metadata.getComparatorFor(null);
 validateSelect(keyspace,select);
 List<org.apache.cassandra.db.Row> rows;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
@@ -36,7 +34,7 @@ List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 result.type=CqlResultType.ROWS;
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
-List<Column> thriftColumns=extractThriftColumns(select,comparator,row);
+List<Column> thriftColumns=extractThriftColumns(select,metadata,row);
 CqlRow cqlRow=new CqlRow();
 cqlRow.key=row.key.key;
 cqlRow.columns=thriftColumns;

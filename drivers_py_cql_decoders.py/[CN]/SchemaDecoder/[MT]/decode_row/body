@@ -1,13 +1,14 @@
 def decode_row(self, keyspace, column_family, row):
-    key_type = self.__keytype_for(keyspace, column_family)
-    key = unmarshallers.get(key_type, unmarshal_noop)(row.key)
     comparator = self.__comparator_for(keyspace, column_family)
     unmarshal = unmarshallers.get(comparator, unmarshal_noop)
-    values = [key]
+    values = []
     for column in row.columns:
-        validator = self.__validator_for(keyspace, column_family, column.name)
         if (column.value is None):
             values.append(None)
+            continue
+        if (column.name == self.__get_column_family_def(keyspace, column_family)['key_alias']):
+            validator = self.__keytype_for(keyspace, column_family)
         else:
-            values.append(unmarshallers.get(validator, unmarshal_noop)(column.value))
+            validator = self.__validator_for(keyspace, column_family, column.name)
+        values.append(unmarshallers.get(validator, unmarshal_noop)(column.value))
     return values

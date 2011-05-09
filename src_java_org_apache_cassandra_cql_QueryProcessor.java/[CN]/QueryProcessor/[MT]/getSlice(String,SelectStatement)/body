@@ -1,2 +1,34 @@
 {
+  QueryPath queryPath=new QueryPath(select.getColumnFamily());
+  CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
+  List<ReadCommand> commands=new ArrayList<ReadCommand>();
+  if (!select.isColumnRange()) {
+    Collection<ByteBuffer> columnNames=getColumnNames(select,metadata);
+    validateColumnNames(columnNames);
+    for (    Term rawKey : select.getKeys()) {
+      ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator());
+      validateKey(key);
+      commands.add(new SliceByNamesReadCommand(keyspace,key,queryPath,columnNames));
+    }
+  }
+ else {
+    AbstractType<?> comparator=select.getComparator(keyspace);
+    ByteBuffer start=select.getColumnStart().getByteBuffer(comparator);
+    ByteBuffer finish=select.getColumnFinish().getByteBuffer(comparator);
+    for (    Term rawKey : select.getKeys()) {
+      ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator());
+      validateKey(key);
+      validateSliceRange(metadata,start,finish,select.isColumnsReversed());
+      commands.add(new SliceFromReadCommand(keyspace,key,queryPath,start,finish,select.isColumnsReversed(),select.getColumnsLimit()));
+    }
+  }
+  try {
+    return StorageProxy.read(commands,select.getConsistencyLevel());
+  }
+ catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
 }
