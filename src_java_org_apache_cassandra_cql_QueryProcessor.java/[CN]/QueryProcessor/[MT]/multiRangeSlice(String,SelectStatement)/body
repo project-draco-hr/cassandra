@@ -4,7 +4,12 @@
   AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,select.getColumnFamily()).getKeyValidator();
   ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
   ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
-  AbstractBounds bounds=new Bounds(p.getToken(startKey),p.getToken(finishKey));
+  Token startToken=p.getToken(startKey), finishToken=p.getToken(finishKey);
+  if (startToken.compareTo(finishToken) > 0 && !finishToken.equals(p.getMinimumToken())) {
+    if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key's md5 sorts after end key's md5. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
+ else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
+  }
+  AbstractBounds bounds=new Bounds(startToken,finishToken);
   CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
   AbstractType<?> comparator=metadata.getComparatorFor(null);
   SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,comparator);
