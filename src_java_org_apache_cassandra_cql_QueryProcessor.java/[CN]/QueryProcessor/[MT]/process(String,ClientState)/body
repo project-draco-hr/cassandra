@@ -6,13 +6,11 @@
   CqlResult result=new CqlResult();
   logger.debug("CQL statement type: {}",statement.type.toString());
   CFMetaData metadata;
-  AbstractType<?> comparator;
 switch (statement.type) {
 case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
   clientState.hasColumnFamilyAccess(select.getColumnFamily(),Permission.READ);
 metadata=validateColumnFamily(keyspace,select.getColumnFamily(),false);
-comparator=metadata.getComparatorFor(null);
 validateSelect(keyspace,select);
 List<org.apache.cassandra.db.Row> rows;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
@@ -36,7 +34,7 @@ List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 result.type=CqlResultType.ROWS;
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
-List<Column> thriftColumns=extractThriftColumns(select,comparator,row);
+List<Column> thriftColumns=extractThriftColumns(select,metadata,row);
 CqlRow cqlRow=new CqlRow();
 cqlRow.key=row.key.key;
 cqlRow.columns=thriftColumns;
@@ -53,6 +51,7 @@ result.type=CqlResultType.VOID;
 return result;
 case BATCH:
 BatchStatement batch=(BatchStatement)statement.statement;
+if (batch.getTimeToLive() != 0) throw new InvalidRequestException("Global TTL on the BATCH statement is not supported.");
 for (AbstractModification up : batch.getStatements()) {
 if (up.isSetConsistencyLevel()) throw new InvalidRequestException("Consistency level must be set on the BATCH, not individual statements");
 if (batch.isSetTimestamp() && up.isSetTimestamp()) throw new InvalidRequestException("Timestamp must be set either on BATCH or individual statements");
@@ -103,8 +102,9 @@ create.validate();
 clientState.hasKeyspaceListAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
-KSMetaData ksm=new KSMetaData(create.getName(),AbstractReplicationStrategy.getClass(create.getStrategyClass()),create.getStrategyOptions());
-applyMigrationOnStage(new AddKeyspace(ksm));
+KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<org.apache.cassandra.thrift.CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
+ThriftValidation.validateKsDef(ksd);
+applyMigrationOnStage(new AddKeyspace(KSMetaData.fromThrift(ksd)));
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());

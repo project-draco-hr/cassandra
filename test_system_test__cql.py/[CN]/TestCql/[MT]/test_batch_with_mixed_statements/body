@@ -6,21 +6,22 @@ def test_batch_with_mixed_statements(self):
     cursor.execute('SELECT :name FROM StandardString1 WHERE KEY = :key', dict(name='bName', key='bKey1'))
     assert (cursor.rowcount == 1), ('expected 1 result, got %d' % cursor.rowcount)
     colnames = [col_d[0] for col_d in cursor.description]
-    assert (colnames[1] == 'bName'), ("unrecognized name '%s'" % colnames[1])
+    assert (['bName'] == colnames), colnames
     r = cursor.fetchone()
-    assert (r[1] == 'bVal'), ("unrecognized value '%s'" % r[1])
+    assert (['bVal'] == r), r
     cursor.execute('SELECT :name FROM StandardString1 WHERE KEY = :key', dict(name='bCol2', key='bKey3'))
     assert (cursor.rowcount == 1), ('expected 1 result, got %d' % cursor.rowcount)
     colnames = [col_d[0] for col_d in cursor.description]
-    assert (colnames[1] == 'bCol2'), ("unrecognized name '%s'" % colnames[1])
+    assert (['bCol2'] == colnames), colnames
     r = cursor.fetchone()
-    assert (r[1] == None), ("unrecognized value '%s'" % r[1])
+    assert ([None] == r), r
     cursor.execute('SELECT :name FROM StandardString1 WHERE KEY = :key', dict(name='bCol1', key='bKey2'))
     assert (cursor.rowcount == 1), ('expected 1 result, got %d' % cursor.rowcount)
     colnames = [col_d[0] for col_d in cursor.description]
-    assert (colnames[1] == 'bCol1'), ("unrecognized name '%s'" % colnames[1])
+    assert (['bCol1'] == colnames), colnames
     r = cursor.fetchone()
-    assert (r[1] == 'bVal'), ("unrecognized value '%s'" % r[1])
+    assert (['bVal'] == r), r
     cursor.execute("\n          BEGIN BATCH USING CONSISTENCY ONE AND TIMESTAMP 1303743619771318\n            INSERT INTO StandardString1 (KEY, name) VALUES ('TimestampedUser4', 'sname')\n            UPDATE StandardString1 SET name = 'name here' WHERE KEY = 'TimestampedUser4'\n            DELETE name FROM StandardString1 WHERE KEY = 'TimestampedUser4'\n          APPLY BATCH\n        ")
     assert_raises(cql.ProgrammingError, cursor.execute, "\n                        BEGIN BATCH USING TIMESTAMP 1303743619771456\n                          UPDATE USING TIMESTAMP 1303743619771318 StandardString1 SET name = 'name here' WHERE KEY = 'TimestampedUser4'\n                        APPLY BATCH\n                      ")
+    assert_raises(cql.ProgrammingError, cursor.execute, "\n                        BEGIN BATCH USING TTL 130374\n                          UPDATE StandardString1 SET name = 'name here' WHERE KEY = 'TimestampedUser4'\n                        APPLY BATCH\n                      ")
     assert_raises(cql.ProgrammingError, cursor.execute, "\n                      BEGIN BATCH USING CONSISTENCY ONE\n                          UPDATE USING CONSISTENCY QUORUM StandardString1 SET 'name' = 'value' WHERE KEY = 'bKey4'\n                          DELETE 'name' FROM StandardString1 WHERE KEY = 'bKey4'\n                      APPLY BATCH\n                      ")

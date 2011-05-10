@@ -1,0 +1,33 @@
+{
+  String[] parts=source.split(":");
+  List<ByteBuffer> components=new ArrayList<ByteBuffer>();
+  List<ParsedComparator> comparators=new ArrayList<ParsedComparator>();
+  int totalLength=0, i=0;
+  boolean lastByteIsOne=false;
+  for (  String part : parts) {
+    if (part.equals("!")) {
+      lastByteIsOne=true;
+      break;
+    }
+    ParsedComparator p=parseNextComparator(i,part);
+    AbstractType type=p.getAbstractType();
+    part=p.getRemainingPart();
+    ByteBuffer component=type.fromString(part);
+    totalLength+=p.getComparatorSerializedSize() + 2 + component.remaining()+ 1;
+    components.add(component);
+    comparators.add(p);
+    ++i;
+  }
+  ByteBuffer bb=ByteBuffer.allocate(totalLength);
+  i=0;
+  for (  ByteBuffer component : components) {
+    comparators.get(i).serializeComparator(bb);
+    putShortLength(bb,component.remaining());
+    bb.put(component);
+    bb.put((byte)0);
+    ++i;
+  }
+  if (lastByteIsOne)   bb.put(bb.limit() - 1,(byte)1);
+  bb.rewind();
+  return bb;
+}

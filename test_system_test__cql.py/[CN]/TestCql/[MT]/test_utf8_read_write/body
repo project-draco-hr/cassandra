@@ -7,14 +7,15 @@ def test_utf8_read_write(self):
     cursor.execute('UPDATE StandardUtf82 SET :name = v1 WHERE KEY = k1', dict(name='\xc2\xa2'))
     cursor.execute('SELECT * FROM StandardUtf82 WHERE KEY = k1')
     d = cursor.description
+    assert (d[0][0] == 'KEY'), d[0][0]
     assert (d[1][0] == u'\xa2'), d[1][0]
     assert (d[2][0] == u'\xa9'), d[2][0]
     assert (d[3][0] == u'\xae'), d[3][0]
     assert (d[4][0] == u'\xbf'), d[4][0]
     cursor.execute("SELECT :start..'' FROM StandardUtf82 WHERE KEY = k1", dict(start='\xc2\xa9'))
-    r = cursor.fetchone()
-    assert (len(r) == 4)
+    row = cursor.fetchone()
+    assert (len(row) == 3), row
     d = cursor.description
-    assert (d[1][0] == u'\xa9')
-    assert (d[2][0] == u'\xae')
-    assert (d[3][0] == u'\xbf')
+    assert (d[0][0] == u'\xa9')
+    assert (d[1][0] == u'\xae')
+    assert (d[2][0] == u'\xbf')

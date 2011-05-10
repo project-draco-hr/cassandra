@@ -1,0 +1,21 @@
+{
+  String className=compareWith.contains(".") ? compareWith : "org.apache.cassandra.db.marshal." + compareWith;
+  Class<? extends AbstractType> typeClass=FBUtilities.<AbstractType>classForName(className,"abstract-type");
+  try {
+    Method method=typeClass.getDeclaredMethod("getInstance",TypeParser.class);
+    return (AbstractType)method.invoke(null,parser);
+  }
+ catch (  NoSuchMethodException e) {
+    AbstractType type=getRawAbstractType(typeClass);
+    return AbstractType.parseDefaultParameters(type,parser);
+  }
+catch (  IllegalAccessException e) {
+    AbstractType type=getRawAbstractType(typeClass);
+    return AbstractType.parseDefaultParameters(type,parser);
+  }
+catch (  InvocationTargetException e) {
+    ConfigurationException ex=new ConfigurationException("Invalid definition for comparator " + typeClass.getName() + ".");
+    ex.initCause(e.getTargetException());
+    throw ex;
+  }
+}
