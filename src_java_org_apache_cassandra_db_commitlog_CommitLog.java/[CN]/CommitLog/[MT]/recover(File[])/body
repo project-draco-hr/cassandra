@@ -1,5 +1,5 @@
 {
-  Set<Table> tablesRecovered=new HashSet<Table>();
+  final Set<Table> tablesRecovered=new HashSet<Table>();
   List<Future<?>> futures=new ArrayList<Future<?>>();
   byte[] bytes=new byte[4096];
   Map<Integer,AtomicInteger> invalidMutations=new HashMap<Integer,AtomicInteger>();
@@ -61,21 +61,21 @@
           continue;
         }
         if (logger.isDebugEnabled())         logger.debug(String.format("replaying mutation for %s.%s: %s",rm.getTable(),ByteBufferUtil.bytesToHex(rm.key()),"{" + StringUtils.join(rm.getColumnFamilies(),", ") + "}"));
-        final Table table=Table.open(rm.getTable());
-        tablesRecovered.add(table);
-        final Collection<ColumnFamily> columnFamilies=new ArrayList<ColumnFamily>(rm.getColumnFamilies());
         final long entryLocation=reader.getFilePointer();
         final CommitLogHeader finalHeader=clHeader;
         final RowMutation frm=rm;
         Runnable runnable=new WrappedRunnable(){
           public void runMayThrow() throws IOException {
+            if (DatabaseDescriptor.getKSMetaData(frm.getTable()) == null)             return;
+            final Table table=Table.open(frm.getTable());
             RowMutation newRm=new RowMutation(frm.getTable(),frm.key());
-            for (            ColumnFamily columnFamily : columnFamilies) {
+            for (            ColumnFamily columnFamily : frm.getColumnFamilies()) {
               if (CFMetaData.getCF(columnFamily.id()) == null)               continue;
               if (finalHeader == null || (finalHeader.isDirty(columnFamily.id()) && entryLocation > finalHeader.getPosition(columnFamily.id())))               newRm.add(columnFamily);
             }
             if (!newRm.isEmpty()) {
               Table.open(newRm.getTable()).apply(newRm,null,false);
+              tablesRecovered.add(table);
             }
           }
         }
