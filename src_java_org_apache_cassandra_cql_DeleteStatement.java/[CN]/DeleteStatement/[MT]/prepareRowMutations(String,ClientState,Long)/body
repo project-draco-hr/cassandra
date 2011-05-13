@@ -1,20 +1,9 @@
 {
   clientState.hasColumnFamilyAccess(columnFamily,Permission.WRITE);
-  CFMetaData metadata=validateColumnFamily(keyspace,columnFamily,false);
-  AbstractType comparator=metadata.getComparatorFor(null);
   AbstractType<?> keyType=DatabaseDescriptor.getCFMetaData(keyspace,columnFamily).getKeyValidator();
   List<RowMutation> rowMutations=new ArrayList<RowMutation>();
   for (  Term key : keys) {
-    RowMutation rm=new RowMutation(keyspace,key.getByteBuffer(keyType));
-    if (columns.size() < 1)     rm.delete(new QueryPath(columnFamily),System.currentTimeMillis());
- else {
-      for (      Term column : columns) {
-        ByteBuffer columnName=column.getByteBuffer(comparator);
-        validateColumnName(columnName);
-        rm.delete(new QueryPath(columnFamily,null,columnName),(timestamp == null) ? getTimestamp() : timestamp);
-      }
-    }
-    rowMutations.add(rm);
+    rowMutations.add(mutationForKey(key.getByteBuffer(keyType),keyspace,timestamp));
   }
   return rowMutations;
 }
