@@ -9,9 +9,16 @@
   Table table=Table.open(tableName);
   DecoratedKey<?> dkey=StorageService.getPartitioner().decorateKey(key);
   ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
+  int pageSize=PAGE_SIZE;
+  if (cfs.getMeanColumns() > 0) {
+    int averageColumnSize=(int)(cfs.getMeanRowSize() / cfs.getMeanColumns());
+    pageSize=Math.min(PAGE_SIZE,DatabaseDescriptor.getInMemoryCompactionLimit() / averageColumnSize);
+    pageSize=Math.max(2,pageSize);
+    logger_.debug("average hinted-row column size is {}; using pageSize of {}",averageColumnSize,pageSize);
+  }
   ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
   while (true) {
-    QueryFilter filter=QueryFilter.getSliceFilter(dkey,new QueryPath(cfs.getColumnFamilyName()),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,PAGE_SIZE);
+    QueryFilter filter=QueryFilter.getSliceFilter(dkey,new QueryPath(cfs.getColumnFamilyName()),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily cf=cfs.getColumnFamily(filter);
     if (pagingFinished(cf,startColumn))     break;
     if (cf.getColumnNames().isEmpty()) {
