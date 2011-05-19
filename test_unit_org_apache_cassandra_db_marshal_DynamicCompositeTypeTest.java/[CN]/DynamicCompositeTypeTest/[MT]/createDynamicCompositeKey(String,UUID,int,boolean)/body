@@ -1,0 +1,35 @@
+{
+  ByteBuffer bytes=ByteBufferUtil.bytes(s);
+  int totalSize=0;
+  if (s != null) {
+    totalSize+=2 + 2 + bytes.remaining()+ 1;
+    if (uuid != null) {
+      totalSize+=2 + 2 + 16+ 1;
+      if (i != -1) {
+        totalSize+=2 + "IntegerType".length() + 2+ 1+ 1;
+      }
+    }
+  }
+  ByteBuffer bb=ByteBuffer.allocate(totalSize);
+  if (s != null) {
+    bb.putShort((short)(0x8000 | 'b'));
+    bb.putShort((short)bytes.remaining());
+    bb.put(bytes);
+    bb.put(uuid == null && lastIsOne ? (byte)1 : (byte)0);
+    if (uuid != null) {
+      bb.putShort((short)(0x8000 | 't'));
+      bb.putShort((short)16);
+      bb.put(UUIDGen.decompose(uuid));
+      bb.put(i == -1 && lastIsOne ? (byte)1 : (byte)0);
+      if (i != -1) {
+        bb.putShort((short)"IntegerType".length());
+        bb.put(ByteBufferUtil.bytes("IntegerType"));
+        bb.putShort((short)1);
+        bb.put((byte)i);
+        bb.put(lastIsOne ? (byte)1 : (byte)0);
+      }
+    }
+  }
+  bb.rewind();
+  return bb;
+}

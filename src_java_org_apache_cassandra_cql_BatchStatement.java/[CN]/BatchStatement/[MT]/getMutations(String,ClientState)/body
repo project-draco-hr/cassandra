@@ -1,0 +1,22 @@
+{
+  List<String> seenColumnFamilies=new ArrayList<String>();
+  List<RowMutation> batch=new LinkedList<RowMutation>();
+  for (  AbstractModification statement : statements) {
+    final String columnFamily=statement.getColumnFamily();
+    authorizeColumnFamily(keyspace,columnFamily,clientState,seenColumnFamilies);
+    AbstractType<?> keyValidator=getKeyType(keyspace,columnFamily);
+    for (    Term rawKey : statement.getKeys()) {
+      ByteBuffer key=rawKey.getByteBuffer(keyValidator);
+      boolean found=false;
+      for (      RowMutation mutation : batch) {
+        if (mutation.key().equals(key) && hasColumnFamily(mutation.getColumnFamilies(),columnFamily)) {
+          statement.mutationForKey(mutation,keyspace,timestamp);
+          found=true;
+          break;
+        }
+      }
+      if (!found)       batch.add(statement.mutationForKey(key,keyspace,timestamp));
+    }
+  }
+  return batch;
+}
