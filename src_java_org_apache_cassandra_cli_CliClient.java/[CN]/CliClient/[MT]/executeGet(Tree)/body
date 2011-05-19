@@ -8,15 +8,33 @@
   boolean isSuper=cfDef.column_type.equals("Super");
   byte[] superColumnName=null;
   ByteBuffer columnName;
+  Tree typeTree=null;
+  Tree limitTree=null;
+  int limit=1000000;
+  if (statement.getChildCount() >= 2) {
+    if (statement.getChild(1).getType() == CliParser.CONVERT_TO_TYPE) {
+      typeTree=statement.getChild(1).getChild(0);
+      if (statement.getChildCount() == 3)       limitTree=statement.getChild(2).getChild(0);
+    }
+ else {
+      limitTree=statement.getChild(1).getChild(0);
+    }
+  }
+  if (limitTree != null) {
+    limit=Integer.parseInt(limitTree.getText());
+    if (limit == 0) {
+      throw new IllegalArgumentException("LIMIT should be greater than zero.");
+    }
+  }
   if (columnSpecCnt == 0) {
-    doSlice(keySpace,key,columnFamily,superColumnName);
+    doSlice(keySpace,key,columnFamily,superColumnName,limit);
     return;
   }
  else   if (columnSpecCnt == 1) {
     columnName=getColumnName(columnFamily,columnFamilySpec.getChild(2));
     if (isSuper) {
       superColumnName=columnName.array();
-      doSlice(keySpace,key,columnFamily,superColumnName);
+      doSlice(keySpace,key,columnFamily,superColumnName,limit);
       return;
     }
   }
@@ -46,8 +64,7 @@
   }
   byte[] columnValue=column.getValue();
   String valueAsString;
-  if (statement.getChildCount() == 2) {
-    Tree typeTree=statement.getChild(1).getChild(0);
+  if (typeTree != null) {
     String typeName=CliUtils.unescapeSQLString(typeTree.getText());
     AbstractType valueValidator=getFormatType(typeName);
     valueAsString=valueValidator.getString(ByteBuffer.wrap(columnValue));
