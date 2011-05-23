@@ -1,2 +1,31 @@
 {
+  String keyspace="KeyCacheSpace";
+  IPartitioner p=StorageService.getPartitioner();
+  String[] columnFamilies=new String[]{"Standard1","Standard2","Standard3"};
+  List<SSTableReader> ssTableReaders=new ArrayList<SSTableReader>();
+  NavigableMap<DecoratedKey,String> keys=new TreeMap<DecoratedKey,String>();
+  for (  String cf : columnFamilies) {
+    Set<String> content=new HashSet<String>();
+    content.add("data-" + cf + "-1");
+    content.add("data-" + cf + "-2");
+    content.add("data-" + cf + "-3");
+    SSTableUtils.Context context=SSTableUtils.prepare().ks(keyspace).cf(cf);
+    ssTableReaders.add(context.write(content));
+    for (    String str : content)     keys.put(Util.dk(str),cf);
+  }
+  Map.Entry<DecoratedKey,String> first=keys.firstEntry();
+  Map.Entry<DecoratedKey,String> last=keys.lastEntry();
+  Map.Entry<DecoratedKey,String> secondtolast=keys.lowerEntry(last.getKey());
+  List<Range> ranges=new ArrayList<Range>();
+  ranges.add(new Range(p.getMinimumToken(),first.getKey().token));
+  ranges.add(new Range(secondtolast.getKey().token,p.getMinimumToken()));
+  StreamOutSession session=StreamOutSession.create(keyspace,LOCAL,null);
+  StreamOut.transferSSTables(session,ssTableReaders,ranges,OperationType.BOOTSTRAP);
+  session.await();
+  for (  Map.Entry<DecoratedKey,String> entry : Arrays.asList(first,last)) {
+    ColumnFamilyStore store=Table.open(keyspace).getColumnFamilyStore(entry.getValue());
+    List<Row> rows=Util.getRangeSlice(store);
+    assertEquals(rows.toString(),1,rows.size());
+    assertEquals(entry.getKey(),rows.get(0).key);
+  }
 }
