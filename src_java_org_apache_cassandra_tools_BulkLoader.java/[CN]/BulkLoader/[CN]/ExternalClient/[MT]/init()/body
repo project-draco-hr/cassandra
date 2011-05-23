@@ -1,0 +1,34 @@
+{
+  outputHandler.output(String.format("Starting client (and waiting %d seconds for gossip) ...",StorageService.RING_DELAY / 1000));
+  try {
+    StorageService.instance.initClient();
+    Set<InetAddress> hosts=Gossiper.instance.getLiveMembers();
+    hosts.remove(FBUtilities.getLocalAddress());
+    if (hosts.isEmpty())     throw new IllegalStateException("Cannot load any sstable, no live member found in the cluster");
+    String host=hosts.iterator().next().toString().substring(1);
+    int port=DatabaseDescriptor.getRpcPort();
+    Cassandra.Client client=createThriftClient(host,port);
+    List<TokenRange> tokenRanges=client.describe_ring(keyspace);
+    List<KsDef> ksDefs=client.describe_keyspaces();
+    Token.TokenFactory tkFactory=StorageService.getPartitioner().getTokenFactory();
+    try {
+      for (      TokenRange tr : tokenRanges) {
+        Range range=new Range(tkFactory.fromString(tr.start_token),tkFactory.fromString(tr.end_token));
+        for (        String ep : tr.endpoints) {
+          addRangeForEndpoint(range,InetAddress.getByName(ep));
+        }
+      }
+    }
+ catch (    UnknownHostException e) {
+      throw new RuntimeException("Got an unknow host from describe_ring()",e);
+    }
+    for (    KsDef ksDef : ksDefs) {
+      Set<String> cfs=new HashSet<String>();
+      for (      CfDef cfDef : ksDef.cf_defs)       cfs.add(cfDef.name);
+      knownCfs.put(ksDef.name,cfs);
+    }
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}

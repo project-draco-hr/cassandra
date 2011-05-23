@@ -1,0 +1,30 @@
+{
+  final List<SSTableReader> sstables=new LinkedList<SSTableReader>();
+  directory.list(new FilenameFilter(){
+    public boolean accept(    File dir,    String name){
+      Pair<Descriptor,Component> p=SSTable.tryComponentFromFilename(dir,name);
+      Descriptor desc=p == null ? null : p.left;
+      if (p == null || !p.right.equals(Component.DATA) || desc.temporary)       return false;
+      if (!new File(desc.filenameFor(Component.PRIMARY_INDEX)).exists()) {
+        outputHandler.output(String.format("Skipping file %s because index is missing",name));
+        return false;
+      }
+      if (!client.validateColumnFamily(keyspace,desc.cfname)) {
+        outputHandler.output(String.format("Skipping file %s: column family %s.%s doesn't exist",name,keyspace,desc.cfname));
+        return false;
+      }
+      Set<Component> components=new HashSet<Component>();
+      components.add(Component.DATA);
+      components.add(Component.PRIMARY_INDEX);
+      try {
+        sstables.add(SSTableReader.open(desc,components,null,StorageService.getPartitioner()));
+      }
+ catch (      IOException e) {
+        outputHandler.output(String.format("Skipping file %s, error opening it: %s",name,e.getMessage()));
+      }
+      return false;
+    }
+  }
+);
+  return sstables;
+}
