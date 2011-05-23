@@ -1,0 +1,28 @@
+{
+  File dir=new File(directory);
+  if (!dir.exists() || !dir.isDirectory())   throw new IllegalArgumentException("Invalid directory " + directory);
+  SSTableLoader.Client client=new SSTableLoader.Client(){
+    public void init(){
+    }
+    public boolean validateColumnFamily(    String keyspace,    String cfName){
+      return DatabaseDescriptor.getCFMetaData(keyspace,cfName) != null;
+    }
+  }
+;
+  SSTableLoader.OutputHandler oh=new SSTableLoader.OutputHandler(){
+    public void output(    String msg){
+      logger_.info(msg);
+    }
+    public void debug(    String msg){
+      logger_.debug(msg);
+    }
+  }
+;
+  SSTableLoader loader=new SSTableLoader(dir,client,oh);
+  try {
+    loader.stream().get();
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}
