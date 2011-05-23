@@ -6,8 +6,11 @@
   if (!FailureDetector.instance.isAlive(endpoint)) {
     return false;
   }
+  if (CFMetaData.getId(tableName,cfName) == null) {
+    logger_.debug("Discarding hints for dropped keyspace or columnfamily {}/{}",tableName,cfName);
+    return true;
+  }
   Table table=Table.open(tableName);
-  DecoratedKey dkey=StorageService.getPartitioner().decorateKey(key);
   ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
   int pageSize=PAGE_SIZE;
   if (cfs.getMeanColumns() > 0) {
@@ -16,6 +19,7 @@
     pageSize=Math.max(2,pageSize);
     logger_.debug("average hinted-row column size is {}; using pageSize of {}",averageColumnSize,pageSize);
   }
+  DecoratedKey dkey=StorageService.getPartitioner().decorateKey(key);
   ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
   while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(dkey,new QueryPath(cfs.getColumnFamilyName()),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
