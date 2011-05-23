@@ -24,7 +24,15 @@
       versionSources.add(current.right);
     }
     protected Row getReduced(){
-      ColumnFamily resolved=RowRepairResolver.resolveSuperset(versions);
+      ColumnFamily resolved=versions.size() > 1 ? RowRepairResolver.resolveSuperset(versions) : versions.get(0);
+      if (versions.size() < sources.size()) {
+        for (        InetAddress source : sources) {
+          if (!versionSources.contains(source)) {
+            versions.add(null);
+            versionSources.add(source);
+          }
+        }
+      }
       RowRepairResolver.maybeScheduleRepairs(resolved,table,key,versions,versionSources);
       versions.clear();
       versionSources.clear();
