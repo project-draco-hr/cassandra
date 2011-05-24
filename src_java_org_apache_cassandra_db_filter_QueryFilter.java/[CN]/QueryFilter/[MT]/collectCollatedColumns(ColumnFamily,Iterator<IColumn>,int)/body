@@ -1,24 +1,2 @@
 {
-  ReducingIterator<IColumn,IColumn> reduced=new ReducingIterator<IColumn,IColumn>(collatedColumns){
-    ColumnFamily curCF=returnCF.cloneMeShallow();
-    protected boolean isEqual(    IColumn o1,    IColumn o2){
-      return o1.name().equals(o2.name());
-    }
-    public void reduce(    IColumn current){
-      curCF.addColumn(current);
-    }
-    protected IColumn getReduced(){
-      IColumn c=curCF.getSortedColumns().iterator().next();
-      if (superFilter != null) {
-        long deletedAt=c.getMarkedForDeleteAt();
-        if (returnCF.getMarkedForDeleteAt() > deletedAt)         ((SuperColumn)c).markForDeleteAt(c.getLocalDeletionTime(),returnCF.getMarkedForDeleteAt());
-        c=filter.filterSuperColumn((SuperColumn)c,gcBefore);
-        ((SuperColumn)c).markForDeleteAt(c.getLocalDeletionTime(),deletedAt);
-      }
-      curCF.clear();
-      return c;
-    }
-  }
-;
-  (superFilter == null ? filter : superFilter).collectReducedColumns(returnCF,reduced,gcBefore);
 }
