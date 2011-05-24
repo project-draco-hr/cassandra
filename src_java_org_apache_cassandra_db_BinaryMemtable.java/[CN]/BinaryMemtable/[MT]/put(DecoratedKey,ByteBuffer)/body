@@ -1,0 +1,21 @@
+{
+  if (isThresholdViolated()) {
+    lock.lock();
+    try {
+      if (!isFrozen) {
+        isFrozen=true;
+        cfs.submitFlush(this,new CountDownLatch(1),null);
+        cfs.switchBinaryMemtable(key,buffer);
+      }
+ else {
+        cfs.applyBinary(key,buffer);
+      }
+    }
+  finally {
+      lock.unlock();
+    }
+  }
+ else {
+    resolve(key,buffer);
+  }
+}
