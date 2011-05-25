@@ -8,11 +8,26 @@
   Collection<String> leavingNodes=probe.getLeavingNodes();
   Collection<String> movingNodes=probe.getMovingNodes();
   Map<String,String> loadMap=probe.getLoadMap();
-  outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n","Address","Status","State","Load","Owns","Token");
-  if (sortedTokens.size() > 1)   outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n","","","","","",sortedTokens.get(sortedTokens.size() - 1));
+  String format="%-16s%-12s%-12s%-7s%-8s%-16s%-8s%-44s%n";
+  outs.printf(format,"Address","DC","Rack","Status","State","Load","Owns","Token");
+  if (sortedTokens.size() > 1)   outs.printf(format,"","","","","","","",sortedTokens.get(sortedTokens.size() - 1));
   Map<Token,Float> ownerships=probe.getOwnership();
   for (  Token token : sortedTokens) {
     String primaryEndpoint=tokenToEndpoint.get(token);
+    String dataCenter;
+    try {
+      dataCenter=probe.getEndpointSnitchInfoProxy().getDatacenter(primaryEndpoint);
+    }
+ catch (    UnknownHostException e) {
+      dataCenter="Unknown";
+    }
+    String rack;
+    try {
+      rack=probe.getEndpointSnitchInfoProxy().getRack(primaryEndpoint);
+    }
+ catch (    UnknownHostException e) {
+      rack="Unknown";
+    }
     String status=liveNodes.contains(primaryEndpoint) ? "Up" : deadNodes.contains(primaryEndpoint) ? "Down" : "?";
     String state="Normal";
     if (joiningNodes.contains(primaryEndpoint))     state="Joining";
@@ -20,6 +35,6 @@
  else     if (movingNodes.contains(primaryEndpoint))     state="Moving";
     String load=loadMap.containsKey(primaryEndpoint) ? loadMap.get(primaryEndpoint) : "?";
     String owns=new DecimalFormat("##0.00%").format(ownerships.get(token));
-    outs.printf("%-16s%-7s%-8s%-16s%-8s%-44s%n",primaryEndpoint,status,state,load,owns,token);
+    outs.printf(format,primaryEndpoint,dataCenter,rack,status,state,load,owns,token);
   }
 }
