@@ -6,7 +6,12 @@
     announce(myVersion,Collections.singleton(endpoint));
   }
  else   if (!StorageService.instance.isClientMode()) {
-    logger.debug("Their data definitions are old. Sending updates since {}",theirVersion.toString());
-    pushMigrations(theirVersion,myVersion,endpoint);
+    if (lastPushed.get(endpoint) == null || theirVersion.timestamp() >= lastPushed.get(endpoint).timestamp()) {
+      logger.debug("Schema on {} is old. Sending updates since {}",endpoint,theirVersion);
+      pushMigrations(theirVersion,myVersion,endpoint);
+    }
+ else {
+      logger.debug("Waiting for {} to process migrations up to {} before sending more",endpoint,lastPushed.get(endpoint));
+    }
   }
 }
