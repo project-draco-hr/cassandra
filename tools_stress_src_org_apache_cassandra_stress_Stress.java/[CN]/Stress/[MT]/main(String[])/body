@@ -1,6 +1,4 @@
 {
-  long latency, oldLatency;
-  int epoch, total, oldTotal, keyCount, oldKeyCount;
   try {
     session=new Session(arguments);
   }
@@ -8,49 +6,31 @@
     printHelpMessage();
     return;
   }
-  if (session.getOperation() == Operations.INSERT || session.getOperation() == Operations.COUNTER_ADD) {
-    session.createKeySpaces();
-  }
-  int threadCount=session.getThreads();
-  Thread[] consumers=new Thread[threadCount];
-  PrintStream out=session.getOutputStream();
-  out.println("total,interval_op_rate,interval_key_rate,avg_latency,elapsed_time");
-  int itemsPerThread=session.getKeysPerThread();
-  int modulo=session.getNumKeys() % threadCount;
-  for (int i=0; i < threadCount; i++) {
-    if (i == threadCount - 1)     itemsPerThread+=modulo;
-    consumers[i]=new Consumer(itemsPerThread);
-  }
-  new Producer().start();
-  for (int i=0; i < threadCount; i++) {
-    consumers[i].start();
-  }
-  boolean terminate=false;
-  latency=0;
-  epoch=total=keyCount=0;
-  int interval=session.getProgressInterval();
-  int epochIntervals=session.getProgressInterval() * 10;
-  long testStartTime=System.currentTimeMillis();
-  while (!terminate) {
-    Thread.sleep(100);
-    int alive=0;
-    for (    Thread thread : consumers)     if (thread.isAlive())     alive++;
-    if (alive == 0)     terminate=true;
-    epoch++;
-    if (terminate || epoch > epochIntervals) {
-      epoch=0;
-      oldTotal=total;
-      oldLatency=latency;
-      oldKeyCount=keyCount;
-      total=session.operations.get();
-      keyCount=session.keys.get();
-      latency=session.latency.get();
-      int opDelta=total - oldTotal;
-      int keyDelta=keyCount - oldKeyCount;
-      double latencyDelta=latency - oldLatency;
-      long currentTimeInSeconds=(System.currentTimeMillis() - testStartTime) / 1000;
-      String formattedDelta=(opDelta > 0) ? Double.toString(latencyDelta / (opDelta * 1000)) : "NaN";
-      out.println(String.format("%d,%d,%d,%s,%d",total,opDelta / interval,keyDelta / interval,formattedDelta,currentTimeInSeconds));
+  PrintStream outStream=session.getOutputStream();
+  if (session.sendToDaemon != null) {
+    Socket socket=new Socket(session.sendToDaemon,2159);
+    ObjectOutputStream out=new ObjectOutputStream(socket.getOutputStream());
+    BufferedReader inp=new BufferedReader(new InputStreamReader(socket.getInputStream()));
+    Runtime.getRuntime().addShutdownHook(new ShutDown(socket,out));
+    out.writeObject(session);
+    String line;
+    try {
+      while (!socket.isClosed() && (line=inp.readLine()) != null) {
+        if (line.equals("END")) {
+          out.writeInt(1);
+          break;
+        }
+        outStream.println(line);
+      }
     }
+ catch (    SocketException e) {
+      if (!stopped)       e.printStackTrace();
+    }
+    out.close();
+    inp.close();
+    socket.close();
+  }
+ else {
+    new StressAction(session,outStream).run();
   }
 }
