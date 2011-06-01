@@ -5,20 +5,13 @@
  catch (  Exception e) {
     throw new RuntimeException(e);
   }
-  final long truncatedAt=System.currentTimeMillis();
-  snapshot(Table.getTimestampedSnapshotName("before-truncate"));
-  Runnable runnable=new WrappedRunnable(){
-    public void runMayThrow() throws InterruptedException, IOException {
-      for (      ColumnFamilyStore cfs : concatWithIndexes()) {
-        List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
-        for (        SSTableReader sstable : cfs.getSSTables()) {
-          if (!sstable.newSince(truncatedAt))           truncatedSSTables.add(sstable);
-        }
-        cfs.markCompacted(truncatedSSTables);
-      }
-      invalidateRowCache();
-    }
+  try {
+    Thread.sleep(100);
   }
-;
-  return postFlushExecutor.submit(runnable);
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+  long truncatedAt=System.currentTimeMillis();
+  snapshot(Table.getTimestampedSnapshotName("before-truncate"));
+  return CompactionManager.instance.submitTruncate(this,truncatedAt);
 }
