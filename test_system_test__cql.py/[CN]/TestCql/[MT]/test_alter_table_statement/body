@@ -1,0 +1,33 @@
+def test_alter_table_statement(self):
+    'test ALTER TABLE statement'
+    cursor = init()
+    cursor.execute("\n               CREATE KEYSPACE AlterTableKS WITH strategy_options:replication_factor = '1'\n                   AND strategy_class = 'SimpleStrategy';\n        ")
+    cursor.execute('USE AlterTableKS;')
+    cursor.execute('\n            CREATE COLUMNFAMILY NewCf1 (KEY varint PRIMARY KEY) WITH default_validation = ascii;\n        ')
+    ksdef = thrift_client.describe_keyspace('AlterTableKS')
+    assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
+    cfam = ksdef.cf_defs[0]
+    assert (len(cfam.column_metadata) == 0)
+    cursor.execute('ALTER TABLE NewCf1 ADD name varchar')
+    ksdef = thrift_client.describe_keyspace('AlterTableKS')
+    assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
+    columns = ksdef.cf_defs[0].column_metadata
+    assert (len(columns) == 1)
+    assert (columns[0].name == 'name')
+    assert (columns[0].validation_class == 'org.apache.cassandra.db.marshal.UTF8Type')
+    cursor.execute('ALTER TABLE NewCf1 ALTER name TYPE ascii')
+    ksdef = thrift_client.describe_keyspace('AlterTableKS')
+    assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
+    columns = ksdef.cf_defs[0].column_metadata
+    assert (len(columns) == 1)
+    assert (columns[0].name == 'name')
+    assert (columns[0].validation_class == 'org.apache.cassandra.db.marshal.AsciiType')
+    assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER TABLE NewCf1 ADD name utf8')
+    cursor.execute('ALTER TABLE NewCf1 DROP name')
+    ksdef = thrift_client.describe_keyspace('AlterTableKS')
+    assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
+    columns = ksdef.cf_defs[0].column_metadata
+    assert (len(columns) == 0)
+    assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER TABLE NewCf1 ADD name utf8')
+    assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER TABLE NewCf1 ALTER name TYPE uuid')
+    assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER TABLE NewCf1 DROP name')

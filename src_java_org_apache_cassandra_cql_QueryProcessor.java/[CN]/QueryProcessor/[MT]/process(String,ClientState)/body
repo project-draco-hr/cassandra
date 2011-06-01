@@ -208,6 +208,27 @@ throw ex;
 }
 result.type=CqlResultType.VOID;
 return result;
+case ALTER_TABLE:
+AlterTableStatement alterTable=(AlterTableStatement)statement.statement;
+System.out.println(alterTable);
+validateColumnFamily(keyspace,alterTable.columnFamily);
+clientState.hasColumnFamilyAccess(alterTable.columnFamily,Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new UpdateColumnFamily(alterTable.getCfDef(keyspace)));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
 }
 return null;
 }
