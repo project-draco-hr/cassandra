@@ -1,0 +1,11 @@
+{
+  CfDef cfDef=null;
+  KSMetaData ksm=DatabaseDescriptor.getTableDefinition(keyspace);
+  for (  Map.Entry<String,CFMetaData> cf : ksm.cfMetaData().entrySet()) {
+    CFMetaData cfm=cf.getValue();
+    cfDef=getUpdatedCFDef(CFMetaData.convertToAvro(cfm));
+    if (cfDef != null)     break;
+  }
+  if (cfDef == null)   throw new InvalidRequestException("Index '" + index + "' could not be found in any of the ColumnFamilies of keyspace '"+ keyspace+ "'");
+  return new UpdateColumnFamily(cfDef);
+}
