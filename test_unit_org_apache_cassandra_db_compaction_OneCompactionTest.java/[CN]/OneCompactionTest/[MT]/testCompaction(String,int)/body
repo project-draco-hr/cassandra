@@ -1,0 +1,17 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore store=table.getColumnFamilyStore(columnFamilyName);
+  Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
+  for (int j=0; j < insertsPerTable; j++) {
+    DecoratedKey key=Util.dk(String.valueOf(j));
+    RowMutation rm=new RowMutation("Keyspace1",key.key);
+    rm.add(new QueryPath(columnFamilyName,null,ByteBufferUtil.bytes("0")),ByteBufferUtil.EMPTY_BYTE_BUFFER,j);
+    rm.apply();
+    inserted.add(key);
+    store.forceBlockingFlush();
+    assertEquals(inserted.size(),Util.getRangeSlice(store).size());
+  }
+  CompactionManager.instance.performMajor(store);
+  assertEquals(1,store.getSSTables().size());
+}
