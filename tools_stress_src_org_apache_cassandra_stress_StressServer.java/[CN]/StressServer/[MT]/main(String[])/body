@@ -1,0 +1,23 @@
+{
+  ServerSocket serverSocket=null;
+  CommandLineParser parser=new PosixParser();
+  InetAddress address=InetAddress.getByName("127.0.0.1");
+  try {
+    CommandLine cmd=parser.parse(availableOptions,args);
+    if (cmd.hasOption("h")) {
+      address=InetAddress.getByName(cmd.getOptionValue("h"));
+    }
+  }
+ catch (  ParseException e) {
+    System.err.printf("Usage: ./bin/stressd start|stop|status [-h <host>]");
+    System.exit(1);
+  }
+  try {
+    serverSocket=new ServerSocket(2159,0,address);
+  }
+ catch (  IOException e) {
+    System.err.printf("Could not listen on port: %s:2159.%n",address.getHostAddress());
+    System.exit(1);
+  }
+  for (; ; )   new StressThread(serverSocket.accept()).start();
+}

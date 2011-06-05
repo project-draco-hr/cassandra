@@ -1,0 +1,56 @@
+{
+  long latency, oldLatency;
+  int epoch, total, oldTotal, keyCount, oldKeyCount;
+  if (client.getOperation() == Stress.Operations.INSERT || client.getOperation() == Stress.Operations.COUNTER_ADD)   client.createKeySpaces();
+  int threadCount=client.getThreads();
+  Consumer[] consumers=new Consumer[threadCount];
+  output.println("total,interval_op_rate,interval_key_rate,avg_latency,elapsed_time");
+  int itemsPerThread=client.getKeysPerThread();
+  int modulo=client.getNumKeys() % threadCount;
+  for (int i=0; i < threadCount; i++) {
+    if (i == threadCount - 1)     itemsPerThread+=modulo;
+    consumers[i]=new Consumer(itemsPerThread);
+  }
+  Producer producer=new Producer();
+  producer.start();
+  for (int i=0; i < threadCount; i++)   consumers[i].start();
+  boolean terminate=false;
+  latency=0;
+  epoch=total=keyCount=0;
+  int interval=client.getProgressInterval();
+  int epochIntervals=client.getProgressInterval() * 10;
+  long testStartTime=System.currentTimeMillis();
+  while (!terminate) {
+    if (stop) {
+      producer.stopProducer();
+      for (      Consumer consumer : consumers)       consumer.stopConsume();
+      break;
+    }
+    try {
+      Thread.sleep(100);
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e.getMessage(),e);
+    }
+    int alive=0;
+    for (    Thread thread : consumers)     if (thread.isAlive())     alive++;
+    if (alive == 0)     terminate=true;
+    epoch++;
+    if (terminate || epoch > epochIntervals) {
+      epoch=0;
+      oldTotal=total;
+      oldLatency=latency;
+      oldKeyCount=keyCount;
+      total=client.operations.get();
+      keyCount=client.keys.get();
+      latency=client.latency.get();
+      int opDelta=total - oldTotal;
+      int keyDelta=keyCount - oldKeyCount;
+      double latencyDelta=latency - oldLatency;
+      long currentTimeInSeconds=(System.currentTimeMillis() - testStartTime) / 1000;
+      String formattedDelta=(opDelta > 0) ? Double.toString(latencyDelta / (opDelta * 1000)) : "NaN";
+      output.println(String.format("%d,%d,%d,%s,%d",total,opDelta / interval,keyDelta / interval,formattedDelta,currentTimeInSeconds));
+    }
+  }
+  output.println("END");
+}
