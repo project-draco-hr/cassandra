@@ -1,11 +1,16 @@
 {
   List<String> cfamsSeen=new ArrayList<String>();
-  CFMetaData metadata=validateColumnFamily(keyspace,columnFamily,false);
+  boolean hasCommutativeOperation=false;
+  for (  Map.Entry<Term,Operation> column : getColumns().entrySet()) {
+    if (!column.getValue().isUnary())     hasCommutativeOperation=true;
+    if (hasCommutativeOperation && column.getValue().isUnary())     throw new InvalidRequestException("Mix of commutative and non-commutative operations is not allowed.");
+  }
+  CFMetaData metadata=validateColumnFamily(keyspace,columnFamily,hasCommutativeOperation);
   if (!(cfamsSeen.contains(columnFamily))) {
     clientState.hasColumnFamilyAccess(columnFamily,Permission.WRITE);
     cfamsSeen.add(columnFamily);
   }
-  List<RowMutation> rowMutations=new LinkedList<RowMutation>();
+  List<IMutation> rowMutations=new LinkedList<IMutation>();
   for (  Term key : keys) {
     rowMutations.add(mutationForKey(keyspace,key.getByteBuffer(getKeyType(keyspace)),metadata,timestamp));
   }
