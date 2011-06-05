@@ -102,7 +102,7 @@ create.validate();
 clientState.hasKeyspaceListAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
-KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<org.apache.cassandra.thrift.CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
+KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
 ThriftValidation.validateKsDef(ksd);
 applyMigrationOnStage(new AddKeyspace(KSMetaData.fromThrift(ksd)));
 }
@@ -143,20 +143,43 @@ clientState.hasColumnFamilyListAccess(Permission.WRITE);
 validateSchemaAgreement();
 CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(keyspace,createIdx.getColumnFamily()));
 if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
+boolean columnExists=false;
 ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
-ColumnDefinition columnDef=oldCfm.getColumn_metadata().get(columnName);
-if (columnDef != null) {
-if (columnDef.getIndexType() != null) throw new InvalidRequestException("Index exists");
-columnDef.setIndexName(createIdx.getIndexName());
-columnDef.setIndexType(org.apache.cassandra.thrift.IndexType.KEYS);
+CfDef cf_def=CFMetaData.convertToThrift(oldCfm);
+for (ColumnDef cd : cf_def.column_metadata) {
+if (cd.name.equals(columnName)) {
+if (cd.index_type != null) throw new InvalidRequestException("Index already exists");
+logger.debug("Updating column {} definition for index {}",oldCfm.comparator.getString(columnName),createIdx.getIndexName());
+cd.setIndex_type(IndexType.KEYS);
+cd.setIndex_name(createIdx.getIndexName());
+columnExists=true;
+break;
 }
- else {
-columnDef=new ColumnDefinition(columnName,DatabaseDescriptor.getValueValidator(keyspace,createIdx.getColumnFamily(),columnName),org.apache.cassandra.thrift.IndexType.KEYS,createIdx.getIndexName());
 }
-CfDef cfamilyDef=CFMetaData.convertToAvro(oldCfm);
-cfamilyDef.column_metadata.add(columnDef.deflate());
+if (!columnExists) throw new InvalidRequestException("No column definition found for column " + oldCfm.comparator.getString(columnName));
+CFMetaData.addDefaultIndexNames(cf_def);
+ThriftValidation.validateCfDef(cf_def,oldCfm);
 try {
-applyMigrationOnStage(new UpdateColumnFamily(cfamilyDef));
+applyMigrationOnStage(new UpdateColumnFamily(CFMetaData.convertToAvro(cf_def)));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case DROP_INDEX:
+DropIndexStatement dropIdx=(DropIndexStatement)statement.statement;
+clientState.hasColumnFamilyListAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(dropIdx.generateMutation(clientState.getKeyspace()));
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
