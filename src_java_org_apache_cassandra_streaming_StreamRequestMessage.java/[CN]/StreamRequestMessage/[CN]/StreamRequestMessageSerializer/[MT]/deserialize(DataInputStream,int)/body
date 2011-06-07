@@ -15,6 +15,11 @@
     }
     OperationType type=OperationType.RESTORE_REPLICA_COUNT;
     if (version > MessagingService.VERSION_07)     type=OperationType.valueOf(dis.readUTF());
-    return new StreamRequestMessage(target,ranges,table,sessionId,type);
+    List<ColumnFamilyStore> stores=new ArrayList<ColumnFamilyStore>();
+    if (version > MessagingService.VERSION_080) {
+      int cfsSize=dis.readInt();
+      for (int i=0; i < cfsSize; ++i)       stores.add(Table.open(table).getColumnFamilyStore(dis.readInt()));
+    }
+    return new StreamRequestMessage(target,ranges,table,stores,sessionId,type);
   }
 }
