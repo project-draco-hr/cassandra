@@ -1,0 +1,18 @@
+{
+  ColumnFamily cf1=ColumnFamily.create("Keyspace1","Standard1");
+  cf1.addColumn(column("one","A",0));
+  ColumnFamily cf2=ColumnFamily.create("Keyspace1","Standard1");
+  cf2.delete((int)(System.currentTimeMillis() / 1000),1);
+  ColumnFamily resolved=RowRepairResolver.resolveSuperset(Arrays.asList(cf1,cf2));
+  assertColumns(resolved);
+  assertTrue(resolved.isMarkedForDelete());
+  assertEquals(1,resolved.getMarkedForDeleteAt());
+  ColumnFamily scf1=ColumnFamily.create("Keyspace1","Super1");
+  scf1.addColumn(superColumn(scf1,"super-foo",column("one","A",0)));
+  ColumnFamily scf2=ColumnFamily.create("Keyspace1","Super1");
+  scf2.delete((int)(System.currentTimeMillis() / 1000),1);
+  ColumnFamily superResolved=RowRepairResolver.resolveSuperset(Arrays.asList(scf1,scf2));
+  assertColumns(superResolved);
+  assertTrue(superResolved.isMarkedForDelete());
+  assertEquals(1,superResolved.getMarkedForDeleteAt());
+}
