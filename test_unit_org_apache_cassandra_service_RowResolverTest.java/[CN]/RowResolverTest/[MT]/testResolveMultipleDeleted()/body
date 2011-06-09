@@ -1,0 +1,34 @@
+{
+  ColumnFamily cf1=ColumnFamily.create("Keyspace1","Standard1");
+  cf1.delete((int)(System.currentTimeMillis() / 1000),0);
+  ColumnFamily cf2=ColumnFamily.create("Keyspace1","Standard1");
+  cf2.addColumn(column("one","A",1));
+  cf2.addColumn(column("two","A",1));
+  ColumnFamily cf3=ColumnFamily.create("Keyspace1","Standard1");
+  cf3.addColumn(column("two","B",3));
+  ColumnFamily cf4=ColumnFamily.create("Keyspace1","Standard1");
+  cf4.delete((int)(System.currentTimeMillis() / 1000),2);
+  ColumnFamily resolved=RowRepairResolver.resolveSuperset(Arrays.asList(cf1,cf2,cf3,cf4));
+  assertColumns(resolved,"two");
+  assertColumn(resolved,"two","B",3);
+  assertTrue(resolved.isMarkedForDelete());
+  assertEquals(2,resolved.getMarkedForDeleteAt());
+  ColumnFamily scf1=ColumnFamily.create("Keyspace1","Super1");
+  scf1.delete((int)(System.currentTimeMillis() / 1000),0);
+  ColumnFamily scf2=ColumnFamily.create("Keyspace1","Super1");
+  scf2.addColumn(superColumn(scf2,"super1",column("one","A",1),column("two","A",1)));
+  ColumnFamily scf3=ColumnFamily.create("Keyspace1","Super1");
+  scf3.addColumn(superColumn(scf3,"super1",column("two","B",3)));
+  scf3.addColumn(superColumn(scf3,"super2",column("three","A",3),column("four","A",3)));
+  ColumnFamily scf4=ColumnFamily.create("Keyspace1","Super1");
+  scf4.delete((int)(System.currentTimeMillis() / 1000),2);
+  ColumnFamily superResolved=RowRepairResolver.resolveSuperset(Arrays.asList(scf1,scf2,scf3,scf4));
+  assertColumns(superResolved,"super1","super2");
+  assertSubColumns(superResolved,"super1","two");
+  assertSubColumn(superResolved,"super1","two","B",3);
+  assertSubColumns(superResolved,"super2","four","three");
+  assertSubColumn(superResolved,"super2","three","A",3);
+  assertSubColumn(superResolved,"super2","four","A",3);
+  assertTrue(superResolved.isMarkedForDelete());
+  assertEquals(2,superResolved.getMarkedForDeleteAt());
+}
