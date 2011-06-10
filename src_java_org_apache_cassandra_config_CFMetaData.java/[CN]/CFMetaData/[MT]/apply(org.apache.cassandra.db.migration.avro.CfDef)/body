@@ -49,4 +49,15 @@
     ColumnDefinition cd=new ColumnDefinition(def.name,dValidClass,def.index_type == null ? null : org.apache.cassandra.thrift.IndexType.valueOf(def.index_type.toString()),def.index_name == null ? null : def.index_name.toString());
     column_metadata.put(cd.name,cd);
   }
+  if (cf_def.compaction_strategy != null) {
+    try {
+      compactionStrategyClass=(Class<? extends AbstractCompactionStrategy>)Class.forName(cf_def.compaction_strategy.toString());
+    }
+ catch (    Exception e) {
+      throw new RuntimeException("Could not create Compaction Strategy of type " + cf_def.compaction_strategy.toString(),e);
+    }
+  }
+  if (null != cf_def.compaction_strategy_options) {
+    for (    Map.Entry<CharSequence,CharSequence> e : cf_def.compaction_strategy_options.entrySet())     compactionStrategyOptions.put(e.getKey().toString(),e.getValue().toString());
+  }
 }

@@ -1,0 +1,33 @@
+{
+  List<Pair<T,Long>> sortedFiles=new ArrayList<Pair<T,Long>>(files);
+  Collections.sort(sortedFiles,new Comparator<Pair<T,Long>>(){
+    public int compare(    Pair<T,Long> p1,    Pair<T,Long> p2){
+      return p1.right.compareTo(p2.right);
+    }
+  }
+);
+  Map<List<T>,Long> buckets=new HashMap<List<T>,Long>();
+  for (  Pair<T,Long> pair : sortedFiles) {
+    long size=pair.right;
+    boolean bFound=false;
+    for (    Entry<List<T>,Long> entry : buckets.entrySet()) {
+      List<T> bucket=entry.getKey();
+      long averageSize=entry.getValue();
+      if ((size > (averageSize / 2) && size < (3 * averageSize) / 2) || (size < minSSTableSize && averageSize < minSSTableSize)) {
+        buckets.remove(bucket);
+        long totalSize=bucket.size() * averageSize;
+        averageSize=(totalSize + size) / (bucket.size() + 1);
+        bucket.add(pair.left);
+        buckets.put(bucket,averageSize);
+        bFound=true;
+        break;
+      }
+    }
+    if (!bFound) {
+      ArrayList<T> bucket=new ArrayList<T>();
+      bucket.add(pair.left);
+      buckets.put(bucket,size);
+    }
+  }
+  return new LinkedList<List<T>>(buckets.keySet());
+}

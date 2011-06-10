@@ -18,9 +18,10 @@
           logger.error("No file to compact for user defined compaction");
         }
  else         if ((sstables=cfs.getDataTracker().markCompacting(sstables,1,Integer.MAX_VALUE)) != null) {
-          String location=cfs.table.getDataFileLocation(1);
           try {
-            doCompactionWithoutSizeEstimation(cfs,sstables,gcBefore,location);
+            AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
+            AbstractCompactionTask task=strategy.getUserDefinedTask(sstables,gcBefore);
+            task.execute(executor);
           }
   finally {
             cfs.getDataTracker().unmarkCompacting(sstables);
