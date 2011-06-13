@@ -1,0 +1,25 @@
+{
+  ColumnFamily baseColumnFamily;
+  DataOutputBuffer bufOut=new DataOutputBuffer();
+  RowMutation rm;
+  Message message;
+  Column column;
+  baseColumnFamily=new ColumnFamily(ColumnFamilyType.Standard,DatabaseDescriptor.getComparator(keyspace,columnFamily),DatabaseDescriptor.getSubComparator(keyspace,columnFamily),CFMetaData.getId(keyspace,columnFamily));
+  for (  ColumnFamily cf : columnFamilies) {
+    bufOut.reset();
+    ColumnFamily.serializer().serializeWithIndexes(cf,bufOut);
+    byte[] data=new byte[bufOut.getLength()];
+    System.arraycopy(bufOut.getData(),0,data,0,bufOut.getLength());
+    column=new Column(FBUtilities.toByteBuffer(cf.id()),ByteBuffer.wrap(data),0);
+    baseColumnFamily.addColumn(column);
+  }
+  rm=new RowMutation(keyspace,ByteBuffer.wrap(key));
+  rm.add(baseColumnFamily);
+  try {
+    message=rm.makeRowMutationMessage(StorageService.Verb.BINARY,MessagingService.version_);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  return message;
+}

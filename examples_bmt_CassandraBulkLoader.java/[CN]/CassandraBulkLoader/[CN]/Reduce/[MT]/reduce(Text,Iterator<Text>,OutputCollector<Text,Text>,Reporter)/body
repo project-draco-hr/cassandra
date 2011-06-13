@@ -1,0 +1,34 @@
+{
+  ColumnFamily columnFamily;
+  String keyspace="Keyspace1";
+  String cfName="Super1";
+  Message message;
+  List<ColumnFamily> columnFamilies;
+  columnFamilies=new LinkedList<ColumnFamily>();
+  String line;
+  columnFamily=ColumnFamily.create(keyspace,cfName);
+  while (values.hasNext()) {
+    line=values.next().toString();
+    String[] fields=line.split("\1");
+    String SuperColumnName=fields[1];
+    String ColumnName=fields[2];
+    String ColumnValue=fields[3];
+    int timestamp=0;
+    columnFamily.addColumn(new QueryPath(cfName,ByteBufferUtil.bytes(SuperColumnName),ByteBufferUtil.bytes(ColumnName)),ByteBufferUtil.bytes(ColumnValue),timestamp);
+  }
+  columnFamilies.add(columnFamily);
+  message=createMessage(keyspace,key.getBytes(),cfName,columnFamilies);
+  List<IAsyncResult> results=new ArrayList<IAsyncResult>();
+  for (  InetAddress endpoint : StorageService.instance.getNaturalEndpoints(keyspace,ByteBufferUtil.bytes(key))) {
+    results.add(MessagingService.instance().sendRR(message,endpoint));
+  }
+  for (  IAsyncResult result : results) {
+    try {
+      result.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+    }
+ catch (    TimeoutException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  output.collect(key,new Text(" inserted into Cassandra node(s)"));
+}

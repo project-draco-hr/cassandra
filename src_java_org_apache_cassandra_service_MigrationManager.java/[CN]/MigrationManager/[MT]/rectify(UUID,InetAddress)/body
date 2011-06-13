@@ -1,14 +1,11 @@
 {
   UUID myVersion=DatabaseDescriptor.getDefsVersion();
-  if (theirVersion.timestamp() == myVersion.timestamp())   return;
- else   if (theirVersion.timestamp() > myVersion.timestamp()) {
-    logger.debug("My data definitions are old. Asking for updates since {}",myVersion.toString());
-    announce(myVersion,Collections.singleton(endpoint));
-  }
- else   if (!StorageService.instance.isClientMode()) {
+  if (theirVersion.timestamp() < myVersion.timestamp() && !StorageService.instance.isClientMode()) {
     if (lastPushed.get(endpoint) == null || theirVersion.timestamp() >= lastPushed.get(endpoint).timestamp()) {
       logger.debug("Schema on {} is old. Sending updates since {}",endpoint,theirVersion);
-      pushMigrations(theirVersion,myVersion,endpoint);
+      Collection<IColumn> migrations=Migration.getLocalMigrations(theirVersion,myVersion);
+      pushMigrations(endpoint,migrations);
+      lastPushed.put(endpoint,TimeUUIDType.instance.compose(Iterables.getLast(migrations).name()));
     }
  else {
       logger.debug("Waiting for {} to process migrations up to {} before sending more",endpoint,lastPushed.get(endpoint));
