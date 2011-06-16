@@ -1,9 +1,7 @@
 {
-  ci=FBUtilities.getCollatingIterator();
-  for (  SSTableReader sstable : sstables) {
-    ci.addIterator(new KeyIterator(sstable.descriptor));
-  }
-  iter=new ReducingIterator<DecoratedKey,DecoratedKey>(ci){
+  ArrayList<KeyIterator> iters=new ArrayList<KeyIterator>();
+  for (  SSTableReader sstable : sstables)   iters.add(new KeyIterator(sstable.descriptor));
+  mi=MergeIterator.get(iters,DecoratedKey.comparator,new MergeIterator.Reducer<DecoratedKey,DecoratedKey>(){
     DecoratedKey reduced=null;
     public void reduce(    DecoratedKey current){
       reduced=current;
@@ -12,5 +10,5 @@
       return reduced;
     }
   }
-;
+);
 }

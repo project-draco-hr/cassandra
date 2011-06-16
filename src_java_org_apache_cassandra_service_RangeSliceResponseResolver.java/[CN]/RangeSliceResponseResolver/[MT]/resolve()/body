@@ -1,23 +1,20 @@
 {
-  CollatingIterator collator=new CollatingIterator(new Comparator<Pair<Row,InetAddress>>(){
-    public int compare(    Pair<Row,InetAddress> o1,    Pair<Row,InetAddress> o2){
-      return o1.left.key.compareTo(o2.left.key);
-    }
-  }
-);
+  ArrayList<RowIterator> iters=new ArrayList<RowIterator>(responses.size());
   int n=0;
   for (  Message response : responses) {
     RangeSliceReply reply=RangeSliceReply.read(response.getMessageBody(),response.getVersion());
     n=Math.max(n,reply.rows.size());
-    collator.addIterator(new RowIterator(reply.rows.iterator(),response.getFrom()));
+    iters.add(new RowIterator(reply.rows.iterator(),response.getFrom()));
   }
-  return new ReducingIterator<Pair<Row,InetAddress>,Row>(collator){
+  MergeIterator<Pair<Row,InetAddress>,Row> iter=MergeIterator.get(iters,new Comparator<Pair<Row,InetAddress>>(){
+    public int compare(    Pair<Row,InetAddress> o1,    Pair<Row,InetAddress> o2){
+      return o1.left.key.compareTo(o2.left.key);
+    }
+  }
+,new MergeIterator.Reducer<Pair<Row,InetAddress>,Row>(){
     List<ColumnFamily> versions=new ArrayList<ColumnFamily>(sources.size());
     List<InetAddress> versionSources=new ArrayList<InetAddress>(sources.size());
     DecoratedKey key;
-    @Override protected boolean isEqual(    Pair<Row,InetAddress> o1,    Pair<Row,InetAddress> o2){
-      return o1.left.key.equals(o2.left.key);
-    }
     public void reduce(    Pair<Row,InetAddress> current){
       key=current.left.key;
       versions.add(current.left.cf);
@@ -39,5 +36,8 @@
       return new Row(key,resolved);
     }
   }
-;
+);
+  List<Row> resolvedRows=new ArrayList<Row>(n);
+  while (iter.hasNext())   resolvedRows.add(iter.next());
+  return resolvedRows;
 }
