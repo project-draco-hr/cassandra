@@ -1,0 +1,27 @@
+{
+  if (source.isEmpty())   return ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  long millis;
+  ByteBuffer idBytes=null;
+  if (source.toLowerCase().equals("now")) {
+    millis=System.currentTimeMillis();
+    idBytes=ByteBufferUtil.bytes(millis);
+  }
+ else   if (source.matches("^\\d+$")) {
+    try {
+      idBytes=ByteBufferUtil.bytes(Long.parseLong(source));
+    }
+ catch (    NumberFormatException e) {
+      throw new MarshalException(String.format("unable to make long (for date) from:  '%s'",source),e);
+    }
+  }
+ else {
+    try {
+      millis=DateUtils.parseDate(source,iso8601Patterns).getTime();
+      idBytes=ByteBufferUtil.bytes(millis);
+    }
+ catch (    ParseException e1) {
+      throw new MarshalException(String.format("unable to coerce '%s' to a  formatted date (long)",source),e1);
+    }
+  }
+  return idBytes;
+}
