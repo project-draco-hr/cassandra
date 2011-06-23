@@ -3,9 +3,15 @@
   long keySize=0;
   for (  DecoratedKey key : columnFamilies.keySet())   keySize+=key.key.remaining();
   long estimatedSize=(long)((keySize + keySize + currentThroughput.get()) * 1.2);
+  SSTableReader ssTable;
   SSTableWriter writer=cfs.createFlushWriter(columnFamilies.size(),estimatedSize,context);
-  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet())   writer.append(entry.getKey(),entry.getValue());
-  SSTableReader ssTable=writer.closeAndOpenReader();
+  try {
+    for (    Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet())     writer.append(entry.getKey(),entry.getValue());
+    ssTable=writer.closeAndOpenReader();
+  }
+  finally {
+    writer.cleanupIfNecessary();
+  }
   logger.info(String.format("Completed flushing %s (%d bytes)",ssTable.getFilename(),new File(ssTable.getFilename()).length()));
   return ssTable;
 }
