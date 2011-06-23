@@ -3,11 +3,18 @@
   allowCoreThreadTimeOut(true);
   this.setRejectedExecutionHandler(new RejectedExecutionHandler(){
     public void rejectedExecution(    Runnable task,    ThreadPoolExecutor executor){
+      ((DebuggableThreadPoolExecutor)executor).onInitialRejection(task);
       BlockingQueue<Runnable> queue=executor.getQueue();
       while (true) {
-        if (executor.isShutdown())         throw new RejectedExecutionException("ThreadPoolExecutor has shut down");
+        if (executor.isShutdown()) {
+          ((DebuggableThreadPoolExecutor)executor).onFinalRejection(task);
+          throw new RejectedExecutionException("ThreadPoolExecutor has shut down");
+        }
         try {
-          if (queue.offer(task,1000,TimeUnit.MILLISECONDS))           break;
+          if (queue.offer(task,1000,TimeUnit.MILLISECONDS)) {
+            ((DebuggableThreadPoolExecutor)executor).onFinalAccept(task);
+            break;
+          }
         }
  catch (        InterruptedException e) {
           throw new AssertionError(e);
