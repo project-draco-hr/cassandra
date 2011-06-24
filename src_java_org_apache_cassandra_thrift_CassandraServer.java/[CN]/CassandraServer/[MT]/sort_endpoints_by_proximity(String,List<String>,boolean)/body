@@ -1,0 +1,25 @@
+{
+  try {
+    List<String> results=new ArrayList<String>();
+    InetAddress address=InetAddress.getByName(endpoint);
+    boolean endpointValid=null != Gossiper.instance.getEndpointStateForEndpoint(address);
+    String datacenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpointValid ? address : FBUtilities.getLocalAddress());
+    List<InetAddress> addresses=new ArrayList<InetAddress>();
+    for (    String ep : endpoints) {
+      addresses.add(InetAddress.getByName(ep));
+    }
+    IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+    if (!endpointValid && snitch instanceof DynamicEndpointSnitch)     snitch=((DynamicEndpointSnitch)snitch).subsnitch;
+    snitch.sortByProximity(address,addresses);
+    for (    InetAddress ep : addresses) {
+      String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
+      if (FailureDetector.instance.isAlive(ep) && (!restrictToSameDC || datacenter.equals(dc))) {
+        results.add(ep.getHostName());
+      }
+    }
+    return results;
+  }
+ catch (  UnknownHostException e) {
+    throw new InvalidRequestException(e.getMessage());
+  }
+}
