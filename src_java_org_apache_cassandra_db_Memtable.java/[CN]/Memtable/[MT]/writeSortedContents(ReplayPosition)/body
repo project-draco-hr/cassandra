@@ -6,7 +6,13 @@
   SSTableReader ssTable;
   SSTableWriter writer=cfs.createFlushWriter(columnFamilies.size(),estimatedSize,context);
   try {
-    for (    Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet())     writer.append(entry.getKey(),entry.getValue());
+    for (    Map.Entry<DecoratedKey,ColumnFamily> entry : columnFamilies.entrySet()) {
+      ColumnFamily cf=entry.getValue();
+      if (cf.isMarkedForDelete()) {
+        ColumnFamilyStore.removeDeletedColumnsOnly(cf,Integer.MIN_VALUE);
+      }
+      writer.append(entry.getKey(),cf);
+    }
     ssTable=writer.closeAndOpenReader();
   }
   finally {
