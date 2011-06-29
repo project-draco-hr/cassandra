@@ -9,26 +9,11 @@
   keyspace=ConfigHelper.getInputKeyspace(conf);
   try {
     if (socket != null && socket.isOpen())     return;
-    List<String> locationsAttempted=new ArrayList<String>();
-    for (Iterator<String> it=getLocations(conf); it.hasNext(); ) {
-      String location=it.next();
-      try {
-        socket=new TSocket(location,ConfigHelper.getRpcPort(conf));
-        TBinaryProtocol binaryProtocol=new TBinaryProtocol(new TFramedTransport(socket));
-        client=new Cassandra.Client(binaryProtocol);
-        socket.open();
-        break;
-      }
- catch (      TException e) {
-        logger.info("failed to connect to " + location + ':'+ ConfigHelper.getRpcPort(conf),e);
-        locationsAttempted.add(location);
-        client=null;
-      }
-    }
-    if (client == null) {
-      String message=String.format("For the split %s there were no locations %salive: %s",split,(ConfigHelper.getInputSplitUseOnlySameDCReplica(conf) ? "(from same DC) " : ""),StringUtils.join(locationsAttempted,", "));
-      throw new RuntimeException(message);
-    }
+    String location=getLocation();
+    socket=new TSocket(location,ConfigHelper.getRpcPort(conf));
+    TBinaryProtocol binaryProtocol=new TBinaryProtocol(new TFramedTransport(socket));
+    client=new Cassandra.Client(binaryProtocol);
+    socket.open();
     client.set_keyspace(keyspace);
     if (ConfigHelper.getInputKeyspaceUserName(conf) != null) {
       Map<String,String> creds=new HashMap<String,String>();
