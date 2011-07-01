@@ -1,14 +1,9 @@
 {
   CompactionManagerMBean cm=probe.getCompactionManagerProxy();
-  for (  CompactionInfo c : cm.getCompactions()) {
-    outs.println("compaction type: " + c.getTaskType());
-    outs.println("keyspace: " + c.getKeyspace());
-    outs.println("column family: " + c.getColumnFamily());
-    outs.println("bytes compacted: " + c.getBytesComplete());
-    outs.println("bytes total: " + c.getTotalBytes());
-    String percentComplete=c.getTotalBytes() == 0 ? "n/a" : new DecimalFormat("#.##").format((double)c.getBytesComplete() / c.getTotalBytes() * 100) + "%";
-    outs.println("compaction progress: " + percentComplete);
-    outs.println("-----------------");
-  }
   outs.println("pending tasks: " + cm.getPendingTasks());
+  if (cm.getCompactions().size() > 0)   outs.printf("%25s%16s%16s%16s%16s%10s%n","compaction type","keyspace","column family","bytes compacted","bytes total","progress");
+  for (  CompactionInfo c : cm.getCompactions()) {
+    String percentComplete=c.getTotalBytes() == 0 ? "n/a" : new DecimalFormat("0.00").format((double)c.getBytesComplete() / c.getTotalBytes() * 100) + "%";
+    outs.printf("%25s%16s%16s%16s%16s%10s%n",c.getTaskType(),c.getKeyspace(),c.getColumnFamily(),c.getBytesComplete(),c.getTotalBytes(),percentComplete);
+  }
 }
