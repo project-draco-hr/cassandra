@@ -3,26 +3,42 @@
     logger.debug("Receiving stream");
     logger.debug("Creating file for {}",localFile.getFilename());
   }
-  FileOutputStream fos=new FileOutputStream(localFile.getFilename(),true);
-  FileChannel fc=fos.getChannel();
-  long offset=0;
-  try {
-    for (    Pair<Long,Long> section : localFile.sections) {
-      long length=section.right - section.left;
-      long bytesRead=0;
-      while (bytesRead < length) {
-        bytesRead=readnwrite(length,bytesRead,offset,fc);
-      }
-      offset+=length;
+  SSTableReader reader=null;
+  if (remoteFile.estimatedKeys > 0) {
+    logger.debug("Estimated keys {}",remoteFile.estimatedKeys);
+    DataInputStream dis=new DataInputStream(socketChannel.socket().getInputStream());
+    try {
+      reader=streamIn(dis,localFile,remoteFile);
+    }
+ catch (    IOException ex) {
+      retry();
+      throw ex;
+    }
+ finally {
+      dis.close();
     }
   }
- catch (  IOException ex) {
-    session.retry(remoteFile);
-    FileUtils.deleteWithConfirm(new File(localFile.getFilename()));
-    throw ex;
-  }
+ else {
+    FileOutputStream fos=new FileOutputStream(localFile.getFilename(),true);
+    FileChannel fc=fos.getChannel();
+    long offset=0;
+    try {
+      for (      Pair<Long,Long> section : localFile.sections) {
+        long length=section.right - section.left;
+        long bytesRead=0;
+        while (bytesRead < length) {
+          bytesRead=readnwrite(length,bytesRead,offset,fc);
+        }
+        offset+=length;
+      }
+    }
+ catch (    IOException ex) {
+      retry();
+      throw ex;
+    }
  finally {
-    fc.close();
+      fc.close();
+    }
   }
-  session.finished(remoteFile,localFile);
+  session.finished(remoteFile,localFile,reader);
 }
