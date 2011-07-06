@@ -9,6 +9,17 @@
     rm.apply();
     if (i % 2 == 0)     store.forceBlockingFlush();
   }
-  CompactionManager.instance.performMajor(store);
+  Collection<SSTableReader> toCompact=store.getSSTables();
+  for (int i=1; i < 5; i++) {
+    DecoratedKey key=Util.dk(String.valueOf(i));
+    RowMutation rm=new RowMutation(TABLE1,key.key);
+    rm.add(new QueryPath("Standard2",null,ByteBufferUtil.bytes(String.valueOf(i))),ByteBufferUtil.EMPTY_BYTE_BUFFER,i);
+    rm.apply();
+  }
+  store.forceBlockingFlush();
+  SSTableReader tmpSSTable=null;
+  for (  SSTableReader sstable : store.getSSTables())   if (!toCompact.contains(sstable))   tmpSSTable=sstable;
+  CompactionManager.instance.doCompaction(store,toCompact,(int)(System.currentTimeMillis() / 1000) - store.metadata.getGcGraceSeconds());
+  store.markCompacted(Collections.singleton(tmpSSTable));
   assertEquals(4,Util.getRangeSlice(store).size());
 }
