@@ -1,6 +1,4 @@
 {
-  EstimatedHistogram rowSizes=SSTable.defaultRowHistogram();
-  EstimatedHistogram columnCounts=SSTable.defaultColumnHistogram();
   long rows=0L;
   DecoratedKey key;
   CompactionController controller=new CompactionController(cfs,Collections.<SSTableReader>emptyList(),Integer.MAX_VALUE,true);
@@ -10,14 +8,15 @@
     SSTableIdentityIterator iter=new SSTableIdentityIterator(cfs.metadata,dfile,key,dfile.getFilePointer(),dataSize,true);
     AbstractCompactedRow row=controller.getCompactedRow(iter);
     updateCache(key,dataSize,row);
-    rowSizes.add(dataSize);
-    columnCounts.add(row.columnCount());
+    sstableMetadataCollector.addRowSize(dataSize);
+    sstableMetadataCollector.addColumnCount(row.columnCount());
+    sstableMetadataCollector.updateMaxTimestamp(row.maxTimestamp());
     iwriter.afterAppend(key,writerDfile.getFilePointer());
     ByteBufferUtil.writeWithShortLength(key.key,writerDfile);
     row.write(writerDfile);
     rows++;
   }
-  writeMetadata(desc,rowSizes,columnCounts,ReplayPosition.NONE);
+  writeMetadata(desc,sstableMetadataCollector.finalizeMetadata());
   if (writerDfile.getFilePointer() != dfile.getFilePointer()) {
     writerDfile.setLength(writerDfile.getFilePointer());
   }

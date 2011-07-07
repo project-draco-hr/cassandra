@@ -1,9 +1,8 @@
 {
-  EstimatedHistogram rowSizes=SSTable.defaultRowHistogram();
-  EstimatedHistogram columnCounts=SSTable.defaultColumnHistogram();
   long rows=0;
   DecoratedKey key;
   long rowPosition=0;
+  ColumnFamily cf=ColumnFamily.create(cfs.metadata);
   while (rowPosition < dfile.length()) {
     key=SSTableReader.decodeKey(StorageService.getPartitioner(),desc,ByteBufferUtil.readWithShortLength(dfile));
     iwriter.afterAppend(key,rowPosition);
@@ -11,13 +10,13 @@
     rowPosition=dfile.getFilePointer() + dataSize;
     IndexHelper.skipBloomFilter(dfile);
     IndexHelper.skipIndex(dfile);
-    ColumnFamily.serializer().deserializeFromSSTableNoColumns(ColumnFamily.create(cfs.metadata),dfile);
+    ColumnFamily.serializer().deserializeFromSSTableNoColumns(cf,dfile);
+    ColumnFamily.serializer().observeColumnsInSSTable(cfs.metadata,dfile,sstableMetadataCollector);
     updateCache(key,dataSize,null);
-    rowSizes.add(dataSize);
-    columnCounts.add(dfile.readInt());
+    sstableMetadataCollector.addRowSize(dataSize);
     dfile.seek(rowPosition);
     rows++;
   }
-  writeMetadata(desc,rowSizes,columnCounts,ReplayPosition.NONE);
+  writeMetadata(desc,sstableMetadataCollector.finalizeMetadata());
   return rows;
 }
