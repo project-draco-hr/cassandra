@@ -7,6 +7,10 @@
     }
   }
   FBUtilities.sortSampledKeys(keys,range);
-  if (keys.size() < 3)   return partitioner.midpoint(range.left,range.right);
- else   return keys.get(keys.size() / 2).token;
+  Token token=keys.size() < 3 ? partitioner.midpoint(range.left,range.right) : keys.get(keys.size() / 2).token;
+  if (token instanceof StringToken) {
+    token=new StringToken(((String)token.token).replaceAll(VersionedValue.DELIMITER_STR,""));
+    if (tokenMetadata_.getTokenToEndpointMap().containsKey(token))     throw new RuntimeException("Unable to compute unique token for new node -- specify one manually with initial_token");
+  }
+  return token;
 }
