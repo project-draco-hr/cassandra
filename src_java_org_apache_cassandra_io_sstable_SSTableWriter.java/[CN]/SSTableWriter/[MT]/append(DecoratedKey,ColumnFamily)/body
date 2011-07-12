@@ -1,2 +1,11 @@
 {
+  long startPosition=beforeAppend(decoratedKey);
+  ByteBufferUtil.writeWithShortLength(decoratedKey.key,dataFile);
+  ColumnIndexer.RowHeader header=ColumnIndexer.serialize(cf);
+  dataFile.writeLong(header.serializedSize() + cf.serializedSizeForSSTable());
+  int columnCount=ColumnFamily.serializer().serializeWithIndexes(cf,header,dataFile);
+  afterAppend(decoratedKey,startPosition);
+  sstableMetadataCollector.updateMaxTimestamp(cf.maxTimestamp());
+  sstableMetadataCollector.addRowSize(dataFile.getFilePointer() - startPosition);
+  sstableMetadataCollector.addColumnCount(columnCount);
 }
