@@ -1,7 +1,12 @@
 {
   if (logger.isDebugEnabled())   logger.debug("Finished {}. Sending ack to {}",remoteFile,this);
-  Future<SSTableReader> future=CompactionManager.instance.submitSSTableBuild(localFile.desc,remoteFile.type);
-  buildFutures.add(future);
+  if (reader != null) {
+    readers.add(reader);
+  }
+ else {
+    Future<SSTableReader> future=CompactionManager.instance.submitSSTableBuild(localFile.desc,remoteFile.type);
+    buildFutures.add(future);
+  }
   files.remove(remoteFile);
   if (remoteFile.equals(current))   current=null;
   StreamReply reply=new StreamReply(remoteFile.getFilename(),getSessionId(),StreamReply.Status.FILE_FINISHED);

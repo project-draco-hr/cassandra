@@ -1,7 +1,13 @@
 {
-  file.seek(columnPosition - 4);
   ColumnFamily cf=columnFamily.cloneMeShallow();
-  ColumnFamily.serializer().deserializeColumns(file,cf,false,fromRemote);
+  if (input instanceof BufferedRandomAccessFile) {
+    BufferedRandomAccessFile file=(BufferedRandomAccessFile)input;
+    file.seek(columnPosition - 4);
+    ColumnFamily.serializer().deserializeColumns(inputWithTracker,cf,false,fromRemote);
+  }
+ else {
+    ColumnFamily.serializer().deserializeColumns(inputWithTracker,cf,columnCount,false,fromRemote);
+  }
   if (validateColumns) {
     try {
       cf.validateColumnFields();
