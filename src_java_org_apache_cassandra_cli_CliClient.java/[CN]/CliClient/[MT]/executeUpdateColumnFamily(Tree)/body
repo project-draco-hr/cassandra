@@ -1,8 +1,9 @@
 {
   if (!CliMain.isConnected() || !hasKeySpace())   return;
   String cfName=CliCompiler.getColumnFamily(statement,keyspacesMap.get(keySpace).cf_defs);
-  CfDef cfDef=getCfDef(cfName);
   try {
+    CfDef cfDef=getCfDef(thriftClient.describe_keyspace(this.keySpace),cfName);
+    if (cfDef == null)     throw new RuntimeException("Column Family " + cfName + " was not found in the current keyspace.");
     String mySchemaVersion=thriftClient.system_update_column_family(updateCfDefAttributes(statement,cfDef));
     sessionState.out.println(mySchemaVersion);
     validateSchemaIsSettled(mySchemaVersion);
