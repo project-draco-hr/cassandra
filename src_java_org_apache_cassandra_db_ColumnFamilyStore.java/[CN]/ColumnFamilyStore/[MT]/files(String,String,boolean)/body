@@ -1,24 +1,19 @@
 {
   final Map<Descriptor,Set<Component>> sstables=new HashMap<Descriptor,Set<Component>>();
   for (  String directory : DatabaseDescriptor.getAllDataFileLocationsForTable(keyspace)) {
-    new File(directory).list(new FilenameFilter(){
-      public boolean accept(      File dir,      String name){
-        Pair<Descriptor,Component> component=SSTable.tryComponentFromFilename(dir,name);
-        if (component != null && component.left.cfname.equals(columnFamily)) {
-          if (includeCompacted || !new File(component.left.filenameFor(Component.COMPACTED_MARKER)).exists()) {
-            Set<Component> components=sstables.get(component.left);
-            if (components == null) {
-              components=new HashSet<Component>();
-              sstables.put(component.left,components);
-            }
-            components.add(component.right);
+    for (    Pair<Descriptor,Component> component : files(new File(directory))) {
+      if (component != null && component.left.cfname.equals(columnFamily)) {
+        if (includeCompacted || !new File(component.left.filenameFor(Component.COMPACTED_MARKER)).exists()) {
+          Set<Component> components=sstables.get(component.left);
+          if (components == null) {
+            components=new HashSet<Component>();
+            sstables.put(component.left,components);
           }
- else           logger.debug("not including compacted sstable " + component.left.cfname + "-"+ component.left.generation);
+          components.add(component.right);
         }
-        return false;
+ else         logger.debug("not including compacted sstable " + component.left.cfname + "-"+ component.left.generation);
       }
     }
-);
   }
   return sstables;
 }

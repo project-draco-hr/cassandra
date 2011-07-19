@@ -1,9 +1,16 @@
 {
   List<Integer> generations=new ArrayList<Integer>();
-  for (  Descriptor desc : files(table.name,columnFamily,true).keySet()) {
-    generations.add(desc.generation);
-    if (desc.isFromTheFuture()) {
-      throw new RuntimeException(String.format("Can't open sstables from the future! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,desc));
+  for (  String path : DatabaseDescriptor.getAllDataFileLocationsForTable(table.name)) {
+    Iterable<Pair<Descriptor,Component>> pairs=files(new File(path));
+    File incrementalsPath=new File(path,"backups");
+    if (incrementalsPath.exists())     pairs=Iterables.concat(pairs,files(incrementalsPath));
+    for (    Pair<Descriptor,Component> pair : pairs) {
+      Descriptor desc=pair.left;
+      if (!desc.cfname.equals(columnFamily))       continue;
+      generations.add(desc.generation);
+      if (desc.isFromTheFuture()) {
+        throw new RuntimeException(String.format("Can't open sstables from the future! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,desc));
+      }
     }
   }
   Collections.sort(generations);
