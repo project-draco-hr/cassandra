@@ -1,28 +1,27 @@
 {
-  Set<InetAddress> endpoints=AntiEntropyService.getNeighbors(tablename,range);
   if (endpoints.isEmpty()) {
-    requestsMade.signalAll();
+    differencingDone.signalAll();
     logger.info("No neighbors to repair with for " + tablename + " on "+ range+ ": "+ getName()+ " completed.");
     return;
   }
   for (  InetAddress endpoint : endpoints) {
     if (!FailureDetector.instance.isAlive(endpoint)) {
+      differencingDone.signalAll();
       logger.info("Could not proceed on repair because a neighbor (" + endpoint + ") is dead: "+ getName()+ " failed.");
       return;
     }
   }
-  Callback callback=new Callback();
-  AntiEntropyService.instance.sessions.put(getName(),callback);
+  AntiEntropyService.instance.sessions.put(getName(),this);
   try {
-    for (    String cfname : cfnames) {
-      for (      InetAddress endpoint : endpoints)       requests.put(AntiEntropyService.instance.request(getName(),endpoint,range,tablename,cfname),this);
-      AntiEntropyService.instance.request(getName(),FBUtilities.getLocalAddress(),range,tablename,cfname);
-    }
-    logger.info("Waiting for repair requests: " + requests.keySet());
-    requestsMade.signalAll();
-    callback.completed.await();
+    for (    String cfname : cfnames)     jobs.offer(new RepairJob(cfname));
+    completedLatch=new CountDownLatch(endpoints.size() * cfnames.length);
+    jobs.peek().sendTreeRequests();
+    completedLatch.await();
   }
  catch (  InterruptedException e) {
     throw new RuntimeException("Interrupted while waiting for repair: repair will continue in the background.");
+  }
+ finally {
+    AntiEntropyService.instance.sessions.remove(getName());
   }
 }
