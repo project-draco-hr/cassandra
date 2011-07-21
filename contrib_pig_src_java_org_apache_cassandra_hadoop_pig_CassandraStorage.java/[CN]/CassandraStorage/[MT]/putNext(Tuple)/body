@@ -2,7 +2,7 @@
   ByteBuffer key=objToBB(t.get(0));
   DefaultDataBag pairs=(DefaultDataBag)t.get(1);
   ArrayList<Mutation> mutationList=new ArrayList<Mutation>();
-  CfDef cfDef=getCfDef();
+  CfDef cfDef=getCfDef(storeSignature);
   List<AbstractType> marshallers=getDefaultMarshallers(cfDef);
   Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
   try {
@@ -46,14 +46,13 @@
           column.timestamp=System.currentTimeMillis() * 1000;
           mutation.column_or_supercolumn=new ColumnOrSuperColumn();
           mutation.column_or_supercolumn.column=column;
-          mutationList.add(mutation);
         }
       }
       mutationList.add(mutation);
     }
   }
  catch (  ClassCastException e) {
-    throw new IOException(e + " Output must be (key, {(column,value)...}) for ColumnFamily or (key, {supercolumn:{(column,value)...}...}) for SuperColumnFamily");
+    throw new IOException(e + " Output must be (key, {(column,value)...}) for ColumnFamily or (key, {supercolumn:{(column,value)...}...}) for SuperColumnFamily",e);
   }
   try {
     writer.write(key,mutationList);
