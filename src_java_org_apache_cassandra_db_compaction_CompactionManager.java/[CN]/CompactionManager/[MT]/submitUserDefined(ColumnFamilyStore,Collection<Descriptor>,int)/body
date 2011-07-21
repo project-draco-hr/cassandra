@@ -14,21 +14,27 @@
             sstables.add(sstable);
           }
         }
-        if (sstables.isEmpty()) {
-          logger.error("No file to compact for user defined compaction");
-        }
- else         if ((sstables=cfs.getDataTracker().markCompacting(sstables,1,Integer.MAX_VALUE)) != null) {
-          try {
-            AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-            AbstractCompactionTask task=strategy.getUserDefinedTask(sstables,gcBefore);
-            task.execute(executor);
+        Collection<SSTableReader> toCompact;
+        try {
+          if (sstables.isEmpty()) {
+            logger.error("No file to compact for user defined compaction");
           }
+ else           if ((toCompact=cfs.getDataTracker().markCompacting(sstables,1,Integer.MAX_VALUE)) != null) {
+            try {
+              AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
+              AbstractCompactionTask task=strategy.getUserDefinedTask(toCompact,gcBefore);
+              task.execute(executor);
+            }
   finally {
-            cfs.getDataTracker().unmarkCompacting(sstables);
+              cfs.getDataTracker().unmarkCompacting(toCompact);
+            }
+          }
+ else {
+            logger.error("SSTables for user defined compaction are already being compacted.");
           }
         }
- else {
-          logger.error("SSTables for user defined compaction are already being compacted.");
+  finally {
+          SSTableReader.releaseReferences(sstables);
         }
         return this;
       }

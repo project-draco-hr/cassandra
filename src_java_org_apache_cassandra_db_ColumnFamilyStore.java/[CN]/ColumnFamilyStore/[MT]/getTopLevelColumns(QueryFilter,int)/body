@@ -1,10 +1,10 @@
 {
   List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
   final ColumnFamily returnCF=ColumnFamily.create(metadata);
+  DataTracker.View currentView=markCurrentViewReferenced();
   try {
     IColumnIterator iter;
     int sstablesToIterate=0;
-    DataTracker.View currentView=data.getView();
     iter=filter.getMemtableColumnIterator(currentView.memtable,getComparator());
     if (iter != null) {
       returnCF.delete(iter.getColumnFamily());
@@ -40,5 +40,6 @@
         logger.error("error closing " + ci,th);
       }
     }
+    SSTableReader.releaseReferences(currentView.sstables);
   }
 }

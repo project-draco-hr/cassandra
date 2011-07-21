@@ -8,7 +8,8 @@
 catch (  InterruptedException e) {
     throw new AssertionError(e);
   }
-  CompactionIterator ci=new ValidationCompactionIterator(cfs,validator.request.range);
+  Collection<SSTableReader> sstables=cfs.markCurrentSSTablesReferenced();
+  CompactionIterator ci=new ValidationCompactionIterator(cfs,sstables,validator.request.range);
   executor.beginCompaction(ci);
   try {
     Iterator<AbstractCompactedRow> nni=Iterators.filter(ci,Predicates.notNull());
@@ -20,6 +21,7 @@ catch (  InterruptedException e) {
     validator.complete();
   }
   finally {
+    SSTableReader.releaseReferences(sstables);
     ci.close();
     executor.finishCompaction(ci);
   }

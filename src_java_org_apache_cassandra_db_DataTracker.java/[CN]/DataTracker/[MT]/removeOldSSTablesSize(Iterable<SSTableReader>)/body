@@ -1,7 +1,13 @@
 {
   for (  SSTableReader sstable : oldSSTables) {
     if (logger.isDebugEnabled())     logger.debug(String.format("removing %s from list of files tracked for %s.%s",sstable.descriptor,cfstore.table.name,cfstore.getColumnFamilyName()));
-    sstable.markCompacted();
+    sstable.acquireReference();
+    try {
+      sstable.markCompacted();
+    }
+  finally {
+      sstable.releaseReference();
+    }
     liveSize.addAndGet(-sstable.bytesOnDisk());
   }
 }
