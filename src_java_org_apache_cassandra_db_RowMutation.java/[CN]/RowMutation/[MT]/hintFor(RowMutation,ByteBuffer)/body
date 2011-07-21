@@ -1,0 +1,15 @@
+{
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,address);
+  ByteBuffer hintId=ByteBuffer.wrap(UUIDGen.getTimeUUIDBytes());
+  int ttl=Integer.MAX_VALUE;
+  for (  ColumnFamily cf : mutation.getColumnFamilies())   ttl=Math.min(ttl,cf.metadata().getGcGraceSeconds());
+  QueryPath path=new QueryPath(HintedHandOffManager.HINTS_CF,hintId,ByteBufferUtil.bytes("mutation"));
+  rm.add(path,ByteBuffer.wrap(mutation.getSerializedBuffer(MessagingService.version_)),System.currentTimeMillis(),ttl);
+  path=new QueryPath(HintedHandOffManager.HINTS_CF,hintId,ByteBufferUtil.bytes("version"));
+  rm.add(path,ByteBufferUtil.bytes(MessagingService.version_),System.currentTimeMillis(),ttl);
+  path=new QueryPath(HintedHandOffManager.HINTS_CF,hintId,ByteBufferUtil.bytes("table"));
+  rm.add(path,ByteBufferUtil.bytes(mutation.getTable()),System.currentTimeMillis(),ttl);
+  path=new QueryPath(HintedHandOffManager.HINTS_CF,hintId,ByteBufferUtil.bytes("key"));
+  rm.add(path,mutation.key(),System.currentTimeMillis(),ttl);
+  return rm;
+}
