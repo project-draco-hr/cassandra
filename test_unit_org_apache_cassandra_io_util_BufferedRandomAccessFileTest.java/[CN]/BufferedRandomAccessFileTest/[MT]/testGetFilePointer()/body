@@ -1,26 +1,17 @@
 {
-  final BufferedRandomAccessFile file=createTempFile("brafGetFilePointer");
-  assertEquals(file.getFilePointer(),0);
-  file.write(new byte[20]);
-  assertEquals(file.getFilePointer(),20);
-  file.seek(10);
-  assertEquals(file.getFilePointer(),10);
-  expectException(new Callable<Object>(){
-    public Object call() throws IOException {
-      file.seek(-1);
-      return null;
-    }
-  }
-,IllegalArgumentException.class);
-  assertEquals(file.getFilePointer(),10);
-  file.seek(30);
-  assertEquals(file.getFilePointer(),30);
-  file.seek(0);
-  file.skipBytes(15);
-  assertEquals(file.getFilePointer(),15);
-  file.read();
-  assertEquals(file.getFilePointer(),16);
-  file.read(new byte[4]);
-  assertEquals(file.getFilePointer(),20);
-  file.close();
+  final SequentialWriter w=createTempFile("brafGetFilePointer");
+  assertEquals(w.getFilePointer(),0);
+  w.write(generateByteArray(20));
+  assertEquals(w.getFilePointer(),20);
+  w.sync();
+  RandomAccessReader r=RandomAccessReader.open(w);
+  r.seek(0);
+  r.skipBytes(15);
+  assertEquals(r.getFilePointer(),15);
+  r.read();
+  assertEquals(r.getFilePointer(),16);
+  r.read(new byte[4]);
+  assertEquals(r.getFilePointer(),20);
+  w.close();
+  r.close();
 }

@@ -1,2 +1,28 @@
 {
+  SequentialWriter w=createTempFile("brafSeek");
+  byte[] data=generateByteArray(RandomAccessReader.DEFAULT_BUFFER_SIZE + 20);
+  w.write(data);
+  w.close();
+  final RandomAccessReader file=RandomAccessReader.open(w);
+  file.seek(0);
+  assertEquals(file.getFilePointer(),0);
+  assertEquals(file.bytesRemaining(),file.length());
+  file.seek(20);
+  assertEquals(file.getFilePointer(),20);
+  assertEquals(file.bytesRemaining(),file.length() - 20);
+  expectEOF(new Callable<Object>(){
+    public Object call() throws Exception {
+      file.seek(file.length() + 30);
+      return null;
+    }
+  }
+);
+  expectException(new Callable<Object>(){
+    public Object call() throws IOException {
+      file.seek(-1);
+      return null;
+    }
+  }
+,IllegalArgumentException.class);
+  file.close();
 }

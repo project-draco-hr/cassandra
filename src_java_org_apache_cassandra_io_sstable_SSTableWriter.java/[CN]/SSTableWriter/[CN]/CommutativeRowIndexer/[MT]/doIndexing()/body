@@ -12,13 +12,13 @@
     sstableMetadataCollector.addColumnCount(row.columnCount());
     sstableMetadataCollector.updateMaxTimestamp(row.maxTimestamp());
     iwriter.afterAppend(key,writerDfile.getFilePointer());
-    ByteBufferUtil.writeWithShortLength(key.key,writerDfile);
-    row.write(writerDfile);
+    ByteBufferUtil.writeWithShortLength(key.key,writerDfile.stream);
+    row.write(writerDfile.stream);
     rows++;
   }
   writeMetadata(desc,sstableMetadataCollector.finalizeMetadata());
   if (writerDfile.getFilePointer() != dfile.getFilePointer()) {
-    writerDfile.setLength(writerDfile.getFilePointer());
+    writerDfile.truncate(writerDfile.getFilePointer());
   }
   writerDfile.sync();
   return rows;

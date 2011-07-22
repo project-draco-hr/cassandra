@@ -1,25 +1,24 @@
 {
-  final BufferedRandomAccessFile file=createTempFile("brafClose");
-  byte[] data=new byte[BufferedRandomAccessFile.DEFAULT_BUFFER_SIZE + 20];
-  for (int i=0; i < data.length; i++) {
-    data[i]='c';
-  }
-  file.write(data);
-  file.close();
+  final SequentialWriter w=createTempFile("brafClose");
+  byte[] data=generateByteArray(RandomAccessReader.DEFAULT_BUFFER_SIZE + 20);
+  w.write(data);
+  w.close();
+  final RandomAccessReader r=RandomAccessReader.open(new File(w.getPath()));
+  r.close();
   expectException(new Callable<Object>(){
     public Object call() throws IOException {
-      return file.read();
+      return r.read();
     }
   }
 ,ClosedChannelException.class);
   expectException(new Callable<Object>(){
     public Object call() throws IOException {
-      file.write(new byte[1]);
+      w.write(generateByteArray(1));
       return null;
     }
   }
 ,ClosedChannelException.class);
-  BufferedRandomAccessFile copy=new BufferedRandomAccessFile(file.getPath(),"r");
+  RandomAccessReader copy=RandomAccessReader.open(new File(r.getPath()));
   ByteBuffer contents=copy.readBytes((int)copy.length());
   assertEquals(contents.limit(),data.length);
   assertEquals(ByteBufferUtil.compare(contents,data),0);
