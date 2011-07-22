@@ -1,0 +1,56 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(baos);
+  try {
+    dos.writeBoolean(true);
+    dos.writeByte(0x1);
+    dos.writeChar('a');
+    dos.writeShort(1);
+    dos.writeInt(1);
+    dos.writeLong(1L);
+    dos.writeFloat(1.0f);
+    dos.writeDouble(1.0d);
+    dos.writeUTF("abc");
+    testData=baos.toByteArray();
+  }
+  finally {
+    dos.close();
+  }
+  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(testData));
+  BytesReadTracker tracker=new BytesReadTracker(dis);
+  try {
+    boolean bool=tracker.readBoolean();
+    assertTrue(bool);
+    assertEquals(1,tracker.getBytesRead());
+    byte b=tracker.readByte();
+    assertEquals(b,0x1);
+    assertEquals(2,tracker.getBytesRead());
+    char c=tracker.readChar();
+    assertEquals('a',c);
+    assertEquals(3,tracker.getBytesRead());
+    short s=tracker.readShort();
+    assertEquals(1,s);
+    assertEquals((short)5,tracker.getBytesRead());
+    int i=tracker.readInt();
+    assertEquals(1,i);
+    assertEquals(9,tracker.getBytesRead());
+    long l=tracker.readLong();
+    assertEquals(1L,l);
+    assertEquals(17,tracker.getBytesRead());
+    float f=tracker.readFloat();
+    assertEquals(1.0f,f,0);
+    assertEquals(21,tracker.getBytesRead());
+    double d=tracker.readDouble();
+    assertEquals(1.0d,d,0);
+    assertEquals(29,tracker.getBytesRead());
+    String str=tracker.readUTF();
+    assertEquals("abc",str);
+    assertEquals(34,tracker.getBytesRead());
+  }
+  finally {
+    dis.close();
+  }
+  tracker.reset();
+  assertEquals(0,tracker.getBytesRead());
+}
