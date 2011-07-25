@@ -1,6 +1,10 @@
 {
-  if (!replicatingNodes.isEmpty()) {
+  if (!replicatingNodes.isEmpty() || !tokenMetadata_.getLeavingEndpoints().isEmpty()) {
     logger_.warn("Removal not confirmed for for " + StringUtils.join(this.replicatingNodes,","));
+    for (    InetAddress endpoint : tokenMetadata_.getLeavingEndpoints()) {
+      Gossiper.instance.advertiseTokenRemoved(endpoint,tokenMetadata_.getToken(endpoint));
+      tokenMetadata_.removeEndpoint(endpoint);
+    }
     replicatingNodes.clear();
   }
  else {
