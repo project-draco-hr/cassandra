@@ -1,7 +1,14 @@
 {
   List<AntiEntropyService.RepairSession> sessions=new ArrayList<AntiEntropyService.RepairSession>();
   for (  Range range : getLocalRanges(tableName)) {
-    sessions.add(forceTableRepair(range,tableName,columnFamilies));
+    AntiEntropyService.RepairSession session=forceTableRepair(range,tableName,columnFamilies);
+    sessions.add(session);
+    try {
+      session.differencingDone.await();
+    }
+ catch (    InterruptedException e) {
+      logger_.error("Interrupted while waiting for the differencing of repair session " + session + " to be done. Repair may be imprecise.",e);
+    }
   }
   boolean failedSession=false;
   for (  AntiEntropyService.RepairSession sess : sessions) {
