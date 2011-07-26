@@ -1,0 +1,31 @@
+{
+  final Table table=Table.open("Keyspace1");
+  final ColumnFamilyStore cfs=table.getColumnFamilyStore("Counter1");
+  final CounterContext cc=new CounterContext();
+  final Map<String,ColumnFamily> cleanedEntries=new HashMap<String,ColumnFamily>();
+  List<String> keys=createAndTransfer(table,cfs,new Mutator(){
+    /** 
+ * Creates a new SSTable per key: all will be merged before streaming. 
+ */
+    public void mutate(    String key,    String col,    long timestamp) throws Exception {
+      Map<String,ColumnFamily> entries=new HashMap<String,ColumnFamily>();
+      ColumnFamily cf=ColumnFamily.create(cfs.metadata);
+      ColumnFamily cfCleaned=ColumnFamily.create(cfs.metadata);
+      CounterContext.ContextState state=CounterContext.ContextState.allocate(4,1);
+      state.writeElement(NodeId.fromInt(2),9L,3L,true);
+      state.writeElement(NodeId.fromInt(4),4L,2L);
+      state.writeElement(NodeId.fromInt(6),3L,3L);
+      state.writeElement(NodeId.fromInt(8),2L,4L);
+      cf.addColumn(new CounterColumn(ByteBufferUtil.bytes(col),state.context,timestamp));
+      cfCleaned.addColumn(new CounterColumn(ByteBufferUtil.bytes(col),cc.clearAllDelta(state.context),timestamp));
+      entries.put(key,cf);
+      cleanedEntries.put(key,cfCleaned);
+      cfs.addSSTable(SSTableUtils.prepare().ks(table.name).cf(cfs.columnFamily).generation(0).write(entries));
+    }
+  }
+);
+  cleanedEntries.keySet().retainAll(keys);
+  SSTableReader cleaned=SSTableUtils.prepare().ks(table.name).cf(cfs.columnFamily).generation(0).write(cleanedEntries);
+  SSTableReader streamed=cfs.getSSTables().iterator().next();
+  SSTableUtils.assertContentEquals(cleaned,streamed);
+}
