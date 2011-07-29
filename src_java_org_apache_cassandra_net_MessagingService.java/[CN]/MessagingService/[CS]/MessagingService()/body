@@ -1,2 +1,28 @@
 {
+  listenGate=new SimpleCondition();
+  verbHandlers_=new EnumMap<StorageService.Verb,IVerbHandler>(StorageService.Verb.class);
+  streamExecutor_=new DebuggableThreadPoolExecutor("Streaming",DatabaseDescriptor.getCompactionThreadPriority());
+  Runnable logDropped=new Runnable(){
+    public void run(){
+      logDroppedMessages();
+    }
+  }
+;
+  StorageService.scheduledTasks.scheduleWithFixedDelay(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS,TimeUnit.MILLISECONDS);
+  Function<Pair<String,Pair<InetAddress,IMessageCallback>>,?> timeoutReporter=new Function<Pair<String,Pair<InetAddress,IMessageCallback>>,Object>(){
+    public Object apply(    Pair<String,Pair<InetAddress,IMessageCallback>> pair){
+      Pair<InetAddress,IMessageCallback> expiredValue=pair.right;
+      maybeAddLatency(expiredValue.right,expiredValue.left,(double)DatabaseDescriptor.getRpcTimeout());
+      return null;
+    }
+  }
+;
+  callbacks=new ExpiringMap<String,Pair<InetAddress,IMessageCallback>>(DEFAULT_CALLBACK_TIMEOUT,timeoutReporter);
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  try {
+    mbs.registerMBean(this,new ObjectName(MBEAN_NAME));
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
 }
