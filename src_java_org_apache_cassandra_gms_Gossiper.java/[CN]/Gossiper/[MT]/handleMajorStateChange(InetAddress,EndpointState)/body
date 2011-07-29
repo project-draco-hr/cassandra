@@ -1,11 +1,18 @@
 {
-  if (endpointStateMap.get(ep) != null)   logger.info("Node {} has restarted, now UP again",ep);
- else   logger.info("Node {} is now part of the cluster",ep);
+  if (epState.getApplicationState(ApplicationState.STATUS) != null && !isDeadState(epState.getApplicationState(ApplicationState.STATUS).value)) {
+    if (endpointStateMap.get(ep) != null)     logger.info("Node {} has restarted, now UP again",ep);
+ else     logger.info("Node {} is now part of the cluster",ep);
+  }
   if (logger.isTraceEnabled())   logger.trace("Adding endpoint state for " + ep);
   endpointStateMap.put(ep,epState);
   if (epState.isAlive()) {
     for (    IEndpointStateChangeSubscriber subscriber : subscribers)     subscriber.onDead(ep,epState);
   }
-  markAlive(ep,epState);
+  if (epState.getApplicationState(ApplicationState.STATUS) != null && !isDeadState(epState.getApplicationState(ApplicationState.STATUS).value))   markAlive(ep,epState);
+ else {
+    logger.debug("Not marking " + ep + " alive due to dead state");
+    epState.markDead();
+    epState.setHasToken(true);
+  }
   for (  IEndpointStateChangeSubscriber subscriber : subscribers)   subscriber.onJoin(ep,epState);
 }
