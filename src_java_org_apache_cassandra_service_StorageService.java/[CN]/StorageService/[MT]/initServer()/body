@@ -26,6 +26,14 @@
         mutationStage.awaitTermination(1,TimeUnit.SECONDS);
         CommitLog.instance.shutdownBlocking();
       }
+      List<Future<?>> flushes=new ArrayList<Future<?>>();
+      for (      Table table : Table.all()) {
+        KSMetaData ksm=DatabaseDescriptor.getKSMetaData(table.name);
+        if (!ksm.isDurableWrites()) {
+          for (          ColumnFamilyStore cfs : table.getColumnFamilyStores())           flushes.add(cfs.forceFlush());
+        }
+      }
+      FBUtilities.waitOnFutures(flushes);
     }
   }
 );
