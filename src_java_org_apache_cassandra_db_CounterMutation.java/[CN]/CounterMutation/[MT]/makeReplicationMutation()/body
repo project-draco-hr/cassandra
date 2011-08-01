@@ -10,7 +10,9 @@
     Row row=readCommand.getRow(table);
     if (row == null || row.cf == null)     continue;
     row=mergeOldShards(readCommand.table,row);
-    replicationMutation.add(row.cf);
+    ColumnFamily cf=row.cf;
+    if (cf.isSuper())     cf.retainAll(rowMutation.getColumnFamily(cf.metadata().cfId));
+    replicationMutation.add(cf);
   }
   return replicationMutation;
 }
