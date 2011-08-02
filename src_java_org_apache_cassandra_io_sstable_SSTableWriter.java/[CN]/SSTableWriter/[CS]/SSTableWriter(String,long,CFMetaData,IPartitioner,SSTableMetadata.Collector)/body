@@ -1,7 +1,13 @@
 {
-  super(Descriptor.fromFilename(filename),new HashSet<Component>(Arrays.asList(Component.DATA,Component.FILTER,Component.PRIMARY_INDEX,Component.STATS)),metadata,partitioner);
+  super(Descriptor.fromFilename(filename),components(metadata),metadata,partitioner);
   iwriter=new IndexWriter(descriptor,partitioner,keyCount);
-  dbuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
-  dataFile=SequentialWriter.open(new File(getFilename()),true);
+  if (compression) {
+    dbuilder=SegmentedFile.getCompressedBuilder();
+    dataFile=CompressedSequentialWriter.open(getFilename(),descriptor.filenameFor(Component.COMPRESSION_INFO),true);
+  }
+ else {
+    dbuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+    dataFile=SequentialWriter.open(new File(getFilename()),true);
+  }
   this.sstableMetadataCollector=sstableMetadataCollector;
 }

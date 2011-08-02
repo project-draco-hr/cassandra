@@ -2,6 +2,10 @@
   ByteBuffer buffer=MessagingService.instance().constructStreamHeader(header,false,Gossiper.instance.getVersion(to));
   writeHeader(buffer);
   if (header.file == null)   return;
+  if (header.file.sstable.compression) {
+    CompressedRandomAccessReader.transfer(header.file,channel);
+    return;
+  }
   RandomAccessFile raf=new RandomAccessFile(new File(header.file.getFilename()),"r");
   try {
     FileChannel fc=raf.getChannel();
