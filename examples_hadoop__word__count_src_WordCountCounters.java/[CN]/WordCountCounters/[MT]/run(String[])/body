@@ -1,0 +1,17 @@
+{
+  Job job=new Job(getConf(),"wordcountcounters");
+  job.setJarByClass(WordCountCounters.class);
+  job.setMapperClass(SumMapper.class);
+  job.setOutputKeyClass(Text.class);
+  job.setOutputValueClass(LongWritable.class);
+  FileOutputFormat.setOutputPath(job,new Path(OUTPUT_PATH_PREFIX));
+  job.setInputFormatClass(ColumnFamilyInputFormat.class);
+  ConfigHelper.setRpcPort(job.getConfiguration(),"9160");
+  ConfigHelper.setInitialAddress(job.getConfiguration(),"localhost");
+  ConfigHelper.setPartitioner(job.getConfiguration(),"org.apache.cassandra.dht.RandomPartitioner");
+  ConfigHelper.setInputColumnFamily(job.getConfiguration(),WordCount.KEYSPACE,WordCountCounters.COUNTER_COLUMN_FAMILY);
+  SlicePredicate predicate=new SlicePredicate().setSlice_range(new SliceRange().setStart(ByteBufferUtil.EMPTY_BYTE_BUFFER).setFinish(ByteBufferUtil.EMPTY_BYTE_BUFFER).setCount(100));
+  ConfigHelper.setInputSlicePredicate(job.getConfiguration(),predicate);
+  job.waitForCompletion(true);
+  return 0;
+}
