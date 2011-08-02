@@ -1,2 +1,41 @@
 {
+  int hlength=headerLength(context);
+  ContextState state=new ContextState(context,hlength);
+  int removedBodySize=0, removedHeaderSize=0;
+  boolean forceFixing=false;
+  while (state.hasRemaining()) {
+    long clock=state.getClock();
+    if (clock < 0 && -((int)(clock / 1000)) < gcBefore && (state.getCount() == 0 || !state.isDelta())) {
+      removedBodySize+=STEP_LENGTH;
+      if (state.isDelta())       removedHeaderSize+=HEADER_ELT_LENGTH;
+    }
+ else     if (clock < 0 && state.getCount() != 0 && state.isDelta()) {
+      forceFixing=true;
+    }
+    state.moveToNext();
+  }
+  if (removedBodySize == 0 && !forceFixing)   return context;
+  int newSize=context.remaining() - removedHeaderSize - removedBodySize;
+  int newHlength=hlength - removedHeaderSize;
+  ByteBuffer cleanedContext=ByteBuffer.allocate(newSize);
+  cleanedContext.putShort(cleanedContext.position(),(short)((newHlength - HEADER_SIZE_LENGTH) / HEADER_ELT_LENGTH));
+  ContextState cleaned=new ContextState(cleanedContext,newHlength);
+  state.reset();
+  long toAddBack=0;
+  while (state.hasRemaining()) {
+    long clock=state.getClock();
+    if (!(clock < 0 && -((int)(clock / 1000)) < gcBefore && (state.getCount() == 0 || !state.isDelta()))) {
+      if (clock < 0 && state.getCount() != 0 && state.isDelta()) {
+        if (state.getNodeId().equals(NodeId.getLocalId()))         throw new RuntimeException("Merged counter shard with a count != 0 (likely due to #2968). You need to restart this node with -Dcassandra.renew_counter_id=true to fix.");
+        logger.info("Collectable old shard with a count != 0. Will fix.");
+        cleaned.writeElement(state.getNodeId(),clock - 1L,0,true);
+        toAddBack+=state.getCount();
+      }
+ else {
+        state.copyTo(cleaned);
+      }
+    }
+    state.moveToNext();
+  }
+  return toAddBack == 0 ? cleanedContext : merge(cleanedContext,create(toAddBack));
 }
