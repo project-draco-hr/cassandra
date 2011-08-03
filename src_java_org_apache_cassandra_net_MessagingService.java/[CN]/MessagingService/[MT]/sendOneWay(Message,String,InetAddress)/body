@@ -1,2 +1,13 @@
 {
+  if (logger_.isTraceEnabled())   logger_.trace(FBUtilities.getBroadcastAddress() + " sending " + message.getVerb()+ " to "+ id+ "@"+ to);
+  if (message.getFrom().equals(to)) {
+    receive(message,id);
+    return;
+  }
+  Message processedMessage=SinkManager.processClientMessage(message,id,to);
+  if (processedMessage == null) {
+    return;
+  }
+  OutboundTcpConnection connection=getConnection(to,processedMessage);
+  connection.enqueue(processedMessage,id);
 }
