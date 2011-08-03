@@ -1,0 +1,29 @@
+{
+  final Set<String> hostset=new HashSet<String>();
+  for (  InetAddress host : hosts)   hostset.add(host.getHostAddress());
+  StatementBuilder statementBuilder=new StatementBuilder();
+  statementBuilder.addStatement(Statements.call(functionName,functionArgs));
+  Credentials credentials=new Credentials(clusterSpec.getClusterUser(),clusterSpec.getPrivateKey());
+  Map<? extends NodeMetadata,ExecResponse> results;
+  try {
+    results=computeService.runScriptOnNodesMatching(new Predicate<NodeMetadata>(){
+      public boolean apply(      NodeMetadata node){
+        Set<String> intersection=new HashSet<String>(hostset);
+        intersection.retainAll(node.getPublicAddresses());
+        return !intersection.isEmpty();
+      }
+    }
+,statementBuilder,RunScriptOptions.Builder.overrideCredentialsWith(credentials).wrapInInitScript(false).runAsRoot(false));
+  }
+ catch (  RunScriptOnNodesException e) {
+    throw new RuntimeException(e);
+  }
+  if (results.size() != hostset.size()) {
+    throw new RuntimeException(results.size() + " hosts matched " + hostset+ ": "+ results);
+  }
+  for (  ExecResponse response : results.values()) {
+    if (response.getExitCode() != 0) {
+      throw new RuntimeException("Call " + functionName + " failed on at least one of "+ hostset+ ": "+ results.values());
+    }
+  }
+}
