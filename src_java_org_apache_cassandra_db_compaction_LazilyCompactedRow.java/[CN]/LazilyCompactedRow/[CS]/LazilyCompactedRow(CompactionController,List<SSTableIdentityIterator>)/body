@@ -1,17 +1,17 @@
 {
   super(rows.get(0).getKey());
+  this.rows=rows;
   this.controller=controller;
   this.shouldPurge=controller.shouldPurge(key);
-  this.rows=new ArrayList<SSTableIdentityIterator>(rows);
-  for (  SSTableIdentityIterator row : rows) {
+  for (  IColumnIterator row : rows) {
     ColumnFamily cf=row.getColumnFamily();
     if (emptyColumnFamily == null)     emptyColumnFamily=cf;
  else     emptyColumnFamily.delete(cf);
   }
   headerBuffer=new DataOutputBuffer();
   ColumnIndexer.serialize(this,headerBuffer);
-  columnCount=reducer.size;
-  columnSerializedSize=reducer.serializedSize;
-  maxTimestamp=reducer.maxTimestampSeen;
+  columnCount=reducer == null ? 0 : reducer.size;
+  columnSerializedSize=reducer == null ? 0 : reducer.serializedSize;
+  maxTimestamp=reducer == null ? Long.MIN_VALUE : reducer.maxTimestampSeen;
   reducer=null;
 }
