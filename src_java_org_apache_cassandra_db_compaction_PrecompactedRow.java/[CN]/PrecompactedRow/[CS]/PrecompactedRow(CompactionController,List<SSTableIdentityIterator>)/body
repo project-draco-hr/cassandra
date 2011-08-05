@@ -1,26 +1,5 @@
 {
   super(rows.get(0).getKey());
-  this.gcBefore=controller.gcBefore;
-  ColumnFamily cf=null;
-  for (  SSTableIdentityIterator row : rows) {
-    ColumnFamily thisCF;
-    try {
-      thisCF=row.getColumnFamilyWithColumns();
-    }
- catch (    IOException e) {
-      logger.error("Skipping row " + key + " in "+ row.getPath(),e);
-      continue;
-    }
-    if (cf == null) {
-      cf=thisCF;
-    }
- else {
-      cf.addAll(thisCF);
-    }
-  }
-  boolean shouldPurge=controller.shouldPurge(key);
-  compactedCf=shouldPurge ? ColumnFamilyStore.removeDeleted(cf,controller.gcBefore) : cf;
-  if (shouldPurge && compactedCf != null && compactedCf.metadata().getDefaultValidator().isCommutative()) {
-    CounterColumn.removeOldShards(compactedCf,controller.gcBefore);
-  }
+  gcBefore=controller.gcBefore;
+  compactedCf=removeDeletedAndOldShards(rows.get(0).getKey(),controller,merge(rows));
 }
