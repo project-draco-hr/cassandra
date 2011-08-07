@@ -9,10 +9,11 @@ catch (  InterruptedException e) {
     throw new AssertionError(e);
   }
   Collection<SSTableReader> sstables=cfs.markCurrentSSTablesReferenced();
-  CompactionIterator ci=new ValidationCompactionIterator(cfs,sstables,validator.request.range);
+  CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.request.range);
+  CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
   validationExecutor.beginCompaction(ci);
   try {
-    Iterator<AbstractCompactedRow> nni=Iterators.filter(ci,Predicates.notNull());
+    Iterator<AbstractCompactedRow> nni=Iterators.filter(iter,Predicates.notNull());
     validator.prepare(cfs);
     while (nni.hasNext()) {
       AbstractCompactedRow row=nni.next();
@@ -22,7 +23,7 @@ catch (  InterruptedException e) {
   }
   finally {
     SSTableReader.releaseReferences(sstables);
-    ci.close();
+    iter.close();
     validationExecutor.finishCompaction(ci);
   }
 }
