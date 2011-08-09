@@ -1,0 +1,37 @@
+{
+  sb.append("create column family " + CliUtils.escapeSQLString(cfDef.name));
+  writeAttr(sb,true,"column_type",cfDef.column_type);
+  writeAttr(sb,false,"comparator",normaliseType(cfDef.comparator_type,"org.apache.cassandra.db.marshal"));
+  if (cfDef.column_type == "Super")   writeAttr(sb,false,"subcomparator",normaliseType(cfDef.subcomparator_type,"org.apache.cassandra.db.marshal"));
+  if (!StringUtils.isEmpty(cfDef.default_validation_class))   writeAttr(sb,false,"default_validation_class",normaliseType(cfDef.default_validation_class,"org.apache.cassandra.db.marshal"));
+  writeAttr(sb,false,"key_validation_class",normaliseType(cfDef.key_validation_class,"org.apache.cassandra.db.marshal"));
+  writeAttr(sb,false,"memtable_operations",cfDef.memtable_operations_in_millions);
+  writeAttr(sb,false,"memtable_throughput",cfDef.memtable_throughput_in_mb);
+  writeAttr(sb,false,"memtable_flush_after",cfDef.memtable_flush_after_mins);
+  writeAttr(sb,false,"rows_cached",cfDef.row_cache_size);
+  writeAttr(sb,false,"row_cache_save_period",cfDef.row_cache_save_period_in_seconds);
+  writeAttr(sb,false,"keys_cached",cfDef.key_cache_size);
+  writeAttr(sb,false,"key_cache_save_period",cfDef.key_cache_save_period_in_seconds);
+  writeAttr(sb,false,"read_repair_chance",cfDef.read_repair_chance);
+  writeAttr(sb,false,"gc_grace",cfDef.gc_grace_seconds);
+  writeAttr(sb,false,"min_compaction_threshold",cfDef.min_compaction_threshold);
+  writeAttr(sb,false,"max_compaction_threshold",cfDef.max_compaction_threshold);
+  writeAttr(sb,false,"replicate_on_write",cfDef.replicate_on_write);
+  writeAttr(sb,false,"row_cache_provider",normaliseType(cfDef.row_cache_provider,"org.apache.cassandra.cache"));
+  if (!StringUtils.isEmpty(cfDef.comment))   writeAttr(sb,false,"comment",cfDef.comment);
+  if (!cfDef.column_metadata.isEmpty()) {
+    StringBuilder colSb=new StringBuilder();
+    colSb.append("[");
+    boolean first=true;
+    for (    ColumnDef colDef : cfDef.column_metadata) {
+      if (!first)       colSb.append(",");
+      first=false;
+      showColumnMeta(colSb,cfDef,colDef);
+    }
+    colSb.append("]");
+    writeAttrRaw(sb,false,"column_metadata",colSb.toString());
+  }
+  sb.append(";");
+  sb.append(NEWLINE);
+  sb.append(NEWLINE);
+}

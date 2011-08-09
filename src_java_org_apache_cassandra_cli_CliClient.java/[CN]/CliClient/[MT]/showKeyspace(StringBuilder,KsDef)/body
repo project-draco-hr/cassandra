@@ -1,0 +1,25 @@
+{
+  sb.append("create keyspace " + ksDef.name);
+  if (ksDef.isSetReplication_factor())   writeAttr(sb,false,"replication_factor",ksDef.getReplication_factor());
+  writeAttr(sb,true,"placement_strategy",normaliseType(ksDef.strategy_class,"org.apache.cassandra.locator"));
+  if (ksDef.strategy_options != null && !ksDef.strategy_options.isEmpty()) {
+    final StringBuilder opts=new StringBuilder();
+    opts.append("[{");
+    String prefix="";
+    for (    Map.Entry<String,String> opt : ksDef.strategy_options.entrySet()) {
+      opts.append(prefix + CliUtils.escapeSQLString(opt.getKey()) + " : "+ CliUtils.escapeSQLString(opt.getValue()));
+      prefix=", ";
+    }
+    opts.append("}]");
+    writeAttrRaw(sb,false,"strategy_options",opts.toString());
+  }
+  sb.append(";" + NEWLINE);
+  sb.append(NEWLINE);
+  sb.append("use " + ksDef.name + ";");
+  sb.append(NEWLINE);
+  sb.append(NEWLINE);
+  Collections.sort(ksDef.cf_defs,new CfDefNamesComparator());
+  for (  CfDef cfDef : ksDef.cf_defs)   showColumnFamily(sb,cfDef);
+  sb.append(NEWLINE);
+  sb.append(NEWLINE);
+}
