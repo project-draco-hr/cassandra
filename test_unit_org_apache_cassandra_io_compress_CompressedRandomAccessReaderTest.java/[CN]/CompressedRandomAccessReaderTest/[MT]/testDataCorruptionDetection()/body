@@ -1,0 +1,43 @@
+{
+  String CONTENT="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam vitae.";
+  File file=new File("testDataCorruptionDetection");
+  file.deleteOnExit();
+  File metadata=new File(file.getPath() + ".meta");
+  metadata.deleteOnExit();
+  SequentialWriter writer=new CompressedSequentialWriter(file,metadata.getPath(),false);
+  writer.write(CONTENT.getBytes());
+  writer.close();
+  CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length());
+  CompressionMetadata.Chunk chunk=meta.chunkFor(0);
+  RandomAccessReader reader=CompressedRandomAccessReader.open(file.getPath(),meta,false);
+  assertEquals(CONTENT,reader.readLine());
+  reader.close();
+  Random random=new Random();
+  RandomAccessFile checksumModifier=null;
+  try {
+    checksumModifier=new RandomAccessFile(file,"rw");
+    byte[] checksum=new byte[4];
+    checksumModifier.seek(chunk.length);
+    checksumModifier.read(checksum);
+    checksumModifier.seek(chunk.length);
+    for (int i=0; i < checksum.length; i++) {
+      checksumModifier.write(random.nextInt());
+      checksumModifier.getFD().sync();
+      final RandomAccessReader r=CompressedRandomAccessReader.open(file.getPath(),meta,false);
+      expectException(new Callable<String>(){
+        public String call() throws Exception {
+          return r.readLine();
+        }
+      }
+,CorruptedBlockException.class);
+      r.close();
+    }
+    updateChecksum(checksumModifier,chunk.length,checksum);
+    reader=CompressedRandomAccessReader.open(file.getPath(),meta,false);
+    assertEquals(CONTENT,reader.readLine());
+    reader.close();
+  }
+  finally {
+    if (checksumModifier != null)     checksumModifier.close();
+  }
+}
