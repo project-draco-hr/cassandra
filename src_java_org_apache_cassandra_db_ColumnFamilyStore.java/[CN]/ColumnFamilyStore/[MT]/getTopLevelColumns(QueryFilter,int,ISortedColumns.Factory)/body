@@ -1,0 +1,45 @@
+{
+  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
+  final ColumnFamily returnCF=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
+  DataTracker.View currentView=markCurrentViewReferenced();
+  try {
+    IColumnIterator iter;
+    int sstablesToIterate=0;
+    iter=filter.getMemtableColumnIterator(currentView.memtable,getComparator());
+    if (iter != null) {
+      returnCF.delete(iter.getColumnFamily());
+      iterators.add(iter);
+    }
+    for (    Memtable memtable : currentView.memtablesPendingFlush) {
+      iter=filter.getMemtableColumnIterator(memtable,getComparator());
+      if (iter != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
+      }
+    }
+    for (    SSTableReader sstable : currentView.sstables) {
+      iter=filter.getSSTableColumnIterator(sstable);
+      if (iter.getColumnFamily() != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
+        sstablesToIterate++;
+      }
+    }
+    recentSSTablesPerRead.add(sstablesToIterate);
+    sstablesPerRead.add(sstablesToIterate);
+    if (iterators.size() == 0)     return null;
+    filter.collateColumns(returnCF,iterators,getComparator(),gcBefore);
+    return returnCF;
+  }
+  finally {
+    for (    IColumnIterator ci : iterators) {
+      try {
+        ci.close();
+      }
+ catch (      Throwable th) {
+        logger.error("error closing " + ci,th);
+      }
+    }
+    SSTableReader.releaseReferences(currentView.sstables);
+  }
+}

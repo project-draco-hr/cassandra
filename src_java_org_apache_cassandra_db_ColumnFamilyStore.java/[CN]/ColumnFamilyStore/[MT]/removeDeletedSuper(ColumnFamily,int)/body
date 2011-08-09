@@ -1,6 +1,7 @@
 {
-  for (  Map.Entry<ByteBuffer,IColumn> entry : cf.getColumnsMap().entrySet()) {
-    SuperColumn c=(SuperColumn)entry.getValue();
+  Iterator<IColumn> iter=cf.iterator();
+  while (iter.hasNext()) {
+    SuperColumn c=(SuperColumn)iter.next();
     long minTimestamp=Math.max(c.getMarkedForDeleteAt(),cf.getMarkedForDeleteAt());
     for (    IColumn subColumn : c.getSubColumns()) {
       if (subColumn.timestamp() <= minTimestamp || (subColumn.isMarkedForDelete() && subColumn.getLocalDeletionTime() <= gcBefore)) {
@@ -8,7 +9,7 @@
       }
     }
     if (c.getSubColumns().isEmpty() && c.getLocalDeletionTime() <= gcBefore) {
-      cf.remove(c.name());
+      iter.remove();
     }
  else {
       c.maybeResetDeletionTimes(gcBefore);
