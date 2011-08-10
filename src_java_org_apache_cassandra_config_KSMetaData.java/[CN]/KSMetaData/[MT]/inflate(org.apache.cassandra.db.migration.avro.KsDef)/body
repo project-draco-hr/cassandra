@@ -1,5 +1,5 @@
 {
-  Class<AbstractReplicationStrategy> repStratClass;
+  Class<? extends AbstractReplicationStrategy> repStratClass;
   try {
     String strategyClassName=convertOldStrategyName(ks.strategy_class.toString());
     repStratClass=(Class<AbstractReplicationStrategy>)Class.forName(strategyClassName);
@@ -10,7 +10,9 @@
   Map<String,String> strategyOptions=new HashMap<String,String>();
   if (ks.strategy_options != null) {
     for (    Map.Entry<CharSequence,CharSequence> e : ks.strategy_options.entrySet()) {
-      strategyOptions.put(e.getKey().toString(),e.getValue().toString());
+      String name=e.getKey().toString();
+      if (repStratClass == NetworkTopologyStrategy.class && name.trim().toLowerCase().equals("replication_factor"))       continue;
+      strategyOptions.put(name,e.getValue().toString());
     }
   }
   maybeAddReplicationFactor(strategyOptions,ks.strategy_class.toString(),ks.replication_factor);
