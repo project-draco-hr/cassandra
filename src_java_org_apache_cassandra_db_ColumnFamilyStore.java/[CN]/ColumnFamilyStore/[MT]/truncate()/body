@@ -1,10 +1,9 @@
 {
-  try {
-    forceBlockingFlush();
-  }
- catch (  Exception e) {
-    throw new RuntimeException(e);
-  }
+  CommitLog.instance.forceNewSegment();
+  ReplayPosition position=CommitLog.instance.getContext();
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all())   cfs.forceFlush();
+  waitForActiveFlushes();
+  CommitLog.instance.discardCompletedSegments(metadata.cfId,position);
   try {
     Thread.sleep(100);
   }
