@@ -1,0 +1,17 @@
+{
+  logger.info(String.format("Submitting index build of %s for data in %s",baseCfs.metadata.comparator.getString(columnDef.name),StringUtils.join(baseCfs.getSSTables(),", ")));
+  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,new TreeSet<ByteBuffer>(Collections.singleton(columnDef.name)),new ReducingKeyIterator(baseCfs.getSSTables()));
+  Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
+  try {
+    future.get();
+    forceBlockingFlush();
+    SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName());
+  }
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+  logger.info("Index build of " + baseCfs.metadata.comparator.getString(columnDef.name) + " complete");
+}

@@ -1,0 +1,15 @@
+{
+  logger.debug("Indexing row {} ",key);
+  Set<SecondaryIndex> indexesToFlush=Collections.emptySet();
+  switchLock.readLock().lock();
+  try {
+synchronized (cfs.table.indexLockFor(key.key)) {
+      ColumnFamily cf=readCurrentIndexedColumns(key,cfs,indexedColumns);
+      if (cf != null)       indexesToFlush=cfs.indexManager.applyIndexUpdates(key.key,cf,cf.getColumnNames(),null);
+    }
+  }
+  finally {
+    switchLock.readLock().unlock();
+  }
+  for (  SecondaryIndex index : indexesToFlush)   index.maybeFlush();
+}

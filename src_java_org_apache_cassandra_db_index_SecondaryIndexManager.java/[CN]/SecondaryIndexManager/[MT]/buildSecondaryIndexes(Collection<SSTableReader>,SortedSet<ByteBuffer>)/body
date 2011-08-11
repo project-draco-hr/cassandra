@@ -1,0 +1,16 @@
+{
+  logger.info(String.format("Submitting index build of %s for data in %s",baseCfs.metadata.comparator.getString(columns),StringUtils.join(sstables,", ")));
+  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,columns,new ReducingKeyIterator(sstables));
+  Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
+  try {
+    future.get();
+    flushIndexes();
+  }
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+  logger.info("Index build of " + baseCfs.metadata.comparator.getString(columns) + " complete");
+}

@@ -12,7 +12,7 @@
         continue;
       }
       SortedSet<ByteBuffer> mutatedIndexedColumns=null;
-      for (      ByteBuffer column : cfs.getIndexedColumns()) {
+      for (      ByteBuffer column : cfs.indexManager.getIndexedColumns()) {
         if (cf.getColumnNames().contains(column) || cf.isMarkedForDelete()) {
           if (mutatedIndexedColumns == null)           mutatedIndexedColumns=new TreeSet<ByteBuffer>();
           mutatedIndexedColumns.add(column);
@@ -32,7 +32,7 @@ synchronized (indexLockFor(mutation.key())) {
         Memtable fullMemtable=cfs.apply(key,cf);
         if (fullMemtable != null)         memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
         if (mutatedIndexedColumns != null) {
-          applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
+          cfs.indexManager.applyIndexUpdates(mutation.key(),cf,mutatedIndexedColumns,oldIndexedColumns);
         }
       }
     }
