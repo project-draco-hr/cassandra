@@ -7,6 +7,7 @@
     if (validator != null)     validator.validate(column.value);
   }
  catch (  MarshalException me) {
-    throw new InvalidRequestException(String.format("[%s][%s][%s] = [%s] failed validation (%s)",metadata.ksName,metadata.cfName,ByteBufferUtil.bytesToHex(column.name),ByteBufferUtil.bytesToHex(column.value),me.getMessage()));
+    if (logger.isDebugEnabled())     logger.debug("rejecting invalid value " + ByteBufferUtil.bytesToHex(summarize(column.value)));
+    throw new InvalidRequestException(String.format("(%s) [%s][%s][%s] failed validation",me.getMessage(),metadata.ksName,metadata.cfName,(isSubColumn ? metadata.subcolumnComparator : metadata.comparator).getString(column.name)));
   }
 }
