@@ -6,37 +6,7 @@
     n=Math.max(n,reply.rows.size());
     iters.add(new RowIterator(reply.rows.iterator(),response.getFrom()));
   }
-  MergeIterator<Pair<Row,InetAddress>,Row> iter=MergeIterator.get(iters,new Comparator<Pair<Row,InetAddress>>(){
-    public int compare(    Pair<Row,InetAddress> o1,    Pair<Row,InetAddress> o2){
-      return o1.left.key.compareTo(o2.left.key);
-    }
-  }
-,new MergeIterator.Reducer<Pair<Row,InetAddress>,Row>(){
-    List<ColumnFamily> versions=new ArrayList<ColumnFamily>(sources.size());
-    List<InetAddress> versionSources=new ArrayList<InetAddress>(sources.size());
-    DecoratedKey key;
-    public void reduce(    Pair<Row,InetAddress> current){
-      key=current.left.key;
-      versions.add(current.left.cf);
-      versionSources.add(current.right);
-    }
-    protected Row getReduced(){
-      ColumnFamily resolved=versions.size() > 1 ? RowRepairResolver.resolveSuperset(versions) : versions.get(0);
-      if (versions.size() < sources.size()) {
-        for (        InetAddress source : sources) {
-          if (!versionSources.contains(source)) {
-            versions.add(null);
-            versionSources.add(source);
-          }
-        }
-      }
-      if (resolved != null)       RowRepairResolver.maybeScheduleRepairs(resolved,table,key,versions,versionSources);
-      versions.clear();
-      versionSources.clear();
-      return new Row(key,resolved);
-    }
-  }
-);
+  MergeIterator<Pair<Row,InetAddress>,Row> iter=MergeIterator.get(iters,pairComparator,new Reducer());
   List<Row> resolvedRows=new ArrayList<Row>(n);
   while (iter.hasNext())   resolvedRows.add(iter.next());
   return resolvedRows;

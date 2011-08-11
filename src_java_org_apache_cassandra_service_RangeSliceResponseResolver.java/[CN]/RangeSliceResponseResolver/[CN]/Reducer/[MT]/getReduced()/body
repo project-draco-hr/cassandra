@@ -1,0 +1,15 @@
+{
+  ColumnFamily resolved=versions.size() > 1 ? RowRepairResolver.resolveSuperset(versions) : versions.get(0);
+  if (versions.size() < sources.size()) {
+    for (    InetAddress source : sources) {
+      if (!versionSources.contains(source)) {
+        versions.add(null);
+        versionSources.add(source);
+      }
+    }
+  }
+  if (resolved != null)   repairResults.addAll(RowRepairResolver.scheduleRepairs(resolved,table,key,versions,versionSources));
+  versions.clear();
+  versionSources.clear();
+  return new Row(key,resolved);
+}
