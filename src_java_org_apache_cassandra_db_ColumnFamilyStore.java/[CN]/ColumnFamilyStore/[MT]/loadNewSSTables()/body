@@ -1,0 +1,38 @@
+{
+  logger.info("Loading new SSTables for " + table.name + "/"+ columnFamily+ "...");
+  DataTracker.View view=data.getView();
+  Set<Descriptor> currentDescriptors=new HashSet<Descriptor>();
+  Set<SSTableReader> sstables=new HashSet<SSTableReader>();
+  Set<DecoratedKey> savedKeys=keyCache.readSaved();
+  int generation=0;
+  for (  SSTableReader reader : view.sstables) {
+    sstables.add(reader);
+    currentDescriptors.add(reader.descriptor);
+    if (reader.descriptor.generation > generation)     generation=reader.descriptor.generation;
+  }
+  SSTableReader reader;
+  boolean atLeastOneNew=false;
+  for (  Map.Entry<Descriptor,Set<Component>> rawSSTable : files(table.name,columnFamily,false,false).entrySet()) {
+    Descriptor descriptor=rawSSTable.getKey();
+    if (currentDescriptors.contains(descriptor))     continue;
+    if (!descriptor.cfname.equals(columnFamily))     continue;
+    if (descriptor.isFromTheFuture())     throw new RuntimeException(String.format("Can't open sstables from the future! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,descriptor));
+    logger.info("Initializing new SSTable {}",rawSSTable);
+    reader=openSSTableReader(rawSSTable,savedKeys,data,metadata,partitioner);
+    if (reader == null)     continue;
+    sstables.add(reader);
+    if (descriptor.generation > generation)     generation=descriptor.generation;
+    if (!atLeastOneNew)     atLeastOneNew=true;
+  }
+  if (!atLeastOneNew) {
+    logger.info("No new SSTables where found for " + table.name + "/"+ columnFamily);
+    return;
+  }
+  logger.info("Loading new SSTable Set for " + table.name + "/"+ columnFamily+ ": "+ sstables);
+  data.addSSTables(sstables);
+  logger.info("Requesting a full secondary index re-build for " + table.name + "/"+ columnFamily);
+  buildSecondaryIndexes(sstables,getIndexedColumns());
+  logger.info("Setting up new generation: " + generation);
+  fileIndexGenerator.set(generation);
+  logger.info("Done loading load new SSTables for " + table.name + "/"+ columnFamily);
+}
