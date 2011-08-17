@@ -1,2 +1,12 @@
 {
+  Table table=Table.open("Keyspace1");
+  RowMutation rm;
+  DecoratedKey dk=Util.dk("key1");
+  rm=new RowMutation("Keyspace1",dk.key);
+  rm.add(new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column1")),ByteBufferUtil.bytes("abcd"),0);
+  rm.apply();
+  ReadCommand command=new SliceByNamesReadCommand("Keyspace1",dk.key,new QueryPath("Standard1"),Arrays.asList(ByteBufferUtil.bytes("Column1")));
+  Row row=command.getRow(table);
+  IColumn col=row.cf.getColumn(ByteBufferUtil.bytes("Column1"));
+  assertEquals(col.value(),ByteBuffer.wrap("abcd".getBytes()));
 }
