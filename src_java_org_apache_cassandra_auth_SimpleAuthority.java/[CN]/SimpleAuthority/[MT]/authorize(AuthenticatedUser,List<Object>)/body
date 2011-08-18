@@ -17,13 +17,11 @@
     throw new UnsupportedOperationException();
   }
   String accessFilename=System.getProperty(ACCESS_FILENAME_PROPERTY);
+  InputStream in=null;
   try {
-    if (accessProperties == null) {
-      FileInputStream in=new FileInputStream(accessFilename);
-      accessProperties=new Properties();
-      accessProperties.load(in);
-      in.close();
-    }
+    in=new BufferedInputStream(new FileInputStream(accessFilename));
+    Properties accessProperties=new Properties();
+    accessProperties.load(in);
     if (keyspace == KEYSPACES_WRITE_PROPERTY) {
       String kspAdmins=accessProperties.getProperty(KEYSPACES_WRITE_PROPERTY);
       for (      String admin : kspAdmins.split(","))       if (admin.equals(user.username))       return Permission.ALL;
@@ -59,6 +57,9 @@
   }
  catch (  IOException e) {
     throw new RuntimeException(String.format("Authorization table file '%s' could not be opened: %s",accessFilename,e.getMessage()));
+  }
+ finally {
+    FileUtils.closeQuietly(in);
   }
   return authorized;
 }
