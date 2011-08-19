@@ -20,4 +20,15 @@
   if ((memOps != null) && (memOps <= 0))   throw new InvalidRequestException(String.format("%s must be non-negative and greater than zero",KW_MEMTABLEOPSINMILLIONS));
   if (keyValidator.size() < 1)   throw new InvalidRequestException("You must specify a PRIMARY KEY");
  else   if (keyValidator.size() > 1)   throw new InvalidRequestException("You may only specify one PRIMARY KEY");
+  AbstractType<?> comparator;
+  try {
+    comparator=getComparator();
+  }
+ catch (  ConfigurationException e) {
+    throw new InvalidRequestException(e.toString());
+  }
+  for (  Map.Entry<Term,String> column : columns.entrySet()) {
+    ByteBuffer name=column.getKey().getByteBuffer(comparator);
+    if (keyAlias != null && keyAlias.equals(name))     throw new InvalidRequestException("Invalid column name: " + column.getKey().getText() + ", because it equals to the key_alias.");
+  }
 }

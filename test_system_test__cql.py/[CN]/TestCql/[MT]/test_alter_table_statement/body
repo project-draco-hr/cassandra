@@ -3,7 +3,7 @@ def test_alter_table_statement(self):
     cursor = init()
     cursor.execute("\n               CREATE KEYSPACE AlterTableKS WITH strategy_options:replication_factor = '1'\n                   AND strategy_class = 'SimpleStrategy';\n        ")
     cursor.execute('USE AlterTableKS;')
-    cursor.execute('\n            CREATE COLUMNFAMILY NewCf1 (KEY varint PRIMARY KEY) WITH default_validation = ascii;\n        ')
+    cursor.execute('\n            CREATE COLUMNFAMILY NewCf1 (id_key varint PRIMARY KEY) WITH default_validation = ascii;\n        ')
     ksdef = thrift_client.describe_keyspace('AlterTableKS')
     assert (len(ksdef.cf_defs) == 1), ('expected 1 column family total, found %d' % len(ksdef.cf_defs))
     cfam = ksdef.cf_defs[0]
@@ -31,3 +31,4 @@ def test_alter_table_statement(self):
     assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER COLUMNFAMILY NewCf1 ADD name utf8')
     assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER COLUMNFAMILY NewCf1 ALTER name TYPE uuid')
     assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER COLUMNFAMILY NewCf1 DROP name')
+    assert_raises(cql.ProgrammingError, cursor.execute, 'ALTER COLUMNFAMILY NewCf1 ADD id_key utf8')
