@@ -2,12 +2,14 @@
   validateTtl(column);
   if (!column.isSetValue())   throw new InvalidRequestException("Column value is required");
   if (!column.isSetTimestamp())   throw new InvalidRequestException("Column timestamp is required");
+  ColumnDefinition columnDef=metadata.getColumnDefinition(column.name);
   try {
-    AbstractType validator=metadata.getValueValidator(column.name);
+    AbstractType validator=metadata.getValueValidator(columnDef);
     if (validator != null)     validator.validate(column.value);
   }
  catch (  MarshalException me) {
     if (logger.isDebugEnabled())     logger.debug("rejecting invalid value " + ByteBufferUtil.bytesToHex(summarize(column.value)));
     throw new InvalidRequestException(String.format("(%s) [%s][%s][%s] failed validation",me.getMessage(),metadata.ksName,metadata.cfName,(isSubColumn ? metadata.subcolumnComparator : metadata.comparator).getString(column.name)));
   }
+  if (columnDef != null && columnDef.getIndexType() != null && column.value.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)   throw new InvalidRequestException(String.format("Can't index column value of size %d for index %s in CF %s of KS %s",column.value.remaining(),columnDef.getIndexName(),metadata.cfName,metadata.ksName));
 }
