@@ -1,0 +1,28 @@
+{
+  logger.debug("collectAllData");
+  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
+  ColumnFamily returnCF=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
+  try {
+    for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
+      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,metadata.comparator);
+      if (iter != null) {
+        returnCF.delete(iter.getColumnFamily());
+        iterators.add(iter);
+      }
+    }
+    for (    SSTableReader sstable : dataview.sstables) {
+      IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
+      iterators.add(iter);
+      if (iter.getColumnFamily() != null) {
+        returnCF.delete(iter.getColumnFamily());
+        sstablesIterated++;
+      }
+    }
+  }
+  finally {
+    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
+  }
+  if (iterators.isEmpty())   return null;
+  filter.collateColumns(returnCF,iterators,metadata.comparator,gcBefore);
+  return returnCF;
+}

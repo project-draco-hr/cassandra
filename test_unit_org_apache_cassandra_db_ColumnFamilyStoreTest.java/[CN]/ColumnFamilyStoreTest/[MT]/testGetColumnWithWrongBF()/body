@@ -1,15 +1,17 @@
 {
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore cfs=table.getColumnFamilyStore("Standard1");
+  cfs.truncate().get();
   List<IMutation> rms=new LinkedList<IMutation>();
   RowMutation rm;
   rm=new RowMutation("Keyspace1",ByteBufferUtil.bytes("key1"));
   rm.add(new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column1")),ByteBufferUtil.bytes("asdf"),0);
   rm.add(new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column2")),ByteBufferUtil.bytes("asdf"),0);
   rms.add(rm);
-  ColumnFamilyStore store=Util.writeColumnFamily(rms);
-  Table table=Table.open("Keyspace1");
+  Util.writeColumnFamily(rms);
   List<SSTableReader> ssTables=table.getAllSSTables();
   assertEquals(1,ssTables.size());
   ssTables.get(0).forceFilterFailures();
-  ColumnFamily cf=store.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"),new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column1"))));
+  ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(Util.dk("key2"),new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column1"))));
   assertNull(cf);
 }

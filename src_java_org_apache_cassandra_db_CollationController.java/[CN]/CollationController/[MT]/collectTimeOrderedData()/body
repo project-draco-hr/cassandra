@@ -1,0 +1,50 @@
+{
+  logger.debug("collectTimeOrderedData");
+  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
+  final ColumnFamily container=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
+  try {
+    for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
+      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,metadata.comparator);
+      if (iter != null) {
+        iterators.add(iter);
+        container.delete(iter.getColumnFamily());
+        while (iter.hasNext())         container.addColumn(iter.next());
+      }
+    }
+    TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(metadata.comparator);
+    filterColumns.addAll(((NamesQueryFilter)filter.filter).columns);
+    QueryFilter reducedFilter=new QueryFilter(filter.key,filter.path,new NamesQueryFilter(filterColumns));
+    for (    SSTableReader sstable : dataview.sstables) {
+      long currentMaxTs=sstable.getMaxTimestamp();
+      reduceNameFilter(reducedFilter,container,currentMaxTs);
+      if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())       break;
+      IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
+      iterators.add(iter);
+      if (iter.getColumnFamily() != null) {
+        container.delete(iter.getColumnFamily());
+        sstablesIterated++;
+        while (iter.hasNext())         container.addColumn(iter.next());
+      }
+    }
+  }
+  finally {
+    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
+  }
+  if (iterators.isEmpty())   return null;
+  CloseableIterator<IColumn> toCollate=new SimpleAbstractColumnIterator(){
+    final Iterator<IColumn> iter=container.iterator();
+    protected IColumn computeNext(){
+      return iter.hasNext() ? iter.next() : endOfData();
+    }
+    public ColumnFamily getColumnFamily(){
+      return container;
+    }
+    public DecoratedKey getKey(){
+      return filter.key;
+    }
+  }
+;
+  ColumnFamily returnCF=container.cloneMeShallow();
+  filter.collateColumns(returnCF,Collections.singletonList(toCollate),metadata.comparator,gcBefore);
+  return returnCF;
+}
