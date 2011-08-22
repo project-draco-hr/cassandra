@@ -1,16 +1,16 @@
 {
-  super(UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress()),DatabaseDescriptor.getDefsVersion());
-  KSMetaData ksm=DatabaseDescriptor.getTableDefinition(cf_def.keyspace.toString());
+  super(UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress()),Schema.instance.getVersion());
+  KSMetaData ksm=schema.getTableDefinition(cf_def.keyspace.toString());
   if (ksm == null)   throw new ConfigurationException("No such keyspace: " + cf_def.keyspace.toString());
   if (cf_def.column_metadata != null) {
     for (    ColumnDef entry : cf_def.column_metadata) {
       if (entry.index_name != null && !Migration.isLegalName(entry.index_name.toString()))       throw new ConfigurationException("Invalid index name: " + entry.index_name);
     }
   }
-  CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(cf_def.keyspace.toString(),cf_def.name.toString()));
+  CFMetaData oldCfm=schema.getCFMetaData(cf_def.keyspace.toString(),cf_def.name.toString());
   this.metadata=CFMetaData.inflate(oldCfm.deflate());
   this.metadata.apply(cf_def);
   KSMetaData newKsMeta=KSMetaData.inflate(ksm.deflate());
   newKsMeta.cfMetaData().get(cf_def.name.toString()).apply(cf_def);
-  rm=Migration.makeDefinitionMutation(newKsMeta,null,newVersion);
+  rm=makeDefinitionMutation(newKsMeta,null,newVersion);
 }

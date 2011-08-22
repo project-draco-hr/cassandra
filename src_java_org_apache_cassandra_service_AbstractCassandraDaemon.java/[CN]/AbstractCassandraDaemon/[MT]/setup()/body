@@ -15,7 +15,7 @@
     }
   }
 );
-  for (  CFMetaData cfm : DatabaseDescriptor.getTableMetaData(Table.SYSTEM_TABLE).values())   ColumnFamilyStore.scrubDataDirectories(Table.SYSTEM_TABLE,cfm.cfName);
+  for (  CFMetaData cfm : Schema.instance.getTableMetaData(Table.SYSTEM_TABLE).values())   ColumnFamilyStore.scrubDataDirectories(Table.SYSTEM_TABLE,cfm.cfName);
   try {
     SystemTable.checkHealth();
   }
@@ -30,12 +30,12 @@
     logger.error("Fatal exception during initialization",e);
     System.exit(100);
   }
-  for (  String table : DatabaseDescriptor.getTables()) {
-    for (    CFMetaData cfm : DatabaseDescriptor.getTableMetaData(table).values()) {
+  for (  String table : Schema.instance.getTables()) {
+    for (    CFMetaData cfm : Schema.instance.getTableMetaData(table).values()) {
       ColumnFamilyStore.scrubDataDirectories(table,cfm.cfName);
     }
   }
-  for (  String table : DatabaseDescriptor.getTables()) {
+  for (  String table : Schema.instance.getTables()) {
     if (logger.isDebugEnabled())     logger.debug("opening keyspace " + table);
     Table.open(table);
   }
@@ -46,7 +46,7 @@
     logger.warn("Unable to start GCInspector (currently only supported on the Sun JVM)");
   }
   CommitLog.recover();
-  UUID currentMigration=DatabaseDescriptor.getDefsVersion();
+  UUID currentMigration=Schema.instance.getVersion();
   UUID lastMigration=Migration.getLastMigrationId();
   if ((lastMigration != null) && (lastMigration.timestamp() > currentMigration.timestamp())) {
     Gossiper.instance.maybeInitializeLocalState(SystemTable.incrementAndGetGeneration());

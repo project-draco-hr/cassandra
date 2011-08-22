@@ -1,10 +1,10 @@
 {
   final ByteBuffer versionKey=Migration.toUTF8Bytes(version);
-  Collection<String> ksnames=DatabaseDescriptor.getNonSystemTables();
+  Collection<String> ksnames=org.apache.cassandra.config.Schema.instance.getNonSystemTables();
   RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,versionKey);
   long now=System.currentTimeMillis();
   for (  String ksname : ksnames) {
-    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(ksname);
+    KSMetaData ksm=org.apache.cassandra.config.Schema.instance.getTableDefinition(ksname);
     rm.add(new QueryPath(Migration.SCHEMA_CF,null,ByteBufferUtil.bytes(ksm.name)),SerDeUtils.serialize(ksm.deflate()),now);
   }
   rm.add(new QueryPath(Migration.SCHEMA_CF,null,DEFINITION_SCHEMA_COLUMN_NAME),ByteBufferUtil.bytes(org.apache.cassandra.db.migration.avro.KsDef.SCHEMA$.toString()),now);

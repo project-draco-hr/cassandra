@@ -1,14 +1,14 @@
 {
-  logger.debug("Updating " + DatabaseDescriptor.getCFMetaData(metadata.cfId) + " to "+ metadata);
+  logger.debug("Updating " + schema.getCFMetaData(metadata.cfId) + " to "+ metadata);
   try {
-    DatabaseDescriptor.getCFMetaData(metadata.cfId).apply(CFMetaData.convertToAvro(metadata));
+    schema.getCFMetaData(metadata.cfId).apply(CFMetaData.convertToAvro(metadata));
   }
  catch (  ConfigurationException ex) {
     throw new IOException(ex);
   }
-  DatabaseDescriptor.setTableDefinition(null,newVersion);
+  schema.setTableDefinition(null,newVersion);
   if (!StorageService.instance.isClientMode()) {
-    Table table=Table.open(metadata.ksName);
+    Table table=Table.open(metadata.ksName,schema);
     ColumnFamilyStore oldCfs=table.getColumnFamilyStore(metadata.cfName);
     oldCfs.reload();
   }

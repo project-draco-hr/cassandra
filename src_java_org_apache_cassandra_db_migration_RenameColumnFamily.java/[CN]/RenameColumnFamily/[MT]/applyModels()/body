@@ -1,15 +1,15 @@
 {
-  KSMetaData oldKsm=DatabaseDescriptor.getTableDefinition(tableName);
-  CFMetaData.purge(oldKsm.cfMetaData().get(oldName));
-  KSMetaData ksm=makeNewKeyspaceDefinition(DatabaseDescriptor.getTableDefinition(tableName));
+  KSMetaData oldKsm=schema.getTableDefinition(tableName);
+  schema.purge(oldKsm.cfMetaData().get(oldName));
+  KSMetaData ksm=makeNewKeyspaceDefinition(schema.getTableDefinition(tableName));
   try {
-    CFMetaData.map(ksm.cfMetaData().get(newName));
+    schema.load(ksm.cfMetaData().get(newName));
   }
  catch (  ConfigurationException ex) {
     throw new RuntimeException(ex);
   }
-  DatabaseDescriptor.setTableDefinition(ksm,newVersion);
+  schema.setTableDefinition(ksm,newVersion);
   if (!StorageService.instance.isClientMode()) {
-    Table.open(ksm.name).renameCf(cfId,newName);
+    Table.open(ksm.name,schema).renameCf(cfId,newName);
   }
 }

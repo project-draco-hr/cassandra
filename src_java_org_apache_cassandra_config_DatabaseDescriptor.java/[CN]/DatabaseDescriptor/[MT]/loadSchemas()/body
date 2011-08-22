@@ -3,7 +3,7 @@
   if (uuid == null) {
     logger.info("Couldn't detect any schema definitions in local storage.");
     boolean hasExistingTables=false;
-    for (    String dataDir : DatabaseDescriptor.getAllDataFileLocations()) {
+    for (    String dataDir : getAllDataFileLocations()) {
       File dataPath=new File(dataDir);
       if (dataPath.exists() && dataPath.isDirectory()) {
         int dirCount=dataPath.listFiles(new FileFilter(){
@@ -24,23 +24,13 @@
  else {
     logger.info("Loading schema version " + uuid.toString());
     Collection<KSMetaData> tableDefs=DefsTable.loadFromStorage(uuid);
-    for (    KSMetaData def : tableDefs) {
-      if (!def.name.matches(Migration.NAME_VALIDATOR_REGEX))       throw new RuntimeException("invalid keyspace name: " + def.name);
-      for (      CFMetaData cfm : def.cfMetaData().values()) {
-        if (!cfm.cfName.matches(Migration.NAME_VALIDATOR_REGEX))         throw new RuntimeException("invalid column family name: " + cfm.cfName);
-        try {
-          CFMetaData.map(cfm);
-        }
- catch (        ConfigurationException ex) {
-          throw new IOError(ex);
-        }
-      }
-      DatabaseDescriptor.setTableDefinition(def,uuid);
-    }
     if (tableDefs.size() == 0) {
       logger.warn("No schema definitions were found in local storage.");
-      defsVersion=uuid;
+      Schema.instance.setVersion(uuid);
+    }
+ else {
+      Schema.instance.load(tableDefs,uuid);
     }
   }
-  CFMetaData.fixMaxId();
+  Schema.instance.fixCFMaxId();
 }

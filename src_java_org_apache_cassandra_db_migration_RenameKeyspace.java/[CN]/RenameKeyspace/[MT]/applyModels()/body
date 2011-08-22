@@ -1,20 +1,20 @@
 {
   if (!StorageService.instance.isClientMode())   renameKsStorageFiles(oldName,newName);
-  KSMetaData oldKsm=DatabaseDescriptor.getTableDefinition(oldName);
-  for (  CFMetaData cfm : oldKsm.cfMetaData().values())   CFMetaData.purge(cfm);
+  KSMetaData oldKsm=schema.getTableDefinition(oldName);
+  for (  CFMetaData cfm : oldKsm.cfMetaData().values())   schema.purge(cfm);
   KSMetaData newKsm=rename(oldKsm,newName,true);
   for (  CFMetaData cfm : newKsm.cfMetaData().values()) {
     try {
-      CFMetaData.map(cfm);
+      schema.load(cfm);
     }
  catch (    ConfigurationException ex) {
       throw new RuntimeException(ex);
     }
   }
-  DatabaseDescriptor.clearTableDefinition(oldKsm,newVersion);
-  DatabaseDescriptor.setTableDefinition(newKsm,newVersion);
+  schema.clearTableDefinition(oldKsm,newVersion);
+  schema.setTableDefinition(newKsm,newVersion);
   if (!StorageService.instance.isClientMode()) {
-    Table.clear(oldKsm.name);
-    Table.open(newName);
+    Table.clear(oldKsm.name,schema);
+    Table.open(newName,schema);
   }
 }

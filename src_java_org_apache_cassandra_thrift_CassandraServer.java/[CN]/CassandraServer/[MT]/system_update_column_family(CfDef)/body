@@ -2,7 +2,7 @@
   logger.debug("update_column_family");
   state().hasColumnFamilyListAccess(Permission.WRITE);
   if (cf_def.keyspace == null || cf_def.name == null)   throw new InvalidRequestException("Keyspace and CF name must be set.");
-  CFMetaData oldCfm=DatabaseDescriptor.getCFMetaData(CFMetaData.getId(cf_def.keyspace,cf_def.name));
+  CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
   if (oldCfm == null)   throw new InvalidRequestException("Could not find column family definition to modify.");
   CFMetaData.addDefaultIndexNames(cf_def);
   ThriftValidation.validateCfDef(cf_def,oldCfm);
@@ -11,7 +11,7 @@
     CFMetaData.applyImplicitDefaults(cf_def);
     UpdateColumnFamily update=new UpdateColumnFamily(CFMetaData.convertToAvro(cf_def));
     applyMigrationOnStage(update);
-    return DatabaseDescriptor.getDefsVersion().toString();
+    return Schema.instance.getVersion().toString();
   }
  catch (  ConfigurationException e) {
     InvalidRequestException ex=new InvalidRequestException(e.getMessage());

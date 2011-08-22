@@ -1,7 +1,7 @@
 {
-  super(UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress()),DatabaseDescriptor.getDefsVersion());
+  super(UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress()),Schema.instance.getVersion());
   this.cfm=cfm;
-  KSMetaData ksm=DatabaseDescriptor.getTableDefinition(cfm.ksName);
+  KSMetaData ksm=schema.getTableDefinition(cfm.ksName);
   if (ksm == null)   throw new ConfigurationException("No such keyspace: " + cfm.ksName);
  else   if (ksm.cfMetaData().containsKey(cfm.cfName))   throw new ConfigurationException(String.format("%s already exists in keyspace %s",cfm.cfName,cfm.ksName));
  else   if (!Migration.isLegalName(cfm.cfName))   throw new ConfigurationException("Invalid column family name: " + cfm.cfName);
@@ -10,5 +10,5 @@
     if (indexName != null && !Migration.isLegalName(indexName))     throw new ConfigurationException("Invalid index name: " + indexName);
   }
   KSMetaData newKsm=makeNewKeyspaceDefinition(ksm);
-  rm=Migration.makeDefinitionMutation(newKsm,null,newVersion);
+  rm=makeDefinitionMutation(newKsm,null,newVersion);
 }
