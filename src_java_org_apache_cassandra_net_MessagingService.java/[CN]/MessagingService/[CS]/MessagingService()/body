@@ -18,6 +18,12 @@
     public Object apply(    Pair<String,Pair<InetAddress,IMessageCallback>> pair){
       Pair<InetAddress,IMessageCallback> expiredValue=pair.right;
       maybeAddLatency(expiredValue.right,expiredValue.left,(double)DatabaseDescriptor.getRpcTimeout());
+      totalTimeouts++;
+      String ip=expiredValue.left.getHostAddress();
+      AtomicLong c=timeoutsPerHost.get(ip);
+      if (c == null)       c=timeoutsPerHost.put(ip,new AtomicLong());
+      c.incrementAndGet();
+      if (recentTimeoutsPerHost.get(ip) == null)       recentTimeoutsPerHost.put(ip,new AtomicLong());
       return null;
     }
   }
