@@ -1,4 +1,5 @@
 {
+  logger.debug("applying {} to {}",cf_def,this);
   if (!cf_def.keyspace.toString().equals(ksName))   throw new ConfigurationException(String.format("Keyspace mismatch (found %s; expected %s)",cf_def.keyspace,ksName));
   if (!cf_def.name.toString().equals(cfName))   throw new ConfigurationException(String.format("Column family mismatch (found %s; expected %s)",cf_def.name,cfName));
   if (!cf_def.id.equals(cfId))   throw new ConfigurationException(String.format("Column family ID mismatch (found %s; expected %s)",cf_def.id,cfId));
@@ -37,7 +38,9 @@
     if (!column_metadata.containsKey(def.name))     toAdd.add(def);
   }
   for (  ByteBuffer name : column_metadata.keySet())   if (!newColumns.contains(name))   toRemove.add(name);
-  for (  ByteBuffer indexName : toRemove)   column_metadata.remove(indexName);
+  for (  ByteBuffer indexName : toRemove) {
+    column_metadata.remove(indexName);
+  }
   for (  org.apache.cassandra.db.migration.avro.ColumnDef def : cf_def.column_metadata) {
     ColumnDefinition oldDef=column_metadata.get(def.name);
     if (oldDef == null)     continue;
@@ -62,4 +65,5 @@
     compactionStrategyOptions=new HashMap<String,String>();
     for (    Map.Entry<CharSequence,CharSequence> e : cf_def.compaction_strategy_options.entrySet())     compactionStrategyOptions.put(e.getKey().toString(),e.getValue().toString());
   }
+  logger.debug("application result is {}",this);
 }

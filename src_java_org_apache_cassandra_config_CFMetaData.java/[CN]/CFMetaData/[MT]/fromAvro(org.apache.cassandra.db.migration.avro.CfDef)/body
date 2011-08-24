@@ -1,0 +1,69 @@
+{
+  AbstractType comparator;
+  AbstractType subcolumnComparator=null;
+  AbstractType validator;
+  AbstractType keyValidator;
+  try {
+    comparator=TypeParser.parse(cf.comparator_type.toString());
+    if (cf.subcomparator_type != null)     subcolumnComparator=TypeParser.parse(cf.subcomparator_type);
+    validator=TypeParser.parse(cf.default_validation_class);
+    keyValidator=TypeParser.parse(cf.key_validation_class);
+  }
+ catch (  Exception ex) {
+    throw new RuntimeException("Could not inflate CFMetaData for " + cf,ex);
+  }
+  Map<ByteBuffer,ColumnDefinition> column_metadata=new TreeMap<ByteBuffer,ColumnDefinition>(BytesType.instance);
+  for (  ColumnDef aColumn_metadata : cf.column_metadata) {
+    ColumnDefinition cd=ColumnDefinition.fromAvro(aColumn_metadata);
+    if (cd.getIndexType() != null && cd.getIndexName() == null)     cd.setIndexName(getDefaultIndexName(cf.name.toString(),comparator,cd.name));
+    column_metadata.put(cd.name,cd);
+  }
+  CFMetaData newCFMD=new CFMetaData(cf.keyspace.toString(),cf.name.toString(),ColumnFamilyType.create(cf.column_type.toString()),comparator,subcolumnComparator,cf.id);
+  if (cf.min_compaction_threshold != null) {
+    newCFMD.minCompactionThreshold(cf.min_compaction_threshold);
+  }
+  if (cf.max_compaction_threshold != null) {
+    newCFMD.maxCompactionThreshold(cf.max_compaction_threshold);
+  }
+  if (cf.row_cache_save_period_in_seconds != null) {
+    newCFMD.rowCacheSavePeriod(cf.row_cache_save_period_in_seconds);
+  }
+  if (cf.key_cache_save_period_in_seconds != null) {
+    newCFMD.keyCacheSavePeriod(cf.key_cache_save_period_in_seconds);
+  }
+  if (cf.row_cache_keys_to_save != null) {
+    newCFMD.rowCacheKeysToSave(cf.row_cache_keys_to_save);
+  }
+  if (cf.memtable_throughput_in_mb != null) {
+    newCFMD.memSize(cf.memtable_throughput_in_mb);
+  }
+  if (cf.memtable_operations_in_millions != null) {
+    newCFMD.memOps(cf.memtable_operations_in_millions);
+  }
+  if (cf.merge_shards_chance != null) {
+    newCFMD.mergeShardsChance(cf.merge_shards_chance);
+  }
+  if (cf.row_cache_provider != null) {
+    try {
+      newCFMD.rowCacheProvider(FBUtilities.newCacheProvider(cf.row_cache_provider.toString()));
+    }
+ catch (    ConfigurationException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  if (cf.key_alias != null) {
+    newCFMD.keyAlias(cf.key_alias);
+  }
+  if (cf.compaction_strategy != null) {
+    try {
+      newCFMD.compactionStrategyClass((Class<? extends AbstractCompactionStrategy>)Class.forName(cf.compaction_strategy.toString()));
+    }
+ catch (    Exception e) {
+      throw new RuntimeException("Could not create Compaction Strategy of type " + cf.compaction_strategy.toString(),e);
+    }
+  }
+  if (cf.compaction_strategy_options != null) {
+    for (    Map.Entry<CharSequence,CharSequence> e : cf.compaction_strategy_options.entrySet())     newCFMD.compactionStrategyOptions.put(e.getKey().toString(),e.getValue().toString());
+  }
+  return newCFMD.comment(cf.comment.toString()).rowCacheSize(cf.row_cache_size).keyCacheSize(cf.key_cache_size).readRepairChance(cf.read_repair_chance).replicateOnWrite(cf.replicate_on_write).gcGraceSeconds(cf.gc_grace_seconds).defaultValidator(validator).keyValidator(keyValidator).columnMetadata(column_metadata).compression(cf.compression);
+}

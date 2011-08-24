@@ -9,7 +9,14 @@
   validateSchemaAgreement();
   try {
     CFMetaData.applyImplicitDefaults(cf_def);
-    UpdateColumnFamily update=new UpdateColumnFamily(CFMetaData.convertToAvro(cf_def));
+    org.apache.cassandra.db.migration.avro.CfDef result;
+    try {
+      result=CFMetaData.fromThrift(cf_def).toAvro();
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+    UpdateColumnFamily update=new UpdateColumnFamily(result);
     applyMigrationOnStage(update);
     return Schema.instance.getVersion().toString();
   }

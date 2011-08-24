@@ -147,7 +147,7 @@ CFMetaData oldCfm=Schema.instance.getCFMetaData(keyspace,createIdx.getColumnFami
 if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
 boolean columnExists=false;
 ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
-CfDef cf_def=CFMetaData.convertToThrift(oldCfm);
+CfDef cf_def=oldCfm.toThrift();
 for (ColumnDef cd : cf_def.column_metadata) {
 if (cd.name.equals(columnName)) {
 if (cd.index_type != null) throw new InvalidRequestException("Index already exists");
@@ -162,7 +162,14 @@ if (!columnExists) throw new InvalidRequestException("No column definition found
 CFMetaData.addDefaultIndexNames(cf_def);
 ThriftValidation.validateCfDef(cf_def,oldCfm);
 try {
-applyMigrationOnStage(new UpdateColumnFamily(CFMetaData.convertToAvro(cf_def)));
+org.apache.cassandra.db.migration.avro.CfDef result1;
+try {
+result1=CFMetaData.fromThrift(cf_def).toAvro();
+}
+ catch (Exception e) {
+throw new RuntimeException(e);
+}
+applyMigrationOnStage(new UpdateColumnFamily(result1));
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
