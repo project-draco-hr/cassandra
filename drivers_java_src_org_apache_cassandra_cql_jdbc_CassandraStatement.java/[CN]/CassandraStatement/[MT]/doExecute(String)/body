@@ -1,0 +1,34 @@
+{
+  try {
+    resetResults();
+    CqlResult rSet=connection.execute(sql);
+    String keyspace=connection.currentKeyspace;
+    String columnfamily=determineCurrentColumnFamily(sql);
+switch (rSet.getType()) {
+case ROWS:
+      currentResultSet=new CResultSet(this,rSet,connection.decoder,keyspace,columnfamily);
+    break;
+case INT:
+  updateCount=rSet.getNum();
+break;
+case VOID:
+updateCount=0;
+break;
+}
+}
+ catch (InvalidRequestException e) {
+throw new SQLSyntaxErrorException(e.getWhy());
+}
+catch (UnavailableException e) {
+throw new SQLNonTransientConnectionException(NO_SERVER,e);
+}
+catch (TimedOutException e) {
+throw new SQLTransientConnectionException(e.getMessage());
+}
+catch (SchemaDisagreementException e) {
+throw new SQLRecoverableException(SCHEMA_MISMATCH);
+}
+catch (TException e) {
+throw new SQLNonTransientConnectionException(e.getMessage());
+}
+}

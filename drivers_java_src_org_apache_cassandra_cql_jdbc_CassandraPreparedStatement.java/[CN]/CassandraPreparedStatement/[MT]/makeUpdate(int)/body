@@ -1,0 +1,17 @@
+{
+  String keyspace=determineCurrentKeyspace(cql,connection.currentKeyspace);
+  String columnFamily=determineCurrentColumnFamily(cql);
+  if (columnFamily == null)   throw new SQLTransientException(NO_CF);
+  ParameterIterator params=new ParameterIterator();
+  String left=cql.substring(0,pivot);
+  AbstractType leftComp=connection.decoder.getComparator(keyspace,columnFamily);
+  if (leftComp == null)   throw new SQLDataException(String.format(NO_COMPARATOR,keyspace,columnFamily));
+  AbstractType leftVald=connection.decoder.getComparator(keyspace,columnFamily);
+  if (leftVald == null)   throw new SQLDataException(String.format(NO_VALIDATOR,keyspace,columnFamily));
+  left=applyDualBindings(left,leftComp,leftVald,params);
+  String right=cql.substring(pivot);
+  AbstractType keyVald=connection.decoder.getKeyValidator(keyspace,columnFamily);
+  if (keyVald == null)   throw new SQLDataException(String.format(NO_VALIDATOR,keyspace,columnFamily));
+  right=applySimpleBindings(right,keyVald,params);
+  return left + right;
+}

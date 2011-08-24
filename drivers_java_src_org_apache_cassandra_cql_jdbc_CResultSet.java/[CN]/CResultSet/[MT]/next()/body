@@ -1,0 +1,25 @@
+{
+  if (!values.isEmpty() || !valueMap.isEmpty()) {
+    values.clear();
+    valueMap.clear();
+  }
+  if (rSetIter != null && rSetIter.hasNext()) {
+    CqlRow row=rSetIter.next();
+    rowNumber++;
+    curRowKey=row.getKey();
+    typedCurRowKey=decoder.makeKeyColumn(keyspace,columnFamily,curRowKey);
+    List<Column> cols=row.getColumns();
+    for (    Column col : cols) {
+      TypedColumn c=decoder.makeCol(keyspace,columnFamily,col);
+      String columnName=decoder.colNameAsString(keyspace,columnFamily,col.name);
+      values.add(c);
+      indexMap.put(columnName,values.size());
+      valueMap.put(columnName,c);
+    }
+    return !(values.isEmpty() || valueMap.isEmpty());
+  }
+ else {
+    rowNumber=Integer.MAX_VALUE;
+    return false;
+  }
+}

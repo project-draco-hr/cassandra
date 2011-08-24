@@ -1,0 +1,18 @@
+def __init__(self, host, port, keyspace, user=None, password=None):
+    '\n        Params:\n        * host .........: hostname of Cassandra node.\n        * port .........: port number to connect to.\n        * keyspace .....: keyspace to connect to.\n        * user .........: username used in authentication (optional).\n        * password .....: password used in authentication (optional).\n        '
+    self.host = host
+    self.port = port
+    self.keyspace = keyspace
+    socket = TSocket.TSocket(host, port)
+    self.transport = TTransport.TFramedTransport(socket)
+    protocol = TBinaryProtocol.TBinaryProtocolAccelerated(self.transport)
+    self.client = Cassandra.Client(protocol)
+    socket.open()
+    self.open_socket = True
+    if (user and password):
+        credentials = {'username': user, 'password': password, }
+        self.client.login(AuthenticationRequest(credentials=credentials))
+    if keyspace:
+        c = self.cursor()
+        c.execute(('USE %s;' % keyspace))
+        c.close()

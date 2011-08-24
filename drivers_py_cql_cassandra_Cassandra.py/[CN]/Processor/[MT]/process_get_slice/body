@@ -1,0 +1,17 @@
+def process_get_slice(self, seqid, iprot, oprot):
+    args = get_slice_args()
+    args.read(iprot)
+    iprot.readMessageEnd()
+    result = get_slice_result()
+    try:
+        result.success = self._handler.get_slice(args.key, args.column_parent, args.predicate, args.consistency_level)
+    except InvalidRequestException as ire:
+        result.ire = ire
+    except UnavailableException as ue:
+        result.ue = ue
+    except TimedOutException as te:
+        result.te = te
+    oprot.writeMessageBegin('get_slice', TMessageType.REPLY, seqid)
+    result.write(oprot)
+    oprot.writeMessageEnd()
+    oprot.trans.flush()

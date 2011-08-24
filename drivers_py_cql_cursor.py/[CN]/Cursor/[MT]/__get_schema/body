@@ -1,0 +1,18 @@
+def __get_schema(self):
+
+    def columns(metadata):
+        results = {}
+        for col in metadata:
+            results[col.name] = col.validation_class
+        return results
+
+    def column_families(cf_defs):
+        d = {}
+        for cf in cf_defs:
+            d[cf.name] = {'comparator': cf.comparator_type, 'default_validation_class': cf.default_validation_class, 'key_validation_class': cf.key_validation_class, 'columns': columns(cf.column_metadata), 'key_alias': cf.key_alias, }
+        return d
+    schema = {}
+    client = self._connection.client
+    for ksdef in client.describe_keyspaces():
+        schema[ksdef.name] = column_families(ksdef.cf_defs)
+    return schema

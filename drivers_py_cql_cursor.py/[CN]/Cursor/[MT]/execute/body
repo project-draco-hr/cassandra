@@ -1,0 +1,48 @@
+def execute(self, cql_query, params={}):
+    self.__checksock()
+    self.rs_idx = 0
+    self.rowcount = 0
+    self.description = None
+    try:
+        prepared_q = self.prepare(cql_query, params)
+    except KeyError as e:
+        raise cql.ProgrammingError(('Unmatched named substitution: ' + ('%s not given for %s' % (e, cql_query))))
+    if (self.compression == 'GZIP'):
+        compressed_q = zlib.compress(prepared_q)
+    else:
+        compressed_q = prepared_q
+    request_compression = getattr(Compression, self.compression)
+    try:
+        client = self._connection.client
+        response = client.execute_cql_query(compressed_q, request_compression)
+    except InvalidRequestException as ire:
+        raise cql.ProgrammingError(('Bad Request: %s' % ire.why))
+    except SchemaDisagreementException as sde:
+        raise cql.IntegrityError('Schema versions disagree, (try again later).')
+    except UnavailableException:
+        raise cql.OperationalError('Unable to complete request: one or more nodes were unavailable.')
+    except TimedOutException:
+        raise cql.OperationalError('Request did not complete within rpc_timeout.')
+    except TApplicationException as tapp:
+        raise cql.InternalError('Internal application error')
+    if (self._schema_update_needed and isinstance(self.decoder, SchemaDecoder)):
+        self.decoder.schema = self.__get_schema()
+    if (response.type == CqlResultType.ROWS):
+        self.result = response.rows
+        self.rs_idx = 0
+        self.rowcount = len(self.result)
+        if self.result:
+            self.description = self.decoder.decode_description(self._query_ks, self._query_cf, self.result[0])
+    elif (response.type == CqlResultType.INT):
+        self.result = [(response.num,)]
+        self.rs_idx = 0
+        self.rowcount = 1
+        self.description = _COUNT_DESCRIPTION
+    elif (response.type == CqlResultType.VOID):
+        self.result = []
+        self.rs_idx = 0
+        self.rowcount = 0
+        self.description = _VOID_DESCRIPTION
+    else:
+        raise Exception(('unknown result type ' + response.type))
+    return True
