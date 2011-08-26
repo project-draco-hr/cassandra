@@ -1,32 +1,36 @@
 {
   logger.debug("collectAllData");
   List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
-  ColumnFamily returnCF=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
-  List<SSTableReader> sstables=null;
-  try {
+  ColumnFamily returnCF=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
+  List<SSTableReader> sstables;
+  while (true) {
+    DataTracker.View dataview=cfs.getDataTracker().getView();
     for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
-      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,metadata.comparator);
+      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,cfs.metadata.comparator);
       if (iter != null) {
         returnCF.delete(iter.getColumnFamily());
         iterators.add(iter);
       }
     }
     sstables=dataview.intervalTree.search(new Interval(filter.key,filter.key));
-    SSTableReader.acquireReferences(sstables);
-    for (    SSTableReader sstable : sstables) {
-      IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
-      iterators.add(iter);
-      if (iter.getColumnFamily() != null) {
-        returnCF.delete(iter.getColumnFamily());
-        sstablesIterated++;
+    if (!SSTableReader.acquireReferences(sstables))     continue;
+    try {
+      for (      SSTableReader sstable : sstables) {
+        IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
+        iterators.add(iter);
+        if (iter.getColumnFamily() != null) {
+          returnCF.delete(iter.getColumnFamily());
+          sstablesIterated++;
+        }
       }
     }
-  }
   finally {
-    SSTableReader.releaseReferences(sstables);
-    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
+      SSTableReader.releaseReferences(sstables);
+      for (      IColumnIterator iter : iterators)       FileUtils.closeQuietly(iter);
+    }
+    break;
   }
   if (iterators.isEmpty())   return null;
-  filter.collateColumns(returnCF,iterators,metadata.comparator,gcBefore);
+  filter.collateColumns(returnCF,iterators,cfs.metadata.comparator,gcBefore);
   return returnCF;
 }

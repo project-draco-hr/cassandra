@@ -1,48 +1,55 @@
 {
   logger.debug("collectTimeOrderedData");
-  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
-  final ColumnFamily container=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
-  List<SSTableReader> sstables=null;
-  try {
+  List<IColumnIterator> iterators;
+  ColumnFamily container;
+  while (true) {
+    DataTracker.View dataview=cfs.getDataTracker().getView();
+    iterators=new ArrayList<IColumnIterator>();
+    container=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
+    List<SSTableReader> sstables;
     for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
-      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,metadata.comparator);
+      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,cfs.metadata.comparator);
       if (iter != null) {
         iterators.add(iter);
         container.delete(iter.getColumnFamily());
         while (iter.hasNext())         container.addColumn(iter.next());
       }
     }
-    TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(metadata.comparator);
+    TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(cfs.metadata.comparator);
     filterColumns.addAll(((NamesQueryFilter)filter.filter).columns);
     QueryFilter reducedFilter=new QueryFilter(filter.key,filter.path,new NamesQueryFilter(filterColumns));
     sstables=dataview.intervalTree.search(new Interval(filter.key,filter.key));
     Collections.sort(sstables,SSTable.maxTimestampComparator);
-    SSTableReader.acquireReferences(sstables);
-    for (    SSTableReader sstable : sstables) {
-      long currentMaxTs=sstable.getMaxTimestamp();
-      reduceNameFilter(reducedFilter,container,currentMaxTs);
-      if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())       break;
-      IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
-      iterators.add(iter);
-      if (iter.getColumnFamily() != null) {
-        container.delete(iter.getColumnFamily());
-        sstablesIterated++;
-        while (iter.hasNext())         container.addColumn(iter.next());
+    if (!SSTableReader.acquireReferences(sstables))     continue;
+    try {
+      for (      SSTableReader sstable : sstables) {
+        long currentMaxTs=sstable.getMaxTimestamp();
+        reduceNameFilter(reducedFilter,container,currentMaxTs);
+        if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())         break;
+        IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
+        iterators.add(iter);
+        if (iter.getColumnFamily() != null) {
+          container.delete(iter.getColumnFamily());
+          sstablesIterated++;
+          while (iter.hasNext())           container.addColumn(iter.next());
+        }
       }
     }
-  }
   finally {
-    SSTableReader.releaseReferences(sstables);
-    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
+      SSTableReader.releaseReferences(sstables);
+      for (      IColumnIterator iter : iterators)       FileUtils.closeQuietly(iter);
+    }
+    break;
   }
   if (iterators.isEmpty())   return null;
+  final ColumnFamily c2=container;
   CloseableIterator<IColumn> toCollate=new SimpleAbstractColumnIterator(){
-    final Iterator<IColumn> iter=container.iterator();
+    final Iterator<IColumn> iter=c2.iterator();
     protected IColumn computeNext(){
       return iter.hasNext() ? iter.next() : endOfData();
     }
     public ColumnFamily getColumnFamily(){
-      return container;
+      return c2;
     }
     public DecoratedKey getKey(){
       return filter.key;
@@ -50,6 +57,6 @@
   }
 ;
   ColumnFamily returnCF=container.cloneMeShallow();
-  filter.collateColumns(returnCF,Collections.singletonList(toCollate),metadata.comparator,gcBefore);
+  filter.collateColumns(returnCF,Collections.singletonList(toCollate),cfs.metadata.comparator,gcBefore);
   return returnCF;
 }
