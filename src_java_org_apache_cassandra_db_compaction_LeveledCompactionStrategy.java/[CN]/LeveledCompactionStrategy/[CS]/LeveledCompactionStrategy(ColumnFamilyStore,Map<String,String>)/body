@@ -1,0 +1,23 @@
+{
+  super(cfs,options);
+  int configuredMaxSSTableSize=5;
+  if (options != null) {
+    String value=options.containsKey(SSTABLE_SIZE_OPTION) ? options.get(SSTABLE_SIZE_OPTION) : null;
+    if (null != value) {
+      try {
+        configuredMaxSSTableSize=Integer.parseInt(value);
+      }
+ catch (      NumberFormatException ex) {
+        logger.warn(String.format("%s is not a parsable int (base10) for %s using default value",value,SSTABLE_SIZE_OPTION));
+      }
+    }
+  }
+  maxSSTableSize=configuredMaxSSTableSize;
+  cfs.getDataTracker().subscribe(this);
+  logger.info(this + " subscribed to the data tracker.");
+  manifest=LeveledManifest.create(cfs,this.maxSSTableSize);
+  cfs.setMaximumCompactionThreshold(Integer.MAX_VALUE);
+  cfs.setMinimumCompactionThreshold(1);
+  DebuggableScheduledThreadPoolExecutor st=StorageService.scheduledTasks;
+  st.scheduleAtFixedRate(new ScheduledBackgroundCompaction(cfs),10000,3000,TimeUnit.MILLISECONDS);
+}

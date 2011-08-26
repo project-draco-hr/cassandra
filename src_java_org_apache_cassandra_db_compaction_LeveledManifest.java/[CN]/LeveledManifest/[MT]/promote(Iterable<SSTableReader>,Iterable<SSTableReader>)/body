@@ -1,0 +1,18 @@
+{
+  logger.debug("Replacing [{}] with [{}]",StringUtils.join(removed.iterator(),", "),StringUtils.join(added.iterator(),", "));
+  int minimumLevel=Integer.MAX_VALUE;
+  int maximumLevel=0;
+  for (  SSTableReader sstable : removed) {
+    int thisLevel=levelOf(sstable);
+    maximumLevel=Math.max(maximumLevel,thisLevel);
+    minimumLevel=Math.min(minimumLevel,thisLevel);
+    remove(sstable);
+  }
+  if (!added.iterator().hasNext())   return;
+  int newLevel=minimumLevel == maximumLevel ? maximumLevel + 1 : maximumLevel;
+  newLevel=skipLevels(newLevel,added);
+  lastCompactedKeys[minimumLevel]=SSTable.sstableOrdering.max(added).last;
+  logger.debug("Adding [{}] to L{}",StringUtils.join(added.iterator(),", "),newLevel);
+  for (  SSTableReader ssTableReader : added)   add(ssTableReader,newLevel);
+  serialize();
+}

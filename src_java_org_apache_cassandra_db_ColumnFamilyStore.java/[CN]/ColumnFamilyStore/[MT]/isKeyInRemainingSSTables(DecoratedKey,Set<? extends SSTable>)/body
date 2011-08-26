@@ -1,6 +1,13 @@
 {
-  for (  SSTableReader sstable : data.getSSTables()) {
-    if (!sstablesToIgnore.contains(sstable) && sstable.getBloomFilter().isPresent(key.key))     return true;
+  DataTracker.View currentView=markCurrentViewReferenced();
+  try {
+    List<SSTableReader> filteredSSTables=currentView.intervalTree.search(new Interval(key,key));
+    for (    SSTableReader sstable : filteredSSTables) {
+      if (!sstablesToIgnore.contains(sstable) && sstable.getBloomFilter().isPresent(key.key))       return true;
+    }
+    return false;
   }
-  return false;
+  finally {
+    SSTableReader.releaseReferences(currentView.sstables);
+  }
 }
