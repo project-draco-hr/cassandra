@@ -2,6 +2,7 @@
   logger.debug("collectTimeOrderedData");
   List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
   final ColumnFamily container=ColumnFamily.create(metadata,factory,filter.filter.isReversed());
+  List<SSTableReader> sstables=null;
   try {
     for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
       IColumnIterator iter=filter.getMemtableColumnIterator(memtable,metadata.comparator);
@@ -14,7 +15,10 @@
     TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(metadata.comparator);
     filterColumns.addAll(((NamesQueryFilter)filter.filter).columns);
     QueryFilter reducedFilter=new QueryFilter(filter.key,filter.path,new NamesQueryFilter(filterColumns));
-    for (    SSTableReader sstable : dataview.sstables) {
+    sstables=dataview.intervalTree.search(new Interval(filter.key,filter.key));
+    Collections.sort(sstables,SSTable.maxTimestampComparator);
+    SSTableReader.acquireReferences(sstables);
+    for (    SSTableReader sstable : sstables) {
       long currentMaxTs=sstable.getMaxTimestamp();
       reduceNameFilter(reducedFilter,container,currentMaxTs);
       if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())       break;
@@ -28,6 +32,7 @@
     }
   }
   finally {
+    SSTableReader.releaseReferences(sstables);
     for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
   }
   if (iterators.isEmpty())   return null;

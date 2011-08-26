@@ -3,6 +3,7 @@
   SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
   SegmentedFile.Builder dbuilder=(components.contains(Component.COMPRESSION_INFO)) ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
   RandomAccessReader input=RandomAccessReader.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)),true);
+  DecoratedKey left=null, right=null;
   try {
     if (keyCache != null && keyCache.getCapacity() - keyCache.size() < keysToLoadInCache.size())     keyCache.updateCapacity(keyCache.size() + keysToLoadInCache.size());
     long indexSize=input.length();
@@ -12,8 +13,14 @@
     while (true) {
       long indexPosition=input.getFilePointer();
       if (indexPosition == indexSize)       break;
+      ByteBuffer key=null, skippedKey;
+      skippedKey=ByteBufferUtil.readWithShortLength(input);
       boolean shouldAddEntry=indexSummary.shouldAddEntry();
-      ByteBuffer key=(shouldAddEntry || cacheLoading || recreatebloom) ? ByteBufferUtil.readWithShortLength(input) : ByteBufferUtil.skipShortLength(input);
+      if (shouldAddEntry || cacheLoading || recreatebloom) {
+        key=skippedKey;
+      }
+      if (null == left)       left=decodeKey(partitioner,descriptor,skippedKey);
+      right=decodeKey(partitioner,descriptor,skippedKey);
       long dataPosition=input.readLong();
       if (key != null) {
         DecoratedKey decoratedKey=decodeKey(partitioner,descriptor,key);
@@ -30,6 +37,8 @@
   finally {
     FileUtils.closeQuietly(input);
   }
+  this.first=left;
+  this.last=right;
   ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
   dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
 }

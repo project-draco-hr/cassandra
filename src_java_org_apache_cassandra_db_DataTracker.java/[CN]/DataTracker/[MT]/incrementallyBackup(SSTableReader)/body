@@ -1,13 +1,13 @@
 {
-  if (DatabaseDescriptor.incrementalBackupsEnabled()) {
-    File keyspaceDir=new File(sstable.getFilename()).getParentFile();
-    File backupsDir=new File(keyspaceDir,"backups");
-    try {
+  if (!DatabaseDescriptor.incrementalBackupsEnabled())   return;
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws Exception {
+      File keyspaceDir=new File(sstable.getFilename()).getParentFile();
+      File backupsDir=new File(keyspaceDir,"backups");
       if (!backupsDir.exists() && !backupsDir.mkdirs())       throw new IOException("Unable to create " + backupsDir);
       sstable.createLinks(backupsDir.getCanonicalPath());
     }
- catch (    IOException e) {
-      throw new IOError(e);
-    }
   }
+;
+  StorageService.tasks.execute(runnable);
 }

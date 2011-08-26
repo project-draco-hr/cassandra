@@ -1,0 +1,17 @@
+{
+  logDistribution();
+  double bestScore=-1;
+  int bestLevel=-1;
+  for (int level=0; level < generations.length; level++) {
+    List<SSTableReader> sstables=generations[level];
+    if (sstables.isEmpty())     continue;
+    double score=SSTableReader.getTotalBytes(sstables) / maxBytesForLevel(level);
+    score=(level == 0 && score < 1) ? 1.001 : 0;
+    logger.debug("Compaction score for level {} is {}",level,score);
+    if (score > bestScore) {
+      bestScore=score;
+      bestLevel=level;
+    }
+  }
+  return bestScore > 1 ? getCandidatesFor(bestLevel) : Collections.<SSTableReader>emptyList();
+}

@@ -1,0 +1,33 @@
+{
+  String dataFileLocation=getDataFilePrefix(cfs);
+  String tempManifestFileName=dataFileLocation + cfs.getColumnFamilyName() + "-"+ "tmp.json";
+  String manifestFileName=dataFileLocation + cfs.getColumnFamilyName() + ".json";
+  String oldManifestFileName=dataFileLocation + cfs.getColumnFamilyName() + "-"+ "old.json";
+  File tmpManifest=new File(tempManifestFileName);
+  JsonFactory f=new JsonFactory();
+  try {
+    JsonGenerator g=f.createJsonGenerator(tmpManifest,JsonEncoding.UTF8);
+    g.useDefaultPrettyPrinter();
+    g.writeStartObject();
+    g.writeArrayFieldStart("generations");
+    for (int level=0; level < generations.length; level++) {
+      g.writeStartObject();
+      g.writeNumberField("generation",level);
+      g.writeArrayFieldStart("members");
+      for (      SSTableReader ssTableReader : generations[level])       g.writeNumber(ssTableReader.descriptor.generation);
+      g.writeEndArray();
+      g.writeEndObject();
+    }
+    g.writeEndArray();
+    g.writeEndObject();
+    g.close();
+  }
+ catch (  IOException e) {
+    e.printStackTrace();
+  }
+  File oldFile=new File(oldManifestFileName);
+  if (oldFile.exists())   oldFile.delete();
+  File currentManifest=new File(manifestFileName);
+  if (currentManifest.exists())   currentManifest.renameTo(new File(oldManifestFileName));
+  if (tmpManifest.exists())   tmpManifest.renameTo(new File(manifestFileName));
+}
