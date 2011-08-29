@@ -1,13 +1,10 @@
 {
   logger.debug("collectTimeOrderedData");
-  List<IColumnIterator> iterators;
-  ColumnFamily container;
-  while (true) {
-    DataTracker.View dataview=cfs.getDataTracker().getView();
-    iterators=new ArrayList<IColumnIterator>();
-    container=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
-    List<SSTableReader> sstables;
-    for (    Memtable memtable : Iterables.concat(dataview.memtablesPendingFlush,Collections.singleton(dataview.memtable))) {
+  ColumnFamily container=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
+  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
+  ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
+  try {
+    for (    Memtable memtable : view.memtables) {
       IColumnIterator iter=filter.getMemtableColumnIterator(memtable,cfs.metadata.comparator);
       if (iter != null) {
         iterators.add(iter);
@@ -18,28 +15,23 @@
     TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(cfs.metadata.comparator);
     filterColumns.addAll(((NamesQueryFilter)filter.filter).columns);
     QueryFilter reducedFilter=new QueryFilter(filter.key,filter.path,new NamesQueryFilter(filterColumns));
-    sstables=dataview.intervalTree.search(new Interval(filter.key,filter.key));
-    Collections.sort(sstables,SSTable.maxTimestampComparator);
-    if (!SSTableReader.acquireReferences(sstables))     continue;
-    try {
-      for (      SSTableReader sstable : sstables) {
-        long currentMaxTs=sstable.getMaxTimestamp();
-        reduceNameFilter(reducedFilter,container,currentMaxTs);
-        if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())         break;
-        IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
-        iterators.add(iter);
-        if (iter.getColumnFamily() != null) {
-          container.delete(iter.getColumnFamily());
-          sstablesIterated++;
-          while (iter.hasNext())           container.addColumn(iter.next());
-        }
+    Collections.sort(view.sstables,SSTable.maxTimestampComparator);
+    for (    SSTableReader sstable : view.sstables) {
+      long currentMaxTs=sstable.getMaxTimestamp();
+      reduceNameFilter(reducedFilter,container,currentMaxTs);
+      if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())       break;
+      IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
+      iterators.add(iter);
+      if (iter.getColumnFamily() != null) {
+        container.delete(iter.getColumnFamily());
+        sstablesIterated++;
+        while (iter.hasNext())         container.addColumn(iter.next());
       }
     }
+  }
   finally {
-      SSTableReader.releaseReferences(sstables);
-      for (      IColumnIterator iter : iterators)       FileUtils.closeQuietly(iter);
-    }
-    break;
+    SSTableReader.releaseReferences(view.sstables);
+    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
   }
   if (iterators.isEmpty())   return null;
   final ColumnFamily c2=container;

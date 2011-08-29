@@ -1,0 +1,11 @@
+{
+  DataTracker.View view;
+  List<SSTableReader> sstables;
+  while (true) {
+    view=data.getView();
+    Comparable stopInTree=stopAt.isEmpty() ? view.intervalTree.max : stopAt;
+    sstables=view.intervalTree.search(new Interval(startWith,stopInTree));
+    if (SSTableReader.acquireReferences(sstables))     break;
+  }
+  return new ViewFragment(sstables,Iterables.concat(Collections.singleton(view.memtable),view.memtablesPendingFlush));
+}
