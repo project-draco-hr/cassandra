@@ -1,0 +1,22 @@
+{
+  String config=System.getProperty("log4j.configuration","log4j-server.properties");
+  URL configLocation=null;
+  try {
+    configLocation=new URL(config);
+  }
+ catch (  MalformedURLException ex) {
+    configLocation=AbstractCassandraDaemon.class.getClassLoader().getResource(config);
+  }
+  if (configLocation == null)   throw new RuntimeException("Couldn't figure out log4j configuration: " + config);
+  String configFileName=null;
+  try {
+    configFileName=configLocation.getFile();
+    File configFile=new File(configFileName);
+    if (!configFile.exists())     configFileName=new File(configLocation.toURI()).getCanonicalPath();
+  }
+ catch (  Exception e) {
+    throw new RuntimeException("Couldn't convert log4j configuration location to a valid file",e);
+  }
+  PropertyConfigurator.configureAndWatch(configFileName,10000);
+  org.apache.log4j.Logger.getLogger(AbstractCassandraDaemon.class).info("Logging initialized");
+}
