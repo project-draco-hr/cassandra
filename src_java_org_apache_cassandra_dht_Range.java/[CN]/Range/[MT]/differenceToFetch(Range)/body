@@ -1,20 +1,23 @@
 {
-  Set<Range> difference=new HashSet<Range>();
-  int comparisonAC=Range.compare(left,rhs.left);
-  if (comparisonAC == 0) {
-    if (Range.compare(right,rhs.right) < 0) {
-      difference.add(new Range(right,rhs.right));
-    }
-  }
- else   if (comparisonAC > 0) {
-    difference.add(new Range(rhs.left,left));
-    if (Range.compare(rhs.right,right) > 0) {
-      difference.add(new Range(rhs.right,right));
-    }
+  Set<Range> result;
+  Set<Range> intersectionSet=this.intersectionWith(rhs);
+  if (intersectionSet.isEmpty()) {
+    result=new HashSet<Range>();
+    result.add(rhs);
   }
  else {
-    Token newLeft=(Range.compare(rhs.left,right) > 0) ? rhs.left : right;
-    difference.add(new Range(newLeft,rhs.right));
+    Range[] intersections=new Range[intersectionSet.size()];
+    intersectionSet.toArray(intersections);
+    if (intersections.length == 1) {
+      result=new HashSet<Range>(rhs.subtractContained(intersections[0]));
+    }
+ else {
+      Range first=intersections[0];
+      Range second=intersections[1];
+      ArrayList<Range> temp=rhs.subtractContained(first);
+      Range single=temp.get(0);
+      result=new HashSet<Range>(single.subtractContained(second));
+    }
   }
-  return difference;
+  return result;
 }
