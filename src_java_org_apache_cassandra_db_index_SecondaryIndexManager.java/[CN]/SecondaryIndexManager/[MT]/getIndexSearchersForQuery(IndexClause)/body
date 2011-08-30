@@ -1,17 +1,17 @@
 {
   List<SecondaryIndexSearcher> indexSearchers=new ArrayList<SecondaryIndexSearcher>();
-  Map<IndexType,Set<ByteBuffer>> groupByIndexType=new HashMap<IndexType,Set<ByteBuffer>>();
+  Map<String,Set<ByteBuffer>> groupByIndexType=new HashMap<String,Set<ByteBuffer>>();
   for (  IndexExpression ix : clause.expressions) {
     SecondaryIndex index=getIndexForColumn(ix.column_name);
     if (index == null)     continue;
-    Set<ByteBuffer> columns=groupByIndexType.get(index.type());
+    Set<ByteBuffer> columns=groupByIndexType.get(index.getClass().getCanonicalName());
     if (columns == null) {
       columns=new HashSet<ByteBuffer>();
-      groupByIndexType.put(index.type(),columns);
+      groupByIndexType.put(index.getClass().getCanonicalName(),columns);
     }
     columns.add(ix.column_name);
   }
-  for (  Map.Entry<IndexType,Set<ByteBuffer>> entry : groupByIndexType.entrySet()) {
+  for (  Map.Entry<String,Set<ByteBuffer>> entry : groupByIndexType.entrySet()) {
     indexSearchers.add(getIndexForColumn(entry.getValue().iterator().next()).createSecondaryIndexSearcher(entry.getValue()));
   }
   return indexSearchers;
