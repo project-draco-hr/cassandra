@@ -1,26 +1,23 @@
 {
-  ByteBuffer buffer=MessagingService.instance().constructStreamHeader(header,false,Gossiper.instance.getVersion(to));
-  writeHeader(buffer);
+  ByteBuffer HeaderBuffer=MessagingService.instance().constructStreamHeader(header,false,Gossiper.instance.getVersion(to));
+  output.write(ByteBufferUtil.getArray(HeaderBuffer));
   if (header.file == null)   return;
-  if (header.file.sstable.compression) {
-    CompressedRandomAccessReader.transfer(header.file,channel);
-    return;
-  }
-  RandomAccessFile raf=new RandomAccessFile(new File(header.file.getFilename()),"r");
+  RandomAccessReader file=(header.file.sstable.compression) ? CompressedRandomAccessReader.open(header.file.getFilename(),true) : RandomAccessReader.open(new File(header.file.getFilename()),CHUNK_SIZE,true);
   try {
-    FileChannel fc=raf.getChannel();
     for (    Pair<Long,Long> section : header.file.sections) {
+      file.seek(section.left);
       long length=section.right - section.left;
       long bytesTransferred=0;
       while (bytesTransferred < length) {
-        long lastWrite=write(fc,section,length,bytesTransferred);
+        long lastWrite=write(file,length,bytesTransferred);
         bytesTransferred+=lastWrite;
         header.file.progress+=lastWrite;
       }
+      output.flush();
       if (logger.isDebugEnabled())       logger.debug("Bytes transferred " + bytesTransferred + "/"+ header.file.size);
     }
   }
   finally {
-    FileUtils.closeQuietly(raf);
+    FileUtils.closeQuietly(file);
   }
 }
