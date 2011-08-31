@@ -1,7 +1,8 @@
 {
   if (channel.position() != chunk.offset)   channel.position(chunk.offset);
+  if (compressed.length < chunk.length)   compressed=new byte[chunk.length];
   if (source.read(compressed,0,chunk.length) != chunk.length)   throw new IOException(String.format("(%s) failed to read %d bytes from offset %d.",getPath(),chunk.length,chunk.offset));
-  validBufferBytes=Snappy.rawUncompress(compressed,0,chunk.length,buffer,0);
+  validBufferBytes=metadata.compressor().uncompress(compressed,0,chunk.length,buffer,0);
   checksum.update(buffer,0,validBufferBytes);
   if (checksum(chunk) != (int)checksum.getValue())   throw new CorruptedBlockException(getPath(),chunk);
   checksum.reset();

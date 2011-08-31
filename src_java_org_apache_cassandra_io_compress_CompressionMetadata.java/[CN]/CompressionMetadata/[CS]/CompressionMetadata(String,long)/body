@@ -1,8 +1,21 @@
 {
   this.indexFilePath=indexFilePath;
   DataInputStream stream=new DataInputStream(new FileInputStream(indexFilePath));
-  algorithm=stream.readUTF();
-  chunkLength=stream.readInt();
+  String compressorName=stream.readUTF();
+  int optionCount=stream.readInt();
+  Map<String,String> options=new HashMap<String,String>();
+  for (int i=0; i < optionCount; ++i) {
+    String key=stream.readUTF();
+    String value=stream.readUTF();
+    options.put(key,value);
+  }
+  int chunkLength=stream.readInt();
+  try {
+    parameters=new CompressionParameters(compressorName,options,chunkLength);
+  }
+ catch (  ConfigurationException e) {
+    throw new RuntimeException("Cannot create CompressionParameters for stored parameters",e);
+  }
   dataLength=stream.readLong();
   compressedFileLength=compressedLength;
   chunkOffsets=readChunkOffsets(stream);
