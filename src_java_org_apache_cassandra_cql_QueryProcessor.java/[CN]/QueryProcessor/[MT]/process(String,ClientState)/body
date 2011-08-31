@@ -101,11 +101,12 @@ return result;
 case CREATE_KEYSPACE:
 CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
 create.validate();
-clientState.hasKeyspaceListAccess(Permission.WRITE);
+clientState.hasKeyspaceSchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
 KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
 ThriftValidation.validateKsDef(ksd);
+ThriftValidation.validateKeyspaceNotYetExisting(create.getName());
 applyMigrationOnStage(new AddKeyspace(KSMetaData.fromThrift(ksd)));
 }
  catch (ConfigurationException e) {
@@ -122,7 +123,7 @@ result.type=CqlResultType.VOID;
 return result;
 case CREATE_COLUMNFAMILY:
 CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
-clientState.hasColumnFamilyListAccess(Permission.WRITE);
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
 applyMigrationOnStage(new AddColumnFamily(createCf.getCFMetaData(keyspace)));
@@ -141,7 +142,7 @@ result.type=CqlResultType.VOID;
 return result;
 case CREATE_INDEX:
 CreateIndexStatement createIdx=(CreateIndexStatement)statement.statement;
-clientState.hasColumnFamilyListAccess(Permission.WRITE);
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 CFMetaData oldCfm=Schema.instance.getCFMetaData(keyspace,createIdx.getColumnFamily());
 if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
@@ -185,7 +186,7 @@ result.type=CqlResultType.VOID;
 return result;
 case DROP_INDEX:
 DropIndexStatement dropIdx=(DropIndexStatement)statement.statement;
-clientState.hasColumnFamilyListAccess(Permission.WRITE);
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
 applyMigrationOnStage(dropIdx.generateMutation(clientState.getKeyspace()));
@@ -204,7 +205,7 @@ result.type=CqlResultType.VOID;
 return result;
 case DROP_KEYSPACE:
 String deleteKeyspace=(String)statement.statement;
-clientState.hasKeyspaceListAccess(Permission.WRITE);
+clientState.hasKeyspaceSchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
 applyMigrationOnStage(new DropKeyspace(deleteKeyspace));
@@ -223,7 +224,7 @@ result.type=CqlResultType.VOID;
 return result;
 case DROP_COLUMNFAMILY:
 String deleteColumnFamily=(String)statement.statement;
-clientState.hasColumnFamilyListAccess(Permission.WRITE);
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
 applyMigrationOnStage(new DropColumnFamily(keyspace,deleteColumnFamily));
