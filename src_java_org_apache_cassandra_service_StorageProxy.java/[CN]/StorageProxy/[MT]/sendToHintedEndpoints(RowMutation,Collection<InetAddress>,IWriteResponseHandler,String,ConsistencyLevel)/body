@@ -1,0 +1,28 @@
+{
+  Map<String,Multimap<Message,InetAddress>> dcMessages=new HashMap<String,Multimap<Message,InetAddress>>(targets.size());
+  MessageProducer producer=new CachingMessageProducer(rm);
+  for (  InetAddress destination : targets) {
+    if (FailureDetector.instance.isAlive(destination)) {
+      String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
+      if (destination.equals(FBUtilities.getBroadcastAddress())) {
+        insertLocal(rm,responseHandler);
+      }
+ else {
+        if (logger.isDebugEnabled())         logger.debug("insert writing key " + ByteBufferUtil.bytesToHex(rm.key()) + " to "+ destination);
+        Multimap<Message,InetAddress> messages=dcMessages.get(dc);
+        if (messages == null) {
+          messages=HashMultimap.create();
+          dcMessages.put(dc,messages);
+        }
+        messages.put(producer.getMessage(Gossiper.instance.getVersion(destination)),destination);
+      }
+    }
+ else {
+      if (!shouldHint(destination))       continue;
+      if (hintsInProgress.get() > maxHintsInProgress)       throw new TimeoutException();
+      Future<Void> hintfuture=scheduleLocalHint(rm,destination,responseHandler,consistency_level);
+      responseHandler.addFutureForHint(new CreationTimeAwareFuture<Void>(hintfuture));
+    }
+  }
+  sendMessages(localDataCenter,dcMessages,responseHandler);
+}

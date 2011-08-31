@@ -1,11 +1,12 @@
 {
   if (consistencyLevel == ConsistencyLevel.ANY) {
-    if (hintedEndpoints.keySet().size() < responses.get())     throw new UnavailableException();
+    int effectiveEndpoints=writeEndpoints.contains(FBUtilities.getBroadcastAddress()) ? writeEndpoints.size() : writeEndpoints.size() + 1;
+    if (effectiveEndpoints < responses.get())     throw new UnavailableException();
     return;
   }
   int liveNodes=0;
-  for (  InetAddress destination : hintedEndpoints.keySet()) {
-    if (writeEndpoints.contains(destination))     liveNodes++;
+  for (  InetAddress destination : writeEndpoints) {
+    if (FailureDetector.instance.isAlive(destination))     liveNodes++;
   }
   if (liveNodes < responses.get()) {
     throw new UnavailableException();

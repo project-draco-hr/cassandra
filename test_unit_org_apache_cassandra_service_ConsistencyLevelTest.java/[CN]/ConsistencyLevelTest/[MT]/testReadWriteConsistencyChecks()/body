@@ -7,9 +7,9 @@
   ss.setPartitionerUnsafe(partitioner);
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
   ArrayList<Token> keyTokens=new ArrayList<Token>();
+  List<InetAddress> hostsInUse=new ArrayList<InetAddress>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
-  HashMultimap<InetAddress,InetAddress> hintedNodes=HashMultimap.create();
   AbstractReplicationStrategy strategy;
   for (  final String table : Schema.instance.getNonSystemTables()) {
     strategy=getStrategy(table,tmd);
@@ -19,11 +19,14 @@
     for (    ConsistencyLevel c : ConsistencyLevel.values()) {
       if (c == ConsistencyLevel.EACH_QUORUM || c == ConsistencyLevel.LOCAL_QUORUM)       continue;
       for (int i=0; i < replicationFactor; i++) {
-        hintedNodes.clear();
+        hostsInUse.clear();
         for (int j=0; j < i; j++) {
-          hintedNodes.put(hosts.get(j),hosts.get(j));
+          hostsInUse.add(hosts.get(j));
         }
-        IWriteResponseHandler writeHandler=strategy.getWriteResponseHandler(hosts,hintedNodes,c);
+        if (hostsInUse.isEmpty()) {
+          continue;
+        }
+        IWriteResponseHandler writeHandler=strategy.getWriteResponseHandler(hostsInUse,c);
         IReadCommand command=new IReadCommand(){
           public String getKeyspace(){
             return table;
@@ -31,7 +34,7 @@
         }
 ;
         RowRepairResolver resolver=new RowRepairResolver(table,ByteBufferUtil.bytes("foo"));
-        ReadCallback<Row> readHandler=StorageProxy.getReadCallback(resolver,command,c,new ArrayList<InetAddress>(hintedNodes.keySet()));
+        ReadCallback<Row> readHandler=StorageProxy.getReadCallback(resolver,command,c,hostsInUse);
         boolean isWriteUnavailable=false;
         boolean isReadUnavailable=false;
         try {
@@ -46,28 +49,28 @@
  catch (        UnavailableException e) {
           isReadUnavailable=true;
         }
-        assertTrue(isWriteUnavailable == isReadUnavailable);
+        assertTrue(String.format("Node Alive: %d - CL: %s - isWriteUnavailable: %b - isReadUnavailable: %b",hostsInUse.size(),c,isWriteUnavailable,isReadUnavailable),isWriteUnavailable == isReadUnavailable);
 switch (c) {
 case ALL:
-          if (isWriteUnavailable)           assertTrue(hintedNodes.size() < replicationFactor);
- else           assertTrue(hintedNodes.size() >= replicationFactor);
+          if (isWriteUnavailable)           assertTrue(hostsInUse.size() < replicationFactor);
+ else           assertTrue(hostsInUse.size() >= replicationFactor);
         break;
 case ONE:
 case ANY:
-      if (isWriteUnavailable)       assertTrue(hintedNodes.size() == 0);
- else       assertTrue(hintedNodes.size() > 0);
+      if (isWriteUnavailable)       assertTrue(hostsInUse.size() == 0);
+ else       assertTrue(hostsInUse.size() > 0);
     break;
 case TWO:
-  if (isWriteUnavailable)   assertTrue(hintedNodes.size() < 2);
- else   assertTrue(hintedNodes.size() >= 2);
+  if (isWriteUnavailable)   assertTrue(hostsInUse.size() < 2);
+ else   assertTrue(hostsInUse.size() >= 2);
 break;
 case THREE:
-if (isWriteUnavailable) assertTrue(hintedNodes.size() < 3);
- else assertTrue(hintedNodes.size() >= 3);
+if (isWriteUnavailable) assertTrue(hostsInUse.size() < 3);
+ else assertTrue(hostsInUse.size() >= 3);
 break;
 case QUORUM:
-if (isWriteUnavailable) assertTrue(hintedNodes.size() < (replicationFactor / 2 + 1));
- else assertTrue(hintedNodes.size() >= (replicationFactor / 2 + 1));
+if (isWriteUnavailable) assertTrue(hostsInUse.size() < (replicationFactor / 2 + 1));
+ else assertTrue(hostsInUse.size() >= (replicationFactor / 2 + 1));
 break;
 default :
 fail("Unhandled CL: " + c);
