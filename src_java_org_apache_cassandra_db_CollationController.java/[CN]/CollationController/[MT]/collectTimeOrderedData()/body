@@ -28,27 +28,27 @@
         while (iter.hasNext())         container.addColumn(iter.next());
       }
     }
+    if (iterators.isEmpty())     return null;
+    final ColumnFamily c2=container;
+    CloseableIterator<IColumn> toCollate=new SimpleAbstractColumnIterator(){
+      final Iterator<IColumn> iter=c2.iterator();
+      protected IColumn computeNext(){
+        return iter.hasNext() ? iter.next() : endOfData();
+      }
+      public ColumnFamily getColumnFamily(){
+        return c2;
+      }
+      public DecoratedKey getKey(){
+        return filter.key;
+      }
+    }
+;
+    ColumnFamily returnCF=container.cloneMeShallow();
+    filter.collateColumns(returnCF,Collections.singletonList(toCollate),cfs.metadata.comparator,gcBefore);
+    return returnCF;
   }
   finally {
     SSTableReader.releaseReferences(view.sstables);
     for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
   }
-  if (iterators.isEmpty())   return null;
-  final ColumnFamily c2=container;
-  CloseableIterator<IColumn> toCollate=new SimpleAbstractColumnIterator(){
-    final Iterator<IColumn> iter=c2.iterator();
-    protected IColumn computeNext(){
-      return iter.hasNext() ? iter.next() : endOfData();
-    }
-    public ColumnFamily getColumnFamily(){
-      return c2;
-    }
-    public DecoratedKey getKey(){
-      return filter.key;
-    }
-  }
-;
-  ColumnFamily returnCF=container.cloneMeShallow();
-  filter.collateColumns(returnCF,Collections.singletonList(toCollate),cfs.metadata.comparator,gcBefore);
-  return returnCF;
 }
