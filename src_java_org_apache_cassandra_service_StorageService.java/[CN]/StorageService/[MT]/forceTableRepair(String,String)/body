@@ -2,26 +2,26 @@
   if (Table.SYSTEM_TABLE.equals(tableName)) {
     return;
   }
-  List<AntiEntropyService.RepairSession> sessions=new ArrayList<AntiEntropyService.RepairSession>();
+  List<AntiEntropyService.RepairFuture> futures=new ArrayList<AntiEntropyService.RepairFuture>();
   for (  Range range : getLocalRanges(tableName)) {
-    AntiEntropyService.RepairSession session=forceTableRepair(range,tableName,columnFamilies);
-    sessions.add(session);
+    AntiEntropyService.RepairFuture future=forceTableRepair(range,tableName,columnFamilies);
+    futures.add(future);
     try {
-      session.differencingDone.await();
+      future.session.differencingDone.await();
     }
  catch (    InterruptedException e) {
-      logger_.error("Interrupted while waiting for the differencing of repair session " + session + " to be done. Repair may be imprecise.",e);
+      logger_.error("Interrupted while waiting for the differencing of repair session " + future.session + " to be done. Repair may be imprecise.",e);
     }
   }
   boolean failedSession=false;
-  for (  AntiEntropyService.RepairSession sess : sessions) {
+  for (  AntiEntropyService.RepairFuture future : futures) {
     try {
-      sess.join();
+      future.get();
     }
- catch (    InterruptedException e) {
-      logger_.error("Repair session " + sess + " failed.",e);
+ catch (    Exception e) {
+      logger_.error("Repair session " + future.session + " failed.",e);
       failedSession=true;
     }
   }
-  if (failedSession)   throw new IOException("Some Repair session(s) failed.");
+  if (failedSession)   throw new IOException("Some repair session(s) failed (see log for details).");
 }

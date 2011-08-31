@@ -12,16 +12,24 @@
     }
   }
   AntiEntropyService.instance.sessions.put(getName(),this);
+  Gossiper.instance.register(this);
+  FailureDetector.instance.registerFailureDetectionEventListener(this);
   try {
-    for (    String cfname : cfnames)     jobs.offer(new RepairJob(cfname));
-    completedLatch=new CountDownLatch(endpoints.size() * cfnames.length);
+    for (    String cfname : cfnames) {
+      RepairJob job=new RepairJob(cfname);
+      jobs.offer(job);
+      activeJobs.put(cfname,job);
+    }
     jobs.peek().sendTreeRequests();
-    completedLatch.await();
+    completed.await();
+    if (exception != null)     throw exception;
   }
  catch (  InterruptedException e) {
     throw new RuntimeException("Interrupted while waiting for repair: repair will continue in the background.");
   }
  finally {
+    FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+    Gossiper.instance.unregister(this);
     AntiEntropyService.instance.sessions.remove(getName());
   }
 }
