@@ -1,7 +1,9 @@
 {
+  LeveledCompactionTask currentTask=task.get();
+  if (currentTask != null && !currentTask.isDone())   return Collections.emptyList();
   Collection<SSTableReader> sstables=manifest.getCompactionCandidates();
   logger.debug("CompactionManager candidates are {}",StringUtils.join(sstables,","));
   if (sstables.isEmpty())   return Collections.emptyList();
-  LeveledCompactionTask task=new LeveledCompactionTask(cfs,sstables,gcBefore,this.maxSSTableSize);
-  return Collections.<AbstractCompactionTask>singletonList(task);
+  LeveledCompactionTask newTask=new LeveledCompactionTask(cfs,sstables,gcBefore,this.maxSSTableSize);
+  return task.compareAndSet(currentTask,newTask) ? Collections.<AbstractCompactionTask>singletonList(newTask) : Collections.<AbstractCompactionTask>emptyList();
 }
