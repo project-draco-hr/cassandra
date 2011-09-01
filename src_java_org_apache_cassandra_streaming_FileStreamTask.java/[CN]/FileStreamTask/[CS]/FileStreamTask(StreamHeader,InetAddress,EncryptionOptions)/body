@@ -2,4 +2,15 @@
   this.header=header;
   this.to=to;
   this.encryptionOptions=encryptionOptions;
+  this.throttle=new Throttle(toString(),new Throttle.ThroughputFunction(){
+    /** 
+ * @return Instantaneous throughput target in bytes per millisecond. 
+ */
+    public int targetThroughput(){
+      if (DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec() < 1)       return 0;
+      int totalBytesPerMS=DatabaseDescriptor.getStreamThroughputOutboundMegabitsPerSec() * 1024 * 1024 / 8 / 1000;
+      return totalBytesPerMS / Math.max(1,MessagingService.instance().getActiveStreamsOutbound());
+    }
+  }
+);
 }

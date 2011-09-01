@@ -1,0 +1,20 @@
+{
+  int newTargetBytesPerMS=fun.targetThroughput();
+  if (newTargetBytesPerMS < 1)   return;
+  if (newTargetBytesPerMS != targetBytesPerMS)   logger.debug("{} target throughput now {} bytes/ms.",this,newTargetBytesPerMS);
+  targetBytesPerMS=newTargetBytesPerMS;
+  long msSinceLast=System.currentTimeMillis() - timeAtLastDelay;
+  long excessBytes=bytesDelta - msSinceLast * targetBytesPerMS;
+  long timeToDelay=excessBytes / Math.max(1,targetBytesPerMS);
+  if (timeToDelay > 0) {
+    if (logger.isTraceEnabled())     logger.trace(String.format("%s actual throughput was %d bytes in %d ms: throttling for %d ms",this,bytesDelta,msSinceLast,timeToDelay));
+    try {
+      Thread.sleep(timeToDelay);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+  }
+  bytesAtLastDelay+=bytesDelta;
+  timeAtLastDelay=System.currentTimeMillis();
+}
