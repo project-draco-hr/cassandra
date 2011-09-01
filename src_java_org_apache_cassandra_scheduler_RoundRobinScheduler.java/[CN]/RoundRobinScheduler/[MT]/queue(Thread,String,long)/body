@@ -2,7 +2,17 @@
   WeightedQueue weightedQueue=getWeightedQueue(id);
   try {
     queueSize.release();
-    weightedQueue.put(t,timeoutMS);
+    try {
+      weightedQueue.put(t,timeoutMS);
+    }
+ catch (    TimeoutException e) {
+      queueSize.acquireUninterruptibly();
+      throw e;
+    }
+catch (    InterruptedException e) {
+      queueSize.acquireUninterruptibly();
+      throw e;
+    }
   }
  catch (  InterruptedException e) {
     throw new RuntimeException("Interrupted while queueing requests",e);
