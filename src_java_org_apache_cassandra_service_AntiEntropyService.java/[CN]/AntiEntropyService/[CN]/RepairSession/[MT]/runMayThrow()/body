@@ -1,13 +1,14 @@
 {
+  logger.info(String.format("[repair #%s] new session: will sync %s on range %s for %s.%s",getName(),repairedNodes(),range,tablename,Arrays.toString(cfnames)));
   if (endpoints.isEmpty()) {
     differencingDone.signalAll();
-    logger.info("No neighbors to repair with for " + tablename + " on "+ range+ ": "+ getName()+ " completed.");
+    logger.info("[repair #%s] No neighbors to repair with on range %s: session completed",getName(),range);
     return;
   }
   for (  InetAddress endpoint : endpoints) {
     if (!FailureDetector.instance.isAlive(endpoint)) {
       differencingDone.signalAll();
-      logger.info("Could not proceed on repair because a neighbor (" + endpoint + ") is dead: "+ getName()+ " failed.");
+      logger.info("[repair #%s] Could not proceed on repair because a neighbor (%s) is dead: session failed",getName(),endpoint);
       return;
     }
   }
@@ -22,7 +23,13 @@
     }
     jobs.peek().sendTreeRequests();
     completed.await();
-    if (exception != null)     throw exception;
+    if (exception == null) {
+      logger.info(String.format("[repair #%s] session completed successfully",getName()));
+    }
+ else {
+      logger.error(String.format("[repair #%s] session completed with the following error",getName()),exception);
+      throw exception;
+    }
   }
  catch (  InterruptedException e) {
     throw new RuntimeException("Interrupted while waiting for repair: repair will continue in the background.");

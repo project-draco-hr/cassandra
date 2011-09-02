@@ -1,19 +1,13 @@
 {
-  InetAddress local=FBUtilities.getBroadcastAddress();
-  if (ltree.partitioner() == null)   ltree.partitioner(StorageService.getPartitioner());
-  if (rtree.partitioner() == null)   rtree.partitioner(StorageService.getPartitioner());
-  differences.addAll(MerkleTree.difference(ltree,rtree));
-  String format="Endpoints " + local + " and "+ remote+ " %s for "+ cfname+ " on "+ range;
+  if (r1.tree.partitioner() == null)   r1.tree.partitioner(StorageService.getPartitioner());
+  if (r2.tree.partitioner() == null)   r2.tree.partitioner(StorageService.getPartitioner());
+  differences.addAll(MerkleTree.difference(r1.tree,r2.tree));
+  String format=String.format("[repair #%s] Endpoints %s and %s %%s for %s",getName(),r1.endpoint,r2.endpoint,cfname);
   if (differences.isEmpty()) {
     logger.info(String.format(format,"are consistent"));
-    completed(remote,cfname);
+    completed(this);
     return;
   }
   logger.info(String.format(format,"have " + differences.size() + " range(s) out of sync"));
-  try {
-    performStreamingRepair();
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
+  performStreamingRepair();
 }

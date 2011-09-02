@@ -1,14 +1,10 @@
 {
-  logger.info("Performing streaming repair of " + differences.size() + " ranges with "+ remote+ " for "+ range);
-  ColumnFamilyStore cfstore=Table.open(tablename).getColumnFamilyStore(cfname);
-  try {
-    Collection<SSTableReader> sstables=cfstore.markCurrentSSTablesReferenced();
-    Callback callback=new Callback();
-    StreamOutSession outsession=StreamOutSession.create(tablename,remote,callback);
-    StreamOut.transferSSTables(outsession,sstables,differences,OperationType.AES);
-    StreamIn.requestRanges(remote,tablename,differences,callback,OperationType.AES);
+  Runnable callback=new Runnable(){
+    public void run(){
+      completed(Differencer.this);
+    }
   }
- catch (  Exception e) {
-    throw new IOException("Streaming repair failed.",e);
-  }
+;
+  StreamingRepairTask task=StreamingRepairTask.create(r1.endpoint,r2.endpoint,tablename,cfname,differences,callback);
+  if (task.isLocalTask() || Gossiper.instance.getVersion(task.dst) >= MessagingService.VERSION_10)   task.run();
 }
