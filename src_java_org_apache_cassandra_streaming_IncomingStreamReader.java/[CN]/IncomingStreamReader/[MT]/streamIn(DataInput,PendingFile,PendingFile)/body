@@ -1,2 +1,38 @@
 {
+  ColumnFamilyStore cfs=Table.open(localFile.desc.ksname).getColumnFamilyStore(localFile.desc.cfname);
+  DecoratedKey key;
+  SSTableWriter writer=new SSTableWriter(localFile.getFilename(),remoteFile.estimatedKeys);
+  CompactionController controller=null;
+  try {
+    BytesReadTracker in=new BytesReadTracker(input);
+    for (    Pair<Long,Long> section : localFile.sections) {
+      long length=section.right - section.left;
+      long bytesRead=0;
+      while (bytesRead < length) {
+        in.reset(0);
+        key=SSTableReader.decodeKey(StorageService.getPartitioner(),localFile.desc,ByteBufferUtil.readWithShortLength(in));
+        long dataSize=SSTableReader.readRowSize(in,localFile.desc);
+        ColumnFamily cached=cfs.getRawCachedRow(key);
+        if (cached != null && remoteFile.type == OperationType.AES && dataSize <= DatabaseDescriptor.getInMemoryCompactionLimit()) {
+          if (controller == null)           controller=new CompactionController(cfs,Collections.<SSTableReader>emptyList(),Integer.MAX_VALUE,true);
+          SSTableIdentityIterator iter=new SSTableIdentityIterator(cfs.metadata,in,key,0,dataSize,true);
+          PrecompactedRow row=new PrecompactedRow(controller,Collections.singletonList(iter));
+          writer.append(row);
+          writer.updateMaxTimestamp(row.maxTimestamp());
+          ColumnFamily cf=row.getFullColumnFamily();
+          cfs.updateRowCache(key,cf);
+        }
+ else {
+          writer.appendFromStream(key,cfs.metadata,dataSize,in);
+          cfs.invalidateCachedRow(key);
+        }
+        bytesRead+=in.getBytesRead();
+        remoteFile.progress+=in.getBytesRead();
+      }
+    }
+    return writer.closeAndOpenReader();
+  }
+  finally {
+    writer.cleanupIfNecessary();
+  }
 }
