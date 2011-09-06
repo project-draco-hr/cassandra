@@ -1,14 +1,19 @@
 {
   isBootstrapMode=true;
   SystemTable.updateToken(token);
-  Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.bootstrapping(token));
-  setMode("Joining: sleeping " + RING_DELAY + " ms for pending range setup",true);
-  try {
-    Thread.sleep(RING_DELAY);
+  if (null == DatabaseDescriptor.getReplaceToken()) {
+    Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.bootstrapping(token));
+    setMode("Joining: sleeping " + RING_DELAY + " ms for pending range setup",true);
+    try {
+      Thread.sleep(RING_DELAY);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
   }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
+ else {
+    tokenMetadata_.updateNormalToken(token,FBUtilities.getBroadcastAddress());
   }
-  setMode("Bootstrapping",true);
+  setMode("Starting to bootstrap...",true);
   new BootStrapper(FBUtilities.getBroadcastAddress(),token,tokenMetadata_).bootstrap();
 }
