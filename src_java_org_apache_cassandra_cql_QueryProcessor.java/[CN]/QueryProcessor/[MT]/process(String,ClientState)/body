@@ -34,9 +34,45 @@ rows=getIndexedSlices(keyspace,select);
 }
 List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 result.type=CqlResultType.ROWS;
+result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),metadata.comparator.toString(),TypeParser.getShortName(metadata.getDefaultValidator()));
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
-List<Column> thriftColumns=extractThriftColumns(select,metadata,row);
+List<Column> thriftColumns=new ArrayList<Column>();
+if (select.isColumnRange()) {
+if (select.isWildcard()) {
+thriftColumns.add(new Column(metadata.getKeyName()).setValue(row.key.key).setTimestamp(-1));
+result.schema.name_types.put(metadata.getKeyName(),TypeParser.getShortName(AsciiType.instance));
+result.schema.value_types.put(metadata.getKeyName(),TypeParser.getShortName(metadata.getKeyValidator()));
+}
+for (IColumn c : row.cf.getSortedColumns()) {
+if (c.isMarkedForDelete()) continue;
+thriftColumns.add(thriftify(c));
+}
+}
+ else {
+String keyString=getKeyString(metadata);
+for (Term term : select.getColumnNames()) {
+if (term.getText().equalsIgnoreCase(keyString)) {
+ByteBuffer requestedKey=ByteBufferUtil.bytes(term.getText());
+thriftColumns.add(new Column(requestedKey).setValue(row.key.key).setTimestamp(-1));
+result.schema.name_types.put(requestedKey,TypeParser.getShortName(AsciiType.instance));
+result.schema.value_types.put(requestedKey,TypeParser.getShortName(metadata.getKeyValidator()));
+continue;
+}
+ByteBuffer name;
+try {
+name=term.getByteBuffer(metadata.comparator);
+}
+ catch (InvalidRequestException e) {
+throw new AssertionError(e);
+}
+ColumnDefinition cd=metadata.getColumnDefinition(name);
+if (cd != null) result.schema.value_types.put(name,TypeParser.getShortName(cd.getValidator()));
+IColumn c=row.cf.getColumn(name);
+if (c == null || c.isMarkedForDelete()) thriftColumns.add(new Column().setName(name));
+ else thriftColumns.add(thriftify(c));
+}
+}
 CqlRow cqlRow=new CqlRow();
 cqlRow.key=row.key.key;
 cqlRow.columns=thriftColumns;

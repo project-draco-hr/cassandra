@@ -1,18 +1,12 @@
-def decode_row(self, keyspace, column_family, row):
-    cfdef = self.__get_column_family_def(keyspace, column_family)
-    key_alias = cfdef['key_alias']
-    validators = cfdef['columns']
-    default_validator = cfdef['default_validation_class']
-    key_validator = cfdef.get('key_validation_class', None)
+def decode_row(self, row):
+    schema = self.schema
     values = []
     for column in row.columns:
-        name = column.name
         if (column.value is None):
             values.append(None)
             continue
-        if (name == key_alias):
-            validator = key_validator
-        else:
-            validator = validators.get(name, default_validator)
+        name = column.name
+        validator = schema.value_types.get(name, schema.default_value_type)
+        unmarshal = unmarshallers.get(validator, unmarshal_noop)
         values.append(unmarshallers.get(validator, unmarshal_noop)(column.value))
     return values

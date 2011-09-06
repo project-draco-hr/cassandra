@@ -25,14 +25,13 @@ def execute(self, cql_query, params={}):
         raise cql.OperationalError('Request did not complete within rpc_timeout.')
     except TApplicationException as tapp:
         raise cql.InternalError('Internal application error')
-    if (self._schema_update_needed and isinstance(self.decoder, SchemaDecoder)):
-        self.decoder.schema = self.__get_schema()
     if (response.type == CqlResultType.ROWS):
+        self.decoder = SchemaDecoder(response.schema)
         self.result = response.rows
         self.rs_idx = 0
         self.rowcount = len(self.result)
         if self.result:
-            self.description = self.decoder.decode_description(self._query_ks, self._query_cf, self.result[0])
+            self.description = self.decoder.decode_description(self.result[0])
     elif (response.type == CqlResultType.INT):
         self.result = [(response.num,)]
         self.rs_idx = 0
