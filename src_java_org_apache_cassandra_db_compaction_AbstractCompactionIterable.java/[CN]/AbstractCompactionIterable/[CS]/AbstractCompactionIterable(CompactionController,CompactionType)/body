@@ -1,0 +1,15 @@
+{
+  this.controller=controller;
+  this.type=type;
+  this.throttle=new Throttle(toString(),new Throttle.ThroughputFunction(){
+    /** 
+ * @return Instantaneous throughput target in bytes per millisecond. 
+ */
+    public int targetThroughput(){
+      if (DatabaseDescriptor.getCompactionThroughputMbPerSec() < 1 || StorageService.instance.isBootstrapMode())       return 0;
+      int totalBytesPerMS=DatabaseDescriptor.getCompactionThroughputMbPerSec() * 1024 * 1024 / 1000;
+      return totalBytesPerMS / Math.max(1,CompactionManager.instance.getActiveCompactions());
+    }
+  }
+);
+}
