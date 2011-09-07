@@ -17,12 +17,6 @@ validateSelect(keyspace,select);
 List<org.apache.cassandra.db.Row> rows;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
 rows=getSlice(keyspace,select);
-if (select.isCountOperation()) {
-result.type=CqlResultType.INT;
-if (rows.size() > 0) result.setNum(rows.get(0).cf != null ? rows.get(0).cf.getSortedColumns().size() : 0);
- else result.setNum(0);
-return result;
-}
 }
  else {
 if ((select.getKeyFinish() != null) || (select.getColumnRelations().size() == 0)) {
@@ -32,9 +26,17 @@ rows=multiRangeSlice(keyspace,select);
 rows=getIndexedSlices(keyspace,select);
 }
 }
-List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 result.type=CqlResultType.ROWS;
+if (select.isCountOperation()) {
+validateCountOperation(select);
+ByteBuffer countBytes=ByteBufferUtil.bytes("count");
+result.schema=new CqlMetadata(Collections.<ByteBuffer,String>emptyMap(),Collections.<ByteBuffer,String>emptyMap(),"AsciiType","LongType");
+List<Column> columns=Collections.singletonList(new Column(countBytes).setValue(ByteBufferUtil.bytes((long)rows.size())));
+result.rows=Collections.singletonList(new CqlRow(countBytes,columns));
+return result;
+}
 result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),metadata.comparator.toString(),TypeParser.getShortName(metadata.getDefaultValidator()));
+List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 for (org.apache.cassandra.db.Row row : rows) {
 if (row.cf == null) continue;
 List<Column> thriftColumns=new ArrayList<Column>();
