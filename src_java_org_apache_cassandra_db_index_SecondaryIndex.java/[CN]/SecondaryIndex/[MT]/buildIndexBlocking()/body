@@ -1,17 +1,24 @@
 {
-  logger.info(String.format("Submitting index build of %s for data in %s",baseCfs.metadata.comparator.getString(columnDef.name),StringUtils.join(baseCfs.getSSTables(),", ")));
-  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,new TreeSet<ByteBuffer>(Collections.singleton(columnDef.name)),new ReducingKeyIterator(baseCfs.getSSTables()));
+  logger.info(String.format("Submitting index build of %s for data in %s",getIndexName(),StringUtils.join(baseCfs.getSSTables(),", ")));
+  SortedSet<ByteBuffer> columnNames=new TreeSet<ByteBuffer>();
+  for (  ColumnDefinition cdef : columnDefs)   columnNames.add(cdef.name);
+  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,columnNames,new ReducingKeyIterator(baseCfs.getSSTables()));
   Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
   try {
     future.get();
     forceBlockingFlush();
-    SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName());
+    if (this instanceof PerRowSecondaryIndex) {
+      for (      ByteBuffer columnName : columnNames)       SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName() + ByteBufferUtil.string(columnName));
+    }
+ else {
+      SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName());
+    }
   }
  catch (  InterruptedException e) {
     throw new AssertionError(e);
   }
 catch (  ExecutionException e) {
-    throw new RuntimeException(e);
+    throw new IOException(e);
   }
-  logger.info("Index build of " + baseCfs.metadata.comparator.getString(columnDef.name) + " complete");
+  logger.info("Index build of " + getIndexName() + " complete");
 }
