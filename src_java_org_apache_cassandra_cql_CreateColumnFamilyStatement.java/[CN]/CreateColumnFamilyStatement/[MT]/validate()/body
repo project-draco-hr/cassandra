@@ -1,8 +1,7 @@
 {
   if (!name.matches("\\w+"))   throw new InvalidRequestException(String.format("\"%s\" is not a valid column family name",name));
-  Set<String> keywordsFound=new HashSet<String>(properties.keySet());
-  keywordsFound.removeAll(keywords);
-  for (  String bogus : keywordsFound)   throw new InvalidRequestException(bogus + " is not a valid keyword argument for CREATE COLUMNFAMILY");
+  for (  String bogus : Sets.difference(properties.keySet(),Sets.union(keywords,obsoleteKeywords)))   throw new InvalidRequestException(bogus + " is not a valid keyword argument for CREATE COLUMNFAMILY");
+  for (  String obsolete : Sets.intersection(properties.keySet(),obsoleteKeywords))   logger.warn("Ignoring obsolete property {}",obsolete);
   Integer minCompaction=getPropertyInt(KW_MINCOMPACTIONTHRESHOLD,null);
   Integer maxCompaction=getPropertyInt(KW_MAXCOMPACTIONTHRESHOLD,null);
   if ((minCompaction != null) && (maxCompaction != null)) {
@@ -14,10 +13,6 @@
  else   if (maxCompaction != null) {
     if ((maxCompaction < CFMetaData.DEFAULT_MIN_COMPACTION_THRESHOLD) && (maxCompaction != 0))     throw new InvalidRequestException(String.format("%s cannot be smaller than %s, (default %s)",KW_MAXCOMPACTIONTHRESHOLD,KW_MINCOMPACTIONTHRESHOLD,CFMetaData.DEFAULT_MIN_COMPACTION_THRESHOLD));
   }
-  Integer memMb=getPropertyInt(KW_MEMTABLESIZEINMB,null);
-  Double memOps=getPropertyDouble(KW_MEMTABLEOPSINMILLIONS,null);
-  if ((memMb != null) && (memMb <= 0))   throw new InvalidRequestException(String.format("%s must be non-negative and greater than zero",KW_MEMTABLESIZEINMB));
-  if ((memOps != null) && (memOps <= 0))   throw new InvalidRequestException(String.format("%s must be non-negative and greater than zero",KW_MEMTABLEOPSINMILLIONS));
   if (keyValidator.size() < 1)   throw new InvalidRequestException("You must specify a PRIMARY KEY");
  else   if (keyValidator.size() > 1)   throw new InvalidRequestException("You may only specify one PRIMARY KEY");
   AbstractType<?> comparator;
