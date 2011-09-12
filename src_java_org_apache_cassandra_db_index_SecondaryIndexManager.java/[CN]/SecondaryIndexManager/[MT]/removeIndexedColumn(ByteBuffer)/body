@@ -1,6 +1,10 @@
 {
   SecondaryIndex index=indexesByColumn.remove(column);
   if (index == null)   return;
-  SystemTable.setIndexRemoved(baseCfs.metadata.ksName,index.getIndexName());
-  index.removeIndex();
+  SystemTable.setIndexRemoved(baseCfs.metadata.ksName,index.getNameForSystemTable(column));
+  index.removeIndex(column);
+  if (index instanceof PerRowSecondaryIndex) {
+    index.removeColumnDef(column);
+    if (index.getColumnDefs().isEmpty())     rowLevelIndexMap.remove(index.getClass());
+  }
 }

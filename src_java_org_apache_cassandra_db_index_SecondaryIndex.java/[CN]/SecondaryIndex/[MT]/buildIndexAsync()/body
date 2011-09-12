@@ -1,5 +1,12 @@
 {
-  if (isIndexBuilt())   return null;
+  boolean allAreBuilt=true;
+  for (  ColumnDefinition cdef : columnDefs) {
+    if (!SystemTable.isIndexBuilt(baseCfs.table.name,getNameForSystemTable(cdef.name))) {
+      allAreBuilt=false;
+      break;
+    }
+  }
+  if (allAreBuilt)   return null;
   Runnable runnable=new Runnable(){
     public void run(){
       try {
@@ -11,11 +18,16 @@
 catch (      InterruptedException e) {
         throw new AssertionError(e);
       }
-      buildIndexBlocking();
+      try {
+        buildIndexBlocking();
+      }
+ catch (      IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 ;
   FutureTask<?> f=new FutureTask<Object>(runnable,null);
-  new Thread(f,"Creating index: " + columnDef.getIndexName()).start();
+  new Thread(f,"Creating index: " + getIndexName()).start();
   return f;
 }
