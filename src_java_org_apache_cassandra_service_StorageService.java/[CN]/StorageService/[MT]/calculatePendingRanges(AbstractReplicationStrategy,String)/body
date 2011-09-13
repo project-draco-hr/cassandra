@@ -13,10 +13,9 @@
   Set<Range> affectedRanges=new HashSet<Range>();
   for (  InetAddress endpoint : leavingEndpoints)   affectedRanges.addAll(addressRanges.get(endpoint));
   for (  Range range : affectedRanges) {
-    Collection<InetAddress> currentEndpoints=strategy.calculateNaturalEndpoints(range.right,tm);
-    Collection<InetAddress> newEndpoints=strategy.calculateNaturalEndpoints(range.right,allLeftMetadata);
-    newEndpoints.removeAll(currentEndpoints);
-    pendingRanges.putAll(range,newEndpoints);
+    Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,tm));
+    Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,allLeftMetadata));
+    pendingRanges.putAll(range,Sets.difference(newEndpoints,currentEndpoints));
   }
   for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
     InetAddress endpoint=entry.getValue();
