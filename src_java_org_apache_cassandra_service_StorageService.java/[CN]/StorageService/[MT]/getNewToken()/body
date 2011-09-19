@@ -1,0 +1,16 @@
+{
+  Token token;
+  if (DatabaseDescriptor.getInitialToken() != null) {
+    logger_.debug("token manually specified as {}",DatabaseDescriptor.getInitialToken());
+    token=StorageService.getPartitioner().getTokenFactory().fromString(DatabaseDescriptor.getInitialToken());
+  }
+ else   if (Schema.instance.getNonSystemTables().size() > 0) {
+    token=partitioner.getRandomToken();
+    logger_.warn("Generated random token " + token + ". Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operation");
+  }
+ else {
+    token=BootStrapper.getBalancedToken(tokenMetadata_,LoadBroadcaster.instance.getLoadInfo());
+  }
+  if (tokenMetadata_.getEndpoint(token) != null)   throw new ConfigurationException("Bootstraping to existing token " + token + " is not allowed (decommission/removetoken the old node first)");
+  return token;
+}
