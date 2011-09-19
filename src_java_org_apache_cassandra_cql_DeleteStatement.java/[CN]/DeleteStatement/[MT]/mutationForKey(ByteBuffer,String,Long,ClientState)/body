@@ -1,13 +1,17 @@
 {
+  RowMutation rm=new RowMutation(keyspace,key);
   CFMetaData metadata=validateColumnFamily(keyspace,columnFamily);
   QueryProcessor.validateKeyAlias(metadata,keyName);
   AbstractType comparator=metadata.getComparatorFor(null);
-  if (columns.size() < 1)   mutation.delete(new QueryPath(columnFamily),(timestamp == null) ? getTimestamp() : timestamp);
+  if (columns.size() < 1) {
+    rm.delete(new QueryPath(columnFamily),(timestamp == null) ? getTimestamp(clientState) : timestamp);
+  }
  else {
     for (    Term column : columns) {
       ByteBuffer columnName=column.getByteBuffer(comparator);
       validateColumnName(columnName);
-      mutation.delete(new QueryPath(columnFamily,null,columnName),(timestamp == null) ? getTimestamp() : timestamp);
+      rm.delete(new QueryPath(columnFamily,null,columnName),(timestamp == null) ? getTimestamp(clientState) : timestamp);
     }
   }
+  return rm;
 }
