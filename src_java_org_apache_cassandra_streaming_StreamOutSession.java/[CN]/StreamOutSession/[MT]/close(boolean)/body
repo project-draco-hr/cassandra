@@ -1,0 +1,11 @@
+{
+  if (!isClosed.compareAndSet(false,true)) {
+    logger.debug("StreamOutSession {} already closed",getSessionId());
+    return;
+  }
+  Gossiper.instance.unregister(this);
+  FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+  for (  PendingFile file : files.values())   file.sstable.releaseReference();
+  streams.remove(context);
+  if (callback != null && success)   callback.run();
+}
