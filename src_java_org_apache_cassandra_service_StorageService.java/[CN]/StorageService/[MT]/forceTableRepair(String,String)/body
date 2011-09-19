@@ -1,7 +1,10 @@
 {
   if (Table.SYSTEM_TABLE.equals(tableName))   return;
-  List<AntiEntropyService.RepairFuture> futures=new ArrayList<AntiEntropyService.RepairFuture>();
-  for (  Range range : getLocalRanges(tableName)) {
+  Collection<Range> ranges=getLocalRanges(tableName);
+  int cmd=nextRepairCommand.incrementAndGet();
+  logger_.info("Starting repair command #{}, repairing {} ranges.",cmd,ranges.size());
+  List<AntiEntropyService.RepairFuture> futures=new ArrayList<AntiEntropyService.RepairFuture>(ranges.size());
+  for (  Range range : ranges) {
     AntiEntropyService.RepairFuture future=forceTableRepair(range,tableName,columnFamilies);
     futures.add(future);
     try {
@@ -21,5 +24,6 @@
       failedSession=true;
     }
   }
-  if (failedSession)   throw new IOException("Some repair session(s) failed (see log for details).");
+  if (failedSession)   throw new IOException("Repair command #" + cmd + ": some repair session(s) failed (see log for details).");
+ else   logger_.info("Repair command #{} completed successfully",cmd);
 }
