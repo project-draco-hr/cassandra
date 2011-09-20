@@ -16,6 +16,14 @@
   cfs.getDataTracker().subscribe(this);
   logger.info(this + " subscribed to the data tracker.");
   manifest=LeveledManifest.create(cfs,this.maxSSTableSize);
+  logger.debug("Created {}",manifest);
   cfs.setMaximumCompactionThreshold(Integer.MAX_VALUE);
   cfs.setMinimumCompactionThreshold(1);
+  Runnable runnable=new Runnable(){
+    public void run(){
+      CompactionManager.instance.submitBackground(LeveledCompactionStrategy.this.cfs);
+    }
+  }
+;
+  StorageService.optionalTasks.scheduleAtFixedRate(runnable,5 * 60,5,TimeUnit.SECONDS);
 }
