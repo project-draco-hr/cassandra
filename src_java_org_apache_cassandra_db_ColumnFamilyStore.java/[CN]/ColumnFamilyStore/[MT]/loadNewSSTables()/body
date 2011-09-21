@@ -18,13 +18,8 @@
     if (!descriptor.cfname.equals(columnFamily))     continue;
     if (descriptor.isFromTheFuture())     throw new RuntimeException(String.format("Can't open sstables from the future! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,descriptor));
     logger.info("Initializing new SSTable {}",rawSSTable);
-    try {
-      reader=SSTableReader.open(rawSSTable.getKey(),rawSSTable.getValue(),savedKeys,data,metadata,partitioner);
-    }
- catch (    IOException e) {
-      SSTableReader.logOpenException(rawSSTable.getKey(),e);
-      continue;
-    }
+    reader=openSSTableReader(rawSSTable,savedKeys,data,metadata,partitioner);
+    if (reader == null)     continue;
     sstables.add(reader);
     if (descriptor.generation > generation)     generation=descriptor.generation;
     if (!atLeastOneNew)     atLeastOneNew=true;
