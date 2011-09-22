@@ -1,3 +1,10 @@
 {
-  return removeDeletedAndOldShards(controller.shouldPurge(key),controller,cf);
+  Boolean shouldPurge=null;
+  if (cf.hasExpiredTombstones(controller.gcBefore))   shouldPurge=controller.shouldPurge(key);
+  ColumnFamily compacted=shouldPurge != null && shouldPurge ? ColumnFamilyStore.removeDeleted(cf,controller.gcBefore) : cf;
+  if (compacted != null && compacted.metadata().getDefaultValidator().isCommutative()) {
+    if (shouldPurge == null)     shouldPurge=controller.shouldPurge(key);
+    if (shouldPurge)     CounterColumn.removeOldShards(compacted,controller.gcBefore);
+  }
+  return compacted;
 }
