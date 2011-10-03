@@ -1,0 +1,46 @@
+{
+  setLocation(location,job);
+  CfDef cfDef=getCfDef(loadSignature);
+  if (cfDef.column_type.equals("Super"))   return null;
+  ResourceSchema schema=new ResourceSchema();
+  ResourceFieldSchema keyFieldSchema=new ResourceFieldSchema();
+  keyFieldSchema.setName("key");
+  keyFieldSchema.setType(DataType.CHARARRAY);
+  ResourceFieldSchema bagFieldSchema=new ResourceFieldSchema();
+  bagFieldSchema.setName("columns");
+  bagFieldSchema.setType(DataType.BAG);
+  ResourceSchema bagSchema=new ResourceSchema();
+  List<AbstractType> marshallers=getDefaultMarshallers(cfDef);
+  Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
+  List<ResourceFieldSchema> tupleFields=new ArrayList<ResourceFieldSchema>();
+  ResourceSchema innerTupleSchema=new ResourceSchema();
+  ResourceFieldSchema tupleField=new ResourceFieldSchema();
+  tupleField.setType(DataType.TUPLE);
+  tupleField.setSchema(innerTupleSchema);
+  ResourceFieldSchema colSchema=new ResourceFieldSchema();
+  colSchema.setName("name");
+  colSchema.setType(getPigType(marshallers.get(0)));
+  tupleFields.add(colSchema);
+  ResourceFieldSchema valSchema=new ResourceFieldSchema();
+  AbstractType validator=marshallers.get(1);
+  valSchema.setName("value");
+  valSchema.setType(getPigType(validator));
+  tupleFields.add(valSchema);
+  for (  ColumnDef cdef : cfDef.column_metadata) {
+    colSchema=new ResourceFieldSchema();
+    colSchema.setName(new String(cdef.getName()));
+    colSchema.setType(getPigType(marshallers.get(0)));
+    tupleFields.add(colSchema);
+    valSchema=new ResourceFieldSchema();
+    validator=validators.get(cdef.getName());
+    if (validator == null)     validator=marshallers.get(1);
+    valSchema.setName("value");
+    valSchema.setType(getPigType(validator));
+    tupleFields.add(valSchema);
+  }
+  innerTupleSchema.setFields(tupleFields.toArray(new ResourceFieldSchema[tupleFields.size()]));
+  bagSchema.setFields(new ResourceFieldSchema[]{tupleField});
+  bagFieldSchema.setSchema(bagSchema);
+  schema.setFields(new ResourceFieldSchema[]{keyFieldSchema,bagFieldSchema});
+  return schema;
+}
