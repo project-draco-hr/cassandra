@@ -1,6 +1,5 @@
 {
   QueryPath queryPath=new QueryPath(select.getColumnFamily());
-  CFMetaData metadata=validateColumnFamily(keyspace,select.getColumnFamily());
   List<ReadCommand> commands=new ArrayList<ReadCommand>();
   if (!select.isColumnRange()) {
     Collection<ByteBuffer> columnNames=getColumnNames(select,metadata);
@@ -8,18 +7,18 @@
     for (    Term rawKey : select.getKeys()) {
       ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator());
       validateKey(key);
-      commands.add(new SliceByNamesReadCommand(keyspace,key,queryPath,columnNames));
+      commands.add(new SliceByNamesReadCommand(metadata.ksName,key,queryPath,columnNames));
     }
   }
  else {
-    AbstractType<?> comparator=select.getComparator(keyspace);
+    AbstractType<?> comparator=select.getComparator(metadata.ksName);
     ByteBuffer start=select.getColumnStart().getByteBuffer(comparator);
     ByteBuffer finish=select.getColumnFinish().getByteBuffer(comparator);
     for (    Term rawKey : select.getKeys()) {
       ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator());
       validateKey(key);
       validateSliceRange(metadata,start,finish,select.isColumnsReversed());
-      commands.add(new SliceFromReadCommand(keyspace,key,queryPath,start,finish,select.isColumnsReversed(),select.getColumnsLimit()));
+      commands.add(new SliceFromReadCommand(metadata.ksName,key,queryPath,start,finish,select.isColumnsReversed(),select.getColumnsLimit()));
     }
   }
   try {
