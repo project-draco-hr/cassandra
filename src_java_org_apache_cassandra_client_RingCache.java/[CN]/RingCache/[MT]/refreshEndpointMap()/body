@@ -1,32 +1,29 @@
 {
-  for (  String seed : seeds_) {
-    try {
-      TSocket socket=new TSocket(seed,port_);
-      TBinaryProtocol binaryProtocol=new TBinaryProtocol(new TFramedTransport(socket));
-      Cassandra.Client client=new Cassandra.Client(binaryProtocol);
-      socket.open();
-      List<TokenRange> ring=client.describe_ring(keyspace);
-      rangeMap=ArrayListMultimap.create();
-      for (      TokenRange range : ring) {
-        Token<?> left=partitioner_.getTokenFactory().fromString(range.start_token);
-        Token<?> right=partitioner_.getTokenFactory().fromString(range.end_token);
-        Range r=new Range(left,right,partitioner_);
-        for (        String host : range.endpoints) {
-          try {
-            rangeMap.put(r,InetAddress.getByName(host));
-          }
- catch (          UnknownHostException e) {
-            throw new AssertionError(e);
-          }
+  try {
+    Cassandra.Client client=ConfigHelper.getClientFromAddressList(conf);
+    List<TokenRange> ring=client.describe_ring(ConfigHelper.getOutputKeyspace(conf));
+    rangeMap=ArrayListMultimap.create();
+    for (    TokenRange range : ring) {
+      Token<?> left=partitioner.getTokenFactory().fromString(range.start_token);
+      Token<?> right=partitioner.getTokenFactory().fromString(range.end_token);
+      Range r=new Range(left,right,partitioner);
+      for (      String host : range.endpoints) {
+        try {
+          rangeMap.put(r,InetAddress.getByName(host));
+        }
+ catch (        UnknownHostException e) {
+          throw new AssertionError(e);
         }
       }
-      break;
     }
- catch (    InvalidRequestException e) {
-      throw new RuntimeException(e);
-    }
-catch (    TException e) {
-      logger_.debug("Error contacting seed " + seed + " "+ e.getMessage());
-    }
+  }
+ catch (  InvalidRequestException e) {
+    throw new RuntimeException(e);
+  }
+catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  TException e) {
+    logger_.debug("Error contacting seed list" + ConfigHelper.getInitialAddress(conf) + " "+ e.getMessage());
   }
 }

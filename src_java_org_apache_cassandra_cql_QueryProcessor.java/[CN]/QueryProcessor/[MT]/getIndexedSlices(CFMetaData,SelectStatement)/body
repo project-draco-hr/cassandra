@@ -1,0 +1,24 @@
+{
+  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,metadata);
+  validateSlicePredicate(metadata,thriftSlicePredicate);
+  List<IndexExpression> expressions=new ArrayList<IndexExpression>();
+  for (  Relation columnRelation : select.getColumnRelations()) {
+    ByteBuffer entity=columnRelation.getEntity().getByteBuffer(metadata.comparator);
+    ByteBuffer value=columnRelation.getValue().getByteBuffer(select.getValueValidator(metadata.ksName,entity));
+    expressions.add(new IndexExpression(entity,IndexOperator.valueOf(columnRelation.operator().toString()),value));
+  }
+  AbstractType<?> keyType=Schema.instance.getCFMetaData(metadata.ksName,select.getColumnFamily()).getKeyValidator();
+  ByteBuffer startKey=(!select.isKeyRange()) ? (new Term()).getByteBuffer() : select.getKeyStart().getByteBuffer(keyType);
+  IndexClause thriftIndexClause=new IndexClause(expressions,startKey,select.getNumRecords());
+  List<org.apache.cassandra.db.Row> rows;
+  try {
+    rows=StorageProxy.scan(metadata.ksName,select.getColumnFamily(),thriftIndexClause,thriftSlicePredicate,select.getConsistencyLevel());
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+  return rows;
+}

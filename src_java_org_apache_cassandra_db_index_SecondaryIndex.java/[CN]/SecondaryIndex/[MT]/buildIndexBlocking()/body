@@ -2,7 +2,8 @@
   logger.info(String.format("Submitting index build of %s for data in %s",getIndexName(),StringUtils.join(baseCfs.getSSTables(),", ")));
   SortedSet<ByteBuffer> columnNames=new TreeSet<ByteBuffer>();
   for (  ColumnDefinition cdef : columnDefs)   columnNames.add(cdef.name);
-  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,columnNames,new ReducingKeyIterator(baseCfs.getSSTables()));
+  Collection<SSTableReader> sstables=baseCfs.markCurrentSSTablesReferenced();
+  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,columnNames,new ReducingKeyIterator(sstables));
   Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
   try {
     future.get();
@@ -19,6 +20,9 @@
   }
 catch (  ExecutionException e) {
     throw new IOException(e);
+  }
+ finally {
+    SSTableReader.releaseReferences(sstables);
   }
   logger.info("Index build of " + getIndexName() + " complete");
 }

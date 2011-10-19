@@ -2,28 +2,35 @@
   logger.trace("CQL QUERY: {}",queryString);
   CQLStatement statement=getStatement(queryString);
   String keyspace=null;
-  if (StatementType.requiresKeyspace.contains(statement.type))   keyspace=clientState.getKeyspace();
+  if (statement.type != StatementType.SELECT && StatementType.requiresKeyspace.contains(statement.type))   keyspace=clientState.getKeyspace();
   CqlResult result=new CqlResult();
   logger.debug("CQL statement type: {}",statement.type.toString());
   CFMetaData metadata;
 switch (statement.type) {
 case SELECT:
     SelectStatement select=(SelectStatement)statement.statement;
-  clientState.hasColumnFamilyAccess(select.getColumnFamily(),Permission.READ);
+  final String oldKeyspace=clientState.getRawKeyspace();
+if (select.isSetKeyspace()) {
+  keyspace=CliUtils.unescapeSQLString(select.getKeyspace());
+  ThriftValidation.validateTable(keyspace);
+}
+ else if (oldKeyspace == null) throw new InvalidRequestException("no keyspace has been specified");
+ else keyspace=oldKeyspace;
+clientState.hasColumnFamilyAccess(keyspace,select.getColumnFamily(),Permission.READ);
 metadata=validateColumnFamily(keyspace,select.getColumnFamily());
 select.extractKeyAliasFromColumns(metadata);
 if (select.getKeys().size() > 0) validateKeyAlias(metadata,select.getKeyAlias());
 validateSelect(keyspace,select);
 List<org.apache.cassandra.db.Row> rows;
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
-rows=getSlice(keyspace,select);
+rows=getSlice(metadata,select);
 }
  else {
 if ((select.getKeyFinish() != null) || (select.getColumnRelations().size() == 0)) {
-rows=multiRangeSlice(keyspace,select);
+rows=multiRangeSlice(metadata,select);
 }
  else {
-rows=getIndexedSlices(keyspace,select);
+rows=getIndexedSlices(metadata,select);
 }
 }
 result.type=CqlResultType.ROWS;
