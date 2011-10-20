@@ -1,2 +1,40 @@
 {
+  Set<Class<? extends SecondaryIndex>> appliedRowLevelIndexes=null;
+  if (oldIndexedColumns != null) {
+    for (    ByteBuffer columnName : oldIndexedColumns.getColumnNames()) {
+      IColumn column=oldIndexedColumns.getColumn(columnName);
+      if (column == null)       continue;
+      if (column.isMarkedForDelete())       continue;
+      SecondaryIndex index=getIndexForColumn(columnName);
+      if (index == null) {
+        logger.debug("Looks like index got dropped mid-update.  Skipping");
+        continue;
+      }
+      if (index instanceof PerRowSecondaryIndex) {
+        if (appliedRowLevelIndexes == null)         appliedRowLevelIndexes=new HashSet<Class<? extends SecondaryIndex>>();
+ else         if (appliedRowLevelIndexes.add(index.getClass()))         ((PerRowSecondaryIndex)index).applyIndexUpdates(rowKey,cf,mutatedIndexedColumns,oldIndexedColumns);
+      }
+ else {
+        DecoratedKey<LocalToken> valueKey=getIndexKeyFor(columnName,column.value());
+        ((PerColumnSecondaryIndex)index).deleteColumn(valueKey,rowKey,column);
+      }
+    }
+  }
+  for (  ByteBuffer columnName : mutatedIndexedColumns) {
+    IColumn column=cf.getColumn(columnName);
+    if (column == null || column.isMarkedForDelete())     continue;
+    SecondaryIndex index=getIndexForColumn(columnName);
+    if (index == null) {
+      logger.debug("index on {} removed; skipping remove-old for {}",columnName,ByteBufferUtil.bytesToHex(rowKey));
+      continue;
+    }
+    if (index instanceof PerRowSecondaryIndex) {
+      if (appliedRowLevelIndexes == null)       appliedRowLevelIndexes=new HashSet<Class<? extends SecondaryIndex>>();
+ else       if (appliedRowLevelIndexes.add(index.getClass()))       ((PerRowSecondaryIndex)index).applyIndexUpdates(rowKey,cf,mutatedIndexedColumns,oldIndexedColumns);
+    }
+ else {
+      DecoratedKey<LocalToken> valueKey=getIndexKeyFor(columnName,column.value());
+      ((PerColumnSecondaryIndex)index).insertColumn(valueKey,rowKey,column);
+    }
+  }
 }
