@@ -22,18 +22,19 @@
           }
         }
       }
-synchronized (indexLockFor(mutation.key())) {
-        ColumnFamily oldIndexedColumns=null;
-        if (mutatedIndexedColumns != null) {
-          oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
-          logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
-          ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
-        }
+      if (mutatedIndexedColumns == null) {
         Memtable fullMemtable=cfs.apply(key,cf);
         if (fullMemtable != null)         memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
-        if (mutatedIndexedColumns != null) {
-          applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
-        }
+        continue;
+      }
+synchronized (indexLockFor(mutation.key())) {
+        ColumnFamily oldIndexedColumns=null;
+        oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
+        logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
+        ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
+        Memtable fullMemtable=cfs.apply(key,cf);
+        if (fullMemtable != null)         memtablesToFlush=addFullMemtable(memtablesToFlush,fullMemtable);
+        applyIndexUpdates(mutation.key(),cf,cfs,mutatedIndexedColumns,oldIndexedColumns);
       }
     }
   }
