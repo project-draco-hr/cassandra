@@ -21,17 +21,16 @@
           }
         }
       }
-synchronized (indexLockFor(mutation.key())) {
-        ColumnFamily oldIndexedColumns=null;
-        if (mutatedIndexedColumns != null) {
-          oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
-          logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
-          ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
-        }
+      if (mutatedIndexedColumns == null) {
         cfs.apply(key,cf);
-        if (mutatedIndexedColumns != null) {
-          cfs.indexManager.applyIndexUpdates(mutation.key(),cf,mutatedIndexedColumns,oldIndexedColumns);
-        }
+        continue;
+      }
+synchronized (indexLockFor(mutation.key())) {
+        ColumnFamily oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns);
+        logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
+        ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
+        cfs.apply(key,cf);
+        cfs.indexManager.applyIndexUpdates(mutation.key(),cf,mutatedIndexedColumns,oldIndexedColumns);
       }
     }
   }
