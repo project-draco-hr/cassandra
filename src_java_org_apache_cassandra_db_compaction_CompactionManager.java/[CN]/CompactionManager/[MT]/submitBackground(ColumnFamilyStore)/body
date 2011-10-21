@@ -5,7 +5,8 @@
       try {
         if (cfs.isInvalid())         return 0;
         AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-        for (        AbstractCompactionTask task : strategy.getBackgroundTasks(getDefaultGcBefore(cfs))) {
+        List<AbstractCompactionTask> tasks=strategy.getBackgroundTasks(getDefaultGcBefore(cfs));
+        for (        AbstractCompactionTask task : tasks) {
           if (!task.markSSTablesForCompaction())           continue;
           try {
             task.execute(executor);
@@ -14,6 +15,7 @@
             task.unmarkSSTables();
           }
         }
+        if (!tasks.isEmpty())         submitBackground(cfs);
       }
   finally {
         compactionLock.readLock().unlock();
