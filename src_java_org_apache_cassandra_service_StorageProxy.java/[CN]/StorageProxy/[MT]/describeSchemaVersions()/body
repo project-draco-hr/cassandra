@@ -5,7 +5,7 @@
   final CountDownLatch latch=new CountDownLatch(liveHosts.size());
   IAsyncCallback cb=new IAsyncCallback(){
     public void response(    Message message){
-      logger.debug("Received schema check response from " + message.getFrom().getHostAddress());
+      logger.debug("Received schema check response from {}",message.getFrom().getHostAddress());
       UUID theirVersion=UUID.fromString(new String(message.getMessageBody()));
       versions.put(message.getFrom(),theirVersion);
       latch.countDown();
@@ -25,7 +25,7 @@
  catch (  InterruptedException ex) {
     throw new AssertionError("This latch shouldn't have been interrupted.");
   }
-  logger.debug("My version is " + myVersion);
+  logger.debug("My version is {}",myVersion);
   Map<String,List<String>> results=new HashMap<String,List<String>>();
   Iterable<InetAddress> allHosts=Iterables.concat(Gossiper.instance.getLiveMembers(),Gossiper.instance.getUnreachableMembers());
   for (  InetAddress host : allHosts) {
@@ -38,10 +38,10 @@
     }
     hosts.add(host.getHostAddress());
   }
-  if (results.get(UNREACHABLE) != null)   logger.debug("Hosts not in agreement. Didn't get a response from everybody: " + StringUtils.join(results.get(UNREACHABLE),","));
+  if (results.get(UNREACHABLE) != null)   logger.debug("Hosts not in agreement. Didn't get a response from everybody: {}",StringUtils.join(results.get(UNREACHABLE),","));
   for (  Map.Entry<String,List<String>> entry : results.entrySet()) {
     if (entry.getKey().equals(UNREACHABLE) || entry.getKey().equals(myVersion))     continue;
-    for (    String host : entry.getValue())     logger.debug("%s disagrees (%s)",host,entry.getKey());
+    for (    String host : entry.getValue())     logger.debug("{} disagrees ({})",host,entry.getKey());
   }
   if (results.size() == 1)   logger.debug("Schemas are in agreement.");
   return results;
