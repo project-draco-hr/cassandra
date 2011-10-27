@@ -1,15 +1,9 @@
 {
-  if (logger.isDebugEnabled())   logger.debug("attempting to connect to " + endpoint);
+  if (logger.isDebugEnabled())   logger.debug("attempting to connect to " + poolReference.endPoint());
   long start=System.currentTimeMillis();
   while (System.currentTimeMillis() < start + DatabaseDescriptor.getRpcTimeout()) {
     try {
-      EncryptionOptions options=DatabaseDescriptor.getEncryptionOptions();
-      if (options != null && options.internode_encryption == EncryptionOptions.InternodeEncryption.all) {
-        socket=SSLFactory.getSocket(options,endpoint,DatabaseDescriptor.getStoragePort(),FBUtilities.getLocalAddress(),0);
-      }
- else {
-        socket=new Socket(endpoint,DatabaseDescriptor.getStoragePort(),FBUtilities.getLocalAddress(),0);
-      }
+      socket=poolReference.newSocket();
       socket.setKeepAlive(true);
       socket.setTcpNoDelay(true);
       out=new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(),4096));
@@ -17,7 +11,7 @@
     }
  catch (    IOException e) {
       socket=null;
-      if (logger.isTraceEnabled())       logger.trace("unable to connect to " + endpoint,e);
+      if (logger.isTraceEnabled())       logger.trace("unable to connect to " + poolReference.endPoint(),e);
       try {
         Thread.sleep(OPEN_RETRY_DELAY);
       }

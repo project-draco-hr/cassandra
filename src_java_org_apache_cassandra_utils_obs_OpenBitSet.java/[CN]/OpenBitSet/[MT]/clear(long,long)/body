@@ -8,13 +8,18 @@
   startmask=~startmask;
   endmask=~endmask;
   if (startWord == endWord) {
-    bits[startWord]&=(startmask | endmask);
+    bits[startWord / PAGE_SIZE][startWord % PAGE_SIZE]&=(startmask | endmask);
     return;
   }
-  bits[startWord]&=startmask;
+  bits[startWord / PAGE_SIZE][startWord % PAGE_SIZE]&=startmask;
   int middle=Math.min(wlen,endWord);
-  Arrays.fill(bits,startWord + 1,middle,0L);
+  if (startWord / PAGE_SIZE == middle / PAGE_SIZE) {
+    Arrays.fill(bits[startWord / PAGE_SIZE],(startWord + 1) % PAGE_SIZE,middle % PAGE_SIZE,0L);
+  }
+ else {
+    while (++startWord < middle)     bits[startWord / PAGE_SIZE][startWord % PAGE_SIZE]=0L;
+  }
   if (endWord < wlen) {
-    bits[endWord]&=endmask;
+    bits[endWord / PAGE_SIZE][endWord % PAGE_SIZE]&=endmask;
   }
 }
