@@ -1,5 +1,6 @@
 {
   if (!CliMain.isConnected() || !hasKeySpace())   return;
+  long startTime=System.currentTimeMillis();
   Tree columnFamilySpec=statement.getChild(0);
   String columnFamily=CliCompiler.getColumnFamily(columnFamilySpec,keyspacesMap.get(keySpace).cf_defs);
   ByteBuffer key=getKeyAsBytes(columnFamily,columnFamilySpec.getChild(1));
@@ -52,6 +53,7 @@
   path.setColumn(columnName);
   if (isCounterCF(cfDef)) {
     doGetCounter(key,path);
+    elapsedTime(startTime);
     return;
   }
   Column column;
@@ -60,6 +62,7 @@
   }
  catch (  NotFoundException e) {
     sessionState.out.println("Value was not found");
+    elapsedTime(startTime);
     return;
   }
   byte[] columnValue=column.getValue();
@@ -75,4 +78,5 @@
   }
   String formattedColumnName=isSuper ? formatSubcolumnName(keySpace,columnFamily,column.name) : formatColumnName(keySpace,columnFamily,column.name);
   sessionState.out.printf("=> (column=%s, value=%s, timestamp=%d%s)%n",formattedColumnName,valueAsString,column.timestamp,column.isSetTtl() ? String.format(", ttl=%d",column.getTtl()) : "");
+  elapsedTime(startTime);
 }
