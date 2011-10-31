@@ -1,12 +1,18 @@
 {
   Runnable runnable=new WrappedRunnable(){
     public void runMayThrow() throws InterruptedException, IOException {
-      for (      ColumnFamilyStore cfs : main.concatWithIndexes()) {
-        List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
-        for (        SSTableReader sstable : cfs.getSSTables()) {
-          if (!sstable.newSince(truncatedAt))           truncatedSSTables.add(sstable);
+      compactionLock.writeLock().lock();
+      try {
+        for (        ColumnFamilyStore cfs : main.concatWithIndexes()) {
+          List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
+          for (          SSTableReader sstable : cfs.getSSTables()) {
+            if (!sstable.newSince(truncatedAt))             truncatedSSTables.add(sstable);
+          }
+          cfs.markCompacted(truncatedSSTables);
         }
-        cfs.markCompacted(truncatedSSTables);
+      }
+  finally {
+        compactionLock.writeLock().unlock();
       }
       main.invalidateRowCache();
     }
