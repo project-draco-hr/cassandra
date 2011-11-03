@@ -1,10 +1,7 @@
 {
   for (int i=0; i < versions.size(); i++) {
     ColumnFamily diffCf=ColumnFamily.diff(versions.get(i),resolved);
-    if (diffCf == null) {
-      if (logger.isDebugEnabled())       logger.debug("{} has the most recent version",endpoints.get(i));
-      continue;
-    }
+    if (diffCf == null)     continue;
     RowMutation rowMutation=new RowMutation(table,key.key);
     rowMutation.add(diffCf);
     Message repairMessage;
@@ -14,7 +11,6 @@
  catch (    IOException e) {
       throw new IOError(e);
     }
-    if (logger.isDebugEnabled())     logger.debug("read repair sending {} to {}",rowMutation,endpoints.get(i));
     MessagingService.instance().sendOneWay(repairMessage,endpoints.get(i));
   }
 }
