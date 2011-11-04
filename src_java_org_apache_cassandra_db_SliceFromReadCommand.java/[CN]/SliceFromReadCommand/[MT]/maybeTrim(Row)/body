@@ -1,0 +1,20 @@
+{
+  if ((row == null) || (row.cf == null))   return;
+  int liveColumnsInRow=row.cf.getLiveColumnCount();
+  if (liveColumnsInRow > getRequestedCount()) {
+    int columnsToTrim=liveColumnsInRow - getRequestedCount();
+    logger.debug("trimming {} live columns to the originally requested {}",row.cf.getLiveColumnCount(),getRequestedCount());
+    Collection<IColumn> columns;
+    if (reversed)     columns=row.cf.getSortedColumns();
+ else     columns=row.cf.getReverseSortedColumns();
+    Collection<ByteBuffer> toRemove=new HashSet<ByteBuffer>();
+    Iterator<IColumn> columnIterator=columns.iterator();
+    while (columnIterator.hasNext() && (toRemove.size() < columnsToTrim)) {
+      IColumn column=columnIterator.next();
+      if (column.isLive())       toRemove.add(column.name());
+    }
+    for (    ByteBuffer columnName : toRemove) {
+      row.cf.remove(columnName);
+    }
+  }
+}
