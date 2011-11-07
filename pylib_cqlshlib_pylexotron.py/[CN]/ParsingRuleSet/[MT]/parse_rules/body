@@ -1,0 +1,21 @@
+@classmethod
+def parse_rules(cls, rulestr):
+    (tokens, unmatched) = cls.RuleSpecScanner.scan(rulestr)
+    if unmatched:
+        raise LexingError.from_text(rulestr, unmatched, msg='Syntax rules unparseable')
+    rules = {}
+    terminals = []
+    tokeniter = iter(tokens)
+    for t in tokeniter:
+        if (isinstance(t, tuple) and (t[0] in ('reference', 'junk'))):
+            assign = tokeniter.next()
+            if (assign != '::='):
+                raise ValueError(('Unexpected token %r; expected "::="' % (assign,)))
+            name = t[1]
+            production = cls.read_rule_tokens_until(';', tokeniter)
+            rules[name] = production
+            if isinstance(production, terminal_matcher):
+                terminals.append((name, production))
+        else:
+            raise ValueError(('Unexpected token %r; expected name' % (t,)))
+    return (rules, terminals)
