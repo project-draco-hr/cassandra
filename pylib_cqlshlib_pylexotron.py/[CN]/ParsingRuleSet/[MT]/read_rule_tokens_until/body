@@ -1,0 +1,51 @@
+@classmethod
+def read_rule_tokens_until(cls, endtoks, tokeniter):
+    if isinstance(endtoks, basestring):
+        endtoks = (endtoks,)
+    counttarget = None
+    if isinstance(endtoks, int):
+        counttarget = endtoks
+        endtoks = ()
+    countsofar = 0
+    myrules = []
+    mybranches = [myrules]
+    for t in tokeniter:
+        countsofar += 1
+        if (t in endtoks):
+            if (len(mybranches) == 1):
+                return cls.mkrule(mybranches[0])
+            return choice(map(cls.mkrule, mybranches))
+        if isinstance(t, tuple):
+            if (t[0] == 'reference'):
+                t = rule_reference(t[1])
+            elif (t[0] == 'litstring'):
+                t = text_match(t[1])
+            elif (t[0] == 'regex'):
+                t = regex_rule(t[1])
+            elif (t[0] == 'named_collector'):
+                t = named_collector(t[1], cls.read_rule_tokens_until(1, tokeniter))
+            elif (t[0] == 'named_symbol'):
+                t = named_symbol(t[1], cls.read_rule_tokens_until(1, tokeniter))
+        elif (t == '('):
+            t = cls.read_rule_tokens_until(')', tokeniter)
+        elif (t == '?'):
+            t = one_or_none(myrules.pop((-1)))
+        elif (t == '*'):
+            t = repeat(myrules.pop((-1)))
+        elif (t == '@'):
+            x = tokeniter.next()
+            if ((not isinstance(x, tuple)) or (x[0] != 'litstring')):
+                raise ValueError(("Unexpected token %r following '@'" % (x,)))
+            t = case_match(x[1])
+        elif (t == '|'):
+            myrules = []
+            mybranches.append(myrules)
+            continue
+        else:
+            raise ValueError(('Unparseable rule token %r after %r' % (t, myrules[(-1)])))
+        myrules.append(t)
+        if (countsofar == counttarget):
+            if (len(mybranches) == 1):
+                return cls.mkrule(mybranches[0])
+            return choice(map(cls.mkrule, mybranches))
+    raise ValueError('Unexpected end of rule tokens')
