@@ -1,25 +1,13 @@
 {
   while (true) {
-    Entry entry=active.poll();
-    if (entry == null) {
-      try {
-        entry=backlog.take();
-      }
- catch (      InterruptedException e) {
-        throw new AssertionError(e);
-      }
-      BlockingQueue<Entry> tmp=backlog;
-      backlog=active;
-      active=tmp;
-    }
-    Message m=entry.message;
-    String id=entry.id;
+    Pair<Message,String> pair=take();
+    Message m=pair.left;
+    String id=pair.right;
     if (m == CLOSE_SENTINEL) {
       disconnect();
       continue;
     }
-    if (entry.timestamp < System.currentTimeMillis() - DatabaseDescriptor.getRpcTimeout())     dropped.incrementAndGet();
- else     if (socket != null || connect())     writeConnected(m,id);
- else     active.clear();
+    if (socket != null || connect())     writeConnected(m,id);
+ else     queue.clear();
   }
 }
