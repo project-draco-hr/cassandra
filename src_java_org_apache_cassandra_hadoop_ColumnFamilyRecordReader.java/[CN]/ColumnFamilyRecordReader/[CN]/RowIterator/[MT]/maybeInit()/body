@@ -4,28 +4,26 @@
   if (startToken == null) {
     startToken=split.getStartToken();
   }
-  while (rows == null || rows.isEmpty()) {
-    if (startToken.equals(split.getEndToken())) {
+ else   if (startToken.equals(split.getEndToken())) {
+    rows=null;
+    return;
+  }
+  KeyRange keyRange=new KeyRange(batchRowCount).setStart_token(startToken).setEnd_token(split.getEndToken());
+  try {
+    rows=client.get_range_slices(new ColumnParent(cfName),predicate,keyRange,consistencyLevel);
+    if (rows.isEmpty()) {
       rows=null;
       return;
     }
-    KeyRange keyRange=new KeyRange(batchRowCount).setStart_token(startToken).setEnd_token(split.getEndToken());
-    try {
-      rows=client.get_range_slices(new ColumnParent(cfName),predicate,keyRange,consistencyLevel);
-      if (rows.isEmpty()) {
-        rows=null;
-        return;
-      }
-      ByteBuffer lastRowKey=rows.get(rows.size() - 1).key;
-      if (isPredicateEmpty(predicate)) {
-        Iterator<KeySlice> rowsIterator=rows.iterator();
-        while (rowsIterator.hasNext())         if (rowsIterator.next().columns.isEmpty())         rowsIterator.remove();
-      }
-      i=0;
-      startToken=partitioner.getTokenFactory().toString(partitioner.getToken(lastRowKey));
+    ByteBuffer lastRowKey=rows.get(rows.size() - 1).key;
+    if (isPredicateEmpty(predicate)) {
+      Iterator<KeySlice> rowsIterator=rows.iterator();
+      while (rowsIterator.hasNext())       if (rowsIterator.next().columns.isEmpty())       rowsIterator.remove();
     }
- catch (    Exception e) {
-      throw new RuntimeException(e);
-    }
+    i=0;
+    startToken=partitioner.getTokenFactory().toString(partitioner.getToken(lastRowKey));
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
   }
 }
