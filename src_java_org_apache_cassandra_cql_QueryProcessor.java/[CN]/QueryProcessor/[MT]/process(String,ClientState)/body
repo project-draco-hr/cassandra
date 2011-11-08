@@ -45,7 +45,6 @@ return result;
 result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),TypeParser.getShortName(metadata.comparator),TypeParser.getShortName(metadata.getDefaultValidator()));
 List<CqlRow> cqlRows=new ArrayList<CqlRow>();
 for (org.apache.cassandra.db.Row row : rows) {
-if (row.cf == null) continue;
 List<Column> thriftColumns=new ArrayList<Column>();
 if (select.isColumnRange()) {
 if (select.isFullWildcard()) {
@@ -53,11 +52,13 @@ thriftColumns.add(new Column(metadata.getKeyName()).setValue(row.key.key).setTim
 result.schema.name_types.put(metadata.getKeyName(),TypeParser.getShortName(AsciiType.instance));
 result.schema.value_types.put(metadata.getKeyName(),TypeParser.getShortName(metadata.getKeyValidator()));
 }
+if (row.cf != null) {
 for (IColumn c : row.cf.getSortedColumns()) {
 if (c.isMarkedForDelete()) continue;
 ColumnDefinition cd=metadata.getColumnDefinition(c.name());
 if (cd != null) result.schema.value_types.put(c.name(),TypeParser.getShortName(cd.getValidator()));
 thriftColumns.add(thriftify(c));
+}
 }
 }
  else {
