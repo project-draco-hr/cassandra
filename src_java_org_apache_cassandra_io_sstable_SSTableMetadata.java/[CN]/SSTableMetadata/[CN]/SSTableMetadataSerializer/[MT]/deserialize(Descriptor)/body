@@ -12,7 +12,13 @@
     EstimatedHistogram rowSizes=EstimatedHistogram.serializer.deserialize(dis);
     EstimatedHistogram columnCounts=EstimatedHistogram.serializer.deserialize(dis);
     ReplayPosition replayPosition=descriptor.hasReplayPosition() ? ReplayPosition.serializer.deserialize(dis) : ReplayPosition.NONE;
-    return new SSTableMetadata(rowSizes,columnCounts,replayPosition);
+    long maxTimestamp=Long.MAX_VALUE;
+    double compressionRatio=Double.MIN_VALUE;
+    if (descriptor.hasCompressionRatio()) {
+      maxTimestamp=dis.readLong();
+      compressionRatio=dis.readDouble();
+    }
+    return new SSTableMetadata(rowSizes,columnCounts,replayPosition,maxTimestamp,compressionRatio);
   }
   finally {
     FileUtils.closeQuietly(dis);
