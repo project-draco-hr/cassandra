@@ -1,0 +1,21 @@
+{
+  if (!CliMain.isConnected())   return;
+  int argCount=statement.getChildCount();
+  if (argCount > 1)   throw new RuntimeException("`describe ring` command takes maximum one argument. See `help describe ring;`");
+  KsDef currentKeySpace=keyspacesMap.get(keySpace);
+  if (argCount == 0 && currentKeySpace != null) {
+    describeRing(currentKeySpace.name);
+  }
+ else   if (argCount == 1) {
+    String entityName=statement.getChild(0).getText();
+    KsDef inputKsDef=CliUtils.getKeySpaceDef(entityName,thriftClient.describe_keyspaces());
+    if (inputKsDef == null) {
+      sessionState.out.println("Sorry, no Keyspace was found with name: " + entityName);
+      return;
+    }
+    describeRing(inputKsDef.name);
+  }
+ else {
+    sessionState.out.println("Authenticate to a Keyspace before using `describe ring` or `describe ring <keyspace>`");
+  }
+}
