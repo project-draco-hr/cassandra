@@ -15,10 +15,23 @@
       rows=null;
       return;
     }
-    i=0;
     KeySlice lastRow=rows.get(rows.size() - 1);
     ByteBuffer rowkey=lastRow.key;
     startToken=partitioner.getTokenFactory().toString(partitioner.getToken(rowkey));
+    if (isEmptyPredicate) {
+      Iterator<KeySlice> it=rows.iterator();
+      while (it.hasNext()) {
+        KeySlice ks=it.next();
+        if (ks.getColumnsSize() == 0) {
+          it.remove();
+        }
+      }
+      if (rows.isEmpty()) {
+        maybeInit();
+        return;
+      }
+    }
+    i=0;
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
