@@ -34,20 +34,23 @@
         }
 ;
         RowRepairResolver resolver=new RowRepairResolver(table,ByteBufferUtil.bytes("foo"));
-        ReadCallback<Row> readHandler=StorageProxy.getReadCallback(resolver,command,c,hostsInUse);
+        ReadCallback<Row> readHandler;
         boolean isWriteUnavailable=false;
-        boolean isReadUnavailable=false;
+        boolean isReadUnavailable=c == ConsistencyLevel.ANY;
         try {
           writeHandler.assureSufficientLiveNodes();
         }
  catch (        UnavailableException e) {
           isWriteUnavailable=true;
         }
-        try {
-          readHandler.assureSufficientLiveNodes();
-        }
- catch (        UnavailableException e) {
-          isReadUnavailable=true;
+        if (!isReadUnavailable) {
+          readHandler=StorageProxy.getReadCallback(resolver,command,c,hostsInUse);
+          try {
+            readHandler.assureSufficientLiveNodes();
+          }
+ catch (          UnavailableException e) {
+            isReadUnavailable=true;
+          }
         }
         assertTrue(String.format("Node Alive: %d - CL: %s - isWriteUnavailable: %b - isReadUnavailable: %b",hostsInUse.size(),c,isWriteUnavailable,isReadUnavailable),isWriteUnavailable == isReadUnavailable);
 switch (c) {
