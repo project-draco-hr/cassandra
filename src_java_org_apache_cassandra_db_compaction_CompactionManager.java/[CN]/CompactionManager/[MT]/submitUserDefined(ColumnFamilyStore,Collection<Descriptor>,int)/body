@@ -1,6 +1,6 @@
 {
-  Callable<Object> callable=new Callable<Object>(){
-    public Object call() throws IOException {
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws IOException {
       compactionLock.readLock().lock();
       try {
         Collection<SSTableReader> sstables=new ArrayList<SSTableReader>();
@@ -35,7 +35,6 @@
   finally {
           SSTableReader.releaseReferences(sstables);
         }
-        return this;
       }
   finally {
         compactionLock.readLock().unlock();
@@ -43,5 +42,5 @@
     }
   }
 ;
-  return executor.submit(callable);
+  return executor.submit(runnable);
 }

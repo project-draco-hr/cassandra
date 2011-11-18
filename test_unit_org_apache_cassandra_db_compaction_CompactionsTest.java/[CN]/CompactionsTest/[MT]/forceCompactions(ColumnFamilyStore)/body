@@ -1,13 +1,12 @@
 {
   store.setMinimumCompactionThreshold(2);
   store.setMaximumCompactionThreshold(4);
-  while (true) {
-    ArrayList<Future<Integer>> compactions=new ArrayList<Future<Integer>>();
+  do {
+    ArrayList<Future<?>> compactions=new ArrayList<Future<?>>();
     for (int i=0; i < 10; i++)     compactions.add(CompactionManager.instance.submitBackground(store));
-    boolean progress=false;
-    for (    Future<Integer> compaction : compactions)     if (compaction.get() > 0)     progress=true;
-    if (!progress)     break;
+    FBUtilities.waitOnFutures(compactions);
   }
+ while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0);
   if (store.getSSTables().size() > 1) {
     CompactionManager.instance.performMaximal(store);
   }

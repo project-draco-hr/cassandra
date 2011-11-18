@@ -2,13 +2,13 @@
   LeveledCompactionTask currentTask=task.get();
   if (currentTask != null && !currentTask.isDone()) {
     logger.debug("Compaction still in progress for {}",this);
-    return Collections.emptyList();
+    return null;
   }
   Collection<SSTableReader> sstables=manifest.getCompactionCandidates();
   if (sstables.isEmpty()) {
     logger.debug("No compaction necessary for {}",this);
-    return Collections.emptyList();
+    return null;
   }
   LeveledCompactionTask newTask=new LeveledCompactionTask(cfs,sstables,gcBefore,this.maxSSTableSizeInMB);
-  return task.compareAndSet(currentTask,newTask) ? Collections.<AbstractCompactionTask>singletonList(newTask) : Collections.<AbstractCompactionTask>emptyList();
+  return task.compareAndSet(currentTask,newTask) ? newTask : null;
 }

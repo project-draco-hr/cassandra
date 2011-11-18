@@ -1,29 +1,24 @@
 {
-  Callable<Integer> callable=new Callable<Integer>(){
-    public Integer call() throws IOException {
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws IOException {
       compactionLock.readLock().lock();
       try {
-        boolean taskExecuted=false;
         AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-        List<AbstractCompactionTask> tasks=strategy.getBackgroundTasks(getDefaultGcBefore(cfs));
-        for (        AbstractCompactionTask task : tasks) {
-          if (!task.markSSTablesForCompaction())           continue;
-          taskExecuted=true;
-          try {
-            task.execute(executor);
-          }
-  finally {
-            task.unmarkSSTables();
-          }
+        AbstractCompactionTask task=strategy.getNextBackgroundTask(getDefaultGcBefore(cfs));
+        if (task == null || !task.markSSTablesForCompaction())         return;
+        try {
+          task.execute(executor);
         }
-        if (taskExecuted)         submitBackground(cfs);
+  finally {
+          task.unmarkSSTables();
+        }
+        submitBackground(cfs);
       }
   finally {
         compactionLock.readLock().unlock();
       }
-      return 0;
     }
   }
 ;
-  return executor.submit(callable);
+  return executor.submit(runnable);
 }

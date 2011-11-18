@@ -1,32 +1,30 @@
 {
-  Callable<Object> callable=new Callable<Object>(){
-    public Object call() throws IOException {
+  Runnable runnable=new WrappedRunnable(){
+    protected void runMayThrow() throws IOException {
       compactionLock.writeLock().lock();
       try {
-        AbstractCompactionStrategy strategy=cfStore.getCompactionStrategy();
-        for (        AbstractCompactionTask task : strategy.getMaximalTasks(gcBefore)) {
-          if (!task.markSSTablesForCompaction(0,Integer.MAX_VALUE))           return this;
+        AbstractCompactionTask task=cfStore.getCompactionStrategy().getMaximalTask(gcBefore);
+        if (task == null)         return;
+        if (!task.markSSTablesForCompaction(0,Integer.MAX_VALUE))         return;
+        try {
+          compactionLock.readLock().lock();
+          compactionLock.writeLock().unlock();
           try {
-            compactionLock.readLock().lock();
-            compactionLock.writeLock().unlock();
-            try {
-              return task.execute(executor);
-            }
-  finally {
-              compactionLock.readLock().unlock();
-            }
+            task.execute(executor);
           }
   finally {
-            task.unmarkSSTables();
+            compactionLock.readLock().unlock();
           }
+        }
+  finally {
+          task.unmarkSSTables();
         }
       }
   finally {
         if (compactionLock.writeLock().isHeldByCurrentThread())         compactionLock.writeLock().unlock();
       }
-      return this;
     }
   }
 ;
-  return executor.submit(callable);
+  return executor.submit(runnable);
 }
