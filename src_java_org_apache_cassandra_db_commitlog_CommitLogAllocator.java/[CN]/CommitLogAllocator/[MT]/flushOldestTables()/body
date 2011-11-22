@@ -1,0 +1,16 @@
+{
+  CommitLogSegment oldestSegment=activeSegments.peek();
+  if (oldestSegment != null) {
+    for (    Integer dirtyCFId : oldestSegment.getDirtyCFIDs()) {
+      String keypace=Schema.instance.getCF(dirtyCFId).left;
+      final ColumnFamilyStore cfs=Table.open(keypace).getColumnFamilyStore(dirtyCFId);
+      Runnable runnable=new Runnable(){
+        public void run(){
+          cfs.forceFlush();
+        }
+      }
+;
+      StorageService.optionalTasks.execute(runnable);
+    }
+  }
+}

@@ -1,7 +1,20 @@
 {
   Callable task=new Callable(){
     public Object call() throws IOException {
-      discardCompletedSegmentsInternal(context,cfId);
+      logger.debug("discard completed log segments for {}, column family {}",context,cfId);
+      for (Iterator<CommitLogSegment> iter=allocator.activeSegments.iterator(); iter.hasNext(); ) {
+        CommitLogSegment segment=iter.next();
+        segment.markClean(cfId,context);
+        if (segment.isUnused() && iter.hasNext()) {
+          logger.debug("Commit log segment {} is unused",segment);
+          iter.remove();
+          allocator.recycleSegment(segment);
+        }
+ else {
+          if (logger.isDebugEnabled())           logger.debug(String.format("Not safe to delete commit log %s; dirty is %s; hasNext: %s",segment,segment.dirtyString(),iter.hasNext()));
+        }
+        if (segment.contains(context))         break;
+      }
       return null;
     }
   }

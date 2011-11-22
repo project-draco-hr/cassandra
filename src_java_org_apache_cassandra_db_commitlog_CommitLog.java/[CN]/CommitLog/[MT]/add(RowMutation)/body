@@ -1,3 +1,8 @@
 {
-  executor.add(new LogRecordAdder(rowMutation));
+  long totalSize=RowMutation.serializer().serializedSize(rm,MessagingService.version_) + CommitLogSegment.ENTRY_OVERHEAD_SIZE;
+  if (totalSize > CommitLog.SEGMENT_SIZE) {
+    logger.warn("Skipping commitlog append of extremely large mutation ({} bytes)",totalSize);
+    return;
+  }
+  executor.add(new LogRecordAdder(rm));
 }

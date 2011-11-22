@@ -1,8 +1,7 @@
 {
-  String directory=DatabaseDescriptor.getCommitLogLocation();
-  File[] files=new File(directory).listFiles(new FilenameFilter(){
+  File[] files=new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter(){
     public boolean accept(    File dir,    String name){
-      return CommitLogSegment.possibleCommitLogFile(name) && !instance.manages(name);
+      return CommitLogSegment.possibleCommitLogFile(name) && !instance.allocator.manages(name);
     }
   }
 );
@@ -13,9 +12,7 @@
   Arrays.sort(files,new FileUtils.FileComparator());
   logger.info("Replaying " + StringUtils.join(files,", "));
   int replayed=recover(files);
-  for (  File f : files) {
-    if (!f.delete())     logger.error("Unable to remove " + f + "; you should remove it manually or next restart will replay it again (harmless, but time-consuming)");
-  }
   logger.info("Log replay complete, " + replayed + " replayed mutations");
+  for (  File f : files)   CommitLog.instance.allocator.recycleSegment(f);
   return replayed;
 }
