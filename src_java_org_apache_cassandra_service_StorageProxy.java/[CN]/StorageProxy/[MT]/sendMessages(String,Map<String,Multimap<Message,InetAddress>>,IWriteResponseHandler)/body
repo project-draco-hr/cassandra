@@ -3,22 +3,20 @@
     String dataCenter=entry.getKey();
     for (    Map.Entry<Message,Collection<InetAddress>> messages : entry.getValue().asMap().entrySet()) {
       Message message=messages.getKey();
-      message.removeHeader(RowMutation.FORWARD_HEADER);
+      message=message.withHeaderRemoved(RowMutation.FORWARD_HEADER);
       if (dataCenter.equals(localDataCenter)) {
         for (        InetAddress destination : messages.getValue())         MessagingService.instance().sendRR(message,destination,handler);
       }
  else {
         Iterator<InetAddress> iter=messages.getValue().iterator();
         InetAddress target=iter.next();
+        ByteArrayOutputStream bos=new ByteArrayOutputStream();
+        DataOutputStream dos=new DataOutputStream(bos);
         while (iter.hasNext()) {
           InetAddress destination=iter.next();
-          ByteArrayOutputStream bos=new ByteArrayOutputStream();
-          DataOutputStream dos=new DataOutputStream(bos);
-          byte[] previousHints=message.getHeader(RowMutation.FORWARD_HEADER);
-          if (previousHints != null)           dos.write(previousHints);
           dos.write(destination.getAddress());
-          message.setHeader(RowMutation.FORWARD_HEADER,bos.toByteArray());
         }
+        message=message.withHeaderAdded(RowMutation.FORWARD_HEADER,bos.toByteArray());
         MessagingService.instance().sendRR(message,target,handler);
       }
     }
