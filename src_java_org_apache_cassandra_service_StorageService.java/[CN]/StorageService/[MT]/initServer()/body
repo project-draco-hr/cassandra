@@ -21,11 +21,9 @@
   Thread drainOnShutdown=new Thread(new WrappedRunnable(){
     public void runMayThrow() throws ExecutionException, InterruptedException, IOException {
       ThreadPoolExecutor mutationStage=StageManager.getStage(Stage.MUTATION);
-      if (!mutationStage.isShutdown()) {
-        mutationStage.shutdown();
-        mutationStage.awaitTermination(1,TimeUnit.SECONDS);
-        CommitLog.instance.shutdownBlocking();
-      }
+      if (mutationStage.isShutdown())       return;
+      mutationStage.shutdown();
+      mutationStage.awaitTermination(1,TimeUnit.SECONDS);
       List<Future<?>> flushes=new ArrayList<Future<?>>();
       for (      Table table : Table.all()) {
         KSMetaData ksm=DatabaseDescriptor.getKSMetaData(table.name);
@@ -37,6 +35,7 @@
         }
       }
       FBUtilities.waitOnFutures(flushes);
+      CommitLog.instance.shutdownBlocking();
     }
   }
 );
