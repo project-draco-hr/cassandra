@@ -10,13 +10,15 @@
  else {
         Iterator<InetAddress> iter=messages.getValue().iterator();
         InetAddress target=iter.next();
-        FastByteArrayOutputStream bos=new FastByteArrayOutputStream();
-        DataOutputStream dos=new DataOutputStream(bos);
-        while (iter.hasNext()) {
-          InetAddress destination=iter.next();
-          dos.write(destination.getAddress());
+        if (iter.hasNext()) {
+          FastByteArrayOutputStream bos=new FastByteArrayOutputStream();
+          DataOutputStream dos=new DataOutputStream(bos);
+          while (iter.hasNext()) {
+            InetAddress destination=iter.next();
+            dos.write(destination.getAddress());
+          }
+          message=message.withHeaderAdded(RowMutation.FORWARD_HEADER,bos.toByteArray());
         }
-        message=message.withHeaderAdded(RowMutation.FORWARD_HEADER,bos.toByteArray());
         MessagingService.instance().sendRR(message,target,handler);
       }
     }
