@@ -11,15 +11,18 @@
   DataOutputStream out=SequentialWriter.open(tmpFile,true).stream;
   try {
     for (    K key : keys) {
+      if (isStopped())       throw new UserInterruptedException(getCompactionInfo());
       ByteBuffer bytes=translateKey(key);
       ByteBufferUtil.writeWithLength(bytes,out);
       bytesWritten+=bytes.remaining();
     }
+    out.flush();
+    path.delete();
+    if (!tmpFile.renameTo(path))     throw new IOException("Unable to rename " + tmpFile + " to "+ path);
+    logger.info(String.format("Saved %s (%d items) in %d ms",path.getName(),keys.size(),(System.currentTimeMillis() - start)));
   }
   finally {
-    out.close();
+    FileUtils.closeQuietly(out);
+    if (tmpFile.exists())     tmpFile.delete();
   }
-  path.delete();
-  if (!tmpFile.renameTo(path))   throw new IOException("Unable to rename " + tmpFile + " to "+ path);
-  logger.info(String.format("Saved %s (%d items) in %d ms",path.getName(),keys.size(),(System.currentTimeMillis() - start)));
 }
