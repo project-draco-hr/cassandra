@@ -3,7 +3,7 @@
   output.write(ByteBufferUtil.getArray(HeaderBuffer));
   if (header.file == null)   return;
   RandomAccessReader file=(header.file.sstable.compression) ? CompressedRandomAccessReader.open(header.file.getFilename(),header.file.sstable.getCompressionMetadata(),true) : RandomAccessReader.open(new File(header.file.getFilename()),true);
-  output=new LZFOutputStream(output);
+  compressedoutput=new LZFOutputStream(output);
   try {
     for (    Pair<Long,Long> section : header.file.sections) {
       file.seek(section.left);
@@ -14,9 +14,10 @@
         bytesTransferred+=lastWrite;
         header.file.progress+=lastWrite;
       }
-      output.flush();
+      compressedoutput.flush();
       if (logger.isDebugEnabled())       logger.debug("Bytes transferred " + bytesTransferred + "/"+ header.file.size);
     }
+    receiveReply();
   }
   finally {
     FileUtils.closeQuietly(file);
