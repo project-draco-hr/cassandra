@@ -123,11 +123,12 @@ clientState.setKeyspace(CliUtils.unescapeSQLString((String)statement.statement))
 result.type=CqlResultType.VOID;
 return result;
 case TRUNCATE:
-String columnFamily=(String)statement.statement;
-validateColumnFamily(keyspace,columnFamily);
-clientState.hasColumnFamilyAccess(columnFamily,Permission.WRITE);
+Pair<String,String> columnFamily=(Pair<String,String>)statement.statement;
+keyspace=columnFamily.left == null ? clientState.getKeyspace() : columnFamily.left;
+validateColumnFamily(keyspace,columnFamily.right);
+clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.WRITE);
 try {
-StorageProxy.truncateBlocking(keyspace,columnFamily);
+StorageProxy.truncateBlocking(keyspace,columnFamily.right);
 }
  catch (TimeoutException e) {
 throw (UnavailableException)new UnavailableException().initCause(e);
@@ -139,6 +140,7 @@ result.type=CqlResultType.VOID;
 return result;
 case DELETE:
 DeleteStatement delete=(DeleteStatement)statement.statement;
+keyspace=delete.keyspace == null ? clientState.getKeyspace() : delete.keyspace;
 try {
 StorageProxy.mutate(delete.prepareRowMutations(keyspace,clientState),delete.getConsistencyLevel());
 }
