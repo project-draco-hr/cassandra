@@ -2,14 +2,14 @@
   List<org.apache.cassandra.db.Row> rows;
   IPartitioner<?> p=StorageService.getPartitioner();
   AbstractType<?> keyType=Schema.instance.getCFMetaData(metadata.ksName,select.getColumnFamily()).getKeyValidator();
-  ByteBuffer startKey=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
-  ByteBuffer finishKey=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
-  Token startToken=p.getToken(startKey), finishToken=p.getToken(finishKey);
-  if (startToken.compareTo(finishToken) > 0 && !finishToken.equals(p.getMinimumToken())) {
-    if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key's md5 sorts after end key's md5. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
+  ByteBuffer startKeyBytes=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType) : (new Term()).getByteBuffer();
+  ByteBuffer finishKeyBytes=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType) : (new Term()).getByteBuffer();
+  RowPosition startKey=p.decorateKey(startKeyBytes), finishKey=p.decorateKey(finishKeyBytes);
+  if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum(p)) {
+    if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key sorts after end key. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
  else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
   }
-  AbstractBounds bounds=new Bounds(startToken,finishToken);
+  AbstractBounds<RowPosition> bounds=new Bounds<RowPosition>(startKey,finishKey);
   SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,metadata);
   validateSlicePredicate(metadata,thriftSlicePredicate);
   int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();

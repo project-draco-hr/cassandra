@@ -9,32 +9,32 @@
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.moving(newToken));
   logger_.info(String.format("Moving %s from %s to %s.",localAddress,getLocalToken(),newToken));
   IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
-  Map<String,Multimap<InetAddress,Range>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range>>();
-  Map<String,Multimap<Range,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range,InetAddress>>();
+  Map<String,Multimap<InetAddress,Range<Token>>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range<Token>>>();
+  Map<String,Multimap<Range<Token>,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range<Token>,InetAddress>>();
   TokenMetadata tokenMetaClone=tokenMetadata_.cloneAfterAllSettled();
   for (  String table : tablesToProcess) {
     AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
-    Collection<Range> currentRanges=getRangesForEndpoint(table,localAddress);
-    Collection<Range> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata_,newToken,localAddress);
-    Multimap<Range,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetadata_);
-    Pair<Set<Range>,Set<Range>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
-    Multimap<Range,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
-    for (    Range toFetch : rangesPerTable.right) {
-      for (      Range range : rangeAddresses.keySet()) {
+    Collection<Range<Token>> currentRanges=getRangesForEndpoint(table,localAddress);
+    Collection<Range<Token>> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata_,newToken,localAddress);
+    Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetadata_);
+    Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
+    Multimap<Range<Token>,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
+    for (    Range<Token> toFetch : rangesPerTable.right) {
+      for (      Range<Token> range : rangeAddresses.keySet()) {
         if (range.contains(toFetch)) {
           List<InetAddress> endpoints=snitch.getSortedListByProximity(localAddress,rangeAddresses.get(range));
           rangesToFetchWithPreferredEndpoints.putAll(toFetch,endpoints);
         }
       }
     }
-    Multimap<Range,InetAddress> rangeWithEndpoints=HashMultimap.create();
-    for (    Range toStream : rangesPerTable.left) {
+    Multimap<Range<Token>,InetAddress> rangeWithEndpoints=HashMultimap.create();
+    for (    Range<Token> toStream : rangesPerTable.left) {
       Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetadata_));
       Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
       rangeWithEndpoints.putAll(toStream,Sets.difference(newEndpoints,currentEndpoints));
     }
     rangesToStreamByTable.put(table,rangeWithEndpoints);
-    Multimap<InetAddress,Range> workMap=BootStrapper.getWorkMap(rangesToFetchWithPreferredEndpoints);
+    Multimap<InetAddress,Range<Token>> workMap=BootStrapper.getWorkMap(rangesToFetchWithPreferredEndpoints);
     rangesToFetch.put(table,workMap);
     if (logger_.isDebugEnabled())     logger_.debug("Table {}: work map {}.",table,workMap);
   }

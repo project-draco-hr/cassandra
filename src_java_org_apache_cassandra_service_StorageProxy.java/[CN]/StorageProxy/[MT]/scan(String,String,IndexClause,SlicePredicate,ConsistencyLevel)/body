@@ -1,10 +1,10 @@
 {
   IPartitioner p=StorageService.getPartitioner();
-  Token leftToken=index_clause.start_key == null ? p.getMinimumToken() : p.getToken(index_clause.start_key);
-  List<AbstractBounds> ranges=getRestrictedRanges(new Bounds(leftToken,p.getMinimumToken()));
+  RowPosition leftPos=RowPosition.forKey(index_clause.start_key,p);
+  List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(new Bounds<RowPosition>(leftPos,p.getMinimumToken().minKeyBound()));
   logger.debug("scan ranges are {}",StringUtils.join(ranges,","));
   List<Row> rows=new ArrayList<Row>(index_clause.count);
-  for (  AbstractBounds range : ranges) {
+  for (  AbstractBounds<RowPosition> range : ranges) {
     List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(keyspace,range.right);
     DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),liveEndpoints);
     RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace,liveEndpoints);
