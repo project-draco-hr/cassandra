@@ -5,14 +5,17 @@
     }
   }
 );
+  int replayed=0;
   if (files.length == 0) {
     logger.info("No commitlog files found; skipping replay");
-    return 0;
   }
-  Arrays.sort(files,new FileUtils.FileComparator());
-  logger.info("Replaying " + StringUtils.join(files,", "));
-  int replayed=recover(files);
-  logger.info("Log replay complete, " + replayed + " replayed mutations");
-  for (  File f : files)   CommitLog.instance.allocator.recycleSegment(f);
+ else {
+    Arrays.sort(files,new FileUtils.FileComparator());
+    logger.info("Replaying " + StringUtils.join(files,", "));
+    replayed=recover(files);
+    logger.info("Log replay complete, " + replayed + " replayed mutations");
+    for (    File f : files)     CommitLog.instance.allocator.recycleSegment(f);
+  }
+  allocator.enableReserveSegmentCreation();
   return replayed;
 }
