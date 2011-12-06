@@ -86,12 +86,32 @@
     if (cmd.hasOption("Z")) {
       compactionStrategy=cmd.getOptionValue("Z");
       try {
-        CFMetaData.createCompactionSrategy(compactionStrategy);
+        CFMetaData.createCompactionStrategy(compactionStrategy);
       }
  catch (      ConfigurationException e) {
         System.err.println(e.getMessage());
         System.exit(1);
       }
+    }
+    if (cmd.hasOption("U")) {
+      AbstractType parsed=null;
+      try {
+        parsed=TypeParser.parse(cmd.getOptionValue("U"));
+      }
+ catch (      ConfigurationException e) {
+        System.err.println(e.getMessage());
+        System.exit(1);
+      }
+      comparator=cmd.getOptionValue("U");
+      timeUUIDComparator=parsed instanceof TimeUUIDType;
+      if (!(parsed instanceof TimeUUIDType || parsed instanceof AsciiType || parsed instanceof UTF8Type)) {
+        System.err.println("Currently supported types are: TimeUUIDType, AsciiType, UTF8Type.");
+        System.exit(1);
+      }
+    }
+ else {
+      comparator=null;
+      timeUUIDComparator=false;
     }
   }
  catch (  ParseException e) {
