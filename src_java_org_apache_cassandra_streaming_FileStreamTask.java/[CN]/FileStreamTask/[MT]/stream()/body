@@ -4,6 +4,7 @@
   if (header.file == null)   return;
   RandomAccessReader file=(header.file.sstable.compression) ? CompressedRandomAccessReader.open(header.file.getFilename(),header.file.sstable.getCompressionMetadata(),true) : RandomAccessReader.open(new File(header.file.getFilename()),true);
   compressedoutput=new LZFOutputStream(output);
+  MessagingService.instance().incrementActiveStreamsOutbound();
   try {
     for (    Pair<Long,Long> section : header.file.sections) {
       file.seek(section.left);
@@ -20,6 +21,7 @@
     receiveReply();
   }
   finally {
+    MessagingService.instance().decrementActiveStreamsOutbound();
     FileUtils.closeQuietly(file);
   }
 }

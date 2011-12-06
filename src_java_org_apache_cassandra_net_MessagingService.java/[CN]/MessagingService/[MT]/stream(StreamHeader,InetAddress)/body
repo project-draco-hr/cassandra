@@ -1,3 +1,13 @@
 {
-  streamExecutor_.execute(new FileStreamTask(header,to));
+  this.streamExecutorsLock.lock();
+  try {
+    if (!streamExecutors.containsKey(to)) {
+      streamExecutors.put(to,new DebuggableThreadPoolExecutor(0,1,1,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new NamedThreadFactory("Streaming to " + to)));
+    }
+    DebuggableThreadPoolExecutor executor=streamExecutors.get(to);
+    executor.execute(new FileStreamTask(header,to));
+  }
+  finally {
+    this.streamExecutorsLock.unlock();
+  }
 }
