@@ -1,0 +1,28 @@
+{
+  if (session.getColumnFamilyType() == ColumnFamilyType.Super)   throw new RuntimeException("Super columns are not implemented for CQL");
+  String key=String.format("%0" + session.getTotalKeysLength() + "d",index);
+  StringBuilder query=new StringBuilder("SELECT FIRST ").append(session.getColumnsPerKey()).append(" ''..'' FROM Standard1 USING CONSISTENCY ").append(session.getConsistencyLevel().toString()).append(" WHERE KEY > ").append(getQuotedCqlBlob(key));
+  long startTime=System.currentTimeMillis();
+  boolean success=false;
+  String exceptionMessage=null;
+  int rowCount=0;
+  for (int t=0; t < session.getRetryTimes(); t++) {
+    if (success)     break;
+    try {
+      CqlResult result=client.execute_cql_query(ByteBuffer.wrap(query.toString().getBytes()),Compression.NONE);
+      rowCount=result.rows.size();
+      success=(rowCount != 0);
+    }
+ catch (    Exception e) {
+      System.err.println(e);
+      exceptionMessage=getExceptionMessage(e);
+      success=false;
+    }
+  }
+  if (!success) {
+    error(String.format("Operation [%d] retried %d times - error executing range slice with offset %s %s%n",index,session.getRetryTimes(),key,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+  }
+  session.operations.getAndIncrement();
+  session.keys.getAndAdd(rowCount);
+  session.latency.getAndAdd(System.currentTimeMillis() - startTime);
+}

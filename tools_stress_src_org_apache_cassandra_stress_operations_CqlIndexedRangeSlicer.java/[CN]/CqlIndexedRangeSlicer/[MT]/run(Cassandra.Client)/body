@@ -1,0 +1,34 @@
+{
+  if (session.getColumnFamilyType() == ColumnFamilyType.Super)   throw new RuntimeException("Super columns are not implemented for CQL");
+  if (values == null)   values=generateValues();
+  String format="%0" + session.getTotalKeysLength() + "d";
+  String startOffset=String.format(format,0);
+  StringBuilder query=new StringBuilder("SELECT FIRST ").append(session.getColumnsPerKey()).append(" ''..'' FROM Standard1 USING CONSISTENCY ").append(session.getConsistencyLevel()).append(" WHERE C1 = ").append(getQuotedCqlBlob(values.get(1).array())).append(" AND ");
+  int expectedPerValue=session.getNumKeys() / values.size(), received=0;
+  while (received < expectedPerValue) {
+    long start=System.currentTimeMillis();
+    boolean success=false;
+    String exceptionMessage=null;
+    CqlResult results=null;
+    for (int t=0; t < session.getRetryTimes(); t++) {
+      if (success)       break;
+      try {
+        ByteBuffer queryBytes=ByteBuffer.wrap(makeQuery(query,startOffset).getBytes());
+        results=client.execute_cql_query(queryBytes,Compression.NONE);
+        success=(results.rows.size() != 0);
+      }
+ catch (      Exception e) {
+        exceptionMessage=getExceptionMessage(e);
+        success=false;
+      }
+    }
+    if (!success) {
+      error(String.format("Operation [%d] retried %d times - error executing indexed range query with offset %s %s%n",index,session.getRetryTimes(),startOffset,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+    }
+    received+=results.rows.size();
+    startOffset=String.format(format,(1 + getMaxKey(results.rows)));
+    session.operations.getAndIncrement();
+    session.keys.getAndAdd(results.rows.size());
+    session.latency.getAndAdd(System.currentTimeMillis() - start);
+  }
+}
