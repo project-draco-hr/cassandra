@@ -4,8 +4,9 @@
   StringBuilder query=new StringBuilder("UPDATE Standard1 USING CONSISTENCY ").append(session.getConsistencyLevel().toString()).append(" SET ");
   for (int i=0; i < session.getColumnsPerKey(); i++) {
     if (i > 0)     query.append(',');
-    query.append('C').append(i).append('=');
-    query.append(getQuotedCqlBlob(values.get(i % values.size()).array()));
+    if (session.timeUUIDComparator)     query.append(UUIDGen.makeType1UUIDFromHost(Session.getLocalAddress()).toString());
+ else     query.append('C').append(i);
+    query.append('=').append(getQuotedCqlBlob(values.get(i % values.size()).array()));
   }
   String key=String.format("%0" + session.getTotalKeysLength() + "d",index);
   query.append(" WHERE KEY=").append(getQuotedCqlBlob(key));
