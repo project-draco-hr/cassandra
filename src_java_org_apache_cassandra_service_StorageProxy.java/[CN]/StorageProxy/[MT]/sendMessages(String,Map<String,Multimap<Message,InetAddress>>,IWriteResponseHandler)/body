@@ -4,23 +4,29 @@
     for (    Map.Entry<Message,Collection<InetAddress>> messages : entry.getValue().asMap().entrySet()) {
       Message message=messages.getKey();
       message=message.withHeaderRemoved(RowMutation.FORWARD_HEADER);
-      if (dataCenter.equals(localDataCenter)) {
-        for (        InetAddress destination : messages.getValue())         MessagingService.instance().sendRR(message,destination,handler);
-      }
- else {
-        Iterator<InetAddress> iter=messages.getValue().iterator();
-        InetAddress target=iter.next();
-        if (iter.hasNext()) {
-          FastByteArrayOutputStream bos=new FastByteArrayOutputStream();
-          DataOutputStream dos=new DataOutputStream(bos);
-          while (iter.hasNext()) {
-            InetAddress destination=iter.next();
-            dos.write(destination.getAddress());
-          }
-          message=message.withHeaderAdded(RowMutation.FORWARD_HEADER,bos.toByteArray());
-        }
+      Iterator<InetAddress> iter=messages.getValue().iterator();
+      InetAddress target=iter.next();
+      if (dataCenter.equals(localDataCenter) || Gossiper.instance.getVersion(target) < MessagingService.VERSION_11) {
         MessagingService.instance().sendRR(message,target,handler);
+        while (iter.hasNext()) {
+          target=iter.next();
+          MessagingService.instance().sendRR(message,target,handler);
+        }
+        continue;
       }
+      FastByteArrayOutputStream bos=new FastByteArrayOutputStream();
+      DataOutputStream dos=new DataOutputStream(bos);
+      dos.writeInt(messages.getValue().size() - 1);
+      while (iter.hasNext()) {
+        InetAddress destination=iter.next();
+        CompactEndpointSerializationHelper.serialize(destination,dos);
+        String id=MessagingService.instance().addCallback(handler,message,destination);
+        dos.writeUTF(id);
+        if (logger.isDebugEnabled())         logger.debug("Adding FWD message to: " + destination + " with ID "+ id);
+      }
+      message=message.withHeaderAdded(RowMutation.FORWARD_HEADER,bos.toByteArray());
+      String id=MessagingService.instance().sendRR(message,target,handler);
+      if (logger.isDebugEnabled())       logger.debug("Sending message to: " + target + " with ID "+ id);
     }
   }
 }
