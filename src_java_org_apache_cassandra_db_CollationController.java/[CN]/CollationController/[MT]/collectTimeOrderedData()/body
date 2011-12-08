@@ -6,7 +6,7 @@
   ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
   try {
     for (    Memtable memtable : view.memtables) {
-      IColumnIterator iter=filter.getMemtableColumnIterator(memtable,cfs.metadata.comparator);
+      IColumnIterator iter=filter.getMemtableColumnIterator(memtable);
       if (iter != null) {
         iterators.add(iter);
         container.delete(iter.getColumnFamily());
@@ -44,7 +44,7 @@
     }
 ;
     ColumnFamily returnCF=container.cloneMeShallow();
-    filter.collateColumns(returnCF,Collections.singletonList(toCollate),cfs.metadata.comparator,gcBefore);
+    filter.collateColumns(returnCF,Collections.singletonList(toCollate),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isCompactionDisabled() && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy) {
       RowMutation rm=new RowMutation(cfs.table.name,new Row(filter.key,returnCF.cloneMe()));
       try {
