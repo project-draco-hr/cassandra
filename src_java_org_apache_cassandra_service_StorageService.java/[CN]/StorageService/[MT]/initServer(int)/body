@@ -10,8 +10,13 @@
   if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
     logger_.info("Loading persisted ring state");
     for (    Map.Entry<Token,InetAddress> entry : SystemTable.loadTokens().entrySet()) {
-      tokenMetadata_.updateNormalToken(entry.getKey(),entry.getValue());
-      Gossiper.instance.addSavedEndpoint(entry.getValue());
+      if (entry.getValue() == FBUtilities.getBroadcastAddress()) {
+        SystemTable.removeToken(entry.getKey());
+      }
+ else {
+        tokenMetadata_.updateNormalToken(entry.getKey(),entry.getValue());
+        Gossiper.instance.addSavedEndpoint(entry.getValue());
+      }
     }
   }
   if (Boolean.parseBoolean(System.getProperty("cassandra.renew_counter_id","false"))) {
