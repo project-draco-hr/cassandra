@@ -1,2 +1,26 @@
 {
+  String snapshotName=Table.getTimestampedSnapshotName(null);
+  CompactionManager.instance.getCompactionLock().lock();
+  try {
+    KSMetaData ksm=DatabaseDescriptor.getTableDefinition(name);
+    for (    CFMetaData cfm : ksm.cfMetaData().values()) {
+      ColumnFamilyStore cfs=Table.open(ksm.name).getColumnFamilyStore(cfm.cfName);
+      CFMetaData.purge(cfm);
+      if (!StorageService.instance.isClientMode()) {
+        cfs.snapshot(snapshotName);
+        cfs.flushLock.lock();
+        try {
+          Table.open(ksm.name).dropCf(cfm.cfId);
+        }
+  finally {
+          cfs.flushLock.unlock();
+        }
+      }
+    }
+    Table.clear(ksm.name);
+    DatabaseDescriptor.clearTableDefinition(ksm,newVersion);
+  }
+  finally {
+    CompactionManager.instance.getCompactionLock().unlock();
+  }
 }
