@@ -1,0 +1,22 @@
+{
+  String globalKeyspace=clientState.getKeyspace();
+  List<IMutation> rowMutations=new ArrayList<IMutation>();
+  List<String> cfamsSeen=new ArrayList<String>();
+  for (  UpdateStatement update : updateStatements) {
+    String keyspace=update.keyspace == null ? globalKeyspace : update.keyspace;
+    if (!(cfamsSeen.contains(update.getColumnFamily()))) {
+      clientState.hasColumnFamilyAccess(keyspace,update.getColumnFamily(),Permission.WRITE);
+      cfamsSeen.add(update.getColumnFamily());
+    }
+    rowMutations.addAll(update.prepareRowMutations(keyspace,clientState,variables));
+  }
+  try {
+    StorageProxy.mutate(rowMutations,consistency);
+  }
+ catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    throw new UnavailableException();
+  }
+catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+}

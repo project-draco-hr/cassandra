@@ -1,0 +1,319 @@
+{
+  String keyspace=null;
+  if (statement.type != StatementType.SELECT && StatementType.requiresKeyspace.contains(statement.type))   keyspace=clientState.getKeyspace();
+  CqlResult result=new CqlResult();
+  if (logger.isDebugEnabled())   logger.debug("CQL statement type: {}",statement.type.toString());
+  CFMetaData metadata;
+switch (statement.type) {
+case SELECT:
+    SelectStatement select=(SelectStatement)statement.statement;
+  final String oldKeyspace=clientState.getRawKeyspace();
+if (select.isSetKeyspace()) {
+  keyspace=CliUtils.unescapeSQLString(select.getKeyspace());
+  ThriftValidation.validateTable(keyspace);
+}
+ else if (oldKeyspace == null) throw new InvalidRequestException("no keyspace has been specified");
+ else keyspace=oldKeyspace;
+clientState.hasColumnFamilyAccess(keyspace,select.getColumnFamily(),Permission.READ);
+metadata=validateColumnFamily(keyspace,select.getColumnFamily());
+select.extractKeyAliasFromColumns(metadata);
+if (select.getKeys().size() > 0) validateKeyAlias(metadata,select.getKeyAlias());
+validateSelect(keyspace,select,variables);
+List<org.apache.cassandra.db.Row> rows;
+if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
+rows=getSlice(metadata,select,variables);
+}
+ else {
+if ((select.getKeyFinish() != null) || (select.getColumnRelations().size() == 0)) {
+rows=multiRangeSlice(metadata,select,variables);
+}
+ else {
+rows=getIndexedSlices(metadata,select,variables);
+}
+}
+result.type=CqlResultType.ROWS;
+if (select.isCountOperation()) {
+validateCountOperation(select);
+ByteBuffer countBytes=ByteBufferUtil.bytes("count");
+result.schema=new CqlMetadata(Collections.<ByteBuffer,String>emptyMap(),Collections.<ByteBuffer,String>emptyMap(),"AsciiType","LongType");
+List<Column> columns=Collections.singletonList(new Column(countBytes).setValue(ByteBufferUtil.bytes((long)rows.size())));
+result.rows=Collections.singletonList(new CqlRow(countBytes,columns));
+return result;
+}
+result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),TypeParser.getShortName(metadata.comparator),TypeParser.getShortName(metadata.getDefaultValidator()));
+List<CqlRow> cqlRows=new ArrayList<CqlRow>();
+for (org.apache.cassandra.db.Row row : rows) {
+List<Column> thriftColumns=new ArrayList<Column>();
+if (select.isColumnRange()) {
+if (select.isFullWildcard()) {
+thriftColumns.add(new Column(metadata.getKeyName()).setValue(row.key.key).setTimestamp(-1));
+result.schema.name_types.put(metadata.getKeyName(),TypeParser.getShortName(AsciiType.instance));
+result.schema.value_types.put(metadata.getKeyName(),TypeParser.getShortName(metadata.getKeyValidator()));
+}
+if (row.cf != null) {
+for (IColumn c : row.cf.getSortedColumns()) {
+if (c.isMarkedForDelete()) continue;
+ColumnDefinition cd=metadata.getColumnDefinition(c.name());
+if (cd != null) result.schema.value_types.put(c.name(),TypeParser.getShortName(cd.getValidator()));
+thriftColumns.add(thriftify(c));
+}
+}
+}
+ else {
+String keyString=getKeyString(metadata);
+for (Term term : select.getColumnNames()) {
+if (term.getText().equalsIgnoreCase(keyString)) {
+ByteBuffer requestedKey=ByteBufferUtil.bytes(term.getText());
+thriftColumns.add(new Column(requestedKey).setValue(row.key.key).setTimestamp(-1));
+result.schema.name_types.put(requestedKey,TypeParser.getShortName(AsciiType.instance));
+result.schema.value_types.put(requestedKey,TypeParser.getShortName(metadata.getKeyValidator()));
+continue;
+}
+if (row.cf == null) continue;
+ByteBuffer name;
+try {
+name=term.getByteBuffer(metadata.comparator,variables);
+}
+ catch (InvalidRequestException e) {
+throw new AssertionError(e);
+}
+ColumnDefinition cd=metadata.getColumnDefinition(name);
+if (cd != null) result.schema.value_types.put(name,TypeParser.getShortName(cd.getValidator()));
+IColumn c=row.cf.getColumn(name);
+if (c == null || c.isMarkedForDelete()) thriftColumns.add(new Column().setName(name));
+ else thriftColumns.add(thriftify(c));
+}
+}
+CqlRow cqlRow=new CqlRow();
+cqlRow.key=row.key.key;
+cqlRow.columns=thriftColumns;
+if (select.isColumnsReversed()) Collections.reverse(cqlRow.columns);
+cqlRows.add(cqlRow);
+}
+result.rows=cqlRows;
+return result;
+case INSERT:
+case UPDATE:
+UpdateStatement update=(UpdateStatement)statement.statement;
+ThriftValidation.validateConsistencyLevel(keyspace,update.getConsistencyLevel(),RequestType.WRITE);
+batchUpdate(clientState,Collections.singletonList(update),update.getConsistencyLevel(),variables);
+result.type=CqlResultType.VOID;
+return result;
+case BATCH:
+BatchStatement batch=(BatchStatement)statement.statement;
+ThriftValidation.validateConsistencyLevel(keyspace,batch.getConsistencyLevel(),RequestType.WRITE);
+if (batch.getTimeToLive() != 0) throw new InvalidRequestException("Global TTL on the BATCH statement is not supported.");
+for (AbstractModification up : batch.getStatements()) {
+if (up.isSetConsistencyLevel()) throw new InvalidRequestException("Consistency level must be set on the BATCH, not individual statements");
+if (batch.isSetTimestamp() && up.isSetTimestamp()) throw new InvalidRequestException("Timestamp must be set either on BATCH or individual statements");
+}
+try {
+StorageProxy.mutate(batch.getMutations(keyspace,clientState,variables),batch.getConsistencyLevel());
+}
+ catch (org.apache.cassandra.thrift.UnavailableException e) {
+throw new UnavailableException();
+}
+catch (TimeoutException e) {
+throw new TimedOutException();
+}
+result.type=CqlResultType.VOID;
+return result;
+case USE:
+clientState.setKeyspace(CliUtils.unescapeSQLString((String)statement.statement));
+result.type=CqlResultType.VOID;
+return result;
+case TRUNCATE:
+Pair<String,String> columnFamily=(Pair<String,String>)statement.statement;
+keyspace=columnFamily.left == null ? clientState.getKeyspace() : columnFamily.left;
+validateColumnFamily(keyspace,columnFamily.right);
+clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.WRITE);
+try {
+StorageProxy.truncateBlocking(keyspace,columnFamily.right);
+}
+ catch (TimeoutException e) {
+throw (UnavailableException)new UnavailableException().initCause(e);
+}
+catch (IOException e) {
+throw (UnavailableException)new UnavailableException().initCause(e);
+}
+result.type=CqlResultType.VOID;
+return result;
+case DELETE:
+DeleteStatement delete=(DeleteStatement)statement.statement;
+keyspace=delete.keyspace == null ? clientState.getKeyspace() : delete.keyspace;
+try {
+StorageProxy.mutate(delete.prepareRowMutations(keyspace,clientState,variables),delete.getConsistencyLevel());
+}
+ catch (TimeoutException e) {
+throw new TimedOutException();
+}
+result.type=CqlResultType.VOID;
+return result;
+case CREATE_KEYSPACE:
+CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
+create.validate();
+clientState.hasKeyspaceSchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
+ThriftValidation.validateKsDef(ksd);
+ThriftValidation.validateKeyspaceNotYetExisting(create.getName());
+applyMigrationOnStage(new AddKeyspace(KSMetaData.fromThrift(ksd)));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case CREATE_COLUMNFAMILY:
+CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+CFMetaData cfmd=createCf.getCFMetaData(keyspace,variables);
+ThriftValidation.validateCfDef(cfmd.toThrift(),null);
+try {
+applyMigrationOnStage(new AddColumnFamily(cfmd));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case CREATE_INDEX:
+CreateIndexStatement createIdx=(CreateIndexStatement)statement.statement;
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+CFMetaData oldCfm=Schema.instance.getCFMetaData(keyspace,createIdx.getColumnFamily());
+if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
+boolean columnExists=false;
+ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
+CfDef cf_def=oldCfm.toThrift();
+for (ColumnDef cd : cf_def.column_metadata) {
+if (cd.name.equals(columnName)) {
+if (cd.index_type != null) throw new InvalidRequestException("Index already exists");
+if (logger.isDebugEnabled()) logger.debug("Updating column {} definition for index {}",oldCfm.comparator.getString(columnName),createIdx.getIndexName());
+cd.setIndex_type(IndexType.KEYS);
+cd.setIndex_name(createIdx.getIndexName());
+columnExists=true;
+break;
+}
+}
+if (!columnExists) throw new InvalidRequestException("No column definition found for column " + oldCfm.comparator.getString(columnName));
+CFMetaData.addDefaultIndexNames(cf_def);
+ThriftValidation.validateCfDef(cf_def,oldCfm);
+try {
+org.apache.cassandra.db.migration.avro.CfDef result1;
+try {
+result1=CFMetaData.fromThrift(cf_def).toAvro();
+}
+ catch (Exception e) {
+throw new RuntimeException(e);
+}
+applyMigrationOnStage(new UpdateColumnFamily(result1));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case DROP_INDEX:
+DropIndexStatement dropIdx=(DropIndexStatement)statement.statement;
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(dropIdx.generateMutation(clientState.getKeyspace()));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.toString());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case DROP_KEYSPACE:
+String deleteKeyspace=(String)statement.statement;
+clientState.hasKeyspaceSchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new DropKeyspace(deleteKeyspace));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case DROP_COLUMNFAMILY:
+String deleteColumnFamily=(String)statement.statement;
+clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new DropColumnFamily(keyspace,deleteColumnFamily));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+case ALTER_TABLE:
+AlterTableStatement alterTable=(AlterTableStatement)statement.statement;
+validateColumnFamily(keyspace,alterTable.columnFamily);
+clientState.hasColumnFamilyAccess(alterTable.columnFamily,Permission.WRITE);
+validateSchemaAgreement();
+try {
+applyMigrationOnStage(new UpdateColumnFamily(alterTable.getCfDef(keyspace)));
+}
+ catch (ConfigurationException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+catch (IOException e) {
+InvalidRequestException ex=new InvalidRequestException(e.getMessage());
+ex.initCause(e);
+throw ex;
+}
+result.type=CqlResultType.VOID;
+return result;
+}
+return null;
+}

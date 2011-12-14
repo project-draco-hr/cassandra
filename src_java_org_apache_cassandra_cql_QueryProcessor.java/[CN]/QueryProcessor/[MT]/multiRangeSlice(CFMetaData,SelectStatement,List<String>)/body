@@ -1,0 +1,36 @@
+{
+  List<org.apache.cassandra.db.Row> rows;
+  IPartitioner<?> p=StorageService.getPartitioner();
+  AbstractType<?> keyType=Schema.instance.getCFMetaData(metadata.ksName,select.getColumnFamily()).getKeyValidator();
+  ByteBuffer startKeyBytes=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType,variables) : null;
+  ByteBuffer finishKeyBytes=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType,variables) : null;
+  RowPosition startKey=RowPosition.forKey(startKeyBytes,p), finishKey=RowPosition.forKey(finishKeyBytes,p);
+  if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum(p)) {
+    if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key sorts after end key. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
+ else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
+  }
+  AbstractBounds<RowPosition> bounds=new Bounds<RowPosition>(startKey,finishKey);
+  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,metadata,variables);
+  validateSlicePredicate(metadata,thriftSlicePredicate);
+  int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();
+  try {
+    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),null,thriftSlicePredicate,bounds,limit),select.getConsistencyLevel());
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+catch (  org.apache.cassandra.thrift.UnavailableException e) {
+    throw new UnavailableException();
+  }
+catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
+  if (select.getKeyStart() != null && !select.includeStartKey() && !rows.isEmpty()) {
+    if (rows.get(0).key.key.equals(startKeyBytes))     rows.remove(0);
+  }
+  if (select.getKeyFinish() != null && !select.includeFinishKey() && !rows.isEmpty()) {
+    int lastIndex=rows.size() - 1;
+    if (rows.get(lastIndex).key.key.equals(finishKeyBytes))     rows.remove(lastIndex);
+  }
+  return rows.subList(0,select.getNumRecords() < rows.size() ? select.getNumRecords() : rows.size());
+}
