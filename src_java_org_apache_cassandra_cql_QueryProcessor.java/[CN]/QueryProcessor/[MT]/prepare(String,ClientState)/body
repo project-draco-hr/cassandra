@@ -1,4 +1,10 @@
 {
   if (logger.isDebugEnabled())   logger.debug("CQL QUERY: {}",queryString);
-  return getStatement(queryString);
+  CQLStatement statement=getStatement(queryString);
+  int statementId=makeStatementId(queryString);
+  discoverBoundTerms(statement);
+  if (logger.isTraceEnabled())   logger.trace("Discovered " + statement.boundTerms + " bound variables.");
+  clientState.getPrepared().put(statementId,statement);
+  if (logger.isTraceEnabled())   logger.trace(String.format("Stored prepared statement #%d with %d bind markers",statementId,clientState.getPrepared().size()));
+  return new CqlPreparedResult(statementId,statement.boundTerms);
 }
