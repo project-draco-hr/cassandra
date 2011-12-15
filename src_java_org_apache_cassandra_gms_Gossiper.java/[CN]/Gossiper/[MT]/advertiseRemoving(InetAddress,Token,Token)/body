@@ -1,0 +1,20 @@
+{
+  EndpointState epState=endpointStateMap.get(endpoint);
+  int generation=epState.getHeartBeatState().getGeneration();
+  logger.info("Removing token: " + token);
+  logger.info("Sleeping for " + StorageService.RING_DELAY + "ms to ensure "+ endpoint+ " does not change");
+  try {
+    Thread.sleep(StorageService.RING_DELAY);
+  }
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+  epState=endpointStateMap.get(endpoint);
+  if (epState.getHeartBeatState().getGeneration() != generation)   throw new RuntimeException("Endpoint " + endpoint + " generation changed while trying to remove it");
+  logger.info("Advertising removal for " + endpoint);
+  epState.updateTimestamp();
+  epState.getHeartBeatState().forceNewerGenerationUnsafe();
+  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.removingNonlocal(token));
+  epState.addApplicationState(ApplicationState.REMOVAL_COORDINATOR,StorageService.instance.valueFactory.removalCoordinator(mytoken));
+  endpointStateMap.put(endpoint,epState);
+}
