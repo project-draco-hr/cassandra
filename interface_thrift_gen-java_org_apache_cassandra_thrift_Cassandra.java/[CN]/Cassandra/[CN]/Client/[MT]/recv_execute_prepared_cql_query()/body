@@ -1,6 +1,16 @@
 {
+  TMessage msg=iprot_.readMessageBegin();
+  if (msg.type == TMessageType.EXCEPTION) {
+    TApplicationException x=TApplicationException.read(iprot_);
+    iprot_.readMessageEnd();
+    throw x;
+  }
+  if (msg.seqid != seqid_) {
+    throw new TApplicationException(TApplicationException.BAD_SEQUENCE_ID,"execute_prepared_cql_query failed: out of sequence response");
+  }
   execute_prepared_cql_query_result result=new execute_prepared_cql_query_result();
-  receiveBase(result,"execute_prepared_cql_query");
+  result.read(iprot_);
+  iprot_.readMessageEnd();
   if (result.isSetSuccess()) {
     return result.success;
   }
@@ -16,5 +26,5 @@
   if (result.sde != null) {
     throw result.sde;
   }
-  throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT,"execute_prepared_cql_query failed: unknown result");
+  throw new TApplicationException(TApplicationException.MISSING_RESULT,"execute_prepared_cql_query failed: unknown result");
 }

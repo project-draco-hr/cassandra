@@ -1,6 +1,16 @@
 {
+  TMessage msg=iprot_.readMessageBegin();
+  if (msg.type == TMessageType.EXCEPTION) {
+    TApplicationException x=TApplicationException.read(iprot_);
+    iprot_.readMessageEnd();
+    throw x;
+  }
+  if (msg.seqid != seqid_) {
+    throw new TApplicationException(TApplicationException.BAD_SEQUENCE_ID,"describe_keyspace failed: out of sequence response");
+  }
   describe_keyspace_result result=new describe_keyspace_result();
-  receiveBase(result,"describe_keyspace");
+  result.read(iprot_);
+  iprot_.readMessageEnd();
   if (result.isSetSuccess()) {
     return result.success;
   }
@@ -10,5 +20,5 @@
   if (result.ire != null) {
     throw result.ire;
   }
-  throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT,"describe_keyspace failed: unknown result");
+  throw new TApplicationException(TApplicationException.MISSING_RESULT,"describe_keyspace failed: unknown result");
 }

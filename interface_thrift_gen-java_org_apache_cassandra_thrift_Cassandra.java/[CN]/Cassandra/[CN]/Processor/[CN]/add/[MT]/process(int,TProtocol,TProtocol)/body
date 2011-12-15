@@ -1,0 +1,42 @@
+{
+  add_args args=new add_args();
+  try {
+    args.read(iprot);
+  }
+ catch (  TProtocolException e) {
+    iprot.readMessageEnd();
+    TApplicationException x=new TApplicationException(TApplicationException.PROTOCOL_ERROR,e.getMessage());
+    oprot.writeMessageBegin(new TMessage("add",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  iprot.readMessageEnd();
+  add_result result=new add_result();
+  try {
+    iface_.add(args.key,args.column_parent,args.column,args.consistency_level);
+  }
+ catch (  InvalidRequestException ire) {
+    result.ire=ire;
+  }
+catch (  UnavailableException ue) {
+    result.ue=ue;
+  }
+catch (  TimedOutException te) {
+    result.te=te;
+  }
+catch (  Throwable th) {
+    LOGGER.error("Internal error processing add",th);
+    TApplicationException x=new TApplicationException(TApplicationException.INTERNAL_ERROR,"Internal error processing add");
+    oprot.writeMessageBegin(new TMessage("add",TMessageType.EXCEPTION,seqid));
+    x.write(oprot);
+    oprot.writeMessageEnd();
+    oprot.getTransport().flush();
+    return;
+  }
+  oprot.writeMessageBegin(new TMessage("add",TMessageType.REPLY,seqid));
+  result.write(oprot);
+  oprot.writeMessageEnd();
+  oprot.getTransport().flush();
+}
