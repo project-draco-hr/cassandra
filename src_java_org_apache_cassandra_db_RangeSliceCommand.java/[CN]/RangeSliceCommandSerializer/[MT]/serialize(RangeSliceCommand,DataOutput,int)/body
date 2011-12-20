@@ -6,6 +6,15 @@
   if (sc != null)   ByteBufferUtil.write(sc,dos);
   TSerializer ser=new TSerializer(new TBinaryProtocol.Factory());
   FBUtilities.serialize(ser,sliceCommand.predicate,dos);
+  if (version >= MessagingService.VERSION_11) {
+    if (sliceCommand.row_filter == null) {
+      dos.writeInt(0);
+    }
+ else {
+      dos.writeInt(sliceCommand.row_filter.size());
+      for (      IndexExpression expr : sliceCommand.row_filter)       FBUtilities.serialize(ser,expr,dos);
+    }
+  }
   AbstractBounds.serializer().serialize(sliceCommand.range,dos,version);
   dos.writeInt(sliceCommand.max_keys);
 }

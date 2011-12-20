@@ -1,17 +1,27 @@
 {
   String keyspace=dis.readUTF();
-  String column_family=dis.readUTF();
+  String columnFamily=dis.readUTF();
   int scLength=dis.readInt();
-  ByteBuffer super_column=null;
+  ByteBuffer superColumn=null;
   if (scLength > 0) {
     byte[] buf=new byte[scLength];
     dis.readFully(buf);
-    super_column=ByteBuffer.wrap(buf);
+    superColumn=ByteBuffer.wrap(buf);
   }
   TDeserializer dser=new TDeserializer(new TBinaryProtocol.Factory());
   SlicePredicate pred=new SlicePredicate();
   FBUtilities.deserialize(dser,pred,dis);
+  List<IndexExpression> rowFilter=null;
+  if (version >= MessagingService.VERSION_11) {
+    int filterCount=dis.readInt();
+    rowFilter=new ArrayList<IndexExpression>(filterCount);
+    for (int i=0; i < filterCount; i++) {
+      IndexExpression expr=new IndexExpression();
+      FBUtilities.deserialize(dser,expr,dis);
+      rowFilter.add(expr);
+    }
+  }
   AbstractBounds<RowPosition> range=AbstractBounds.serializer().deserialize(dis,version).toRowBounds();
-  int max_keys=dis.readInt();
-  return new RangeSliceCommand(keyspace,column_family,super_column,pred,range,max_keys);
+  int maxKeys=dis.readInt();
+  return new RangeSliceCommand(keyspace,columnFamily,superColumn,pred,range,rowFilter,maxKeys);
 }
