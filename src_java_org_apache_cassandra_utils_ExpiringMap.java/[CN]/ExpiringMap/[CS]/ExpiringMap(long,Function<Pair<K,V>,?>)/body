@@ -1,20 +1,23 @@
 {
-  this.expiration=expiration;
-  if (expiration <= 0) {
+  this.defaultExpiration=defaultExpiration;
+  if (defaultExpiration <= 0) {
     throw new IllegalArgumentException("Argument specified must be a positive number");
   }
   timer=new Timer("EXPIRING-MAP-TIMER-" + (++counter),true);
   TimerTask task=new TimerTask(){
     public void run(){
       long start=System.currentTimeMillis();
+      int n=0;
       for (      Map.Entry<K,CacheableObject<V>> entry : cache.entrySet()) {
-        if (entry.getValue().isReadyToDie(start)) {
+        if (entry.getValue().isReadyToDieAt(start)) {
           cache.remove(entry.getKey());
+          n++;
           if (postExpireHook != null)           postExpireHook.apply(new Pair<K,V>(entry.getKey(),entry.getValue().getValue()));
         }
       }
+      logger.trace("Expired {} entries",n);
     }
   }
 ;
-  timer.schedule(task,expiration / 2,expiration / 2);
+  timer.schedule(task,defaultExpiration / 2,defaultExpiration / 2);
 }
