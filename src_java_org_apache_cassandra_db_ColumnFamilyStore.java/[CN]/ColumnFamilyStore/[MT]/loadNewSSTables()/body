@@ -3,7 +3,6 @@
   DataTracker.View view=data.getView();
   Set<Descriptor> currentDescriptors=new HashSet<Descriptor>();
   Set<SSTableReader> sstables=new HashSet<SSTableReader>();
-  Set<DecoratedKey> savedKeys=keyCache.readSaved();
   int generation=0;
   for (  SSTableReader reader : view.sstables) {
     sstables.add(reader);
@@ -19,6 +18,7 @@
     if (!descriptor.isCompatible())     throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,descriptor));
     logger.info("Initializing new SSTable {}",rawSSTable);
     try {
+      Set<DecoratedKey> savedKeys=CacheService.instance.keyCache.readSaved(descriptor.ksname,descriptor.cfname);
       reader=SSTableReader.open(rawSSTable.getKey(),rawSSTable.getValue(),savedKeys,data,metadata,partitioner);
     }
  catch (    IOException e) {

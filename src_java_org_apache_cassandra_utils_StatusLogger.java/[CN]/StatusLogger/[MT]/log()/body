@@ -24,8 +24,15 @@
     pendingResponses+=n;
   }
   logger.info(String.format("%-25s%10s%10s","MessagingService","n/a",pendingCommands + "," + pendingResponses));
-  logger.info(String.format("%-25s%20s%20s%20s","ColumnFamily","Memtable ops,data","Row cache size/cap","Key cache size/cap"));
+  AutoSavingCache<KeyCacheKey,Long> keyCache=CacheService.instance.keyCache;
+  AutoSavingCache<RowCacheKey,ColumnFamily> rowCache=CacheService.instance.rowCache;
+  int keyCacheKeysToSave=DatabaseDescriptor.getKeyCacheKeysToSave();
+  int rowCacheKeysToSave=DatabaseDescriptor.getRowCacheKeysToSave();
+  logger.info(String.format("%-25s%10s%25s%25s%65s","Cache Type","Size","Capacity","KeysToSave","Provider"));
+  logger.info(String.format("%-25s%10s%25s%25s%65s","KeyCache",keyCache.weightedSize(),keyCache.getCapacity(),keyCacheKeysToSave == Integer.MAX_VALUE ? "all" : keyCacheKeysToSave,""));
+  logger.info(String.format("%-25s%10s%25s%25s%65s","RowCache",rowCache.weightedSize(),rowCache.getCapacity(),rowCacheKeysToSave == Integer.MAX_VALUE ? "all" : rowCacheKeysToSave,DatabaseDescriptor.getRowCacheProvider().getClass().getName()));
+  logger.info(String.format("%-25s%20s","ColumnFamily","Memtable ops,data"));
   for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
-    logger.info(String.format("%-25s%20s%20s%20s",cfs.table.name + "." + cfs.columnFamily,cfs.getMemtableColumnsCount() + "," + cfs.getMemtableDataSize(),cfs.getRowCacheSize() + "/" + cfs.getRowCacheCapacity(),cfs.getKeyCacheSize() + "/" + cfs.getKeyCacheCapacity()));
+    logger.info(String.format("%-25s%20s",cfs.table.name + "." + cfs.columnFamily,cfs.getMemtableColumnsCount() + "," + cfs.getMemtableDataSize()));
   }
 }
