@@ -1,4 +1,19 @@
 {
+  Set<String> propsToRemove=new HashSet<String>();
+  for (  String property : properties.keySet()) {
+    if (!property.contains(":"))     continue;
+    String key=property.split(":")[1];
+    String val=properties.get(property);
+    if (property.startsWith(COMPACTION_OPTIONS_PREFIX)) {
+      compactionStrategyOptions.put(key,val);
+      propsToRemove.add(property);
+    }
+    if (property.startsWith(COMPRESSION_PARAMETERS_PREFIX)) {
+      compressionParameters.put(key,val);
+      propsToRemove.add(property);
+    }
+  }
+  for (  String property : propsToRemove)   properties.remove(property);
   if (!name.matches("\\w+"))   throw new InvalidRequestException(String.format("\"%s\" is not a valid column family name",name));
   for (  String bogus : Sets.difference(properties.keySet(),Sets.union(keywords,obsoleteKeywords)))   throw new InvalidRequestException(bogus + " is not a valid keyword argument for CREATE COLUMNFAMILY");
   for (  String obsolete : Sets.intersection(properties.keySet(),obsoleteKeywords))   logger.warn("Ignoring obsolete property {}",obsolete);
