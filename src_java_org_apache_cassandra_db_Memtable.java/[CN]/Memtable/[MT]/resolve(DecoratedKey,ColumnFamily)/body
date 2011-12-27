@@ -1,13 +1,11 @@
 {
   currentThroughput.addAndGet(cf.size());
   currentOperations.addAndGet((cf.getColumnCount() == 0) ? cf.isMarkedForDelete() ? 1 : 0 : cf.getColumnCount());
-  ColumnFamily clonedCf=columnFamilies.get(key);
-  if (clonedCf == null) {
-    clonedCf=cf.cloneMeShallow();
-    for (    IColumn column : cf.getSortedColumns())     clonedCf.addColumn(column.localCopy(cfs,allocator));
-    clonedCf=columnFamilies.putIfAbsent(new DecoratedKey(key.token,allocator.clone(key.key)),clonedCf);
-    if (clonedCf == null)     return;
+  ColumnFamily previous=columnFamilies.get(key);
+  if (previous == null) {
+    ColumnFamily empty=cf.cloneMeShallow(AtomicSortedColumns.factory(),false);
+    previous=columnFamilies.putIfAbsent(new DecoratedKey(key.token,allocator.clone(key.key)),empty);
+    if (previous == null)     previous=empty;
   }
-  clonedCf.delete(cf);
-  for (  IColumn column : cf.getSortedColumns())   clonedCf.addColumn(column.localCopy(cfs,allocator),allocator);
+  previous.addAll(cf,allocator,localCopyFunction);
 }
