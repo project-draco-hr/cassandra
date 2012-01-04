@@ -1,0 +1,15 @@
+{
+  File path=getLocationWithMaximumAvailableSpace(estimatedSize);
+  if (path == null && (DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap || DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap) && !MmappedSegmentedFile.isCleanerAvailable()) {
+    StorageService.instance.requestGC();
+    SSTableDeletingTask.rescheduleFailedTasks();
+    try {
+      Thread.sleep(10000);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+    path=getLocationWithMaximumAvailableSpace(estimatedSize);
+  }
+  return path;
+}

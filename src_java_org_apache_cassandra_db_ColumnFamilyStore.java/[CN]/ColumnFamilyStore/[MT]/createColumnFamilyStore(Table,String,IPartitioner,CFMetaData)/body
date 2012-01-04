@@ -1,17 +1,13 @@
 {
+  Directories directories=Directories.create(table.name,columnFamily);
+  Directories.SSTableLister lister=directories.sstableLister().includeBackups(true);
   List<Integer> generations=new ArrayList<Integer>();
-  for (  String path : DatabaseDescriptor.getAllDataFileLocationsForTable(table.name)) {
-    Iterable<Pair<Descriptor,Component>> pairs=files(new File(path),columnFamily);
-    File incrementalsPath=new File(path,"backups");
-    if (incrementalsPath.exists())     pairs=Iterables.concat(pairs,files(incrementalsPath,columnFamily));
-    for (    Pair<Descriptor,Component> pair : pairs) {
-      Descriptor desc=pair.left;
-      if (!desc.cfname.equals(columnFamily))       continue;
-      generations.add(desc.generation);
-      if (!desc.isCompatible())       throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,desc));
-    }
+  for (  Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
+    Descriptor desc=entry.getKey();
+    generations.add(desc.generation);
+    if (!desc.isCompatible())     throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,desc));
   }
   Collections.sort(generations);
   int value=(generations.size() > 0) ? (generations.get(generations.size() - 1)) : 0;
-  return new ColumnFamilyStore(table,columnFamily,partitioner,value,metadata);
+  return new ColumnFamilyStore(table,columnFamily,partitioner,value,metadata,directories);
 }

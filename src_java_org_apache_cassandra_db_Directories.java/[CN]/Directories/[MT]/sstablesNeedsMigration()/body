@@ -1,0 +1,26 @@
+{
+  if (StorageService.instance.isClientMode())   return false;
+  boolean hasSystemKeyspace=false;
+  for (  File location : dataFileLocations) {
+    File systemDir=new File(location,Table.SYSTEM_TABLE);
+    hasSystemKeyspace|=(systemDir.exists() && systemDir.isDirectory());
+    File statusCFDir=new File(systemDir,SystemTable.STATUS_CF);
+    if (statusCFDir.exists())     return false;
+  }
+  if (!hasSystemKeyspace)   return false;
+  int longestLocation=-1;
+  try {
+    for (    File loc : dataFileLocations)     longestLocation=Math.max(longestLocation,loc.getCanonicalPath().length());
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+  for (  KSMetaData ksm : Schema.instance.getTableDefinitions()) {
+    String ksname=ksm.name;
+    for (    Map.Entry<String,CFMetaData> entry : ksm.cfMetaData().entrySet()) {
+      String cfname=entry.getKey();
+      if (longestLocation + (ksname.length() + cfname.length()) * 2 + 62 > 256)       throw new RuntimeException("Starting with 1.1, keyspace names and column family names must be less than 32 characters long. " + ksname + "/"+ cfname+ " doesn't respect that restriction. Please rename your keyspace/column families to respect that restriction before updating.");
+    }
+  }
+  return true;
+}

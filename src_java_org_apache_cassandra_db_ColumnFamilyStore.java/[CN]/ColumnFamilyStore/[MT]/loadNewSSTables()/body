@@ -11,10 +11,10 @@
   }
   SSTableReader reader;
   boolean atLeastOneNew=false;
-  for (  Map.Entry<Descriptor,Set<Component>> rawSSTable : files(table.name,columnFamily,false,false).entrySet()) {
+  Directories.SSTableLister lister=directories.sstableLister().skipCompacted(true).skipTemporary(true);
+  for (  Map.Entry<Descriptor,Set<Component>> rawSSTable : lister.list().entrySet()) {
     Descriptor descriptor=rawSSTable.getKey();
     if (currentDescriptors.contains(descriptor))     continue;
-    if (!descriptor.cfname.equals(columnFamily))     continue;
     if (!descriptor.isCompatible())     throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,descriptor));
     logger.info("Initializing new SSTable {}",rawSSTable);
     try {

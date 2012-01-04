@@ -3,20 +3,11 @@
     DataTracker.View currentView=cfs.markCurrentViewReferenced();
     try {
       for (      SSTableReader ssTable : currentView.sstables) {
-        File dataDirectory=ssTable.descriptor.directory.getParentFile();
-        String snapshotDirectoryPath=Table.getSnapshotPath(dataDirectory.getAbsolutePath(),table.name,snapshotName);
-        FileUtils.createDirectory(snapshotDirectoryPath);
-        ssTable.createLinks(snapshotDirectoryPath);
-        if (logger.isDebugEnabled())         logger.debug("Snapshot for " + table + " keyspace data file "+ ssTable.getFilename()+ " created in "+ snapshotDirectoryPath);
+        File snapshotDirectory=Directories.getSnapshotDirectory(ssTable.descriptor,snapshotName);
+        ssTable.createLinks(snapshotDirectory.getPath());
+        if (logger.isDebugEnabled())         logger.debug("Snapshot for " + table + " keyspace data file "+ ssTable.getFilename()+ " created in "+ snapshotDirectory);
       }
-      if (compactionStrategy instanceof LeveledCompactionStrategy) {
-        File manifest=LeveledManifest.tryGetManifest(cfs);
-        if (manifest != null) {
-          File snapshotDirectory=new File(Table.getSnapshotPath(manifest.getParent(),snapshotName));
-          FileUtils.createDirectory(snapshotDirectory);
-          CLibrary.createHardLink(manifest,new File(snapshotDirectory,manifest.getName()));
-        }
-      }
+      if (compactionStrategy instanceof LeveledCompactionStrategy)       directories.snapshotLeveledManifest(snapshotName);
     }
  catch (    IOException e) {
       throw new IOError(e);
