@@ -1,15 +1,25 @@
 {
   ByteBuffer realKeyAlias=cfm.getKeyName();
   if (!keys.isEmpty())   return;
-  Iterator<Relation> iter=columns.iterator();
-  while (iter.hasNext()) {
-    Relation relation=iter.next();
-    ByteBuffer name=ByteBufferUtil.bytes(relation.getEntity().getText());
+  for (  Relation relation : clauseRelations) {
+    String nameText=relation.getEntity().getText();
+    ByteBuffer name=ByteBufferUtil.bytes(nameText);
     if (name.equals(realKeyAlias)) {
-      keyAlias=relation.getEntity().getText().toUpperCase();
-      keys.add(relation.getValue());
-      iter.remove();
-      break;
+      if (keyAlias == null)       keyAlias=nameText.toUpperCase();
+      if (relation.operator() == RelationType.EQ) {
+        keys.add(relation.getValue());
+      }
+ else       if ((relation.operator() == RelationType.GT) || (relation.operator() == RelationType.GTE)) {
+        startKey=relation.getValue();
+        includeStartKey=relation.operator() == RelationType.GTE;
+      }
+ else       if ((relation.operator() == RelationType.LT) || (relation.operator() == RelationType.LTE)) {
+        finishKey=relation.getValue();
+        includeFinishKey=relation.operator() == RelationType.LTE;
+      }
+    }
+ else {
+      columns.add(relation);
     }
   }
 }
