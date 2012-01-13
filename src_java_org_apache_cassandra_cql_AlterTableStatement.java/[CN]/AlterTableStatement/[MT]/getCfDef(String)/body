@@ -1,7 +1,7 @@
 {
   CFMetaData meta=Schema.instance.getCFMetaData(keyspace,columnFamily);
   CfDef cfDef=meta.toAvro();
-  ByteBuffer columnName=meta.comparator.fromString(this.columnName);
+  ByteBuffer columnName=this.oType == OperationType.OPTS ? null : meta.comparator.fromString(this.columnName);
 switch (oType) {
 case ADD:
     if (cfDef.key_alias != null && cfDef.key_alias.equals(columnName))     throw new InvalidRequestException("Invalid column name: " + this.columnName + ", because it equals to key_alias.");
@@ -22,6 +22,11 @@ toDelete=columnDef;
 }
 if (toDelete == null) throw new InvalidRequestException(String.format("Column '%s' was not found in CF '%s'",this.columnName,columnFamily));
 cfDef.column_metadata.remove(toDelete);
+break;
+case OPTS:
+if (cfProps == null) throw new InvalidRequestException(String.format("ALTER COLUMNFAMILY WITH invoked, but no parameters found"));
+cfProps.validate();
+applyPropertiesToCfDef(cfDef,cfProps);
 break;
 }
 return cfDef;

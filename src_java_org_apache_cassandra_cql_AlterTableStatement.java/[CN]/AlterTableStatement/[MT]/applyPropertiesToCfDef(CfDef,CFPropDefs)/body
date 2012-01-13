@@ -1,0 +1,33 @@
+{
+  if (cfProps.hasProperty(CFPropDefs.KW_COMPARATOR)) {
+    throw new InvalidRequestException("Can't change CF comparator after creation");
+  }
+  if (cfProps.hasProperty(CFPropDefs.KW_COMMENT)) {
+    cfDef.comment=new Utf8(cfProps.getProperty(CFPropDefs.KW_COMMENT));
+  }
+  if (cfProps.hasProperty(CFPropDefs.KW_DEFAULTVALIDATION)) {
+    try {
+      cfDef.default_validation_class=new Utf8(cfProps.getValidator().toString());
+    }
+ catch (    ConfigurationException e) {
+      throw new InvalidRequestException(String.format("Invalid validation type %s",cfProps.getProperty(CFPropDefs.KW_DEFAULTVALIDATION)));
+    }
+  }
+  cfDef.read_repair_chance=cfProps.getPropertyDouble(CFPropDefs.KW_READREPAIRCHANCE,cfDef.read_repair_chance);
+  cfDef.gc_grace_seconds=cfProps.getPropertyInt(CFPropDefs.KW_GCGRACESECONDS,cfDef.gc_grace_seconds);
+  cfDef.replicate_on_write=cfProps.getPropertyBoolean(CFPropDefs.KW_REPLICATEONWRITE,cfDef.replicate_on_write);
+  cfDef.min_compaction_threshold=cfProps.getPropertyInt(CFPropDefs.KW_MINCOMPACTIONTHRESHOLD,cfDef.min_compaction_threshold);
+  cfDef.max_compaction_threshold=cfProps.getPropertyInt(CFPropDefs.KW_MAXCOMPACTIONTHRESHOLD,cfDef.max_compaction_threshold);
+  if (!cfProps.compactionStrategyOptions.isEmpty()) {
+    cfDef.compaction_strategy_options=new HashMap<CharSequence,CharSequence>();
+    for (    Map.Entry<String,String> entry : cfProps.compactionStrategyOptions.entrySet()) {
+      cfDef.compaction_strategy_options.put(new Utf8(entry.getKey()),new Utf8(entry.getValue()));
+    }
+  }
+  if (!cfProps.compressionParameters.isEmpty()) {
+    cfDef.compression_options=new HashMap<CharSequence,CharSequence>();
+    for (    Map.Entry<String,String> entry : cfProps.compressionParameters.entrySet()) {
+      cfDef.compression_options.put(new Utf8(entry.getKey()),new Utf8(entry.getValue()));
+    }
+  }
+}
