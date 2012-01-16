@@ -1,0 +1,83 @@
+{
+  List<CqlRow> cqlRows=new ArrayList<CqlRow>();
+  List<Pair<CFDefinition.Name,ColumnIdentifier>> selection=getExpandedSelection();
+  List<Column> thriftColumns=null;
+  for (  org.apache.cassandra.db.Row row : rows) {
+    if (cfDef.isCompact) {
+      if (row.cf == null)       continue;
+      for (      IColumn c : row.cf.getSortedColumns()) {
+        if (c.isMarkedForDelete())         continue;
+        thriftColumns=new ArrayList<Column>();
+        ByteBuffer[] components=cfDef.isComposite ? ((CompositeType)cfDef.cfm.comparator).split(c.name()) : null;
+        for (        Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
+          CFDefinition.Name name=p.left;
+          ByteBuffer nameAsRequested=p.right.key;
+          addToSchema(schema,p);
+          Column col=new Column(nameAsRequested);
+switch (name.kind) {
+case KEY_ALIAS:
+            col.setValue(row.key.key).setTimestamp(-1L);
+          break;
+case COLUMN_ALIAS:
+        col.setTimestamp(c.timestamp());
+      if (cfDef.isComposite) {
+        if (name.compositePosition < components.length)         col.setValue(components[name.compositePosition]);
+ else         col.setValue(ByteBufferUtil.EMPTY_BYTE_BUFFER);
+      }
+ else {
+        col.setValue(c.name());
+      }
+    break;
+case VALUE_ALIAS:
+  col.setValue(value(c)).setTimestamp(c.timestamp());
+break;
+case COLUMN_METADATA:
+throw new AssertionError();
+}
+thriftColumns.add(col);
+}
+cqlRows.add(new CqlRow(row.key.key,thriftColumns));
+}
+}
+ else if (cfDef.isComposite) {
+if (row.cf == null) continue;
+CompositeType composite=(CompositeType)cfDef.cfm.comparator;
+int last=composite.types.size() - 1;
+ByteBuffer[] previous=null;
+Map<ByteBuffer,IColumn> group=new HashMap<ByteBuffer,IColumn>();
+for (IColumn c : row.cf) {
+if (c.isMarkedForDelete()) continue;
+ByteBuffer[] current=composite.split(c.name());
+if (previous != null && !isSameRow(previous,current)) {
+cqlRows.add(handleGroup(selection,row.key.key,previous,group,schema));
+group=new HashMap<ByteBuffer,IColumn>();
+}
+group.put(current[last],c);
+previous=current;
+}
+if (previous != null) cqlRows.add(handleGroup(selection,row.key.key,previous,group,schema));
+}
+ else {
+thriftColumns=new ArrayList<Column>();
+for (Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
+CFDefinition.Name name=p.left;
+ByteBuffer nameAsRequested=p.right.key;
+if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) {
+addToSchema(schema,p);
+thriftColumns.add(new Column(nameAsRequested).setValue(row.key.key).setTimestamp(-1L));
+continue;
+}
+if (row.cf == null) continue;
+addToSchema(schema,p);
+IColumn c=row.cf.getColumn(name.name.key);
+Column col=new Column(name.name.key);
+if (c != null && !c.isMarkedForDelete()) col.setValue(value(c)).setTimestamp(c.timestamp());
+thriftColumns.add(col);
+}
+cqlRows.add(new CqlRow(row.key.key,thriftColumns));
+}
+}
+if (parameters.isColumnsReversed) Collections.reverse(cqlRows);
+cqlRows=cqlRows.size() > parameters.limit ? cqlRows.subList(0,parameters.limit) : cqlRows;
+return cqlRows;
+}

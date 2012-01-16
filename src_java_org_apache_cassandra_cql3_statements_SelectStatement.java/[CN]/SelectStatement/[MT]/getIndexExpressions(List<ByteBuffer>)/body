@@ -1,0 +1,25 @@
+{
+  if (!hasIndexedExpression)   return Collections.<IndexExpression>emptyList();
+  List<IndexExpression> expressions=new ArrayList<IndexExpression>();
+  for (  CFDefinition.Name name : cfDef.metadata.values()) {
+    Restriction restriction=restrictions.get(name.name);
+    if (restriction == null)     continue;
+    if (restriction.isEquality()) {
+      for (      Term t : restriction.eqValues) {
+        ByteBuffer value=t.getByteBuffer(name.type,variables);
+        expressions.add(new IndexExpression(name.name.key,IndexOperator.EQ,value));
+      }
+    }
+ else {
+      if (restriction.start != null) {
+        ByteBuffer value=restriction.start.getByteBuffer(name.type,variables);
+        expressions.add(new IndexExpression(name.name.key,restriction.startInclusive ? IndexOperator.GTE : IndexOperator.GT,value));
+      }
+      if (restriction.end != null) {
+        ByteBuffer value=restriction.end.getByteBuffer(name.type,variables);
+        expressions.add(new IndexExpression(name.name.key,restriction.endInclusive ? IndexOperator.GTE : IndexOperator.GT,value));
+      }
+    }
+  }
+  return expressions;
+}
