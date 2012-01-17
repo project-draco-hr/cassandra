@@ -3,16 +3,18 @@
   long startTime=System.nanoTime();
   List<Row> rows;
   try {
-    rows=new ArrayList<Row>(command.max_keys);
+    int columnsCount=0;
+    rows=new ArrayList<Row>();
     List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(command.range);
     for (    AbstractBounds<RowPosition> range : ranges) {
-      RangeSliceCommand nodeCmd=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.row_filter,command.max_keys);
+      RangeSliceCommand nodeCmd=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.row_filter,command.maxResults,command.maxIsColumns);
       List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(nodeCmd.keyspace,range.right);
       DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),liveEndpoints);
       if (consistency_level == ConsistencyLevel.ONE && !liveEndpoints.isEmpty() && liveEndpoints.get(0).equals(FBUtilities.getBroadcastAddress())) {
         if (logger.isDebugEnabled())         logger.debug("local range slice");
         try {
           rows.addAll(RangeSliceVerbHandler.executeLocally(nodeCmd));
+          for (          Row row : rows)           columnsCount+=row.getLiveColumnCount();
         }
  catch (        ExecutionException e) {
           throw new RuntimeException(e.getCause());
@@ -32,6 +34,7 @@ catch (        InterruptedException e) {
         try {
           for (          Row row : handler.get()) {
             rows.add(row);
+            columnsCount+=row.getLiveColumnCount();
             logger.debug("range slices read {}",row.key);
           }
           FBUtilities.waitOnFutures(resolver.repairResults,DatabaseDescriptor.getRpcTimeout());
@@ -44,11 +47,12 @@ catch (        DigestMismatchException e) {
           throw new AssertionError(e);
         }
       }
-      if (rows.size() >= nodeCmd.max_keys)       break;
+      int count=nodeCmd.maxIsColumns ? columnsCount : rows.size();
+      if (count >= nodeCmd.maxResults)       break;
     }
   }
   finally {
     rangeStats.addNano(System.nanoTime() - startTime);
   }
-  return rows.size() > command.max_keys ? rows.subList(0,command.max_keys) : rows;
+  return trim(command,rows);
 }

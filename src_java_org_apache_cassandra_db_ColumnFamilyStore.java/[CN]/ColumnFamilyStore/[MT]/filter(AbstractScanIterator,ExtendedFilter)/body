@@ -1,7 +1,8 @@
 {
   List<Row> rows=new ArrayList<Row>();
+  int columnsCount=0;
   try {
-    while (rowIterator.hasNext() && rows.size() < filter.maxResults) {
+    while (rowIterator.hasNext() && rows.size() < filter.maxRows() && columnsCount < filter.maxColumns()) {
       Row rawRow=rowIterator.next();
       ColumnFamily data=rawRow.cf;
       IFilter extraFilter=filter.getExtraFilter(data);
@@ -14,6 +15,8 @@
       logger.debug("{} satisfies all filter expressions",data);
       data=filter.prune(data);
       rows.add(new Row(rawRow.key,data));
+      if (data != null)       columnsCount+=data.getLiveColumnCount();
+      filter.updateColumnsLimit(columnsCount);
     }
     return rows;
   }
