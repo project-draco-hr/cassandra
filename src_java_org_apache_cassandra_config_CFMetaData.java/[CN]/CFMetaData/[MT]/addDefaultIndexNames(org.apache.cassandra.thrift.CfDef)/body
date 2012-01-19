@@ -1,13 +1,12 @@
 {
   if (cf_def.column_metadata == null)   return;
-  AbstractType comparator;
   try {
-    comparator=TypeParser.parse(cf_def.comparator_type);
+    AbstractType<?> comparator=TypeParser.parse(cf_def.comparator_type);
+    for (    org.apache.cassandra.thrift.ColumnDef column : cf_def.column_metadata) {
+      if (column.index_type != null && column.index_name == null)       column.index_name=getDefaultIndexName(cf_def.name,comparator,column.name);
+    }
   }
  catch (  ConfigurationException e) {
     throw new InvalidRequestException(e.getMessage());
-  }
-  for (  org.apache.cassandra.thrift.ColumnDef column : cf_def.column_metadata) {
-    if (column.index_type != null && column.index_name == null)     column.index_name=getDefaultIndexName(cf_def.name,comparator,column.name);
   }
 }
