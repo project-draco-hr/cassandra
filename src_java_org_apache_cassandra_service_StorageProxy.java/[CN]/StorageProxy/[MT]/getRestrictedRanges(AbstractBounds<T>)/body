@@ -8,14 +8,15 @@
   Iterator<Token> ringIter=TokenMetadata.ringIterator(tokenMetadata.sortedTokens(),queryRange.left.getToken(),true);
   AbstractBounds<T> remainder=queryRange;
   while (ringIter.hasNext()) {
-    Token token=ringIter.next();
-    T splitValue=(T)token.asSplitValue(queryRange.left.getClass());
-    if (remainder == null || !(remainder.left.equals(splitValue) || remainder.contains(splitValue)))     break;
-    Pair<AbstractBounds<T>,AbstractBounds<T>> splits=remainder.split(splitValue);
-    if (splits.left != null)     ranges.add(splits.left);
+    Token upperBoundToken=ringIter.next();
+    T upperBound=(T)upperBoundToken.upperBound(queryRange.left.getClass());
+    if (!remainder.left.equals(upperBound) && !remainder.contains(upperBound))     break;
+    Pair<AbstractBounds<T>,AbstractBounds<T>> splits=remainder.split(upperBound);
+    if (splits == null)     continue;
+    ranges.add(splits.left);
     remainder=splits.right;
   }
-  if (remainder != null)   ranges.add(remainder);
+  ranges.add(remainder);
   if (logger.isDebugEnabled())   logger.debug("restricted ranges for query {} are {}",queryRange,ranges);
   return ranges;
 }
