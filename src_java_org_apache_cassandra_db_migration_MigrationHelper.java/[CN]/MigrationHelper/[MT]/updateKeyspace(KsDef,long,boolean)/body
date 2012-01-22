@@ -1,0 +1,10 @@
+{
+  KSMetaData oldKsm=Schema.instance.getKSMetaData(newState.name);
+  if (withSchemaRecord) {
+    RowMutation schemaUpdate=oldKsm.diff(newState,timestamp);
+    schemaUpdate.apply();
+  }
+  KSMetaData newKsm=KSMetaData.cloneWith(oldKsm.reloadAttributes(),oldKsm.cfMetaData().values());
+  Schema.instance.setTableDefinition(newKsm);
+  if (!StorageService.instance.isClientMode())   Table.open(newState.name).createReplicationStrategy(newKsm);
+}

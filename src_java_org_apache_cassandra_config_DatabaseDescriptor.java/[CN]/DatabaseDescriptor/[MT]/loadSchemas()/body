@@ -1,36 +1,26 @@
 {
-  UUID uuid=Migration.getLastMigrationId();
-  if (uuid == null) {
-    logger.info("Couldn't detect any schema definitions in local storage.");
-    boolean hasExistingTables=false;
-    for (    String dataDir : getAllDataFileLocations()) {
-      File dataPath=new File(dataDir);
-      if (dataPath.exists() && dataPath.isDirectory()) {
-        int dirCount=dataPath.listFiles(new FileFilter(){
-          public boolean accept(          File pathname){
-            return pathname.isDirectory();
-          }
-        }
-).length;
-        if (dirCount > 0)         hasExistingTables=true;
-      }
-      if (hasExistingTables) {
-        break;
-      }
-    }
-    if (hasExistingTables)     logger.info("Found table data in data directories. Consider using the CLI to define your schema.");
- else     logger.info("To create keyspaces and column families, see 'help create keyspace' in the CLI, or set up a schema using the thrift system_* calls.");
-  }
- else {
-    logger.info("Loading schema version " + uuid.toString());
-    Collection<KSMetaData> tableDefs=DefsTable.loadFromStorage(uuid);
-    if (tableDefs.size() == 0) {
-      logger.warn("No schema definitions were found in local storage.");
-      Schema.instance.setVersion(uuid);
+  ColumnFamilyStore schemaCFS=SystemTable.schemaCFS(SystemTable.SCHEMA_KEYSPACES_CF);
+  if (schemaCFS.estimateKeys() == 0) {
+    UUID uuid=Migration.getLastMigrationId();
+    if (uuid == null) {
+      logger.info("Couldn't detect any schema definitions in local storage.");
+      if (hasExistingNoSystemTables())       logger.info("Found table data in data directories. Consider using the CLI to define your schema.");
+ else       logger.info("To create keyspaces and column families, see 'help create keyspace' in the CLI, or set up a schema using the thrift system_* calls.");
     }
  else {
-      Schema.instance.load(tableDefs,uuid);
+      logger.info("Loading schema version " + uuid.toString());
+      Collection<KSMetaData> tableDefs=DefsTable.loadFromStorage(uuid);
+      if (tableDefs.size() == 0) {
+        logger.warn("No schema definitions were found in local storage.");
+      }
+ else {
+        Schema.instance.load(tableDefs);
+      }
     }
   }
+ else {
+    Schema.instance.load(DefsTable.loadFromTable());
+  }
+  Schema.instance.updateVersion();
   Schema.instance.fixCFMaxId();
 }

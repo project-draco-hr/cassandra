@@ -1,10 +1,8 @@
 {
-  super(UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress()),Schema.instance.getVersion());
-  this.tableName=tableName;
+  super(System.nanoTime());
+  KSMetaData ksm=Schema.instance.getTableDefinition(ksName);
+  if (ksm == null)   throw new ConfigurationException("Can't drop ColumnFamily: No such keyspace '" + ksName + "'.");
+ else   if (!ksm.cfMetaData().containsKey(cfName))   throw new ConfigurationException(String.format("Can't drop ColumnFamily (ks=%s, cf=%s) : Not defined in that keyspace.",ksName,cfName));
+  this.ksName=ksName;
   this.cfName=cfName;
-  KSMetaData ksm=schema.getTableDefinition(tableName);
-  if (ksm == null)   throw new ConfigurationException("No such keyspace: " + tableName);
- else   if (!ksm.cfMetaData().containsKey(cfName))   throw new ConfigurationException("CF is not defined in that keyspace.");
-  KSMetaData newKsm=makeNewKeyspaceDefinition(ksm);
-  rm=makeDefinitionMutation(newKsm,null,newVersion);
 }

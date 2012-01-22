@@ -1,0 +1,12 @@
+{
+  KSMetaData ksm=Schema.instance.getTableDefinition(ksName);
+  ColumnFamilyStore cfs=Table.open(ksName).getColumnFamilyStore(cfName);
+  CFMetaData cfm=ksm.cfMetaData().get(cfName);
+  Schema.instance.purge(cfm);
+  Schema.instance.setTableDefinition(makeNewKeyspaceDefinition(ksm,cfm));
+  if (withSchemaRecord)   cfm.dropFromSchema(timestamp).apply();
+  if (!StorageService.instance.isClientMode()) {
+    cfs.snapshot(Table.getTimestampedSnapshotName(cfs.columnFamily));
+    Table.open(ksm.name).dropCf(cfm.cfId);
+  }
+}

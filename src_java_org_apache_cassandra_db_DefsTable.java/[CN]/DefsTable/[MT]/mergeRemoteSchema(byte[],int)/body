@@ -1,0 +1,10 @@
+{
+  Map<DecoratedKey,ColumnFamily> oldKeyspaces=SystemTable.getSchema(SystemTable.SCHEMA_KEYSPACES_CF);
+  Map<DecoratedKey,ColumnFamily> oldColumnFamilies=SystemTable.getSchema(SystemTable.SCHEMA_COLUMNFAMILIES_CF);
+  for (  RowMutation mutation : MigrationManager.deserializeMigrationMessage(data,version))   mutation.apply();
+  if (!StorageService.instance.isClientMode())   MigrationHelper.flushSchemaCFs();
+  Schema.instance.updateVersion();
+  Set<String> keyspacesToDrop=mergeKeyspaces(oldKeyspaces,SystemTable.getSchema(SystemTable.SCHEMA_KEYSPACES_CF));
+  mergeColumnFamilies(oldColumnFamilies,SystemTable.getSchema(SystemTable.SCHEMA_COLUMNFAMILIES_CF));
+  for (  String keyspaceToDrop : keyspacesToDrop)   MigrationHelper.dropKeyspace(keyspaceToDrop);
+}

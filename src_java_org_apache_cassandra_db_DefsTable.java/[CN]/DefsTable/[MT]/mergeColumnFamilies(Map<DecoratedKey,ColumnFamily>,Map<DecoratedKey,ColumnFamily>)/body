@@ -1,0 +1,32 @@
+{
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
+    ColumnFamily cfAttrs=entry.getValue();
+    if (!cfAttrs.isEmpty()) {
+      Map<String,CfDef> cfDefs=KSMetaData.deserializeColumnFamilies(cfAttrs);
+      for (      CfDef cfDef : cfDefs.values())       MigrationHelper.addColumnFamily(cfDef);
+    }
+  }
+  Map<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntries=diff.entriesDiffering();
+  for (  DecoratedKey keyspace : modifiedEntries.keySet()) {
+    MapDifference.ValueDifference<ColumnFamily> valueDiff=modifiedEntries.get(keyspace);
+    ColumnFamily prevValue=valueDiff.leftValue();
+    ColumnFamily newValue=valueDiff.rightValue();
+    if (prevValue.isEmpty()) {
+      for (      CfDef cfDef : KSMetaData.deserializeColumnFamilies(newValue).values())       MigrationHelper.addColumnFamily(cfDef);
+    }
+ else     if (newValue.isEmpty()) {
+      for (      CfDef cfDef : KSMetaData.deserializeColumnFamilies(prevValue).values())       MigrationHelper.dropColumnFamily(cfDef.keyspace,cfDef.name);
+    }
+ else {
+      String ksName=AsciiType.instance.getString(keyspace.key);
+      Map<String,CfDef> oldCfDefs=new HashMap<String,CfDef>();
+      for (      CFMetaData cfm : Schema.instance.getKSMetaData(ksName).cfMetaData().values())       oldCfDefs.put(cfm.cfName,cfm.toThrift());
+      Map<String,CfDef> newCfDefs=KSMetaData.deserializeColumnFamilies(newValue);
+      MapDifference<String,CfDef> cfDefDiff=Maps.difference(oldCfDefs,newCfDefs);
+      for (      CfDef cfDef : cfDefDiff.entriesOnlyOnRight().values())       MigrationHelper.addColumnFamily(cfDef);
+      for (      CfDef cfDef : cfDefDiff.entriesOnlyOnLeft().values())       MigrationHelper.dropColumnFamily(cfDef.keyspace,cfDef.name);
+      for (      MapDifference.ValueDifference<CfDef> cfDef : cfDefDiff.entriesDiffering().values())       MigrationHelper.updateColumnFamily(cfDef.rightValue());
+    }
+  }
+}

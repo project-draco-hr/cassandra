@@ -1,18 +1,23 @@
 {
-  DecoratedKey vkey=StorageService.getPartitioner().decorateKey(Migration.toUTF8Bytes(version));
+  DecoratedKey vkey=StorageService.getPartitioner().decorateKey(toUTF8Bytes(version));
   Table defs=Table.open(Table.SYSTEM_TABLE);
   ColumnFamilyStore cfStore=defs.getColumnFamilyStore(Migration.SCHEMA_CF);
-  QueryFilter filter=QueryFilter.getIdentityFilter(vkey,new QueryPath(Migration.SCHEMA_CF));
-  ColumnFamily cf=cfStore.getColumnFamily(filter);
+  ColumnFamily cf=cfStore.getColumnFamily(QueryFilter.getIdentityFilter(vkey,new QueryPath(Migration.SCHEMA_CF)));
   IColumn avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
-  if (avroschema == null)   throw new RuntimeException("Cannot read system table! Are you upgrading a pre-release version?");
-  ByteBuffer value=avroschema.value();
-  Schema schema=Schema.parse(ByteBufferUtil.string(value));
-  Collection<KSMetaData> keyspaces=new ArrayList<KSMetaData>();
-  for (  IColumn column : cf.getSortedColumns()) {
-    if (column.name().equals(DEFINITION_SCHEMA_COLUMN_NAME))     continue;
-    org.apache.cassandra.db.migration.avro.KsDef ks=SerDeUtils.deserialize(schema,column.value(),new org.apache.cassandra.db.migration.avro.KsDef());
-    keyspaces.add(KSMetaData.fromAvro(ks));
+  Collection<KSMetaData> keyspaces=Collections.emptyList();
+  if (avroschema != null) {
+    ByteBuffer value=avroschema.value();
+    org.apache.avro.Schema schema=org.apache.avro.Schema.parse(ByteBufferUtil.string(value));
+    keyspaces=new ArrayList<KSMetaData>();
+    for (    IColumn column : cf.getSortedColumns()) {
+      if (column.name().equals(DEFINITION_SCHEMA_COLUMN_NAME))       continue;
+      KsDef ks=deserializeAvro(schema,column.value(),new KsDef());
+      keyspaces.add(KSMetaData.fromAvro(ks));
+    }
+    dumpToStorage(keyspaces);
+    logger.info("Truncating deprecated system column families (migrations, schema)...");
+    MigrationHelper.dropColumnFamily(Table.SYSTEM_TABLE,Migration.MIGRATIONS_CF);
+    MigrationHelper.dropColumnFamily(Table.SYSTEM_TABLE,Migration.SCHEMA_CF);
   }
   return keyspaces;
 }
