@@ -1,23 +1,25 @@
 {
   if (rows != null && i >= rows.size())   rows=null;
   if (rows != null)   return;
-  if (startToken == null) {
+  String startToken;
+  if (lastRow == null) {
     startToken=split.getStartToken();
   }
- else   if (startToken.equals(split.getEndToken())) {
-    rows=null;
-    return;
+ else {
+    startToken=partitioner.getTokenFactory().toString(partitioner.getToken(lastRow.key));
+    if (startToken.equals(split.getEndToken())) {
+      rows=null;
+      return;
+    }
   }
-  KeyRange keyRange=new KeyRange(batchRowCount).setStart_token(startToken).setEnd_token(split.getEndToken()).setRow_filter(filter);
+  KeyRange keyRange=new KeyRange(batchSize).setStart_token(startToken).setEnd_token(split.getEndToken()).setRow_filter(filter);
   try {
     rows=client.get_range_slices(new ColumnParent(cfName),predicate,keyRange,consistencyLevel);
     if (rows.isEmpty()) {
       rows=null;
       return;
     }
-    KeySlice lastRow=rows.get(rows.size() - 1);
-    ByteBuffer rowkey=lastRow.key;
-    startToken=partitioner.getTokenFactory().toString(partitioner.getToken(rowkey));
+    lastRow=Iterables.getLast(rows);
     if (isEmptyPredicate) {
       Iterator<KeySlice> it=rows.iterator();
       while (it.hasNext()) {

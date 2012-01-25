@@ -5,9 +5,9 @@
     if (s != null && s.length == 2)     outputReducerType=s[1];
   }
   logger.info("output reducer type: " + outputReducerType);
+  ConfigHelper.setRangeBatchSize(getConf(),99);
   for (int i=0; i < WordCountSetup.TEST_COUNT; i++) {
     String columnName="text" + i;
-    getConf().set(CONF_COLUMN_NAME,columnName);
     Job job=new Job(getConf(),"wordcount");
     job.setJarByClass(WordCount.class);
     job.setMapperClass(TokenizerMapper.class);
@@ -26,6 +26,7 @@
       job.setOutputValueClass(List.class);
       job.setOutputFormatClass(ColumnFamilyOutputFormat.class);
       ConfigHelper.setOutputColumnFamily(job.getConfiguration(),KEYSPACE,OUTPUT_COLUMN_FAMILY);
+      job.getConfiguration().set(CONF_COLUMN_NAME,"sum");
     }
     job.setInputFormatClass(ColumnFamilyInputFormat.class);
     ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
@@ -37,6 +38,9 @@
     if (i == 4) {
       IndexExpression expr=new IndexExpression(ByteBufferUtil.bytes("int4"),IndexOperator.EQ,ByteBufferUtil.bytes(0));
       ConfigHelper.setInputRange(job.getConfiguration(),Arrays.asList(expr));
+    }
+    if (i == 5) {
+      ConfigHelper.setInputColumnFamily(job.getConfiguration(),KEYSPACE,COLUMN_FAMILY,true);
     }
     ConfigHelper.setOutputInitialAddress(job.getConfiguration(),"localhost");
     ConfigHelper.setOutputPartitioner(job.getConfiguration(),"RandomPartitioner");

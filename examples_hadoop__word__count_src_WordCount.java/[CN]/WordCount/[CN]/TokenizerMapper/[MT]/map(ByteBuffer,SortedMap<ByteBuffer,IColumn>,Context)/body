@@ -1,11 +1,14 @@
 {
-  IColumn column=columns.get(sourceColumn);
-  if (column == null)   return;
-  String value=ByteBufferUtil.string(column.value());
-  logger.debug("read " + key + ":"+ value+ " from "+ context.getInputSplit());
-  StringTokenizer itr=new StringTokenizer(value);
-  while (itr.hasMoreTokens()) {
-    word.set(itr.nextToken());
-    context.write(word,one);
+  for (  IColumn column : columns.values()) {
+    String name=ByteBufferUtil.string(column.name());
+    String value=null;
+    if (name.contains("int"))     value=String.valueOf(ByteBufferUtil.toInt(column.value()));
+ else     value=ByteBufferUtil.string(column.value());
+    System.err.println("read " + ByteBufferUtil.string(key) + ":"+ name+ ":"+ value+ " from "+ context.getInputSplit());
+    StringTokenizer itr=new StringTokenizer(value);
+    while (itr.hasMoreTokens()) {
+      word.set(itr.nextToken());
+      context.write(word,one);
+    }
   }
 }
