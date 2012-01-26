@@ -8,7 +8,8 @@ def cql_complete_single(text, partial, init_bindings={}, ignore_case=True, start
         partial = (prefix + partial)
     if (tokens and (tokens[(-1)][0] == 'unclosedComment')):
         return []
-    completions = CqlRuleSet.complete(startsymbol, tokens, init_bindings)
+    bindings['partial'] = partial
+    completions = CqlRuleSet.complete(startsymbol, tokens, bindings)
     (hints, strcompletes) = list_bifilter(pylexotron.is_hint, completions)
     if ('\n' in strcompletes):
         strcompletes.remove('\n')
@@ -22,6 +23,7 @@ def cql_complete_single(text, partial, init_bindings={}, ignore_case=True, start
     candidates = filter(f, strcompletes)
     if (prefix is not None):
         candidates = [cql_escape(cql_dequote(c))[(len(prefix) + 1):(-1)] for c in candidates]
+        candidates = filter(None, candidates)
     if tokens:
         newcandidates = []
         for c in candidates:
