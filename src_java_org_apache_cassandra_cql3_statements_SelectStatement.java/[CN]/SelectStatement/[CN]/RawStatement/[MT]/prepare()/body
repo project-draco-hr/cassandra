@@ -48,10 +48,19 @@ Iterator<CFDefinition.Name> iter=cfDef.columns.values().iterator();
 for (int i=0; i < stmt.columnRestrictions.length; i++) {
 CFDefinition.Name cname=iter.next();
 Restriction restriction=stmt.columnRestrictions[i];
-if (restriction == null) shouldBeDone=true;
- else if (shouldBeDone) throw new InvalidRequestException(String.format("PRIMARY KEY part %s cannot be restricted (preceding part %s is either not restricted or by a non-EQ relation)",cname,previous));
- else if (!restriction.isEquality()) shouldBeDone=true;
- else if (restriction.eqValues.size() > 1 && i != stmt.columnRestrictions.length - 1) throw new InvalidRequestException(String.format("PRIMARY KEY part %s cannot be restricted by IN relation (only the first and last parts can)",cname));
+if (restriction == null) {
+shouldBeDone=true;
+}
+ else if (shouldBeDone) {
+throw new InvalidRequestException(String.format("PRIMARY KEY part %s cannot be restricted (preceding part %s is either not restricted or by a non-EQ relation)",cname,previous));
+}
+ else if (!restriction.isEquality()) {
+shouldBeDone=true;
+if (!cfDef.isComposite && (!restriction.isInclusive(Bound.START) || !restriction.isInclusive(Bound.END))) stmt.sliceRestriction=restriction;
+}
+ else if (restriction.eqValues.size() > 1 && i != stmt.columnRestrictions.length - 1) {
+throw new InvalidRequestException(String.format("PRIMARY KEY part %s cannot be restricted by IN relation (only the first and last parts can)",cname));
+}
 previous=cname;
 }
 if (!stmt.metadataRestrictions.isEmpty()) {
