@@ -4,11 +4,15 @@
   if (!cf_def.name.equals(cfName))   throw new ConfigurationException(String.format("Column family mismatch (found %s; expected %s)",cf_def.name,cfName));
   if (cf_def.id != cfId)   throw new ConfigurationException(String.format("Column family ID mismatch (found %s; expected %s)",cf_def.id,cfId));
   if (!cf_def.column_type.equals(cfType.name()))   throw new ConfigurationException("types do not match.");
-  if (comparator != TypeParser.parse(cf_def.comparator_type))   throw new ConfigurationException("comparators do not match.");
-  if (cf_def.subcomparator_type == null || cf_def.subcomparator_type.equals("")) {
+  AbstractType<?> newComparator=TypeParser.parse(cf_def.comparator_type);
+  AbstractType<?> newSubComparator=(cf_def.subcomparator_type == null || cf_def.subcomparator_type.equals("")) ? null : TypeParser.parse(cf_def.subcomparator_type);
+  if (!newComparator.isCompatibleWith(comparator))   throw new ConfigurationException("comparators do not match or are not compatible.");
+  if (newSubComparator == null) {
     if (subcolumnComparator != null)     throw new ConfigurationException("subcolumncomparators do not match.");
   }
- else   if (subcolumnComparator != TypeParser.parse(cf_def.subcomparator_type))   throw new ConfigurationException("subcolumncomparators do not match.");
+ else   if (!newSubComparator.isCompatibleWith(subcolumnComparator))   throw new ConfigurationException("subcolumncomparators do not match or are note compatible.");
+  comparator=newComparator;
+  subcolumnComparator=newSubComparator;
   validateMinMaxCompactionThresholds(cf_def);
   comment=enforceCommentNotNull(cf_def.comment);
   readRepairChance=cf_def.read_repair_chance;
