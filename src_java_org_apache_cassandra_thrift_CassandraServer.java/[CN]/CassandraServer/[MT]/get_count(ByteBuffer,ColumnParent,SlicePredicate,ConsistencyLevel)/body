@@ -20,22 +20,19 @@
     predicate.slice_range=new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE);
   }
   int requestedCount=predicate.slice_range.count;
+  int pages=0;
   while (true) {
     predicate.slice_range.count=Math.min(pageSize,requestedCount);
     columns=get_slice(key,column_parent,predicate,consistency_level);
     if (columns.isEmpty())     break;
-    totalCount+=columns.size();
-    requestedCount-=columns.size();
-    ColumnOrSuperColumn lastColumn=columns.get(columns.size() - 1);
-    ByteBuffer lastName=lastColumn.isSetSuper_column() ? lastColumn.super_column.name : (lastColumn.isSetColumn() ? lastColumn.column.name : (lastColumn.isSetCounter_column() ? lastColumn.counter_column.name : lastColumn.counter_super_column.name));
-    if ((requestedCount == 0) || ((columns.size() == 1) && (lastName.equals(predicate.slice_range.start)))) {
-      break;
-    }
- else {
-      predicate.slice_range.start=lastName;
-      totalCount--;
-      requestedCount++;
-    }
+    ColumnOrSuperColumn firstColumn=columns.get(columns.size() - 1);
+    ByteBuffer firstName=getName(columns.get(0));
+    int newColumns=pages == 0 || !firstName.equals(predicate.slice_range.start) ? columns.size() : columns.size() - 1;
+    totalCount+=newColumns;
+    requestedCount-=newColumns;
+    pages++;
+    if (requestedCount == 0 || columns.size() < predicate.slice_range.count)     break;
+ else     predicate.slice_range.start=getName(columns.get(columns.size() - 1));
   }
   return totalCount;
 }
