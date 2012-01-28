@@ -17,11 +17,13 @@
     Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,allLeftMetadata));
     pendingRanges.putAll(range,Sets.difference(newEndpoints,currentEndpoints));
   }
-  for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
-    InetAddress endpoint=entry.getValue();
-    allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
-    for (    Range range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))     pendingRanges.put(range,endpoint);
-    allLeftMetadata.removeEndpoint(endpoint);
+synchronized (bootstrapTokens) {
+    for (    Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
+      InetAddress endpoint=entry.getValue();
+      allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
+      for (      Range range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       pendingRanges.put(range,endpoint);
+      allLeftMetadata.removeEndpoint(endpoint);
+    }
   }
   for (  Pair<Token,InetAddress> moving : tm.getMovingEndpoints()) {
     InetAddress endpoint=moving.right;
