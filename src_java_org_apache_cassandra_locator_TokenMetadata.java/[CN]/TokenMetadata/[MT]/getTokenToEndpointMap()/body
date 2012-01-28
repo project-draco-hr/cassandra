@@ -1,6 +1,14 @@
 {
-  Map<Token,InetAddress> map=new HashMap<Token,InetAddress>(tokenToEndpointMap.size() + bootstrapTokens.size());
-  map.putAll(tokenToEndpointMap);
-  map.putAll(bootstrapTokens);
-  return map;
+  lock.readLock().lock();
+  try {
+    Map<Token,InetAddress> map=new HashMap<Token,InetAddress>(tokenToEndpointMap.size() + bootstrapTokens.size());
+    map.putAll(tokenToEndpointMap);
+synchronized (bootstrapTokens) {
+      map.putAll(bootstrapTokens);
+    }
+    return map;
+  }
+  finally {
+    lock.readLock().unlock();
+  }
 }
