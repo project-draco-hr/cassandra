@@ -1,0 +1,25 @@
+@completer_for('cfOptionName', 'cfsubopt')
+def create_cf_suboption_completer(ctxt, cass):
+    opt = ctxt.get_binding('cfoptname')
+    if (opt == 'compaction_strategy_options'):
+        prevopts = ctxt.get_binding('cfopt', ())
+        prevvals = ctxt.get_binding('optval', ())
+        for (prevopt, prevval) in zip(prevopts, prevvals):
+            if (prevopt == 'compaction_strategy_class'):
+                csc = cql_dequote(prevval)
+                break
+        else:
+            cf = ctxt.get_binding('cf')
+            try:
+                csc = cass.get_columnfamily(cf).compaction_strategy
+            except Exception:
+                csc = ''
+        csc = csc.split('.')[(-1)]
+        if (csc == 'SizeTieredCompactionStrategy'):
+            return ['min_sstable_size']
+        elif (csc == 'LeveledCompactionStrategy'):
+            return ['sstable_size_in_mb']
+    for (optname, _, subopts) in columnfamily_map_options:
+        if (opt == optname):
+            return subopts
+    return ()

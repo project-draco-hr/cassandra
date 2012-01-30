@@ -1,3 +1,12 @@
-@completer_for('deleteStatement', 'cf')
+@completer_for('deleteStatement', 'deletecf')
 def delete_cf_completer(ctxt, cass):
-    return map(maybe_cql_escape, cass.get_columnfamily_names())
+    ks = ctxt.get_binding('deleteks', None)
+    if (ks is not None):
+        ks = cql_dequote(ks)
+    try:
+        cfnames = cass.get_columnfamily_names(ks)
+    except Exception:
+        if (ks is None):
+            return ()
+        raise
+    return map(maybe_cql_escape, cfnames)
