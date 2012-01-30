@@ -1,35 +1,11 @@
 {
   if (logger.isDebugEnabled())   logger.debug("Beginning bootstrap process");
-  final Multimap<String,Map.Entry<InetAddress,Collection<Range<Token>>>> rangesToFetch=HashMultimap.create();
-  int requests=0;
+  RangeStreamer streamer=new RangeStreamer(tokenMetadata,address,OperationType.BOOTSTRAP);
+  streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
   for (  String table : Schema.instance.getNonSystemTables()) {
-    Map<InetAddress,Collection<Range<Token>>> workMap=getWorkMap(getRangesWithSources(table)).asMap();
-    for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : workMap.entrySet()) {
-      requests++;
-      rangesToFetch.put(table,entry);
-    }
+    AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
+    streamer.addRanges(table,strategy.getPendingAddressRanges(tokenMetadata,token,address));
   }
-  final CountDownLatch latch=new CountDownLatch(requests);
-  for (  final String table : rangesToFetch.keySet()) {
-    for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : rangesToFetch.get(table)) {
-      final InetAddress source=entry.getKey();
-      Collection<Range<Token>> ranges=entry.getValue();
-      final Runnable callback=new Runnable(){
-        public void run(){
-          latch.countDown();
-          if (logger.isDebugEnabled())           logger.debug(String.format("Removed %s/%s as a bootstrap source; remaining is %s",source,table,latch.getCount()));
-        }
-      }
-;
-      if (logger.isDebugEnabled())       logger.debug("Bootstrapping from " + source + " ranges "+ StringUtils.join(ranges,", "));
-      StreamIn.requestRanges(source,table,ranges,callback,OperationType.BOOTSTRAP);
-    }
-  }
-  try {
-    latch.await();
-    StorageService.instance.finishBootstrapping();
-  }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
+  streamer.fetch();
+  StorageService.instance.finishBootstrapping();
 }

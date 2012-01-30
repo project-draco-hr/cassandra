@@ -1,0 +1,23 @@
+{
+  final CountDownLatch latch=new CountDownLatch(toFetch().entries().size());
+  for (  Map.Entry<String,Map.Entry<InetAddress,Collection<Range<Token>>>> entry : toFetch.entries()) {
+    final String table=entry.getKey();
+    final InetAddress source=entry.getValue().getKey();
+    Collection<Range<Token>> ranges=entry.getValue().getValue();
+    Runnable callback=new Runnable(){
+      public void run(){
+        latch.countDown();
+        if (logger.isDebugEnabled())         logger.debug(String.format("Removed %s/%s as a %s source; remaining is %s",source,table,opType,latch.getCount()));
+      }
+    }
+;
+    if (logger.isDebugEnabled())     logger.debug("" + opType + "ing from "+ source+ " ranges "+ StringUtils.join(ranges,", "));
+    StreamIn.requestRanges(source,table,ranges,callback,opType);
+  }
+  try {
+    latch.await();
+  }
+ catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+}
