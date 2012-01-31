@@ -1,3 +1,31 @@
 {
-  return calculateStreamAndFetchRanges(current.iterator(),updated.iterator());
+  Set<Range<Token>> toStream=new HashSet<Range<Token>>();
+  Set<Range<Token>> toFetch=new HashSet<Range<Token>>();
+  for (  Range r1 : current) {
+    boolean intersect=false;
+    for (    Range r2 : updated) {
+      if (r1.intersects(r2)) {
+        toStream.addAll(r1.subtract(r2));
+        intersect=true;
+        break;
+      }
+    }
+    if (!intersect) {
+      toStream.add(r1);
+    }
+  }
+  for (  Range r2 : updated) {
+    boolean intersect=false;
+    for (    Range r1 : current) {
+      if (r2.intersects(r1)) {
+        toFetch.addAll(r2.subtract(r1));
+        intersect=true;
+        break;
+      }
+    }
+    if (!intersect) {
+      toFetch.add(r2);
+    }
+  }
+  return new Pair<Set<Range<Token>>,Set<Range<Token>>>(toStream,toFetch);
 }
