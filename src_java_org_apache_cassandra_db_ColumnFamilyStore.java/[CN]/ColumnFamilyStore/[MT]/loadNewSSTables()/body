@@ -45,7 +45,12 @@
  finally {
     SSTableReader.releaseReferences(sstables);
   }
-  logger.info("Setting up new generation: " + generation);
-  fileIndexGenerator.set(generation);
+  if (fileIndexGenerator.get() < generation) {
+    logger.info("Setting up new generation: " + generation);
+    fileIndexGenerator.set(generation);
+  }
+ else {
+    logger.warn("Largest generation seen in loaded sstables was {}, which may overlap with native sstable files (generation {}).",generation,fileIndexGenerator.get());
+  }
   logger.info("Done loading load new SSTables for " + table.name + "/"+ columnFamily);
 }
