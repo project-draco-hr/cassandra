@@ -3,13 +3,8 @@
     public void runMayThrow() throws InterruptedException, IOException {
       compactionLock.writeLock().lock();
       try {
-        for (        ColumnFamilyStore cfs : main.concatWithIndexes()) {
-          List<SSTableReader> truncatedSSTables=new ArrayList<SSTableReader>();
-          for (          SSTableReader sstable : cfs.getSSTables()) {
-            if (!sstable.newSince(truncatedAt))             truncatedSSTables.add(sstable);
-          }
-          if (!truncatedSSTables.isEmpty())           cfs.markCompacted(truncatedSSTables);
-        }
+        main.discardSSTables(truncatedAt);
+        for (        SecondaryIndex index : main.indexManager.getIndexes())         index.truncate(truncatedAt);
       }
   finally {
         compactionLock.writeLock().unlock();
