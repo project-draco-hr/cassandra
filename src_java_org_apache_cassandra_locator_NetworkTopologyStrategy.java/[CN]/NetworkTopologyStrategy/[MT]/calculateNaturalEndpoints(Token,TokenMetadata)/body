@@ -3,10 +3,12 @@
   for (  Entry<String,Integer> dcEntry : datacenters.entrySet()) {
     String dcName=dcEntry.getKey();
     int dcReplicas=dcEntry.getValue();
-    TokenMetadata dcTokens=new TokenMetadata();
+    Set<Pair<Token,InetAddress>> dcTokensToUpdate=new HashSet<Pair<Token,InetAddress>>();
     for (    Entry<Token,InetAddress> tokenEntry : tokenMetadata.entrySet()) {
-      if (snitch.getDatacenter(tokenEntry.getValue()).equals(dcName))       dcTokens.updateNormalToken(tokenEntry.getKey(),tokenEntry.getValue());
+      if (snitch.getDatacenter(tokenEntry.getValue()).equals(dcName))       dcTokensToUpdate.add(Pair.create(tokenEntry.getKey(),tokenEntry.getValue()));
     }
+    TokenMetadata dcTokens=new TokenMetadata();
+    dcTokens.updateNormalTokens(dcTokensToUpdate);
     List<InetAddress> dcEndpoints=new ArrayList<InetAddress>(dcReplicas);
     Set<String> racks=new HashSet<String>();
     for (Iterator<Token> iter=TokenMetadata.ringIterator(dcTokens.sortedTokens(),searchToken,false); dcEndpoints.size() < dcReplicas && iter.hasNext(); ) {
