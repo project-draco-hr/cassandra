@@ -6,11 +6,11 @@ def test_index_scan_uuid_names(self):
     u2 = uuid.UUID('00000000-0000-1000-0000-000000000001').bytes
     client.insert('key1', ColumnParent('Indexed3'), Column(u, 'a', 0), ConsistencyLevel.ONE)
     client.insert('key1', ColumnParent('Indexed3'), Column(u2, 'b', 0), ConsistencyLevel.ONE)
-    clause = FilterClause([IndexExpression(u, IndexOperator.EQ, 'a'), IndexExpression(u2, IndexOperator.EQ, 'b')])
-    result = get_range_slice(client, cp, sp, '', '', 100, ConsistencyLevel.ONE, clause)
+    key_range = KeyRange('', '', None, None, [IndexExpression(u, IndexOperator.EQ, 'a'), IndexExpression(u2, IndexOperator.EQ, 'b')], 100)
+    result = client.get_range_slices(cp, sp, key_range, ConsistencyLevel.ONE)
     assert (len(result) == 1), result
     cp = ColumnParent('Indexed2')
-    clause = FilterClause([IndexExpression('foo', IndexOperator.EQ, uuid.UUID('00000000-0000-1000-0000-000000000000').bytes)])
-    _expect_exception((lambda : get_range_slice(client, cp, sp, '', '', 100, ConsistencyLevel.ONE, clause)), InvalidRequestException)
-    clause = FilterClause([IndexExpression(uuid.UUID('00000000-0000-1000-0000-000000000000').bytes, IndexOperator.EQ, 'foo')])
-    _expect_exception((lambda : get_range_slice(client, cp, sp, '', '', 100, ConsistencyLevel.ONE, clause)), InvalidRequestException)
+    key_range = KeyRange('', '', None, None, [IndexExpression('foo', IndexOperator.EQ, uuid.UUID('00000000-0000-1000-0000-000000000000').bytes)], 100)
+    _expect_exception((lambda : client.get_range_slices(cp, sp, key_range, ConsistencyLevel.ONE)), InvalidRequestException)
+    key_range = KeyRange('', '', None, None, [IndexExpression(uuid.UUID('00000000-0000-1000-0000-000000000000').bytes, IndexOperator.EQ, 'foo')], 100)
+    _expect_exception((lambda : client.get_range_slices(cp, sp, key_range, ConsistencyLevel.ONE)), InvalidRequestException)
