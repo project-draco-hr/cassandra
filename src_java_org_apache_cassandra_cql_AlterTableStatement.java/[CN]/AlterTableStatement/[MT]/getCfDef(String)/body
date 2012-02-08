@@ -8,15 +8,20 @@ case ADD:
   cfDef.column_metadata.add(new ColumnDefinition(columnName,TypeParser.parse(validator),null,null,null).toThrift());
 break;
 case ALTER:
+if (cfDef.key_alias != null && cfDef.key_alias.equals(columnName)) {
+cfDef.setKey_validation_class(TypeParser.parse(validator).toString());
+}
+ else {
 ColumnDef toUpdate=null;
 for (ColumnDef columnDef : cfDef.column_metadata) {
-if (columnDef.name.equals(columnName)) {
-toUpdate=columnDef;
-break;
-}
+  if (columnDef.name.equals(columnName)) {
+    toUpdate=columnDef;
+    break;
+  }
 }
 if (toUpdate == null) throw new InvalidRequestException(String.format("Column '%s' was not found in CF '%s'",this.columnName,columnFamily));
 toUpdate.setValidation_class(TypeParser.parse(validator).toString());
+}
 break;
 case DROP:
 ColumnDef toDelete=null;
