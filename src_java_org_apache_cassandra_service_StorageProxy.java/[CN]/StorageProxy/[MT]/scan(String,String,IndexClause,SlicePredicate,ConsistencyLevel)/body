@@ -7,7 +7,7 @@
   for (  AbstractBounds range : ranges) {
     List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(keyspace,range.right);
     DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),liveEndpoints);
-    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace,liveEndpoints);
+    RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(keyspace);
     IReadCommand iCommand=new IReadCommand(){
       public String getKeyspace(){
         return keyspace;
@@ -16,6 +16,7 @@
 ;
     ReadCallback<Iterable<Row>> handler=getReadCallback(resolver,iCommand,consistency_level,liveEndpoints);
     handler.assureSufficientLiveNodes();
+    resolver.setSources(handler.endpoints);
     IndexScanCommand command=new IndexScanCommand(keyspace,column_family,index_clause,column_predicate,range);
     MessageProducer producer=new CachingMessageProducer(command);
     for (    InetAddress endpoint : handler.endpoints) {

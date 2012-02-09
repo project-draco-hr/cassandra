@@ -15,9 +15,10 @@
       }
  else {
         RangeSliceCommand c2=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.max_keys);
-        RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace,liveEndpoints);
+        RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(command.keyspace);
         ReadCallback<Iterable<Row>> handler=getReadCallback(resolver,command,consistency_level,liveEndpoints);
         handler.assureSufficientLiveNodes();
+        resolver.setSources(handler.endpoints);
         for (        InetAddress endpoint : handler.endpoints) {
           MessagingService.instance().sendRR(c2,endpoint,handler);
           if (logger.isDebugEnabled())           logger.debug("reading " + c2 + " from "+ endpoint);
