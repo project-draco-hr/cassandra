@@ -1,59 +1,13 @@
 {
+  if (t.size() < 1) {
+    logger.warn("Empty output skipped, filter empty tuples to suppress this warning");
+    return;
+  }
   ByteBuffer key=objToBB(t.get(0));
-  DefaultDataBag pairs=(DefaultDataBag)t.get(1);
-  ArrayList<Mutation> mutationList=new ArrayList<Mutation>();
-  CfDef cfDef=getCfDef(storeSignature);
-  try {
-    for (    Tuple pair : pairs) {
-      Mutation mutation=new Mutation();
-      if (DataType.findType(pair.get(1)) == DataType.BAG) {
-        org.apache.cassandra.thrift.SuperColumn sc=new org.apache.cassandra.thrift.SuperColumn();
-        sc.name=objToBB(pair.get(0));
-        ArrayList<org.apache.cassandra.thrift.Column> columns=new ArrayList<org.apache.cassandra.thrift.Column>();
-        for (        Tuple subcol : (DefaultDataBag)pair.get(1)) {
-          org.apache.cassandra.thrift.Column column=new org.apache.cassandra.thrift.Column();
-          column.name=objToBB(subcol.get(0));
-          column.value=objToBB(subcol.get(1));
-          column.setTimestamp(System.currentTimeMillis() * 1000);
-          columns.add(column);
-        }
-        if (columns.isEmpty()) {
-          mutation.deletion=new Deletion();
-          mutation.deletion.super_column=objToBB(pair.get(0));
-          mutation.deletion.setTimestamp(System.currentTimeMillis() * 1000);
-        }
- else {
-          sc.columns=columns;
-          mutation.column_or_supercolumn=new ColumnOrSuperColumn();
-          mutation.column_or_supercolumn.super_column=sc;
-        }
-      }
- else {
-        if (pair.get(1) == null) {
-          mutation.deletion=new Deletion();
-          mutation.deletion.predicate=new org.apache.cassandra.thrift.SlicePredicate();
-          mutation.deletion.predicate.column_names=Arrays.asList(objToBB(pair.get(0)));
-          mutation.deletion.setTimestamp(System.currentTimeMillis() * 1000);
-        }
- else {
-          org.apache.cassandra.thrift.Column column=new org.apache.cassandra.thrift.Column();
-          column.name=objToBB(pair.get(0));
-          column.value=objToBB(pair.get(1));
-          column.setTimestamp(System.currentTimeMillis() * 1000);
-          mutation.column_or_supercolumn=new ColumnOrSuperColumn();
-          mutation.column_or_supercolumn.column=column;
-        }
-      }
-      mutationList.add(mutation);
-    }
+  if (t.getType(1) == DataType.TUPLE)   writeColumnsFromTuple(key,t,1);
+ else   if (t.getType(1) == DataType.BAG) {
+    if (t.size() > 2)     throw new IOException("No arguments allowed after bag");
+    writeColumnsFromBag(key,(DefaultDataBag)t.get(1));
   }
- catch (  ClassCastException e) {
-    throw new IOException(e + " Output must be (key, {(column,value)...}) for ColumnFamily or (key, {supercolumn:{(column,value)...}...}) for SuperColumnFamily",e);
-  }
-  try {
-    writer.write(key,mutationList);
-  }
- catch (  InterruptedException e) {
-    throw new IOException(e);
-  }
+ else   throw new IOException("Second argument in output must be a tuple or bag");
 }
