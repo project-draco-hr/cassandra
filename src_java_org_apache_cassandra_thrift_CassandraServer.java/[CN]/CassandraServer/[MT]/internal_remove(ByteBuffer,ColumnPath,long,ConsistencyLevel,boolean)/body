@@ -1,10 +1,11 @@
 {
-  state().hasColumnFamilyAccess(column_path.column_family,Permission.WRITE);
-  CFMetaData metadata=ThriftValidation.validateColumnFamily(state().getKeyspace(),column_path.column_family,isCommutativeOp);
+  ClientState cState=state();
+  cState.hasColumnFamilyAccess(column_path.column_family,Permission.WRITE);
+  CFMetaData metadata=ThriftValidation.validateColumnFamily(cState.getKeyspace(),column_path.column_family,isCommutativeOp);
   ThriftValidation.validateKey(metadata,key);
   ThriftValidation.validateColumnPathOrParent(metadata,column_path);
   if (isCommutativeOp)   ThriftValidation.validateCommutativeForWrite(metadata,consistency_level);
-  RowMutation rm=new RowMutation(state().getKeyspace(),key);
+  RowMutation rm=new RowMutation(cState.getKeyspace(),key);
   rm.delete(new QueryPath(column_path),timestamp);
   if (isCommutativeOp)   doInsert(consistency_level,Arrays.asList(new CounterMutation(rm,consistency_level)));
  else   doInsert(consistency_level,Arrays.asList(rm));
