@@ -1,21 +1,15 @@
 {
   if (!cfs.isValid())   return;
-  Collection<SSTableReader> sstables;
-  if (cfs.table.snapshotExists(validator.request.sessionid)) {
-    sstables=cfs.getSnapshotSSTableReader(validator.request.sessionid);
+  try {
+    StorageService.instance.forceTableFlush(cfs.table.name,cfs.getColumnFamilyName());
   }
- else {
-    try {
-      StorageService.instance.forceTableFlush(cfs.table.name,cfs.getColumnFamilyName());
-    }
- catch (    ExecutionException e) {
-      throw new IOException(e);
-    }
-catch (    InterruptedException e) {
-      throw new AssertionError(e);
-    }
-    sstables=cfs.markCurrentSSTablesReferenced();
+ catch (  ExecutionException e) {
+    throw new IOException(e);
   }
+catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+  Collection<SSTableReader> sstables=cfs.markCurrentSSTablesReferenced();
   CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.request.range);
   CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
   validationExecutor.beginCompaction(ci);
@@ -32,7 +26,6 @@ catch (    InterruptedException e) {
   finally {
     SSTableReader.releaseReferences(sstables);
     iter.close();
-    if (cfs.table.snapshotExists(validator.request.sessionid))     cfs.table.clearSnapshot(validator.request.sessionid);
     validationExecutor.finishCompaction(ci);
   }
 }
