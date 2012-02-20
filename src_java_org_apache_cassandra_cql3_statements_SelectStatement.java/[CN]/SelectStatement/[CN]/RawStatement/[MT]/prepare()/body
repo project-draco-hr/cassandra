@@ -74,6 +74,11 @@ newRestriction.setInclusive(b);
 stmt.keyRestriction=newRestriction;
 }
 }
+if (stmt.parameters.orderBy != null) {
+CFDefinition.Name name=cfDef.get(stmt.parameters.orderBy);
+if (name == null) throw new InvalidRequestException(String.format("Order by on unknown column %s",stmt.parameters.orderBy));
+if (name.kind != CFDefinition.Name.Kind.COLUMN_ALIAS || name.position != 0) throw new InvalidRequestException(String.format("Order by is currently only supported on the second column of the PRIMARY KEY (if any), got %s",stmt.parameters.orderBy));
+}
 if (stmt.parameters.isColumnsReversed) {
 if (stmt.keyRestriction == null || !stmt.keyRestriction.isEquality()) throw new InvalidRequestException("Descending order is only supported is the first part of the PRIMARY KEY is restricted by an Equal or a IN");
 }
