@@ -1,10 +1,13 @@
 {
   Mutation mutation=new Mutation();
   if (t.get(1) == null) {
-    mutation.deletion=new Deletion();
-    mutation.deletion.predicate=new org.apache.cassandra.thrift.SlicePredicate();
-    mutation.deletion.predicate.column_names=Arrays.asList(objToBB(t.get(0)));
-    mutation.deletion.setTimestamp(FBUtilities.timestampMicros());
+    if (allow_deletes) {
+      mutation.deletion=new Deletion();
+      mutation.deletion.predicate=new org.apache.cassandra.thrift.SlicePredicate();
+      mutation.deletion.predicate.column_names=Arrays.asList(objToBB(t.get(0)));
+      mutation.deletion.setTimestamp(FBUtilities.timestampMicros());
+    }
+ else     throw new IOException("null found but deletes are disabled, set " + PIG_ALLOW_DELETES + "=true to enable");
   }
  else {
     org.apache.cassandra.thrift.Column column=new org.apache.cassandra.thrift.Column();
