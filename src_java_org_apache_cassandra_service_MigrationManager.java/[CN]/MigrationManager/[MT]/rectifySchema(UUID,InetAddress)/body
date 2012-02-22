@@ -1,25 +1,4 @@
 {
   if (Schema.instance.getVersion().equals(theirVersion))   return;
-  StageManager.getStage(Stage.MIGRATION).submit(new WrappedRunnable(){
-    public void runMayThrow() throws Exception {
-      Message message=new Message(FBUtilities.getBroadcastAddress(),StorageService.Verb.MIGRATION_REQUEST,ArrayUtils.EMPTY_BYTE_ARRAY,Gossiper.instance.getVersion(endpoint));
-      int retries=0;
-      while (retries < MIGRATION_REQUEST_RETRIES) {
-        if (!FailureDetector.instance.isAlive(endpoint)) {
-          logger.error("Can't send migration request: node {} is down.",endpoint);
-          return;
-        }
-        IAsyncResult iar=MessagingService.instance().sendRR(message,endpoint);
-        try {
-          byte[] reply=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
-          DefsTable.mergeRemoteSchema(reply,message.getVersion());
-          return;
-        }
- catch (        TimeoutException e) {
-          retries++;
-        }
-      }
-    }
-  }
-);
+  StageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
 }
