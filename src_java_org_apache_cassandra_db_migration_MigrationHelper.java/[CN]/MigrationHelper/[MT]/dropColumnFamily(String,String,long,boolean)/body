@@ -4,9 +4,14 @@
   CFMetaData cfm=ksm.cfMetaData().get(cfName);
   Schema.instance.purge(cfm);
   Schema.instance.setTableDefinition(makeNewKeyspaceDefinition(ksm,cfm));
-  if (withSchemaRecord)   cfm.dropFromSchema(timestamp).apply();
+  RowMutation mutation=null;
+  if (withSchemaRecord) {
+    mutation=cfm.dropFromSchema(timestamp);
+    mutation.apply();
+  }
   if (!StorageService.instance.isClientMode()) {
     cfs.snapshot(Table.getTimestampedSnapshotName(cfs.columnFamily));
     Table.open(ksm.name).dropCf(cfm.cfId);
   }
+  return toCollection(mutation);
 }
