@@ -2,7 +2,6 @@
   if (!StorageService.instance.getTokenMetadata().isMember(endpoint))   return;
   Token<?> token=StorageService.instance.getTokenMetadata().getToken(endpoint);
   ByteBuffer tokenBytes=StorageService.getPartitioner().getTokenFactory().toByteArray(token);
-  final ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(HINTS_CF);
   final RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,tokenBytes);
   rm.delete(new QueryPath(HINTS_CF),System.currentTimeMillis());
   Runnable runnable=new Runnable(){
@@ -10,8 +9,7 @@
       try {
         logger_.info("Deleting any stored hints for " + endpoint);
         rm.apply();
-        hintStore.forceBlockingFlush();
-        CompactionManager.instance.submitMaximal(hintStore,Integer.MAX_VALUE);
+        compact();
       }
  catch (      Exception e) {
         logger_.warn("Could not delete hints for " + endpoint + ": "+ e);
