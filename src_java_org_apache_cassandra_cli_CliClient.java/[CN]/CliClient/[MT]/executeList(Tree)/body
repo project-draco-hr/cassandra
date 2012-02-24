@@ -5,6 +5,8 @@
   String rawStartKey="";
   String rawEndKey="";
   int limitCount=Integer.MAX_VALUE;
+  int columnCount=Integer.MAX_VALUE;
+  boolean reversed=false;
   for (int i=1; i < statement.getChildCount(); i++) {
     Tree child=statement.getChild(i);
     if (child.getType() == CliParser.NODE_KEY_RANGE) {
@@ -13,7 +15,7 @@
         if (child.getChildCount() > 1)         rawEndKey=CliUtils.unescapeSQLString(child.getChild(1).getText());
       }
     }
- else {
+ else     if (child.getType() == CliParser.NODE_LIMIT) {
       if (child.getChildCount() != 1) {
         sessionState.out.println("Invalid limit clause");
         return;
@@ -21,6 +23,25 @@
       limitCount=Integer.parseInt(child.getChild(0).getText());
       if (limitCount <= 0) {
         sessionState.out.println("Invalid limit " + limitCount);
+        return;
+      }
+    }
+ else     if (child.getType() == CliParser.NODE_COLUMNS) {
+      if ((child.getChildCount() < 1) || (child.getChildCount() > 2)) {
+        sessionState.err.println("Invalid columns clause.");
+        return;
+      }
+      String columns=child.getChild(0).getText();
+      try {
+        columnCount=Integer.parseInt(columns);
+        if (columnCount < 0) {
+          sessionState.err.println("Invalid column limit: " + columnCount);
+          return;
+        }
+        if (child.getChildCount() == 2)         reversed=child.getChild(1).getType() == CliParser.NODE_REVERSED;
+      }
+ catch (      NumberFormatException nfe) {
+        sessionState.err.println("Invalid column number format: " + columns);
         return;
       }
     }
@@ -33,7 +54,8 @@
   SlicePredicate predicate=new SlicePredicate();
   SliceRange sliceRange=new SliceRange();
   sliceRange.setStart(new byte[0]).setFinish(new byte[0]);
-  sliceRange.setCount(Integer.MAX_VALUE);
+  sliceRange.setCount(columnCount);
+  sliceRange.setReversed(reversed);
   predicate.setSlice_range(sliceRange);
   KeyRange range=new KeyRange(limitCount);
   AbstractType<?> keyComparator=this.cfKeysComparators.get(columnFamily);
