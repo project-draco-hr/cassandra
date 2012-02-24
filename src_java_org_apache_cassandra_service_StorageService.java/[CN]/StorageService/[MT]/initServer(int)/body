@@ -1,7 +1,7 @@
 {
-  logger_.info("Cassandra version: " + FBUtilities.getReleaseVersionString());
-  logger_.info("Thrift API version: " + Constants.VERSION);
-  logger_.info("CQL supported versions: " + StringUtils.join(ClientState.getCQLSupportedVersion(),",") + " (default: "+ ClientState.DEFAULT_CQL_VERSION+ ")");
+  logger.info("Cassandra version: " + FBUtilities.getReleaseVersionString());
+  logger.info("Thrift API version: " + Constants.VERSION);
+  logger.info("CQL supported versions: " + StringUtils.join(ClientState.getCQLSupportedVersion(),",") + " (default: "+ ClientState.DEFAULT_CQL_VERSION+ ")");
   if (initialized) {
     if (isClientMode)     throw new UnsupportedOperationException("StorageService does not support switching modes.");
     return;
@@ -9,19 +9,19 @@
   initialized=true;
   isClientMode=false;
   if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
-    logger_.info("Loading persisted ring state");
+    logger.info("Loading persisted ring state");
     for (    Map.Entry<Token,InetAddress> entry : SystemTable.loadTokens().entrySet()) {
       if (entry.getValue() == FBUtilities.getLocalAddress()) {
         SystemTable.removeToken(entry.getKey());
       }
  else {
-        tokenMetadata_.updateNormalToken(entry.getKey(),entry.getValue());
+        tokenMetadata.updateNormalToken(entry.getKey(),entry.getValue());
         Gossiper.instance.addSavedEndpoint(entry.getValue());
       }
     }
   }
   if (Boolean.parseBoolean(System.getProperty("cassandra.renew_counter_id","false"))) {
-    logger_.info("Renewing local node id (as requested)");
+    logger.info("Renewing local node id (as requested)");
     NodeId.renewLocalId();
   }
   Thread drainOnShutdown=new Thread(new WrappedRunnable(){
@@ -48,7 +48,7 @@
       FBUtilities.waitOnFutures(flushes);
       CommitLog.instance.shutdownBlocking();
       tasks.shutdown();
-      if (!tasks.awaitTermination(1,TimeUnit.MINUTES))       logger_.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
+      if (!tasks.awaitTermination(1,TimeUnit.MINUTES))       logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
     }
   }
 ,"StorageServiceShutdownHook");
@@ -57,6 +57,6 @@
     joinTokenRing(delay);
   }
  else {
-    logger_.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
+    logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
   }
 }

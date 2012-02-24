@@ -3,11 +3,11 @@
     serverTransport_.listen();
   }
  catch (  TTransportException ttx) {
-    LOGGER.error("Error occurred during listening.",ttx);
+    logger.error("Error occurred during listening.",ttx);
     return;
   }
-  stopped_=false;
-  while (!stopped_) {
+  stopped=false;
+  while (!stopped) {
     while (activeClients.get() >= args.maxWorkerThreads) {
       try {
         Thread.sleep(100);
@@ -20,15 +20,15 @@
       TTransport client=serverTransport_.accept();
       activeClients.incrementAndGet();
       WorkerProcess wp=new WorkerProcess(client);
-      executorService_.execute(wp);
+      executorService.execute(wp);
     }
  catch (    TTransportException ttx) {
       if (ttx.getCause() instanceof SocketTimeoutException)       continue;
-      if (!stopped_) {
-        LOGGER.warn("Transport error occurred during acceptance of message.",ttx);
+      if (!stopped) {
+        logger.warn("Transport error occurred during acceptance of message.",ttx);
       }
     }
-    if (activeClients.get() >= args.maxWorkerThreads)     LOGGER.warn("Maximum number of clients " + args.maxWorkerThreads + " reached");
+    if (activeClients.get() >= args.maxWorkerThreads)     logger.warn("Maximum number of clients " + args.maxWorkerThreads + " reached");
   }
-  executorService_.shutdown();
+  executorService.shutdown();
 }

@@ -1,7 +1,7 @@
 {
   assert(pieces.length > 0);
   if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
-    logger_.info("Received removeToken gossip about myself. Is this node rejoining after an explicit removetoken?");
+    logger.info("Received removeToken gossip about myself. Is this node rejoining after an explicit removetoken?");
     try {
       drain();
     }
@@ -10,19 +10,19 @@
     }
     return;
   }
-  if (tokenMetadata_.isMember(endpoint)) {
+  if (tokenMetadata.isMember(endpoint)) {
     String state=pieces[0];
-    Token removeToken=tokenMetadata_.getToken(endpoint);
+    Token removeToken=tokenMetadata.getToken(endpoint);
     if (VersionedValue.REMOVED_TOKEN.equals(state)) {
       excise(removeToken,endpoint,extractExpireTime(pieces));
     }
  else     if (VersionedValue.REMOVING_TOKEN.equals(state)) {
-      if (logger_.isDebugEnabled())       logger_.debug("Token " + removeToken + " removed manually (endpoint was "+ endpoint+ ")");
-      tokenMetadata_.addLeavingEndpoint(endpoint);
+      if (logger.isDebugEnabled())       logger.debug("Token " + removeToken + " removed manually (endpoint was "+ endpoint+ ")");
+      tokenMetadata.addLeavingEndpoint(endpoint);
       calculatePendingRanges();
       String[] coordinator=Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.REMOVAL_COORDINATOR).value.split(VersionedValue.DELIMITER_STR,-1);
       Token coordtoken=getPartitioner().getTokenFactory().fromString(coordinator[1]);
-      restoreReplicaCount(endpoint,tokenMetadata_.getEndpoint(coordtoken));
+      restoreReplicaCount(endpoint,tokenMetadata.getEndpoint(coordtoken));
     }
   }
 }
