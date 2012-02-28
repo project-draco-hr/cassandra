@@ -3,9 +3,11 @@
   RowCacheKey cacheKey=new RowCacheKey(metadata.cfId,key);
   if (CacheService.instance.rowCache.isPutCopying()) {
     invalidateCachedRow(cacheKey);
+    return;
   }
- else {
-    ColumnFamily cachedRow=getRawCachedRow(cacheKey);
-    if (cachedRow != null)     cachedRow.addAll(columnFamily,HeapAllocator.instance);
+  IRowCacheEntry cachedRow=getCachedRowInternal(cacheKey);
+  if (cachedRow != null) {
+    if (cachedRow instanceof RowCacheSentinel)     invalidateCachedRow(cacheKey);
+ else     ((ColumnFamily)cachedRow).addAll(columnFamily,HeapAllocator.instance);
   }
 }
