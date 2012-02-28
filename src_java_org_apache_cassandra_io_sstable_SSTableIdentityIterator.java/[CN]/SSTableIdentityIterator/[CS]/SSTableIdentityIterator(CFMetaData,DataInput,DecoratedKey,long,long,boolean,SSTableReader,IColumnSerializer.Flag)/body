@@ -12,7 +12,7 @@
       RandomAccessReader file=(RandomAccessReader)input;
       file.seek(this.dataStart);
       if (dataStart + dataSize > file.length())       throw new IOException(String.format("dataSize of %s starting at %s would be larger than file %s length %s",dataSize,dataStart,file.getPath(),file.length()));
-      if (checkData) {
+      if (checkData && !sstable.descriptor.hasPromotedIndexes) {
         try {
           IndexHelper.defreezeBloomFilter(file,dataSize,sstable.descriptor.usesOldBloomFilter);
         }
@@ -30,8 +30,10 @@
         inputWithTracker.reset(0);
       }
     }
-    IndexHelper.skipBloomFilter(inputWithTracker);
-    IndexHelper.skipIndex(inputWithTracker);
+    if (!sstable.descriptor.hasPromotedIndexes) {
+      IndexHelper.skipBloomFilter(inputWithTracker);
+      IndexHelper.skipIndex(inputWithTracker);
+    }
     columnFamily=ColumnFamily.create(metadata);
     ColumnFamily.serializer().deserializeFromSSTableNoColumns(columnFamily,inputWithTracker);
     columnCount=inputWithTracker.readInt();

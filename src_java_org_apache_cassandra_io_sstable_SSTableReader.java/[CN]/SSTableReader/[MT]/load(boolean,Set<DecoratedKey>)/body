@@ -7,7 +7,7 @@
   try {
     long indexSize=input.length();
     long histogramCount=sstableMetadata.estimatedRowSize.count();
-    long estimatedKeys=histogramCount > 0 && !sstableMetadata.estimatedRowSize.isOverflowed() ? histogramCount : SSTable.estimateRowsFromIndex(input);
+    long estimatedKeys=histogramCount > 0 && !sstableMetadata.estimatedRowSize.isOverflowed() ? histogramCount : estimateRowsFromIndex(input);
     indexSummary=new IndexSummary(estimatedKeys);
     if (recreatebloom)     bf=LegacyBloomFilter.getFilter(estimatedKeys,15);
     while (true) {
@@ -21,16 +21,16 @@
       }
       if (null == left)       left=decodeKey(partitioner,descriptor,skippedKey);
       right=decodeKey(partitioner,descriptor,skippedKey);
-      long dataPosition=input.readLong();
+      RowIndexEntry indexEntry=RowIndexEntry.serializer.deserialize(input,descriptor);
       if (key != null) {
         DecoratedKey decoratedKey=decodeKey(partitioner,descriptor,key);
         if (recreatebloom)         bf.add(decoratedKey.key);
         if (shouldAddEntry)         indexSummary.addEntry(decoratedKey,indexPosition);
-        if (cacheLoading && keysToLoadInCache.contains(decoratedKey))         cacheKey(decoratedKey,dataPosition);
+        if (cacheLoading && keysToLoadInCache.contains(decoratedKey))         cacheKey(decoratedKey,indexEntry);
       }
       indexSummary.incrementRowid();
       ibuilder.addPotentialBoundary(indexPosition);
-      dbuilder.addPotentialBoundary(dataPosition);
+      dbuilder.addPotentialBoundary(indexEntry.position);
     }
     indexSummary.complete();
   }
