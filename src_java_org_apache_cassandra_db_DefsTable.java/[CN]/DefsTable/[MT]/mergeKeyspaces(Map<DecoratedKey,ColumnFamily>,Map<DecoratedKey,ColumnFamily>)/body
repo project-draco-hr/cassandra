@@ -2,7 +2,10 @@
   MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
   for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
     ColumnFamily ksAttrs=entry.getValue();
-    if (!ksAttrs.isEmpty())     MigrationHelper.addKeyspace(KSMetaData.fromSchema(entry.getValue(),null));
+    if (!ksAttrs.isEmpty()) {
+      KSMetaData ksm=KSMetaData.fromSchema(new Row(entry.getKey(),entry.getValue()),Collections.<CFMetaData>emptyList());
+      MigrationHelper.addKeyspace(ksm,-1,false);
+    }
   }
   Map<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntries=diff.entriesDiffering();
   List<DecoratedKey> leftToProcess=new ArrayList<DecoratedKey>();
@@ -10,7 +13,8 @@
     ColumnFamily prevValue=entry.getValue().leftValue();
     ColumnFamily newValue=entry.getValue().rightValue();
     if (prevValue.isEmpty()) {
-      MigrationHelper.addKeyspace(KSMetaData.fromSchema(newValue,null));
+      KSMetaData ksm=KSMetaData.fromSchema(new Row(entry.getKey(),newValue),Collections.<CFMetaData>emptyList());
+      MigrationHelper.addKeyspace(ksm,-1,false);
       continue;
     }
     leftToProcess.add(entry.getKey());
@@ -20,8 +24,13 @@
   for (  DecoratedKey key : leftToProcess) {
     MapDifference.ValueDifference<ColumnFamily> valueDiff=modifiedEntries.get(key);
     ColumnFamily newState=valueDiff.rightValue();
-    if (newState.isEmpty())     keyspacesToDrop.add(AsciiType.instance.getString(key.key));
- else     MigrationHelper.updateKeyspace(KSMetaData.fromSchema(newState));
+    if (newState.isEmpty()) {
+      keyspacesToDrop.add(AsciiType.instance.getString(key.key));
+    }
+ else {
+      KSMetaData ksm=KSMetaData.fromSchema(new Row(key,newState),Collections.<CFMetaData>emptyList());
+      MigrationHelper.updateKeyspace(ksm,-1,false);
+    }
   }
   return keyspacesToDrop;
 }

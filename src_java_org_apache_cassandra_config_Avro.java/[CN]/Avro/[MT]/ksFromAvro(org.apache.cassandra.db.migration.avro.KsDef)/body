@@ -1,0 +1,23 @@
+{
+  Class<? extends AbstractReplicationStrategy> repStratClass;
+  try {
+    String strategyClassName=KSMetaData.convertOldStrategyName(ks.strategy_class.toString());
+    repStratClass=(Class<AbstractReplicationStrategy>)Class.forName(strategyClassName);
+  }
+ catch (  Exception ex) {
+    throw new RuntimeException("Could not create ReplicationStrategy of type " + ks.strategy_class,ex);
+  }
+  Map<String,String> strategyOptions=new HashMap<String,String>();
+  if (ks.strategy_options != null) {
+    for (    Map.Entry<CharSequence,CharSequence> e : ks.strategy_options.entrySet()) {
+      String name=e.getKey().toString();
+      if (repStratClass == NetworkTopologyStrategy.class && name.trim().toLowerCase().equals("replication_factor"))       continue;
+      strategyOptions.put(name,e.getValue().toString());
+    }
+  }
+  int cfsz=ks.cf_defs.size();
+  List<CFMetaData> cfMetaData=new ArrayList<CFMetaData>(cfsz);
+  Iterator<CfDef> cfiter=ks.cf_defs.iterator();
+  for (  CfDef cf_def : ks.cf_defs)   cfMetaData.add(cfFromAvro(cfiter.next()));
+  return new KSMetaData(ks.name.toString(),repStratClass,strategyOptions,ks.durable_writes,cfMetaData);
+}
