@@ -1,6 +1,13 @@
 {
   if (isDirty) {
     flushData();
+    if (trickleFsync) {
+      bytesSinceTrickleFsync+=validBufferBytes;
+      if (bytesSinceTrickleFsync >= trickleFsyncByteInterval) {
+        syncDataOnlyInternal();
+        bytesSinceTrickleFsync=0;
+      }
+    }
     if (skipIOCache) {
       bytesSinceCacheFlush+=validBufferBytes;
       if (bytesSinceCacheFlush >= RandomAccessReader.MAX_BYTES_IN_PAGE_CACHE) {
