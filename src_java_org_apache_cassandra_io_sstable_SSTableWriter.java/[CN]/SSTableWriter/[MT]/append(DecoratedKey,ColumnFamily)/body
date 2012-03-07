@@ -3,9 +3,7 @@
   ByteBufferUtil.writeWithShortLength(decoratedKey.key,dataFile.stream);
   ColumnIndexer.RowHeader header=ColumnIndexer.serialize(cf);
   dataFile.stream.writeLong(header.serializedSize() + cf.serializedSizeForSSTable());
-  int columnCount=ColumnFamily.serializer().serializeWithIndexes(cf,header,dataFile.stream);
+  ColumnFamily.serializer().serializeWithIndexes(cf,header,dataFile.stream);
   afterAppend(decoratedKey,startPosition);
-  sstableMetadataCollector.updateMaxTimestamp(cf.maxTimestamp());
-  sstableMetadataCollector.addRowSize(dataFile.getFilePointer() - startPosition);
-  sstableMetadataCollector.addColumnCount(columnCount);
+  sstableMetadataCollector.update(dataFile.getFilePointer() - startPosition,cf.getColumnStats());
 }

@@ -1,0 +1,30 @@
+{
+  Table table=Table.open(TABLE1);
+  ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  store.clearUnsafe();
+  store.metadata.gcGraceSeconds(5);
+  Map<String,String> opts=new HashMap<String,String>();
+  opts.put(SizeTieredCompactionStrategy.MIN_SSTABLE_SIZE_KEY,"512");
+  store.metadata.compactionStrategyOptions(opts);
+  store.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
+  store.disableAutoCompaction();
+  long timestamp=System.currentTimeMillis();
+  for (int i=0; i < 10; i++) {
+    DecoratedKey key=Util.dk(Integer.toString(i));
+    RowMutation rm=new RowMutation(TABLE1,key.key);
+    for (int j=0; j < 10; j++)     rm.add(new QueryPath("Standard1",null,ByteBufferUtil.bytes(Integer.toString(j))),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,j > 0 ? 3 : 0);
+    rm.apply();
+  }
+  store.forceBlockingFlush();
+  assertEquals(1,store.getSSTables().size());
+  long originalSize=store.getSSTables().iterator().next().uncompressedLength();
+  TimeUnit.SECONDS.sleep(5);
+  store.setMinimumCompactionThreshold(2);
+  store.setMaximumCompactionThreshold(4);
+  FBUtilities.waitOnFuture(CompactionManager.instance.submitBackground(store));
+  while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0)   TimeUnit.SECONDS.sleep(1);
+  assertEquals(1,store.getSSTables().size());
+  long size=store.getSSTables().iterator().next().uncompressedLength();
+  assertTrue("should be less than " + originalSize + ", but was "+ size,size < originalSize);
+  assertMaxTimestamp(store,timestamp);
+}

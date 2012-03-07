@@ -1,0 +1,38 @@
+{
+  StreamingHistogram hist=new StreamingHistogram(5);
+  long[] samples=new long[]{23,19,10,16,36,2,9,32,30,45};
+  for (int i=0; i < 7; i++) {
+    hist.update(samples[i]);
+  }
+  Map<Double,Long> expected1=new LinkedHashMap<Double,Long>(5);
+  expected1.put(2.0,1L);
+  expected1.put(9.5,2L);
+  expected1.put(17.5,2L);
+  expected1.put(23.0,1L);
+  expected1.put(36.0,1L);
+  Iterator<Map.Entry<Double,Long>> expectedItr=expected1.entrySet().iterator();
+  for (  Map.Entry<Double,Long> actual : hist.getAsMap().entrySet()) {
+    Map.Entry<Double,Long> entry=expectedItr.next();
+    assertEquals(entry.getKey(),actual.getKey(),0.01);
+    assertEquals(entry.getValue(),actual.getValue());
+  }
+  StreamingHistogram hist2=new StreamingHistogram(3);
+  for (int i=7; i < samples.length; i++) {
+    hist2.update(samples[i]);
+  }
+  hist.merge(hist2);
+  Map<Double,Long> expected2=new LinkedHashMap<Double,Long>(5);
+  expected2.put(2.0,1L);
+  expected2.put(9.5,2L);
+  expected2.put(19.33,3L);
+  expected2.put(32.67,3L);
+  expected2.put(45.0,1L);
+  expectedItr=expected2.entrySet().iterator();
+  for (  Map.Entry<Double,Long> actual : hist.getAsMap().entrySet()) {
+    Map.Entry<Double,Long> entry=expectedItr.next();
+    assertEquals(entry.getKey(),actual.getKey(),0.01);
+    assertEquals(entry.getValue(),actual.getValue());
+  }
+  assertEquals(3.28,hist.sum(15),0.01);
+  assertEquals(10.0,hist.sum(50),0.01);
+}

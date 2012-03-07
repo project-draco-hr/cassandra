@@ -17,7 +17,14 @@
 );
     prunedBuckets.add(bucket.subList(0,Math.min(bucket.size(),cfs.getMaximumCompactionThreshold())));
   }
-  if (prunedBuckets.isEmpty())   return null;
+  if (prunedBuckets.isEmpty()) {
+    for (    List<SSTableReader> bucket : buckets) {
+      for (      SSTableReader table : bucket) {
+        if (table.getEstimatedDroppableTombstoneRatio(gcBefore) > tombstoneThreshold)         prunedBuckets.add(Collections.singletonList(table));
+      }
+    }
+    if (prunedBuckets.isEmpty())     return null;
+  }
   List<SSTableReader> smallestBucket=Collections.min(prunedBuckets,new Comparator<List<SSTableReader>>(){
     public int compare(    List<SSTableReader> o1,    List<SSTableReader> o2){
       long n=avgSize(o1) - avgSize(o2);
@@ -32,5 +39,5 @@
     }
   }
 );
-  return new CompactionTask(cfs,smallestBucket,gcBefore);
+  return new CompactionTask(cfs,smallestBucket,gcBefore).isUserDefined(smallestBucket.size() == 1);
 }
