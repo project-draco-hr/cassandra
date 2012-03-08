@@ -1,56 +1,42 @@
 {
   logger.info("Loading new SSTables for " + table.name + "/"+ columnFamily+ "...");
-  DataTracker.View view=data.getView();
   Set<Descriptor> currentDescriptors=new HashSet<Descriptor>();
-  Set<SSTableReader> sstables=new HashSet<SSTableReader>();
-  int generation=0;
-  for (  SSTableReader reader : view.sstables) {
-    sstables.add(reader);
-    currentDescriptors.add(reader.descriptor);
-    if (reader.descriptor.generation > generation)     generation=reader.descriptor.generation;
-  }
-  SSTableReader reader;
-  boolean atLeastOneNew=false;
+  for (  SSTableReader sstable : data.getView().sstables)   currentDescriptors.add(sstable.descriptor);
+  Set<SSTableReader> newSSTables=new HashSet<SSTableReader>();
   Directories.SSTableLister lister=directories.sstableLister().skipCompacted(true).skipTemporary(true);
-  for (  Map.Entry<Descriptor,Set<Component>> rawSSTable : lister.list().entrySet()) {
-    Descriptor descriptor=rawSSTable.getKey();
+  for (  Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
+    Descriptor descriptor=entry.getKey();
     if (currentDescriptors.contains(descriptor))     continue;
+    if (descriptor.temporary)     continue;
     if (!descriptor.isCompatible())     throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",Descriptor.CURRENT_VERSION,descriptor));
-    logger.info("Initializing new SSTable {}",rawSSTable);
+    Descriptor newDescriptor=new Descriptor(descriptor.directory,descriptor.ksname,descriptor.cfname,fileIndexGenerator.incrementAndGet(),false);
+    logger.info("Renaming new SSTable {} to {}",descriptor,newDescriptor);
+    SSTableWriter.rename(descriptor,newDescriptor,entry.getValue());
+    SSTableReader reader;
     try {
-      Set<DecoratedKey> savedKeys=CacheService.instance.keyCache.readSaved(descriptor.ksname,descriptor.cfname);
-      reader=SSTableReader.open(rawSSTable.getKey(),rawSSTable.getValue(),savedKeys,data,metadata,partitioner);
+      reader=SSTableReader.open(newDescriptor,entry.getValue(),Collections.<DecoratedKey>emptySet(),data,metadata,partitioner);
     }
  catch (    IOException e) {
-      SSTableReader.logOpenException(rawSSTable.getKey(),e);
+      SSTableReader.logOpenException(entry.getKey(),e);
       continue;
     }
-    sstables.add(reader);
-    if (descriptor.generation > generation)     generation=descriptor.generation;
-    if (!atLeastOneNew)     atLeastOneNew=true;
+    newSSTables.add(reader);
   }
-  if (!atLeastOneNew) {
+  if (newSSTables.isEmpty()) {
     logger.info("No new SSTables where found for " + table.name + "/"+ columnFamily);
     return;
   }
-  logger.info("Loading new SSTables and building secondary indexes for " + table.name + "/"+ columnFamily+ ": "+ sstables);
-  SSTableReader.acquireReferences(sstables);
-  data.addSSTables(sstables);
+  logger.info("Loading new SSTables and building secondary indexes for " + table.name + "/"+ columnFamily+ ": "+ newSSTables);
+  SSTableReader.acquireReferences(newSSTables);
+  data.addSSTables(newSSTables);
   try {
-    indexManager.maybeBuildSecondaryIndexes(sstables,indexManager.getIndexedColumns());
+    indexManager.maybeBuildSecondaryIndexes(newSSTables,indexManager.getIndexedColumns());
   }
  catch (  IOException e) {
     throw new IOError(e);
   }
  finally {
-    SSTableReader.releaseReferences(sstables);
-  }
-  if (fileIndexGenerator.get() < generation) {
-    logger.info("Setting up new generation: " + generation);
-    fileIndexGenerator.set(generation);
-  }
- else {
-    logger.warn("Largest generation seen in loaded sstables was {}, which may overlap with native sstable files (generation {}).",generation,fileIndexGenerator.get());
+    SSTableReader.releaseReferences(newSSTables);
   }
   logger.info("Done loading load new SSTables for " + table.name + "/"+ columnFamily);
 }
