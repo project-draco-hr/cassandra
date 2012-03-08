@@ -1,11 +1,11 @@
 {
   if (intervalupdates.intValue() >= UPDATES_PER_INTERVAL)   return;
-  AdaptiveLatencyTracker tracker=windows.get(host);
-  if (tracker == null) {
-    AdaptiveLatencyTracker alt=new AdaptiveLatencyTracker(WINDOW_SIZE);
-    tracker=windows.putIfAbsent(host,alt);
-    if (tracker == null)     tracker=alt;
+  BoundedStatsDeque deque=windows.get(host);
+  if (deque == null) {
+    BoundedStatsDeque maybeNewDeque=new BoundedStatsDeque(WINDOW_SIZE);
+    deque=windows.putIfAbsent(host,maybeNewDeque);
+    if (deque == null)     deque=maybeNewDeque;
   }
-  tracker.add(latency);
+  deque.add(latency);
   intervalupdates.getAndIncrement();
 }
