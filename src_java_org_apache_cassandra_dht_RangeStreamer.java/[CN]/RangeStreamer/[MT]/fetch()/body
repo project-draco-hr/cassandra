@@ -1,5 +1,5 @@
 {
-  final CountDownLatch latch=new CountDownLatch(toFetch().entries().size());
+  latch=new CountDownLatch(toFetch().entries().size());
   for (  Map.Entry<String,Map.Entry<InetAddress,Collection<Range<Token>>>> entry : toFetch.entries()) {
     final String table=entry.getKey();
     final InetAddress source=entry.getValue().getKey();
@@ -14,10 +14,17 @@
     if (logger.isDebugEnabled())     logger.debug("" + opType + "ing from "+ source+ " ranges "+ StringUtils.join(ranges,", "));
     StreamIn.requestRanges(source,table,ranges,callback,opType);
   }
+  FailureDetector.instance.registerFailureDetectionEventListener(this);
+  Gossiper.instance.register(this);
   try {
     latch.await();
+    if (exceptionMessage != null)     throw new RuntimeException(exceptionMessage);
   }
  catch (  InterruptedException e) {
     throw new AssertionError(e);
+  }
+ finally {
+    FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+    Gossiper.instance.unregister(this);
   }
 }
