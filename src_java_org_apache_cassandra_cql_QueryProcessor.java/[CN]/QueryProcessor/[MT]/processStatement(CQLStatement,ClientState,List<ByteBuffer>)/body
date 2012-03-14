@@ -154,7 +154,8 @@ try {
 KsDef ksd=new KsDef(create.getName(),create.getStrategyClass(),Collections.<CfDef>emptyList()).setStrategy_options(create.getStrategyOptions());
 ThriftValidation.validateKsDef(ksd);
 ThriftValidation.validateKeyspaceNotYetExisting(create.getName());
-applyMigrationOnStage(new AddKeyspace(KSMetaData.fromThrift(ksd)));
+MigrationManager.announceNewKeyspace(KSMetaData.fromThrift(ksd));
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());
@@ -170,7 +171,8 @@ validateSchemaAgreement();
 CFMetaData cfmd=createCf.getCFMetaData(keyspace,variables);
 ThriftValidation.validateCfDef(cfmd.toThrift(),null);
 try {
-applyMigrationOnStage(new AddColumnFamily(cfmd));
+MigrationManager.announceNewColumnFamily(cfmd);
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
@@ -202,7 +204,8 @@ if (!columnExists) throw new InvalidRequestException("No column definition found
 CFMetaData.addDefaultIndexNames(cf_def);
 ThriftValidation.validateCfDef(cf_def,oldCfm);
 try {
-applyMigrationOnStage(new UpdateColumnFamily(CFMetaData.fromThrift(cf_def)));
+MigrationManager.announceColumnFamilyUpdate(CFMetaData.fromThrift(cf_def));
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
@@ -216,7 +219,8 @@ DropIndexStatement dropIdx=(DropIndexStatement)statement.statement;
 clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
-applyMigrationOnStage(dropIdx.generateMutation(clientState.getKeyspace()));
+MigrationManager.announceColumnFamilyUpdate(dropIdx.generateCFMetadataUpdate(clientState.getKeyspace()));
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
@@ -236,7 +240,8 @@ ThriftValidation.validateKeyspaceNotSystem(deleteKeyspace);
 clientState.hasKeyspaceSchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
-applyMigrationOnStage(new DropKeyspace(deleteKeyspace));
+MigrationManager.announceKeyspaceDrop(deleteKeyspace);
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());
@@ -250,7 +255,8 @@ String deleteColumnFamily=(String)statement.statement;
 clientState.hasColumnFamilySchemaAccess(Permission.WRITE);
 validateSchemaAgreement();
 try {
-applyMigrationOnStage(new DropColumnFamily(keyspace,deleteColumnFamily));
+MigrationManager.announceColumnFamilyDrop(keyspace,deleteColumnFamily);
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());
@@ -265,7 +271,8 @@ validateColumnFamily(keyspace,alterTable.columnFamily);
 clientState.hasColumnFamilyAccess(alterTable.columnFamily,Permission.WRITE);
 validateSchemaAgreement();
 try {
-applyMigrationOnStage(new UpdateColumnFamily(CFMetaData.fromThrift(alterTable.getCfDef(keyspace))));
+MigrationManager.announceColumnFamilyUpdate(CFMetaData.fromThrift(alterTable.getCfDef(keyspace)));
+validateSchemaIsSettled();
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());
