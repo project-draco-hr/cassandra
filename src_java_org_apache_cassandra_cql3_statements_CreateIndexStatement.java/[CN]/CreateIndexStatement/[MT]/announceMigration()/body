@@ -1,13 +1,13 @@
 {
   CFMetaData oldCfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
   boolean columnExists=false;
-  CfDef cf_def=oldCfm.toThrift();
-  for (  ColumnDef cd : cf_def.column_metadata) {
+  CFMetaData cfm=oldCfm.clone();
+  for (  ColumnDefinition cd : cfm.getColumn_metadata().values()) {
     if (cd.name.equals(columnName.key)) {
-      if (cd.index_type != null)       throw new InvalidRequestException("Index already exists");
+      if (cd.getIndexType() != null)       throw new InvalidRequestException("Index already exists");
       if (logger.isDebugEnabled())       logger.debug("Updating column {} definition for index {}",columnName,indexName);
-      cd.setIndex_type(IndexType.KEYS);
-      cd.setIndex_name(indexName);
+      cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+      cd.setIndexName(indexName);
       columnExists=true;
       break;
     }
@@ -26,7 +26,6 @@ case VALUE_ALIAS:
 }
 throw new InvalidRequestException("No column definition found for column " + columnName);
 }
-CFMetaData.addDefaultIndexNames(cf_def);
-ThriftValidation.validateCfDef(cf_def,oldCfm);
-MigrationManager.announceColumnFamilyUpdate(CFMetaData.fromThrift(cf_def));
+cfm.addDefaultIndexNames();
+MigrationManager.announceColumnFamilyUpdate(cfm);
 }

@@ -1,4 +1,13 @@
 {
+  if (!isNameValid(ksName))   throw new ConfigurationException(String.format("Invalid keyspace name: shouldn't be empty nor more than 32 character long (got \"%s\")",ksName));
+  if (!isNameValid(cfName))   throw new ConfigurationException(String.format("Invalid keyspace name: shouldn't be empty nor more than 32 character long (got \"%s\")",cfName));
+  if (cfType == null)   throw new ConfigurationException(String.format("Invalid column family type for %s",cfName));
+  if (cfType == ColumnFamilyType.Super) {
+    if (subcolumnComparator == null)     throw new ConfigurationException(String.format("Missing subcolumn comparator for super column family %s",cfName));
+  }
+ else {
+    if (subcolumnComparator != null)     throw new ConfigurationException(String.format("Subcolumn comparator (%s) is invalid for standard column family %s",subcolumnComparator,cfName));
+  }
   if (comparator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid comparator");
   if (subcolumnComparator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid sub-column comparator");
   if (keyValidator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid key validator");
@@ -8,5 +17,40 @@
  else {
     for (    ColumnDefinition def : column_metadata.values())     if (def.getValidator() instanceof CounterColumnType)     throw new ConfigurationException("Cannot add a counter column (" + comparator.getString(def.name) + ") in a non counter column family");
   }
+  for (  ColumnDefinition columndef : column_metadata.values()) {
+    if (keyAlias != null && keyAlias.equals(columndef.name))     throw new ConfigurationException("Cannot have key alias equals to a column name: " + UTF8Type.instance.compose(keyAlias));
+    for (    ByteBuffer alias : columnAliases)     if (alias.equals(columndef.name))     throw new ConfigurationException("Cannot have column alias equals to a column name: " + UTF8Type.instance.compose(alias));
+    if (valueAlias != null && valueAlias.equals(columndef.name))     throw new ConfigurationException("Cannot have value alias equals to a column name: " + UTF8Type.instance.compose(valueAlias));
+  }
+  validateAlias(keyAlias,"Key");
+  for (  ByteBuffer alias : columnAliases)   validateAlias(alias,"Column");
+  validateAlias(valueAlias,"Value");
+  Set<String> indexNames=new HashSet<String>();
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    if (!cfs.getColumnFamilyName().equals(cfName))     for (    ColumnDefinition cd : cfs.metadata.getColumn_metadata().values())     indexNames.add(cd.getIndexName());
+  }
+  AbstractType<?> comparator=getColumnDefinitionComparator();
+  for (  ColumnDefinition c : column_metadata.values()) {
+    try {
+      comparator.validate(c.name);
+    }
+ catch (    MarshalException e) {
+      throw new ConfigurationException(String.format("Column name %s is not valid for comparator %s",ByteBufferUtil.bytesToHex(c.name),comparator));
+    }
+    if (c.getIndexType() == null) {
+      if (c.getIndexName() != null)       throw new ConfigurationException("Index name cannot be set without index type");
+    }
+ else {
+      if (cfType == ColumnFamilyType.Super)       throw new ConfigurationException("Secondary indexes are not supported on super column families");
+      if (!isIndexNameValid(c.getIndexName()))       throw new ConfigurationException("Illegal index name " + c.getIndexName());
+      if (indexNames.contains(c.getIndexName()))       throw new ConfigurationException("Duplicate index name " + c.getIndexName());
+      indexNames.add(c.getIndexName());
+      if (c.getIndexType() == IndexType.CUSTOM) {
+        if (c.getIndexOptions() == null || !c.getIndexOptions().containsKey(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME))         throw new ConfigurationException("Required index option missing: " + SecondaryIndex.CUSTOM_INDEX_OPTION_NAME);
+      }
+      SecondaryIndex.createInstance(null,c);
+    }
+  }
+  validateCompactionThresholds();
   return this;
 }
