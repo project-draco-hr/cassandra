@@ -4,12 +4,12 @@
   if (cf_def.keyspace == null || cf_def.name == null)   throw new InvalidRequestException("Keyspace and CF name must be set.");
   CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
   if (oldCfm == null)   throw new InvalidRequestException("Could not find column family definition to modify.");
-  CFMetaData.addDefaultIndexNames(cf_def);
-  ThriftValidation.validateCfDef(cf_def,oldCfm);
   validateSchemaAgreement();
   try {
     CFMetaData.applyImplicitDefaults(cf_def);
-    MigrationManager.announceColumnFamilyUpdate(CFMetaData.fromThrift(cf_def));
+    CFMetaData cfm=CFMetaData.fromThrift(cf_def);
+    cfm.addDefaultIndexNames();
+    MigrationManager.announceColumnFamilyUpdate(cfm);
     return Schema.instance.getVersion().toString();
   }
  catch (  ConfigurationException e) {
