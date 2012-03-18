@@ -1,8 +1,8 @@
 {
   DecoratedKey vkey=StorageService.getPartitioner().decorateKey(toUTF8Bytes(version));
   Table defs=Table.open(Table.SYSTEM_TABLE);
-  ColumnFamilyStore cfStore=defs.getColumnFamilyStore(Migration.SCHEMA_CF);
-  ColumnFamily cf=cfStore.getColumnFamily(QueryFilter.getIdentityFilter(vkey,new QueryPath(Migration.SCHEMA_CF)));
+  ColumnFamilyStore cfStore=defs.getColumnFamilyStore(OLD_SCHEMA_CF);
+  ColumnFamily cf=cfStore.getColumnFamily(QueryFilter.getIdentityFilter(vkey,new QueryPath(OLD_SCHEMA_CF)));
   IColumn avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
   Collection<KSMetaData> keyspaces=Collections.emptyList();
   if (avroschema != null) {
@@ -17,8 +17,8 @@
     }
     dumpToStorage(keyspaces);
     logger.info("Truncating deprecated system column families (migrations, schema)...");
-    MigrationHelper.dropColumnFamily(Table.SYSTEM_TABLE,Migration.MIGRATIONS_CF,-1,false);
-    MigrationHelper.dropColumnFamily(Table.SYSTEM_TABLE,Migration.SCHEMA_CF,-1,false);
+    dropColumnFamily(Table.SYSTEM_TABLE,OLD_MIGRATIONS_CF);
+    dropColumnFamily(Table.SYSTEM_TABLE,OLD_SCHEMA_CF);
   }
   return keyspaces;
 }

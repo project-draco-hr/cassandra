@@ -1,7 +1,15 @@
 {
+  Future<?> f=StageManager.getStage(Stage.MIGRATION).submit(new Callable<Object>(){
+    public Object call() throws Exception {
+      DefsTable.mergeSchema(schema);
+      return null;
+    }
+  }
+);
   for (  InetAddress endpoint : Gossiper.instance.getLiveMembers()) {
     if (endpoint.equals(FBUtilities.getBroadcastAddress()))     continue;
     if (Gossiper.instance.getVersion(endpoint) < MessagingService.VERSION_11)     continue;
     pushSchemaMutation(endpoint,schema);
   }
+  return f;
 }

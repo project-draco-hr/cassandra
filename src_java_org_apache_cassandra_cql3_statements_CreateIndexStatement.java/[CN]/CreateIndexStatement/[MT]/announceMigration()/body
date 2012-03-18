@@ -1,0 +1,32 @@
+{
+  CFMetaData oldCfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
+  boolean columnExists=false;
+  CfDef cf_def=oldCfm.toThrift();
+  for (  ColumnDef cd : cf_def.column_metadata) {
+    if (cd.name.equals(columnName.key)) {
+      if (cd.index_type != null)       throw new InvalidRequestException("Index already exists");
+      if (logger.isDebugEnabled())       logger.debug("Updating column {} definition for index {}",columnName,indexName);
+      cd.setIndex_type(IndexType.KEYS);
+      cd.setIndex_name(indexName);
+      columnExists=true;
+      break;
+    }
+  }
+  if (!columnExists) {
+    CFDefinition cfDef=oldCfm.getCfDef();
+    CFDefinition.Name name=cfDef.get(columnName);
+    if (name != null) {
+switch (name.kind) {
+case KEY_ALIAS:
+case COLUMN_ALIAS:
+        throw new InvalidRequestException(String.format("Cannot create index on PRIMARY KEY part %s",columnName));
+case VALUE_ALIAS:
+      throw new InvalidRequestException(String.format("Cannot create index on column %s of compact CF",columnName));
+  }
+}
+throw new InvalidRequestException("No column definition found for column " + columnName);
+}
+CFMetaData.addDefaultIndexNames(cf_def);
+ThriftValidation.validateCfDef(cf_def,oldCfm);
+MigrationManager.announceColumnFamilyUpdate(CFMetaData.fromThrift(cf_def));
+}
