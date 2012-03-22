@@ -1,43 +1,43 @@
 {
   CFMetaData meta=Schema.instance.getCFMetaData(keyspace,columnFamily);
-  CfDef cfDef=meta.toThrift();
+  CFMetaData cfm=meta.clone();
   ByteBuffer columnName=this.oType == OperationType.OPTS ? null : meta.comparator.fromString(this.columnName);
 switch (oType) {
 case ADD:
-    if (cfDef.key_alias != null && cfDef.key_alias.equals(columnName))     throw new InvalidRequestException("Invalid column name: " + this.columnName + ", because it equals to key_alias.");
-  cfDef.column_metadata.add(new ColumnDefinition(columnName,TypeParser.parse(validator),null,null,null).toThrift());
+    if (cfm.getKeyAlias() != null && cfm.getKeyAlias().equals(columnName))     throw new InvalidRequestException("Invalid column name: " + this.columnName + ", because it equals to key_alias.");
+  cfm.addColumnDefinition(new ColumnDefinition(columnName,TypeParser.parse(validator),null,null,null));
 break;
 case ALTER:
-if (cfDef.key_alias != null && cfDef.key_alias.equals(columnName)) {
-cfDef.setKey_validation_class(TypeParser.parse(validator).toString());
+if (cfm.getKeyAlias() != null && cfm.getKeyAlias().equals(columnName)) {
+cfm.keyValidator(TypeParser.parse(validator));
 }
  else {
-ColumnDef toUpdate=null;
-for (ColumnDef columnDef : cfDef.column_metadata) {
+ColumnDefinition toUpdate=null;
+for (ColumnDefinition columnDef : cfm.getColumn_metadata().values()) {
   if (columnDef.name.equals(columnName)) {
     toUpdate=columnDef;
     break;
   }
 }
 if (toUpdate == null) throw new InvalidRequestException(String.format("Column '%s' was not found in CF '%s'",this.columnName,columnFamily));
-toUpdate.setValidation_class(TypeParser.parse(validator).toString());
+toUpdate.setValidator(TypeParser.parse(validator));
 }
 break;
 case DROP:
-ColumnDef toDelete=null;
-for (ColumnDef columnDef : cfDef.column_metadata) {
+ColumnDefinition toDelete=null;
+for (ColumnDefinition columnDef : cfm.getColumn_metadata().values()) {
 if (columnDef.name.equals(columnName)) {
 toDelete=columnDef;
 }
 }
 if (toDelete == null) throw new InvalidRequestException(String.format("Column '%s' was not found in CF '%s'",this.columnName,columnFamily));
-cfDef.column_metadata.remove(toDelete);
+cfm.removeColumnDefinition(toDelete);
 break;
 case OPTS:
 if (cfProps == null) throw new InvalidRequestException(String.format("ALTER COLUMNFAMILY WITH invoked, but no parameters found"));
 cfProps.validate();
-applyPropertiesToCfDef(cfDef,cfProps);
+applyPropertiesToCFMetadata(cfm,cfProps);
 break;
 }
-return cfDef;
+return cfm;
 }
