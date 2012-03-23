@@ -20,7 +20,22 @@
   if (prunedBuckets.isEmpty()) {
     for (    List<SSTableReader> bucket : buckets) {
       for (      SSTableReader table : bucket) {
-        if (table.getEstimatedDroppableTombstoneRatio(gcBefore) > tombstoneThreshold)         prunedBuckets.add(Collections.singletonList(table));
+        double droppableRatio=table.getEstimatedDroppableTombstoneRatio(gcBefore);
+        if (droppableRatio <= tombstoneThreshold)         continue;
+        Set<SSTableReader> overlaps=cfs.getOverlappingSSTables(Collections.singleton(table));
+        if (overlaps.isEmpty()) {
+          prunedBuckets.add(Collections.singletonList(table));
+        }
+ else {
+          long keys=table.estimatedKeys();
+          Set<Range<Token>> ranges=new HashSet<Range<Token>>();
+          for (          SSTableReader overlap : overlaps)           ranges.add(new Range<Token>(overlap.first.token,overlap.last.token));
+          long remainingKeys=keys - table.estimatedKeysForRanges(ranges);
+          double remainingKeysRatio=((double)remainingKeys) / keys;
+          long columns=table.getEstimatedColumnCount().percentile(remainingKeysRatio) * remainingKeys;
+          double remainingColumnsRatio=((double)columns) / (table.getEstimatedColumnCount().count() * table.getEstimatedColumnCount().mean());
+          if (remainingColumnsRatio * droppableRatio > tombstoneThreshold)           prunedBuckets.add(Collections.singletonList(table));
+        }
       }
     }
     if (prunedBuckets.isEmpty())     return null;
