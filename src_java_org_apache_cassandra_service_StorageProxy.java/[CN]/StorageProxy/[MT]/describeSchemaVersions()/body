@@ -3,11 +3,10 @@
   final Map<InetAddress,UUID> versions=new ConcurrentHashMap<InetAddress,UUID>();
   final Set<InetAddress> liveHosts=Gossiper.instance.getLiveMembers();
   final CountDownLatch latch=new CountDownLatch(liveHosts.size());
-  IAsyncCallback cb=new IAsyncCallback(){
-    public void response(    MessageIn message){
-      logger.debug("Received schema check response from {}",message.getFrom().getHostAddress());
-      UUID theirVersion=UUID.fromString(new String(message.getMessageBody()));
-      versions.put(message.getFrom(),theirVersion);
+  IAsyncCallback<UUID> cb=new IAsyncCallback<UUID>(){
+    public void response(    MessageIn<UUID> message){
+      logger.debug("Received schema check response from {}",message.from.getHostAddress());
+      versions.put(message.from,message.payload);
       latch.countDown();
     }
     public boolean isLatencyForSnitch(){

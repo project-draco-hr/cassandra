@@ -1,0 +1,22 @@
+{
+  try {
+    RowMutation rm=message.payload;
+    if (logger.isDebugEnabled())     logger.debug("Applying " + rm);
+    InetAddress replyTo=message.from;
+    byte[] from=message.parameters.get(RowMutation.FORWARD_FROM);
+    if (from == null) {
+      byte[] forwardBytes=message.parameters.get(RowMutation.FORWARD_TO);
+      if (forwardBytes != null && message.version >= MessagingService.VERSION_11)       forwardToLocalNodes(rm,message.verb,forwardBytes,message.from);
+    }
+ else {
+      replyTo=InetAddress.getByAddress(from);
+    }
+    rm.apply();
+    WriteResponse response=new WriteResponse(rm.getTable(),rm.key(),true);
+    if (logger.isDebugEnabled())     logger.debug(rm + " applied.  Sending response to " + id+ "@"+ replyTo);
+    MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
+  }
+ catch (  IOException e) {
+    logger.error("Error in row mutation",e);
+  }
+}

@@ -1,0 +1,21 @@
+{
+  try {
+    Truncation t=message.payload;
+    logger.debug("Applying {}",t);
+    try {
+      ColumnFamilyStore cfs=Table.open(t.keyspace).getColumnFamilyStore(t.columnFamily);
+      cfs.truncate().get();
+    }
+ catch (    Exception e) {
+      logger.error("Error in truncation",e);
+      respondError(t,message);
+    }
+    logger.debug("Truncate operation succeeded at this host");
+    TruncateResponse response=new TruncateResponse(t.keyspace,t.columnFamily,true);
+    logger.debug("{} applied.  Sending response to {}@{} ",new Object[]{t,id,message.from});
+    MessagingService.instance().sendReply(response.createMessage(),id,message.from);
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+}

@@ -6,10 +6,10 @@
       logger.error("Can't send migration request: node {} is down.",endpoint);
       return;
     }
-    IAsyncResult iar=MessagingService.instance().sendRR(message,endpoint);
+    IAsyncResult<Collection<RowMutation>> iar=MessagingService.instance().sendRR(message,endpoint);
     try {
-      byte[] reply=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
-      DefsTable.mergeRemoteSchema(reply,Gossiper.instance.getVersion(endpoint));
+      Collection<RowMutation> schema=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+      DefsTable.mergeSchema(schema);
       return;
     }
  catch (    TimeoutException e) {
