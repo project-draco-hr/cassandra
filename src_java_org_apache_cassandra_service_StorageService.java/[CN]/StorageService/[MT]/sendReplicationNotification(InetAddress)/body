@@ -1,0 +1,14 @@
+{
+  MessageOut msg=new MessageOut(StorageService.Verb.REPLICATION_FINISHED);
+  IFailureDetector failureDetector=FailureDetector.instance;
+  if (logger.isDebugEnabled())   logger.debug("Notifying " + remote.toString() + " of replication completion\n");
+  while (failureDetector.isAlive(remote)) {
+    IAsyncResult iar=MessagingService.instance().sendRR(msg,remote);
+    try {
+      iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
+      return;
+    }
+ catch (    TimeoutException e) {
+    }
+  }
+}

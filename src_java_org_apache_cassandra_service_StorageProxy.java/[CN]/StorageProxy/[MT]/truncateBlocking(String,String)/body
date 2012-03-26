@@ -9,8 +9,8 @@
   final TruncateResponseHandler responseHandler=new TruncateResponseHandler(blockFor);
   logger.debug("Starting to send truncate messages to hosts {}",allEndpoints);
   final Truncation truncation=new Truncation(keyspace,cfname);
-  MessageProducer producer=new CachingMessageProducer(truncation);
-  for (  InetAddress endpoint : allEndpoints)   MessagingService.instance().sendRR(producer,endpoint,responseHandler);
+  MessageOut<Truncation> message=truncation.createMessage();
+  for (  InetAddress endpoint : allEndpoints)   MessagingService.instance().sendRR(message,endpoint,responseHandler);
   logger.debug("Sent all truncate messages, now waiting for {} responses",blockFor);
   responseHandler.get();
   logger.debug("truncate done");

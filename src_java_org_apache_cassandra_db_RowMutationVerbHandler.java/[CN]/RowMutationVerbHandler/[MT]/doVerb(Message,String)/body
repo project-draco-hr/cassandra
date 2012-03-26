@@ -2,13 +2,19 @@
   try {
     RowMutation rm=RowMutation.fromBytes(message.getMessageBody(),message.getVersion());
     if (logger.isDebugEnabled())     logger.debug("Applying " + rm);
-    byte[] forwardBytes=message.getHeader(RowMutation.FORWARD_HEADER);
-    if (forwardBytes != null && message.getVersion() >= MessagingService.VERSION_11)     forwardToLocalNodes(message,forwardBytes);
+    InetAddress replyTo=message.getFrom();
+    byte[] from=message.getHeader(RowMutation.FORWARD_FROM);
+    if (from != null) {
+      replyTo=InetAddress.getByAddress(from);
+    }
+ else {
+      byte[] forwardBytes=message.getHeader(RowMutation.FORWARD_TO);
+      if (forwardBytes != null && message.getVersion() >= MessagingService.VERSION_11)       forwardToLocalNodes(rm,message.getVerb(),forwardBytes,message.getFrom());
+    }
     rm.apply();
     WriteResponse response=new WriteResponse(rm.getTable(),rm.key(),true);
-    Message responseMessage=WriteResponse.makeWriteResponseMessage(message,response);
-    if (logger.isDebugEnabled())     logger.debug(rm + " applied.  Sending response to " + id+ "@"+ message.getFrom());
-    MessagingService.instance().sendReply(responseMessage,id,message.getFrom());
+    if (logger.isDebugEnabled())     logger.debug(rm + " applied.  Sending response to " + id+ "@"+ replyTo);
+    MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
   }
  catch (  IOException e) {
     logger.error("Error in row mutation",e);

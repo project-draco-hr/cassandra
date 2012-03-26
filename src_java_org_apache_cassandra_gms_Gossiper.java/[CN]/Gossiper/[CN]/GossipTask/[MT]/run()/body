@@ -6,15 +6,11 @@
     final List<GossipDigest> gDigests=new ArrayList<GossipDigest>();
     Gossiper.instance.makeRandomGossipDigest(gDigests);
     if (gDigests.size() > 0) {
-      MessageProducer prod=new MessageProducer(){
-        public Message getMessage(        Integer version) throws IOException {
-          return makeGossipDigestSynMessage(gDigests,version);
-        }
-      }
-;
-      boolean gossipedToSeed=doGossipToLiveMember(prod);
-      doGossipToUnreachableMember(prod);
-      if (!gossipedToSeed || liveEndpoints.size() < seeds.size())       doGossipToSeed(prod);
+      GossipDigestSynMessage digestSynMessage=new GossipDigestSynMessage(DatabaseDescriptor.getClusterName(),gDigests);
+      MessageOut<GossipDigestSynMessage> message=new MessageOut<GossipDigestSynMessage>(StorageService.Verb.GOSSIP_DIGEST_SYN,digestSynMessage,GossipDigestSynMessage.serializer());
+      boolean gossipedToSeed=doGossipToLiveMember(message);
+      doGossipToUnreachableMember(message);
+      if (!gossipedToSeed || liveEndpoints.size() < seeds.size())       doGossipToSeed(message);
       if (logger.isTraceEnabled())       logger.trace("Performing status check ...");
       doStatusCheck();
     }
