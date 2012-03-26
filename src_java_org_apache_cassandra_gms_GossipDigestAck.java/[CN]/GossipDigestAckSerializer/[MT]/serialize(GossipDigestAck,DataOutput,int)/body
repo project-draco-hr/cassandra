@@ -1,5 +1,10 @@
 {
   GossipDigestSerializationHelper.serialize(gDigestAckMessage.gDigestList,dos,version);
-  dos.writeBoolean(true);
-  EndpointStatesSerializationHelper.serialize(gDigestAckMessage.epStateMap,dos,version);
+  if (version <= MessagingService.VERSION_10)   dos.writeBoolean(true);
+  dos.writeInt(gDigestAckMessage.epStateMap.size());
+  for (  Map.Entry<InetAddress,EndpointState> entry : gDigestAckMessage.epStateMap.entrySet()) {
+    InetAddress ep=entry.getKey();
+    CompactEndpointSerializationHelper.serialize(ep,dos);
+    EndpointState.serializer().serialize(entry.getValue(),dos,version);
+  }
 }

@@ -1,6 +1,12 @@
 {
   List<GossipDigest> gDigestList=GossipDigestSerializationHelper.deserialize(dis,version);
-  dis.readBoolean();
-  Map<InetAddress,EndpointState> epStateMap=EndpointStatesSerializationHelper.deserialize(dis,version);
+  if (version <= MessagingService.VERSION_10)   dis.readBoolean();
+  int size=dis.readInt();
+  Map<InetAddress,EndpointState> epStateMap=new HashMap<InetAddress,EndpointState>(size);
+  for (int i=0; i < size; ++i) {
+    InetAddress ep=CompactEndpointSerializationHelper.deserialize(dis);
+    EndpointState epState=EndpointState.serializer().deserialize(dis,version);
+    epStateMap.put(ep,epState);
+  }
   return new GossipDigestAck(gDigestList,epStateMap);
 }
