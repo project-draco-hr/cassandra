@@ -16,22 +16,26 @@
       DecoratedKey decoratedKey=null;
       int len=ByteBufferUtil.readShortLength(input);
       boolean firstKey=left == null;
-      boolean lastKey=indexPosition + DBConstants.SHORT_SIZE + len+ DBConstants.LONG_SIZE == indexSize;
+      boolean lastKeyForUnpromoted=indexPosition + DBConstants.SHORT_SIZE + len+ DBConstants.LONG_SIZE == indexSize;
       boolean shouldAddEntry=indexSummary.shouldAddEntry();
-      if (shouldAddEntry || cacheLoading || recreatebloom|| firstKey|| lastKey) {
+      if (shouldAddEntry || cacheLoading || recreatebloom|| firstKey|| lastKeyForUnpromoted|| descriptor.hasPromotedIndexes) {
         decoratedKey=decodeKey(partitioner,descriptor,ByteBufferUtil.read(input,len));
         if (firstKey)         left=decoratedKey;
-        if (lastKey)         right=decoratedKey;
+        right=decoratedKey;
       }
  else {
         FileUtils.skipBytesFully(input,len);
       }
-      RowIndexEntry indexEntry=RowIndexEntry.serializer.deserialize(input,descriptor);
+      RowIndexEntry indexEntry=null;
       if (decoratedKey != null) {
         if (recreatebloom)         bf.add(decoratedKey.key);
         if (shouldAddEntry)         indexSummary.addEntry(decoratedKey,indexPosition);
-        if (cacheLoading && keysToLoadInCache.contains(decoratedKey))         cacheKey(decoratedKey,indexEntry);
+        if (cacheLoading && keysToLoadInCache.contains(decoratedKey)) {
+          indexEntry=RowIndexEntry.serializer.deserialize(input,descriptor);
+          cacheKey(decoratedKey,indexEntry);
+        }
       }
+      if (indexEntry == null)       indexEntry=RowIndexEntry.serializer.deserializePositionOnly(input,descriptor);
       indexSummary.incrementRowid();
       ibuilder.addPotentialBoundary(indexPosition);
       dbuilder.addPotentialBoundary(indexEntry.position);
