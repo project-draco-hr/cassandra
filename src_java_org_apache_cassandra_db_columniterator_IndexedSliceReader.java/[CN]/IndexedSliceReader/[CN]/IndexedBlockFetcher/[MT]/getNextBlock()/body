@@ -10,10 +10,11 @@
   boolean outOfBounds=false;
   long positionToSeek=basePosition + curColPosition.offset;
   if (file == null)   file=originalInput == null ? sstable.getFileDataInput(positionToSeek) : originalInput;
+  IColumnSerializer columnSerializer=emptyColumnFamily.getColumnSerializer();
   file.seek(positionToSeek);
   FileMark mark=file.mark();
   while (file.bytesPastMark(mark) < curColPosition.width && !outOfBounds) {
-    IColumn column=emptyColumnFamily.getColumnSerializer().deserialize(file);
+    IColumn column=columnSerializer.deserialize(file);
     if (reversed)     blockColumns.addFirst(column);
  else     blockColumns.addLast(column);
     if (!reversed && finishColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),finishColumn) >= 0;
