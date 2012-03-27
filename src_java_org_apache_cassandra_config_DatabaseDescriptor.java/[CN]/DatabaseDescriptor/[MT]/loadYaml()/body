@@ -175,6 +175,13 @@ catch (      Exception e) {
       if (conf.saved_caches_directory == null)       throw new ConfigurationException("saved_caches_directory missing");
     }
     if (conf.initial_token != null)     partitioner.getTokenFactory().validate(conf.initial_token);
+    try {
+      keyCacheSizeInMB="auto".equalsIgnoreCase(conf.key_cache_size_in_mb) ? Math.min((int)(Runtime.getRuntime().totalMemory() * 0.05 / 1024 / 1024),100) : Integer.valueOf(conf.key_cache_size_in_mb);
+      if (keyCacheSizeInMB < 0)       throw new NumberFormatException();
+    }
+ catch (    NumberFormatException e) {
+      throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '" + conf.key_cache_size_in_mb + "', supported values are 'auto' and <integer> >= 0.");
+    }
     rowCacheProvider=FBUtilities.newCacheProvider(conf.row_cache_provider);
     KSMetaData systemMeta=KSMetaData.systemKeyspace();
     Schema.instance.load(CFMetaData.StatusCf);
