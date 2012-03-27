@@ -1,5 +1,11 @@
 {
+  retries++;
+  if (retries > DatabaseDescriptor.getMaxStreamingRetries()) {
+    logger.error(String.format("Failed streaming session %d from %s while receiving %s",getSessionId(),getHost().toString(),current),new IllegalStateException("Too many retries for " + remoteFile));
+    closeInternal(false);
+    return;
+  }
   StreamReply reply=new StreamReply(remoteFile.getFilename(),getSessionId(),StreamReply.Status.FILE_RETRY);
-  logger.info("Streaming of file {} from {} failed: requesting a retry.",remoteFile,this);
+  logger.info("Streaming of file {} for {} failed: requesting a retry.",remoteFile,this);
   sendMessage(reply.getMessage(Gossiper.instance.getVersion(getHost())));
 }
