@@ -4,14 +4,19 @@
   CfDef columnFamily=getCfDef(cfName);
   String assumptionElement=statement.getChild(1).getText().toUpperCase();
   AbstractType comparator;
-  String defaultType=statement.getChild(2).getText();
+  String defaultType=CliUtils.unescapeSQLString(statement.getChild(2).getText());
   try {
-    comparator=Function.valueOf(defaultType.toUpperCase()).getValidator();
+    comparator=TypeParser.parse(defaultType);
   }
- catch (  Exception e) {
-    String functions=Function.getFunctionNames();
-    sessionState.out.println("Type '" + defaultType + "' was not found. Available: "+ functions);
-    return;
+ catch (  ConfigurationException e) {
+    try {
+      comparator=Function.valueOf(defaultType.toUpperCase()).getValidator();
+    }
+ catch (    Exception ne) {
+      String functions=Function.getFunctionNames();
+      sessionState.out.println("Type '" + defaultType + "' was not found. Available: "+ functions+ " Or any class which extends o.a.c.db.marshal.AbstractType.");
+      return;
+    }
   }
   defaultType=comparator.getClass().getName();
   if (assumptionElement.equals("COMPARATOR")) {
