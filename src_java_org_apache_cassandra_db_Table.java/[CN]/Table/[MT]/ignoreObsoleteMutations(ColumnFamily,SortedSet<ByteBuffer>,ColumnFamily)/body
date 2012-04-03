@@ -4,14 +4,14 @@
     ByteBuffer name=iter.next();
     IColumn newColumn=cf.getColumn(name);
     if (newColumn != null && cf.isMarkedForDelete()) {
-      if (newColumn.timestamp() <= cf.getMarkedForDeleteAt()) {
+      if (cf.deletionInfo().isDeleted(newColumn)) {
         newColumn=null;
       }
     }
     IColumn oldColumn=oldIndexedColumns.getColumn(name);
     boolean bothDeleted=(newColumn == null || newColumn.isMarkedForDelete()) && (oldColumn == null || oldColumn.isMarkedForDelete());
-    boolean obsoleteRowTombstone=newColumn == null && oldColumn != null && cf.getMarkedForDeleteAt() < oldColumn.timestamp();
-    boolean obsoleteColumn=newColumn != null && (newColumn.timestamp() <= oldIndexedColumns.getMarkedForDeleteAt() || (oldColumn != null && oldColumn.reconcile(newColumn) == oldColumn));
+    boolean obsoleteRowTombstone=newColumn == null && oldColumn != null && !cf.deletionInfo().isDeleted(oldColumn);
+    boolean obsoleteColumn=newColumn != null && (oldIndexedColumns.deletionInfo().isDeleted(newColumn) || (oldColumn != null && oldColumn.reconcile(newColumn) == oldColumn));
     if (bothDeleted || obsoleteRowTombstone || obsoleteColumn) {
       if (logger.isDebugEnabled())       logger.debug("skipping index update for obsolete mutation of " + cf.getComparator().getString(name));
       iter.remove();

@@ -1,5 +1,5 @@
 {
-  final List<CloseableIterator<IColumnIterator>> iterators=new ArrayList<CloseableIterator<IColumnIterator>>();
+  final List<CloseableIterator<OnDiskAtomIterator>> iterators=new ArrayList<CloseableIterator<OnDiskAtomIterator>>();
   for (  Memtable memtable : memtables) {
     iterators.add(new ConvertToColumnIterator(filter,memtable.getEntryIterator(startWith,stopAt)));
   }
@@ -8,15 +8,15 @@
     scanner.seekTo(startWith);
     iterators.add(scanner);
   }
-  return MergeIterator.get(iterators,COMPARE_BY_KEY,new MergeIterator.Reducer<IColumnIterator,Row>(){
+  return MergeIterator.get(iterators,COMPARE_BY_KEY,new MergeIterator.Reducer<OnDiskAtomIterator,Row>(){
     private final int gcBefore=(int)(System.currentTimeMillis() / 1000) - cfs.metadata.getGcGraceSeconds();
-    private final List<IColumnIterator> colIters=new ArrayList<IColumnIterator>();
+    private final List<OnDiskAtomIterator> colIters=new ArrayList<OnDiskAtomIterator>();
     private DecoratedKey key;
     private ColumnFamily returnCF;
     @Override protected void onKeyChange(){
       this.returnCF=ColumnFamily.create(cfs.metadata);
     }
-    public void reduce(    IColumnIterator current){
+    public void reduce(    OnDiskAtomIterator current){
       this.colIters.add(current);
       this.key=current.getKey();
       this.returnCF.delete(current.getColumnFamily());
@@ -24,7 +24,7 @@
     protected Row getReduced(){
       ColumnFamily cached=cfs.getRawCachedRow(key);
       if (cached == null) {
-        filter.collateColumns(returnCF,colIters,gcBefore);
+        filter.collateOnDiskAtom(returnCF,colIters,gcBefore);
       }
  else {
         QueryFilter keyFilter=new QueryFilter(key,filter.path,filter.filter);

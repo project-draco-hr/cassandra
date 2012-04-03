@@ -1,0 +1,23 @@
+{
+  long size=0;
+  if (ranges.isEmpty())   return size;
+  List<RangeTombstone> toWrite=new LinkedList<RangeTombstone>();
+  outer:   for (  RangeTombstone tombstone : ranges) {
+    if (comparator.compare(firstColumn.name(),tombstone.max) > 0)     continue;
+    RangeTombstone updated=new RangeTombstone(firstColumn.name(),tombstone.max,tombstone.data);
+    Iterator<RangeTombstone> iter=toWrite.iterator();
+    while (iter.hasNext()) {
+      RangeTombstone other=iter.next();
+      if (other.supersedes(updated,comparator))       break outer;
+      if (updated.supersedes(other,comparator))       iter.remove();
+    }
+    toWrite.add(tombstone);
+  }
+  TypeSizes typeSizes=TypeSizes.NATIVE;
+  for (  RangeTombstone tombstone : toWrite) {
+    size+=tombstone.serializedSize(typeSizes);
+    atomCount++;
+    if (out != null)     atomSerializer.serializeForSSTable(tombstone,out);
+  }
+  return size;
+}

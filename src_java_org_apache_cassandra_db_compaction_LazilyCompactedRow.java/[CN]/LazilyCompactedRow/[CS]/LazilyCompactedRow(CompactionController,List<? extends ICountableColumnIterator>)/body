@@ -3,12 +3,17 @@
   this.rows=rows;
   this.controller=controller;
   this.shouldPurge=controller.shouldPurge(key);
-  for (  IColumnIterator row : rows) {
+  for (  OnDiskAtomIterator row : rows) {
     ColumnFamily cf=row.getColumnFamily();
     if (emptyColumnFamily == null)     emptyColumnFamily=cf;
  else     emptyColumnFamily.delete(cf);
   }
-  this.columnsIndex=new ColumnIndex.Builder(emptyColumnFamily.getComparator(),key.key,getEstimatedColumnCount()).build(this);
+  try {
+    indexAndWrite(null);
+  }
+ catch (  IOException e) {
+    throw new AssertionError();
+  }
   columnStats=new ColumnStats(reducer == null ? 0 : reducer.columns,reducer == null ? Long.MIN_VALUE : reducer.maxTimestampSeen,reducer == null ? new StreamingHistogram(SSTable.TOMBSTONE_HISTOGRAM_BIN_SIZE) : reducer.tombstones);
   columnSerializedSize=reducer == null ? 0 : reducer.serializedSize;
   reducer=null;

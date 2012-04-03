@@ -1,0 +1,22 @@
+{
+  atomCount++;
+  if (column instanceof IColumn)   result.bloomFilter.add(column.name());
+  if (firstColumn == null) {
+    firstColumn=column;
+    startPosition=endPosition;
+    endPosition+=tombstoneTracker.writeOpenedMarker(firstColumn,output,atomSerializer);
+    blockSize=0;
+  }
+  long size=column.serializedSizeForSSTable();
+  endPosition+=size;
+  blockSize+=size;
+  if (blockSize >= DatabaseDescriptor.getColumnIndexSize()) {
+    IndexHelper.IndexInfo cIndexInfo=new IndexHelper.IndexInfo(firstColumn.name(),column.name(),indexOffset + startPosition,endPosition - startPosition);
+    result.columnsIndex.add(cIndexInfo);
+    firstColumn=null;
+    lastBlockClosing=column;
+  }
+  if (output != null)   atomSerializer.serializeForSSTable(column,output);
+  tombstoneTracker.update(column);
+  lastColumn=column;
+}

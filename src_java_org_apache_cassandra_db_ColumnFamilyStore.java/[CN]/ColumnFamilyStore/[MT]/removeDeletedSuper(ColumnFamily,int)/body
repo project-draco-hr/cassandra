@@ -2,19 +2,16 @@
   Iterator<IColumn> iter=cf.iterator();
   while (iter.hasNext()) {
     SuperColumn c=(SuperColumn)iter.next();
-    long minTimestamp=Math.max(c.getMarkedForDeleteAt(),cf.getMarkedForDeleteAt());
     Iterator<IColumn> subIter=c.getSubColumns().iterator();
     while (subIter.hasNext()) {
       IColumn subColumn=subIter.next();
-      if (subColumn.timestamp() <= minTimestamp || subColumn.getLocalDeletionTime() < gcBefore) {
+      if (subColumn.getLocalDeletionTime() < gcBefore || cf.deletionInfo().isDeleted(c.name(),subColumn.timestamp()) || c.deletionInfo().isDeleted(subColumn)) {
         subIter.remove();
       }
     }
-    if (c.getSubColumns().isEmpty() && (!c.isMarkedForDelete() || c.getLocalDeletionTime() < gcBefore)) {
+    c.maybeResetDeletionTimes(gcBefore);
+    if (c.getSubColumns().isEmpty() && !c.isMarkedForDelete()) {
       iter.remove();
-    }
- else {
-      c.maybeResetDeletionTimes(gcBefore);
     }
   }
 }

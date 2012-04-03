@@ -1,17 +1,31 @@
 {
-  ColumnFamily purged=PrecompactedRow.removeDeletedAndOldShards(key,shouldPurge,controller,container);
-  if (purged == null || !purged.iterator().hasNext()) {
+  if (tombstone != null) {
+    RangeTombstone t=tombstone;
+    tombstone=null;
+    if (t.data.isGcAble(controller.gcBefore)) {
+      return null;
+    }
+ else {
+      serializedSize+=t.serializedSizeForSSTable();
+      return t;
+    }
+  }
+ else {
+    ColumnFamily purged=PrecompactedRow.removeDeletedAndOldShards(key,shouldPurge,controller,container);
+    if (purged == null || !purged.iterator().hasNext()) {
+      container.clear();
+      return null;
+    }
+    IColumn reduced=purged.iterator().next();
     container.clear();
-    return null;
+    if (indexBuilder.tombstoneTracker().isDeleted(reduced))     return null;
+    serializedSize+=reduced.serializedSizeForSSTable();
+    columns++;
+    maxTimestampSeen=Math.max(maxTimestampSeen,reduced.maxTimestamp());
+    int deletionTime=reduced.getLocalDeletionTime();
+    if (deletionTime < Integer.MAX_VALUE) {
+      tombstones.update(deletionTime);
+    }
+    return reduced;
   }
-  IColumn reduced=purged.iterator().next();
-  container.clear();
-  serializedSize+=reduced.serializedSize(TypeSizes.NATIVE);
-  columns++;
-  maxTimestampSeen=Math.max(maxTimestampSeen,reduced.maxTimestamp());
-  int deletionTime=reduced.getLocalDeletionTime();
-  if (deletionTime < Integer.MAX_VALUE) {
-    tombstones.update(deletionTime);
-  }
-  return reduced;
 }

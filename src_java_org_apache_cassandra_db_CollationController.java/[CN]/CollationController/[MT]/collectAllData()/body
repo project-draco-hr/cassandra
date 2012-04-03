@@ -2,38 +2,38 @@
   logger.debug("collectAllData");
   ISortedColumns.Factory factory=mutableColumns ? cfs.metadata.cfType == ColumnFamilyType.Super ? ThreadSafeSortedColumns.factory() : AtomicSortedColumns.factory() : ArrayBackedSortedColumns.factory();
   ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
-  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>(Iterables.size(view.memtables) + view.sstables.size());
+  List<OnDiskAtomIterator> iterators=new ArrayList<OnDiskAtomIterator>(Iterables.size(view.memtables) + view.sstables.size());
   ColumnFamily returnCF=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
   try {
     for (    Memtable memtable : view.memtables) {
-      IColumnIterator iter=filter.getMemtableColumnIterator(memtable);
+      OnDiskAtomIterator iter=filter.getMemtableColumnIterator(memtable);
       if (iter != null) {
         returnCF.delete(iter.getColumnFamily());
         iterators.add(iter);
       }
     }
     long mostRecentRowTombstone=Long.MIN_VALUE;
-    Map<IColumnIterator,Long> iteratorMaxTimes=Maps.newHashMapWithExpectedSize(view.sstables.size());
+    Map<OnDiskAtomIterator,Long> iteratorMaxTimes=Maps.newHashMapWithExpectedSize(view.sstables.size());
     for (    SSTableReader sstable : view.sstables) {
       if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       continue;
-      IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
+      OnDiskAtomIterator iter=filter.getSSTableColumnIterator(sstable);
       iteratorMaxTimes.put(iter,sstable.getMaxTimestamp());
       if (iter.getColumnFamily() != null) {
         ColumnFamily cf=iter.getColumnFamily();
-        if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.getMarkedForDeleteAt();
+        if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().maxTimestamp();
         returnCF.delete(cf);
         sstablesIterated++;
       }
     }
-    for (    Map.Entry<IColumnIterator,Long> entry : iteratorMaxTimes.entrySet()) {
+    for (    Map.Entry<OnDiskAtomIterator,Long> entry : iteratorMaxTimes.entrySet()) {
       if (entry.getValue() >= mostRecentRowTombstone)       iterators.add(entry.getKey());
     }
     if (iterators.isEmpty())     return null;
-    filter.collateColumns(returnCF,iterators,gcBefore);
+    filter.collateOnDiskAtom(returnCF,iterators,gcBefore);
     return returnCF;
   }
   finally {
-    for (    IColumnIterator iter : iterators)     FileUtils.closeQuietly(iter);
+    for (    OnDiskAtomIterator iter : iterators)     FileUtils.closeQuietly(iter);
     SSTableReader.releaseReferences(view.sstables);
   }
 }

@@ -1,4 +1,5 @@
 {
+  this.sstable=sstable;
   this.finishColumn=finishColumn;
   this.comparator=sstable.metadata.comparator;
   try {
@@ -13,11 +14,13 @@
     }
     ByteBufferUtil.skipShortLength(file);
     SSTableReader.readRowSize(file,sstable.descriptor);
-    if (!sstable.descriptor.hasPromotedIndexes) {
+    if (!sstable.descriptor.version.hasPromotedIndexes) {
       IndexHelper.skipBloomFilter(file);
       IndexHelper.skipIndex(file);
     }
-    emptyColumnFamily=ColumnFamily.serializer.deserializeFromSSTableNoColumns(ColumnFamily.create(sstable.metadata),file);
+    emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+    emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+    atomSerializer=emptyColumnFamily.getOnDiskSerializer();
     columns=file.readInt();
     mark=file.mark();
   }

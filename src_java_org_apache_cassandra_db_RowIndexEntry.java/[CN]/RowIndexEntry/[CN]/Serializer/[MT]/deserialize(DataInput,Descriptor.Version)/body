@@ -1,0 +1,20 @@
+{
+  long position=dis.readLong();
+  if (version.hasPromotedIndexes) {
+    int size=dis.readInt();
+    if (size > 0) {
+      DeletionInfo delInfo=DeletionInfo.serializer().deserializeFromSSTable(dis,version);
+      int entries=dis.readInt();
+      List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<IndexHelper.IndexInfo>(entries);
+      for (int i=0; i < entries; i++)       columnsIndex.add(IndexHelper.IndexInfo.deserialize(dis));
+      Filter bf=FilterFactory.deserialize(dis,version.filterType);
+      return new IndexedEntry(position,delInfo,columnsIndex,bf);
+    }
+ else {
+      return new RowIndexEntry(position);
+    }
+  }
+ else {
+    return new RowIndexEntry(position);
+  }
+}

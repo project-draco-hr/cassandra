@@ -7,14 +7,15 @@
   this.expireBefore=(int)(System.currentTimeMillis() / 1000);
   this.flag=flag;
   this.validateColumns=checkData;
+  this.dataVersion=sstable == null ? Descriptor.Version.CURRENT : sstable.descriptor.version;
   try {
     if (input instanceof RandomAccessReader) {
       RandomAccessReader file=(RandomAccessReader)input;
       file.seek(this.dataStart);
       if (dataStart + dataSize > file.length())       throw new IOException(String.format("dataSize of %s starting at %s would be larger than file %s length %s",dataSize,dataStart,file.getPath(),file.length()));
-      if (checkData && !sstable.descriptor.hasPromotedIndexes) {
+      if (checkData && !sstable.descriptor.version.hasPromotedIndexes) {
         try {
-          IndexHelper.defreezeBloomFilter(file,dataSize,sstable.descriptor.filterType);
+          IndexHelper.defreezeBloomFilter(file,dataSize,sstable.descriptor.version.filterType);
         }
  catch (        Exception e) {
           if (e instanceof EOFException)           throw (EOFException)e;
@@ -30,12 +31,13 @@
         inputWithTracker.reset(0);
       }
     }
-    if (sstable != null && !sstable.descriptor.hasPromotedIndexes) {
+    if (sstable != null && !sstable.descriptor.version.hasPromotedIndexes) {
       IndexHelper.skipBloomFilter(inputWithTracker);
       IndexHelper.skipIndex(inputWithTracker);
     }
     columnFamily=ColumnFamily.create(metadata);
-    ColumnFamily.serializer.deserializeFromSSTableNoColumns(columnFamily,inputWithTracker);
+    columnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(inputWithTracker,dataVersion));
+    atomSerializer=columnFamily.getOnDiskSerializer();
     columnCount=inputWithTracker.readInt();
     columnPosition=dataStart + inputWithTracker.getBytesRead();
   }

@@ -1,8 +1,7 @@
 {
-  Holder current;
-  do {
-    current=ref.get();
-    if (current.deletionInfo.localDeletionTime > gcBefore)     break;
+  while (true) {
+    Holder current=ref.get();
+    DeletionInfo purgedInfo=current.deletionInfo.purge(gcBefore);
+    if (purgedInfo == current.deletionInfo || ref.compareAndSet(current,current.with(DeletionInfo.LIVE)))     break;
   }
- while (!ref.compareAndSet(current,current.with(DeletionInfo.LIVE)));
 }

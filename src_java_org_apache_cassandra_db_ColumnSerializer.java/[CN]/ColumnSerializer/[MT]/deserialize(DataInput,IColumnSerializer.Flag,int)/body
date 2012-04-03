@@ -1,31 +1,6 @@
 {
   ByteBuffer name=ByteBufferUtil.readWithShortLength(dis);
-  if (name.remaining() <= 0) {
-    String format="invalid column name length %d%s";
-    String details="";
-    if (dis instanceof FileDataInput) {
-      FileDataInput fdis=(FileDataInput)dis;
-      details=String.format(" (%s, %d bytes remaining)",fdis.getPath(),fdis.bytesRemaining());
-    }
-    throw new CorruptColumnException(String.format(format,name.remaining(),details));
-  }
+  if (name.remaining() <= 0)   throw CorruptColumnException.create(dis,name);
   int b=dis.readUnsignedByte();
-  if ((b & COUNTER_MASK) != 0) {
-    long timestampOfLastDelete=dis.readLong();
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return CounterColumn.create(name,value,ts,timestampOfLastDelete,flag);
-  }
- else   if ((b & EXPIRATION_MASK) != 0) {
-    int ttl=dis.readInt();
-    int expiration=dis.readInt();
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return ExpiringColumn.create(name,value,ts,ttl,expiration,expireBefore,flag);
-  }
- else {
-    long ts=dis.readLong();
-    ByteBuffer value=ByteBufferUtil.readWithLength(dis);
-    return (b & COUNTER_UPDATE_MASK) != 0 ? new CounterUpdateColumn(name,value,ts) : ((b & DELETION_MASK) == 0 ? new Column(name,value,ts) : new DeletedColumn(name,value,ts));
-  }
+  return deserializeColumnBody(dis,name,b,flag,expireBefore);
 }

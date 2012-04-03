@@ -1,9 +1,15 @@
 {
   long startPosition=beforeAppend(decoratedKey);
   ByteBufferUtil.writeWithShortLength(decoratedKey.key,dataFile.stream);
-  ColumnIndex index=new ColumnIndex.Builder(cf.getComparator(),decoratedKey.key,cf.getColumnCount()).build(cf);
-  dataFile.stream.writeLong(ColumnFamily.serializer.serializedSizeForSSTable(cf,typeSizes));
-  ColumnFamily.serializer.serializeForSSTable(cf,dataFile.stream);
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  ColumnIndex.Builder builder=new ColumnIndex.Builder(cf,decoratedKey.key,cf.getColumnCount(),buffer);
+  ColumnIndex index=builder.build(cf);
+  TypeSizes typeSizes=TypeSizes.NATIVE;
+  long delSize=DeletionTime.serializer.serializedSize(cf.deletionInfo().getTopLevelDeletion(),typeSizes);
+  dataFile.stream.writeLong(buffer.getLength() + delSize + typeSizes.sizeof(0));
+  DeletionInfo.serializer().serializeForSSTable(cf.deletionInfo(),dataFile.stream);
+  dataFile.stream.writeInt(builder.writtenAtomCount());
+  dataFile.stream.write(buffer.getData(),0,buffer.getLength());
   afterAppend(decoratedKey,startPosition,cf.deletionInfo(),index);
   sstableMetadataCollector.update(dataFile.getFilePointer() - startPosition,cf.getColumnStats());
 }
