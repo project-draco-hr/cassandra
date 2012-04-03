@@ -3,7 +3,14 @@
   if (old == null)   return false;
   FreeableMemory mem=serialize(value);
   if (mem == null)   return false;
-  V oldValue=deserialize(old);
+  V oldValue;
+  if (!old.reference())   return false;
+  try {
+    oldValue=deserialize(old);
+  }
+  finally {
+    old.unreference();
+  }
   boolean success=oldValue.equals(oldToReplace) && map.replace(key,old,mem);
   if (success)   old.unreference();
  else   mem.unreference();
