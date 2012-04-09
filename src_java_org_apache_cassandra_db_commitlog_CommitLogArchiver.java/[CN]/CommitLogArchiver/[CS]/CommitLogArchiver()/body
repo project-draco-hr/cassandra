@@ -1,0 +1,33 @@
+{
+  Properties commitlog_commands=new Properties();
+  InputStream stream=null;
+  try {
+    stream=getClass().getClassLoader().getResourceAsStream("commitlog_archiving.properties");
+    if (stream == null) {
+      logger.debug("No commitlog_archiving properties found; archive + pitr will be disabled");
+      archiveCommand=null;
+      restoreCommand=null;
+      restoreDirectories=null;
+      restorePointInTime=Long.MAX_VALUE;
+    }
+ else {
+      commitlog_commands.load(stream);
+      archiveCommand=commitlog_commands.getProperty("archive_command");
+      restoreCommand=commitlog_commands.getProperty("restore_command");
+      restoreDirectories=commitlog_commands.getProperty("restore_directories");
+      String targetTime=commitlog_commands.getProperty("restore_point_in_time");
+      try {
+        restorePointInTime=Strings.isNullOrEmpty(targetTime) ? Long.MAX_VALUE : new SimpleDateFormat("yyyy:MM:dd HH:mm:ss").parse(targetTime).getTime();
+      }
+ catch (      ParseException e) {
+        throw new RuntimeException("Unable to parse restore target time",e);
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Unable to load commitlog_archiving.properties",e);
+  }
+ finally {
+    FileUtils.closeQuietly(stream);
+  }
+}
