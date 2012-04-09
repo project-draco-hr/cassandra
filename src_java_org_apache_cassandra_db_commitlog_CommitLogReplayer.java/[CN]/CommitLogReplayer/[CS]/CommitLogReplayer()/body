@@ -1,0 +1,14 @@
+{
+  this.tablesRecovered=new NonBlockingHashSet<Table>();
+  this.futures=new ArrayList<Future<?>>();
+  this.buffer=new byte[4096];
+  this.invalidMutations=new HashMap<Integer,AtomicInteger>();
+  this.replayedCount=new AtomicInteger();
+  this.cfPositions=new HashMap<Integer,ReplayPosition>();
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    ReplayPosition rp=ReplayPosition.getReplayPosition(cfs.getSSTables());
+    cfPositions.put(cfs.metadata.cfId,rp);
+  }
+  this.globalPosition=Ordering.from(ReplayPosition.comparator).min(cfPositions.values());
+  this.checksum=new PureJavaCrc32();
+}
