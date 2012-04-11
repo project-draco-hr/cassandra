@@ -8,7 +8,14 @@
       for (      IColumn c : columnsInOrder(row.cf,variables)) {
         if (c.isMarkedForDelete())         continue;
         thriftColumns=new ArrayList<Column>(selection.size());
-        ByteBuffer[] components=cfDef.isComposite ? ((CompositeType)cfDef.cfm.comparator).split(c.name()) : null;
+        ByteBuffer[] components=null;
+        if (cfDef.isComposite) {
+          components=((CompositeType)cfDef.cfm.comparator).split(c.name());
+        }
+ else         if (sliceRestriction != null) {
+          if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
+          if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
+        }
         for (        Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
           CFDefinition.Name name=p.left;
           ByteBuffer nameAsRequested=p.right.key;
