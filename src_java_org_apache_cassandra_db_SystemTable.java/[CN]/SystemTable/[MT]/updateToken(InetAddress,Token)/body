@@ -4,9 +4,9 @@
     return;
   }
   IPartitioner p=StorageService.getPartitioner();
-  ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,STATUS_CF);
-  cf.addColumn(new Column(p.getTokenFactory().toByteArray(token),ByteBuffer.wrap(ep.getAddress()),FBUtilities.timestampMicros()));
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,RING_KEY);
+  ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,PEERS_CF);
+  cf.addColumn(Column.create(ep,FBUtilities.timestampMicros(),"peer"));
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,p.getTokenFactory().toByteArray(token));
   rm.add(cf);
   try {
     rm.apply();
@@ -14,5 +14,5 @@
  catch (  IOException e) {
     throw new IOError(e);
   }
-  forceBlockingFlush(STATUS_CF);
+  forceBlockingFlush(PEERS_CF);
 }

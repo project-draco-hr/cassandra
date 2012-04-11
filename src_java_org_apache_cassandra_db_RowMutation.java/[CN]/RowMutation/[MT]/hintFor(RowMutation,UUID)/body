@@ -1,0 +1,9 @@
+{
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,UUIDType.instance.decompose(targetId));
+  UUID hintId=UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress());
+  int ttl=Integer.MAX_VALUE;
+  for (  ColumnFamily cf : mutation.getColumnFamilies())   ttl=Math.min(ttl,cf.metadata().getGcGraceSeconds());
+  QueryPath path=new QueryPath(SystemTable.HINTS_CF,null,HintedHandOffManager.comparator.decompose(hintId,MessagingService.current_version));
+  rm.add(path,ByteBuffer.wrap(mutation.getSerializedBuffer(MessagingService.current_version)),System.currentTimeMillis(),ttl);
+  return rm;
+}

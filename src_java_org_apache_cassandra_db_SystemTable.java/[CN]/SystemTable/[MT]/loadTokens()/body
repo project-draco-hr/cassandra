@@ -1,21 +1,6 @@
 {
-  HashMap<Token,InetAddress> tokenMap=new HashMap<Token,InetAddress>();
   IPartitioner p=StorageService.getPartitioner();
-  Table table=Table.open(Table.SYSTEM_TABLE);
-  QueryFilter filter=QueryFilter.getIdentityFilter(decorate(RING_KEY),new QueryPath(STATUS_CF));
-  ColumnFamily cf=ColumnFamilyStore.removeDeleted(table.getColumnFamilyStore(STATUS_CF).getColumnFamily(filter),Integer.MAX_VALUE);
-  if (cf != null) {
-    for (    IColumn column : cf.getSortedColumns()) {
-      try {
-        ByteBuffer v=column.value();
-        byte[] addr=new byte[v.remaining()];
-        ByteBufferUtil.arrayCopy(v,v.position(),addr,0,v.remaining());
-        tokenMap.put(p.getTokenFactory().fromByteArray(column.name()),InetAddress.getByAddress(addr));
-      }
- catch (      UnknownHostException e) {
-        throw new IOError(e);
-      }
-    }
-  }
+  HashMap<Token,InetAddress> tokenMap=new HashMap<Token,InetAddress>();
+  for (  UntypedResultSet.Row row : QueryProcessor.processInternal("SELECT * FROM system.peers"))   tokenMap.put(p.getTokenFactory().fromByteArray(row.getBytes("token_bytes")),row.getInetAddress("peer"));
   return tokenMap;
 }

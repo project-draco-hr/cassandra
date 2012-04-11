@@ -1,13 +1,13 @@
 {
   Table table=Table.open(Table.SYSTEM_TABLE);
-  QueryFilter filter=QueryFilter.getNamesFilter(decorate(LOCATION_KEY),new QueryPath(STATUS_CF),GENERATION);
-  ColumnFamily cf=table.getColumnFamilyStore(STATUS_CF).getColumnFamily(filter);
+  QueryFilter filter=QueryFilter.getNamesFilter(decorate(LOCAL_KEY),new QueryPath(LOCAL_CF),ByteBufferUtil.bytes("gossip_generation"));
+  ColumnFamily cf=table.getColumnFamilyStore(LOCAL_CF).getColumnFamily(filter);
   int generation;
   if (cf == null) {
     generation=(int)(System.currentTimeMillis() / 1000);
   }
  else {
-    final int storedGeneration=ByteBufferUtil.toInt(cf.getColumn(GENERATION).value()) + 1;
+    final int storedGeneration=ByteBufferUtil.toInt(cf.columns.iterator().next().value()) + 1;
     final int now=(int)(System.currentTimeMillis() / 1000);
     if (storedGeneration >= now) {
       logger.warn("Using stored Gossip Generation {} as it is greater than current system time {}.  See CASSANDRA-3654 if you experience problems",storedGeneration,now);
@@ -17,11 +17,11 @@
       generation=now;
     }
   }
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCATION_KEY);
-  cf=ColumnFamily.create(Table.SYSTEM_TABLE,SystemTable.STATUS_CF);
-  cf.addColumn(new Column(GENERATION,ByteBufferUtil.bytes(generation),FBUtilities.timestampMicros()));
+  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCAL_KEY);
+  cf=ColumnFamily.create(Table.SYSTEM_TABLE,SystemTable.LOCAL_CF);
+  cf.addColumn(Column.create(generation,FBUtilities.timestampMicros(),"gossip_generation"));
   rm.add(cf);
   rm.apply();
-  forceBlockingFlush(STATUS_CF);
+  forceBlockingFlush(LOCAL_CF);
   return generation;
 }
