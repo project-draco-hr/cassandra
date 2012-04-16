@@ -1,13 +1,35 @@
 {
   logger.debug("truncating {}",columnFamily);
-  forceBlockingFlush();
-  CommitLog.instance.forceNewSegment();
-  ReplayPosition position=CommitLog.instance.getContext();
-  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all())   cfs.forceFlush();
-  waitForActiveFlushes();
-  CommitLog.instance.discardCompletedSegments(metadata.cfId,position);
+  if (DatabaseDescriptor.isAutoSnapshot()) {
+    forceBlockingFlush();
+  }
+ else {
+    Table.switchLock.writeLock().lock();
+    try {
+      for (      ColumnFamilyStore cfs : concatWithIndexes()) {
+        Memtable mt=cfs.getMemtableThreadSafe();
+        if (!mt.isClean() && !mt.isFrozen()) {
+          mt.cfs.data.renewMemtable();
+        }
+      }
+    }
+  finally {
+      Table.switchLock.writeLock().unlock();
+    }
+  }
+  KSMetaData ksm=Schema.instance.getKSMetaData(this.table.name);
+  if (ksm.durableWrites) {
+    CommitLog.instance.forceNewSegment();
+    ReplayPosition position=CommitLog.instance.getContext();
+    for (    ColumnFamilyStore cfs : ColumnFamilyStore.all())     cfs.forceFlush();
+    waitForActiveFlushes();
+    CommitLog.instance.discardCompletedSegments(metadata.cfId,position);
+  }
   try {
-    Thread.sleep(100);
+    long starttime=System.currentTimeMillis();
+    while ((System.currentTimeMillis() - starttime) < 1) {
+      Thread.sleep(1);
+    }
   }
  catch (  InterruptedException e) {
     throw new AssertionError(e);
