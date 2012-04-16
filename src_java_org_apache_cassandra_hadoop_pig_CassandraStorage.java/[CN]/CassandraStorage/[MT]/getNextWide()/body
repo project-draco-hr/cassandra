@@ -1,0 +1,54 @@
+{
+  CfDef cfDef=getCfDef(loadSignature);
+  ByteBuffer key=null;
+  Tuple tuple=TupleFactory.getInstance().newTuple();
+  DefaultDataBag bag=new DefaultDataBag();
+  try {
+    while (true) {
+      hasNext=reader.nextKeyValue();
+      if (!hasNext) {
+        if (lastRow != null) {
+          if (tuple.size() == 0) {
+            key=(ByteBuffer)reader.getCurrentKey();
+            tuple.append(new DataByteArray(key.array(),key.position() + key.arrayOffset(),key.limit() + key.arrayOffset()));
+          }
+          for (          Map.Entry<ByteBuffer,IColumn> entry : lastRow.entrySet()) {
+            bag.add(columnToTuple(entry.getValue(),cfDef,parseType(cfDef.getComparator_type())));
+          }
+          lastRow=null;
+          tuple.append(bag);
+          return tuple;
+        }
+ else {
+          if (tuple.size() == 1) {
+            tuple.append(bag);
+            return tuple;
+          }
+ else           return null;
+        }
+      }
+      if (key != null && !((ByteBuffer)reader.getCurrentKey()).equals(key)) {
+        lastRow=(SortedMap<ByteBuffer,IColumn>)reader.getCurrentValue();
+        tuple.append(bag);
+        return tuple;
+      }
+      if (key == null) {
+        key=(ByteBuffer)reader.getCurrentKey();
+        tuple.append(new DataByteArray(key.array(),key.position() + key.arrayOffset(),key.limit() + key.arrayOffset()));
+      }
+      SortedMap<ByteBuffer,IColumn> row=(SortedMap<ByteBuffer,IColumn>)reader.getCurrentValue();
+      if (lastRow != null) {
+        for (        Map.Entry<ByteBuffer,IColumn> entry : lastRow.entrySet()) {
+          bag.add(columnToTuple(entry.getValue(),cfDef,parseType(cfDef.getComparator_type())));
+        }
+        lastRow=null;
+      }
+      for (      Map.Entry<ByteBuffer,IColumn> entry : row.entrySet()) {
+        bag.add(columnToTuple(entry.getValue(),cfDef,parseType(cfDef.getComparator_type())));
+      }
+    }
+  }
+ catch (  InterruptedException e) {
+    throw new IOException(e.getMessage());
+  }
+}
