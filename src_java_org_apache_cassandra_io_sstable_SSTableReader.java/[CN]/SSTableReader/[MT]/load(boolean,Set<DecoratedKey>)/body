@@ -1,2 +1,39 @@
 {
+  boolean cacheLoading=keyCache != null && !keysToLoadInCache.isEmpty();
+  SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
+  SegmentedFile.Builder dbuilder=compression ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+  RandomAccessReader primaryIndex=RandomAccessReader.open(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)),true);
+  final boolean summaryLoaded=loadSummary(this,ibuilder,dbuilder);
+  final boolean readIndex=recreatebloom || cacheLoading || !summaryLoaded;
+  try {
+    long indexSize=primaryIndex.length();
+    long histogramCount=sstableMetadata.estimatedRowSize.count();
+    long estimatedKeys=histogramCount > 0 && !sstableMetadata.estimatedRowSize.isOverflowed() ? histogramCount : estimateRowsFromIndex(primaryIndex);
+    if (recreatebloom)     bf=LegacyBloomFilter.getFilter(estimatedKeys,15);
+    if (!summaryLoaded)     indexSummary=new IndexSummary(estimatedKeys);
+    long indexPosition;
+    while (readIndex && (indexPosition=primaryIndex.getFilePointer()) != indexSize) {
+      ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
+      RowIndexEntry indexEntry=RowIndexEntry.serializer.deserialize(primaryIndex,descriptor);
+      DecoratedKey decoratedKey=decodeKey(partitioner,descriptor,key);
+      if (null == first)       first=decoratedKey;
+      last=decoratedKey;
+      if (recreatebloom)       bf.add(decoratedKey.key);
+      if (cacheLoading && keysToLoadInCache.contains(decoratedKey))       cacheKey(decoratedKey,indexEntry);
+      if (!summaryLoaded) {
+        indexSummary.maybeAddEntry(decoratedKey,indexPosition);
+        ibuilder.addPotentialBoundary(indexPosition);
+        dbuilder.addPotentialBoundary(indexEntry.position);
+      }
+    }
+  }
+  finally {
+    FileUtils.closeQuietly(primaryIndex);
+  }
+  first=getMinimalKey(first);
+  last=getMinimalKey(last);
+  indexSummary.complete();
+  ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
+  dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
+  if (readIndex)   saveSummary(this,ibuilder,dbuilder);
 }
