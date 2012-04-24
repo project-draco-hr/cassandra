@@ -6,7 +6,10 @@
     properties.validate();
     CreateColumnFamilyStatement stmt=new CreateColumnFamilyStatement(cfName,properties);
     stmt.setBoundTerms(getBoundsTerms());
-    stmt.columns.putAll(definitions);
+    for (    Map.Entry<ColumnIdentifier,String> entry : definitions.entrySet()) {
+      AbstractType<?> type=CFPropDefs.parseType(entry.getValue());
+      stmt.columns.put(entry.getKey(),type);
+    }
     if (keyAliases.size() == 0)     throw new InvalidRequestException("You must specify a PRIMARY KEY");
  else     if (keyAliases.size() > 1)     throw new InvalidRequestException("You may only specify one PRIMARY KEY");
     stmt.keyAlias=keyAliases.get(0).key;
@@ -38,14 +41,14 @@
       if (stmt.columnAliases.isEmpty())       throw new InvalidRequestException("COMPACT STORAGE requires at least one column part of the clustering key, none found");
       if (stmt.columns.isEmpty())       throw new InvalidRequestException("COMPACT STORAGE requires one definition not part of the PRIMARY KEY, none found");
       if (stmt.columns.size() > 1)       throw new InvalidRequestException(String.format("COMPACT STORAGE allows only one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
-      Map.Entry<ColumnIdentifier,String> lastEntry=stmt.columns.entrySet().iterator().next();
-      stmt.defaultValidator=CFPropDefs.parseType(lastEntry.getValue());
+      Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
+      stmt.defaultValidator=lastEntry.getValue();
       stmt.valueAlias=lastEntry.getKey().key;
       stmt.columns.remove(lastEntry.getKey());
     }
  else {
       if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
-      stmt.defaultValidator=CFDefinition.definitionType;
+      stmt.defaultValidator=(stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : CFDefinition.definitionType;
     }
     return new ParsedStatement.Prepared(stmt);
   }
