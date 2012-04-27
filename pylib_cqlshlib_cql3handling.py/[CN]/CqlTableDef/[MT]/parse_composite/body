@@ -1,0 +1,17 @@
+def parse_composite(self):
+    subtypes = [self.key_validator]
+    if self.comparator.startswith((self.composite_type_name + '(')):
+        subtypenames = self.comparator[(len(self.composite_type_name) + 1):(-1)]
+        subtypes.extend(map(cql_typename, subtypenames.split(',')))
+    else:
+        subtypes.append(cql_typename(self.comparator))
+    value_cols = []
+    if (len(self.column_aliases) > 0):
+        if (len(self.coldefs) > 0):
+            subtypes.pop((-1))
+        else:
+            self.compact_storage = True
+            value_cols = [self.column_class(self.value_alias, self.default_validator)]
+    keycols = map(self.column_class, self.key_components, subtypes)
+    normal_cols = map(self.column_class.from_layout, self.coldefs)
+    self.columns = ((keycols + value_cols) + normal_cols)
