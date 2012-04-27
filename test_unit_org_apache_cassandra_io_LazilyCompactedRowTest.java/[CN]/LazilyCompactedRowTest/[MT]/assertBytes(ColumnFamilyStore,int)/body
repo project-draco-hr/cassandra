@@ -1,9 +1,10 @@
 {
+  AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
   Collection<SSTableReader> sstables=cfs.getSSTables();
-  AbstractCompactionIterable eager=new CompactionIterable(OperationType.UNKNOWN,sstables,new PreCompactingController(cfs,sstables,gcBefore,false));
-  AbstractCompactionIterable lazy=new CompactionIterable(OperationType.UNKNOWN,sstables,new LazilyCompactingController(cfs,sstables,gcBefore,false));
+  AbstractCompactionIterable eager=new CompactionIterable(OperationType.UNKNOWN,strategy.getScanners(sstables),new PreCompactingController(cfs,sstables,gcBefore,false));
+  AbstractCompactionIterable lazy=new CompactionIterable(OperationType.UNKNOWN,strategy.getScanners(sstables),new LazilyCompactingController(cfs,sstables,gcBefore,false));
   assertBytes(cfs,sstables,eager,lazy);
-  eager=new CompactionIterable(OperationType.UNKNOWN,sstables,new PreCompactingController(cfs,sstables,gcBefore,false));
-  AbstractCompactionIterable parallel=new ParallelCompactionIterable(OperationType.UNKNOWN,sstables,new CompactionController(cfs,sstables,gcBefore,false),0);
+  eager=new CompactionIterable(OperationType.UNKNOWN,strategy.getScanners(sstables),new PreCompactingController(cfs,sstables,gcBefore,false));
+  AbstractCompactionIterable parallel=new ParallelCompactionIterable(OperationType.UNKNOWN,strategy.getScanners(sstables),new CompactionController(cfs,sstables,gcBefore,false),0);
   assertBytes(cfs,sstables,eager,parallel);
 }
