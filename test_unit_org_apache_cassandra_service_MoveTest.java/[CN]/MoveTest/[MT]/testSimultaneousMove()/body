@@ -8,7 +8,8 @@
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
-  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
+  List<UUID> hostIds=new ArrayList<UUID>();
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,RING_SIZE);
   final int[] MOVING=new int[]{6,8,9};
   Map<Integer,Token> newTokens=new HashMap<Integer,Token>();
   for (  int movingIndex : MOVING) {
@@ -20,9 +21,9 @@
   tmd=tmd.cloneAfterAllSettled();
   ss.setTokenMetadataUnsafe(tmd);
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
-  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5)));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5),UUID.randomUUID()));
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
-  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7)));
+  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7),UUID.randomUUID()));
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
     tableStrategyMap.put("Keyspace" + i,getStrategy("Keyspace" + i,tmd));
@@ -224,6 +225,6 @@
     assertTrue(endpoints.contains(hosts.get(2)));
   }
   for (  Integer movingIndex : MOVING) {
-    ss.onChange(hosts.get(movingIndex),ApplicationState.STATUS,valueFactory.normal(newTokens.get(movingIndex)));
+    ss.onChange(hosts.get(movingIndex),ApplicationState.STATUS,valueFactory.normal(newTokens.get(movingIndex),hostIds.get(movingIndex)));
   }
 }

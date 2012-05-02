@@ -8,13 +8,15 @@
   ArrayList<Token> endpointTokens=new ArrayList<Token>();
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
-  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
+  List<UUID> hostIds=new ArrayList<UUID>();
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,RING_SIZE);
   final int[] LEAVING=new int[]{6,8,9};
   for (  int leaving : LEAVING)   ss.onChange(hosts.get(leaving),ApplicationState.STATUS,valueFactory.leaving(endpointTokens.get(leaving)));
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
-  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5)));
+  UUID boot1Id=UUID.randomUUID();
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5),boot1Id));
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
-  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7)));
+  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7),UUID.randomUUID()));
   Collection<InetAddress> endpoints=null;
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
@@ -135,7 +137,7 @@
   }
   ss.onChange(hosts.get(LEAVING[0]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[0]),Gossiper.computeExpireTime()));
   ss.onChange(hosts.get(LEAVING[2]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[2]),Gossiper.computeExpireTime()));
-  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(keyTokens.get(5)));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(keyTokens.get(5),boot1Id));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace2").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
