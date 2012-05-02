@@ -1,0 +1,30 @@
+{
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  RowMutation rm;
+  DecoratedKey dk=Util.dk("key1");
+  QueryPath path=new QueryPath("Standard1",null,ByteBufferUtil.bytes("Column1"));
+  rm=new RowMutation("Keyspace1",dk.key);
+  rm.add(path,ByteBufferUtil.bytes("asdf"),0);
+  rm.apply();
+  store.forceBlockingFlush();
+  rm=new RowMutation("Keyspace1",dk.key);
+  rm.delete(new QueryPath("Standard1"),10);
+  rm.apply();
+  rm=new RowMutation("Keyspace1",Util.dk("key2").key);
+  rm.add(path,ByteBufferUtil.bytes("zxcv"),20);
+  rm.apply();
+  store.forceBlockingFlush();
+  QueryFilter filter=QueryFilter.getNamesFilter(dk,path,ByteBufferUtil.bytes("Column1"));
+  CollationController controller=new CollationController(store,false,filter,Integer.MIN_VALUE);
+  controller.getTopLevelColumns();
+  assertEquals(1,controller.getSstablesIterated());
+  rm=new RowMutation("Keyspace1",dk.key);
+  rm.add(path,ByteBufferUtil.bytes("asdf"),5);
+  rm.apply();
+  store.forceBlockingFlush();
+  filter=QueryFilter.getIdentityFilter(dk,path);
+  controller=new CollationController(store,false,filter,Integer.MIN_VALUE);
+  controller.getTopLevelColumns();
+  assertEquals(2,controller.getSstablesIterated());
+}
