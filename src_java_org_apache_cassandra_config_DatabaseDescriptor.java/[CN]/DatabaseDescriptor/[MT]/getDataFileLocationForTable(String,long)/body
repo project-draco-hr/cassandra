@@ -1,3 +1,17 @@
 {
-  return getDataFileLocationForTable(table,expectedCompactedFileSize,true);
+  long maxFreeDisk=0;
+  int maxDiskIndex=0;
+  String dataFileDirectory=null;
+  String[] dataDirectoryForTable=getAllDataFileLocationsForTable(table);
+  for (int i=0; i < dataDirectoryForTable.length; i++) {
+    File f=new File(dataDirectoryForTable[i]);
+    if (maxFreeDisk < f.getUsableSpace()) {
+      maxFreeDisk=f.getUsableSpace();
+      maxDiskIndex=i;
+    }
+  }
+  maxFreeDisk=(long)(0.9 * maxFreeDisk);
+  logger.debug("expected data files size is {}; largest free partition has {} bytes usable",expectedCompactedFileSize,maxFreeDisk);
+  if (expectedCompactedFileSize < maxFreeDisk)   dataFileDirectory=dataDirectoryForTable[maxDiskIndex];
+  return dataFileDirectory;
 }
