@@ -52,6 +52,12 @@
       output.println(String.format("%d,%d,%d,%s,%d",total,opDelta / interval,keyDelta / interval,formattedDelta,currentTimeInSeconds));
     }
   }
-  if (producer.isAlive())   producer.interrupt();
-  output.println("END");
+  returnCode=SUCCESS;
+  if (producer.isAlive()) {
+    producer.interrupt();
+    returnCode=FAILURE;
+  }
+  for (  Consumer consumer : consumers)   if (consumer.getReturnCode() == FAILURE)   returnCode=FAILURE;
+  if (returnCode == SUCCESS)   output.println("END");
+ else   output.println("FAILURE");
 }
