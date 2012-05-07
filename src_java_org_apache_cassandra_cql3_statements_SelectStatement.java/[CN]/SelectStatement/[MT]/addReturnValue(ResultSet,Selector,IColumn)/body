@@ -1,0 +1,25 @@
+{
+  if (c == null || c.isMarkedForDelete()) {
+    cqlRows.addColumnValue(null);
+    return;
+  }
+  if (s.hasFunction()) {
+switch (s.function()) {
+case WRITE_TIME:
+      cqlRows.addColumnValue(ByteBufferUtil.bytes(c.timestamp()));
+    break;
+case TTL:
+  if (c instanceof ExpiringColumn) {
+    int ttl=((ExpiringColumn)c).getLocalDeletionTime() - (int)(System.currentTimeMillis() / 1000);
+    cqlRows.addColumnValue(ByteBufferUtil.bytes(ttl));
+  }
+ else {
+    cqlRows.addColumnValue(null);
+  }
+break;
+}
+}
+ else {
+cqlRows.addColumnValue(value(c));
+}
+}

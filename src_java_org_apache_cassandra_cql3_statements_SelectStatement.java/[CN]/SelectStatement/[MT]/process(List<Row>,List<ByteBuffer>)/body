@@ -1,0 +1,78 @@
+{
+  List<Pair<CFDefinition.Name,Selector>> selection=getExpandedSelection();
+  ResultSet cqlRows=createResult(selection);
+  for (  org.apache.cassandra.db.Row row : rows) {
+    if (row.cf == null)     continue;
+    if (cfDef.isCompact) {
+      for (      IColumn c : columnsInOrder(row.cf,variables)) {
+        if (c.isMarkedForDelete())         continue;
+        ByteBuffer[] components=null;
+        if (cfDef.isComposite) {
+          components=((CompositeType)cfDef.cfm.comparator).split(c.name());
+        }
+ else         if (sliceRestriction != null) {
+          if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
+          if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
+        }
+        for (        Pair<CFDefinition.Name,Selector> p : selection) {
+          CFDefinition.Name name=p.left;
+          Selector selector=p.right;
+switch (name.kind) {
+case KEY_ALIAS:
+            cqlRows.addColumnValue(row.key.key);
+          break;
+case COLUMN_ALIAS:
+        if (cfDef.isComposite) {
+          if (name.position < components.length)           cqlRows.addColumnValue(components[name.position]);
+ else           cqlRows.addColumnValue(null);
+        }
+ else {
+          cqlRows.addColumnValue(c.name());
+        }
+      break;
+case VALUE_ALIAS:
+    addReturnValue(cqlRows,selector,c);
+  break;
+case COLUMN_METADATA:
+throw new AssertionError();
+default :
+throw new AssertionError();
+}
+}
+}
+}
+ else if (cfDef.isComposite) {
+CompositeType composite=(CompositeType)cfDef.cfm.comparator;
+int last=composite.types.size() - 1;
+ByteBuffer[] previous=null;
+Map<ByteBuffer,IColumn> group=new HashMap<ByteBuffer,IColumn>();
+for (IColumn c : row.cf) {
+if (c.isMarkedForDelete()) continue;
+ByteBuffer[] current=composite.split(c.name());
+if (previous != null && !isSameRow(previous,current)) {
+handleGroup(selection,row.key.key,previous,group,cqlRows);
+group=new HashMap<ByteBuffer,IColumn>();
+}
+group.put(current[last],c);
+previous=current;
+}
+if (previous != null) handleGroup(selection,row.key.key,previous,group,cqlRows);
+}
+ else {
+if (row.cf.getLiveColumnCount() == 0) continue;
+for (Pair<CFDefinition.Name,Selector> p : selection) {
+CFDefinition.Name name=p.left;
+Selector selector=p.right;
+if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) {
+cqlRows.addColumnValue(row.key.key);
+continue;
+}
+IColumn c=row.cf.getColumn(name.name.key);
+addReturnValue(cqlRows,selector,c);
+}
+}
+}
+if (isReversed) cqlRows.reverse();
+cqlRows.trim(parameters.limit);
+return cqlRows;
+}
