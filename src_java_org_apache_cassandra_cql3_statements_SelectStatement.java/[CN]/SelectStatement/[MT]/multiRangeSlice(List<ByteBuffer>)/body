@@ -1,26 +1,10 @@
 {
   List<Row> rows;
-  IPartitioner<?> p=StorageService.getPartitioner();
-  ByteBuffer startKeyBytes=getKeyBound(Bound.START,variables);
-  ByteBuffer finishKeyBytes=getKeyBound(Bound.END,variables);
-  RowPosition startKey=RowPosition.forKey(startKeyBytes,p);
-  RowPosition finishKey=RowPosition.forKey(finishKeyBytes,p);
-  if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum(p)) {
-    if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key sorts after end key. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
- else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
-  }
-  AbstractBounds<RowPosition> bounds;
-  if (includeKeyBound(Bound.START)) {
-    bounds=includeKeyBound(Bound.END) ? new Bounds<RowPosition>(startKey,finishKey) : new IncludingExcludingBounds<RowPosition>(startKey,finishKey);
-  }
- else {
-    bounds=includeKeyBound(Bound.END) ? new Range<RowPosition>(startKey,finishKey) : new ExcludingBounds<RowPosition>(startKey,finishKey);
-  }
   SlicePredicate thriftSlicePredicate=makeSlicePredicate(variables);
   QueryProcessor.validateSlicePredicate(cfDef.cfm,thriftSlicePredicate);
   List<IndexExpression> expressions=getIndexExpressions(variables);
   try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace(),columnFamily(),null,thriftSlicePredicate,bounds,expressions,getLimit(),true,false),parameters.consistencyLevel);
+    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(keyspace(),columnFamily(),null,thriftSlicePredicate,getKeyBounds(variables),expressions,getLimit(),true,false),parameters.consistencyLevel);
   }
  catch (  IOException e) {
     throw new RuntimeException(e);
