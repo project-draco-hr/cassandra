@@ -20,10 +20,10 @@
   KSMetaData ksm=Schema.instance.getKSMetaData(this.table.name);
   if (ksm.durableWrites) {
     CommitLog.instance.forceNewSegment();
-    ReplayPosition position=CommitLog.instance.getContext();
+    Future<ReplayPosition> position=CommitLog.instance.getContext();
     for (    ColumnFamilyStore cfs : ColumnFamilyStore.all())     cfs.forceFlush();
     waitForActiveFlushes();
-    CommitLog.instance.discardCompletedSegments(metadata.cfId,position);
+    CommitLog.instance.discardCompletedSegments(metadata.cfId,position.get());
   }
   try {
     long starttime=System.currentTimeMillis();
