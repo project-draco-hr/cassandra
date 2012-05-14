@@ -1,10 +1,11 @@
 {
   QueryPath queryPath=new QueryPath(columnFamily());
-  List<ReadCommand> commands=new ArrayList<ReadCommand>();
+  Collection<ByteBuffer> keys=getKeys(variables);
+  List<ReadCommand> commands=new ArrayList<ReadCommand>(keys.size());
   if (isColumnRange()) {
     ByteBuffer start=getRequestedBound(isReversed ? Bound.END : Bound.START,variables);
     ByteBuffer finish=getRequestedBound(isReversed ? Bound.START : Bound.END,variables);
-    for (    ByteBuffer key : getKeys(variables)) {
+    for (    ByteBuffer key : keys) {
       QueryProcessor.validateKey(key);
       QueryProcessor.validateSliceRange(cfDef.cfm,start,finish,isReversed);
       commands.add(new SliceFromReadCommand(keyspace(),key,queryPath,start,finish,isReversed,getLimit()));
@@ -13,7 +14,7 @@
  else {
     Collection<ByteBuffer> columnNames=getRequestedColumns(variables);
     QueryProcessor.validateColumnNames(columnNames);
-    for (    ByteBuffer key : getKeys(variables)) {
+    for (    ByteBuffer key : keys) {
       QueryProcessor.validateKey(key);
       commands.add(new SliceByNamesReadCommand(keyspace(),key,queryPath,columnNames));
     }
