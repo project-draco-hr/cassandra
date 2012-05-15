@@ -2,9 +2,10 @@
   List<CqlRow> cqlRows=new ArrayList<CqlRow>();
   List<Pair<CFDefinition.Name,ColumnIdentifier>> selection=getExpandedSelection();
   List<Column> thriftColumns=null;
+  for (  Pair<CFDefinition.Name,ColumnIdentifier> p : selection)   addToSchema(schema,p);
   for (  org.apache.cassandra.db.Row row : rows) {
+    if (row.cf == null)     continue;
     if (cfDef.isCompact) {
-      if (row.cf == null)       continue;
       for (      IColumn c : columnsInOrder(row.cf,variables)) {
         if (c.isMarkedForDelete())         continue;
         thriftColumns=new ArrayList<Column>(selection.size());
@@ -19,7 +20,6 @@
         for (        Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
           CFDefinition.Name name=p.left;
           ByteBuffer nameAsRequested=p.right.key;
-          addToSchema(schema,p);
           Column col=new Column(nameAsRequested);
 switch (name.kind) {
 case KEY_ALIAS:
@@ -47,7 +47,6 @@ cqlRows.add(new CqlRow(row.key.key,thriftColumns));
 }
 }
  else if (cfDef.isComposite) {
-if (row.cf == null) continue;
 CompositeType composite=(CompositeType)cfDef.cfm.comparator;
 int last=composite.types.size() - 1;
 ByteBuffer[] previous=null;
@@ -65,17 +64,15 @@ previous=current;
 if (previous != null) cqlRows.add(handleGroup(selection,row.key.key,previous,group,schema));
 }
  else {
+if (row.cf.getLiveColumnCount() == 0) continue;
 thriftColumns=new ArrayList<Column>(selection.size());
 for (Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
 CFDefinition.Name name=p.left;
 ByteBuffer nameAsRequested=p.right.key;
 if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) {
-addToSchema(schema,p);
 thriftColumns.add(new Column(nameAsRequested).setValue(row.key.key).setTimestamp(-1L));
 continue;
 }
-if (row.cf == null) continue;
-addToSchema(schema,p);
 IColumn c=row.cf.getColumn(name.name.key);
 Column col=new Column(name.name.key);
 if (c != null && !c.isMarkedForDelete()) col.setValue(value(c)).setTimestamp(c.timestamp());
