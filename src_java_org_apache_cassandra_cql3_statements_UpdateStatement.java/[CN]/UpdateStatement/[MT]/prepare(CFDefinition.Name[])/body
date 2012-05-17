@@ -16,7 +16,7 @@
       CFDefinition.Name name=cfDef.get(columnNames.get(i));
       if (name == null)       throw new InvalidRequestException(String.format("Unknown identifier %s",columnNames.get(i)));
       Term value=columnValues.get(i);
-      if (value.isBindMarker())       boundTypes[value.bindIndex]=name.type;
+      if (value.isBindMarker())       boundNames[value.bindIndex]=name;
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
@@ -43,12 +43,12 @@ case VALUE_ALIAS:
 case COLUMN_METADATA:
 if (processedColumns.containsKey(name.name)) throw new InvalidRequestException(String.format("Multiple definition found for column %s",name));
 Operation op=entry.getValue();
-if (op.value.isBindMarker()) boundTypes[op.value.bindIndex]=name.type;
+if (op.value.isBindMarker()) boundNames[op.value.bindIndex]=name;
 processedColumns.put(name.name,op);
 break;
 }
 }
-processKeys(cfDef,whereClause,processedKeys,boundTypes);
+processKeys(cfDef,whereClause,processedKeys,boundNames);
 }
-return new ParsedStatement.Prepared(this,Arrays.<AbstractType<?>>asList(boundTypes));
+return new ParsedStatement.Prepared(this,Arrays.<CFDefinition.Name>asList(boundNames));
 }
