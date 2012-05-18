@@ -1,0 +1,17 @@
+def cql_split_statements(self, text):
+    tokens = self.lex(text)
+    tokens = self.cql_massage_tokens(tokens)
+    stmts = util.split_list(tokens, (lambda t: (t[0] == 'endtoken')))
+    output = []
+    in_batch = False
+    for stmt in stmts:
+        if in_batch:
+            output[(-1)].extend(stmt)
+        else:
+            output.append(stmt)
+        if ((len(stmt) > 1) and (stmt[0][0] == 'identifier') and (stmt[1][0] == 'identifier') and (stmt[1][1].lower() == 'batch')):
+            if (stmt[0][1].lower() == 'begin'):
+                in_batch = True
+            elif (stmt[0][1].lower() == 'apply'):
+                in_batch = False
+    return (output, in_batch)
