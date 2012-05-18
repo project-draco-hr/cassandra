@@ -1,0 +1,47 @@
+def cql_complete_single(self, text, partial, init_bindings={}, ignore_case=True, startsymbol='Start'):
+    tokens = (self.cql_split_statements(text)[0] or [[]])[(-1)]
+    bindings = init_bindings.copy()
+    prefix = None
+    dequoter = util.identity
+    if tokens:
+        if (tokens[(-1)][0] == 'unclosedString'):
+            prefix = self.token_dequote(tokens[(-1)])
+            tokens = tokens[:(-1)]
+            partial = (prefix + partial)
+            dequoter = self.dequote_value
+            requoter = self.escape_value
+        elif (tokens[(-1)][0] == 'unclosedName'):
+            prefix = self.token_dequote(tokens[(-1)])
+            tokens = tokens[:(-1)]
+            partial = (prefix + partial)
+            dequoter = self.dequote_name
+            requoter = self.escape_name
+        elif (tokens[(-1)][0] == 'unclosedComment'):
+            return []
+    bindings['partial'] = partial
+    bindings['*SRC*'] = text
+    completions = self.complete(startsymbol, tokens, bindings)
+    (hints, strcompletes) = util.list_bifilter(pylexotron.is_hint, completions)
+    if ('\n' in strcompletes):
+        strcompletes.remove('\n')
+        if (partial == ''):
+            hints.append(Hint('<enter>'))
+    if ignore_case:
+        partial = partial.lower()
+        f = (lambda s: (s and dequoter(s).lower().startswith(partial)))
+    else:
+        f = (lambda s: (s and dequoter(s).startswith(partial)))
+    candidates = filter(f, strcompletes)
+    if (prefix is not None):
+        candidates = [requoter(dequoter(c))[(len(prefix) + 1):(-1)] for c in candidates]
+        candidates = filter(None, candidates)
+    if tokens:
+        newcandidates = []
+        for c in candidates:
+            if (self.want_space_between(tokens[(-1)], c) and (prefix is None) and (not text[(-1)].isspace()) and (not c[0].isspace())):
+                c = (' ' + c)
+            newcandidates.append(c)
+        candidates = newcandidates
+    if ((len(candidates) == 1) and candidates[0][(-1)].isalnum()):
+        candidates[0] += ' '
+    return (candidates, hints)

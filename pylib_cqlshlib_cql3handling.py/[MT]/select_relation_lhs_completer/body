@@ -1,0 +1,14 @@
+@completer_for('relation', 'rel_lhs')
+def select_relation_lhs_completer(ctxt, cass):
+    layout = get_cf_layout(ctxt, cass)
+    filterable = set(layout.key_components[:2])
+    already_filtered_on = ctxt.get_binding('rel_lhs')
+    for num in range(1, len(layout.key_components)):
+        if (layout.key_components[(num - 1)] in already_filtered_on):
+            filterable.add(layout.key_components[num])
+        else:
+            break
+    for cd in layout.columns:
+        if (cd.index_name is not None):
+            filterable.add(cd.name)
+    return map(maybe_escape_name, filterable)

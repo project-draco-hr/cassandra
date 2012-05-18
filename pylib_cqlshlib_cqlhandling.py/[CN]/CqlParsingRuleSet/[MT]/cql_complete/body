@@ -1,0 +1,18 @@
+def cql_complete(self, text, partial, cassandra_conn=None, ignore_case=True, debug=False, startsymbol='Start'):
+    init_bindings = {'cassandra_conn': cassandra_conn, }
+    if debug:
+        init_bindings['*DEBUG*'] = True
+    (completions, hints) = self.cql_complete_single(text, partial, init_bindings, startsymbol=startsymbol)
+    if hints:
+        hints = [h.text for h in hints]
+        hints.append('')
+    if ((len(completions) == 1) and (len(hints) == 0)):
+        c = completions[0]
+        if debug:
+            print ('** Got one completion: %r. Checking for further matches...\n' % (c,))
+        if (not c.isspace()):
+            new_c = self.cql_complete_multiple(text, c, init_bindings, startsymbol=startsymbol)
+            completions = [new_c]
+        if debug:
+            print ('** New list of completions: %r' % (completions,))
+    return (hints + completions)
