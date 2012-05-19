@@ -9,14 +9,31 @@
  else {
     size+=TypeSizes.NATIVE.sizeof(0);
   }
-  TSerializer ser=new TSerializer(new TBinaryProtocol.Factory());
-  try {
-    int predicateLength=ser.serialize(rsc.predicate).length;
-    size+=TypeSizes.NATIVE.sizeof(predicateLength);
-    size+=predicateLength;
+  if (version < MessagingService.VERSION_12) {
+    TSerializer ser=new TSerializer(new TBinaryProtocol.Factory());
+    try {
+      int predicateLength=ser.serialize(rsc.predicate).length;
+      if (version < MessagingService.VERSION_12)       size+=TypeSizes.NATIVE.sizeof(predicateLength);
+      size+=predicateLength;
+    }
+ catch (    TException e) {
+      throw new RuntimeException(e);
+    }
   }
- catch (  TException e) {
-    throw new RuntimeException(e);
+ else {
+    SliceRange range=rsc.predicate.slice_range;
+    size+=1;
+    if (range != null) {
+      size+=TypeSizes.NATIVE.sizeofWithShortLength(range.start);
+      size+=TypeSizes.NATIVE.sizeofWithShortLength(range.finish);
+      size+=TypeSizes.NATIVE.sizeof(range.reversed);
+      size+=TypeSizes.NATIVE.sizeof(range.count);
+    }
+ else {
+      List<ByteBuffer> columns=rsc.predicate.column_names;
+      size+=TypeSizes.NATIVE.sizeof(columns.size());
+      for (      ByteBuffer column : columns)       size+=TypeSizes.NATIVE.sizeofWithShortLength(column);
+    }
   }
   if (version >= MessagingService.VERSION_11) {
     if (rsc.row_filter == null) {
@@ -25,13 +42,20 @@
  else {
       size+=TypeSizes.NATIVE.sizeof(rsc.row_filter.size());
       for (      IndexExpression expr : rsc.row_filter) {
-        try {
-          int filterLength=ser.serialize(expr).length;
-          size+=TypeSizes.NATIVE.sizeof(filterLength);
-          size+=filterLength;
+        if (version < MessagingService.VERSION_12) {
+          try {
+            int filterLength=new TSerializer(new TBinaryProtocol.Factory()).serialize(expr).length;
+            size+=TypeSizes.NATIVE.sizeof(filterLength);
+            size+=filterLength;
+          }
+ catch (          TException e) {
+            throw new RuntimeException(e);
+          }
         }
- catch (        TException e) {
-          throw new RuntimeException(e);
+ else {
+          size+=TypeSizes.NATIVE.sizeofWithShortLength(expr.column_name);
+          size+=TypeSizes.NATIVE.sizeof(expr.op.getValue());
+          size+=TypeSizes.NATIVE.sizeofWithLength(expr.value);
         }
       }
     }
