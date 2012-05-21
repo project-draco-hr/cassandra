@@ -1,0 +1,19 @@
+@classmethod
+def from_layout(cls, layout, coldefs):
+    cf = cls(name=layout[u'columnfamily'])
+    for (attr, val) in layout.items():
+        setattr(cf, attr.encode('ascii'), val)
+    for attr in cls.json_attrs:
+        try:
+            setattr(cf, attr, json.loads(getattr(cf, attr)))
+        except AttributeError:
+            pass
+    if (cf.key_alias is None):
+        cf.key_alias = 'KEY'
+    cf.key_components = ([cf.key_alias.decode('ascii')] + list(cf.column_aliases))
+    cf.key_validator = cql_typename(cf.key_validator)
+    cf.default_validator = cql_typename(cf.default_validator)
+    cf.coldefs = coldefs
+    cf.parse_composite()
+    cf.check_assumptions()
+    return cf

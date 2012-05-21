@@ -16,14 +16,20 @@
     TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(((NamesQueryFilter)filter.filter).columns);
     QueryFilter reducedFilter=new QueryFilter(filter.key,filter.path,new NamesQueryFilter(filterColumns));
     Collections.sort(view.sstables,SSTable.maxTimestampComparator);
+    long mostRecentRowTombstone=Long.MIN_VALUE;
     for (    SSTableReader sstable : view.sstables) {
+      if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       break;
       long currentMaxTs=sstable.getMaxTimestamp();
       reduceNameFilter(reducedFilter,container,currentMaxTs);
       if (((NamesQueryFilter)reducedFilter.filter).columns.isEmpty())       break;
       IColumnIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
       iterators.add(iter);
       if (iter.getColumnFamily() != null) {
-        container.delete(iter.getColumnFamily());
+        ColumnFamily cf=iter.getColumnFamily();
+        if (cf.isMarkedForDelete()) {
+          mostRecentRowTombstone=cf.getMarkedForDeleteAt();
+        }
+        container.delete(cf);
         sstablesIterated++;
         while (iter.hasNext())         container.addColumn(iter.next());
       }

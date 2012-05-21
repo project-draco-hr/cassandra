@@ -1,9 +1,9 @@
 {
   logger.debug("collectAllData");
   ISortedColumns.Factory factory=mutableColumns ? cfs.metadata.cfType == ColumnFamilyType.Super ? ThreadSafeSortedColumns.factory() : AtomicSortedColumns.factory() : ArrayBackedSortedColumns.factory();
-  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>();
-  ColumnFamily returnCF=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
   ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
+  List<IColumnIterator> iterators=new ArrayList<IColumnIterator>(Iterables.size(view.memtables) + view.sstables.size());
+  ColumnFamily returnCF=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
   try {
     for (    Memtable memtable : view.memtables) {
       IColumnIterator iter=filter.getMemtableColumnIterator(memtable);
@@ -12,13 +12,21 @@
         iterators.add(iter);
       }
     }
+    long mostRecentRowTombstone=Long.MIN_VALUE;
+    Map<IColumnIterator,Long> iteratorMaxTimes=Maps.newHashMapWithExpectedSize(view.sstables.size());
     for (    SSTableReader sstable : view.sstables) {
+      if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       continue;
       IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
-      iterators.add(iter);
+      iteratorMaxTimes.put(iter,sstable.getMaxTimestamp());
       if (iter.getColumnFamily() != null) {
-        returnCF.delete(iter.getColumnFamily());
+        ColumnFamily cf=iter.getColumnFamily();
+        if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.getMarkedForDeleteAt();
+        returnCF.delete(cf);
         sstablesIterated++;
       }
+    }
+    for (    Map.Entry<IColumnIterator,Long> entry : iteratorMaxTimes.entrySet()) {
+      if (entry.getValue() >= mostRecentRowTombstone)       iterators.add(entry.getKey());
     }
     if (iterators.isEmpty())     return null;
     filter.collateColumns(returnCF,iterators,gcBefore);
