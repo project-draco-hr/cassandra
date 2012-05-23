@@ -1,6 +1,7 @@
 {
   if (isCapExceeded() || file.length() != DatabaseDescriptor.getCommitLogSegmentSize()) {
     try {
+      logger.debug("(Unopened) segment {} is no longer needed and will be deleted now",file);
       FileUtils.deleteWithConfirm(file);
     }
  catch (    IOException e) {
@@ -8,6 +9,8 @@
     }
     return;
   }
+  logger.debug("Recycling {}",file);
+  size.addAndGet(DatabaseDescriptor.getCommitLogSegmentSize());
   queue.add(new Runnable(){
     public void run(){
       CommitLogSegment segment=new CommitLogSegment(file.getPath());
