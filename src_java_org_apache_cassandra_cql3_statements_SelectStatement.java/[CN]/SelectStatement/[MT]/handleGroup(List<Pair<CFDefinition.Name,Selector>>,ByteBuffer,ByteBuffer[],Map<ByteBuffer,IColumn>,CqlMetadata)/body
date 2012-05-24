@@ -1,23 +1,27 @@
 {
   List<Column> thriftColumns=new ArrayList<Column>(selection.size());
-  for (  Pair<CFDefinition.Name,ColumnIdentifier> p : selection) {
+  for (  Pair<CFDefinition.Name,Selector> p : selection) {
     CFDefinition.Name name=p.left;
-    ByteBuffer nameAsRequested=p.right.key;
-    Column col=new Column(nameAsRequested);
+    Selector selector=p.right;
+    Column col;
 switch (name.kind) {
 case KEY_ALIAS:
-      col.setValue(key).setTimestamp(-1L);
-    break;
+      col=new Column(selector.id().key);
+    col.setValue(key).setTimestamp(-1L);
+  break;
 case COLUMN_ALIAS:
-  col.setValue(components[name.position]);
+col=new Column(selector.id().key);
+col.setValue(components[name.position]);
 col.setTimestamp(-1L);
 break;
 case VALUE_ALIAS:
 throw new AssertionError();
 case COLUMN_METADATA:
 IColumn c=columns.get(name.name.key);
-if (c != null) col.setValue(value(c)).setTimestamp(c.timestamp());
+col=makeReturnColumn(selector,c);
 break;
+default :
+throw new AssertionError();
 }
 thriftColumns.add(col);
 }
