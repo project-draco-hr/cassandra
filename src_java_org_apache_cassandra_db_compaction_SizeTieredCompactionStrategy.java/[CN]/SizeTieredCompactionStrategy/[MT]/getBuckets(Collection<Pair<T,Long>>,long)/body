@@ -7,9 +7,8 @@
   }
 );
   Map<Long,List<T>> buckets=new HashMap<Long,List<T>>();
-  for (  Pair<T,Long> pair : sortedFiles) {
+  outer:   for (  Pair<T,Long> pair : sortedFiles) {
     long size=pair.right;
-    boolean bFound=false;
     for (    Entry<Long,List<T>> entry : buckets.entrySet()) {
       List<T> bucket=entry.getValue();
       long oldAverageSize=entry.getKey();
@@ -19,15 +18,12 @@
         long newAverageSize=(totalSize + size) / (bucket.size() + 1);
         bucket.add(pair.left);
         buckets.put(newAverageSize,bucket);
-        bFound=true;
-        break;
+        continue outer;
       }
     }
-    if (!bFound) {
-      ArrayList<T> bucket=new ArrayList<T>();
-      bucket.add(pair.left);
-      buckets.put(size,bucket);
-    }
+    ArrayList<T> bucket=new ArrayList<T>();
+    bucket.add(pair.left);
+    buckets.put(size,bucket);
   }
   return new ArrayList<List<T>>(buckets.values());
 }
