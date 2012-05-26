@@ -45,6 +45,16 @@
     allSchemaFields.add(innerTupleField);
   }
   allSchemaFields.add(bagField);
+  if (usePartitionFilter) {
+    for (    ColumnDef cdef : getIndexes()) {
+      ResourceFieldSchema idxSchema=new ResourceFieldSchema();
+      idxSchema.setName("index_" + new String(cdef.getName()));
+      AbstractType validator=validators.get(cdef.name);
+      if (validator == null)       validator=marshallers.get(1);
+      idxSchema.setType(getPigType(validator));
+      allSchemaFields.add(idxSchema);
+    }
+  }
   schema.setFields(allSchemaFields.toArray(new ResourceFieldSchema[allSchemaFields.size()]));
   return schema;
 }
