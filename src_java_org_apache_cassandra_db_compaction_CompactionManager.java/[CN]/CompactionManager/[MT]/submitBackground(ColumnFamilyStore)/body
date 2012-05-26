@@ -1,11 +1,24 @@
 {
+  logger.debug("Scheduling a background task check for {}.{} with {}",new Object[]{cfs.table.name,cfs.columnFamily,cfs.getCompactionStrategy().getClass().getSimpleName()});
   Runnable runnable=new WrappedRunnable(){
     protected void runMayThrow() throws IOException {
       compactionLock.readLock().lock();
       try {
+        logger.debug("Checking {}.{}",cfs.table.name,cfs.columnFamily);
+        if (!cfs.isValid()) {
+          logger.debug("Aborting compaction for dropped CF");
+          return;
+        }
         AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
         AbstractCompactionTask task=strategy.getNextBackgroundTask(getDefaultGcBefore(cfs));
-        if (task == null || !task.markSSTablesForCompaction())         return;
+        if (task == null) {
+          logger.debug("No tasks available");
+          return;
+        }
+        if (!task.markSSTablesForCompaction()) {
+          logger.debug("Unable to mark SSTables for {}",task);
+          return;
+        }
         try {
           task.execute(executor);
         }
