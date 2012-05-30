@@ -1,0 +1,13 @@
+{
+  ByteBuffer key=ByteBufferUtil.readWithLength(input);
+  int generation=input.readInt();
+  SSTableReader reader=findDesc(generation,store.getSSTables());
+  if (reader == null) {
+    RowIndexEntry.serializer.skipPromotedIndex(input);
+    return null;
+  }
+  RowIndexEntry entry;
+  if (input.readBoolean())   entry=RowIndexEntry.serializer.deserialize(input,reader.descriptor.version);
+ else   entry=reader.getPosition(StorageService.getPartitioner().decorateKey(key),Operator.EQ);
+  return new Pair<KeyCacheKey,RowIndexEntry>(new KeyCacheKey(reader.descriptor,key),entry);
+}
