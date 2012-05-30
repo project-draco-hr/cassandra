@@ -1,0 +1,14 @@
+{
+  DecoratedKey dk=new DecoratedKey(partitioner.getToken(ByteBuffer.wrap(key.getBytes())),ByteBuffer.wrap(key.getBytes()));
+  ViewFragment view=markReferenced(dk);
+  try {
+    List<String> files=new ArrayList<String>();
+    for (    SSTableReader sstr : view.sstables) {
+      if (sstr.getPosition(dk,SSTableReader.Operator.EQ,false) != null)       files.add(sstr.getFilename());
+    }
+    return files;
+  }
+  finally {
+    SSTableReader.releaseReferences(view.sstables);
+  }
+}
