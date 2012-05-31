@@ -1,7 +1,7 @@
 {
   int count=0;
   long start=System.currentTimeMillis();
-  File path=getCachePath(store.table.name,store.columnFamily,null);
+  File path=getCachePath(cfs.table.name,cfs.columnFamily,null);
   if (path.exists()) {
     DataInputStream in=null;
     try {
@@ -12,7 +12,7 @@
         keys.add(ByteBufferUtil.readWithLength(in));
         count++;
       }
-      cacheLoader.load(keys,store);
+      cacheLoader.load(keys,cfs);
     }
  catch (    Exception e) {
       logger.warn(String.format("error reading saved cache %s, keys loaded so far: %d",path.getAbsolutePath(),count),e);
@@ -22,14 +22,14 @@
       FileUtils.closeQuietly(in);
     }
   }
-  path=getCachePath(store.table.name,store.columnFamily,CURRENT_VERSION);
+  path=getCachePath(cfs.table.name,cfs.columnFamily,CURRENT_VERSION);
   if (path.exists()) {
     DataInputStream in=null;
     try {
       logger.info(String.format("reading saved cache %s",path));
       in=new DataInputStream(new BufferedInputStream(new FileInputStream(path)));
       while (in.available() > 0) {
-        Pair<K,V> entry=cacheLoader.deserialize(in,store);
+        Pair<K,V> entry=cacheLoader.deserialize(in,cfs);
         put(entry.left,entry.right);
         count++;
       }
