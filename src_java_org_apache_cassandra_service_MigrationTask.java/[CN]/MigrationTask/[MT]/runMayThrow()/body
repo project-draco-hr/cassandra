@@ -1,19 +1,25 @@
 {
   MessageOut message=new MessageOut(MessagingService.Verb.MIGRATION_REQUEST,null,MigrationManager.MigrationsSerializer.instance);
-  int retries=0;
-  while (retries < MigrationManager.MIGRATION_REQUEST_RETRIES) {
-    if (!FailureDetector.instance.isAlive(endpoint)) {
-      logger.error("Can't send migration request: node {} is down.",endpoint);
-      return;
+  if (!FailureDetector.instance.isAlive(endpoint)) {
+    logger.error("Can't send migration request: node {} is down.",endpoint);
+    return;
+  }
+  IAsyncCallback<Collection<RowMutation>> cb=new IAsyncCallback<Collection<RowMutation>>(){
+    @Override public void response(    MessageIn<Collection<RowMutation>> message){
+      try {
+        DefsTable.mergeSchema(message.payload);
+      }
+ catch (      IOException e) {
+        logger.error("IOException merging remote schema",e);
+      }
+catch (      ConfigurationException e) {
+        logger.error("Configuration exception merging remote schema",e);
+      }
     }
-    IAsyncResult<Collection<RowMutation>> iar=MessagingService.instance().sendRR(message,endpoint);
-    try {
-      Collection<RowMutation> schema=iar.get(DatabaseDescriptor.getRpcTimeout(),TimeUnit.MILLISECONDS);
-      DefsTable.mergeSchema(schema);
-      return;
-    }
- catch (    TimeoutException e) {
-      retries++;
+    @Override public boolean isLatencyForSnitch(){
+      return false;
     }
   }
+;
+  MessagingService.instance().sendRR(message,endpoint,cb);
 }
