@@ -2,31 +2,23 @@
   QueryPath queryPath=new QueryPath(columnFamily());
   Collection<ByteBuffer> keys=getKeys(variables);
   List<ReadCommand> commands=new ArrayList<ReadCommand>(keys.size());
+  IFilter filter=makeFilter(variables);
   if (isColumnRange()) {
-    ByteBuffer start=getColumnStart(variables);
-    ByteBuffer finish=getColumnEnd(variables);
-    SliceQueryFilter filter=new SliceQueryFilter(start,finish,isReversed,getLimit());
-    QueryProcessor.validateSliceFilter(cfDef.cfm,filter);
     for (    ByteBuffer key : keys) {
       QueryProcessor.validateKey(key);
-      commands.add(new SliceFromReadCommand(keyspace(),key,queryPath,filter));
+      commands.add(new SliceFromReadCommand(keyspace(),key,queryPath,(SliceQueryFilter)filter));
     }
   }
  else {
-    Collection<ByteBuffer> columnNames=getRequestedColumns(variables);
-    QueryProcessor.validateColumnNames(columnNames);
     for (    ByteBuffer key : keys) {
       QueryProcessor.validateKey(key);
-      commands.add(new SliceByNamesReadCommand(keyspace(),key,queryPath,columnNames));
+      commands.add(new SliceByNamesReadCommand(keyspace(),key,queryPath,(NamesQueryFilter)filter));
     }
   }
   try {
     return StorageProxy.read(commands,parameters.consistencyLevel);
   }
- catch (  TimeoutException e) {
-    throw new TimedOutException();
-  }
-catch (  IOException e) {
+ catch (  IOException e) {
     throw new RuntimeException(e);
   }
 }

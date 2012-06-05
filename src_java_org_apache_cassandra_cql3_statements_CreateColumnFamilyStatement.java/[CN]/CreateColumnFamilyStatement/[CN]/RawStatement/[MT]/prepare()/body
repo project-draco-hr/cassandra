@@ -6,9 +6,15 @@
     properties.validate();
     CreateColumnFamilyStatement stmt=new CreateColumnFamilyStatement(cfName,properties);
     stmt.setBoundTerms(getBoundsTerms());
-    for (    Map.Entry<ColumnIdentifier,String> entry : definitions.entrySet()) {
-      AbstractType<?> type=CFPropDefs.parseType(entry.getValue());
-      stmt.columns.put(entry.getKey(),type);
+    Map<ByteBuffer,CollectionType> definedCollections=null;
+    for (    Map.Entry<ColumnIdentifier,ParsedType> entry : definitions.entrySet()) {
+      ColumnIdentifier id=entry.getKey();
+      ParsedType pt=entry.getValue();
+      if (pt.isCollection()) {
+        if (definedCollections == null)         definedCollections=new HashMap<ByteBuffer,CollectionType>();
+        definedCollections.put(id.key,(CollectionType)pt.getType());
+      }
+      stmt.columns.put(id,pt.getType());
     }
     if (keyAliases.size() == 0)     throw new InvalidRequestException("You must specify a PRIMARY KEY");
  else     if (keyAliases.size() > 1)     throw new InvalidRequestException("You may only specify one PRIMARY KEY");
@@ -17,6 +23,7 @@
     if (stmt.keyValidator instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.keyAlias));
     if (!columnAliases.isEmpty()) {
       if (useCompactStorage && columnAliases.size() == 1) {
+        if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
         stmt.columnAliases.add(columnAliases.get(0).key);
         stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
         if (stmt.comparator instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
@@ -29,14 +36,25 @@
           if (type instanceof CounterColumnType)           throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t.key));
           types.add(type);
         }
-        if (!useCompactStorage)         types.add(CFDefinition.definitionType);
+        if (useCompactStorage) {
+          if (definedCollections != null)           throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
+        }
+ else {
+          types.add(CFDefinition.definitionType);
+          if (definedCollections != null)           types.add(ColumnToCollectionType.getInstance(definedCollections));
+        }
         if (types.isEmpty())         throw new IllegalStateException("Nonsensical empty parameter list for CompositeType");
         stmt.comparator=CompositeType.getInstance(types);
       }
     }
  else {
-      if (useCompactStorage)       stmt.comparator=CFDefinition.definitionType;
- else       stmt.comparator=CompositeType.getInstance(Collections.<AbstractType<?>>singletonList(CFDefinition.definitionType));
+      if (useCompactStorage) {
+        if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with non composite PRIMARY KEY");
+        stmt.comparator=CFDefinition.definitionType;
+      }
+ else {
+        stmt.comparator=CompositeType.getInstance(Collections.<AbstractType<?>>singletonList(CFDefinition.definitionType));
+      }
     }
     if (stmt.columns.isEmpty())     throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
     if (useCompactStorage && stmt.columns.size() == 1) {

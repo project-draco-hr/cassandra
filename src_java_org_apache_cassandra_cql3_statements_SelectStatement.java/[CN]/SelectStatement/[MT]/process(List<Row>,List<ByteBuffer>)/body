@@ -43,20 +43,9 @@ throw new AssertionError();
 }
  else if (cfDef.isComposite) {
 CompositeType composite=(CompositeType)cfDef.cfm.comparator;
-int last=composite.types.size() - 1;
-ByteBuffer[] previous=null;
-Map<ByteBuffer,IColumn> group=new HashMap<ByteBuffer,IColumn>();
-for (IColumn c : row.cf) {
-if (c.isMarkedForDelete()) continue;
-ByteBuffer[] current=composite.split(c.name());
-if (previous != null && !isSameRow(previous,current)) {
-handleGroup(selection,row.key.key,previous,group,cqlRows);
-group=new HashMap<ByteBuffer,IColumn>();
-}
-group.put(current[last],c);
-previous=current;
-}
-if (previous != null) handleGroup(selection,row.key.key,previous,group,cqlRows);
+ColumnGroupMap.Builder builder=new ColumnGroupMap.Builder(composite,cfDef.hasCollections);
+for (IColumn c : row.cf) builder.add(c);
+for (ColumnGroupMap group : builder.groups()) handleGroup(selection,row.key.key,group,cqlRows);
 }
  else {
 if (row.cf.getLiveColumnCount() == 0) continue;

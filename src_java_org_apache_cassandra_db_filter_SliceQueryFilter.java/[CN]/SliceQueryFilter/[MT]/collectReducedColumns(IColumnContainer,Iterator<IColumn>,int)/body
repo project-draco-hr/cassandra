@@ -1,13 +1,13 @@
 {
-  int liveColumns=0;
   AbstractType<?> comparator=container.getComparator();
+  if (compositesToGroup < 0)   columnCounter=new ColumnCounter();
+ else   if (compositesToGroup == 0)   columnCounter=new ColumnCounter.GroupByPrefix(null,0);
+ else   columnCounter=new ColumnCounter.GroupByPrefix((CompositeType)comparator,compositesToGroup);
   while (reducedColumns.hasNext()) {
-    if (liveColumns >= count)     break;
+    if (columnCounter.count() >= count)     break;
     IColumn column=reducedColumns.next();
-    if (logger.isDebugEnabled())     logger.debug(String.format("collecting %s of %s: %s",liveColumns,count,column.getString(comparator)));
-    if (column.isLive() && (!container.deletionInfo().isDeleted(column))) {
-      liveColumns++;
-    }
+    if (logger.isDebugEnabled())     logger.debug(String.format("collecting %s of %s: %s",columnCounter.count(),count,column.getString(comparator)));
+    columnCounter.countColum(column,container);
     if (QueryFilter.isRelevant(column,container,gcBefore))     container.addColumn(column);
   }
 }

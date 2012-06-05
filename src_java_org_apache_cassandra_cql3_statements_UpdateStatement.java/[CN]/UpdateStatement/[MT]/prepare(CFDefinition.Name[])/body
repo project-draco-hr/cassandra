@@ -1,9 +1,9 @@
 {
   boolean hasCommutativeOperation=false;
   if (columns != null) {
-    for (    Map.Entry<ColumnIdentifier,Operation> column : columns.entrySet()) {
-      if (!column.getValue().isUnary())       hasCommutativeOperation=true;
-      if (hasCommutativeOperation && column.getValue().isUnary())       throw new InvalidRequestException("Mix of commutative and non-commutative operations is not allowed.");
+    for (    Pair<ColumnIdentifier,Operation> column : columns) {
+      if (column.right.type == Operation.Type.COUNTER)       hasCommutativeOperation=true;
+      if (hasCommutativeOperation && column.right.type != Operation.Type.COUNTER)       throw new InvalidRequestException("Mix of counter and non-counter operations is not allowed.");
     }
   }
   CFMetaData metadata=validateColumnFamily(keyspace(),columnFamily(),hasCommutativeOperation);
@@ -15,36 +15,37 @@
     for (int i=0; i < columnNames.size(); i++) {
       CFDefinition.Name name=cfDef.get(columnNames.get(i));
       if (name == null)       throw new InvalidRequestException(String.format("Unknown identifier %s",columnNames.get(i)));
-      Term value=columnValues.get(i);
-      if (value.isBindMarker())       boundNames[value.bindIndex]=name;
+      Value value=columnValues.get(i);
+      for (      Term t : value.asList())       if (t.isBindMarker())       boundNames[t.bindIndex]=name;
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
-        if (processedKeys.containsKey(name.name))         throw new InvalidRequestException(String.format("Multiple definition found for PRIMARY KEY part %s",name));
-      processedKeys.put(name.name,Collections.singletonList(value));
-    break;
+        if (processedKeys.containsKey(name.name))         throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s",name));
+      if (!(value instanceof Term))       throw new InvalidRequestException(String.format("Invalid definition for %s, not a collection type",name));
+    processedKeys.put(name.name,Collections.singletonList((Term)value));
+  break;
 case VALUE_ALIAS:
 case COLUMN_METADATA:
-  if (processedColumns.containsKey(name.name))   throw new InvalidRequestException(String.format("Multiple definition found for column %s",name));
-processedColumns.put(name.name,new Operation(value));
+if (processedColumns.containsKey(name)) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
+processedColumns.put(name,new Operation.Set(value));
 break;
 }
 }
 }
  else {
-for (Map.Entry<ColumnIdentifier,Operation> entry : columns.entrySet()) {
-CFDefinition.Name name=cfDef.get(entry.getKey());
-if (name == null) throw new InvalidRequestException(String.format("Unknown identifier %s",entry.getKey()));
+for (Pair<ColumnIdentifier,Operation> entry : columns) {
+CFDefinition.Name name=cfDef.get(entry.left);
+if (name == null) throw new InvalidRequestException(String.format("Unknown identifier %s",entry.left));
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
-throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part",entry.getKey()));
+throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part",entry.left));
 case VALUE_ALIAS:
 case COLUMN_METADATA:
-if (processedColumns.containsKey(name.name)) throw new InvalidRequestException(String.format("Multiple definition found for column %s",name));
-Operation op=entry.getValue();
-if (op.value.isBindMarker()) boundNames[op.value.bindIndex]=name;
-processedColumns.put(name.name,op);
+for (Operation op : processedColumns.get(name)) if (op.type != Operation.Type.FUNCTION) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
+Operation op=entry.right;
+for (Term t : op.allTerms()) if (t.isBindMarker()) boundNames[t.bindIndex]=name;
+processedColumns.put(name,op);
 break;
 }
 }

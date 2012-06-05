@@ -1,12 +1,17 @@
 {
-  List<Row> rows;
-  if (isKeyRange()) {
-    rows=multiRangeSlice(variables);
-  }
+  try {
+    List<Row> rows;
+    if (isKeyRange()) {
+      rows=multiRangeSlice(variables);
+    }
  else {
-    rows=getSlice(variables);
+      rows=getSlice(variables);
+    }
+    ResultSet rset=process(rows,variables);
+    rset=parameters.isCount ? rset.makeCountResult() : rset;
+    return rset;
   }
-  ResultSet rset=process(rows,variables);
-  rset=parameters.isCount ? rset.makeCountResult() : rset;
-  return rset;
+ catch (  TimeoutException e) {
+    throw new TimedOutException();
+  }
 }

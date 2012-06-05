@@ -1,8 +1,15 @@
 {
   if (isColumnRange()) {
-    return new SliceQueryFilter(getRequestedBound(isReversed ? Bound.END : Bound.START,variables),getRequestedBound(isReversed ? Bound.START : Bound.END,variables),isReversed,-1);
+    int multiplier=cfDef.isCompact ? 1 : cfDef.metadata.size();
+    int toGroup=cfDef.isCompact ? -1 : cfDef.columns.size();
+    ColumnSlice slice=new ColumnSlice(getRequestedBound(isReversed ? Bound.END : Bound.START,variables),getRequestedBound(isReversed ? Bound.START : Bound.END,variables));
+    SliceQueryFilter filter=new SliceQueryFilter(new ColumnSlice[]{slice},isReversed,getLimit(),toGroup,multiplier);
+    QueryProcessor.validateSliceFilter(cfDef.cfm,filter);
+    return filter;
   }
  else {
-    return new NamesQueryFilter(getRequestedColumns(variables));
+    SortedSet<ByteBuffer> columnNames=getRequestedColumns(variables);
+    QueryProcessor.validateColumnNames(columnNames);
+    return new NamesQueryFilter(columnNames);
   }
 }

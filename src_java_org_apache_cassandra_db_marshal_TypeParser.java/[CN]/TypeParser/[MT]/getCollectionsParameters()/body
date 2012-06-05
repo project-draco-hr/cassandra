@@ -1,0 +1,35 @@
+{
+  Map<ByteBuffer,CollectionType> map=new HashMap<ByteBuffer,CollectionType>();
+  if (isEOS())   return map;
+  if (str.charAt(idx) != '(')   throw new IllegalStateException();
+  ++idx;
+  while (skipBlankAndComma()) {
+    if (str.charAt(idx) == ')') {
+      ++idx;
+      return map;
+    }
+    String bbHex=readNextIdentifier();
+    ByteBuffer bb=null;
+    try {
+      bb=ByteBufferUtil.hexToBytes(bbHex);
+    }
+ catch (    NumberFormatException e) {
+      throwSyntaxError(e.getMessage());
+    }
+    skipBlank();
+    if (str.charAt(idx) != ':')     throwSyntaxError("expecting ':' token");
+    ++idx;
+    skipBlank();
+    try {
+      AbstractType<?> type=parse();
+      if (!(type instanceof CollectionType))       throw new ConfigurationException(type.toString() + " is not a collection type");
+      map.put(bb,(CollectionType)type);
+    }
+ catch (    ConfigurationException e) {
+      ConfigurationException ex=new ConfigurationException(String.format("Exception while parsing '%s' around char %d",str,idx));
+      ex.initCause(e);
+      throw ex;
+    }
+  }
+  throw new ConfigurationException(String.format("Syntax error parsing '%s' at char %d: unexpected end of string",str,idx));
+}
