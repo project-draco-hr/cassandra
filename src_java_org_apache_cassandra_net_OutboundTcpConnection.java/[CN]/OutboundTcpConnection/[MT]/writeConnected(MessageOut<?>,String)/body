@@ -5,6 +5,12 @@
     if (active.peek() == null) {
       out.flush();
     }
+    if (!isUpgraded && shouldUpgradeConnection()) {
+      out.flush();
+      logger.debug("Upgrading OutputStream to be compressed");
+      out=new DataOutputStream(new SnappyOutputStream(new BufferedOutputStream(socket.getOutputStream())));
+      isUpgraded=true;
+    }
   }
  catch (  Exception e) {
     if (!(e instanceof IOException))     logger.error("error writing to " + poolReference.endPoint(),e);
