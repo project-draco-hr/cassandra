@@ -5,23 +5,10 @@
   dos.writeInt(sc == null ? 0 : sc.remaining());
   if (sc != null)   ByteBufferUtil.write(sc,dos);
   if (version < MessagingService.VERSION_12) {
-    FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),sliceCommand.predicate,dos);
+    FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),asSlicePredicate(sliceCommand.predicate),dos);
   }
  else {
-    SliceRange range=sliceCommand.predicate.slice_range;
-    if (range != null) {
-      dos.writeByte(0);
-      ByteBufferUtil.writeWithShortLength(range.start,dos);
-      ByteBufferUtil.writeWithShortLength(range.finish,dos);
-      dos.writeBoolean(range.reversed);
-      dos.writeInt(range.count);
-    }
- else {
-      dos.writeByte(1);
-      List<ByteBuffer> columns=sliceCommand.predicate.column_names;
-      dos.writeInt(columns.size());
-      for (      ByteBuffer column : columns)       ByteBufferUtil.writeWithShortLength(column,dos);
-    }
+    IFilter.Serializer.instance.serialize(sliceCommand.predicate,dos,version);
   }
   if (version >= MessagingService.VERSION_11) {
     if (sliceCommand.row_filter == null) {

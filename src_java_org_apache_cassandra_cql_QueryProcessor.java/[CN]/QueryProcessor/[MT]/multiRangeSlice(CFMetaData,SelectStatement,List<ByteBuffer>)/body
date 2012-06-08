@@ -10,8 +10,8 @@
  else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
   }
   AbstractBounds<RowPosition> bounds=new Bounds<RowPosition>(startKey,finishKey);
-  SlicePredicate thriftSlicePredicate=slicePredicateFromSelect(select,metadata,variables);
-  validateSlicePredicate(metadata,thriftSlicePredicate);
+  IFilter columnFilter=filterFromSelect(select,metadata,variables);
+  validateFilter(metadata,columnFilter);
   List<Relation> columnRelations=select.getColumnRelations();
   List<IndexExpression> expressions=new ArrayList<IndexExpression>(columnRelations.size());
   for (  Relation columnRelation : columnRelations) {
@@ -21,7 +21,7 @@
   }
   int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();
   try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),null,thriftSlicePredicate,bounds,expressions,limit),select.getConsistencyLevel());
+    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),null,columnFilter,bounds,expressions,limit),select.getConsistencyLevel());
   }
  catch (  IOException e) {
     throw new RuntimeException(e);

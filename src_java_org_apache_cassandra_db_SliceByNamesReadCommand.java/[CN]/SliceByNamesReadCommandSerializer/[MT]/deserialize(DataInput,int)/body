@@ -3,12 +3,9 @@
   String table=dis.readUTF();
   ByteBuffer key=ByteBufferUtil.readWithShortLength(dis);
   QueryPath columnParent=QueryPath.deserialize(dis);
-  int size=dis.readInt();
-  List<ByteBuffer> columns=new ArrayList<ByteBuffer>(size);
-  for (int i=0; i < size; ++i) {
-    columns.add(ByteBufferUtil.readWithShortLength(dis));
-  }
-  SliceByNamesReadCommand command=new SliceByNamesReadCommand(table,key,columnParent,columns);
+  AbstractType<?> comparator=ColumnFamily.getComparatorFor(table,columnParent.columnFamilyName,columnParent.superColumnName);
+  NamesQueryFilter filter=NamesQueryFilter.serializer.deserialize(dis,version,comparator);
+  SliceByNamesReadCommand command=new SliceByNamesReadCommand(table,key,columnParent,filter);
   command.setDigestQuery(isDigest);
   return command;
 }

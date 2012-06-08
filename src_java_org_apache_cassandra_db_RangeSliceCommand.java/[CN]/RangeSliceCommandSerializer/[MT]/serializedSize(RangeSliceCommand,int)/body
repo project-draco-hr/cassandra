@@ -12,7 +12,7 @@
   if (version < MessagingService.VERSION_12) {
     TSerializer ser=new TSerializer(new TBinaryProtocol.Factory());
     try {
-      int predicateLength=ser.serialize(rsc.predicate).length;
+      int predicateLength=ser.serialize(asSlicePredicate(rsc.predicate)).length;
       if (version < MessagingService.VERSION_12)       size+=TypeSizes.NATIVE.sizeof(predicateLength);
       size+=predicateLength;
     }
@@ -21,19 +21,7 @@
     }
   }
  else {
-    SliceRange range=rsc.predicate.slice_range;
-    size+=1;
-    if (range != null) {
-      size+=TypeSizes.NATIVE.sizeofWithShortLength(range.start);
-      size+=TypeSizes.NATIVE.sizeofWithShortLength(range.finish);
-      size+=TypeSizes.NATIVE.sizeof(range.reversed);
-      size+=TypeSizes.NATIVE.sizeof(range.count);
-    }
- else {
-      List<ByteBuffer> columns=rsc.predicate.column_names;
-      size+=TypeSizes.NATIVE.sizeof(columns.size());
-      for (      ByteBuffer column : columns)       size+=TypeSizes.NATIVE.sizeofWithShortLength(column);
-    }
+    size+=IFilter.Serializer.instance.serializedSize(rsc.predicate,version);
   }
   if (version >= MessagingService.VERSION_11) {
     if (rsc.row_filter == null) {
