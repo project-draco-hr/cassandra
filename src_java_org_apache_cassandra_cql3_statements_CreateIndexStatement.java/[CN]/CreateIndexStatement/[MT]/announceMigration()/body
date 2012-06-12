@@ -2,6 +2,8 @@
   CFMetaData oldCfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
   boolean columnExists=false;
   CFMetaData cfm=oldCfm.clone();
+  CFDefinition cfDef=oldCfm.getCfDef();
+  if (cfDef.isComposite)   throw new InvalidRequestException("Secondary indexes are not (yet) supported on tables with composite PRIMARY KEY");
   for (  ColumnDefinition cd : cfm.getColumn_metadata().values()) {
     if (cd.name.equals(columnName.key)) {
       if (cd.getIndexType() != null)       throw new InvalidRequestException("Index already exists");
@@ -13,7 +15,6 @@
     }
   }
   if (!columnExists) {
-    CFDefinition cfDef=oldCfm.getCfDef();
     CFDefinition.Name name=cfDef.get(columnName);
     if (name != null) {
 switch (name.kind) {
