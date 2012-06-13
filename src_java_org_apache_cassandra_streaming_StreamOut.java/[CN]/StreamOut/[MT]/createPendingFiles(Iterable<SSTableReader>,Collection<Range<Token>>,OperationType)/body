@@ -7,7 +7,11 @@
       sstable.releaseReference();
       continue;
     }
-    pending.add(new PendingFile(sstable,desc,SSTable.COMPONENT_DATA,sections,type,sstable.estimatedKeysForRanges(ranges)));
+    CompressionInfo compression=null;
+    if (sstable.compression) {
+      compression=new CompressionInfo(sstable.getCompressionMetadata().getChunksForSections(sections),sstable.getCompressionMetadata().parameters);
+    }
+    pending.add(new PendingFile(sstable,desc,SSTable.COMPONENT_DATA,sections,type,sstable.estimatedKeysForRanges(ranges),compression));
   }
   logger.info("Stream context metadata {}, {} sstables.",pending,Iterables.size(sstables));
   return pending;

@@ -1,6 +1,5 @@
 {
   socket.setSoTimeout(DatabaseDescriptor.getStreamingSocketTimeout());
-  this.socket=socket;
   InetAddress host=header.broadcastAddress != null ? header.broadcastAddress : ((InetSocketAddress)socket.getRemoteSocketAddress()).getAddress();
   session=StreamInSession.get(host,header.sessionId);
   session.setSocket(socket);
@@ -9,4 +8,11 @@
   session.setTable(header.table);
   remoteFile=header.file;
   localFile=remoteFile != null ? StreamIn.getContextMapping(remoteFile) : null;
+  if (remoteFile != null) {
+    if (remoteFile.compressionInfo == null)     underliningStream=new LZFInputStream(socket.getInputStream());
+ else     underliningStream=new CompressedInputStream(socket.getInputStream(),remoteFile.compressionInfo);
+  }
+ else {
+    underliningStream=null;
+  }
 }

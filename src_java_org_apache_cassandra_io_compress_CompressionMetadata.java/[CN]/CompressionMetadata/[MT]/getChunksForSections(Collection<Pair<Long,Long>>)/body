@@ -1,0 +1,18 @@
+{
+  SortedSet<Chunk> offsets=new TreeSet<Chunk>(new Comparator<Chunk>(){
+    public int compare(    Chunk o1,    Chunk o2){
+      return Longs.compare(o1.offset,o2.offset);
+    }
+  }
+);
+  for (  Pair<Long,Long> section : sections) {
+    int startIndex=(int)(section.left / parameters.chunkLength());
+    int endIndex=(int)(section.right / parameters.chunkLength());
+    for (int i=startIndex; i <= endIndex; i++) {
+      long chunkOffset=chunkOffsets.get(i);
+      long nextChunkOffset=(i + 1 == chunkOffsets.size) ? compressedFileLength : chunkOffsets.get(i + 1);
+      offsets.add(new Chunk(chunkOffset,(int)(nextChunkOffset - chunkOffset - 4)));
+    }
+  }
+  return offsets.toArray(new Chunk[offsets.size()]);
+}

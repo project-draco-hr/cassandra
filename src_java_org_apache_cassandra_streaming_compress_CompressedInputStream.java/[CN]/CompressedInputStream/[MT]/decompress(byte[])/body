@@ -1,0 +1,11 @@
+{
+  validBufferBytes=info.parameters.sstableCompressor.uncompress(compressed,0,compressed.length - checksumBytes.length,buffer,0);
+  uncompressedBytes+=validBufferBytes;
+  if (info.parameters.crcChance > FBUtilities.threadLocalRandom().nextDouble()) {
+    checksum.update(buffer,0,validBufferBytes);
+    System.arraycopy(compressed,compressed.length - checksumBytes.length,checksumBytes,0,checksumBytes.length);
+    if (Ints.fromByteArray(checksumBytes) != (int)checksum.getValue())     throw new IOException("CRC unmatched");
+    checksum.reset();
+  }
+  bufferOffset=current & ~(buffer.length - 1);
+}
