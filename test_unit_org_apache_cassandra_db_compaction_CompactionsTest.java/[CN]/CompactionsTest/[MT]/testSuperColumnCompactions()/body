@@ -1,9 +1,9 @@
 {
   Table table=Table.open(TABLE1);
-  ColumnFamilyStore store=table.getColumnFamilyStore("Super1");
+  ColumnFamilyStore cfs=table.getColumnFamilyStore("Super1");
   final int ROWS_PER_SSTABLE=10;
   final int SSTABLES=DatabaseDescriptor.getIndexInterval() * 3 / ROWS_PER_SSTABLE;
-  store.disableAutoCompaction();
+  cfs.disableAutoCompaction();
   long maxTimestampExpected=Long.MIN_VALUE;
   Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
   ByteBuffer superColumn=ByteBufferUtil.bytes("TestSuperColumn");
@@ -17,11 +17,11 @@
       rm.apply();
       inserted.add(key);
     }
-    store.forceBlockingFlush();
-    assertMaxTimestamp(store,maxTimestampExpected);
-    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(store,superColumn).size());
+    cfs.forceBlockingFlush();
+    assertMaxTimestamp(cfs,maxTimestampExpected);
+    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(cfs,superColumn).size());
   }
-  forceCompactions(store);
-  assertEquals(inserted.size(),Util.getRangeSlice(store,superColumn).size());
-  assertMaxTimestamp(store,maxTimestampExpected);
+  forceCompactions(cfs);
+  assertEquals(inserted.size(),Util.getRangeSlice(cfs,superColumn).size());
+  assertMaxTimestamp(cfs,maxTimestampExpected);
 }
