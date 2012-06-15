@@ -1,10 +1,10 @@
 {
   Table table=Table.open(TABLE1);
-  final ColumnFamilyStore store=table.getColumnFamilyStore("Standard1");
+  final ColumnFamilyStore cfs=table.getColumnFamilyStore("Standard1");
   final int ROWS_PER_SSTABLE=10;
   final int SSTABLES=DatabaseDescriptor.getIndexInterval() * 2 / ROWS_PER_SSTABLE;
-  store.setCompactionStrategyClass(compactionStrategy);
-  store.disableAutoCompaction();
+  cfs.setCompactionStrategyClass(compactionStrategy);
+  cfs.disableAutoCompaction();
   long maxTimestampExpected=Long.MIN_VALUE;
   Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
   for (int j=0; j < SSTABLES; j++) {
@@ -17,11 +17,11 @@
       rm.apply();
       inserted.add(key);
     }
-    store.forceBlockingFlush();
-    assertMaxTimestamp(store,maxTimestampExpected);
-    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(store).size());
+    cfs.forceBlockingFlush();
+    assertMaxTimestamp(cfs,maxTimestampExpected);
+    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(cfs).size());
   }
-  Collection<SSTableReader> sstables=store.getSSTables();
+  Collection<SSTableReader> sstables=cfs.getSSTables();
   int currentSSTable=0;
   int sstablesToCorrupt=8;
   for (  SSTableReader sstable : sstables) {
@@ -42,19 +42,19 @@
   try {
     for (int i=0; i < sstables.size(); i++) {
       try {
-        store.forceMajorCompaction();
+        cfs.forceMajorCompaction();
       }
  catch (      Exception e) {
         failures++;
         continue;
       }
-      assertEquals(sstablesToCorrupt + 1,store.getSSTables().size());
+      assertEquals(sstablesToCorrupt + 1,cfs.getSSTables().size());
       break;
     }
   }
   finally {
     System.setErr(new PrintStream(new ByteArrayOutputStream()));
   }
-  store.truncate();
+  cfs.truncate();
   assertEquals(failures,sstablesToCorrupt);
 }
