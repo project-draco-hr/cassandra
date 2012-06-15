@@ -1,7 +1,20 @@
 {
   logger.info("Initializing key cache with capacity of {} MBs.",DatabaseDescriptor.getKeyCacheSizeInMB());
   long keyCacheInMemoryCapacity=DatabaseDescriptor.getKeyCacheSizeInMB() * 1024 * 1024;
-  ICache<KeyCacheKey,RowIndexEntry> kc=ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity / AVERAGE_KEY_CACHE_ROW_SIZE);
+  ICache<KeyCacheKey,RowIndexEntry> kc;
+  if (MemoryMeter.isInitialized()) {
+    kc=ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity);
+  }
+ else {
+    logger.warn("MemoryMeter uninitialized (jamm not specified as java agent); KeyCache size in JVM Heap will not be calculated accurately. " + "Usually this means cassandra-env.sh disabled jamm because you are using a buggy JRE; upgrade to the Sun JRE instead");
+    EntryWeigher<KeyCacheKey,RowIndexEntry> weigher=new EntryWeigher<KeyCacheKey,RowIndexEntry>(){
+      public int weightOf(      KeyCacheKey key,      RowIndexEntry entry){
+        return key.key.length + entry.serializedSize();
+      }
+    }
+;
+    kc=ConcurrentLinkedHashCache.create(keyCacheInMemoryCapacity,weigher);
+  }
   AutoSavingCache<KeyCacheKey,RowIndexEntry> keyCache=new AutoSavingCache<KeyCacheKey,RowIndexEntry>(kc,CacheType.KEY_CACHE,new KeyCacheSerializer());
   int keyCacheKeysToSave=DatabaseDescriptor.getKeyCacheKeysToSave();
   logger.info("Scheduling key cache save to each {} seconds (going to save {} keys).",keyCacheSavePeriod,keyCacheKeysToSave == Integer.MAX_VALUE ? "all" : keyCacheKeysToSave);
