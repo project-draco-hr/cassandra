@@ -1,13 +1,18 @@
 {
+  super(reversed ? slices.length - 1 : 0);
+  boolean inSlice=false;
   OnDiskAtom.Serializer atomSerializer=emptyColumnFamily.getOnDiskSerializer();
   int columns=file.readInt();
   for (int i=0; i < columns; i++) {
     OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
-    if (reversed)     blockColumns.addFirst(column);
- else     blockColumns.addLast(column);
-    boolean outOfBounds=false;
-    if (!reversed && finishColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),finishColumn) >= 0;
- else     if (reversed && startColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),startColumn) >= 0;
-    if (outOfBounds)     break;
+    if (!inSlice && isColumnBeforeSliceStart(column))     continue;
+    if (isColumnBeforeSliceFinish(column)) {
+      inSlice=true;
+      addColumn(column);
+    }
+ else {
+      inSlice=false;
+      if (!setNextSlice())       break;
+    }
   }
 }

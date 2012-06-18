@@ -1,7 +1,13 @@
 {
-  ByteBuffer start=ByteBufferUtil.readWithShortLength(dis);
-  ByteBuffer finish=ByteBufferUtil.readWithShortLength(dis);
+  ColumnSlice[] slices;
+  if (version < MessagingService.VERSION_12) {
+    slices=new ColumnSlice[]{ColumnSlice.serializer.deserialize(dis,version)};
+  }
+ else {
+    slices=new ColumnSlice[dis.readInt()];
+    for (int i=0; i < slices.length; i++)     slices[i]=ColumnSlice.serializer.deserialize(dis,version);
+  }
   boolean reversed=dis.readBoolean();
   int count=dis.readInt();
-  return new SliceQueryFilter(start,finish,reversed,count);
+  return new SliceQueryFilter(slices,reversed,count);
 }

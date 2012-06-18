@@ -1,26 +1,41 @@
 {
-  if (curRangeIndex < 0 || curRangeIndex >= indexes.size())   return false;
-  IndexHelper.IndexInfo curColPosition=indexes.get(curRangeIndex);
-  if (reversed) {
-    if ((finishColumn.remaining() > 0 && comparator.compare(finishColumn,curColPosition.lastName) > 0) || (startColumn.remaining() > 0 && comparator.compare(startColumn,curColPosition.firstName) < 0))     return false;
+  if (lastDeserializedBlock == nextIndexIdx) {
+    if (reversed)     nextIndexIdx--;
+ else     nextIndexIdx++;
   }
- else {
-    if ((startColumn.remaining() > 0 && comparator.compare(startColumn,curColPosition.lastName) > 0) || (finishColumn.remaining() > 0 && comparator.compare(finishColumn,curColPosition.firstName) < 0))     return false;
-  }
-  boolean outOfBounds=false;
-  long positionToSeek=basePosition + curColPosition.offset;
+  lastDeserializedBlock=nextIndexIdx;
+  if (lastDeserializedBlock < 0 || lastDeserializedBlock >= indexes.size())   return false;
+  IndexInfo currentIndex=indexes.get(lastDeserializedBlock);
+  long positionToSeek=basePosition + currentIndex.offset;
   if (file == null)   file=originalInput == null ? sstable.getFileDataInput(positionToSeek) : originalInput;
   OnDiskAtom.Serializer atomSerializer=emptyColumnFamily.getOnDiskSerializer();
   file.seek(positionToSeek);
   FileMark mark=file.mark();
-  while (file.bytesPastMark(mark) < curColPosition.width && !outOfBounds) {
-    OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
-    if (reversed)     blockColumns.addFirst(column);
- else     blockColumns.addLast(column);
-    if (!reversed && finishColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),finishColumn) >= 0;
- else     if (reversed && startColumn.remaining() > 0)     outOfBounds=comparator.compare(column.name(),startColumn) >= 0;
+  boolean inSlice=false;
+  OnDiskAtom column=null;
+  while (file.bytesPastMark(mark) < currentIndex.width) {
+    if (column == null)     column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
+    if (!inSlice && isColumnBeforeSliceStart(column)) {
+      if (reversed) {
+        prefetched.addFirst(column);
+      }
+      column=null;
+    }
+ else     if (isColumnBeforeSliceFinish(column)) {
+      inSlice=true;
+      addColumn(column);
+      column=null;
+    }
+ else {
+      if (reversed && prefetched.isEmpty())       break;
+      if (!setNextSlice())       break;
+      inSlice=false;
+      if (nextIndexIdx != lastDeserializedBlock) {
+        if (reversed)         prefetched.clear();
+        break;
+      }
+      if (reversed)       break;
+    }
   }
-  if (reversed)   curRangeIndex--;
- else   curRangeIndex++;
   return true;
 }

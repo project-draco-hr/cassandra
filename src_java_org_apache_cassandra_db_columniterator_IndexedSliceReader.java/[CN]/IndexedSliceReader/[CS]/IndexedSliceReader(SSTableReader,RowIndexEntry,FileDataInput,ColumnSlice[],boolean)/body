@@ -1,0 +1,35 @@
+{
+  this.sstable=sstable;
+  this.originalInput=input;
+  this.reversed=reversed;
+  this.slices=slices;
+  this.comparator=sstable.metadata.comparator;
+  try {
+    if (sstable.descriptor.version.hasPromotedIndexes) {
+      this.indexes=indexEntry.columnsIndex();
+      if (indexes.isEmpty()) {
+        setToRowStart(sstable,indexEntry,input);
+        this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+        emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+        fetcher=new SimpleBlockFetcher();
+      }
+ else {
+        this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+        emptyColumnFamily.delete(indexEntry.deletionInfo());
+        fetcher=new IndexedBlockFetcher(indexEntry.position);
+      }
+    }
+ else {
+      setToRowStart(sstable,indexEntry,input);
+      IndexHelper.skipBloomFilter(file);
+      this.indexes=IndexHelper.deserializeIndex(file);
+      this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+      emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+      fetcher=indexes.isEmpty() ? new SimpleBlockFetcher() : new IndexedBlockFetcher(file.getFilePointer() + 4);
+    }
+  }
+ catch (  IOException e) {
+    sstable.markSuspect();
+    throw new IOError(e);
+  }
+}

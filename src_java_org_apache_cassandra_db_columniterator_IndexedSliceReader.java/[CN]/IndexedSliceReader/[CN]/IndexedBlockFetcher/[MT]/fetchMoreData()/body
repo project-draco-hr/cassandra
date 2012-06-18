@@ -1,0 +1,24 @@
+{
+  if (!hasMoreSlice())   return false;
+  if (reversed && !prefetched.isEmpty()) {
+    boolean gotSome=false;
+    boolean inSlice=false;
+    OnDiskAtom prefetchedCol;
+    while ((prefetchedCol=prefetched.peek()) != null) {
+      if (isColumnBeforeSliceStart(prefetchedCol)) {
+        inSlice=false;
+        if (!setNextSlice())         return false;
+      }
+ else       if (inSlice || isColumnBeforeSliceFinish(prefetchedCol)) {
+        blockColumns.addLast(prefetched.poll());
+        gotSome=true;
+        inSlice=true;
+      }
+ else {
+        prefetched.poll();
+      }
+    }
+    if (gotSome)     return true;
+  }
+  return getNextBlock();
+}
