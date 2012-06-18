@@ -3,22 +3,25 @@ def cql_complete_single(self, text, partial, init_bindings={}, ignore_case=True,
     bindings = init_bindings.copy()
     prefix = None
     dequoter = util.identity
+    lasttype = None
     if tokens:
-        if (tokens[(-1)][0] == 'unclosedString'):
+        lasttype = tokens[(-1)][0]
+        if (lasttype == 'unclosedString'):
             prefix = self.token_dequote(tokens[(-1)])
             tokens = tokens[:(-1)]
             partial = (prefix + partial)
             dequoter = self.dequote_value
             requoter = self.escape_value
-        elif (tokens[(-1)][0] == 'unclosedName'):
+        elif (lasttype == 'unclosedName'):
             prefix = self.token_dequote(tokens[(-1)])
             tokens = tokens[:(-1)]
             partial = (prefix + partial)
             dequoter = self.dequote_name
             requoter = self.escape_name
-        elif (tokens[(-1)][0] == 'unclosedComment'):
+        elif (lasttype == 'unclosedComment'):
             return []
     bindings['partial'] = partial
+    bindings['*LASTTYPE*'] = lasttype
     bindings['*SRC*'] = text
     completions = self.complete(startsymbol, tokens, bindings)
     (hints, strcompletes) = util.list_bifilter(pylexotron.is_hint, completions)
