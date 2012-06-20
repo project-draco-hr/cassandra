@@ -6,15 +6,17 @@
     while (rowIterator.hasNext() && rows.size() < filter.maxRows() && columnsCount < filter.maxColumns()) {
       Row rawRow=rowIterator.next();
       ColumnFamily data=rawRow.cf;
-      IFilter extraFilter=filter.getExtraFilter(data);
-      if (extraFilter != null) {
-        QueryPath path=new QueryPath(columnFamily);
-        ColumnFamily cf=filter.cfs.getColumnFamily(new QueryFilter(rawRow.key,path,extraFilter));
-        if (cf != null)         data.addAll(cf,HeapAllocator.instance);
+      if (rowIterator.needsFiltering()) {
+        IFilter extraFilter=filter.getExtraFilter(data);
+        if (extraFilter != null) {
+          QueryPath path=new QueryPath(columnFamily);
+          ColumnFamily cf=filter.cfs.getColumnFamily(new QueryFilter(rawRow.key,path,extraFilter));
+          if (cf != null)           data.addAll(cf,HeapAllocator.instance);
+        }
+        if (!filter.isSatisfiedBy(data,null))         continue;
+        logger.debug("{} satisfies all filter expressions",data);
+        data=filter.prune(data);
       }
-      if (!filter.isSatisfiedBy(data))       continue;
-      logger.debug("{} satisfies all filter expressions",data);
-      data=filter.prune(data);
       rows.add(new Row(rawRow.key,data));
       if (data != null)       columnsCount+=filter.lastCounted(data);
       filter.updateFilter(columnsCount);

@@ -1,27 +1,17 @@
 {
   logger.info(String.format("Submitting index build of %s for data in %s",getIndexName(),StringUtils.join(baseCfs.getSSTables(),", ")));
-  SortedSet<ByteBuffer> columnNames=new TreeSet<ByteBuffer>();
-  for (  ColumnDefinition cdef : columnDefs)   columnNames.add(cdef.name);
   Collection<SSTableReader> sstables=baseCfs.markCurrentSSTablesReferenced();
-  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,columnNames,new ReducingKeyIterator(sstables));
+  SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,Collections.singleton(getIndexName()),new ReducingKeyIterator(sstables));
   Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
   try {
     future.get();
     forceBlockingFlush();
-    if (this instanceof PerRowSecondaryIndex) {
-      for (      ByteBuffer columnName : columnNames)       SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName() + ByteBufferUtil.string(columnName));
-    }
- else {
-      SystemTable.setIndexBuilt(baseCfs.table.name,getIndexName());
-    }
+    setIndexBuilt();
   }
  catch (  InterruptedException e) {
     throw new AssertionError(e);
   }
 catch (  ExecutionException e) {
-    throw new RuntimeException(e);
-  }
-catch (  CharacterCodingException e) {
     throw new RuntimeException(e);
   }
  finally {

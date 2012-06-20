@@ -6,9 +6,10 @@
   if (!select.isMultiKey() && select.getKeys().size() > 1)   throw new InvalidRequestException("You cannot use more than one KEY = in a SELECT");
   if (select.getColumnRelations().size() > 0) {
     AbstractType<?> comparator=select.getComparator(keyspace);
-    Set<ByteBuffer> indexed=Table.open(keyspace).getColumnFamilyStore(select.getColumnFamily()).indexManager.getIndexedColumns();
+    SecondaryIndexManager idxManager=Table.open(keyspace).getColumnFamilyStore(select.getColumnFamily()).indexManager;
     for (    Relation relation : select.getColumnRelations()) {
-      if ((relation.operator() == RelationType.EQ) && indexed.contains(relation.getEntity().getByteBuffer(comparator,variables)))       return;
+      ByteBuffer name=relation.getEntity().getByteBuffer(comparator,variables);
+      if ((relation.operator() == RelationType.EQ) && idxManager.indexes(name))       return;
     }
     throw new InvalidRequestException("No indexed columns present in by-columns clause with \"equals\" operator");
   }

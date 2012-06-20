@@ -3,12 +3,19 @@
   boolean columnExists=false;
   CFMetaData cfm=oldCfm.clone();
   CFDefinition cfDef=oldCfm.getCfDef();
-  if (cfDef.isComposite)   throw new InvalidRequestException("Secondary indexes are not (yet) supported on tables with composite PRIMARY KEY");
   for (  ColumnDefinition cd : cfm.getColumn_metadata().values()) {
     if (cd.name.equals(columnName.key)) {
       if (cd.getIndexType() != null)       throw new InvalidRequestException("Index already exists");
       if (logger.isDebugEnabled())       logger.debug("Updating column {} definition for index {}",columnName,indexName);
-      cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+      if (cfDef.isComposite) {
+        CompositeType composite=(CompositeType)cfm.comparator;
+        Map<String,String> opts=new HashMap<String,String>();
+        opts.put(CompositesIndex.PREFIX_SIZE_OPTION,String.valueOf(composite.types.size() - 1));
+        cd.setIndexType(IndexType.COMPOSITES,opts);
+      }
+ else {
+        cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+      }
       cd.setIndexName(indexName);
       columnExists=true;
       break;

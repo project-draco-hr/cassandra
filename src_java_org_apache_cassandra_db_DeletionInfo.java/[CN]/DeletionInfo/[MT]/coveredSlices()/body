@@ -1,0 +1,20 @@
+{
+  if (isLive())   return null;
+  if (!topLevel.equals(DeletionTime.LIVE))   return ColumnSlice.ALL_COLUMNS_ARRAY;
+  List<ColumnSlice> slices=new ArrayList<ColumnSlice>();
+  ColumnSlice current=null;
+  for (  RangeTombstone tombstone : ranges) {
+    if (current == null) {
+      current=new ColumnSlice(tombstone.min,tombstone.max);
+    }
+ else     if (ranges.comparator().compare(current.finish,tombstone.min) < 0) {
+      slices.add(current);
+      current=new ColumnSlice(tombstone.min,tombstone.max);
+    }
+ else     if (ranges.comparator().compare(current.finish,tombstone.max) < 0) {
+      current=new ColumnSlice(current.start,tombstone.max);
+    }
+  }
+  if (current != null)   slices.add(current);
+  return slices.isEmpty() ? null : slices.toArray(new ColumnSlice[slices.size()]);
+}
