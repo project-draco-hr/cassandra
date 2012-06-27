@@ -23,12 +23,17 @@
     System.err.println(msg);
     throw new ConfigurationException(msg);
   }
+  Descriptor descriptor=Descriptor.fromFilename(ssTableFileName);
+  if (Schema.instance.getCFMetaData(descriptor) == null) {
+    System.err.println(String.format("The provided column family is not part of this cassandra database: keysapce = %s, column family = %s",descriptor.ksname,descriptor.cfname));
+    System.exit(1);
+  }
   if (cmd.hasOption(ENUMERATEKEYS_OPTION)) {
-    enumeratekeys(ssTableFileName,System.out);
+    enumeratekeys(descriptor,System.out);
   }
  else {
-    if ((keys != null) && (keys.length > 0))     export(ssTableFileName,System.out,Arrays.asList(keys),excludes);
- else     export(ssTableFileName,excludes);
+    if ((keys != null) && (keys.length > 0))     export(descriptor,System.out,Arrays.asList(keys),excludes);
+ else     export(descriptor,excludes);
   }
   System.exit(0);
 }
