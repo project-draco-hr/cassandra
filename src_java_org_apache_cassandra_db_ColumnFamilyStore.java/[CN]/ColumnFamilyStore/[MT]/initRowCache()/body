@@ -1,12 +1,6 @@
 {
   if (!isRowCacheEnabled())   return;
   long start=System.currentTimeMillis();
-  AutoSavingCache<RowCacheKey,IRowCacheEntry> rowCache=CacheService.instance.rowCache;
-  int cachedRowsRead=0;
-  for (  DecoratedKey key : rowCache.readSaved(table.name,columnFamily)) {
-    ColumnFamily data=getTopLevelColumns(QueryFilter.getIdentityFilter(key,new QueryPath(columnFamily)),Integer.MIN_VALUE,true);
-    CacheService.instance.rowCache.put(new RowCacheKey(metadata.cfId,key),data);
-    cachedRowsRead++;
-  }
+  int cachedRowsRead=CacheService.instance.rowCache.loadSaved(this);
   if (cachedRowsRead > 0)   logger.info(String.format("completed loading (%d ms; %d keys) row cache for %s.%s",System.currentTimeMillis() - start,cachedRowsRead,table.name,columnFamily));
 }
