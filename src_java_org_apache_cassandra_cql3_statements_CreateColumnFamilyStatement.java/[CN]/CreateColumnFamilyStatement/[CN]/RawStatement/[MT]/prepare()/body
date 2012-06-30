@@ -15,7 +15,7 @@
     stmt.keyAlias=keyAliases.get(0).key;
     stmt.keyValidator=getTypeAndRemove(stmt.columns,keyAliases.get(0));
     if (stmt.keyValidator instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.keyAlias));
-    if (columnAliases != null && !columnAliases.isEmpty()) {
+    if (!columnAliases.isEmpty()) {
       if (useCompactStorage && columnAliases.size() == 1) {
         stmt.columnAliases.add(columnAliases.get(0).key);
         stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
@@ -35,19 +35,18 @@
       }
     }
  else {
-      stmt.comparator=CFDefinition.definitionType;
+      if (useCompactStorage)       stmt.comparator=CFDefinition.definitionType;
+ else       stmt.comparator=CompositeType.getInstance(Collections.<AbstractType<?>>singletonList(CFDefinition.definitionType));
     }
-    if (useCompactStorage) {
-      if (stmt.columnAliases.isEmpty())       throw new InvalidRequestException("COMPACT STORAGE requires at least one column part of the clustering key, none found");
-      if (stmt.columns.isEmpty())       throw new InvalidRequestException("COMPACT STORAGE requires one definition not part of the PRIMARY KEY, none found");
-      if (stmt.columns.size() > 1)       throw new InvalidRequestException(String.format("COMPACT STORAGE allows only one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
+    if (stmt.columns.isEmpty())     throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
+    if (useCompactStorage && stmt.columns.size() == 1) {
       Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
       stmt.defaultValidator=lastEntry.getValue();
       stmt.valueAlias=lastEntry.getKey().key;
       stmt.columns.remove(lastEntry.getKey());
     }
  else {
-      if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
+      if (useCompactStorage && !columnAliases.isEmpty())       throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows only one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
       stmt.defaultValidator=(stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : CFDefinition.definitionType;
     }
     return new ParsedStatement.Prepared(stmt);

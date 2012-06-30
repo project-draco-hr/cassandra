@@ -4,15 +4,8 @@
     return;
   }
   IPartitioner p=StorageService.getPartitioner();
-  ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,PEERS_CF);
-  cf.addColumn(Column.create(ep,FBUtilities.timestampMicros(),"peer"));
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,p.getTokenFactory().toByteArray(token));
-  rm.add(cf);
-  try {
-    rm.apply();
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
+  String req="INSERT INTO system.%s (token_bytes, peer) VALUES ('%s', '%s')";
+  String tokenBytes=ByteBufferUtil.bytesToHex(p.getTokenFactory().toByteArray(token));
+  processInternal(String.format(req,PEERS_CF,tokenBytes,ep.getHostAddress()));
   forceBlockingFlush(PEERS_CF);
 }

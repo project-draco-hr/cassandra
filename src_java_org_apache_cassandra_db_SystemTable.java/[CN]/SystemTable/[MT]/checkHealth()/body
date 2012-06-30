@@ -8,19 +8,15 @@
     ex.initCause(err);
     throw ex;
   }
-  QueryFilter filter=QueryFilter.getNamesFilter(decorate(LOCAL_KEY),new QueryPath(LOCAL_CF),ImmutableSortedSet.<ByteBuffer>of(ByteBufferUtil.bytes("cluster_name")));
   ColumnFamilyStore cfs=table.getColumnFamilyStore(LOCAL_CF);
-  ColumnFamily cf=cfs.getColumnFamily(filter);
-  if (cf == null) {
+  String req="SELECT cluster_name FROM system.%s WHERE key='%s'";
+  UntypedResultSet result=processInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+  if (result.isEmpty() || !result.one().has("cluster_name")) {
     if (!cfs.getSSTables().isEmpty())     throw new ConfigurationException("Found system table files, but they couldn't be loaded!");
-    RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCAL_KEY);
-    cf=ColumnFamily.create(Table.SYSTEM_TABLE,LOCAL_CF);
-    cf.addColumn(Column.create(ByteBufferUtil.bytes(DatabaseDescriptor.getClusterName()),FBUtilities.timestampMicros(),"cluster_name"));
-    rm.add(cf);
-    rm.apply();
+    req="INSERT INTO system.%s (key, cluster_name) VALUES ('%s', '%s')";
+    processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,DatabaseDescriptor.getClusterName()));
     return;
   }
-  IColumn clusterCol=cf.columns.iterator().next();
-  String savedClusterName=ByteBufferUtil.string(clusterCol.value());
+  String savedClusterName=result.one().getString("cluster_name");
   if (!DatabaseDescriptor.getClusterName().equals(savedClusterName))   throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name "+ DatabaseDescriptor.getClusterName());
 }

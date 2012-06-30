@@ -1,2 +1,13 @@
 {
+  UUID hostId=null;
+  String req="SELECT ring_id FROM system.%s WHERE key='%s'";
+  UntypedResultSet result=processInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+  if (!result.isEmpty() && result.one().has("ring_id")) {
+    return result.one().getUUID("ring_id");
+  }
+  hostId=UUID.randomUUID();
+  logger.warn("No host ID found, created {} (Note: This should happen exactly once per node).",hostId);
+  req="INSERT INTO system.%s (key, ring_id) VALUES ('%s', '%s')";
+  processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,hostId));
+  return hostId;
 }

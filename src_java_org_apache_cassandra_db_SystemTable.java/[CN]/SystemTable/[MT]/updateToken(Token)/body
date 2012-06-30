@@ -1,14 +1,7 @@
 {
   IPartitioner p=StorageService.getPartitioner();
-  ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,LOCAL_CF);
-  cf.addColumn(Column.create(p.getTokenFactory().toByteArray(token),FBUtilities.timestampMicros(),"token_bytes"));
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCAL_KEY);
-  rm.add(cf);
-  try {
-    rm.apply();
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
+  String req="INSERT INTO system.%s (key, token_bytes) VALUES ('%s', '%s')";
+  String tokenBytes=ByteBufferUtil.bytesToHex(p.getTokenFactory().toByteArray(token));
+  processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,tokenBytes));
   forceBlockingFlush(LOCAL_CF);
 }

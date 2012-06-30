@@ -8,13 +8,10 @@
     QueryFilter filter=QueryFilter.getNamesFilter(decorate(ByteBufferUtil.bytes("L")),new QueryPath(OLD_STATUS_CF),cols);
     ColumnFamily oldCf=oldStatusCfs.getColumnFamily(filter);
     Iterator<IColumn> oldColumns=oldCf.columns.iterator();
-    ColumnFamily cf=ColumnFamily.create(Table.SYSTEM_TABLE,LOCAL_CF);
-    cf.addColumn(Column.create(oldColumns.next().value(),FBUtilities.timestampMicros(),"cluster_name"));
-    cf.addColumn(Column.create(oldColumns.next().value(),FBUtilities.timestampMicros(),"token_bytes"));
-    cf.addColumn(Column.create(true,FBUtilities.timestampMicros(),"bootstrapped"));
-    RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,LOCAL_KEY);
-    rm.add(cf);
-    rm.apply();
+    String clusterName=ByteBufferUtil.string(oldColumns.next().value());
+    String tokenBytes=ByteBufferUtil.bytesToHex(oldColumns.next().value());
+    String req="INSERT INTO system.%s (key, cluster_name, token_bytes, bootstrapped) VALUES ('%s', '%s', '%s', true)";
+    processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,clusterName,tokenBytes));
     oldStatusCfs.truncate();
   }
   ColumnFamilyStore oldHintsCfs=table.getColumnFamilyStore(OLD_HINTS_CF);

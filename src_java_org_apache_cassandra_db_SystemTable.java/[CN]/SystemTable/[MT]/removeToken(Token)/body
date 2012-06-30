@@ -1,12 +1,7 @@
 {
   IPartitioner p=StorageService.getPartitioner();
-  RowMutation rm=new RowMutation(Table.SYSTEM_TABLE,p.getTokenFactory().toByteArray(token));
-  rm.delete(new QueryPath(PEERS_CF,null,null),FBUtilities.timestampMicros());
-  try {
-    rm.apply();
-  }
- catch (  IOException e) {
-    throw new IOError(e);
-  }
+  String req="DELETE FROM system.%s WHERE token_bytes = '%s'";
+  String tokenBytes=ByteBufferUtil.bytesToHex(p.getTokenFactory().toByteArray(token));
+  processInternal(String.format(req,PEERS_CF,tokenBytes));
   forceBlockingFlush(PEERS_CF);
 }
