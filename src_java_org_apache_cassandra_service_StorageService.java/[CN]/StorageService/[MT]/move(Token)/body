@@ -11,12 +11,13 @@
   IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
   Map<String,Multimap<InetAddress,Range<Token>>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range<Token>>>();
   Map<String,Multimap<Range<Token>,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range<Token>,InetAddress>>();
-  TokenMetadata tokenMetaClone=tokenMetadata.cloneAfterAllSettled();
+  TokenMetadata tokenMetaCloneAllSettled=tokenMetadata.cloneAfterAllSettled();
+  TokenMetadata tokenMetaClone=tokenMetadata.cloneOnlyTokenMap();
   for (  String table : tablesToProcess) {
     AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
     Collection<Range<Token>> currentRanges=getRangesForEndpoint(table,localAddress);
     Collection<Range<Token>> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata,newToken,localAddress);
-    Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetadata);
+    Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetaClone);
     Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
     Multimap<Range<Token>,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
     for (    Range<Token> toFetch : rangesPerTable.right) {
@@ -29,8 +30,8 @@
     }
     Multimap<Range<Token>,InetAddress> rangeWithEndpoints=HashMultimap.create();
     for (    Range<Token> toStream : rangesPerTable.left) {
-      Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetadata));
-      Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
+      Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
+      Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaCloneAllSettled));
       rangeWithEndpoints.putAll(toStream,Sets.difference(newEndpoints,currentEndpoints));
     }
     rangesToStreamByTable.put(table,rangeWithEndpoints);

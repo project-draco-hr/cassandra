@@ -1,0 +1,15 @@
+{
+  IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+  String dc=snitch.getDatacenter(ep);
+  String rack=snitch.getRack(ep);
+  Pair<String,String> current=currentLocations.get(ep);
+  if (current != null) {
+    if (current.left.equals(dc) && current.right.equals(rack))     return;
+    dcRacks.get(current.left).remove(current.right,ep);
+    dcEndpoints.remove(current.left,ep);
+  }
+  dcEndpoints.put(dc,ep);
+  if (!dcRacks.containsKey(dc))   dcRacks.put(dc,HashMultimap.<String,InetAddress>create());
+  dcRacks.get(dc).put(rack,ep);
+  currentLocations.put(ep,new Pair<String,String>(dc,rack));
+}

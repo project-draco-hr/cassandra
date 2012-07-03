@@ -13,17 +13,15 @@
   Set<Range<Token>> affectedRanges=new HashSet<Range<Token>>();
   for (  InetAddress endpoint : leavingEndpoints)   affectedRanges.addAll(addressRanges.get(endpoint));
   for (  Range<Token> range : affectedRanges) {
-    Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,tm));
+    Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,tm.cloneOnlyTokenMap()));
     Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,allLeftMetadata));
     pendingRanges.putAll(range,Sets.difference(newEndpoints,currentEndpoints));
   }
-synchronized (bootstrapTokens) {
-    for (    Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
-      InetAddress endpoint=entry.getValue();
-      allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
-      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       pendingRanges.put(range,endpoint);
-      allLeftMetadata.removeEndpoint(endpoint);
-    }
+  for (  Map.Entry<Token,InetAddress> entry : bootstrapTokens.entrySet()) {
+    InetAddress endpoint=entry.getValue();
+    allLeftMetadata.updateNormalToken(entry.getKey(),endpoint);
+    for (    Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))     pendingRanges.put(range,endpoint);
+    allLeftMetadata.removeEndpoint(endpoint);
   }
   for (  Pair<Token,InetAddress> moving : tm.getMovingEndpoints()) {
     InetAddress endpoint=moving.right;
