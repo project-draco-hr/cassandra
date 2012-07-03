@@ -1,0 +1,33 @@
+{
+  int[] dcRacks=new int[]{2,4,8};
+  int[] dcEndpoints=new int[]{128,256,512};
+  int[] dcReplication=new int[]{2,6,6};
+  IEndpointSnitch snitch=new RackInferringSnitch();
+  DatabaseDescriptor.setEndpointSnitch(snitch);
+  TokenMetadata metadata=new TokenMetadata();
+  Map<String,String> configOptions=new HashMap<String,String>();
+  Set<Pair<Token,InetAddress>> tokens=new HashSet<Pair<Token,InetAddress>>();
+  int totalRF=0;
+  for (int dc=0; dc < dcRacks.length; ++dc) {
+    totalRF+=dcReplication[dc];
+    configOptions.put(Integer.toString(dc),Integer.toString(dcReplication[dc]));
+    for (int rack=0; rack < dcRacks[dc]; ++rack) {
+      for (int ep=1; ep <= dcEndpoints[dc] / dcRacks[dc]; ++ep) {
+        byte[] ipBytes=new byte[]{10,(byte)dc,(byte)rack,(byte)ep};
+        InetAddress address=InetAddress.getByAddress(ipBytes);
+        StringToken token=new StringToken(String.format("%02x%02x%02x",ep,rack,dc));
+        logger.debug("adding node " + address + " at "+ token);
+        tokens.add(new Pair<Token,InetAddress>(token,address));
+      }
+    }
+  }
+  metadata.updateNormalTokens(tokens);
+  NetworkTopologyStrategy strategy=new NetworkTopologyStrategy(table,metadata,snitch,configOptions);
+  for (  String testToken : new String[]{"123456","200000","000402","ffffff","400200"}) {
+    List<InetAddress> endpoints=strategy.calculateNaturalEndpoints(new StringToken(testToken),metadata);
+    Set<InetAddress> epSet=new HashSet<InetAddress>(endpoints);
+    Assert.assertEquals(totalRF,endpoints.size());
+    Assert.assertEquals(totalRF,epSet.size());
+    logger.debug(testToken + ": " + endpoints.toString());
+  }
+}
