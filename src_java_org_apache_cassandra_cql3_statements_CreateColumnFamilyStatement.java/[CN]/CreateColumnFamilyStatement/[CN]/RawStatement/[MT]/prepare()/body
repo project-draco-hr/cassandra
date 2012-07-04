@@ -17,10 +17,14 @@
       stmt.columns.put(id,pt.getType());
     }
     if (keyAliases.size() == 0)     throw new InvalidRequestException("You must specify a PRIMARY KEY");
- else     if (keyAliases.size() > 1)     throw new InvalidRequestException("You may only specify one PRIMARY KEY");
-    stmt.keyAlias=keyAliases.get(0).key;
-    stmt.keyValidator=getTypeAndRemove(stmt.columns,keyAliases.get(0));
-    if (stmt.keyValidator instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.keyAlias));
+    List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(keyAliases.size());
+    for (    ColumnIdentifier alias : keyAliases) {
+      stmt.keyAliases.add(alias.key);
+      AbstractType<?> t=getTypeAndRemove(stmt.columns,alias);
+      if (t instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",alias));
+      keyTypes.add(t);
+    }
+    stmt.keyValidator=keyTypes.size() == 1 ? keyTypes.get(0) : CompositeType.getInstance(keyTypes);
     if (columnAliases.isEmpty()) {
       if (useCompactStorage) {
         if (stmt.columns.isEmpty())         throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");

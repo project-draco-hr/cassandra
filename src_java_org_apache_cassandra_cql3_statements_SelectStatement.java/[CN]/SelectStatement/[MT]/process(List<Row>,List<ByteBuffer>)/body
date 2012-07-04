@@ -3,6 +3,13 @@
   ResultSet cqlRows=createResult(selection);
   for (  org.apache.cassandra.db.Row row : rows) {
     if (row.cf == null)     continue;
+    ByteBuffer[] keyComponents=null;
+    if (cfDef.hasCompositeKey) {
+      keyComponents=((CompositeType)cfDef.cfm.getKeyValidator()).split(row.key.key);
+    }
+ else {
+      keyComponents=new ByteBuffer[]{row.key.key};
+    }
     if (cfDef.isCompact) {
       for (      IColumn c : columnsInOrder(row.cf,variables)) {
         if (c.isMarkedForDelete())         continue;
@@ -19,7 +26,7 @@
           Selector selector=p.right;
 switch (name.kind) {
 case KEY_ALIAS:
-            cqlRows.addColumnValue(row.key.key);
+            cqlRows.addColumnValue(keyComponents[name.position]);
           break;
 case COLUMN_ALIAS:
         if (cfDef.isComposite) {
@@ -48,7 +55,7 @@ for (IColumn c : row.cf) {
 if (c.isMarkedForDelete()) continue;
 builder.add(c);
 }
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,row.key.key,group,cqlRows);
+for (ColumnGroupMap group : builder.groups()) handleGroup(selection,row.key.key,keyComponents,group,cqlRows);
 }
  else {
 if (row.cf.getLiveColumnCount() == 0) continue;
@@ -56,7 +63,7 @@ for (Pair<CFDefinition.Name,Selector> p : selection) {
 CFDefinition.Name name=p.left;
 Selector selector=p.right;
 if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) {
-cqlRows.addColumnValue(row.key.key);
+cqlRows.addColumnValue(keyComponents[name.position]);
 continue;
 }
 IColumn c=row.cf.getColumn(name.name.key);
