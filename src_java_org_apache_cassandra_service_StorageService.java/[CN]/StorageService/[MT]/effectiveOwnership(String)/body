@@ -1,17 +1,41 @@
 {
-  Map<String,Float> effective=Maps.newHashMap();
   if (Schema.instance.getNonSystemTables().size() <= 0)   throw new ConfigurationException("Couldn't find any Non System Keyspaces to infer replication topology");
   if (keyspace == null && !hasSameReplication(Schema.instance.getNonSystemTables()))   throw new ConfigurationException("Non System keyspaces doesnt have the same topology");
   if (keyspace == null)   keyspace=Schema.instance.getNonSystemTables().get(0);
-  List<Token> sortedTokens=new ArrayList<Token>(tokenMetadata.getTokenToEndpointMapForReading().keySet());
-  Collections.sort(sortedTokens);
-  Map<Token,Float> ownership=getPartitioner().describeOwnership(sortedTokens);
-  for (  Entry<InetAddress,Collection<Range<Token>>> ranges : constructEndpointToRangeMap(keyspace).entrySet()) {
-    Token token=tokenMetadata.getToken(ranges.getKey());
-    for (    Range<Token> range : ranges.getValue()) {
-      float value=effective.get(token.toString()) == null ? 0.0F : effective.get(token.toString());
-      effective.put(token.toString(),value + ownership.get(range.left));
+  final BiMap<InetAddress,Token> endpointsToTokens=ImmutableBiMap.copyOf(tokenMetadata.getTokenToEndpointMapForReading()).inverse();
+  Collection<Collection<InetAddress>> endpointsGroupedByDc=new ArrayList<Collection<InetAddress>>();
+  if (isDcAwareReplicationStrategy(keyspace)) {
+    SortedMap<String,Collection<InetAddress>> sortedDcsToEndpoints=new TreeMap<String,Collection<InetAddress>>();
+    sortedDcsToEndpoints.putAll(tokenMetadata.getTopology().getDatacenterEndpoints().asMap());
+    for (    Collection<InetAddress> endpoints : sortedDcsToEndpoints.values())     endpointsGroupedByDc.add(endpoints);
+  }
+ else {
+    endpointsGroupedByDc.add(endpointsToTokens.keySet());
+  }
+  LinkedHashMap<InetAddress,Float> finalOwnership=Maps.newLinkedHashMap();
+  for (  Collection<InetAddress> endpoints : endpointsGroupedByDc) {
+    List<InetAddress> sortedEndpoints=Lists.newArrayListWithExpectedSize(endpoints.size());
+    sortedEndpoints.addAll(endpoints);
+    Collections.sort(sortedEndpoints,new Comparator<InetAddress>(){
+      public int compare(      InetAddress o1,      InetAddress o2){
+        return endpointsToTokens.get(o1).compareTo(endpointsToTokens.get(o2));
+      }
+    }
+);
+    Function<InetAddress,Token> f=new Function<InetAddress,Token>(){
+      public Token apply(      InetAddress arg0){
+        return endpointsToTokens.get(arg0);
+      }
+    }
+;
+    Map<Token,Float> tokenOwnership=getPartitioner().describeOwnership(Lists.transform(sortedEndpoints,f));
+    for (    InetAddress endpoint : endpoints) {
+      float ownership=0.0f;
+      for (      Range<Token> range : getRangesForEndpoint(keyspace,endpoint)) {
+        if (tokenOwnership.containsKey(range.left))         ownership+=tokenOwnership.get(range.left);
+      }
+      finalOwnership.put(endpoint,ownership);
     }
   }
-  return effective;
+  return finalOwnership;
 }
