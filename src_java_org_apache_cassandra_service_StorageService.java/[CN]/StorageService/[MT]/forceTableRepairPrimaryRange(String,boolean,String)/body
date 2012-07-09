@@ -1,12 +1,10 @@
 {
   if (Table.SYSTEM_TABLE.equals(tableName))   return;
-  AntiEntropyService.RepairFuture future=forceTableRepair(getLocalPrimaryRange(),tableName,isSequential,columnFamilies);
-  if (future == null)   return;
-  try {
-    future.get();
+  List<AntiEntropyService.RepairFuture> futures=new ArrayList<AntiEntropyService.RepairFuture>();
+  for (  Range<Token> range : getLocalPrimaryRanges()) {
+    RepairFuture future=forceTableRepair(range,tableName,isSequential,columnFamilies);
+    if (future != null)     futures.add(future);
   }
- catch (  Exception e) {
-    logger.error("Repair session " + future.session.getName() + " failed.",e);
-    throw new IOException("Some repair session(s) failed (see log for details).");
-  }
+  if (futures.isEmpty())   return;
+  for (  AntiEntropyService.RepairFuture future : futures)   FBUtilities.waitOnFuture(future);
 }
