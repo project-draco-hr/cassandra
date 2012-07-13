@@ -5,10 +5,17 @@
     return null;
   }
   Collection<SSTableReader> sstables=manifest.getCompactionCandidates();
+  OperationType op=OperationType.COMPACTION;
   if (sstables.isEmpty()) {
-    logger.debug("No compaction necessary for {}",this);
-    return null;
+    SSTableReader sstable=findDroppableSSTable(gcBefore);
+    if (sstable == null) {
+      logger.debug("No compaction necessary for {}",this);
+      return null;
+    }
+    sstables=Collections.singleton(sstable);
+    op=OperationType.TOMBSTONE_COMPACTION;
   }
   LeveledCompactionTask newTask=new LeveledCompactionTask(cfs,sstables,gcBefore,this.maxSSTableSizeInMB);
+  newTask.setCompactionType(op);
   return task.compareAndSet(currentTask,newTask) ? newTask : null;
 }

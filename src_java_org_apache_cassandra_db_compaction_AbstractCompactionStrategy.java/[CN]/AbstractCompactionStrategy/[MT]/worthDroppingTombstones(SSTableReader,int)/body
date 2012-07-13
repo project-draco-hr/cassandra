@@ -1,0 +1,18 @@
+{
+  double droppableRatio=sstable.getEstimatedDroppableTombstoneRatio(gcBefore);
+  if (droppableRatio <= tombstoneThreshold)   return false;
+  Set<SSTableReader> overlaps=cfs.getOverlappingSSTables(Collections.singleton(sstable));
+  if (overlaps.isEmpty()) {
+    return true;
+  }
+ else {
+    long keys=sstable.estimatedKeys();
+    Set<Range<Token>> ranges=new HashSet<Range<Token>>();
+    for (    SSTableReader overlap : overlaps)     ranges.add(new Range<Token>(overlap.first.token,overlap.last.token,overlap.partitioner));
+    long remainingKeys=keys - sstable.estimatedKeysForRanges(ranges);
+    double remainingKeysRatio=((double)remainingKeys) / keys;
+    long columns=sstable.getEstimatedColumnCount().percentile(remainingKeysRatio) * remainingKeys;
+    double remainingColumnsRatio=((double)columns) / (sstable.getEstimatedColumnCount().count() * sstable.getEstimatedColumnCount().mean());
+    return remainingColumnsRatio * droppableRatio > tombstoneThreshold;
+  }
+}
