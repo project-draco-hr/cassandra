@@ -7,10 +7,12 @@
   Map<String,String> loadMap=probe.getLoadMap();
   outs.println("Datacenter: " + dc);
   outs.println("==========");
+  List<String> tokens=new ArrayList<String>();
   float totalReplicas=0f;
   String lastToken="";
   for (  Map.Entry<InetAddress,Float> entry : filteredOwnerships.entrySet()) {
-    lastToken=endpointsToTokens.get(entry.getKey().getHostAddress());
+    tokens.addAll(endpointsToTokens.get(entry.getKey().getHostAddress()));
+    lastToken=tokens.get(tokens.size() - 1);
     totalReplicas+=entry.getValue();
   }
   if (keyspaceSelected)   outs.print("Replicas: " + (int)totalReplicas + "\n\n");
@@ -19,22 +21,23 @@
  else   outs.println();
   for (  Map.Entry<InetAddress,Float> entry : filteredOwnerships.entrySet()) {
     String endpoint=entry.getKey().getHostAddress();
-    String token=endpointsToTokens.get(entry.getKey().getHostAddress());
-    String rack;
-    try {
-      rack=probe.getEndpointSnitchInfoProxy().getRack(endpoint);
+    for (    String token : endpointsToTokens.get(endpoint)) {
+      String rack;
+      try {
+        rack=probe.getEndpointSnitchInfoProxy().getRack(endpoint);
+      }
+ catch (      UnknownHostException e) {
+        rack="Unknown";
+      }
+      String status=liveNodes.contains(endpoint) ? "Up" : deadNodes.contains(endpoint) ? "Down" : "?";
+      String state="Normal";
+      if (joiningNodes.contains(endpoint))       state="Joining";
+ else       if (leavingNodes.contains(endpoint))       state="Leaving";
+ else       if (movingNodes.contains(endpoint))       state="Moving";
+      String load=loadMap.containsKey(endpoint) ? loadMap.get(endpoint) : "?";
+      String owns=new DecimalFormat("##0.00%").format(entry.getValue());
+      outs.printf(format,endpoint,rack,status,state,load,owns,token);
     }
- catch (    UnknownHostException e) {
-      rack="Unknown";
-    }
-    String status=liveNodes.contains(endpoint) ? "Up" : deadNodes.contains(endpoint) ? "Down" : "?";
-    String state="Normal";
-    if (joiningNodes.contains(endpoint))     state="Joining";
- else     if (leavingNodes.contains(endpoint))     state="Leaving";
- else     if (movingNodes.contains(endpoint))     state="Moving";
-    String load=loadMap.containsKey(endpoint) ? loadMap.get(endpoint) : "?";
-    String owns=new DecimalFormat("##0.00%").format(entry.getValue());
-    outs.printf(format,endpoint,rack,status,state,load,owns,token);
   }
   outs.println();
 }

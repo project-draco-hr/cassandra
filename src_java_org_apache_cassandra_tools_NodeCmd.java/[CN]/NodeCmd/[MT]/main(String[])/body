@@ -61,7 +61,7 @@ case RING:
     ;
   break;
 case INFO:
-nodeCmd.printInfo(System.out);
+nodeCmd.printInfo(System.out,cmd);
 break;
 case CFSTATS:
 nodeCmd.printColumnFamilyStats(System.out);
@@ -93,8 +93,9 @@ break;
 case RESETLOCALSCHEMA:
 probe.resetLocalSchema();
 break;
-case IDS:
-nodeCmd.printHostIds(System.out);
+case STATUS:
+if (arguments.length > 0) nodeCmd.printClusterStatus(System.out,arguments[0]);
+ else nodeCmd.printClusterStatus(System.out,null);
 break;
 case DECOMMISSION:
 if (arguments.length > 0) {
@@ -129,7 +130,13 @@ case MOVE:
 if (arguments.length != 1) {
 badUse("Missing token argument for move.");
 }
+try {
 probe.move(arguments[0]);
+}
+ catch (UnsupportedOperationException uoerror) {
+System.err.println(uoerror.getMessage());
+System.exit(1);
+}
 break;
 case JOIN:
 if (probe.isJoined()) {
@@ -156,8 +163,9 @@ badUse("Too many arguments.");
 }
 probe.rebuild(arguments.length == 1 ? arguments[0] : null);
 break;
-case REMOVENODE:
 case REMOVETOKEN:
+System.err.println("Warn: removetoken is deprecated, please use removenode instead");
+case REMOVENODE:
 if (arguments.length != 1) {
 badUse("Missing an argument for removenode (either status, force, or an ID)");
 }

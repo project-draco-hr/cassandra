@@ -2,6 +2,10 @@
   if (newToken == null)   throw new IOException("Can't move to the undefined (null) token.");
   if (tokenMetadata.sortedTokens().contains(newToken))   throw new IOException("target token " + newToken + " is already owned by another node.");
   InetAddress localAddress=FBUtilities.getBroadcastAddress();
+  if (getTokenMetadata().getTokens(localAddress).size() > 1) {
+    logger.error("Invalid request to move(Token); This node has more than one token and cannot be moved thusly.");
+    throw new UnsupportedOperationException("This node has more than one token and cannot be moved thusly.");
+  }
   List<String> tablesToProcess=Schema.instance.getNonSystemTables();
   for (  String table : tablesToProcess) {
     if (tokenMetadata.getPendingRanges(table,localAddress).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
