@@ -4,7 +4,7 @@
   UUID hostId=UUID.fromString(hostIdString);
   InetAddress endpoint=tokenMetadata.getEndpointForHostId(hostId);
   if (endpoint == null)   throw new UnsupportedOperationException("Host ID not found.");
-  Token token=tokenMetadata.getToken(endpoint);
+  Collection<Token> tokens=tokenMetadata.getTokens(endpoint);
   if (endpoint.equals(myAddress))   throw new UnsupportedOperationException("Cannot remove self");
   if (Gossiper.instance.getLiveMembers().contains(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is alive and owns this ID. Use decommission command to remove it from the ring");
   if (tokenMetadata.isLeaving(endpoint))   logger.warn("Node " + endpoint + " is already being removed, continuing removal anyway");
@@ -31,7 +31,7 @@
       throw new AssertionError(e);
     }
   }
-  excise(Collections.singleton(token),endpoint);
+  excise(tokens,endpoint);
   Gossiper.instance.advertiseTokenRemoved(endpoint,hostId);
   replicatingNodes.clear();
   removingNode=null;
