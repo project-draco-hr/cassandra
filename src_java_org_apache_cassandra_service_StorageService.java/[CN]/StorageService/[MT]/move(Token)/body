@@ -7,7 +7,7 @@
     if (tokenMetadata.getPendingRanges(table,localAddress).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
   }
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.moving(newToken));
-  setMode(Mode.MOVING,String.format("Moving %s from %s to %s.",localAddress,getLocalToken(),newToken),true);
+  setMode(Mode.MOVING,String.format("Moving %s from %s to %s.",localAddress,getLocalTokens().iterator().next(),newToken),true);
   IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
   Map<String,Multimap<InetAddress,Range<Token>>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range<Token>>>();
   Map<String,Multimap<Range<Token>,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range<Token>,InetAddress>>();
@@ -60,6 +60,6 @@
       throw new RuntimeException("Interrupted latch while waiting for stream/fetch ranges to finish: " + e.getMessage());
     }
   }
-  setToken(newToken);
-  if (logger.isDebugEnabled())   logger.debug("Successfully moved to new token {}",getLocalToken());
+  setTokens(Collections.singleton(newToken));
+  if (logger.isDebugEnabled())   logger.debug("Successfully moved to new token {}",getLocalTokens().iterator().next());
 }

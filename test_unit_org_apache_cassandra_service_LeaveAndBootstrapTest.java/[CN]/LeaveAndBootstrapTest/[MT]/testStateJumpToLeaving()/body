@@ -9,19 +9,19 @@
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   List<UUID> hostIds=new ArrayList<UUID>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,6);
-  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(keyTokens.get(0)));
+  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(Collections.singleton(keyTokens.get(0))));
   assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(0)));
   assertTrue(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getEndpoint(endpointTokens.get(2)) == null);
-  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(1),hostIds.get(2)));
+  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(1)),hostIds.get(2)));
   assertFalse(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getBootstrapTokens().size() == 1);
   assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(2)));
-  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(keyTokens.get(1)));
+  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(Collections.singleton(keyTokens.get(1))));
   assertTrue(tmd.getEndpoint(keyTokens.get(1)).equals(hosts.get(2)));
   assertTrue(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getBootstrapTokens().isEmpty());
-  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.left(keyTokens.get(1),Gossiper.computeExpireTime()));
+  ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.left(Collections.singleton(keyTokens.get(1)),Gossiper.computeExpireTime()));
   assertFalse(tmd.isMember(hosts.get(2)));
   assertFalse(tmd.isLeaving(hosts.get(2)));
 }

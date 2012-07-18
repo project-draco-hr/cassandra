@@ -1,0 +1,13 @@
+{
+  if (ep.equals(FBUtilities.getBroadcastAddress())) {
+    removeTokens(tokens);
+    return;
+  }
+  IPartitioner p=StorageService.getPartitioner();
+  for (  Token token : tokens) {
+    String req="INSERT INTO system.%s (token_bytes, peer) VALUES ('%s', '%s')";
+    String tokenBytes=ByteBufferUtil.bytesToHex(p.getTokenFactory().toByteArray(token));
+    processInternal(String.format(req,PEERS_CF,tokenBytes,ep.getHostAddress()));
+  }
+  forceBlockingFlush(PEERS_CF);
+}

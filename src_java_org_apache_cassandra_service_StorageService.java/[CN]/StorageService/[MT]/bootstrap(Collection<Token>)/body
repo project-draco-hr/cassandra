@@ -1,0 +1,19 @@
+{
+  isBootstrapMode=true;
+  SystemTable.updateTokens(tokens);
+  if (0 == DatabaseDescriptor.getReplaceTokens().size()) {
+    Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.bootstrapping(tokens,SystemTable.getLocalHostId()));
+    setMode(Mode.JOINING,"sleeping " + RING_DELAY + " ms for pending range setup",true);
+    try {
+      Thread.sleep(RING_DELAY);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+  }
+ else {
+    tokenMetadata.updateNormalTokens(tokens,FBUtilities.getBroadcastAddress());
+  }
+  setMode(Mode.JOINING,"Starting to bootstrap...",true);
+  new BootStrapper(FBUtilities.getBroadcastAddress(),tokens,tokenMetadata).bootstrap();
+}

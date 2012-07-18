@@ -1,14 +1,14 @@
 {
   InetAddress endpoint=InetAddress.getByName(address);
   EndpointState epState=endpointStateMap.get(endpoint);
-  Token token=null;
+  Collection<Token> tokens=null;
   logger.warn("Assassinating {} via gossip",endpoint);
   if (epState == null) {
     epState=new EndpointState(new HeartBeatState((int)((System.currentTimeMillis() + 60000) / 1000),9999));
   }
  else {
     try {
-      token=StorageService.instance.getTokenMetadata().getToken(endpoint);
+      tokens=StorageService.instance.getTokenMetadata().getTokens(endpoint);
     }
  catch (    AssertionError e) {
     }
@@ -25,8 +25,8 @@
     epState.updateTimestamp();
     epState.getHeartBeatState().forceNewerGenerationUnsafe();
   }
-  if (token == null)   token=StorageService.instance.getBootstrapToken();
-  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.left(token,computeExpireTime()));
+  if (tokens == null)   tokens=Arrays.asList(StorageService.instance.getBootstrapToken());
+  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.left(tokens,computeExpireTime()));
   handleMajorStateChange(endpoint,epState);
   try {
     Thread.sleep(intervalInMillis * 4);

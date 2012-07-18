@@ -19,13 +19,14 @@
   }
   if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
     logger.info("Loading persisted ring state");
-    for (    Map.Entry<Token,InetAddress> entry : SystemTable.loadTokens().entrySet()) {
-      if (entry.getValue() == FBUtilities.getLocalAddress()) {
-        SystemTable.removeToken(entry.getKey());
+    Multimap<InetAddress,Token> loadedTokens=SystemTable.loadTokens();
+    for (    InetAddress ep : loadedTokens.keySet()) {
+      if (ep.equals(FBUtilities.getBroadcastAddress())) {
+        SystemTable.removeTokens(loadedTokens.get(ep));
       }
  else {
-        tokenMetadata.updateNormalToken(entry.getKey(),entry.getValue());
-        Gossiper.instance.addSavedEndpoint(entry.getValue());
+        tokenMetadata.updateNormalTokens(loadedTokens.get(ep),ep);
+        Gossiper.instance.addSavedEndpoint(ep);
       }
     }
   }
