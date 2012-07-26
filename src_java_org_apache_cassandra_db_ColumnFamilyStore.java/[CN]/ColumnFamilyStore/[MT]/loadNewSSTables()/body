@@ -3,7 +3,7 @@
   Set<Descriptor> currentDescriptors=new HashSet<Descriptor>();
   for (  SSTableReader sstable : data.getView().sstables)   currentDescriptors.add(sstable.descriptor);
   Set<SSTableReader> newSSTables=new HashSet<SSTableReader>();
-  Directories.SSTableLister lister=directories.sstableLister().skipCompacted(true).skipTemporary(true);
+  Directories.SSTableLister lister=directories.sstableLister().skipTemporary(true);
   for (  Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
     Descriptor descriptor=entry.getKey();
     if (currentDescriptors.contains(descriptor))     continue;
@@ -14,7 +14,7 @@
     SSTableWriter.rename(descriptor,newDescriptor,entry.getValue());
     SSTableReader reader;
     try {
-      reader=SSTableReader.open(newDescriptor,entry.getValue(),data,metadata,partitioner);
+      reader=SSTableReader.open(newDescriptor,entry.getValue(),metadata,partitioner);
     }
  catch (    IOException e) {
       SSTableReader.logOpenException(entry.getKey(),e);
