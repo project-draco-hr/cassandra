@@ -1,15 +1,20 @@
 {
   long startPosition=beforeAppend(decoratedKey);
-  ByteBufferUtil.writeWithShortLength(decoratedKey.key,dataFile.stream);
-  DataOutputBuffer buffer=new DataOutputBuffer();
-  ColumnIndex.Builder builder=new ColumnIndex.Builder(cf,decoratedKey.key,cf.getColumnCount(),buffer);
-  ColumnIndex index=builder.build(cf);
-  TypeSizes typeSizes=TypeSizes.NATIVE;
-  long delSize=DeletionTime.serializer.serializedSize(cf.deletionInfo().getTopLevelDeletion(),typeSizes);
-  dataFile.stream.writeLong(buffer.getLength() + delSize + typeSizes.sizeof(0));
-  DeletionInfo.serializer().serializeForSSTable(cf.deletionInfo(),dataFile.stream);
-  dataFile.stream.writeInt(builder.writtenAtomCount());
-  dataFile.stream.write(buffer.getData(),0,buffer.getLength());
-  afterAppend(decoratedKey,startPosition,cf.deletionInfo(),index);
-  sstableMetadataCollector.update(dataFile.getFilePointer() - startPosition,cf.getColumnStats());
+  try {
+    ByteBufferUtil.writeWithShortLength(decoratedKey.key,dataFile.stream);
+    DataOutputBuffer buffer=new DataOutputBuffer();
+    ColumnIndex.Builder builder=new ColumnIndex.Builder(cf,decoratedKey.key,cf.getColumnCount(),buffer);
+    ColumnIndex index=builder.build(cf);
+    TypeSizes typeSizes=TypeSizes.NATIVE;
+    long delSize=DeletionTime.serializer.serializedSize(cf.deletionInfo().getTopLevelDeletion(),typeSizes);
+    dataFile.stream.writeLong(buffer.getLength() + delSize + typeSizes.sizeof(0));
+    DeletionInfo.serializer().serializeForSSTable(cf.deletionInfo(),dataFile.stream);
+    dataFile.stream.writeInt(builder.writtenAtomCount());
+    dataFile.stream.write(buffer.getData(),0,buffer.getLength());
+    afterAppend(decoratedKey,startPosition,cf.deletionInfo(),index);
+    sstableMetadataCollector.update(dataFile.getFilePointer() - startPosition,cf.getColumnStats());
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,dataFile.getPath());
+  }
 }

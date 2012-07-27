@@ -1,11 +1,16 @@
 {
   if (channel.position() != chunk.offset)   channel.position(chunk.offset);
   if (compressed.length < chunk.length)   compressed=new byte[chunk.length];
-  if (source.read(compressed,0,chunk.length) != chunk.length)   throw new IOException(String.format("(%s) failed to read %d bytes from offset %d.",getPath(),chunk.length,chunk.offset));
-  validBufferBytes=metadata.compressor().uncompress(compressed,0,chunk.length,buffer,0);
+  if (source.read(compressed,0,chunk.length) != chunk.length)   throw new CorruptBlockException(getPath(),chunk);
+  try {
+    validBufferBytes=metadata.compressor().uncompress(compressed,0,chunk.length,buffer,0);
+  }
+ catch (  IOException e) {
+    throw new CorruptBlockException(getPath(),chunk);
+  }
   if (metadata.parameters.crcChance > FBUtilities.threadLocalRandom().nextDouble()) {
     checksum.update(buffer,0,validBufferBytes);
-    if (checksum(chunk) != (int)checksum.getValue())     throw new CorruptedBlockException(getPath(),chunk);
+    if (checksum(chunk) != (int)checksum.getValue())     throw new CorruptBlockException(getPath(),chunk);
     checksum.reset();
   }
   bufferOffset=current & ~(buffer.length - 1);

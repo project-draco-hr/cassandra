@@ -1,12 +1,18 @@
 {
-  FileOutputStream fos=new FileOutputStream(descriptor.filenameFor(SSTable.COMPONENT_FILTER));
-  DataOutputStream stream=new DataOutputStream(fos);
-  FilterFactory.serialize(bf,stream,descriptor.version.filterType);
-  stream.flush();
-  fos.getFD().sync();
-  stream.close();
-  long position=indexFile.getFilePointer();
-  indexFile.close();
-  FileUtils.truncate(indexFile.getPath(),position);
+  String path=descriptor.filenameFor(SSTable.COMPONENT_FILTER);
+  try {
+    FileOutputStream fos=new FileOutputStream(path);
+    DataOutputStream stream=new DataOutputStream(fos);
+    FilterFactory.serialize(bf,stream,descriptor.version.filterType);
+    stream.flush();
+    fos.getFD().sync();
+    stream.close();
+    long position=indexFile.getFilePointer();
+    indexFile.close();
+    FileUtils.truncate(indexFile.getPath(),position);
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,path);
+  }
   summary.complete();
 }

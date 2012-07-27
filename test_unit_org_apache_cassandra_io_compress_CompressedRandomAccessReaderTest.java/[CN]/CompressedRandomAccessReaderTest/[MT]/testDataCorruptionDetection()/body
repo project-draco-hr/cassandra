@@ -25,12 +25,16 @@
       checksumModifier.write(random.nextInt());
       checksumModifier.getFD().sync();
       final RandomAccessReader r=CompressedRandomAccessReader.open(file.getPath(),meta,false);
-      expectException(new Callable<String>(){
-        public String call() throws Exception {
-          return r.readLine();
-        }
+      Throwable exception=null;
+      try {
+        r.readLine();
       }
-,CorruptedBlockException.class);
+ catch (      Throwable t) {
+        exception=t;
+      }
+      assertNotNull(exception);
+      assertEquals(exception.getClass(),CorruptSSTableException.class);
+      assertEquals(exception.getCause().getClass(),CorruptBlockException.class);
       r.close();
     }
     updateChecksum(checksumModifier,chunk.length,checksum);
