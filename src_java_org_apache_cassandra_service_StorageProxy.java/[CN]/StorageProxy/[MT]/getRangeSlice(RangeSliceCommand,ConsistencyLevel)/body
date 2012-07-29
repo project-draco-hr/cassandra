@@ -6,11 +6,13 @@
     int columnsCount=0;
     rows=new ArrayList<Row>();
     List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(command.range);
-    long estimatedKeys=Table.open(command.keyspace).getColumnFamilyStore(command.column_family).estimateKeys();
-    int concurrencyFactor=(int)command.maxResults / ((int)estimatedKeys + 1);
-    if (concurrencyFactor <= 0)     concurrencyFactor=1;
-    if (concurrencyFactor > ranges.size())     concurrencyFactor=ranges.size();
+    Table table=Table.open(command.keyspace);
+    long estimatedKeysPerRange=table.getColumnFamilyStore(command.column_family).estimateKeys() / table.getReplicationStrategy().getReplicationFactor();
+    int concurrencyFactor=(int)(command.maxResults / (estimatedKeysPerRange + 1));
+    if (concurrencyFactor <= 0 || command.maxIsColumns)     concurrencyFactor=1;
+ else     if (concurrencyFactor > ranges.size())     concurrencyFactor=ranges.size();
     List<ReadCallback<RangeSliceReply,Iterable<Row>>> scanHandlers=new ArrayList<ReadCallback<RangeSliceReply,Iterable<Row>>>(concurrencyFactor);
+    int parallelHandlers=concurrencyFactor;
     for (    AbstractBounds<RowPosition> range : ranges) {
       RangeSliceCommand nodeCmd=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.row_filter,command.maxResults,command.maxIsColumns,command.isPaging);
       List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(nodeCmd.keyspace,range.right);
@@ -27,6 +29,7 @@
 catch (        InterruptedException e) {
           throw new AssertionError(e);
         }
+        parallelHandlers--;
       }
  else {
         RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(nodeCmd.keyspace);
@@ -39,7 +42,7 @@ catch (        InterruptedException e) {
           if (logger.isDebugEnabled())           logger.debug("reading " + nodeCmd + " from "+ endpoint);
         }
         scanHandlers.add(handler);
-        if (scanHandlers.size() >= concurrencyFactor) {
+        if (scanHandlers.size() >= parallelHandlers) {
           for (          ReadCallback<RangeSliceReply,Iterable<Row>> scanHandler : scanHandlers) {
             try {
               for (              Row row : scanHandler.get()) {
@@ -56,12 +59,12 @@ catch (        InterruptedException e) {
 catch (            DigestMismatchException e) {
               throw new AssertionError(e);
             }
-            int count=nodeCmd.maxIsColumns ? columnsCount : rows.size();
-            if (count >= nodeCmd.maxResults)             break;
           }
           scanHandlers.clear();
         }
       }
+      int count=nodeCmd.maxIsColumns ? columnsCount : rows.size();
+      if (count >= nodeCmd.maxResults)       break;
     }
   }
   finally {
