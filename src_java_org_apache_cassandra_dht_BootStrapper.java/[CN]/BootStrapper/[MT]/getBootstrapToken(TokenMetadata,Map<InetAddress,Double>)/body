@@ -5,5 +5,12 @@
     if (metadata.getEndpoint(token) != null)     throw new ConfigurationException("Bootstraping to existing token " + token + " is not allowed (decommission/removetoken the old node first).");
     return token;
   }
-  return getBalancedToken(metadata,load);
+  for (  Map.Entry<InetAddress,EndpointState> entry : Gossiper.instance.getEndpointStates()) {
+    if (entry.getKey().equals(FBUtilities.getBroadcastAddress())) {
+      continue;
+    }
+    VersionedValue schemaValue=entry.getValue().getApplicationState(ApplicationState.SCHEMA);
+    if (schemaValue != null && !schemaValue.value.equals(Schema.emptyVersion.toString()))     return getBalancedToken(metadata,load);
+  }
+  return StorageService.getPartitioner().getRandomToken();
 }
