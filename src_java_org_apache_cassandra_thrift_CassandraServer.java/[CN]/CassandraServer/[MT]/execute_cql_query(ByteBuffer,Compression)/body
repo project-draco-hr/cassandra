@@ -11,7 +11,14 @@
     if (cState.getCQLVersion().major == 2)     return QueryProcessor.process(queryString,state());
  else     return org.apache.cassandra.cql3.QueryProcessor.process(queryString,cState).toThriftResult();
   }
-  finally {
+ catch (  RequestExecutionException e) {
+    ThriftConversion.rethrow(e);
+    return null;
+  }
+catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
+  }
+ finally {
     Tracing.instance().stopSession();
   }
 }

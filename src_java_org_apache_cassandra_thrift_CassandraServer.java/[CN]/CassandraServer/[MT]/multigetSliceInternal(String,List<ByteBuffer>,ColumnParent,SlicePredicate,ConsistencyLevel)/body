@@ -2,7 +2,8 @@
   CFMetaData metadata=ThriftValidation.validateColumnFamily(keyspace,column_parent.column_family);
   ThriftValidation.validateColumnParent(metadata,column_parent);
   ThriftValidation.validatePredicate(metadata,column_parent,predicate);
-  ThriftValidation.validateConsistencyLevel(keyspace,consistency_level,RequestType.READ);
+  org.apache.cassandra.db.ConsistencyLevel consistencyLevel=ThriftConversion.fromThrift(consistency_level);
+  consistencyLevel.validateForRead(keyspace);
   List<ReadCommand> commands=new ArrayList<ReadCommand>(keys.size());
   if (predicate.column_names != null) {
     for (    ByteBuffer key : keys) {
@@ -17,5 +18,5 @@
       commands.add(new SliceFromReadCommand(keyspace,key,column_parent,range.start,range.finish,range.reversed,range.count));
     }
   }
-  return getSlice(commands,consistency_level);
+  return getSlice(commands,consistencyLevel);
 }

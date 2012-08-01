@@ -1,14 +1,12 @@
 {
   logger.debug("drop_column_family");
   ClientState cState=state();
-  cState.hasColumnFamilySchemaAccess(Permission.WRITE);
   try {
+    cState.hasColumnFamilySchemaAccess(Permission.WRITE);
     MigrationManager.announceColumnFamilyDrop(cState.getKeyspace(),column_family);
     return Schema.instance.getVersion().toString();
   }
- catch (  ConfigurationException e) {
-    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+ catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
   }
 }

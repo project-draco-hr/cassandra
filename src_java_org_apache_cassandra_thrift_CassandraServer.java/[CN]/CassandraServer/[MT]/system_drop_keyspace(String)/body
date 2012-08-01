@@ -1,14 +1,12 @@
 {
   logger.debug("drop_keyspace");
-  ThriftValidation.validateKeyspaceNotSystem(keyspace);
-  state().hasKeyspaceSchemaAccess(Permission.WRITE);
   try {
+    ThriftValidation.validateKeyspaceNotSystem(keyspace);
+    state().hasKeyspaceSchemaAccess(Permission.WRITE);
     MigrationManager.announceKeyspaceDrop(keyspace);
     return Schema.instance.getVersion().toString();
   }
- catch (  ConfigurationException e) {
-    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+ catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
   }
 }

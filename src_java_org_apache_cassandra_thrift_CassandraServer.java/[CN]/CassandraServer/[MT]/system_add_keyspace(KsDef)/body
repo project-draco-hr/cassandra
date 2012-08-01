@@ -1,14 +1,14 @@
 {
   logger.debug("add_keyspace");
-  ThriftValidation.validateKeyspaceNotSystem(ks_def.name);
-  state().hasKeyspaceSchemaAccess(Permission.WRITE);
-  ThriftValidation.validateKeyspaceNotYetExisting(ks_def.name);
-  for (  CfDef cf : ks_def.cf_defs) {
-    if (!cf.getKeyspace().equals(ks_def.getName())) {
-      throw new InvalidRequestException("CfDef (" + cf.getName() + ") had a keyspace definition that did not match KsDef");
-    }
-  }
   try {
+    ThriftValidation.validateKeyspaceNotSystem(ks_def.name);
+    state().hasKeyspaceSchemaAccess(Permission.WRITE);
+    ThriftValidation.validateKeyspaceNotYetExisting(ks_def.name);
+    for (    CfDef cf : ks_def.cf_defs) {
+      if (!cf.getKeyspace().equals(ks_def.getName())) {
+        throw new InvalidRequestException("CfDef (" + cf.getName() + ") had a keyspace definition that did not match KsDef");
+      }
+    }
     Collection<CFMetaData> cfDefs=new ArrayList<CFMetaData>(ks_def.cf_defs.size());
     for (    CfDef cf_def : ks_def.cf_defs) {
       cf_def.unsetId();
@@ -19,9 +19,7 @@
     MigrationManager.announceNewKeyspace(KSMetaData.fromThrift(ks_def,cfDefs.toArray(new CFMetaData[cfDefs.size()])));
     return Schema.instance.getVersion().toString();
   }
- catch (  ConfigurationException e) {
-    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+ catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
   }
 }

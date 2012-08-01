@@ -1,89 +1,84 @@
 {
-  try {
-    if (!columnFamily().matches("\\w+"))     throw new InvalidRequestException(String.format("\"%s\" is not a valid column family name (must be alphanumeric character only: [0-9A-Za-z]+)",columnFamily()));
-    if (columnFamily().length() > Schema.NAME_LENGTH)     throw new InvalidRequestException(String.format("Column family names shouldn't be more than %s characters long (got \"%s\")",Schema.NAME_LENGTH,columnFamily()));
-    for (    Multiset.Entry<ColumnIdentifier> entry : definedNames.entrySet())     if (entry.getCount() > 1)     throw new InvalidRequestException(String.format("Multiple definition of identifier %s",entry.getElement()));
-    properties.validate();
-    CreateColumnFamilyStatement stmt=new CreateColumnFamilyStatement(cfName,properties);
-    stmt.setBoundTerms(getBoundsTerms());
-    Map<ByteBuffer,CollectionType> definedCollections=null;
-    for (    Map.Entry<ColumnIdentifier,ParsedType> entry : definitions.entrySet()) {
-      ColumnIdentifier id=entry.getKey();
-      ParsedType pt=entry.getValue();
-      if (pt.isCollection()) {
-        if (definedCollections == null)         definedCollections=new HashMap<ByteBuffer,CollectionType>();
-        definedCollections.put(id.key,(CollectionType)pt.getType());
+  if (!columnFamily().matches("\\w+"))   throw new InvalidRequestException(String.format("\"%s\" is not a valid column family name (must be alphanumeric character only: [0-9A-Za-z]+)",columnFamily()));
+  if (columnFamily().length() > Schema.NAME_LENGTH)   throw new InvalidRequestException(String.format("Column family names shouldn't be more than %s characters long (got \"%s\")",Schema.NAME_LENGTH,columnFamily()));
+  for (  Multiset.Entry<ColumnIdentifier> entry : definedNames.entrySet())   if (entry.getCount() > 1)   throw new InvalidRequestException(String.format("Multiple definition of identifier %s",entry.getElement()));
+  properties.validate();
+  CreateColumnFamilyStatement stmt=new CreateColumnFamilyStatement(cfName,properties);
+  stmt.setBoundTerms(getBoundsTerms());
+  Map<ByteBuffer,CollectionType> definedCollections=null;
+  for (  Map.Entry<ColumnIdentifier,ParsedType> entry : definitions.entrySet()) {
+    ColumnIdentifier id=entry.getKey();
+    ParsedType pt=entry.getValue();
+    if (pt.isCollection()) {
+      if (definedCollections == null)       definedCollections=new HashMap<ByteBuffer,CollectionType>();
+      definedCollections.put(id.key,(CollectionType)pt.getType());
+    }
+    stmt.columns.put(id,pt.getType());
+  }
+  if (keyAliases.size() != 1)   throw new InvalidRequestException("You must specify one and only one PRIMARY KEY");
+  List<ColumnIdentifier> kAliases=keyAliases.get(0);
+  List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
+  for (  ColumnIdentifier alias : kAliases) {
+    stmt.keyAliases.add(alias.key);
+    AbstractType<?> t=getTypeAndRemove(stmt.columns,alias);
+    if (t instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",alias));
+    keyTypes.add(t);
+  }
+  stmt.keyValidator=keyTypes.size() == 1 ? keyTypes.get(0) : CompositeType.getInstance(keyTypes);
+  if (columnAliases.isEmpty()) {
+    if (useCompactStorage) {
+      if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
+      stmt.comparator=CFDefinition.definitionType;
+    }
+ else {
+      List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(definedCollections == null ? 1 : 2);
+      types.add(CFDefinition.definitionType);
+      if (definedCollections != null)       types.add(ColumnToCollectionType.getInstance(definedCollections));
+      stmt.comparator=CompositeType.getInstance(types);
+    }
+  }
+ else {
+    if (useCompactStorage && columnAliases.size() == 1) {
+      if (definedCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
+      stmt.columnAliases.add(columnAliases.get(0).key);
+      stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
+      if (stmt.comparator instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
+    }
+ else {
+      List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(columnAliases.size() + 1);
+      for (      ColumnIdentifier t : columnAliases) {
+        stmt.columnAliases.add(t.key);
+        AbstractType<?> type=getTypeAndRemove(stmt.columns,t);
+        if (type instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t.key));
+        types.add(type);
       }
-      stmt.columns.put(id,pt.getType());
-    }
-    if (keyAliases.size() != 1)     throw new InvalidRequestException("You must specify one and only one PRIMARY KEY");
-    List<ColumnIdentifier> kAliases=keyAliases.get(0);
-    List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
-    for (    ColumnIdentifier alias : kAliases) {
-      stmt.keyAliases.add(alias.key);
-      AbstractType<?> t=getTypeAndRemove(stmt.columns,alias);
-      if (t instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",alias));
-      keyTypes.add(t);
-    }
-    stmt.keyValidator=keyTypes.size() == 1 ? keyTypes.get(0) : CompositeType.getInstance(keyTypes);
-    if (columnAliases.isEmpty()) {
       if (useCompactStorage) {
-        if (stmt.columns.isEmpty())         throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
-        stmt.comparator=CFDefinition.definitionType;
+        if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
       }
  else {
-        List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(definedCollections == null ? 1 : 2);
         types.add(CFDefinition.definitionType);
         if (definedCollections != null)         types.add(ColumnToCollectionType.getInstance(definedCollections));
-        stmt.comparator=CompositeType.getInstance(types);
       }
+      if (types.isEmpty())       throw new IllegalStateException("Nonsensical empty parameter list for CompositeType");
+      stmt.comparator=CompositeType.getInstance(types);
     }
- else {
-      if (useCompactStorage && columnAliases.size() == 1) {
-        if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-        stmt.columnAliases.add(columnAliases.get(0).key);
-        stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
-        if (stmt.comparator instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
-      }
- else {
-        List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(columnAliases.size() + 1);
-        for (        ColumnIdentifier t : columnAliases) {
-          stmt.columnAliases.add(t.key);
-          AbstractType<?> type=getTypeAndRemove(stmt.columns,t);
-          if (type instanceof CounterColumnType)           throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t.key));
-          types.add(type);
-        }
-        if (useCompactStorage) {
-          if (definedCollections != null)           throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-        }
- else {
-          types.add(CFDefinition.definitionType);
-          if (definedCollections != null)           types.add(ColumnToCollectionType.getInstance(definedCollections));
-        }
-        if (types.isEmpty())         throw new IllegalStateException("Nonsensical empty parameter list for CompositeType");
-        stmt.comparator=CompositeType.getInstance(types);
-      }
-    }
-    if (useCompactStorage && stmt.columns.size() <= 1) {
-      if (stmt.columns.isEmpty()) {
-        if (columnAliases.isEmpty())         throw new InvalidRequestException(String.format("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
-        stmt.defaultValidator=CFDefinition.definitionType;
-        stmt.valueAlias=ByteBufferUtil.EMPTY_BYTE_BUFFER;
-      }
- else {
-        Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
-        stmt.defaultValidator=lastEntry.getValue();
-        stmt.valueAlias=lastEntry.getKey().key;
-        stmt.columns.remove(lastEntry.getKey());
-      }
-    }
- else {
-      if (useCompactStorage && !columnAliases.isEmpty())       throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
-      stmt.defaultValidator=!stmt.columns.isEmpty() && (stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : CFDefinition.definitionType;
-    }
-    return new ParsedStatement.Prepared(stmt);
   }
- catch (  ConfigurationException e) {
-    throw new InvalidRequestException(e.getMessage());
+  if (useCompactStorage && stmt.columns.size() <= 1) {
+    if (stmt.columns.isEmpty()) {
+      if (columnAliases.isEmpty())       throw new InvalidRequestException(String.format("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
+      stmt.defaultValidator=CFDefinition.definitionType;
+      stmt.valueAlias=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+    }
+ else {
+      Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
+      stmt.defaultValidator=lastEntry.getValue();
+      stmt.valueAlias=lastEntry.getKey().key;
+      stmt.columns.remove(lastEntry.getKey());
+    }
   }
+ else {
+    if (useCompactStorage && !columnAliases.isEmpty())     throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
+    stmt.defaultValidator=!stmt.columns.isEmpty() && (stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : CFDefinition.definitionType;
+  }
+  return new ParsedStatement.Prepared(stmt);
 }

@@ -1,19 +1,17 @@
 {
   logger.debug("update_column_family");
-  state().hasColumnFamilySchemaAccess(Permission.WRITE);
-  if (cf_def.keyspace == null || cf_def.name == null)   throw new InvalidRequestException("Keyspace and CF name must be set.");
-  CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
-  if (oldCfm == null)   throw new InvalidRequestException("Could not find column family definition to modify.");
   try {
+    state().hasColumnFamilySchemaAccess(Permission.WRITE);
+    if (cf_def.keyspace == null || cf_def.name == null)     throw new InvalidRequestException("Keyspace and CF name must be set.");
+    CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
+    if (oldCfm == null)     throw new InvalidRequestException("Could not find column family definition to modify.");
     CFMetaData.applyImplicitDefaults(cf_def);
     CFMetaData cfm=CFMetaData.fromThrift(cf_def);
     cfm.addDefaultIndexNames();
     MigrationManager.announceColumnFamilyUpdate(cfm);
     return Schema.instance.getVersion().toString();
   }
- catch (  ConfigurationException e) {
-    InvalidRequestException ex=new InvalidRequestException(e.getMessage());
-    ex.initCause(e);
-    throw ex;
+ catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
   }
 }

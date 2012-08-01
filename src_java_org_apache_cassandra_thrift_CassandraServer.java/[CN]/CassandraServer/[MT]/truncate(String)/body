@@ -1,13 +1,13 @@
 {
   ClientState cState=state();
-  cState.hasColumnFamilyAccess(cfname,Permission.WRITE);
-  if (startSessionIfRequested()) {
-    Tracing.instance().begin("truncate",ImmutableMap.of("cf",cfname,"ks",cState.getKeyspace()));
-  }
- else {
-    logger.debug("truncating {}.{}",cState.getKeyspace(),cfname);
-  }
   try {
+    cState.hasColumnFamilyAccess(cfname,Permission.WRITE);
+    if (startSessionIfRequested()) {
+      Tracing.instance().begin("truncate",ImmutableMap.of("cf",cfname,"ks",cState.getKeyspace()));
+    }
+ else {
+      logger.debug("truncating {}.{}",cState.getKeyspace(),cfname);
+    }
     schedule(DatabaseDescriptor.getTruncateRpcTimeout());
     try {
       StorageProxy.truncateBlocking(cState.getKeyspace(),cfname);
@@ -16,7 +16,13 @@
       release();
     }
   }
- catch (  TimeoutException e) {
+ catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
+  }
+catch (  org.apache.cassandra.exceptions.UnavailableException e) {
+    throw ThriftConversion.toThrift(e);
+  }
+catch (  TimeoutException e) {
     logger.debug("... timed out");
     throw new TimedOutException();
   }
