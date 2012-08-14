@@ -11,7 +11,8 @@
     List<Column> thriftCols=new ArrayList<Column>(metadata.names.size());
     for (int i=0; i < metadata.names.size(); i++) {
       Column col=new Column(ByteBufferUtil.bytes(metadata.names.get(i).toString()));
-      col.setValue(row.get(i));
+      if (row.get(i) != null && metadata.names.get(i).type.isCollection())       col.setValue(ByteBufferUtil.bytes(FBUtilities.json(metadata.names.get(i).type.compose(row.get(i)))));
+ else       col.setValue(row.get(i));
       thriftCols.add(col);
     }
     cqlRows.add(new CqlRow(ByteBufferUtil.EMPTY_BYTE_BUFFER,thriftCols));
