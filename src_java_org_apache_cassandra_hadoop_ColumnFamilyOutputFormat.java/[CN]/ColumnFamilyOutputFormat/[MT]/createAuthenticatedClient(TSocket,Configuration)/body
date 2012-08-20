@@ -1,7 +1,8 @@
 {
-  TBinaryProtocol binaryProtocol=new TBinaryProtocol(new TFramedTransport(socket));
+  logger.debug("Creating authenticated client for CF output format");
+  TTransport transport=ConfigHelper.getOutputTransportFactory(conf).openTransport(socket);
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(transport);
   Cassandra.Client client=new Cassandra.Client(binaryProtocol);
-  socket.open();
   client.set_keyspace(ConfigHelper.getOutputKeyspace(conf));
   if (ConfigHelper.getOutputKeyspaceUserName(conf) != null) {
     Map<String,String> creds=new HashMap<String,String>();
@@ -10,5 +11,6 @@
     AuthenticationRequest authRequest=new AuthenticationRequest(creds);
     client.login(authRequest);
   }
+  logger.debug("Authenticated client for CF output format created successfully");
   return client;
 }
