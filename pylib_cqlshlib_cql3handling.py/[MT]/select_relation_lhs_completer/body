@@ -1,11 +1,16 @@
 @completer_for('relation', 'rel_lhs')
 def select_relation_lhs_completer(ctxt, cass):
     layout = get_cf_layout(ctxt, cass)
-    filterable = set(layout.key_components[:2])
-    already_filtered_on = ctxt.get_binding('rel_lhs')
-    for num in range(1, len(layout.key_components)):
-        if (layout.key_components[(num - 1)] in already_filtered_on):
-            filterable.add(layout.key_components[num])
+    filterable = set((layout.partition_key_components[0], layout.column_aliases[0]))
+    already_filtered_on = map(dequote_name, ctxt.get_binding('rel_lhs'))
+    for num in range(1, len(layout.partition_key_components)):
+        if (layout.partition_key_components[(num - 1)] in already_filtered_on):
+            filterable.add(layout.partition_key_components[num])
+        else:
+            break
+    for num in range(1, len(layout.column_aliases)):
+        if (layout.column_aliases[(num - 1)] in already_filtered_on):
+            filterable.add(layout.column_aliases[num])
         else:
             break
     for cd in layout.columns:

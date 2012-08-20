@@ -1,5 +1,6 @@
 @classmethod
 def from_layout(cls, layout, coldefs):
+    '\n        This constructor accepts a dictionary of column-value pairs from a row\n        of system.schema_columnfamilies, and a sequence of similar dictionaries\n        from corresponding rows in system.schema_columns.\n        '
     try:
         cfname = layout[u'columnfamily_name']
     except KeyError:
@@ -12,12 +13,16 @@ def from_layout(cls, layout, coldefs):
             setattr(cf, attr, json.loads(getattr(cf, attr)))
         except AttributeError:
             pass
-    if (cf.key_alias is None):
-        cf.key_alias = 'KEY'
-    cf.key_components = ([cf.key_alias.decode('ascii')] + list(cf.column_aliases))
-    cf.key_validator = cql_typename(cf.key_validator)
-    cf.default_validator = cql_typename(cf.default_validator)
+    if (not cf.key_aliases):
+        if cf.key_alias:
+            cf.key_aliases = [cf.key_alias.decode('ascii')]
+        else:
+            cf.key_aliases = [u'KEY']
+    cf.partition_key_components = cf.key_aliases
+    cf.primary_key_components = (cf.key_aliases + list(cf.column_aliases))
+    cf.partition_key_validator = lookup_casstype(cf.key_validator)
+    cf.default_validator = lookup_casstype(cf.default_validator)
+    cf.comparator = lookup_casstype(cf.comparator)
     cf.coldefs = coldefs
-    cf.parse_composite()
-    cf.check_assumptions()
+    cf.parse_types()
     return cf
