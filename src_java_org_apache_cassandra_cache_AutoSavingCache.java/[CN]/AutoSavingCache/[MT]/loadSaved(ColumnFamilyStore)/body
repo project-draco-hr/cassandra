@@ -28,11 +28,15 @@
     try {
       logger.info(String.format("reading saved cache %s",path));
       in=new DataInputStream(new BufferedInputStream(new FileInputStream(path)));
+      List<Future<Pair<K,V>>> futures=new ArrayList<Future<Pair<K,V>>>();
       while (in.available() > 0) {
-        Pair<K,V> entry=cacheLoader.deserialize(in,cfs);
+        futures.add(cacheLoader.deserialize(in,cfs));
+        count++;
+      }
+      for (      Future<Pair<K,V>> future : futures) {
+        Pair<K,V> entry=future.get();
         if (entry == null)         continue;
         put(entry.left,entry.right);
-        count++;
       }
     }
  catch (    Exception e) {

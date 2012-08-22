@@ -1,6 +1,11 @@
 {
-  ByteBuffer buffer=ByteBufferUtil.readWithLength(in);
-  DecoratedKey key=cfs.partitioner.decorateKey(buffer);
-  ColumnFamily data=cfs.getTopLevelColumns(QueryFilter.getIdentityFilter(key,new QueryPath(cfs.columnFamily)),Integer.MIN_VALUE,true);
-  return new Pair<RowCacheKey,IRowCacheEntry>(new RowCacheKey(cfs.metadata.cfId,key),data);
+  final ByteBuffer buffer=ByteBufferUtil.readWithLength(in);
+  return StageManager.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey,IRowCacheEntry>>(){
+    public Pair<RowCacheKey,IRowCacheEntry> call() throws Exception {
+      DecoratedKey key=cfs.partitioner.decorateKey(buffer);
+      ColumnFamily data=cfs.getTopLevelColumns(QueryFilter.getIdentityFilter(key,new QueryPath(cfs.columnFamily)),Integer.MIN_VALUE,true);
+      return new Pair<RowCacheKey,IRowCacheEntry>(new RowCacheKey(cfs.metadata.cfId,key),data);
+    }
+  }
+);
 }
