@@ -1,0 +1,23 @@
+{
+  Map<Token,Float> ownerships=new HashMap<Token,Float>();
+  Iterator i=sortedTokens.iterator();
+  if (!i.hasNext())   throw new RuntimeException("No nodes present in the cluster. How did you call this?");
+  if (sortedTokens.size() == 1)   ownerships.put((Token)i.next(),new Float(1.0));
+ else {
+    final float ri=MAXIMUM;
+    Token start=(Token)i.next();
+    Long ti=((LongToken)start).token;
+    Token t;
+    Long tim1=ti;
+    while (i.hasNext()) {
+      t=(Token)i.next();
+      ti=((LongToken)t).token;
+      float age=((ti - tim1 + ri) % ri) / ri;
+      ownerships.put(t,age);
+      tim1=ti;
+    }
+    float x=((((LongToken)start).token - ti + ri) % ri) / ri;
+    ownerships.put(start,x);
+  }
+  return ownerships;
+}
