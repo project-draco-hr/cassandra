@@ -1,15 +1,15 @@
 {
   if (StorageService.instance.isClientMode())   return false;
   boolean hasSystemKeyspace=false;
-  for (  File location : dataFileLocations) {
-    File systemDir=new File(location,Table.SYSTEM_TABLE);
+  for (  DataDirectory dir : dataFileLocations) {
+    File systemDir=new File(dir.location,Table.SYSTEM_TABLE);
     hasSystemKeyspace|=(systemDir.exists() && systemDir.isDirectory());
     File statusCFDir=new File(systemDir,SystemTable.SCHEMA_KEYSPACES_CF);
     if (statusCFDir.exists())     return false;
   }
   if (!hasSystemKeyspace)   return false;
   int longestLocation=-1;
-  for (  File loc : dataFileLocations)   longestLocation=Math.max(longestLocation,FileUtils.getCanonicalPath(loc).length());
+  for (  DataDirectory loc : dataFileLocations)   longestLocation=Math.max(longestLocation,FileUtils.getCanonicalPath(loc.location).length());
   for (  KSMetaData ksm : Schema.instance.getTableDefinitions()) {
     String ksname=ksm.name;
     for (    Map.Entry<String,CFMetaData> entry : ksm.cfMetaData().entrySet()) {

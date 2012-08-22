@@ -3,6 +3,8 @@
   if (!remotedesc.isStreamCompatible())   throw new UnsupportedOperationException(String.format("SSTable %s is not compatible with current version %s",remote.getFilename(),Descriptor.Version.CURRENT));
   Table table=Table.open(remotedesc.ksname);
   ColumnFamilyStore cfStore=table.getColumnFamilyStore(remotedesc.cfname);
-  Descriptor localdesc=Descriptor.fromFilename(cfStore.getFlushPath(remote.size,Descriptor.Version.CURRENT));
+  Directories.DataDirectory localDir=Directories.getLocationCapableOfSize(remote.size);
+  if (localDir == null)   throw new RuntimeException("Insufficient disk space to store " + remote.size + " bytes");
+  Descriptor localdesc=Descriptor.fromFilename(cfStore.getTempSSTablePath(localDir.location));
   return new PendingFile(localdesc,remote);
 }
