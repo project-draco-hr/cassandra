@@ -1,16 +1,26 @@
 {
-  if (logger.isDebugEnabled())   logger.debug("execute_prepared_cql_query");
-  ClientState cState=state();
-  if (cState.getCQLVersion().major == 2) {
-    CQLStatement statement=cState.getPrepared().get(itemId);
-    if (statement == null)     throw new InvalidRequestException(String.format("Prepared query with ID %d not found",itemId));
-    logger.trace("Retrieved prepared statement #{} with {} bind markers",itemId,statement.boundTerms);
-    return QueryProcessor.processPrepared(statement,cState,bindVariables);
+  if (startSessionIfRequested()) {
+    Tracing.instance().begin("execute_prepared_cql_query",Collections.<String,String>emptyMap());
   }
  else {
-    org.apache.cassandra.cql3.CQLStatement statement=cState.getCQL3Prepared().get(itemId);
-    if (statement == null)     throw new InvalidRequestException(String.format("Prepared query with ID %d not found",itemId));
-    logger.trace("Retrieved prepared statement #{} with {} bind markers",itemId,statement.getBoundsTerms());
-    return org.apache.cassandra.cql3.QueryProcessor.processPrepared(statement,cState,bindVariables).toThriftResult();
+    logger.debug("execute_prepared_cql_query");
+  }
+  try {
+    ClientState cState=state();
+    if (cState.getCQLVersion().major == 2) {
+      CQLStatement statement=cState.getPrepared().get(itemId);
+      if (statement == null)       throw new InvalidRequestException(String.format("Prepared query with ID %d not found",itemId));
+      logger.trace("Retrieved prepared statement #{} with {} bind markers",itemId,statement.boundTerms);
+      return QueryProcessor.processPrepared(statement,cState,bindVariables);
+    }
+ else {
+      org.apache.cassandra.cql3.CQLStatement statement=cState.getCQL3Prepared().get(itemId);
+      if (statement == null)       throw new InvalidRequestException(String.format("Prepared query with ID %d not found",itemId));
+      logger.trace("Retrieved prepared statement #{} with {} bind markers",itemId,statement.getBoundsTerms());
+      return org.apache.cassandra.cql3.QueryProcessor.processPrepared(statement,cState,bindVariables).toThriftResult();
+    }
+  }
+  finally {
+    Tracing.instance().stopSession();
   }
 }

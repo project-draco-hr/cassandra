@@ -1,4 +1,15 @@
 {
-  logger.debug("insert");
-  internal_insert(key,column_parent,column,consistency_level);
+  if (startSessionIfRequested()) {
+    Map<String,String> traceParameters=ImmutableMap.of("key",ByteBufferUtil.bytesToHex(key),"column_parent",column_parent.toString(),"column",column.toString(),"consistency_level",consistency_level.name());
+    Tracing.instance().begin("insert",traceParameters);
+  }
+ else {
+    logger.debug("insert");
+  }
+  try {
+    internal_insert(key,column_parent,column,consistency_level);
+  }
+  finally {
+    Tracing.instance().stopSession();
+  }
 }

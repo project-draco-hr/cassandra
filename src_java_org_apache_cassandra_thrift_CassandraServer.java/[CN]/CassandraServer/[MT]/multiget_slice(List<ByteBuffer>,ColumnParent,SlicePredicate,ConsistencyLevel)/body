@@ -1,6 +1,20 @@
 {
-  logger.debug("multiget_slice");
-  ClientState cState=state();
-  cState.hasColumnFamilyAccess(column_parent.column_family,Permission.READ);
-  return multigetSliceInternal(cState.getKeyspace(),keys,column_parent,predicate,consistency_level);
+  if (startSessionIfRequested()) {
+    List<String> keysList=Lists.newArrayList();
+    for (    ByteBuffer key : keys) {
+      keysList.add(ByteBufferUtil.bytesToHex(key));
+    }
+    Map<String,String> traceParameters=ImmutableMap.of("keys",keysList.toString(),"column_parent",column_parent.toString(),"predicate",predicate.toString(),"consistency_level",consistency_level.name());
+    Tracing.instance().begin("multiget_slice",traceParameters);
+  }
+ else {
+    logger.debug("multiget_slice");
+  }
+  try {
+    state().hasColumnFamilyAccess(column_parent.column_family,Permission.READ);
+    return multigetSliceInternal(state().getKeyspace(),keys,column_parent,predicate,consistency_level);
+  }
+  finally {
+    Tracing.instance().stopSession();
+  }
 }

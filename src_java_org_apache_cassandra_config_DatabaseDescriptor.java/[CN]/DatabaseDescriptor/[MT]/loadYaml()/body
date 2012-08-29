@@ -197,9 +197,11 @@ catch (      Exception e) {
       throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '" + conf.key_cache_size_in_mb + "', supported values are <integer> >= 0.");
     }
     rowCacheProvider=FBUtilities.newCacheProvider(conf.row_cache_provider);
-    KSMetaData systemMeta=KSMetaData.systemKeyspace();
-    for (    CFMetaData cfm : systemMeta.cfMetaData().values())     Schema.instance.load(cfm);
-    Schema.instance.addSystemTable(systemMeta);
+    List<KSMetaData> systemKeyspaces=Arrays.asList(KSMetaData.systemKeyspace(),KSMetaData.traceKeyspace());
+    for (    KSMetaData ksmd : systemKeyspaces) {
+      for (      CFMetaData cfm : ksmd.cfMetaData().values())       Schema.instance.load(cfm);
+      Schema.instance.setTableDefinition(ksmd);
+    }
     if (conf.seed_provider == null) {
       throw new ConfigurationException("seeds configuration is missing; a minimum of one seed is required.");
     }
