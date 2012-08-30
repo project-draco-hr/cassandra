@@ -4,8 +4,9 @@
   if (header.file == null)   return;
   RandomAccessReader file=RandomAccessReader.open(new File(header.file.getFilename()),true);
   compressedoutput=new LZFOutputStream(output);
-  MessagingService.instance().incrementActiveStreamsOutbound();
+  StreamingMetrics.activeStreamsOutbound.inc();
   try {
+    long totalBytesTransferred=0;
     for (    Pair<Long,Long> section : header.file.sections) {
       file.seek(section.left);
       long length=section.right - section.left;
@@ -13,15 +14,18 @@
       while (bytesTransferred < length) {
         long lastWrite=write(file,length,bytesTransferred);
         bytesTransferred+=lastWrite;
+        totalBytesTransferred+=lastWrite;
         header.file.progress+=lastWrite;
       }
       compressedoutput.flush();
       if (logger.isDebugEnabled())       logger.debug("Bytes transferred " + bytesTransferred + "/"+ header.file.size);
     }
+    StreamingMetrics.totalOutgoingBytes.inc(totalBytesTransferred);
+    metrics.outgoingBytes.inc(totalBytesTransferred);
     receiveReply();
   }
   finally {
-    MessagingService.instance().decrementActiveStreamsOutbound();
+    StreamingMetrics.activeStreamsOutbound.dec();
     FileUtils.closeQuietly(file);
   }
 }

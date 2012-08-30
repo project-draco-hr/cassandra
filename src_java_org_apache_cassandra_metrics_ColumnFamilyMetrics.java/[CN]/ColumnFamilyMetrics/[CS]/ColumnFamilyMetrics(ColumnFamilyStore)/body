@@ -1,0 +1,151 @@
+{
+  factory=new ColumnFamilyMetricNameFactory(cfs);
+  memtableColumnsCount=Metrics.newGauge(factory.createMetricName("MemtableColumnsCount"),new Gauge<Long>(){
+    public Long value(){
+      return cfs.getDataTracker().getMemtable().getOperations();
+    }
+  }
+);
+  memtableDataSize=Metrics.newGauge(factory.createMetricName("MemtableDataSize"),new Gauge<Long>(){
+    public Long value(){
+      return cfs.getDataTracker().getMemtable().getLiveSize();
+    }
+  }
+);
+  memtableSwitchCount=Metrics.newCounter(factory.createMetricName("MemtableSwitchCount"));
+  estimatedRowSizeHistogram=Metrics.newGauge(factory.createMetricName("EstimatedRowSizeHistogram"),new Gauge<long[]>(){
+    public long[] value(){
+      long[] histogram=new long[90];
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        long[] rowSize=sstable.getEstimatedRowSize().getBuckets(false);
+        for (int i=0; i < histogram.length; i++)         histogram[i]+=rowSize[i];
+      }
+      return histogram;
+    }
+  }
+);
+  estimatedColumnCountHistogram=Metrics.newGauge(factory.createMetricName("EstimatedColumnCountHistogram"),new Gauge<long[]>(){
+    public long[] value(){
+      long[] histogram=new long[90];
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        long[] columnSize=sstable.getEstimatedColumnCount().getBuckets(false);
+        for (int i=0; i < histogram.length; i++)         histogram[i]+=columnSize[i];
+      }
+      return histogram;
+    }
+  }
+);
+  sstablesPerReadHistogram=Metrics.newHistogram(factory.createMetricName("SSTablesPerReadHistogram"));
+  compressionRatio=Metrics.newGauge(factory.createMetricName("CompressionRatio"),new Gauge<Double>(){
+    public Double value(){
+      double sum=0;
+      int total=0;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        if (sstable.getCompressionRatio() != Double.MIN_VALUE) {
+          sum+=sstable.getCompressionRatio();
+          total++;
+        }
+      }
+      return total != 0 ? (double)sum / total : 0;
+    }
+  }
+);
+  readLatency=new LatencyMetrics(factory,"Read");
+  writeLatency=new LatencyMetrics(factory,"Write");
+  pendingTasks=Metrics.newGauge(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
+    public Integer value(){
+      return Table.switchLock.getQueueLength();
+    }
+  }
+);
+  liveSSTableCount=Metrics.newGauge(factory.createMetricName("LiveSSTableCount"),new Gauge<Integer>(){
+    public Integer value(){
+      return cfs.getDataTracker().getSSTables().size();
+    }
+  }
+);
+  liveDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("LiveDiskSpaceUsed"));
+  totalDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("TotalDiskSpaceUsed"));
+  minRowSize=Metrics.newGauge(factory.createMetricName("MinRowSize"),new Gauge<Long>(){
+    public Long value(){
+      long min=0;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        if (min == 0 || sstable.getEstimatedRowSize().min() < min)         min=sstable.getEstimatedRowSize().min();
+      }
+      return min;
+    }
+  }
+);
+  maxRowSize=Metrics.newGauge(factory.createMetricName("MaxRowSize"),new Gauge<Long>(){
+    public Long value(){
+      long max=0;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        if (sstable.getEstimatedRowSize().max() > max)         max=sstable.getEstimatedRowSize().max();
+      }
+      return max;
+    }
+  }
+);
+  meanRowSize=Metrics.newGauge(factory.createMetricName("MeanRowSize"),new Gauge<Long>(){
+    public Long value(){
+      long sum=0;
+      long count=0;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        sum+=sstable.getEstimatedRowSize().mean();
+        count++;
+      }
+      return count > 0 ? sum / count : 0;
+    }
+  }
+);
+  bloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("BloomFilterFalsePositives"),new Gauge<Long>(){
+    public Long value(){
+      long count=0L;
+      for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getBloomFilterFalsePositiveCount();
+      return count;
+    }
+  }
+);
+  recentBloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalsePositives"),new Gauge<Long>(){
+    public Long value(){
+      long count=0L;
+      for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getRecentBloomFilterFalsePositiveCount();
+      return count;
+    }
+  }
+);
+  bloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("BloomFilterFalseRatio"),new Gauge<Double>(){
+    public Double value(){
+      long falseCount=0L;
+      long trueCount=0L;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        falseCount+=sstable.getBloomFilterFalsePositiveCount();
+        trueCount+=sstable.getBloomFilterTruePositiveCount();
+      }
+      if (falseCount == 0L && trueCount == 0L)       return 0d;
+      return (double)falseCount / (trueCount + falseCount);
+    }
+  }
+);
+  recentBloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalseRatio"),new Gauge<Double>(){
+    public Double value(){
+      long falseCount=0L;
+      long trueCount=0L;
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        falseCount+=sstable.getRecentBloomFilterFalsePositiveCount();
+        trueCount+=sstable.getRecentBloomFilterTruePositiveCount();
+      }
+      if (falseCount == 0L && trueCount == 0L)       return 0d;
+      return (double)falseCount / (trueCount + falseCount);
+    }
+  }
+);
+  bloomFilterDiskSpaceUsed=Metrics.newGauge(factory.createMetricName("BloomFilterDiskSpaceUsed"),new Gauge<Long>(){
+    public Long value(){
+      long total=0;
+      for (      SSTableReader sst : cfs.getSSTables())       total+=sst.getBloomFilterSerializedSize();
+      return total;
+    }
+  }
+);
+}
