@@ -1,5 +1,6 @@
 {
   if (logger.isDebugEnabled())   logger.debug("Indexing row {} ",cfs.metadata.getKeyValidator().getString(key.key));
+  Collection<SecondaryIndex> indexes=cfs.indexManager.getIndexesByNames(idxNames);
   switchLock.readLock().lock();
   try {
     SliceQueryPager pager=new SliceQueryPager(cfs,key,ColumnSlice.ALL_COLUMNS_ARRAY);
@@ -8,9 +9,9 @@ synchronized (cfs.table.indexLockFor(key.key)) {
         ColumnFamily cf=pager.next();
         ColumnFamily cf2=cf.cloneMeShallow();
         for (        IColumn column : cf) {
-          if (cfs.indexManager.indexes(column.name(),idxNames))           cf2.addColumn(column);
+          if (cfs.indexManager.indexes(column.name(),indexes))           cf2.addColumn(column);
         }
-        cfs.indexManager.applyIndexUpdates(key.key,cf2,cf2.getColumnNames(),null);
+        cfs.indexManager.indexRow(key.key,cf2);
       }
     }
   }

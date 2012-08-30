@@ -1,0 +1,11 @@
+{
+  ColumnFamily previous=columnFamilies.get(key);
+  if (previous == null) {
+    ColumnFamily empty=cf.cloneMeShallow(cf.isSuper() ? ThreadSafeSortedColumns.factory() : AtomicSortedColumns.factory(),false);
+    previous=columnFamilies.putIfAbsent(new DecoratedKey(key.token,allocator.clone(key.key)),empty);
+    if (previous == null)     previous=empty;
+  }
+  long sizeDelta=previous.addAllWithSizeDelta(cf,allocator,localCopyFunction,indexer);
+  currentSize.addAndGet(sizeDelta);
+  currentOperations.addAndGet((cf.getColumnCount() == 0) ? cf.isMarkedForDelete() ? 1 : 0 : cf.getColumnCount());
+}

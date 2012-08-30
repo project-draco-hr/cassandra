@@ -10,36 +10,7 @@
         logger.error("Attempting to mutate non-existant column family " + cf.id());
         continue;
       }
-      ColumnSlice[] deletionSlices=null;
-      SortedSet<ByteBuffer> mutatedIndexedColumns=null;
-      if (updateIndexes) {
-        deletionSlices=cf.deletionInfo().coveredSlices();
-        for (        IColumn updated : cf) {
-          if (cfs.indexManager.indexes(updated)) {
-            if (mutatedIndexedColumns == null)             mutatedIndexedColumns=new TreeSet<ByteBuffer>(cf.getComparator());
-            mutatedIndexedColumns.add(updated.name());
-            if (logger.isDebugEnabled()) {
-              logger.debug(String.format("Mutated indexed column %s value %s",cf.getComparator().getString(updated.name()),ByteBufferUtil.bytesToHex(updated.value())));
-            }
-          }
-        }
-      }
-      if (mutatedIndexedColumns == null && deletionSlices == null) {
-        cfs.apply(key,cf);
-        continue;
-      }
-synchronized (indexLockFor(mutation.key())) {
-        if (mutatedIndexedColumns == null)         mutatedIndexedColumns=new TreeSet<ByteBuffer>(cf.getComparator());
-        ColumnFamily oldIndexedColumns=readCurrentIndexedColumns(key,cfs,mutatedIndexedColumns,deletionSlices);
-        if (mutatedIndexedColumns.isEmpty()) {
-          cfs.apply(key,cf);
-          continue;
-        }
-        logger.debug("Pre-mutation index row is {}",oldIndexedColumns);
-        ignoreObsoleteMutations(cf,mutatedIndexedColumns,oldIndexedColumns);
-        cfs.apply(key,cf);
-        cfs.indexManager.applyIndexUpdates(mutation.key(),cf,mutatedIndexedColumns,oldIndexedColumns);
-      }
+      cfs.apply(key,cf,updateIndexes ? cfs.indexManager.updaterFor(key,true) : SecondaryIndexManager.nullUpdater);
     }
   }
   finally {
