@@ -13,12 +13,13 @@
   final int[] LEAVING=new int[]{6,8,9};
   for (  int leaving : LEAVING)   ss.onChange(hosts.get(leaving),ApplicationState.STATUS,valueFactory.leaving(Collections.singleton(endpointTokens.get(leaving))));
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
-  Gossiper.instance.initializeNodeUnsafe(boot1,1);
-  UUID boot1Id=UUID.randomUUID();
-  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(5)),boot1Id));
+  Gossiper.instance.initializeNodeUnsafe(boot1,UUID.randomUUID(),1);
+  Gossiper.instance.injectApplicationState(boot1,ApplicationState.TOKENS,valueFactory.tokens(Collections.singleton(keyTokens.get(5))));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(5))));
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
-  Gossiper.instance.initializeNodeUnsafe(boot2,1);
-  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(7)),UUID.randomUUID()));
+  Gossiper.instance.initializeNodeUnsafe(boot2,UUID.randomUUID(),1);
+  Gossiper.instance.injectApplicationState(boot2,ApplicationState.TOKENS,valueFactory.tokens(Collections.singleton(keyTokens.get(7))));
+  ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(Collections.<Token>singleton(keyTokens.get(7))));
   Collection<InetAddress> endpoints=null;
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
@@ -139,7 +140,7 @@
   }
   ss.onChange(hosts.get(LEAVING[0]),ApplicationState.STATUS,valueFactory.left(Collections.singleton(endpointTokens.get(LEAVING[0])),Gossiper.computeExpireTime()));
   ss.onChange(hosts.get(LEAVING[2]),ApplicationState.STATUS,valueFactory.left(Collections.singleton(endpointTokens.get(LEAVING[2])),Gossiper.computeExpireTime()));
-  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(Collections.singleton(keyTokens.get(5)),boot1Id));
+  ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(Collections.singleton(keyTokens.get(5))));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace2").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
