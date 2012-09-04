@@ -1,0 +1,34 @@
+{
+  ColumnFamilyStore cfs=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(columnFamily);
+  boolean needsCleanup=false;
+  long timestamp=FBUtilities.timestampMicros();
+  List<Row> rows=SystemTable.serializedSchema(columnFamily);
+  row_check_loop:   for (  Row row : rows) {
+    if (invalidSchemaRow(row))     continue;
+    for (    IColumn column : row.cf.columns) {
+      if (column.timestamp() > timestamp) {
+        needsCleanup=true;
+        break row_check_loop;
+      }
+    }
+  }
+  if (!needsCleanup)   return;
+  logger.info("Fixing timestamps of schema ColumnFamily " + columnFamily + "...");
+  try {
+    cfs.truncate().get();
+  }
+ catch (  ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+catch (  InterruptedException e) {
+    throw new AssertionError(e);
+  }
+  for (  Row row : rows) {
+    if (invalidSchemaRow(row))     continue;
+    RowMutation mutation=new RowMutation(Table.SYSTEM_TABLE,row.key.key);
+    for (    IColumn column : row.cf.columns) {
+      if (column.isLive())       mutation.add(new QueryPath(columnFamily,null,column.name()),column.value(),timestamp);
+    }
+    mutation.apply();
+  }
+}
