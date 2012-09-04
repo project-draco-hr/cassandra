@@ -13,11 +13,10 @@
       }
     }
     long mostRecentRowTombstone=Long.MIN_VALUE;
-    Map<IColumnIterator,Long> iteratorMaxTimes=Maps.newHashMapWithExpectedSize(view.sstables.size());
     for (    SSTableReader sstable : view.sstables) {
       if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       continue;
       IColumnIterator iter=filter.getSSTableColumnIterator(sstable);
-      iteratorMaxTimes.put(iter,sstable.getMaxTimestamp());
+      iterators.add(iter);
       if (iter.getColumnFamily() != null) {
         ColumnFamily cf=iter.getColumnFamily();
         if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.getMarkedForDeleteAt();
@@ -25,8 +24,15 @@
         sstablesIterated++;
       }
     }
-    for (    Map.Entry<IColumnIterator,Long> entry : iteratorMaxTimes.entrySet()) {
-      if (entry.getValue() >= mostRecentRowTombstone)       iterators.add(entry.getKey());
+    if (mostRecentRowTombstone > Long.MIN_VALUE) {
+      Iterator<IColumnIterator> it=iterators.iterator();
+      while (it.hasNext()) {
+        IColumnIterator iter=it.next();
+        if ((iter instanceof ISSTableColumnIterator) && ((ISSTableColumnIterator)iter).getSStable().getMaxTimestamp() < mostRecentRowTombstone) {
+          FileUtils.closeQuietly(iter);
+          it.remove();
+        }
+      }
     }
     if (iterators.isEmpty())     return null;
     filter.collateColumns(returnCF,iterators,gcBefore);
