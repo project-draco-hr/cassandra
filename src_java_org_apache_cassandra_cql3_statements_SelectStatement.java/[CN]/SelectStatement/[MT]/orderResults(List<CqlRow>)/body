@@ -2,15 +2,16 @@
   if (cqlRows.isEmpty() || parameters.orderings.isEmpty() || keyRestriction == null || keyRestriction.eqValues.size() < 2)   return;
   if (parameters.orderings.size() == 1) {
     CFDefinition.Name ordering=cfDef.get(parameters.orderings.keySet().iterator().next());
-    Collections.sort(cqlRows,new SingleColumnComparator(ordering.position + 1,ordering.type));
+    Collections.sort(cqlRows,new SingleColumnComparator(getColumnPositionInSelect(ordering),ordering.type));
     return;
   }
-  int startPosition=-1;
-  List<AbstractType<?>> types=new ArrayList<AbstractType<?>>();
+  List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(parameters.orderings.size());
+  int[] positions=new int[parameters.orderings.size()];
+  int idx=0;
   for (  ColumnIdentifier identifier : parameters.orderings.keySet()) {
     CFDefinition.Name orderingColumn=cfDef.get(identifier);
-    if (startPosition == -1)     startPosition=orderingColumn.position + 1;
     types.add(orderingColumn.type);
+    positions[idx++]=getColumnPositionInSelect(orderingColumn);
   }
-  Collections.sort(cqlRows,new CompositeComparator(startPosition,types));
+  Collections.sort(cqlRows,new CompositeComparator(types,positions));
 }
