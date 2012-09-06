@@ -3,13 +3,22 @@
   FastByteArrayInputStream buffer=new FastByteArrayInputStream(bytes);
   try {
     DataInputStream is=new DataInputStream(buffer);
-    CounterMutation cm=CounterMutation.serializer().deserialize(is,message.getVersion());
+    final CounterMutation cm=CounterMutation.serializer().deserialize(is,message.getVersion());
     if (logger.isDebugEnabled())     logger.debug("Applying forwarded " + cm);
     String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-    StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter).get();
-    WriteResponse response=new WriteResponse(cm.getTable(),cm.key(),true);
-    Message responseMessage=WriteResponse.makeWriteResponseMessage(message,response);
-    MessagingService.instance().sendReply(responseMessage,id,message.getFrom());
+    StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter,new Runnable(){
+      public void run(){
+        try {
+          WriteResponse response=new WriteResponse(cm.getTable(),cm.key(),true);
+          Message responseMessage=WriteResponse.makeWriteResponseMessage(message,response);
+          MessagingService.instance().sendReply(responseMessage,id,message.getFrom());
+        }
+ catch (        IOException e) {
+          logger.error("Error writing response to counter mutation",e);
+        }
+      }
+    }
+);
   }
  catch (  UnavailableException e) {
   }
