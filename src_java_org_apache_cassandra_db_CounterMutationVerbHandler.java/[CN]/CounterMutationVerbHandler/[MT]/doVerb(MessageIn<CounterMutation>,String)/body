@@ -1,11 +1,15 @@
 {
   try {
-    CounterMutation cm=message.payload;
+    final CounterMutation cm=message.payload;
     if (logger.isDebugEnabled())     logger.debug("Applying forwarded " + cm);
     String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-    StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter).get();
-    WriteResponse response=new WriteResponse();
-    MessagingService.instance().sendReply(response.createMessage(),id,message.from);
+    StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter,new Runnable(){
+      public void run(){
+        WriteResponse response=new WriteResponse();
+        MessagingService.instance().sendReply(response.createMessage(),id,message.from);
+      }
+    }
+);
   }
  catch (  RequestExecutionException e) {
     logger.debug("counter error",e);
