@@ -1,0 +1,16 @@
+{
+  UUID uuid=UUIDType.instance.compose(key.key);
+  if (logger.isDebugEnabled())   logger.debug("Replaying batch {}",uuid);
+  ColumnFamilyStore store=Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.BATCHLOG_CF);
+  QueryFilter filter=QueryFilter.getNamesFilter(key,new QueryPath(SystemTable.BATCHLOG_CF),DATA);
+  ColumnFamily batch=store.getColumnFamily(filter);
+  if (batch == null || batch.isMarkedForDelete())   return;
+  IColumn dataColumn=batch.getColumn(DATA);
+  try {
+    if (dataColumn != null)     writeHintsForSerializedMutations(dataColumn.value());
+  }
+ catch (  IOException e) {
+    logger.warn("Skipped batch replay of {} due to {}",uuid,e);
+  }
+  deleteBatch(key);
+}

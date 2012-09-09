@@ -1,0 +1,25 @@
+{
+  Iterator<InetAddress> iter=targets.iterator();
+  InetAddress target=iter.next();
+  if (localDC || MessagingService.instance().getVersion(target) < MessagingService.VERSION_11) {
+    MessagingService.instance().sendRR(message,target,handler);
+    while (iter.hasNext()) {
+      target=iter.next();
+      MessagingService.instance().sendRR(message,target,handler);
+    }
+    return;
+  }
+  FastByteArrayOutputStream bos=new FastByteArrayOutputStream();
+  DataOutputStream dos=new DataOutputStream(bos);
+  dos.writeInt(targets.size() - 1);
+  while (iter.hasNext()) {
+    InetAddress destination=iter.next();
+    CompactEndpointSerializationHelper.serialize(destination,dos);
+    String id=MessagingService.instance().addCallback(handler,message,destination,message.getTimeout());
+    dos.writeUTF(id);
+    if (logger.isDebugEnabled())     logger.debug("Adding FWD message to: " + destination + " with ID "+ id);
+  }
+  message=message.withParameter(RowMutation.FORWARD_TO,bos.toByteArray());
+  String id=MessagingService.instance().sendRR(message,target,handler);
+  if (logger.isDebugEnabled())   logger.debug("Sending message to: " + target + " with ID "+ id);
+}

@@ -1,0 +1,11 @@
+{
+  RowMutation rm=new RowMutation(Table.SYSTEM_KS,UUIDType.instance.decompose(uuid));
+  rm.delete(new QueryPath(SystemTable.BATCHLOG_CF),FBUtilities.timestampMicros());
+  IWriteResponseHandler handler=WriteResponseHandler.create(endpoints,ConsistencyLevel.ANY,Table.SYSTEM_KS,null);
+  try {
+    sendMessagesToOneDC(rm.createMessage(),endpoints,true,handler);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Error deleting batch " + uuid,e);
+  }
+}

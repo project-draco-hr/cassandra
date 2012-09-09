@@ -37,7 +37,10 @@
       }
     }
     if (rmStandard != null && !rmStandard.isEmpty())     rowMutations.add(rmStandard);
-    if (rmCounter != null && !rmCounter.isEmpty())     rowMutations.add(new org.apache.cassandra.db.CounterMutation(rmCounter,ThriftConversion.fromThrift(consistency_level)));
+    if (rmCounter != null && !rmCounter.isEmpty()) {
+      if (allowCounterMutations)       rowMutations.add(new CounterMutation(rmCounter,ThriftConversion.fromThrift(consistency_level)));
+ else       throw new org.apache.cassandra.exceptions.InvalidRequestException("Counter mutations are not allowed in atomic batches");
+    }
   }
-  doInsert(consistency_level,rowMutations);
+  return rowMutations;
 }

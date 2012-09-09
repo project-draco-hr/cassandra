@@ -1,0 +1,31 @@
+{
+  long startTime=System.nanoTime();
+  if (logger.isDebugEnabled())   logger.debug("Mutations/ConsistencyLevel are {}/{}",mutations,consistency_level);
+  List<WriteResponseHandlerWrapper> wrappers=new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
+  String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+  try {
+    for (    RowMutation mutation : mutations) {
+      WriteResponseHandlerWrapper wrapper=wrapResponseHandler(mutation,consistency_level);
+      wrapper.handler.assureSufficientLiveNodes();
+      wrappers.add(wrapper);
+    }
+    Collection<InetAddress> batchlogEndpoints=getBatchlogEndpoints(localDataCenter);
+    UUID batchUUID=UUID.randomUUID();
+    syncWriteToBatchlog(mutations,localDataCenter,batchlogEndpoints,batchUUID);
+    syncWriteBatchedMutations(wrappers,localDataCenter,consistency_level);
+    asyncRemoveFromBatchlog(batchlogEndpoints,batchUUID);
+  }
+ catch (  UnavailableException e) {
+    writeMetrics.unavailables.mark();
+    ClientRequestMetrics.writeUnavailables.inc();
+    throw e;
+  }
+catch (  WriteTimeoutException e) {
+    writeMetrics.timeouts.mark();
+    ClientRequestMetrics.writeTimeouts.inc();
+    throw e;
+  }
+ finally {
+    writeMetrics.addNano(System.nanoTime() - startTime);
+  }
+}

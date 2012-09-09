@@ -1,0 +1,23 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("Started replayAllFailedBatches");
+  ColumnFamilyStore store=Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.BATCHLOG_CF);
+  if (store.isEmpty())   return;
+  IPartitioner partitioner=StorageService.getPartitioner();
+  RowPosition minPosition=partitioner.getMinimumToken().minKeyBound();
+  AbstractBounds<RowPosition> range=new Range<RowPosition>(minPosition,minPosition,partitioner);
+  List<Row> rows=store.getRangeSlice(null,range,Integer.MAX_VALUE,new NamesQueryFilter(META),null);
+  for (  Row row : rows) {
+    if (row.cf.isMarkedForDelete())     continue;
+    IColumn coordinatorColumn=row.cf.getColumn(COORDINATOR);
+    IColumn writtenAtColumn=row.cf.getColumn(WRITTEN_AT);
+    if (coordinatorColumn == null || writtenAtColumn == null) {
+      replayBatch(row.key);
+      continue;
+    }
+    InetAddress coordinator=InetAddressType.instance.compose(coordinatorColumn.value());
+    long writtenAt=LongType.instance.compose(writtenAtColumn.value());
+    if (System.currentTimeMillis() < writtenAt + TIMEOUT && FailureDetector.instance.isAlive(coordinator))     continue;
+    replayBatch(row.key);
+  }
+  if (logger.isDebugEnabled())   logger.debug("Finished replayAllFailedBatches");
+}
