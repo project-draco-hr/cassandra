@@ -1,12 +1,14 @@
 {
-  state().hasKeyspaceSchemaAccess(Permission.READ);
   Set<String> keyspaces=Schema.instance.getTables();
   List<KsDef> ksset=new ArrayList<KsDef>(keyspaces.size());
   for (  String ks : keyspaces) {
     try {
       ksset.add(describe_keyspace(ks));
     }
- catch (    NotFoundException nfe) {
+ catch (    PermissionDenied e) {
+      if (logger.isDebugEnabled())       logger.debug("PermissionDenied: " + e.getMessage());
+    }
+catch (    NotFoundException nfe) {
       logger.info("Failed to find metadata for keyspace '" + ks + "'. Continuing... ");
     }
   }

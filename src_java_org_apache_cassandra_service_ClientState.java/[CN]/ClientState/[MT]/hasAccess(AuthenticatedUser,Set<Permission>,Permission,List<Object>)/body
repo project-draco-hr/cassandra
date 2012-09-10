@@ -1,4 +1,20 @@
 {
-  if (perms.contains(perm))   return;
-  throw new InvalidRequestException(String.format("%s does not have permission %s for %s",user,perm,Resources.toString(resource)));
+  if (perms.contains(Permission.FULL_ACCESS))   return;
+  if (perms.contains(Permission.NO_ACCESS))   throw new PermissionDenied(String.format("%s does not have permission %s for %s",user,perm,Resources.toString(resource)));
+  boolean granular=false;
+  for (  Permission p : perms) {
+    if (Permission.GRANULAR_PERMISSIONS.contains(p)) {
+      granular=true;
+      break;
+    }
+  }
+  if (granular) {
+    if (perms.contains(perm))     return;
+  }
+ else {
+    for (    Permission p : perms) {
+      if (Permission.oldToNew.get(p).contains(perm))       return;
+    }
+  }
+  throw new PermissionDenied(String.format("%s does not have permission %s for %s",user,perm,Resources.toString(resource)));
 }
