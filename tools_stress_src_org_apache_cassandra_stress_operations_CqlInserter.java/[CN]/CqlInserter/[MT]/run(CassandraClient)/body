@@ -2,22 +2,26 @@
   if (session.getColumnFamilyType() == ColumnFamilyType.Super)   throw new RuntimeException("Super columns are not implemented for CQL");
   if (values == null)   values=generateValues();
   if (cqlQuery == null) {
-    StringBuilder query=new StringBuilder("UPDATE Standard1 USING CONSISTENCY ").append(session.getConsistencyLevel().toString()).append(" SET ");
+    StringBuilder query=new StringBuilder("UPDATE ").append(wrapInQuotesIfRequired("Standard1")).append(" USING CONSISTENCY ").append(session.getConsistencyLevel().toString()).append(" SET ");
     for (int i=0; i < session.getColumnsPerKey(); i++) {
       if (i > 0)       query.append(',');
-      query.append("?=?");
+      if (session.timeUUIDComparator) {
+        if (session.cqlVersion.startsWith("3"))         throw new UnsupportedOperationException("Cannot use UUIDs in column names with CQL3");
+        query.append(wrapInQuotesIfRequired(UUIDGen.makeType1UUIDFromHost(Session.getLocalAddress()).toString())).append(" = ?");
+      }
+ else {
+        query.append(wrapInQuotesIfRequired("C" + i)).append(" = ?");
+      }
     }
     query.append(" WHERE KEY=?");
     cqlQuery=query.toString();
   }
   List<String> queryParms=new ArrayList<String>();
   for (int i=0; i < session.getColumnsPerKey(); i++) {
-    if (session.timeUUIDComparator)     queryParms.add(UUIDGen.makeType1UUIDFromHost(Session.getLocalAddress()).toString());
- else     queryParms.add(new String("C" + i));
-    queryParms.add(new String(getUnQuotedCqlBlob(values.get(i % values.size()).array())));
+    queryParms.add(getUnQuotedCqlBlob(values.get(i % values.size()).array()));
   }
   String key=String.format("%0" + session.getTotalKeysLength() + "d",index);
-  queryParms.add(new String(getUnQuotedCqlBlob(key)));
+  queryParms.add(getUnQuotedCqlBlob(key));
   String formattedQuery=null;
   long start=System.currentTimeMillis();
   boolean success=false;
@@ -41,7 +45,7 @@
     }
   }
   if (!success) {
-    error(String.format("Operation [%d] retried %d times - error inserting key %s %s%n",index,session.getRetryTimes(),key,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
+    error(String.format("Operation [%d] retried %d times - error inserting key %s %s%n with query %s",index,session.getRetryTimes(),key,(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")",cqlQuery));
   }
   session.operations.getAndIncrement();
   session.keys.getAndIncrement();
