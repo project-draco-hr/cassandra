@@ -1,13 +1,4 @@
 {
-  long hintSizes=0;
-  Throttle hintThrottle=new Throttle("HintThrottle",new Throttle.ThroughputFunction(){
-    public int targetThroughput(){
-      if (DatabaseDescriptor.getHintedHandoffThrottleInKB() < 1)       return 0;
-      int totalBytesPerMS=(DatabaseDescriptor.getHintedHandoffThrottleInKB() * 1024) / 8 / 1000;
-      return totalBytesPerMS / Math.max(1,executor.getActiveCount());
-    }
-  }
-);
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.HINTS_CF);
   if (hintStore.isEmpty())   return;
   logger.debug("Checking remote({}) schema before delivering hints",endpoint);
@@ -34,6 +25,8 @@
     pageSize=Math.max(2,pageSize);
     logger.debug("average hinted-row column size is {}; using pageSize of {}",averageColumnSize,pageSize);
   }
+  int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB();
+  RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   delivery:   while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(SystemTable.HINTS_CF),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
@@ -55,9 +48,8 @@
       try {
         if (rm != null) {
           MessageOut<RowMutation> message=rm.createMessage();
+          rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
           sendMutation(endpoint,message);
-          hintSizes+=message.serializedSize(MessagingService.current_version);
-          hintThrottle.throttle(hintSizes);
           rowsReplayed++;
         }
         deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
