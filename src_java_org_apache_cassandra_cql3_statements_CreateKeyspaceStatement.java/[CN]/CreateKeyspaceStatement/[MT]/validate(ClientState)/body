@@ -3,13 +3,7 @@
   ThriftValidation.validateKeyspaceNotSystem(name);
   if (!name.matches("\\w+"))   throw new InvalidRequestException(String.format("\"%s\" is not a valid keyspace name",name));
   if (name.length() > Schema.NAME_LENGTH)   throw new InvalidRequestException(String.format("Keyspace names shouldn't be more than %s characters long (got \"%s\")",Schema.NAME_LENGTH,name));
-  if (!attrs.containsKey(REPLICATION_PARAMETERS_PREFIX))   throw new InvalidRequestException("missing required argument '" + REPLICATION_PARAMETERS_PREFIX + "'");
-  Map<String,String> replication_parameters=attrs.get(REPLICATION_PARAMETERS_PREFIX);
-  strategyClass=replication_parameters.get(REPLICATION_STRATEGY_CLASS_KEY);
-  if (strategyClass == null)   throw new InvalidRequestException("missing required field '" + REPLICATION_STRATEGY_CLASS_KEY + "' for '"+ REPLICATION_PARAMETERS_PREFIX+ "' option");
-  for (  Map.Entry<String,String> entry : replication_parameters.entrySet()) {
-    if (entry.getKey().equals(REPLICATION_STRATEGY_CLASS_KEY))     continue;
-    strategyOptions.put(entry.getKey(),entry.getValue());
-  }
-  AbstractReplicationStrategy.createReplicationStrategy(name,AbstractReplicationStrategy.getClass(strategyClass),StorageService.instance.getTokenMetadata(),DatabaseDescriptor.getEndpointSnitch(),strategyOptions);
+  attrs.validate();
+  if (attrs.getReplicationStrategyClass() == null)   throw new ConfigurationException("Missing mandatory replication strategy class");
+  AbstractReplicationStrategy.createReplicationStrategy(name,AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),StorageService.instance.getTokenMetadata(),DatabaseDescriptor.getEndpointSnitch(),attrs.getReplicationOptions());
 }
