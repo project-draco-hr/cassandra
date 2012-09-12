@@ -1,0 +1,19 @@
+{
+  QueryPath queryPath=new QueryPath(columnFamily());
+  Collection<ByteBuffer> keys=getKeys(variables);
+  List<ReadCommand> commands=new ArrayList<ReadCommand>(keys.size());
+  IFilter filter=makeFilter(variables);
+  if (isColumnRange()) {
+    for (    ByteBuffer key : keys) {
+      QueryProcessor.validateKey(key);
+      commands.add(new SliceFromReadCommand(keyspace(),key,queryPath,(SliceQueryFilter)filter));
+    }
+  }
+ else {
+    for (    ByteBuffer key : keys) {
+      QueryProcessor.validateKey(key);
+      commands.add(new SliceByNamesReadCommand(keyspace(),key,queryPath,(NamesQueryFilter)filter));
+    }
+  }
+  return commands;
+}
