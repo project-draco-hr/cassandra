@@ -12,50 +12,20 @@
   }
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.moving(newToken));
   setMode(Mode.MOVING,String.format("Moving %s from %s to %s.",localAddress,getLocalTokens().iterator().next(),newToken),true);
-  IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
-  Map<String,Multimap<InetAddress,Range<Token>>> rangesToFetch=new HashMap<String,Multimap<InetAddress,Range<Token>>>();
-  Map<String,Multimap<Range<Token>,InetAddress>> rangesToStreamByTable=new HashMap<String,Multimap<Range<Token>,InetAddress>>();
-  TokenMetadata tokenMetaCloneAllSettled=tokenMetadata.cloneAfterAllSettled();
-  TokenMetadata tokenMetaClone=tokenMetadata.cloneOnlyTokenMap();
-  for (  String table : tablesToProcess) {
-    AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
-    Collection<Range<Token>> currentRanges=getRangesForEndpoint(table,localAddress);
-    Collection<Range<Token>> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata,newToken,localAddress);
-    Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetaClone);
-    Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
-    Multimap<Range<Token>,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
-    for (    Range<Token> toFetch : rangesPerTable.right) {
-      for (      Range<Token> range : rangeAddresses.keySet()) {
-        if (range.contains(toFetch)) {
-          List<InetAddress> endpoints=snitch.getSortedListByProximity(localAddress,rangeAddresses.get(range));
-          rangesToFetchWithPreferredEndpoints.putAll(toFetch,endpoints);
-        }
-      }
-    }
-    Multimap<Range<Token>,InetAddress> rangeWithEndpoints=HashMultimap.create();
-    for (    Range<Token> toStream : rangesPerTable.left) {
-      Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
-      Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaCloneAllSettled));
-      rangeWithEndpoints.putAll(toStream,Sets.difference(newEndpoints,currentEndpoints));
-    }
-    rangesToStreamByTable.put(table,rangeWithEndpoints);
-    Multimap<InetAddress,Range<Token>> workMap=RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints);
-    rangesToFetch.put(table,workMap);
-    if (logger.isDebugEnabled())     logger.debug("Table {}: work map {}.",table,workMap);
+  RangeRelocator relocator=new RangeRelocator(Collections.singleton(newToken),tablesToProcess);
+  setMode(Mode.MOVING,String.format("Sleeping %s ms before start streaming/fetching ranges",RING_DELAY),true);
+  try {
+    Thread.sleep(RING_DELAY);
   }
-  if (!rangesToStreamByTable.isEmpty() || !rangesToFetch.isEmpty()) {
-    setMode(Mode.MOVING,String.format("Sleeping %s ms before start streaming/fetching ranges",RING_DELAY),true);
-    try {
-      Thread.sleep(RING_DELAY);
-    }
- catch (    InterruptedException e) {
-      throw new RuntimeException("Sleep interrupted " + e.getMessage());
-    }
+ catch (  InterruptedException e) {
+    throw new RuntimeException("Sleep interrupted " + e.getMessage());
+  }
+  if (relocator.streamsNeeded()) {
     setMode(Mode.MOVING,"fetching new ranges and streaming old ranges",true);
-    if (logger.isDebugEnabled())     logger.debug("[Move->STREAMING] Work Map: " + rangesToStreamByTable);
-    CountDownLatch streamLatch=streamRanges(rangesToStreamByTable);
-    if (logger.isDebugEnabled())     logger.debug("[Move->FETCHING] Work Map: " + rangesToFetch);
-    CountDownLatch fetchLatch=requestRanges(rangesToFetch);
+    relocator.logStreamsMap("[Move->STREAMING]");
+    CountDownLatch streamLatch=relocator.streams();
+    relocator.logRequestsMap("[Move->FETCHING]");
+    CountDownLatch fetchLatch=relocator.requests();
     try {
       streamLatch.await();
       fetchLatch.await();
@@ -64,6 +34,7 @@
       throw new RuntimeException("Interrupted latch while waiting for stream/fetch ranges to finish: " + e.getMessage());
     }
   }
+ else   setMode(Mode.MOVING,"No ranges to fetch/stream",true);
   setTokens(Collections.singleton(newToken));
   if (logger.isDebugEnabled())   logger.debug("Successfully moved to new token {}",getLocalTokens().iterator().next());
 }

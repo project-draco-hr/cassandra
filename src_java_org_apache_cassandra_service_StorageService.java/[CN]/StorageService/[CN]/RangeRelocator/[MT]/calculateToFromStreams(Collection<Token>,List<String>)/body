@@ -1,0 +1,34 @@
+{
+  InetAddress localAddress=FBUtilities.getBroadcastAddress();
+  IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+  TokenMetadata tokenMetaCloneAllSettled=tokenMetadata.cloneAfterAllSettled();
+  TokenMetadata tokenMetaClone=tokenMetadata.cloneOnlyTokenMap();
+  for (  String table : tables) {
+    for (    Token newToken : newTokens) {
+      AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
+      Collection<Range<Token>> currentRanges=getRangesForEndpoint(table,localAddress);
+      Collection<Range<Token>> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata,newToken,localAddress);
+      Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetaClone);
+      Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
+      Multimap<Range<Token>,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
+      for (      Range<Token> toFetch : rangesPerTable.right) {
+        for (        Range<Token> range : rangeAddresses.keySet()) {
+          if (range.contains(toFetch)) {
+            List<InetAddress> endpoints=snitch.getSortedListByProximity(localAddress,rangeAddresses.get(range));
+            rangesToFetchWithPreferredEndpoints.putAll(toFetch,endpoints);
+          }
+        }
+      }
+      Multimap<Range<Token>,InetAddress> rangeWithEndpoints=HashMultimap.create();
+      for (      Range<Token> toStream : rangesPerTable.left) {
+        Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
+        Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaCloneAllSettled));
+        rangeWithEndpoints.putAll(toStream,Sets.difference(newEndpoints,currentEndpoints));
+      }
+      rangesToStreamByTable.put(table,rangeWithEndpoints);
+      Multimap<InetAddress,Range<Token>> workMap=RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints);
+      rangesToFetch.put(table,workMap);
+      if (logger.isDebugEnabled())       logger.debug("Table {}: work map {}.",table,workMap);
+    }
+  }
+}
