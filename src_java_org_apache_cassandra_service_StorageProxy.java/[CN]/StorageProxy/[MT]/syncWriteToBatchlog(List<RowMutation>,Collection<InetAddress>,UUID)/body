@@ -1,0 +1,16 @@
+{
+  RowMutation rm=BatchlogManager.getBatchlogMutationFor(mutations,uuid);
+  AbstractWriteResponseHandler handler=WriteResponseHandler.create(endpoints,Collections.<InetAddress>emptyList(),ConsistencyLevel.ONE,Table.SYSTEM_KS,null);
+  try {
+    sendMessagesToOneDC(rm.createMessage(),endpoints,true,handler);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Error writing to batchlog",e);
+  }
+  try {
+    handler.get();
+  }
+ catch (  WriteTimeoutException e) {
+    throw new WriteTimeoutException(e.consistency,0,e.blockFor,false);
+  }
+}

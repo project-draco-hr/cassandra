@@ -1,9 +1,11 @@
 {
   String table=mutation.getTable();
   AbstractReplicationStrategy rs=Table.open(table).getReplicationStrategy();
-  Collection<InetAddress> writeEndpoints=getWriteEndpoints(table,mutation.key());
-  AbstractWriteResponseHandler responseHandler=rs.getWriteResponseHandler(writeEndpoints,consistency_level,callback);
+  Token tk=StorageService.getPartitioner().getToken(mutation.key());
+  List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table,tk);
+  Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table);
+  AbstractWriteResponseHandler responseHandler=rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,consistency_level,callback);
   responseHandler.assureSufficientLiveNodes();
-  performer.apply(mutation,writeEndpoints,responseHandler,localDataCenter,consistency_level);
+  performer.apply(mutation,Iterables.concat(naturalEndpoints,pendingEndpoints),responseHandler,localDataCenter,consistency_level);
   return responseHandler;
 }
