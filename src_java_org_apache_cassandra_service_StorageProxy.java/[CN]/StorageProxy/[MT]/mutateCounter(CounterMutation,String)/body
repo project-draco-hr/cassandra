@@ -9,8 +9,8 @@
     Token tk=StorageService.getPartitioner().getToken(cm.key());
     List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table,tk);
     Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table);
-    rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,cm.consistency(),null).assureSufficientLiveNodes();
-    AbstractWriteResponseHandler responseHandler=WriteResponseHandler.create(endpoint);
+    rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,cm.consistency(),null,WriteType.COUNTER).assureSufficientLiveNodes();
+    AbstractWriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.COUNTER);
     if (logger.isDebugEnabled())     logger.debug("forwarding counter update of key " + ByteBufferUtil.bytesToHex(cm.key()) + " to "+ endpoint);
     MessagingService.instance().sendRR(cm.makeMutationMessage(),endpoint,responseHandler);
     return responseHandler;
