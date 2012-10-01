@@ -1,0 +1,23 @@
+{
+  try {
+    String queryString=uncompress(query,compression);
+    if (startSessionIfRequested()) {
+      Tracing.instance().begin("execute_cql3_query",ImmutableMap.of("query",queryString));
+    }
+ else {
+      logger.debug("execute_cql3_query");
+    }
+    ClientState cState=state();
+    return org.apache.cassandra.cql3.QueryProcessor.process(queryString,ThriftConversion.fromThrift(cLevel),cState).toThriftResult();
+  }
+ catch (  RequestExecutionException e) {
+    ThriftConversion.rethrow(e);
+    return null;
+  }
+catch (  RequestValidationException e) {
+    throw ThriftConversion.toThrift(e);
+  }
+ finally {
+    Tracing.instance().stopSession();
+  }
+}
