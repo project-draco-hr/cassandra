@@ -1,2 +1,15 @@
 {
+  Map<Pair<String,ByteBuffer>,IMutation> mutations=new HashMap<Pair<String,ByteBuffer>,IMutation>();
+  for (  ModificationStatement statement : statements) {
+    if (isSetTimestamp())     statement.setTimestamp(getTimestamp(clientState));
+    for (    IMutation m : statement.getMutations(clientState,variables,local)) {
+      if (m instanceof CounterMutation && type != Type.COUNTER)       throw new InvalidRequestException("Counter mutations are only allowed in COUNTER batches");
+      if (m instanceof RowMutation && type == Type.COUNTER)       throw new InvalidRequestException("Only counter mutations are allowed in COUNTER batches");
+      Pair<String,ByteBuffer> key=Pair.create(m.getTable(),m.key());
+      IMutation existing=mutations.get(key);
+      if (existing == null)       mutations.put(key,m);
+ else       existing.addAll(m);
+    }
+  }
+  return mutations.values();
 }
