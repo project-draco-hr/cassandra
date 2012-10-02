@@ -1,0 +1,14 @@
+{
+  TokenMetadata tmd=StorageService.instance.getTokenMetadata();
+  Set<InetAddress> expected=addTokens(1 + Table.open(tablename).getReplicationStrategy().getReplicationFactor());
+  expected.remove(FBUtilities.getBroadcastAddress());
+  TokenMetadata.Topology topology=tmd.cloneOnlyTokenMap().getTopology();
+  HashSet<InetAddress> localEndpoints=Sets.newHashSet(topology.getDatacenterEndpoints().get(DatabaseDescriptor.getLocalDataCenter()));
+  expected=Sets.intersection(expected,localEndpoints);
+  Collection<Range<Token>> ranges=StorageService.instance.getLocalRanges(tablename);
+  Set<InetAddress> neighbors=new HashSet<InetAddress>();
+  for (  Range<Token> range : ranges) {
+    neighbors.addAll(AntiEntropyService.getNeighbors(tablename,range,true));
+  }
+  assertEquals(expected,neighbors);
+}
