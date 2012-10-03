@@ -1,16 +1,11 @@
 {
   TSocket socket=new TSocket(server,port);
   if (transport != null)   transport.close();
-  if (sessionState.framed) {
-    transport=new TFramedTransport(socket);
-  }
- else {
-    transport=socket;
-  }
+  transport=sessionState.transportFactory.getTransport(socket);
   TBinaryProtocol binaryProtocol=new TBinaryProtocol(transport,true,true);
   Cassandra.Client cassandraClient=new Cassandra.Client(binaryProtocol);
   try {
-    transport.open();
+    if (!transport.isOpen())     transport.open();
   }
  catch (  Exception e) {
     e.printStackTrace(sessionState.err);
