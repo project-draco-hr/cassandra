@@ -1,0 +1,15 @@
+{
+  if (!values.isBindMarker())   throw new InvalidRequestException("Can't apply operation on column with " + validator + " type.");
+  cf.addAtom(params.makeTombstoneForOverwrite(builder.copy().build(),builder.copy().buildAsEndOfRange()));
+  try {
+    Map<?,?> m=validator.compose(params.variables.get(values.bindIndex));
+    for (    Map.Entry<?,?> entry : m.entrySet()) {
+      ByteBuffer name=builder.copy().add(validator.nameComparator().decompose(entry.getKey())).build();
+      ByteBuffer value=validator.valueComparator().decompose(entry.getValue());
+      cf.addColumn(params.makeColumn(name,value));
+    }
+  }
+ catch (  MarshalException e) {
+    throw new InvalidRequestException(e.getMessage());
+  }
+}
