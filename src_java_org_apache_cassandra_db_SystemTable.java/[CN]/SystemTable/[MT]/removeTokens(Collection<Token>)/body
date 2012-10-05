@@ -1,9 +1,10 @@
 {
-  IPartitioner p=StorageService.getPartitioner();
-  for (  Token token : tokens) {
-    String req="DELETE FROM system.%s WHERE token_bytes = '%s'";
-    String tokenBytes=ByteBufferUtil.bytesToHex(p.getTokenFactory().toByteArray(token));
-    processInternal(String.format(req,PEERS_CF,tokenBytes));
+  Set<Token> tokenSet=new HashSet<Token>(tokens);
+  for (  Map.Entry<InetAddress,Collection<Token>> entry : loadTokens().asMap().entrySet()) {
+    Set<Token> toRemove=Sets.intersection(tokenSet,((Set<Token>)entry.getValue())).immutableCopy();
+    if (toRemove.isEmpty())     continue;
+    String req="UPDATE system.%s SET tokens = tokens - %s WHERE peer = '%s'";
+    processInternal(String.format(req,PEERS_CF,serializeTokens(toRemove),entry.getKey()));
   }
   forceBlockingFlush(PEERS_CF);
 }

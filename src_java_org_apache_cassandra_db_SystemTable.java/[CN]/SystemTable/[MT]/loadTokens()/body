@@ -1,6 +1,8 @@
 {
-  IPartitioner p=StorageService.getPartitioner();
-  Multimap<InetAddress,Token> tokenMap=HashMultimap.create();
-  for (  UntypedResultSet.Row row : processInternal("SELECT * FROM system." + PEERS_CF))   tokenMap.put(row.getInetAddress("peer"),p.getTokenFactory().fromByteArray(row.getBytes("token_bytes")));
+  SetMultimap<InetAddress,Token> tokenMap=HashMultimap.create();
+  for (  UntypedResultSet.Row row : processInternal("SELECT peer, tokens FROM system." + PEERS_CF)) {
+    InetAddress peer=row.getInetAddress("peer");
+    if (row.has("tokens"))     tokenMap.putAll(peer,deserializeTokens(row.getSet("tokens",BytesType.instance)));
+  }
   return tokenMap;
 }

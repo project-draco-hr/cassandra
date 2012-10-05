@@ -1,19 +1,12 @@
 {
-  int estCapacity=(tokens.size() * 16) + (tokens.size() * 2);
-  ByteBuffer toks=ByteBuffer.allocate(estCapacity);
-  IPartitioner p=StorageService.getPartitioner();
-  for (  Token token : tokens) {
-    ByteBuffer tokenBytes=p.getTokenFactory().toByteArray(token);
-    if (toks.remaining() < (2 + tokenBytes.remaining())) {
-      estCapacity=estCapacity * 2;
-      ByteBuffer newToks=ByteBuffer.allocate(estCapacity);
-      toks.flip();
-      newToks.put(toks);
-      toks=newToks;
-    }
-    toks.putShort((short)tokenBytes.remaining());
-    toks.put(tokenBytes);
+  Token.TokenFactory factory=StorageService.getPartitioner().getTokenFactory();
+  StringBuilder sb=new StringBuilder();
+  sb.append("{");
+  Iterator<Token> iter=tokens.iterator();
+  while (iter.hasNext()) {
+    sb.append("'").append(ByteBufferUtil.bytesToHex(factory.toByteArray(iter.next()))).append("'");
+    if (iter.hasNext())     sb.append(",");
   }
-  toks.flip();
-  return toks;
+  sb.append("}");
+  return sb.toString();
 }
