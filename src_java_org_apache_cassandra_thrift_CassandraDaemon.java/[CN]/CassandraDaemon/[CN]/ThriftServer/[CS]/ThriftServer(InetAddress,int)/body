@@ -1,43 +1,16 @@
 {
-  final CassandraServer cassandraServer=new CassandraServer();
-  Cassandra.Processor processor=new Cassandra.Processor(cassandraServer);
   logger.info(String.format("Binding thrift service to %s:%s",listenAddr,listenPort));
-  TProtocolFactory tProtocolFactory=new TBinaryProtocol.Factory(true,true,DatabaseDescriptor.getThriftMaxMessageLength());
+  TServerFactory.Args args=new TServerFactory.Args();
+  args.tProtocolFactory=new TBinaryProtocol.Factory(true,true,DatabaseDescriptor.getThriftMaxMessageLength());
+  args.addr=new InetSocketAddress(listenAddr,listenPort);
+  args.cassandraServer=new CassandraServer();
+  args.processor=new Cassandra.Processor(args.cassandraServer);
+  args.keepAlive=DatabaseDescriptor.getRpcKeepAlive();
+  args.sendBufferSize=DatabaseDescriptor.getRpcSendBufferSize();
+  args.recvBufferSize=DatabaseDescriptor.getRpcRecvBufferSize();
   int tFramedTransportSize=DatabaseDescriptor.getThriftFramedTransportSize();
-  TTransportFactory inTransportFactory=new TFramedTransport.Factory(tFramedTransportSize);
-  TTransportFactory outTransportFactory=new TFramedTransport.Factory(tFramedTransportSize);
-  logger.info("Using TFastFramedTransport with a max frame size of {} bytes.",tFramedTransportSize);
-  if (DatabaseDescriptor.getRpcServerType().equalsIgnoreCase(SYNC)) {
-    TServerTransport serverTransport;
-    try {
-      serverTransport=new TCustomServerSocket(new InetSocketAddress(listenAddr,listenPort),DatabaseDescriptor.getRpcKeepAlive(),DatabaseDescriptor.getRpcSendBufferSize(),DatabaseDescriptor.getRpcRecvBufferSize());
-    }
- catch (    TTransportException e) {
-      throw new RuntimeException(String.format("Unable to create thrift socket to %s:%s",listenAddr,listenPort),e);
-    }
-    TThreadPoolServer.Args serverArgs=new TThreadPoolServer.Args(serverTransport).minWorkerThreads(DatabaseDescriptor.getRpcMinThreads()).maxWorkerThreads(DatabaseDescriptor.getRpcMaxThreads()).inputTransportFactory(inTransportFactory).outputTransportFactory(outTransportFactory).inputProtocolFactory(tProtocolFactory).outputProtocolFactory(tProtocolFactory).processor(processor);
-    ExecutorService executorService=new CleaningThreadPool(cassandraServer.clientState,serverArgs.minWorkerThreads,serverArgs.maxWorkerThreads);
-    serverEngine=new CustomTThreadPoolServer(serverArgs,executorService);
-    logger.info(String.format("Using synchronous/threadpool thrift server on %s : %s",listenAddr,listenPort));
-  }
- else {
-    TNonblockingServerTransport serverTransport;
-    try {
-      serverTransport=new TCustomNonblockingServerSocket(new InetSocketAddress(listenAddr,listenPort),DatabaseDescriptor.getRpcKeepAlive(),DatabaseDescriptor.getRpcSendBufferSize(),DatabaseDescriptor.getRpcRecvBufferSize());
-    }
- catch (    TTransportException e) {
-      throw new RuntimeException(String.format("Unable to create thrift socket to %s:%s",listenAddr,listenPort),e);
-    }
-    if (DatabaseDescriptor.getRpcServerType().equalsIgnoreCase(ASYNC)) {
-      TNonblockingServer.Args serverArgs=new TNonblockingServer.Args(serverTransport).inputTransportFactory(inTransportFactory).outputTransportFactory(outTransportFactory).inputProtocolFactory(tProtocolFactory).outputProtocolFactory(tProtocolFactory).processor(processor);
-      logger.info(String.format("Using non-blocking/asynchronous thrift server on %s : %s",listenAddr,listenPort));
-      serverEngine=new CustomTNonBlockingServer(serverArgs);
-    }
- else     if (DatabaseDescriptor.getRpcServerType().equalsIgnoreCase(HSHA)) {
-      ExecutorService executorService=new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.getRpcMinThreads(),DatabaseDescriptor.getRpcMaxThreads(),60L,TimeUnit.SECONDS,new SynchronousQueue<Runnable>(),new NamedThreadFactory("RPC-Thread"),"RPC-THREAD-POOL");
-      TNonblockingServer.Args serverArgs=new TNonblockingServer.Args(serverTransport).inputTransportFactory(inTransportFactory).outputTransportFactory(outTransportFactory).inputProtocolFactory(tProtocolFactory).outputProtocolFactory(tProtocolFactory).processor(processor);
-      logger.info(String.format("Using custom half-sync/half-async thrift server on %s : %s",listenAddr,listenPort));
-      serverEngine=new CustomTHsHaServer(serverArgs,executorService,Runtime.getRuntime().availableProcessors());
-    }
-  }
+  logger.info("Using TFramedTransport with a max frame size of {} bytes.",tFramedTransportSize);
+  args.inTransportFactory=new TFramedTransport.Factory(tFramedTransportSize);
+  args.outTransportFactory=new TFramedTransport.Factory(tFramedTransportSize);
+  serverEngine=new TServerCustomFactory(DatabaseDescriptor.getRpcServerType()).buildTServer(args);
 }
