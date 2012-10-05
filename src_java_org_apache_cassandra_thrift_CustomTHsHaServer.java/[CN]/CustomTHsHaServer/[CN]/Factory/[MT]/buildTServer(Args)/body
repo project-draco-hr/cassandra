@@ -1,0 +1,13 @@
+{
+  final InetSocketAddress addr=args.addr;
+  TNonblockingServerTransport serverTransport;
+  try {
+    serverTransport=new TCustomNonblockingServerSocket(addr,args.keepAlive,args.sendBufferSize,args.recvBufferSize);
+  }
+ catch (  TTransportException e) {
+    throw new RuntimeException(String.format("Unable to create thrift socket to %s:%s",addr.getAddress(),addr.getPort()),e);
+  }
+  ExecutorService executorService=new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.getRpcMinThreads(),DatabaseDescriptor.getRpcMaxThreads(),60L,TimeUnit.SECONDS,new SynchronousQueue<Runnable>(),new NamedThreadFactory("RPC-Thread"),"RPC-THREAD-POOL");
+  TNonblockingServer.Args serverArgs=new TNonblockingServer.Args(serverTransport).inputTransportFactory(args.inTransportFactory).outputTransportFactory(args.outTransportFactory).inputProtocolFactory(args.tProtocolFactory).outputProtocolFactory(args.tProtocolFactory).processor(args.processor);
+  return new CustomTHsHaServer(serverArgs,executorService,Runtime.getRuntime().availableProcessors());
+}
