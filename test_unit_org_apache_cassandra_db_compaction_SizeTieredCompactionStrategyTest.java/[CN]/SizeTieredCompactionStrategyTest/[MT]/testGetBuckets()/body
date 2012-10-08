@@ -5,7 +5,11 @@
     Pair<String,Long> pair=Pair.create(st,new Long(st.length()));
     pairs.add(pair);
   }
-  List<List<String>> buckets=SizeTieredCompactionStrategy.getBuckets(pairs,2);
+  ColumnFamilyStore cfs=Table.open("Keyspace1").getColumnFamilyStore("Standard1");
+  Map<String,String> opts=new HashMap<String,String>();
+  opts.put(SizeTieredCompactionStrategy.MIN_SSTABLE_SIZE_KEY,"2");
+  SizeTieredCompactionStrategy strategy=new SizeTieredCompactionStrategy(cfs,opts);
+  List<List<String>> buckets=strategy.getBuckets(pairs);
   assertEquals(3,buckets.size());
   for (  List<String> bucket : buckets) {
     assertEquals(2,bucket.size());
@@ -19,7 +23,7 @@
     Pair<String,Long> pair=Pair.create(st,new Long(st.length()));
     pairs.add(pair);
   }
-  buckets=SizeTieredCompactionStrategy.getBuckets(pairs,2);
+  buckets=strategy.getBuckets(pairs);
   assertEquals(2,buckets.size());
   for (  List<String> bucket : buckets) {
     assertEquals(3,bucket.size());
@@ -33,6 +37,8 @@
     Pair<String,Long> pair=Pair.create(st,new Long(st.length()));
     pairs.add(pair);
   }
-  buckets=SizeTieredCompactionStrategy.getBuckets(pairs,10);
+  opts.put(SizeTieredCompactionStrategy.MIN_SSTABLE_SIZE_KEY,"10");
+  strategy=new SizeTieredCompactionStrategy(cfs,opts);
+  buckets=strategy.getBuckets(pairs);
   assertEquals(1,buckets.size());
 }
