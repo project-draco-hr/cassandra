@@ -1,0 +1,10 @@
+@completer_for('insertStatement', 'colname')
+def insert_colname_completer(ctxt, cass):
+    layout = get_cf_layout(ctxt, cass)
+    colnames = set(map(dequote_name, ctxt.get_binding('colname', ())))
+    keycols = layout.primary_key_components
+    for k in keycols:
+        if (k not in colnames):
+            return [maybe_escape_name(k)]
+    normalcols = ((set([c.name for c in layout.columns]) - set(keycols)) - colnames)
+    return map(maybe_escape_name, normalcols)
