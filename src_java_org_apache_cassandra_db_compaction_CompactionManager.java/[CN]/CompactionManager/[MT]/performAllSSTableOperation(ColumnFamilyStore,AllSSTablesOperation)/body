@@ -3,20 +3,24 @@
     public Object call() throws IOException {
       compactionLock.writeLock().lock();
       try {
-        Collection<SSTableReader> sstables=cfStore.getDataTracker().markCompacting(cfStore.getSSTables(),1,Integer.MAX_VALUE);
-        if (sstables == null || sstables.isEmpty())         return this;
+        Collection<SSTableReader> sstables;
+        while (true) {
+          sstables=cfs.getDataTracker().getUncompactingSSTables();
+          if (sstables.isEmpty())           return this;
+          if (cfs.getDataTracker().markCompacting(sstables))           break;
+        }
         try {
           compactionLock.readLock().lock();
           compactionLock.writeLock().unlock();
           try {
-            operation.perform(cfStore,sstables);
+            operation.perform(cfs,sstables);
           }
   finally {
             compactionLock.readLock().unlock();
           }
         }
   finally {
-          cfStore.getDataTracker().unmarkCompacting(sstables);
+          cfs.getDataTracker().unmarkCompacting(sstables);
         }
         return this;
       }

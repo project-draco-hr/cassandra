@@ -13,19 +13,18 @@
             sstables.add(sstable);
           }
         }
-        Collection<SSTableReader> toCompact;
         try {
           if (sstables.isEmpty()) {
             logger.info("No file to compact for user defined compaction");
           }
- else           if ((toCompact=cfs.getDataTracker().markCompacting(sstables,1,Integer.MAX_VALUE)) != null) {
+ else           if (cfs.getDataTracker().markCompacting(sstables)) {
             try {
               AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-              AbstractCompactionTask task=strategy.getUserDefinedTask(toCompact,gcBefore);
+              AbstractCompactionTask task=strategy.getUserDefinedTask(sstables,gcBefore);
               task.execute(metrics);
             }
   finally {
-              cfs.getDataTracker().unmarkCompacting(toCompact);
+              cfs.getDataTracker().unmarkCompacting(sstables);
             }
           }
  else {

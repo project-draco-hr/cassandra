@@ -1,0 +1,27 @@
+{
+  compactionLock.readLock().lock();
+  try {
+    logger.debug("Checking {}.{}",cfs.table.name,cfs.columnFamily);
+    if (!cfs.isValid()) {
+      logger.debug("Aborting compaction for dropped CF");
+      return;
+    }
+    AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
+    AbstractCompactionTask task=strategy.getNextBackgroundTask(getDefaultGcBefore(cfs));
+    if (task == null) {
+      logger.debug("No tasks available");
+      return;
+    }
+    try {
+      task.execute(metrics);
+    }
+  finally {
+      task.unmarkSSTables();
+    }
+  }
+  finally {
+    compactingCF.remove(cfs);
+    compactionLock.readLock().unlock();
+  }
+  submitBackground(cfs);
+}
