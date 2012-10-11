@@ -14,9 +14,9 @@
   }
   UUID hostId=StorageService.instance.getTokenMetadata().getHostId(endpoint);
   logger.info("Started hinted handoff for host: {} with IP: {}",hostId,endpoint);
-  ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
+  final ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
   DecoratedKey epkey=StorageService.getPartitioner().decorateKey(hostIdBytes);
-  int rowsReplayed=0;
+  final AtomicInteger rowsReplayed=new AtomicInteger(0);
   ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
   int pageSize=PAGE_SIZE;
   if (hintStore.getMeanColumns() > 0) {
@@ -27,11 +27,19 @@
   }
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
-  delivery:   while (true) {
+  while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(SystemTable.HINTS_CF),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
-    if (pagingFinished(hintsPage,startColumn))     break;
-    for (    IColumn hint : hintsPage.getSortedColumns()) {
+    if (pagingFinished(hintsPage,startColumn)) {
+      if (ByteBufferUtil.EMPTY_BYTE_BUFFER.equals(startColumn)) {
+        break;
+      }
+ else {
+        startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+        continue;
+      }
+    }
+    for (    final IColumn hint : hintsPage.getSortedColumns()) {
       if (!hint.isLive())       continue;
       startColumn=hint.name();
       ByteBuffer[] components=comparator.split(hint.name());
@@ -43,24 +51,27 @@
       }
  catch (      UnknownColumnFamilyException e) {
         logger.debug("Skipping delivery of hint for deleted columnfamily",e);
-        rm=null;
-      }
-      try {
-        if (rm != null) {
-          MessageOut<RowMutation> message=rm.createMessage();
-          rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
-          sendMutation(endpoint,message);
-          rowsReplayed++;
-        }
         deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
+        continue;
       }
- catch (      WriteTimeoutException e) {
-        logger.info(String.format("Timed out replaying hints to %s; aborting further deliveries",endpoint));
-        break delivery;
+      MessageOut<RowMutation> message=rm.createMessage();
+      rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
+      WrappedRunnable callback=new WrappedRunnable(){
+        public void runMayThrow() throws IOException {
+          rowsReplayed.incrementAndGet();
+          deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
+        }
       }
+;
+      IAsyncCallback responseHandler=new WriteResponseHandler(endpoint,WriteType.UNLOGGED_BATCH,callback);
+      MessagingService.instance().sendRR(message,endpoint,responseHandler);
+    }
+    if (!FailureDetector.instance.isAlive(endpoint)) {
+      logger.debug("Endpoint {} died during hint delivery, aborting",endpoint);
+      return;
     }
   }
-  if (rowsReplayed > 0) {
+  if (rowsReplayed.get() > 0) {
     try {
       compact().get();
     }
