@@ -2,17 +2,18 @@
   List<ByteBuffer> keys=buildKeyNames(cfDef,processedKeys,variables);
   ColumnNameBuilder builder=cfDef.getColumnNameBuilder();
   buildColumnNames(cfDef,processedKeys,builder,variables,true);
-  boolean needsReading=false;
+  List<ByteBuffer> toRead=null;
   for (  Map.Entry<CFDefinition.Name,Operation> entry : processedColumns.entries()) {
     CFDefinition.Name name=entry.getKey();
     Operation value=entry.getValue();
     if (!(name.type instanceof ListType))     continue;
     if (value.requiresRead()) {
-      needsReading=true;
+      if (toRead == null)       toRead=new ArrayList<ByteBuffer>();
+      toRead.add(name.name.key);
       break;
     }
   }
-  Map<ByteBuffer,ColumnGroupMap> rows=needsReading ? readRows(keys,builder,(CompositeType)cfDef.cfm.comparator,local,cl) : null;
+  Map<ByteBuffer,ColumnGroupMap> rows=toRead != null ? readRows(keys,builder,toRead,(CompositeType)cfDef.cfm.comparator,local,cl) : null;
   Collection<IMutation> mutations=new LinkedList<IMutation>();
   UpdateParameters params=new UpdateParameters(variables,getTimestamp(clientState),getTimeToLive());
   for (  ByteBuffer key : keys)   mutations.add(mutationForKey(cfDef,key,builder,params,rows == null ? null : rows.get(key),cl));
