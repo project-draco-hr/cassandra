@@ -4,7 +4,13 @@
   maybeReloadCompactionStrategy();
   indexManager.reload();
   try {
-    maybeSwitchMemtable(getMemtableThreadSafe(),true).get();
+    while (true) {
+      AbstractType comparator=metadata.comparator;
+      Memtable memtable=getMemtableThreadSafe();
+      if (memtable.initialComparator == comparator)       break;
+      Future future=maybeSwitchMemtable(getMemtableThreadSafe(),true);
+      if (future != null)       future.get();
+    }
   }
  catch (  ExecutionException e) {
     throw new RuntimeException(e);
