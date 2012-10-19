@@ -1,9 +1,7 @@
 {
-  Token.TokenFactory tf=StorageService.getPartitioner().getTokenFactory();
-  List<Token> tokens=StorageService.instance.getSplits(state().getKeyspace(),cfName,new Range<Token>(tf.fromString(start_token),tf.fromString(end_token)),keys_per_split);
-  List<String> splits=new ArrayList<String>(tokens.size());
-  for (  Token token : tokens) {
-    splits.add(tf.toString(token));
-  }
-  return splits;
+  List<CfSplit> splits=describe_splits_ex(cfName,start_token,end_token,keys_per_split);
+  List<String> result=new ArrayList<String>(splits.size() + 1);
+  result.add(splits.get(0).getStart_token());
+  for (  CfSplit cfSplit : splits)   result.add(cfSplit.getEnd_token());
+  return result;
 }
