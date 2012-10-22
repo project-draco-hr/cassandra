@@ -27,18 +27,20 @@
     if (predicate.slice_range == null) {
       predicate.slice_range=new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE);
     }
-    int requestedCount=predicate.slice_range.count;
+    final int requestedCount=predicate.slice_range.count;
+    int remaining=requestedCount;
     int pages=0;
     while (true) {
-      predicate.slice_range.count=Math.min(pageSize,requestedCount);
+      predicate.slice_range.count=Math.min(pageSize,Math.max(2,remaining));
       columns=get_slice(key,column_parent,predicate,consistency_level);
       if (columns.isEmpty())       break;
       ByteBuffer firstName=getName(columns.get(0));
       int newColumns=pages == 0 || !firstName.equals(predicate.slice_range.start) ? columns.size() : columns.size() - 1;
       totalCount+=newColumns;
-      requestedCount-=newColumns;
+      if (totalCount > requestedCount)       return requestedCount;
+      remaining-=newColumns;
       pages++;
-      if (requestedCount == 0 || columns.size() < predicate.slice_range.count)       break;
+      if (remaining == 0 || columns.size() < predicate.slice_range.count)       break;
  else       predicate.slice_range.start=getName(columns.get(columns.size() - 1));
     }
     return totalCount;
