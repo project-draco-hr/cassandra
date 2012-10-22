@@ -1,6 +1,6 @@
 {
   SuperColumn scFiltered=superColumn.cloneMeShallow();
-  Iterator<IColumn> subcolumns;
+  final Iterator<IColumn> subcolumns;
   if (reversed) {
     List<IColumn> columnsAsList=new ArrayList<IColumn>(superColumn.getSubColumns());
     subcolumns=Lists.reverse(columnsAsList).iterator();
@@ -8,14 +8,19 @@
  else {
     subcolumns=superColumn.getSubColumns().iterator();
   }
-  Comparator<ByteBuffer> comparator=reversed ? superColumn.getComparator().reverseComparator : superColumn.getComparator();
-  while (subcolumns.hasNext()) {
-    IColumn column=subcolumns.next();
-    if (comparator.compare(column.name(),start()) >= 0) {
-      subcolumns=Iterators.concat(Iterators.singletonIterator(column),subcolumns);
-      break;
+  final Comparator<ByteBuffer> comparator=reversed ? superColumn.getComparator().reverseComparator : superColumn.getComparator();
+  Iterator<IColumn> results=new AbstractIterator<IColumn>(){
+    protected IColumn computeNext(){
+      while (subcolumns.hasNext()) {
+        IColumn subcolumn=subcolumns.next();
+        if (comparator.compare(subcolumn.name(),start()) < 0)         continue;
+        if (finish().remaining() > 0 && comparator.compare(subcolumn.name(),finish()) > 0)         break;
+        return subcolumn;
+      }
+      return endOfData();
     }
   }
-  collectReducedColumns(scFiltered,subcolumns,gcBefore);
+;
+  collectReducedColumns(scFiltered,results,gcBefore);
   return scFiltered;
 }
