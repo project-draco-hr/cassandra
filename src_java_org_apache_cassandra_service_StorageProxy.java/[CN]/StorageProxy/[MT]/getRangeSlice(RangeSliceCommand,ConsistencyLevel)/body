@@ -1,5 +1,6 @@
 {
-  if (logger.isDebugEnabled())   logger.debug("Command/ConsistencyLevel is {}/{}",command.toString(),consistency_level);
+  logger.debug("Determining replicas to query");
+  logger.trace("Command/ConsistencyLevel is {}/{}",command.toString(),consistency_level);
   long startTime=System.nanoTime();
   List<Row> rows;
   try {
@@ -14,27 +15,27 @@
       ReadCallback<RangeSliceReply,Iterable<Row>> handler=getReadCallback(resolver,nodeCmd,consistency_level,liveEndpoints);
       handler.assureSufficientLiveNodes();
       resolver.setSources(handler.endpoints);
-      if (handler.endpoints.size() == 1 && handler.endpoints.get(0).equals(FBUtilities.getBroadcastAddress())) {
-        logger.debug("reading data locally");
+      if (handler.endpoints.size() == 1 && handler.endpoints.get(0).equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
+        logger.trace("reading data locally");
         StageManager.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd,handler));
       }
  else {
         MessageOut<RangeSliceCommand> message=nodeCmd.createMessage();
         for (        InetAddress endpoint : handler.endpoints) {
           MessagingService.instance().sendRR(message,endpoint,handler);
-          if (logger.isDebugEnabled())           logger.debug("reading " + nodeCmd + " from "+ endpoint);
+          logger.trace("reading {} from {}",nodeCmd,endpoint);
         }
       }
       try {
         for (        Row row : handler.get()) {
           rows.add(row);
           columnsCount+=row.getLiveColumnCount();
-          logger.debug("range slices read {}",row.key);
+          logger.trace("range slices read {}",row.key);
         }
         FBUtilities.waitOnFutures(resolver.repairResults,DatabaseDescriptor.getWriteRpcTimeout());
       }
  catch (      TimeoutException ex) {
-        if (logger.isDebugEnabled())         logger.debug("Range slice timeout: {}",ex.toString());
+        logger.debug("Range slice timeout: {}",ex.toString());
         int blockFor=consistency_level.blockFor(command.keyspace);
         throw new ReadTimeoutException(consistency_level,blockFor,blockFor,true);
       }
