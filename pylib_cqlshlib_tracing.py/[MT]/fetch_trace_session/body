@@ -1,0 +1,12 @@
+def fetch_trace_session(cursor, session_id):
+    cursor.execute(("SELECT request, coordinator, started_at, duration FROM %s.%s WHERE session_id = '%s'" % (TRACING_KS, SESSIONS_CF, session_id)))
+    (request, coordinator, started_at, duration) = cursor.fetchone()
+    cursor.execute(("SELECT activity, event_id, source, source_elapsed FROM %s.%s WHERE session_id = '%s'" % (TRACING_KS, EVENTS_CF, session_id)))
+    events = cursor.fetchall()
+    rows = []
+    rows.append([request, format_timestamp(started_at), coordinator, 0])
+    for (activity, event_id, source, source_elapsed) in events:
+        rows.append([activity, format_timeuuid(event_id), source, source_elapsed])
+    finished_at = (started_at + (duration / 1000000.0))
+    rows.append(['Request complete', format_timestamp(finished_at), coordinator, duration])
+    return rows
