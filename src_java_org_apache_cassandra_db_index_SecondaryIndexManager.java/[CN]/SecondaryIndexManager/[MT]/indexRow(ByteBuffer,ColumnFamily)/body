@@ -1,15 +1,14 @@
 {
   Set<Class<? extends SecondaryIndex>> appliedRowLevelIndexes=null;
-  for (  Map.Entry<ByteBuffer,SecondaryIndex> entry : indexesByColumn.entrySet()) {
-    SecondaryIndex index=entry.getValue();
+  for (  SecondaryIndex index : indexesByColumn.values()) {
     if (index instanceof PerRowSecondaryIndex) {
       if (appliedRowLevelIndexes == null)       appliedRowLevelIndexes=new HashSet<Class<? extends SecondaryIndex>>();
       if (appliedRowLevelIndexes.add(index.getClass()))       ((PerRowSecondaryIndex)index).index(key,cf);
     }
  else {
-      IColumn column=cf.getColumn(entry.getKey());
-      if (column == null)       continue;
-      ((PerColumnSecondaryIndex)index).insert(key,column);
+      for (      IColumn column : cf) {
+        if (index.indexes(column.name()))         ((PerColumnSecondaryIndex)index).insert(key,column);
+      }
     }
   }
 }
