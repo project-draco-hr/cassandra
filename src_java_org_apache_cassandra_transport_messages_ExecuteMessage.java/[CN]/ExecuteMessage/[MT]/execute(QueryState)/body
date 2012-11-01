@@ -1,0 +1,24 @@
+{
+  try {
+    CQLStatement statement=QueryProcessor.getPrepared(statementId);
+    if (statement == null)     throw new PreparedQueryNotFoundException(statementId);
+    UUID tracingId=null;
+    if (isTracingRequested()) {
+      tracingId=UUIDGen.makeType1UUIDFromHost(FBUtilities.getBroadcastAddress());
+      state.prepareTracingSession(tracingId);
+    }
+    if (state.traceNextQuery()) {
+      state.createTracingSession();
+      Tracing.instance().begin("Execute CQL3 prepared query",Collections.<String,String>emptyMap());
+    }
+    Message.Response response=QueryProcessor.processPrepared(statement,consistency,state,values);
+    if (tracingId != null)     response.setTracingId(tracingId);
+    return response;
+  }
+ catch (  Exception e) {
+    return ErrorMessage.fromException(e);
+  }
+ finally {
+    Tracing.instance().stopSession();
+  }
+}
