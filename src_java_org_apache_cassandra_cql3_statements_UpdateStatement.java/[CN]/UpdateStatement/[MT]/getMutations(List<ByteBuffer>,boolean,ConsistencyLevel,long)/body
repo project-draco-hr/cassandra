@@ -2,15 +2,14 @@
   List<ByteBuffer> keys=buildKeyNames(cfDef,processedKeys,variables);
   ColumnNameBuilder builder=cfDef.getColumnNameBuilder();
   buildColumnNames(cfDef,processedKeys,builder,variables,true);
-  List<ByteBuffer> toRead=null;
+  Set<ByteBuffer> toRead=null;
   for (  Map.Entry<CFDefinition.Name,Operation> entry : processedColumns.entries()) {
     CFDefinition.Name name=entry.getKey();
     Operation value=entry.getValue();
     if (!(name.type instanceof ListType))     continue;
     if (value.requiresRead()) {
-      if (toRead == null)       toRead=new ArrayList<ByteBuffer>();
+      if (toRead == null)       toRead=new TreeSet<ByteBuffer>(UTF8Type.instance);
       toRead.add(name.name.key);
-      break;
     }
   }
   Map<ByteBuffer,ColumnGroupMap> rows=toRead != null ? readRows(keys,builder,toRead,(CompositeType)cfDef.cfm.comparator,local,cl) : null;
