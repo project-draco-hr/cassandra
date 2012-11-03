@@ -2,9 +2,11 @@
   logger.trace("Filtering {} for rows matching {}",rowIterator,filter);
   List<Row> rows=new ArrayList<Row>();
   int columnsCount=0;
+  int total=0, matched=0;
   try {
     while (rowIterator.hasNext() && rows.size() < filter.maxRows() && columnsCount < filter.maxColumns()) {
       Row rawRow=rowIterator.next();
+      total++;
       ColumnFamily data=rawRow.cf;
       if (rowIterator.needsFiltering()) {
         IDiskAtomFilter extraFilter=filter.getExtraFilter(data);
@@ -18,9 +20,11 @@
         data=filter.prune(data);
       }
       rows.add(new Row(rawRow.key,data));
+      matched++;
       if (data != null)       columnsCount+=filter.lastCounted(data);
       filter.updateFilter(columnsCount);
     }
+    logger.debug("Scanned {} rows and matched {}",total,matched);
     return rows;
   }
   finally {
