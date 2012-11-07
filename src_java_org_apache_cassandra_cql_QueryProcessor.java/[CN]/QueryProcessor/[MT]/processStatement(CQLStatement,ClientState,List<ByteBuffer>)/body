@@ -14,7 +14,7 @@ if (select.isSetKeyspace()) {
 }
  else if (oldKeyspace == null) throw new InvalidRequestException("no keyspace has been specified");
  else keyspace=oldKeyspace;
-clientState.hasColumnFamilyAccess(keyspace,select.getColumnFamily(),Permission.SELECT);
+clientState.hasColumnFamilyAccess(keyspace,select.getColumnFamily(),Permission.READ);
 metadata=validateColumnFamily(keyspace,select.getColumnFamily());
 select.extractKeyAliasFromColumns(metadata);
 if (select.getKeys().size() > 0) validateKeyAlias(metadata,select.getKeyAlias());
@@ -90,7 +90,7 @@ return result;
 case INSERT:
 case UPDATE:
 UpdateStatement update=(UpdateStatement)statement.statement;
-clientState.hasColumnFamilyAccess(keyspace,update.getColumnFamily(),Permission.UPDATE);
+clientState.hasColumnFamilyAccess(keyspace,update.getColumnFamily(),Permission.WRITE);
 ThriftValidation.validateConsistencyLevel(keyspace,update.getConsistencyLevel(),RequestType.WRITE);
 batchUpdate(clientState,Collections.singletonList(update),update.getConsistencyLevel(),variables);
 result.type=CqlResultType.VOID;
@@ -126,7 +126,7 @@ case TRUNCATE:
 Pair<String,String> columnFamily=(Pair<String,String>)statement.statement;
 keyspace=columnFamily.left == null ? clientState.getKeyspace() : columnFamily.left;
 validateColumnFamily(keyspace,columnFamily.right);
-clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.DELETE);
+clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.WRITE);
 try {
 StorageProxy.truncateBlocking(keyspace,columnFamily.right);
 }
@@ -141,7 +141,7 @@ return result;
 case DELETE:
 DeleteStatement delete=(DeleteStatement)statement.statement;
 keyspace=delete.keyspace == null ? clientState.getKeyspace() : delete.keyspace;
-clientState.hasColumnFamilyAccess(keyspace,delete.columnFamily,Permission.DELETE);
+clientState.hasColumnFamilyAccess(keyspace,delete.columnFamily,Permission.WRITE);
 List<IMutation> deletions=delete.prepareRowMutations(keyspace,clientState,variables);
 for (IMutation deletion : deletions) {
 validateKey(deletion.key());
@@ -158,7 +158,7 @@ case CREATE_KEYSPACE:
 CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
 create.validate();
 ThriftValidation.validateKeyspaceNotSystem(create.getName());
-clientState.hasKeyspaceAccess(create.getName(),Permission.CREATE);
+clientState.hasKeyspaceAccess(create.getName(),Permission.WRITE);
 validateSchemaAgreement();
 try {
 KSMetaData ksm=KSMetaData.newKeyspace(create.getName(),create.getStrategyClass(),create.getStrategyOptions(),true);
@@ -175,7 +175,7 @@ result.type=CqlResultType.VOID;
 return result;
 case CREATE_COLUMNFAMILY:
 CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
-clientState.hasColumnFamilySchemaAccess(keyspace,Permission.CREATE);
+clientState.hasColumnFamilyAccess(keyspace,createCf.getName(),Permission.WRITE);
 validateSchemaAgreement();
 try {
 MigrationManager.announceNewColumnFamily(createCf.getCFMetaData(keyspace,variables));
@@ -190,7 +190,7 @@ result.type=CqlResultType.VOID;
 return result;
 case CREATE_INDEX:
 CreateIndexStatement createIdx=(CreateIndexStatement)statement.statement;
-clientState.hasColumnFamilyAccess(keyspace,createIdx.getColumnFamily(),Permission.ALTER);
+clientState.hasColumnFamilyAccess(keyspace,createIdx.getColumnFamily(),Permission.WRITE);
 validateSchemaAgreement();
 CFMetaData oldCfm=Schema.instance.getCFMetaData(keyspace,createIdx.getColumnFamily());
 if (oldCfm == null) throw new InvalidRequestException("No such column family: " + createIdx.getColumnFamily());
@@ -242,7 +242,7 @@ return result;
 case DROP_KEYSPACE:
 String deleteKeyspace=(String)statement.statement;
 ThriftValidation.validateKeyspaceNotSystem(deleteKeyspace);
-clientState.hasKeyspaceAccess(deleteKeyspace,Permission.DROP);
+clientState.hasKeyspaceAccess(deleteKeyspace,Permission.WRITE);
 validateSchemaAgreement();
 try {
 MigrationManager.announceKeyspaceDrop(deleteKeyspace);
@@ -257,7 +257,7 @@ result.type=CqlResultType.VOID;
 return result;
 case DROP_COLUMNFAMILY:
 String deleteColumnFamily=(String)statement.statement;
-clientState.hasColumnFamilyAccess(keyspace,deleteColumnFamily,Permission.DROP);
+clientState.hasColumnFamilyAccess(keyspace,deleteColumnFamily,Permission.WRITE);
 validateSchemaAgreement();
 try {
 MigrationManager.announceColumnFamilyDrop(keyspace,deleteColumnFamily);
@@ -273,7 +273,7 @@ return result;
 case ALTER_TABLE:
 AlterTableStatement alterTable=(AlterTableStatement)statement.statement;
 validateColumnFamily(keyspace,alterTable.columnFamily);
-clientState.hasColumnFamilyAccess(alterTable.columnFamily,Permission.ALTER);
+clientState.hasColumnFamilyAccess(keyspace,alterTable.columnFamily,Permission.WRITE);
 validateSchemaAgreement();
 try {
 MigrationManager.announceColumnFamilyUpdate(alterTable.getCFMetaData(keyspace));

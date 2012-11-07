@@ -1,7 +1,8 @@
 {
   ClientState cState=state();
-  cState.hasColumnFamilyAccess(column_parent.column_family,Permission.UPDATE);
-  CFMetaData metadata=ThriftValidation.validateColumnFamily(cState.getKeyspace(),column_parent.column_family,false);
+  String keyspace=cState.getKeyspace();
+  cState.hasColumnFamilyAccess(keyspace,column_parent.column_family,Permission.WRITE);
+  CFMetaData metadata=ThriftValidation.validateColumnFamily(keyspace,column_parent.column_family,false);
   ThriftValidation.validateKey(metadata,key);
   ThriftValidation.validateColumnParent(metadata,column_parent);
   if (metadata.cfType == ColumnFamilyType.Super && column_parent.super_column == null) {
@@ -9,7 +10,7 @@
   }
   ThriftValidation.validateColumnNames(metadata,column_parent,Arrays.asList(column.name));
   ThriftValidation.validateColumnData(metadata,column,column_parent.super_column != null);
-  RowMutation rm=new RowMutation(cState.getKeyspace(),key);
+  RowMutation rm=new RowMutation(keyspace,key);
   try {
     rm.add(new QueryPath(column_parent.column_family,column_parent.super_column,column.name),column.value,column.timestamp,column.ttl);
   }
