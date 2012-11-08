@@ -1,9 +1,9 @@
 {
-  if (!mutation.getTable().equals(Tracing.TRACE_KS))   logger.debug("Acquiring switchLock");
+  if (!mutation.getTable().equals(Tracing.TRACE_KS))   Tracing.trace("Acquiring switchLock read lock");
   switchLock.readLock().lock();
   try {
     if (writeCommitLog) {
-      logger.debug("Appending to commitlog");
+      Tracing.trace("Appending to commitlog");
       CommitLog.instance.add(mutation);
     }
     DecoratedKey key=StorageService.getPartitioner().decorateKey(mutation.key());
@@ -13,7 +13,7 @@
         logger.error("Attempting to mutate non-existant column family " + cf.id());
         continue;
       }
-      logger.debug("Adding to memtable");
+      Tracing.trace("Adding to {} memtable",cf.metadata().cfName);
       cfs.apply(key,cf,updateIndexes ? cfs.indexManager.updaterFor(key,true) : SecondaryIndexManager.nullUpdater);
     }
   }

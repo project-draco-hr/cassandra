@@ -3,10 +3,10 @@
   ISortedColumns.Factory factory=mutableColumns ? cfs.metadata.cfType == ColumnFamilyType.Super ? ThreadSafeSortedColumns.factory() : AtomicSortedColumns.factory() : TreeMapBackedSortedColumns.factory();
   ColumnFamily container=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
   List<OnDiskAtomIterator> iterators=new ArrayList<OnDiskAtomIterator>();
-  logger.debug("Acquiring sstable references");
+  Tracing.trace("Acquiring sstable references");
   ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
   try {
-    logger.debug("Merging memtable contents");
+    Tracing.trace("Merging memtable contents");
     for (    Memtable memtable : view.memtables) {
       OnDiskAtomIterator iter=filter.getMemtableColumnIterator(memtable);
       if (iter != null) {
@@ -33,7 +33,7 @@
         }
         container.delete(cf);
         sstablesIterated++;
-        logger.debug("Merging data from sstable {}",sstable.descriptor.generation);
+        Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
         while (iter.hasNext())         container.addAtom(iter.next());
       }
     }
@@ -53,10 +53,10 @@
     }
 ;
     ColumnFamily returnCF=container.cloneMeShallow();
-    logger.debug("Final collate");
+    Tracing.trace("Collating all results");
     filter.collateOnDiskAtom(returnCF,Collections.singletonList(toCollate),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isCompactionDisabled() && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy) {
-      logger.debug("Defragmenting requested data");
+      Tracing.trace("Defragmenting requested data");
       RowMutation rm=new RowMutation(cfs.table.name,new Row(filter.key,returnCF.cloneMe()));
       Table.open(rm.getTable()).apply(rm,false,false);
     }
