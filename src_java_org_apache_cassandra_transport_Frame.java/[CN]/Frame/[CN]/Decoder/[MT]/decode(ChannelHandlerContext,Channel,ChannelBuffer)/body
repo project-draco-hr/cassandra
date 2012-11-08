@@ -1,7 +1,21 @@
 {
-  ChannelBuffer frame=(ChannelBuffer)super.decode(ctx,channel,buffer);
-  if (frame == null) {
-    return null;
+  try {
+    if (buffer.readableBytes() == 0)     return null;
+    int firstByte=buffer.getByte(0);
+    Message.Direction direction=Message.Direction.extractFromVersion(firstByte);
+    int version=firstByte & 0x7F;
+    if (version != Header.CURRENT_VERSION)     throw new ProtocolException("Invalid or unsupported protocol version: " + version);
+    if (buffer.readableBytes() >= 4)     Message.Type.fromOpcode(buffer.getByte(3),direction);
+    ChannelBuffer frame=(ChannelBuffer)super.decode(ctx,channel,buffer);
+    if (frame == null) {
+      return null;
+    }
+    return Frame.create(frame,connection);
   }
-  return Frame.create(frame,connection);
+ catch (  CorruptedFrameException e) {
+    throw new ProtocolException(e.getMessage());
+  }
+catch (  TooLongFrameException e) {
+    throw new ProtocolException(e.getMessage());
+  }
 }
