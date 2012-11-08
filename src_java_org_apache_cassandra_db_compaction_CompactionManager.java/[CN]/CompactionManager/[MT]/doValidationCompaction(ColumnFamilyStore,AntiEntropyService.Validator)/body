@@ -1,8 +1,10 @@
 {
   if (!cfs.isValid())   return;
   Collection<SSTableReader> sstables;
-  if (cfs.table.snapshotExists(validator.request.sessionid)) {
+  int gcBefore;
+  if (cfs.snapshotExists(validator.request.sessionid)) {
     sstables=cfs.getSnapshotSSTableReader(validator.request.sessionid);
+    gcBefore=(int)(cfs.getSnapshotCreationTime(validator.request.sessionid) / 1000) - cfs.metadata.getGcGraceSeconds();
   }
  else {
     try {
@@ -15,8 +17,9 @@ catch (    InterruptedException e) {
       throw new AssertionError(e);
     }
     sstables=cfs.markCurrentSSTablesReferenced();
+    gcBefore=getDefaultGcBefore(cfs);
   }
-  CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.request.range);
+  CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.request.range,gcBefore);
   CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
   metrics.beginCompaction(ci);
   try {
