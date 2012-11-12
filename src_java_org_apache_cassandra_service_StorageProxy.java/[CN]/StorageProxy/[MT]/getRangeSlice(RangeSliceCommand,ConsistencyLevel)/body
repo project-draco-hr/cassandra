@@ -3,11 +3,13 @@
   long startTime=System.nanoTime();
   List<Row> rows;
   try {
+    final SlicePredicate emptyPredicate=getEmptySlicePredicate();
+    SlicePredicate commandPredicate=command.predicate;
     int columnsCount=0;
     rows=new ArrayList<Row>();
     List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(command.range);
     for (    AbstractBounds<RowPosition> range : ranges) {
-      RangeSliceCommand nodeCmd=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,command.predicate,range,command.row_filter,command.maxResults,command.maxIsColumns,command.isPaging);
+      RangeSliceCommand nodeCmd=new RangeSliceCommand(command.keyspace,command.column_family,command.super_column,commandPredicate,range,command.row_filter,command.maxResults,command.maxIsColumns,command.isPaging);
       List<InetAddress> liveEndpoints=StorageService.instance.getLiveNaturalEndpoints(nodeCmd.keyspace,range.right);
       DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),liveEndpoints);
       if (consistency_level == ConsistencyLevel.ONE && !liveEndpoints.isEmpty() && liveEndpoints.get(0).equals(FBUtilities.getBroadcastAddress())) {
@@ -50,6 +52,7 @@ catch (        DigestMismatchException e) {
       }
       int count=nodeCmd.maxIsColumns ? columnsCount : rows.size();
       if (count >= nodeCmd.maxResults)       break;
+      if (!rows.isEmpty() && command.isPaging)       commandPredicate=emptyPredicate;
     }
   }
   finally {
