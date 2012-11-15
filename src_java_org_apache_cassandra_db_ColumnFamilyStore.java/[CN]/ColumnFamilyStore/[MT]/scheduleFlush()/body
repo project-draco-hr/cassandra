@@ -1,0 +1,16 @@
+{
+  int period=metadata.getMemtableFlushPeriod();
+  if (period > 0) {
+    logger.debug("scheduling flush in {} ms",period);
+    WrappedRunnable runnable=new WrappedRunnable(){
+      protected void runMayThrow() throws Exception {
+        if (getMemtableThreadSafe().isExpired()) {
+          Future<?> future=forceFlush();
+          if (future == null)           scheduleFlush();
+        }
+      }
+    }
+;
+    StorageService.scheduledTasks.schedule(runnable,period,TimeUnit.MILLISECONDS);
+  }
+}
