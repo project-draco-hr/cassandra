@@ -1,12 +1,22 @@
 {
   ColumnFamilyStore cfs=Table.open(Table.SYSTEM_TABLE).getColumnFamilyStore(columnFamily);
   boolean needsCleanup=false;
-  long timestamp=FBUtilities.timestampMicros();
+  Date now=new Date();
   List<Row> rows=SystemTable.serializedSchema(columnFamily);
   row_check_loop:   for (  Row row : rows) {
     if (invalidSchemaRow(row))     continue;
     for (    IColumn column : row.cf.columns) {
-      if (column.timestamp() > timestamp) {
+      Date columnDate=new Date(column.timestamp());
+      if (columnDate.after(now)) {
+        Date micros=new Date(column.timestamp() / 1000);
+        Calendar calendar=Calendar.getInstance();
+        calendar.setTime(micros);
+        if ((micros.before(now) && calendar.get(Calendar.YEAR) == 1970) || micros.after(now)) {
+          needsCleanup=true;
+          break row_check_loop;
+        }
+      }
+ else {
         needsCleanup=true;
         break row_check_loop;
       }
@@ -23,11 +33,12 @@
 catch (  InterruptedException e) {
     throw new AssertionError(e);
   }
+  long microTimestamp=now.getTime() * 1000;
   for (  Row row : rows) {
     if (invalidSchemaRow(row))     continue;
     RowMutation mutation=new RowMutation(Table.SYSTEM_TABLE,row.key.key);
     for (    IColumn column : row.cf.columns) {
-      if (column.isLive())       mutation.add(new QueryPath(columnFamily,null,column.name()),column.value(),timestamp);
+      if (column.isLive())       mutation.add(new QueryPath(columnFamily,null,column.name()),column.value(),microTimestamp);
     }
     mutation.apply();
   }
