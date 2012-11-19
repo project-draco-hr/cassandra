@@ -1,12 +1,25 @@
 {
-  UDFContext context=UDFContext.getUDFContext();
-  Properties property=context.getUDFProperties(CassandraStorage.class);
-  if (!property.containsKey(signature)) {
-    Cassandra.Client client=null;
+  Properties properties=UDFContext.getUDFContext().getUDFProperties(CassandraStorage.class);
+  if (!properties.containsKey(signature)) {
     try {
-      client=ConfigHelper.getClientFromInputAddressList(conf);
-      CfDef cfDef=null;
+      Cassandra.Client client=ConfigHelper.getClientFromInputAddressList(conf);
       client.set_keyspace(keyspace);
+      if (username != null && password != null) {
+        Map<String,String> credentials=new HashMap<String,String>(2);
+        credentials.put(IAuthenticator.USERNAME_KEY,username);
+        credentials.put(IAuthenticator.PASSWORD_KEY,password);
+        try {
+          client.login(new AuthenticationRequest(credentials));
+        }
+ catch (        AuthenticationException e) {
+          logger.error("Authentication exception: invalid username and/or password");
+          throw new RuntimeException(e);
+        }
+catch (        AuthorizationException e) {
+          throw new AssertionError(e);
+        }
+      }
+      CfDef cfDef=null;
       KsDef ksDef=client.describe_keyspace(keyspace);
       List<CfDef> defs=ksDef.getCf_defs();
       for (      CfDef def : defs) {
@@ -15,8 +28,8 @@
           break;
         }
       }
-      if (cfDef != null)       property.setProperty(signature,cfdefToString(cfDef));
- else       throw new RuntimeException("Column family '" + column_family + "' not found in keyspace '"+ keyspace+ "'");
+      if (cfDef != null)       properties.setProperty(signature,cfdefToString(cfDef));
+ else       throw new RuntimeException(String.format("Column family '%s' not found in keyspace '%s'",column_family,keyspace));
     }
  catch (    TException e) {
       throw new RuntimeException(e);
