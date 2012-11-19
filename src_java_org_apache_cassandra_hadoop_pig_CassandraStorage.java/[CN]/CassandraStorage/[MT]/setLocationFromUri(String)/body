@@ -15,10 +15,19 @@
       if (urlQuery.containsKey("use_secondary"))       usePartitionFilter=Boolean.parseBoolean(urlQuery.get("use_secondary"));
     }
     String[] parts=urlParts[0].split("/+");
-    keyspace=parts[1];
+    String[] credentialsAndKeyspace=parts[1].split("@");
+    if (credentialsAndKeyspace.length > 1) {
+      String[] credentials=credentialsAndKeyspace[0].split(":");
+      username=credentials[0];
+      password=credentials[1];
+      keyspace=credentialsAndKeyspace[1];
+    }
+ else {
+      keyspace=parts[1];
+    }
     column_family=parts[2];
   }
  catch (  Exception e) {
-    throw new IOException("Expected 'cassandra://<keyspace>/<columnfamily>[?slice_start=<start>&slice_end=<end>[&reversed=true][&limit=1][&allow_deletes=true][widerows=true][use_secondary=true]]': " + e.getMessage());
+    throw new IOException("Expected 'cassandra://[username:password@]<keyspace>/<columnfamily>[?slice_start=<start>&slice_end=<end>[&reversed=true][&limit=1][&allow_deletes=true][widerows=true][use_secondary=true]]': " + e.getMessage());
   }
 }
