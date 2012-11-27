@@ -1,22 +1,13 @@
 {
-  try {
-    Set<String> keyspaces=Schema.instance.getTables();
-    List<KsDef> ksset=new ArrayList<KsDef>(keyspaces.size());
-    for (    String ks : keyspaces) {
-      try {
-        state().hasKeyspaceAccess(ks,Permission.DESCRIBE);
-        ksset.add(describe_keyspace(ks));
-      }
- catch (      UnauthorizedException e) {
-        if (logger.isDebugEnabled())         logger.debug("PermissionDenied: " + e.getMessage());
-      }
-catch (      NotFoundException nfe) {
-        logger.info("Failed to find metadata for keyspace '" + ks + "'. Continuing... ");
-      }
+  Set<String> keyspaces=Schema.instance.getTables();
+  List<KsDef> ksset=new ArrayList<KsDef>(keyspaces.size());
+  for (  String ks : keyspaces) {
+    try {
+      ksset.add(describe_keyspace(ks));
     }
-    return ksset;
+ catch (    NotFoundException nfe) {
+      logger.info("Failed to find metadata for keyspace '" + ks + "'. Continuing... ");
+    }
   }
- catch (  RequestValidationException e) {
-    throw ThriftConversion.toThrift(e);
-  }
+  return ksset;
 }
