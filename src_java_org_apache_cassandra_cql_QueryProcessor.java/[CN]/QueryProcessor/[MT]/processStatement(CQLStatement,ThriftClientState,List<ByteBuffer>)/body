@@ -91,8 +91,12 @@ case INSERT:
 case UPDATE:
 UpdateStatement update=(UpdateStatement)statement.statement;
 update.getConsistencyLevel().validateForWrite(keyspace);
-clientState.hasColumnFamilyAccess(keyspace,update.getColumnFamily(),Permission.UPDATE);
-batchUpdate(clientState,Collections.singletonList(update),update.getConsistencyLevel(),variables);
+keyspace=update.keyspace == null ? clientState.getKeyspace() : update.keyspace;
+List<IMutation> rowMutations=update.prepareRowMutations(keyspace,clientState,variables);
+for (IMutation mutation : rowMutations) {
+validateKey(mutation.key());
+}
+StorageProxy.mutate(rowMutations,update.getConsistencyLevel());
 result.type=CqlResultType.VOID;
 return result;
 case BATCH:
@@ -118,7 +122,7 @@ case TRUNCATE:
 Pair<String,String> columnFamily=(Pair<String,String>)statement.statement;
 keyspace=columnFamily.left == null ? clientState.getKeyspace() : columnFamily.left;
 validateColumnFamily(keyspace,columnFamily.right);
-clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.DELETE);
+clientState.hasColumnFamilyAccess(keyspace,columnFamily.right,Permission.MODIFY);
 try {
 StorageProxy.truncateBlocking(keyspace,columnFamily.right);
 }
@@ -133,7 +137,6 @@ return result;
 case DELETE:
 DeleteStatement delete=(DeleteStatement)statement.statement;
 keyspace=delete.keyspace == null ? clientState.getKeyspace() : delete.keyspace;
-clientState.hasColumnFamilyAccess(keyspace,delete.columnFamily,Permission.DELETE);
 List<IMutation> deletions=delete.prepareRowMutations(keyspace,clientState,variables);
 for (IMutation deletion : deletions) {
 validateKey(deletion.key());
@@ -145,7 +148,7 @@ case CREATE_KEYSPACE:
 CreateKeyspaceStatement create=(CreateKeyspaceStatement)statement.statement;
 create.validate();
 ThriftValidation.validateKeyspaceNotSystem(create.getName());
-clientState.hasKeyspaceAccess(create.getName(),Permission.CREATE);
+clientState.hasAllKeyspacesAccess(Permission.CREATE);
 try {
 KSMetaData ksm=KSMetaData.newKeyspace(create.getName(),create.getStrategyClass(),create.getStrategyOptions(),true);
 ThriftValidation.validateKeyspaceNotYetExisting(ksm.name);
@@ -160,7 +163,7 @@ result.type=CqlResultType.VOID;
 return result;
 case CREATE_COLUMNFAMILY:
 CreateColumnFamilyStatement createCf=(CreateColumnFamilyStatement)statement.statement;
-clientState.hasColumnFamilySchemaAccess(keyspace,Permission.CREATE);
+clientState.hasKeyspaceAccess(keyspace,Permission.CREATE);
 try {
 MigrationManager.announceNewColumnFamily(createCf.getCFMetaData(keyspace,variables));
 }
@@ -203,17 +206,14 @@ result.type=CqlResultType.VOID;
 return result;
 case DROP_INDEX:
 DropIndexStatement dropIdx=(DropIndexStatement)statement.statement;
+keyspace=clientState.getKeyspace();
+dropIdx.setKeyspace(keyspace);
+clientState.hasColumnFamilyAccess(keyspace,dropIdx.getColumnFamily(),Permission.ALTER);
 try {
-CFMetaData updatedCF=dropIdx.generateCFMetadataUpdate(clientState.getKeyspace());
-clientState.hasColumnFamilyAccess(updatedCF.ksName,updatedCF.cfName,Permission.DESCRIBE);
+CFMetaData updatedCF=dropIdx.generateCFMetadataUpdate();
 MigrationManager.announceColumnFamilyUpdate(updatedCF);
 }
  catch (ConfigurationException e) {
-InvalidRequestException ex=new InvalidRequestException(e.toString());
-ex.initCause(e);
-throw ex;
-}
-catch (IOException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
 ex.initCause(e);
 throw ex;
@@ -250,7 +250,7 @@ return result;
 case ALTER_TABLE:
 AlterTableStatement alterTable=(AlterTableStatement)statement.statement;
 validateColumnFamily(keyspace,alterTable.columnFamily);
-clientState.hasColumnFamilyAccess(alterTable.columnFamily,Permission.ALTER);
+clientState.hasColumnFamilyAccess(keyspace,alterTable.columnFamily,Permission.ALTER);
 try {
 MigrationManager.announceColumnFamilyUpdate(alterTable.getCFMetaData(keyspace));
 }

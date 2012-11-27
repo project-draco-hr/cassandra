@@ -1,5 +1,4 @@
 {
-  List<String> cfamsSeen=new ArrayList<String>();
   boolean hasCommutativeOperation=false;
   for (  Map.Entry<Term,Operation> column : getColumns().entrySet()) {
     if (!column.getValue().isUnary())     hasCommutativeOperation=true;
@@ -8,10 +7,7 @@
   CFMetaData metadata=validateColumnFamily(keyspace,columnFamily,hasCommutativeOperation);
   if (hasCommutativeOperation)   getConsistencyLevel().validateCounterForWrite(metadata);
   QueryProcessor.validateKeyAlias(metadata,keyName);
-  if (!(cfamsSeen.contains(columnFamily))) {
-    clientState.hasColumnFamilyAccess(columnFamily,Permission.UPDATE);
-    cfamsSeen.add(columnFamily);
-  }
+  clientState.hasColumnFamilyAccess(keyspace,columnFamily,Permission.MODIFY);
   List<IMutation> rowMutations=new LinkedList<IMutation>();
   for (  Term key : keys) {
     rowMutations.add(mutationForKey(keyspace,key.getByteBuffer(getKeyType(keyspace),variables),metadata,timestamp,clientState,variables));
