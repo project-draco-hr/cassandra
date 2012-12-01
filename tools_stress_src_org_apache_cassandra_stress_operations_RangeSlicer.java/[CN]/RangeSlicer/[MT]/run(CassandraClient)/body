@@ -9,7 +9,7 @@
     for (int i=0; i < session.getSuperColumns(); i++) {
       String superColumnName="S" + Integer.toString(i);
       ColumnParent parent=new ColumnParent("Super1").setSuper_column(ByteBufferUtil.bytes(superColumnName));
-      long startTime=System.currentTimeMillis();
+      TimerContext context=session.latency.time();
       boolean success=false;
       String exceptionMessage=null;
       for (int t=0; t < session.getRetryTimes(); t++) {
@@ -26,7 +26,7 @@
         error(String.format("Operation [%d] retried %d times - error on calling get_range_slices for range offset %s %s%n",index,session.getRetryTimes(),ByteBufferUtil.string(start),(exceptionMessage == null) ? "" : "(" + exceptionMessage + ")"));
       }
       session.operations.getAndIncrement();
-      session.latency.getAndAdd(System.currentTimeMillis() - startTime);
+      context.stop();
     }
     session.keys.getAndAdd(slices.size());
   }
@@ -35,7 +35,7 @@
     ByteBuffer start=ByteBufferUtil.bytes(String.format(format,index));
     List<KeySlice> slices=new ArrayList<KeySlice>();
     KeyRange range=new KeyRange(count).setStart_key(start).setEnd_key(ByteBufferUtil.EMPTY_BYTE_BUFFER);
-    long startTime=System.currentTimeMillis();
+    TimerContext context=session.latency.time();
     boolean success=false;
     String exceptionMessage=null;
     for (int t=0; t < session.getRetryTimes(); t++) {
@@ -54,6 +54,6 @@
     }
     session.operations.getAndIncrement();
     session.keys.getAndAdd(slices.size());
-    session.latency.getAndAdd(System.currentTimeMillis() - startTime);
+    context.stop();
   }
 }

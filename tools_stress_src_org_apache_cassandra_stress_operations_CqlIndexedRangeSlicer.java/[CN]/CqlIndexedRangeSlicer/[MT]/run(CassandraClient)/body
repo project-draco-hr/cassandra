@@ -11,7 +11,7 @@
   String startOffset=String.format(format,0);
   int expectedPerValue=session.getNumKeys() / values.size(), received=0;
   while (received < expectedPerValue) {
-    long start=System.currentTimeMillis();
+    TimerContext context=session.latency.time();
     boolean success=false;
     String exceptionMessage=null;
     CqlResult results=null;
@@ -44,6 +44,6 @@
     startOffset=String.format(format,(1 + getMaxKey(results.rows)));
     session.operations.getAndIncrement();
     session.keys.getAndAdd(results.rows.size());
-    session.latency.getAndAdd(System.currentTimeMillis() - start);
+    context.stop();
   }
 }
