@@ -1,20 +1,21 @@
 {
   if (values == null)   values=generateValues();
-  List<Column> columns=new ArrayList<Column>();
-  List<SuperColumn> superColumns=new ArrayList<SuperColumn>();
+  List<Column> columns=new ArrayList<Column>(session.getColumnsPerKey());
+  List<SuperColumn> superColumns=null;
   String format="%0" + session.getTotalKeysLength() + "d";
   for (int i=0; i < session.getColumnsPerKey(); i++) {
     columns.add(new Column(columnName(i,session.timeUUIDComparator)).setValue(values.get(i % values.size())).setTimestamp(FBUtilities.timestampMicros()));
   }
   if (session.getColumnFamilyType() == ColumnFamilyType.Super) {
+    superColumns=new ArrayList<SuperColumn>();
     for (int i=0; i < session.getSuperColumns(); i++) {
       String superColumnName="S" + Integer.toString(i);
       superColumns.add(new SuperColumn(ByteBufferUtil.bytes(superColumnName),columns));
     }
   }
   String rawKey=String.format(format,index);
-  Map<ByteBuffer,Map<String,List<Mutation>>> record=new HashMap<ByteBuffer,Map<String,List<Mutation>>>();
-  record.put(ByteBufferUtil.bytes(rawKey),session.getColumnFamilyType() == ColumnFamilyType.Super ? getSuperColumnsMutationMap(superColumns) : getColumnsMutationMap(columns));
+  Map<String,List<Mutation>> row=session.getColumnFamilyType() == ColumnFamilyType.Super ? getSuperColumnsMutationMap(superColumns) : getColumnsMutationMap(columns);
+  Map<ByteBuffer,Map<String,List<Mutation>>> record=Collections.singletonMap(ByteBufferUtil.bytes(rawKey),row);
   long start=System.currentTimeMillis();
   boolean success=false;
   String exceptionMessage=null;
