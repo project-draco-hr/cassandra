@@ -7,7 +7,17 @@
     CFDefinition.Name name=cfDef.get(column.id());
     if (name == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",column));
     if (name.kind != CFDefinition.Name.Kind.COLUMN_METADATA && name.kind != CFDefinition.Name.Kind.VALUE_ALIAS)     throw new InvalidRequestException(String.format("Invalid identifier %s for deletion (should not be a PRIMARY KEY part)",column));
-    if (column.key() != null && !(name.type instanceof ListType || name.type instanceof MapType))     throw new InvalidRequestException(String.format("Invalid selection %s since %s is neither a list or a map",column,column.id()));
+    if (column.key() != null) {
+      if (name.type instanceof ListType) {
+        if (column.key().isBindMarker())         boundNames[column.key().bindIndex]=ListOperation.indexSpecOf(name);
+      }
+ else       if (name.type instanceof MapType) {
+        if (column.key().isBindMarker())         boundNames[column.key().bindIndex]=MapOperation.keySpecOf(name,(MapType)name.type);
+      }
+ else {
+        throw new InvalidRequestException(String.format("Invalid selection %s since %s is neither a list or a map",column,column.id()));
+      }
+    }
     toRemove.add(Pair.create(name,column.key()));
   }
   return new ParsedStatement.Prepared(this,Arrays.<ColumnSpecification>asList(boundNames));
