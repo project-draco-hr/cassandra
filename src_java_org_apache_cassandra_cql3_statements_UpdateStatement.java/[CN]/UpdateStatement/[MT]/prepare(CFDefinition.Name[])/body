@@ -1,19 +1,9 @@
 {
-  if (columns != null) {
-    for (    Pair<ColumnIdentifier,Operation> column : columns) {
-      if (column.right.getType() == Operation.Type.COUNTER) {
-        if (type == null)         type=Type.COUNTER;
- else         if (type != Type.COUNTER)         throw new InvalidRequestException("Mix of counter and non-counter operations is not allowed.");
-      }
- else       if (type == Type.COUNTER) {
-        throw new InvalidRequestException("Mix of counter and non-counter operations is not allowed.");
-      }
-    }
-  }
-  if (type == null)   type=Type.LOGGED;
-  CFMetaData metadata=validateColumnFamily(keyspace(),columnFamily(),type == Type.COUNTER);
+  CFMetaData metadata=validateColumnFamily(keyspace(),columnFamily());
   cfDef=metadata.getCfDef();
+  type=metadata.getDefaultValidator().isCommutative() ? Type.COUNTER : Type.LOGGED;
   if (columns == null) {
+    if (type == Type.COUNTER)     throw new InvalidRequestException("INSERT statement are not allowed on counter tables, use UPDATE instead");
     if (columnNames.size() != columnOperations.size())     throw new InvalidRequestException("unmatched column names/values");
     if (columnNames.size() < 1)     throw new InvalidRequestException("no columns specified for INSERT");
     for (int i=0; i < columnNames.size(); i++) {
@@ -25,7 +15,7 @@ switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
         if (processedKeys.containsKey(name.name))         throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s",name));
-      if (operation.getType() != Operation.Type.COLUMN)       throw new InvalidRequestException(String.format("Invalid definition for %s, not a collection type",name));
+      if (operation.getType() != Operation.Type.COLUMN && operation.getType() != Operation.Type.PREPARED)       throw new InvalidRequestException(String.format("Invalid definition for %s, not a collection type",name));
     processedKeys.put(name.name,operation.getValues());
   break;
 case VALUE_ALIAS:
@@ -40,16 +30,31 @@ break;
 for (Pair<ColumnIdentifier,Operation> entry : columns) {
 CFDefinition.Name name=cfDef.get(entry.left);
 if (name == null) throw new InvalidRequestException(String.format("Unknown identifier %s",entry.left));
+Operation operation=entry.right;
+switch (operation.getType()) {
+case COUNTER:
+if (type != Type.COUNTER) throw new InvalidRequestException("Invalid counter operation on non-counter table.");
+break;
+case LIST:
+case SET:
+case MAP:
+if (!name.type.isCollection()) throw new InvalidRequestException("Cannot apply collection operation on column " + name + " with "+ name.type+ " type.");
+case COLUMN:
+if (type == Type.COUNTER) throw new InvalidRequestException("Invalid non-counter operation on counter table.");
+break;
+case PREPARED:
+if (type == Type.COUNTER && !((PreparedOperation)operation).isPotentialCounterOperation()) throw new InvalidRequestException("Invalid non-counter operation on counter table.");
+break;
+}
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
 throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part",entry.left));
 case VALUE_ALIAS:
 case COLUMN_METADATA:
-for (Operation op : processedColumns.get(name)) if (op.getType() == Operation.Type.COLUMN) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
-Operation op=entry.right;
-for (Term t : op.getValues()) if (t.isBindMarker()) boundNames[t.bindIndex]=name;
-processedColumns.put(name,op);
+for (Operation otherOp : processedColumns.get(name)) if (otherOp.getType() == Operation.Type.COLUMN) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
+for (Term t : operation.getValues()) if (t.isBindMarker()) boundNames[t.bindIndex]=name;
+processedColumns.put(name,operation);
 break;
 }
 }
