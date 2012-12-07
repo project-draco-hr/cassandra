@@ -1,14 +1,19 @@
 {
   if (MessagingService.instance().getVersion(endpoint) < MessagingService.VERSION_117)   return;
   if (Schema.instance.getVersion().equals(theirVersion))   return;
-  Runnable runnable=new Runnable(){
-    public void run(){
-      VersionedValue value=Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA);
-      UUID currentVersion=UUID.fromString(value.value);
-      if (Schema.instance.getVersion().equals(currentVersion))       return;
-      StageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(endpoint));
-    }
+  if (Schema.emptyVersion.equals(Schema.instance.getVersion())) {
+    submitMigrationTask(endpoint);
   }
+ else {
+    Runnable runnable=new Runnable(){
+      public void run(){
+        VersionedValue value=Gossiper.instance.getEndpointStateForEndpoint(endpoint).getApplicationState(ApplicationState.SCHEMA);
+        UUID currentVersion=UUID.fromString(value.value);
+        if (Schema.instance.getVersion().equals(currentVersion))         return;
+        submitMigrationTask(endpoint);
+      }
+    }
 ;
-  StorageService.optionalTasks.schedule(runnable,1,TimeUnit.MINUTES);
+    StorageService.optionalTasks.schedule(runnable,1,TimeUnit.MINUTES);
+  }
 }
