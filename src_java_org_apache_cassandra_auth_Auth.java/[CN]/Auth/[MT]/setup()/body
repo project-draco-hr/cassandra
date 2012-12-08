@@ -1,0 +1,12 @@
+{
+  authenticator().setup();
+  authorizer().setup();
+  MigrationManager.instance.register(new MigrationListener());
+  Runnable runnable=new WrappedRunnable(){
+    public void runMayThrow() throws InvalidRequestException {
+      if (QueryProcessor.process(String.format("SELECT * FROM %s.%s",AUTH_KS,USERS_CF)).isEmpty())       insertUser(DEFAULT_SUPERUSER_NAME,true);
+    }
+  }
+;
+  StorageService.tasks.schedule(runnable,StorageService.RING_DELAY,TimeUnit.MILLISECONDS);
+}
