@@ -16,16 +16,14 @@ def from_layout(cls, layout, coldefs):
             setattr(cf, attr, json.loads(getattr(cf, attr)))
         except AttributeError:
             pass
-    if (not cf.key_aliases):
-        if cf.key_alias:
-            cf.key_aliases = [cf.key_alias.decode('ascii')]
-        else:
-            cf.key_aliases = [u'key']
-    cf.partition_key_components = cf.key_aliases
-    cf.primary_key_components = (cf.key_aliases + list(cf.column_aliases))
     cf.partition_key_validator = lookup_casstype(cf.key_validator)
-    cf.default_validator = lookup_casstype(cf.default_validator)
     cf.comparator = lookup_casstype(cf.comparator)
+    cf.default_validator = lookup_casstype(cf.default_validator)
     cf.coldefs = coldefs
-    cf.parse_types()
+    cf.compact_storage = cf.is_compact_storage()
+    cf.key_aliases = cf.get_key_aliases()
+    cf.partition_key_components = cf.key_aliases
+    cf.column_aliases = cf.get_column_aliases()
+    cf.primary_key_components = (cf.key_aliases + list(cf.column_aliases))
+    cf.columns = cf.get_columns()
     return cf
