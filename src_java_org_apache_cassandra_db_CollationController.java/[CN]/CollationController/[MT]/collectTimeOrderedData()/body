@@ -1,19 +1,21 @@
 {
   logger.trace("collectTimeOrderedData");
-  ISortedColumns.Factory factory=mutableColumns ? cfs.metadata.cfType == ColumnFamilyType.Super ? ThreadSafeSortedColumns.factory() : AtomicSortedColumns.factory() : TreeMapBackedSortedColumns.factory();
   ColumnFamily container=ColumnFamily.create(cfs.metadata,factory,filter.filter.isReversed());
   List<OnDiskAtomIterator> iterators=new ArrayList<OnDiskAtomIterator>();
   Tracing.trace("Acquiring sstable references");
   ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
+  ColumnFamily temp=ColumnFamily.create(cfs.metadata,ArrayBackedSortedColumns.factory(),filter.filter.isReversed());
   try {
     Tracing.trace("Merging memtable contents");
     for (    Memtable memtable : view.memtables) {
       OnDiskAtomIterator iter=filter.getMemtableColumnIterator(memtable);
       if (iter != null) {
         iterators.add(iter);
-        container.delete(iter.getColumnFamily());
-        while (iter.hasNext())         container.addAtom(iter.next());
+        temp.delete(iter.getColumnFamily());
+        while (iter.hasNext())         temp.addAtom(iter.next());
       }
+      container.addAll(temp,HeapAllocator.instance);
+      temp.clear();
     }
     NamesQueryFilter namesFilter=(NamesQueryFilter)filter.filter;
     TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(namesFilter.columns);
@@ -32,11 +34,13 @@
         if (cf.isMarkedForDelete()) {
           mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
         }
-        container.delete(cf);
+        temp.delete(cf);
         sstablesIterated++;
         Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
-        while (iter.hasNext())         container.addAtom(iter.next());
+        while (iter.hasNext())         temp.addAtom(iter.next());
       }
+      container.addAll(temp,HeapAllocator.instance);
+      temp.clear();
     }
     if (iterators.isEmpty())     return null;
     final ColumnFamily c2=container;
