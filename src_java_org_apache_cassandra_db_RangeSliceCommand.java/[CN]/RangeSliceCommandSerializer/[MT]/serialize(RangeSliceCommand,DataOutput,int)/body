@@ -1,9 +1,18 @@
 {
   dos.writeUTF(sliceCommand.keyspace);
   dos.writeUTF(sliceCommand.column_family);
-  ByteBuffer sc=sliceCommand.super_column;
-  dos.writeInt(sc == null ? 0 : sc.remaining());
-  if (sc != null)   ByteBufferUtil.write(sc,dos);
+  IDiskAtomFilter filter=sliceCommand.predicate;
+  if (version < MessagingService.VERSION_20) {
+    ByteBuffer sc=null;
+    CFMetaData metadata=Schema.instance.getCFMetaData(sliceCommand.getKeyspace(),sliceCommand.column_family);
+    if (metadata.cfType == ColumnFamilyType.Super) {
+      SuperColumns.SCFilter scFilter=SuperColumns.filterToSC((CompositeType)metadata.comparator,filter);
+      sc=scFilter.scName;
+      filter=scFilter.updatedFilter;
+    }
+    dos.writeInt(sc == null ? 0 : sc.remaining());
+    if (sc != null)     ByteBufferUtil.write(sc,dos);
+  }
   if (version < MessagingService.VERSION_12) {
     FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),asSlicePredicate(sliceCommand.predicate),dos);
   }

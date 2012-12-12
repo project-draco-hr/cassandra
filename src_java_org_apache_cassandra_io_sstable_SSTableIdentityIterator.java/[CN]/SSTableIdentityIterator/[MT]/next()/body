@@ -1,11 +1,12 @@
 {
   try {
-    OnDiskAtom atom=atomSerializer.deserializeFromSSTable(inputWithTracker,flag,expireBefore,dataVersion);
+    OnDiskAtom atom=atomIterator.next();
     if (validateColumns)     atom.validateFields(columnFamily.metadata());
     return atom;
   }
- catch (  IOException e) {
-    throw new CorruptSSTableException(e,filename);
+ catch (  IOError e) {
+    if (e.getCause() instanceof IOException)     throw new CorruptSSTableException((IOException)e.getCause(),filename);
+ else     throw e;
   }
 catch (  MarshalException me) {
     throw new CorruptSSTableException(me,filename);

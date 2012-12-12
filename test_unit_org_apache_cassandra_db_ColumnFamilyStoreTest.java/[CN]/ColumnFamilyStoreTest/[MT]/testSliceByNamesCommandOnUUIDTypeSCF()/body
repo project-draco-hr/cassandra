@@ -6,14 +6,14 @@
   ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
   DecoratedKey key=Util.dk("slice-get-uuid-type");
   putColsSuper(cfs,key,superColName,new Column(ByteBufferUtil.bytes("a"),ByteBufferUtil.bytes("A"),1),new Column(ByteBufferUtil.bytes("b"),ByteBufferUtil.bytes("B"),1));
-  IColumn columnGet=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,new QueryPath(cfName,superColName))).getColumn(superColName);
-  assertEquals(ByteBufferUtil.bytes("A"),columnGet.getSubColumn(ByteBufferUtil.bytes("a")).value());
-  assertEquals(ByteBufferUtil.bytes("B"),columnGet.getSubColumn(ByteBufferUtil.bytes("b")).value());
-  ArrayList<ByteBuffer> sliceColNames=new ArrayList<ByteBuffer>();
-  sliceColNames.add(ByteBufferUtil.bytes("a"));
-  sliceColNames.add(ByteBufferUtil.bytes("b"));
-  SliceByNamesReadCommand cmd=new SliceByNamesReadCommand(tableName,key.key,new QueryPath(cfName,superColName),sliceColNames);
-  IColumn columnSliced=cmd.getRow(table).cf.getColumn(superColName);
-  assertEquals(ByteBufferUtil.bytes("A"),columnSliced.getSubColumn(ByteBufferUtil.bytes("a")).value());
-  assertEquals(ByteBufferUtil.bytes("B"),columnSliced.getSubColumn(ByteBufferUtil.bytes("b")).value());
+  ColumnFamily cfGet=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName));
+  assertEquals(ByteBufferUtil.bytes("A"),cfGet.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("a"))).value());
+  assertEquals(ByteBufferUtil.bytes("B"),cfGet.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("b"))).value());
+  SortedSet<ByteBuffer> sliceColNames=new TreeSet<ByteBuffer>(cfs.metadata.comparator);
+  sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("a")));
+  sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("b")));
+  SliceByNamesReadCommand cmd=new SliceByNamesReadCommand(tableName,key.key,cfName,new NamesQueryFilter(sliceColNames));
+  ColumnFamily cfSliced=cmd.getRow(table).cf;
+  assertEquals(ByteBufferUtil.bytes("A"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("a"))).value());
+  assertEquals(ByteBufferUtil.bytes("B"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("b"))).value());
 }

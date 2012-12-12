@@ -1,3 +1,21 @@
 {
-  return 1 + CMD_SERIALIZER_MAP.get(command.commandType).serializedSize(command,version);
+  ReadCommand newCommand=command;
+  ByteBuffer superColumn=null;
+  if (version < MessagingService.VERSION_20) {
+    CFMetaData metadata=Schema.instance.getCFMetaData(command.table,command.cfName);
+    if (metadata.cfType == ColumnFamilyType.Super) {
+      SuperColumns.SCFilter scFilter=SuperColumns.filterToSC((CompositeType)metadata.comparator,command.filter());
+      newCommand=ReadCommand.create(command.table,command.key,command.cfName,scFilter.updatedFilter);
+      newCommand.setDigestQuery(command.isDigestQuery());
+      superColumn=scFilter.scName;
+    }
+  }
+switch (command.commandType) {
+case GET_BY_NAMES:
+    return 1 + SliceByNamesReadCommand.serializer.serializedSize(newCommand,superColumn,version);
+case GET_SLICES:
+  return 1 + SliceFromReadCommand.serializer.serializedSize(newCommand,superColumn,version);
+default :
+throw new AssertionError();
+}
 }

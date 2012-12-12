@@ -2,10 +2,36 @@
   boolean isDigest=dis.readBoolean();
   String table=dis.readUTF();
   ByteBuffer key=ByteBufferUtil.readWithShortLength(dis);
-  QueryPath columnParent=QueryPath.deserialize(dis);
-  AbstractType<?> comparator=ColumnFamily.getComparatorFor(table,columnParent.columnFamilyName,columnParent.superColumnName);
-  NamesQueryFilter filter=NamesQueryFilter.serializer.deserialize(dis,version,comparator);
-  SliceByNamesReadCommand command=new SliceByNamesReadCommand(table,key,columnParent,filter);
+  String cfName;
+  ByteBuffer sc=null;
+  if (version < MessagingService.VERSION_20) {
+    QueryPath path=QueryPath.deserialize(dis);
+    cfName=path.columnFamilyName;
+    sc=path.superColumnName;
+  }
+ else {
+    cfName=dis.readUTF();
+  }
+  CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
+  ReadCommand command;
+  if (version < MessagingService.VERSION_20) {
+    AbstractType<?> comparator;
+    if (metadata.cfType == ColumnFamilyType.Super) {
+      CompositeType type=(CompositeType)metadata.comparator;
+      comparator=sc == null ? type.types.get(0) : type.types.get(1);
+    }
+ else {
+      comparator=metadata.comparator;
+    }
+    IDiskAtomFilter filter=NamesQueryFilter.serializer.deserialize(dis,version,comparator);
+    if (metadata.cfType == ColumnFamilyType.Super)     filter=SuperColumns.fromSCFilter((CompositeType)metadata.comparator,sc,filter);
+    if (filter instanceof NamesQueryFilter)     command=new SliceByNamesReadCommand(table,key,cfName,(NamesQueryFilter)filter);
+ else     command=new SliceFromReadCommand(table,key,cfName,(SliceQueryFilter)filter);
+  }
+ else {
+    NamesQueryFilter filter=NamesQueryFilter.serializer.deserialize(dis,version,metadata.comparator);
+    command=new SliceByNamesReadCommand(table,key,cfName,filter);
+  }
   command.setDigestQuery(isDigest);
   return command;
 }

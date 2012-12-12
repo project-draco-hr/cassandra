@@ -2,9 +2,26 @@
   boolean isDigest=dis.readBoolean();
   String table=dis.readUTF();
   ByteBuffer key=ByteBufferUtil.readWithShortLength(dis);
-  QueryPath path=QueryPath.deserialize(dis);
-  SliceQueryFilter filter=SliceQueryFilter.serializer.deserialize(dis,version);
-  SliceFromReadCommand rm=new SliceFromReadCommand(table,key,path,filter);
-  rm.setDigestQuery(isDigest);
-  return rm;
+  String cfName;
+  ByteBuffer sc=null;
+  if (version < MessagingService.VERSION_20) {
+    QueryPath path=QueryPath.deserialize(dis);
+    cfName=path.columnFamilyName;
+    sc=path.superColumnName;
+  }
+ else {
+    cfName=dis.readUTF();
+  }
+  CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
+  SliceQueryFilter filter;
+  if (version < MessagingService.VERSION_20) {
+    filter=SliceQueryFilter.serializer.deserialize(dis,version);
+    if (metadata.cfType == ColumnFamilyType.Super)     filter=SuperColumns.fromSCSliceFilter((CompositeType)metadata.comparator,sc,filter);
+  }
+ else {
+    filter=SliceQueryFilter.serializer.deserialize(dis,version);
+  }
+  ReadCommand command=new SliceFromReadCommand(table,key,cfName,filter);
+  command.setDigestQuery(isDigest);
+  return command;
 }

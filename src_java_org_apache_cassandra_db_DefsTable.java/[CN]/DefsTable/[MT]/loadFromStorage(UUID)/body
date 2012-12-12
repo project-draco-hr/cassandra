@@ -2,15 +2,15 @@
   DecoratedKey vkey=StorageService.getPartitioner().decorateKey(toUTF8Bytes(version));
   Table defs=Table.open(Table.SYSTEM_KS);
   ColumnFamilyStore cfStore=defs.getColumnFamilyStore(OLD_SCHEMA_CF);
-  ColumnFamily cf=cfStore.getColumnFamily(QueryFilter.getIdentityFilter(vkey,new QueryPath(OLD_SCHEMA_CF)));
-  IColumn avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
+  ColumnFamily cf=cfStore.getColumnFamily(QueryFilter.getIdentityFilter(vkey,OLD_SCHEMA_CF));
+  Column avroschema=cf.getColumn(DEFINITION_SCHEMA_COLUMN_NAME);
   Collection<KSMetaData> keyspaces=Collections.emptyList();
   if (avroschema != null) {
     ByteBuffer value=avroschema.value();
     org.apache.avro.Schema schema=org.apache.avro.Schema.parse(ByteBufferUtil.string(value));
-    Collection<IColumn> columns=cf.getSortedColumns();
+    Collection<Column> columns=cf.getSortedColumns();
     keyspaces=new ArrayList<KSMetaData>(columns.size());
-    for (    IColumn column : columns) {
+    for (    Column column : columns) {
       if (column.name().equals(DEFINITION_SCHEMA_COLUMN_NAME))       continue;
       KsDef ks=deserializeAvro(schema,column.value(),new KsDef());
       keyspaces.add(Avro.ksFromAvro(ks));

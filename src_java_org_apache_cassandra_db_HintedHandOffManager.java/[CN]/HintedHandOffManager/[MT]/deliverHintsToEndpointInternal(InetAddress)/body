@@ -28,7 +28,7 @@
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   while (true) {
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,new QueryPath(SystemTable.HINTS_CF),startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
     if (pagingFinished(hintsPage,startColumn)) {
       if (ByteBufferUtil.EMPTY_BYTE_BUFFER.equals(startColumn)) {
@@ -39,7 +39,7 @@
         continue;
       }
     }
-    for (    final IColumn hint : hintsPage.getSortedColumns()) {
+    for (    final Column hint : hintsPage.getSortedColumns()) {
       if (!hint.isLive())       continue;
       startColumn=hint.name();
       ByteBuffer[] components=comparator.split(hint.name());

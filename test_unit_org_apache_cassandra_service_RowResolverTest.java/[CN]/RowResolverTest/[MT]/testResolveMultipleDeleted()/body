@@ -13,22 +13,4 @@
   assertColumn(resolved,"two","B",3);
   assertTrue(resolved.isMarkedForDelete());
   assertEquals(2,resolved.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
-  ColumnFamily scf1=ColumnFamily.create("Keyspace1","Super1");
-  scf1.delete(new DeletionInfo(0L,(int)(System.currentTimeMillis() / 1000)));
-  ColumnFamily scf2=ColumnFamily.create("Keyspace1","Super1");
-  scf2.addColumn(superColumn(scf2,"super1",column("one","A",1),column("two","A",1)));
-  ColumnFamily scf3=ColumnFamily.create("Keyspace1","Super1");
-  scf3.addColumn(superColumn(scf3,"super1",column("two","B",3)));
-  scf3.addColumn(superColumn(scf3,"super2",column("three","A",3),column("four","A",3)));
-  ColumnFamily scf4=ColumnFamily.create("Keyspace1","Super1");
-  scf4.delete(new DeletionInfo(2L,(int)(System.currentTimeMillis() / 1000)));
-  ColumnFamily superResolved=RowRepairResolver.resolveSuperset(Arrays.asList(scf1,scf2,scf3,scf4));
-  assertColumns(superResolved,"super1","super2");
-  assertSubColumns(superResolved,"super1","two");
-  assertSubColumn(superResolved,"super1","two","B",3);
-  assertSubColumns(superResolved,"super2","four","three");
-  assertSubColumn(superResolved,"super2","three","A",3);
-  assertSubColumn(superResolved,"super2","four","A",3);
-  assertTrue(superResolved.isMarkedForDelete());
-  assertEquals(2,superResolved.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
 }

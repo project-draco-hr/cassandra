@@ -1,0 +1,33 @@
+{
+  delete(cm.getDeletionInfo());
+  if (cm.isEmpty())   return;
+  Column[] copy=columns.toArray(new Column[size()]);
+  int idx=0;
+  Iterator<Column> other=reversed ? cm.reverseIterator(ColumnSlice.ALL_COLUMNS_ARRAY) : cm.iterator();
+  Column otherColumn=other.next();
+  columns.clear();
+  while (idx < copy.length && otherColumn != null) {
+    int c=internalComparator().compare(copy[idx].name(),otherColumn.name());
+    if (c < 0) {
+      columns.add(copy[idx]);
+      idx++;
+    }
+ else     if (c > 0) {
+      columns.add(transformation.apply(otherColumn));
+      otherColumn=other.hasNext() ? other.next() : null;
+    }
+ else {
+      columns.add(copy[idx]);
+      resolveAgainst(size() - 1,transformation.apply(otherColumn),allocator);
+      idx++;
+      otherColumn=other.hasNext() ? other.next() : null;
+    }
+  }
+  while (idx < copy.length) {
+    columns.add(copy[idx++]);
+  }
+  while (otherColumn != null) {
+    columns.add(transformation.apply(otherColumn));
+    otherColumn=other.hasNext() ? other.next() : null;
+  }
+}

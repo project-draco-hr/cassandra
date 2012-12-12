@@ -8,13 +8,13 @@
   IndexInfo currentIndex=indexes.get(lastDeserializedBlock);
   long positionToSeek=basePosition + currentIndex.offset;
   if (file == null)   file=originalInput == null ? sstable.getFileDataInput(positionToSeek) : originalInput;
-  OnDiskAtom.Serializer atomSerializer=emptyColumnFamily.getOnDiskSerializer();
+  Iterator<OnDiskAtom> atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,Integer.MAX_VALUE,sstable.descriptor.version);
   file.seek(positionToSeek);
   FileMark mark=file.mark();
   boolean inSlice=false;
   OnDiskAtom column=null;
   while (file.bytesPastMark(mark) < currentIndex.width) {
-    if (column == null)     column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
+    if (column == null)     column=atomIterator.next();
     if (!inSlice && isColumnBeforeSliceStart(column)) {
       if (reversed) {
         prefetched.addFirst(column);

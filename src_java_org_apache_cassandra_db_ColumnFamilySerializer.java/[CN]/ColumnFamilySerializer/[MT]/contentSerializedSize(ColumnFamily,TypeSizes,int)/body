@@ -1,6 +1,12 @@
 {
-  long size=DeletionInfo.serializer().serializedSize(cf.deletionInfo(),typeSizes,version);
-  size+=typeSizes.sizeof(cf.getColumnCount());
-  for (  IColumn column : cf)   size+=column.serializedSize(typeSizes);
+  long size=0L;
+  if (cf.metadata().isSuper() && version < MessagingService.VERSION_20) {
+    size+=SuperColumns.serializedSize(cf,typeSizes,version);
+  }
+ else {
+    size+=DeletionInfo.serializer().serializedSize(cf.deletionInfo(),typeSizes,version);
+    size+=typeSizes.sizeof(cf.getColumnCount());
+    for (    Column column : cf)     size+=column.serializedSize(typeSizes);
+  }
   return size;
 }

@@ -1,10 +1,9 @@
 {
   super(reversed ? slices.length - 1 : 0);
   boolean inSlice=false;
-  OnDiskAtom.Serializer atomSerializer=emptyColumnFamily.getOnDiskSerializer();
-  int columns=file.readInt();
-  for (int i=0; i < columns; i++) {
-    OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
+  Iterator<OnDiskAtom> atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,file.readInt(),sstable.descriptor.version);
+  while (atomIterator.hasNext()) {
+    OnDiskAtom column=atomIterator.next();
     if (!inSlice && isColumnBeforeSliceStart(column))     continue;
     if (isColumnBeforeSliceFinish(column)) {
       inSlice=true;

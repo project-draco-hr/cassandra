@@ -14,12 +14,12 @@
   for (  IndexHelper.IndexInfo indexInfo : ranges) {
     long positionToSeek=basePosition + indexInfo.offset;
     if (file == null)     file=createFileDataInput(positionToSeek);
-    OnDiskAtom.Serializer atomSerializer=cf.getOnDiskSerializer();
+    Iterator<OnDiskAtom> atomIterator=cf.metadata().getOnDiskIterator(file,Integer.MAX_VALUE,sstable.descriptor.version);
     file.seek(positionToSeek);
     FileMark mark=file.mark();
     while (file.bytesPastMark(mark) < indexInfo.width) {
-      OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
-      if (!(column instanceof IColumn) || columnNames.contains(column.name()))       result.add(column);
+      OnDiskAtom column=atomIterator.next();
+      if (!(column instanceof Column) || columnNames.contains(column.name()))       result.add(column);
     }
   }
 }
