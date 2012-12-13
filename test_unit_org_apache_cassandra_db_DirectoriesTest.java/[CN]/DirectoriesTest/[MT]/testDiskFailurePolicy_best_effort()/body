@@ -1,0 +1,22 @@
+{
+  DiskFailurePolicy origPolicy=DatabaseDescriptor.getDiskFailurePolicy();
+  try {
+    DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
+    for (    DataDirectory dd : Directories.dataFileLocations) {
+      dd.location.setExecutable(false);
+      dd.location.setWritable(false);
+    }
+    Directories.create(KS,"bad");
+    for (    DataDirectory dd : Directories.dataFileLocations) {
+      File file=new File(dd.location,new File(KS,"bad").getPath());
+      Assert.assertTrue(BlacklistedDirectories.isUnwritable(file));
+    }
+  }
+  finally {
+    for (    DataDirectory dd : Directories.dataFileLocations) {
+      dd.location.setExecutable(true);
+      dd.location.setWritable(true);
+    }
+    DatabaseDescriptor.setDiskFailurePolicy(origPolicy);
+  }
+}
