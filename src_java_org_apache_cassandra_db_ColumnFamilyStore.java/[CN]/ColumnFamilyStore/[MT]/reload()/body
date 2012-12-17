@@ -4,19 +4,5 @@
   maybeReloadCompactionStrategy();
   scheduleFlush();
   indexManager.reload();
-  try {
-    while (true) {
-      AbstractType comparator=metadata.comparator;
-      Memtable memtable=getMemtableThreadSafe();
-      if (memtable.initialComparator == comparator)       break;
-      Future future=maybeSwitchMemtable(getMemtableThreadSafe(),true);
-      if (future != null)       future.get();
-    }
-  }
- catch (  ExecutionException e) {
-    throw new RuntimeException(e);
-  }
-catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
+  if (getMemtableThreadSafe().initialComparator != metadata.comparator)   switchMemtable(true,true);
 }
