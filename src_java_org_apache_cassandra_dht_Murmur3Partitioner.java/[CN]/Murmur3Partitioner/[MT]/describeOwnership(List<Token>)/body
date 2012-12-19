@@ -4,19 +4,20 @@
   if (!i.hasNext())   throw new RuntimeException("No nodes present in the cluster. How did you call this?");
   if (sortedTokens.size() == 1)   ownerships.put((Token)i.next(),new Float(1.0));
  else {
-    final float ri=MAXIMUM;
+    final BigInteger ri=BigInteger.valueOf(MAXIMUM).subtract(BigInteger.valueOf(MINIMUM.token + 1));
+    final BigDecimal r=new BigDecimal(ri);
     Token start=(Token)i.next();
-    Long ti=((LongToken)start).token;
+    BigInteger ti=BigInteger.valueOf(((LongToken)start).token);
     Token t;
-    Long tim1=ti;
+    BigInteger tim1=ti;
     while (i.hasNext()) {
       t=(Token)i.next();
-      ti=((LongToken)t).token;
-      float age=((ti - tim1 + ri) % ri) / ri;
+      ti=BigInteger.valueOf(((LongToken)t).token);
+      float age=new BigDecimal(ti.subtract(tim1).add(ri).mod(ri)).divide(r,6,BigDecimal.ROUND_HALF_EVEN).floatValue();
       ownerships.put(t,age);
       tim1=ti;
     }
-    float x=((((LongToken)start).token - ti + ri) % ri) / ri;
+    float x=new BigDecimal(BigInteger.valueOf(((LongToken)start).token).subtract(ti).add(ri).mod(ri)).divide(r,6,BigDecimal.ROUND_HALF_EVEN).floatValue();
     ownerships.put(start,x);
   }
   return ownerships;
