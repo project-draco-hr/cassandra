@@ -1,0 +1,20 @@
+@classmethod
+def parse_ansi_colors(cls, source):
+    colors = []
+    plain = ''
+    last = 0
+    curclr = 0
+    for match in ansi_seq.finditer(source):
+        prevsegment = source[last:match.start()]
+        plain += prevsegment
+        colors.extend(([curclr] * len(prevsegment)))
+        if (match.group('final') == ansi_cmd_SGR):
+            try:
+                curclr = cls.parse_sgr_param(curclr, match.group('params'))
+            except ValueError:
+                pass
+        last = match.end()
+    prevsegment = source[last:]
+    plain += prevsegment
+    colors.extend(([curclr] * len(prevsegment)))
+    return (''.join(plain), colors)

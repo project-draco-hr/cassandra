@@ -1,0 +1,17 @@
+def read_up_to_timeout(self, timeout, blksize=4096):
+    got = self.readbuf
+    self.readbuf = ''
+    curtime = time()
+    stoptime = (curtime + timeout)
+    while (curtime < stoptime):
+        try:
+            with timing_out((stoptime - curtime)):
+                stuff = self.read(blksize)
+        except TimeoutError:
+            break
+        cqlshlog.debug(('read %r from subproc' % (stuff,)))
+        if (stuff == ''):
+            break
+        got += stuff
+        curtime = time()
+    return got
