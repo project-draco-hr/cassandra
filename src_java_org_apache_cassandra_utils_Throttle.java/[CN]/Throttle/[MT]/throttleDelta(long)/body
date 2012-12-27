@@ -1,8 +1,13 @@
 {
   int newTargetBytesPerMS=fun.targetThroughput();
   if (newTargetBytesPerMS < 1)   return;
-  if (newTargetBytesPerMS != targetBytesPerMS)   logger.debug("{} target throughput now {} bytes/ms.",this,newTargetBytesPerMS);
-  targetBytesPerMS=newTargetBytesPerMS;
+  if (newTargetBytesPerMS != targetBytesPerMS) {
+    logger.debug("{} target throughput now {} bytes/ms.",this,newTargetBytesPerMS);
+    targetBytesPerMS=newTargetBytesPerMS;
+    bytesAtLastDelay+=bytesDelta;
+    timeAtLastDelay=System.currentTimeMillis();
+    return;
+  }
   long msSinceLast=System.currentTimeMillis() - timeAtLastDelay;
   long excessBytes=bytesDelta - msSinceLast * targetBytesPerMS;
   long timeToDelay=excessBytes / Math.max(1,targetBytesPerMS);
