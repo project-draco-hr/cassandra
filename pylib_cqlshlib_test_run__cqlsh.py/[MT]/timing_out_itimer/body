@@ -1,0 +1,14 @@
+@contextlib.contextmanager
+def timing_out_itimer(seconds):
+    if (seconds is None):
+        yield
+        return
+    with raising_signal(signal.SIGALRM, TimeoutError):
+        (oldval, oldint) = signal.getitimer(signal.ITIMER_REAL)
+        if (oldval != 0.0):
+            raise RuntimeError('ITIMER_REAL already in use')
+        signal.setitimer(signal.ITIMER_REAL, seconds)
+        try:
+            yield
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)

@@ -1,0 +1,14 @@
+@contextlib.contextmanager
+def timing_out_alarm(seconds):
+    if (seconds is None):
+        yield
+        return
+    with raising_signal(signal.SIGALRM, TimeoutError):
+        oldval = signal.alarm(int(math.ceil(seconds)))
+        if (oldval != 0):
+            signal.alarm(oldval)
+            raise RuntimeError('SIGALRM already in use')
+        try:
+            yield
+        finally:
+            signal.alarm(0)

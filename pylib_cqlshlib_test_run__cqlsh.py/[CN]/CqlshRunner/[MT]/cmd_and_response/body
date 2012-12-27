@@ -1,0 +1,15 @@
+def cmd_and_response(self, cmd):
+    self.send((cmd + '\n'))
+    output = self.read_to_next_prompt()
+    output = output.replace(' \r', '')
+    output = output.replace('\r', '')
+    if self.tty:
+        (echo, output) = output.split('\n', 1)
+        assert (echo == cmd), ('unexpected echo %r instead of %r' % (echo, cmd))
+    try:
+        (output, promptline) = output.rsplit('\n', 1)
+    except ValueError:
+        promptline = output
+        output = ''
+    assert re.match(self.prompt, ('\n' + promptline)), ('last line of output %r does not match %r?' % (promptline, self.prompt))
+    return (output + '\n')
