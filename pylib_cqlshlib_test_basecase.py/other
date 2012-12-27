@@ -1,0 +1,24 @@
+import os
+import sys
+import logging
+from itertools import izip
+from os.path import dirname, join, normpath, islink
+cqlshlog = logging.getLogger('test_cqlsh')
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
+rundir = dirname(__file__)
+path_to_cqlsh = normpath(join(rundir, '..', '..', '..', 'bin', 'cqlsh'))
+modulepath = join(rundir, 'cqlsh.py')
+try:
+    if islink(modulepath):
+        os.unlink(modulepath)
+except OSError:
+    pass
+os.symlink(path_to_cqlsh, modulepath)
+sys.path.append(rundir)
+import cqlsh
+cql = cqlsh.cql
+TEST_HOST = os.environ.get('CQL_TEST_HOST', 'localhost')
+TEST_PORT = int(os.environ.get('CQL_TEST_PORT', 9160))
