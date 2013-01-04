@@ -10,15 +10,13 @@
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
   Map<Token,List<InetAddress>> expectedEndpoints=new HashMap<Token,List<InetAddress>>();
-  for (  String table : Schema.instance.getNonSystemTables()) {
-    for (    Token token : keyTokens) {
-      List<InetAddress> endpoints=new ArrayList<InetAddress>();
-      Iterator<Token> tokenIter=TokenMetadata.ringIterator(tmd.sortedTokens(),token,false);
-      while (tokenIter.hasNext()) {
-        endpoints.add(tmd.getEndpoint(tokenIter.next()));
-      }
-      expectedEndpoints.put(token,endpoints);
+  for (  Token token : keyTokens) {
+    List<InetAddress> endpoints=new ArrayList<InetAddress>();
+    Iterator<Token> tokenIter=TokenMetadata.ringIterator(tmd.sortedTokens(),token,false);
+    while (tokenIter.hasNext()) {
+      endpoints.add(tmd.getEndpoint(tokenIter.next()));
     }
+    expectedEndpoints.put(token,endpoints);
   }
   Token newToken=positionToken(MOVING_NODE);
   ss.onChange(hosts.get(MOVING_NODE),ApplicationState.STATUS,valueFactory.moving(newToken));
@@ -26,6 +24,7 @@
   AbstractReplicationStrategy strategy;
   for (  String table : Schema.instance.getNonSystemTables()) {
     strategy=getStrategy(table,tmd);
+    int numMoved=0;
     for (    Token token : keyTokens) {
       int replicationFactor=strategy.getReplicationFactor();
       HashSet<InetAddress> actual=new HashSet<InetAddress>(tmd.getWriteEndpoints(token,table,strategy.calculateNaturalEndpoints(token,tmd)));
@@ -33,8 +32,16 @@
       for (int i=0; i < replicationFactor; i++) {
         expected.add(expectedEndpoints.get(token).get(i));
       }
-      assertEquals("mismatched endpoint sets",expected,actual);
+      if (expected.size() == actual.size()) {
+        assertEquals("mismatched endpoint sets",expected,actual);
+      }
+ else {
+        expected.add(hosts.get(MOVING_NODE));
+        assertEquals("mismatched endpoint sets",expected,actual);
+        numMoved++;
+      }
     }
+    assertEquals("mismatched number of moved token",numMoved,1);
   }
   ss.onChange(hosts.get(MOVING_NODE),ApplicationState.STATUS,valueFactory.normal(newToken));
 }
