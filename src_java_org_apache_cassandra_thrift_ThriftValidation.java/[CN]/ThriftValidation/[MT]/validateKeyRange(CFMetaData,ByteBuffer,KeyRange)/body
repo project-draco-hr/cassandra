@@ -1,6 +1,6 @@
 {
   if ((range.start_key == null) == (range.start_token == null) || (range.end_key == null) == (range.end_token == null)) {
-    throw new org.apache.cassandra.exceptions.InvalidRequestException("exactly one of {start key, end key} or {start token, end token} must be specified");
+    throw new org.apache.cassandra.exceptions.InvalidRequestException("exactly one each of {start key, start token} and {end key, end token} must be specified");
   }
   if (range.start_token != null && range.end_key != null)   throw new org.apache.cassandra.exceptions.InvalidRequestException("start token + end key is not a supported key range");
   IPartitioner p=StorageService.getPartitioner();
@@ -8,8 +8,8 @@
     Token startToken=p.getToken(range.start_key);
     Token endToken=p.getToken(range.end_key);
     if (startToken.compareTo(endToken) > 0 && !endToken.isMinimum(p)) {
-      if (p instanceof RandomPartitioner)       throw new org.apache.cassandra.exceptions.InvalidRequestException("start key's md5 sorts after end key's md5.  this is not allowed; you probably should not specify end key at all, under RandomPartitioner");
- else       throw new org.apache.cassandra.exceptions.InvalidRequestException("start key must sort before (or equal to) finish key in your partitioner!");
+      if (p.preservesOrder())       throw new org.apache.cassandra.exceptions.InvalidRequestException("start key must sort before (or equal to) finish key in your partitioner!");
+ else       throw new org.apache.cassandra.exceptions.InvalidRequestException("start key's token sorts after end key's token.  this is not allowed; you probably should not specify end key at all except with an ordered partitioner");
     }
   }
  else   if (range.end_token != null) {
