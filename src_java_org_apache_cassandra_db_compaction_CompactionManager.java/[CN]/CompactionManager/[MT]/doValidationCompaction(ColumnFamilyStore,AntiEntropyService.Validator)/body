@@ -23,12 +23,12 @@ catch (    InterruptedException e) {
   CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
   metrics.beginCompaction(ci);
   try {
-    Iterator<AbstractCompactedRow> nni=Iterators.filter(iter,Predicates.notNull());
     validator.prepare(cfs);
-    while (nni.hasNext()) {
+    while (iter.hasNext()) {
       if (ci.isStopRequested())       throw new CompactionInterruptedException(ci.getCompactionInfo());
-      AbstractCompactedRow row=nni.next();
-      validator.add(row);
+      AbstractCompactedRow row=iter.next();
+      if (row.isEmpty())       row.close();
+ else       validator.add(row);
     }
     validator.complete();
   }
