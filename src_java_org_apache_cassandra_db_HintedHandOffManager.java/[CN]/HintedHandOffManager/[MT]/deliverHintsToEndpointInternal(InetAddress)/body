@@ -1,6 +1,10 @@
 {
   ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.HINTS_CF);
   if (hintStore.isEmpty())   return;
+  if (hintedHandOffPaused) {
+    logger.debug("Hints delivery process is paused, aborting");
+    return;
+  }
   logger.debug("Checking remote({}) schema before delivering hints",endpoint);
   try {
     waitForSchemaAgreement(endpoint);
@@ -28,6 +32,10 @@
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   while (true) {
+    if (hintedHandOffPaused) {
+      logger.debug("Hints delivery process is paused, aborting");
+      break;
+    }
     QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
     if (pagingFinished(hintsPage,startColumn)) {
@@ -41,6 +49,10 @@
     }
     for (    final Column hint : hintsPage.getSortedColumns()) {
       if (!hint.isLive())       continue;
+      if (hintedHandOffPaused) {
+        logger.debug("Hints delivery process is paused, aborting");
+        break;
+      }
       startColumn=hint.name();
       ByteBuffer[] components=comparator.split(hint.name());
       int version=Int32Type.instance.compose(components[1]);
@@ -80,4 +92,7 @@
     }
   }
   logger.info(String.format("Finished hinted handoff of %s rows to endpoint %s",rowsReplayed,endpoint));
+  if (hintedHandOffPaused) {
+    logger.info("Hints delivery process is paused, not delivering further hints");
+  }
 }
