@@ -5,12 +5,17 @@
       for (Iterator<CommitLogSegment> iter=allocator.getActiveSegments().iterator(); iter.hasNext(); ) {
         CommitLogSegment segment=iter.next();
         segment.markClean(cfId,context);
-        if (segment.isUnused() && iter.hasNext()) {
-          logger.debug("Commit log segment {} is unused",segment);
-          allocator.recycleSegment(segment);
+        if (iter.hasNext()) {
+          if (segment.isUnused()) {
+            logger.debug("Commit log segment {} is unused",segment);
+            allocator.recycleSegment(segment);
+          }
+ else {
+            logger.debug("Not safe to delete commit log segment {}; dirty is {}",segment,segment.dirtyString());
+          }
         }
  else {
-          if (logger.isDebugEnabled())           logger.debug(String.format("Not safe to delete commit log %s; dirty is %s; hasNext: %s",segment,segment.dirtyString(),iter.hasNext()));
+          logger.debug("Not deleting active commitlog segment {}",segment);
         }
         if (segment.contains(context))         break;
       }
