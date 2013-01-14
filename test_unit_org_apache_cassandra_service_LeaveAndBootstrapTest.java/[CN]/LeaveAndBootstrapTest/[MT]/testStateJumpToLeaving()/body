@@ -8,19 +8,24 @@
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,6);
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(keyTokens.get(0)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   assertTrue(tmd.getToken(hosts.get(2)).equals(keyTokens.get(0)));
   assertTrue(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getEndpoint(endpointTokens.get(2)) == null);
   ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(1)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   assertFalse(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getBootstrapTokens().size() == 1);
   assertTrue(tmd.getBootstrapTokens().get(keyTokens.get(1)).equals(hosts.get(2)));
   ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.leaving(keyTokens.get(1)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   assertTrue(tmd.getEndpoint(keyTokens.get(1)).equals(hosts.get(2)));
   assertTrue(tmd.isLeaving(hosts.get(2)));
   assertTrue(tmd.getBootstrapTokens().isEmpty());
   ss.onChange(hosts.get(2),ApplicationState.STATUS,valueFactory.left(keyTokens.get(1),Gossiper.computeExpireTime()));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   assertFalse(tmd.isMember(hosts.get(2)));
   assertFalse(tmd.isLeaving(hosts.get(2)));
 }

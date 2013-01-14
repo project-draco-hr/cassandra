@@ -9,12 +9,15 @@
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   final int[] LEAVING=new int[]{6,8,9};
   for (  int leaving : LEAVING)   ss.onChange(hosts.get(leaving),ApplicationState.STATUS,valueFactory.leaving(endpointTokens.get(leaving)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
   ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5)));
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
   ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   Collection<InetAddress> endpoints=null;
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
@@ -134,8 +137,11 @@
     assertTrue(endpoints.contains(hosts.get(2)));
   }
   ss.onChange(hosts.get(LEAVING[0]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[0]),Gossiper.computeExpireTime()));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   ss.onChange(hosts.get(LEAVING[2]),ApplicationState.STATUS,valueFactory.left(endpointTokens.get(LEAVING[2]),Gossiper.computeExpireTime()));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   ss.onChange(boot1,ApplicationState.STATUS,valueFactory.normal(keyTokens.get(5)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
   expectedEndpoints.get("Keyspace1").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace2").get(new BigIntegerToken("55")).removeAll(makeAddrs("127.0.0.7","127.0.0.8"));
@@ -154,6 +160,7 @@
   expectedEndpoints.get("Keyspace4").get(new BigIntegerToken("65")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace4").get(new BigIntegerToken("75")).removeAll(makeAddrs("127.0.0.10"));
   expectedEndpoints.get("Keyspace4").get(new BigIntegerToken("85")).removeAll(makeAddrs("127.0.0.10"));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   for (  Map.Entry<String,AbstractReplicationStrategy> tableStrategy : tableStrategyMap.entrySet()) {
     String table=tableStrategy.getKey();
     AbstractReplicationStrategy strategy=tableStrategy.getValue();
