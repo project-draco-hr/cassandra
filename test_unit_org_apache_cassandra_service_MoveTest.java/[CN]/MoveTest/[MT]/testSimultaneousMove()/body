@@ -9,11 +9,13 @@
   ArrayList<Token> keyTokens=new ArrayList<Token>();
   List<InetAddress> hosts=new ArrayList<InetAddress>();
   Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,RING_SIZE);
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   final int[] MOVING=new int[]{6,8,9};
   Map<Integer,Token> newTokens=new HashMap<Integer,Token>();
   for (  int movingIndex : MOVING) {
     Token newToken=positionToken(movingIndex);
     ss.onChange(hosts.get(movingIndex),ApplicationState.STATUS,valueFactory.moving(newToken));
+    PendingRangeCalculatorService.instance.blockUntilFinished();
     newTokens.put(movingIndex,newToken);
   }
   Collection<InetAddress> endpoints;
@@ -21,8 +23,10 @@
   ss.setTokenMetadataUnsafe(tmd);
   InetAddress boot1=InetAddress.getByName("127.0.1.1");
   ss.onChange(boot1,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(5)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   InetAddress boot2=InetAddress.getByName("127.0.1.2");
   ss.onChange(boot2,ApplicationState.STATUS,valueFactory.bootstrapping(keyTokens.get(7)));
+  PendingRangeCalculatorService.instance.blockUntilFinished();
   Map<String,AbstractReplicationStrategy> tableStrategyMap=new HashMap<String,AbstractReplicationStrategy>();
   for (int i=1; i <= 4; i++) {
     tableStrategyMap.put("Keyspace" + i,getStrategy("Keyspace" + i,tmd));
