@@ -1,0 +1,33 @@
+{
+  boolean[] definedClusteringKeys=new boolean[comparator.componentsCount()];
+  boolean hasRegular=false;
+  for (  ColumnDefinition def : defs) {
+switch (def.type) {
+case CLUSTERING_KEY:
+      definedClusteringKeys[def.componentIndex == null ? 0 : def.componentIndex]=true;
+    break;
+case REGULAR:
+  hasRegular=true;
+break;
+}
+}
+boolean hasNulls=false;
+int maxIdx=-1;
+for (int i=definedClusteringKeys.length - 1; i >= 0; i--) {
+if (maxIdx == -1) {
+if (definedClusteringKeys[i]) maxIdx=i;
+}
+ else {
+if (!definedClusteringKeys[i]) hasNulls=true;
+}
+}
+if (comparator instanceof CompositeType) {
+List<AbstractType<?>> types=((CompositeType)comparator).types;
+AbstractType<?> lastType=types.get(types.size() - 1);
+if (lastType instanceof ColumnToCollectionType) return false;
+return !(maxIdx == types.size() - 2 && lastType instanceof UTF8Type && !hasNulls);
+}
+ else {
+return !(hasRegular && maxIdx == -1);
+}
+}

@@ -5,19 +5,14 @@
   if (comparator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid comparator");
   if (keyValidator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid key validator");
   if (defaultValidator instanceof CounterColumnType) {
-    for (    ColumnDefinition def : column_metadata.values())     if (!(def.getValidator() instanceof CounterColumnType))     throw new ConfigurationException("Cannot add a non counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a counter column family");
+    for (    ColumnDefinition def : regularColumns)     if (!(def.getValidator() instanceof CounterColumnType))     throw new ConfigurationException("Cannot add a non counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a counter column family");
   }
  else {
     for (    ColumnDefinition def : column_metadata.values())     if (def.getValidator() instanceof CounterColumnType)     throw new ConfigurationException("Cannot add a counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a non counter column family");
   }
-  for (  ColumnDefinition columndef : column_metadata.values()) {
-    for (    ByteBuffer alias : keyAliases)     if (alias.equals(columndef.name))     throw new ConfigurationException("Cannot have key alias equals to a column name: " + UTF8Type.instance.compose(alias));
-    for (    ByteBuffer alias : columnAliases)     if (alias.equals(columndef.name))     throw new ConfigurationException("Cannot have column alias equals to a column name: " + UTF8Type.instance.compose(alias));
-    if (valueAlias != null && valueAlias.equals(columndef.name))     throw new ConfigurationException("Cannot have value alias equals to a column name: " + UTF8Type.instance.compose(valueAlias));
-  }
-  for (  ByteBuffer alias : keyAliases)   validateAlias(alias,"Key");
-  for (  ByteBuffer alias : columnAliases)   validateAlias(alias,"Column");
-  validateAlias(valueAlias,"Value");
+  for (  ColumnDefinition def : partitionKeyColumns)   validateAlias(def,"Key");
+  for (  ColumnDefinition def : clusteringKeyColumns)   validateAlias(def,"Column");
+  if (compactValueColumn != null)   validateAlias(compactValueColumn,"Value");
   Set<String> indexNames=existingIndexNames(cfName);
   for (  ColumnDefinition c : column_metadata.values()) {
     AbstractType<?> comparator=getColumnDefinitionComparator(c);

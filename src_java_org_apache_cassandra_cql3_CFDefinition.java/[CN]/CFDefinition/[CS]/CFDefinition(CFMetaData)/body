@@ -1,2 +1,25 @@
 {
+  this.cfm=cfm;
+  this.hasCompositeKey=cfm.getKeyValidator() instanceof CompositeType;
+  for (int i=0; i < cfm.partitionKeyColumns().size(); ++i) {
+    ColumnIdentifier id=getKeyId(cfm,i);
+    this.keys.put(id,new Name(cfm.ksName,cfm.cfName,id,Name.Kind.KEY_ALIAS,i,cfm.getKeyValidator().getComponents().get(i)));
+  }
+  this.isComposite=cfm.comparator instanceof CompositeType;
+  this.hasCollections=cfm.comparator.getComponents().get(cfm.comparator.componentsCount() - 1) instanceof ColumnToCollectionType;
+  this.isCompact=cfm.clusteringKeyColumns().size() == cfm.comparator.componentsCount();
+  for (int i=0; i < cfm.clusteringKeyColumns().size(); ++i) {
+    ColumnIdentifier id=getColumnId(cfm,i);
+    this.columns.put(id,new Name(cfm.ksName,cfm.cfName,id,Name.Kind.COLUMN_ALIAS,i,cfm.comparator.getComponents().get(i)));
+  }
+  if (isCompact) {
+    this.value=createValue(cfm);
+  }
+ else {
+    this.value=null;
+    for (    ColumnDefinition def : cfm.regularColumns()) {
+      ColumnIdentifier id=new ColumnIdentifier(def.name,cfm.getColumnDefinitionComparator(def));
+      this.metadata.put(id,new Name(cfm.ksName,cfm.cfName,id,Name.Kind.COLUMN_METADATA,def.getValidator()));
+    }
+  }
 }

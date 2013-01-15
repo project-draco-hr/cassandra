@@ -183,7 +183,7 @@ if (oldCfm == null) throw new InvalidRequestException("No such column family: " 
 boolean columnExists=false;
 ByteBuffer columnName=createIdx.getColumnName().getByteBuffer();
 CFMetaData cfm=oldCfm.clone();
-for (ColumnDefinition cd : cfm.getColumn_metadata().values()) {
+for (ColumnDefinition cd : cfm.regularColumns()) {
 if (cd.name.equals(columnName)) {
 if (cd.getIndexType() != null) throw new InvalidRequestException("Index already exists");
 if (logger.isDebugEnabled()) logger.debug("Updating column {} definition for index {}",cfm.comparator.getString(columnName),createIdx.getIndexName());
@@ -196,7 +196,7 @@ break;
 if (!columnExists) throw new InvalidRequestException("No column definition found for column " + oldCfm.comparator.getString(columnName));
 try {
 cfm.addDefaultIndexNames();
-MigrationManager.announceColumnFamilyUpdate(cfm);
+MigrationManager.announceColumnFamilyUpdate(cfm,true);
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
@@ -212,7 +212,7 @@ dropIdx.setKeyspace(keyspace);
 clientState.hasColumnFamilyAccess(keyspace,dropIdx.getColumnFamily(),Permission.ALTER);
 try {
 CFMetaData updatedCF=dropIdx.generateCFMetadataUpdate();
-MigrationManager.announceColumnFamilyUpdate(updatedCF);
+MigrationManager.announceColumnFamilyUpdate(updatedCF,true);
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.toString());
@@ -253,7 +253,7 @@ AlterTableStatement alterTable=(AlterTableStatement)statement.statement;
 validateColumnFamily(keyspace,alterTable.columnFamily);
 clientState.hasColumnFamilyAccess(keyspace,alterTable.columnFamily,Permission.ALTER);
 try {
-MigrationManager.announceColumnFamilyUpdate(alterTable.getCFMetaData(keyspace));
+MigrationManager.announceColumnFamilyUpdate(alterTable.getCFMetaData(keyspace),true);
 }
  catch (ConfigurationException e) {
 InvalidRequestException ex=new InvalidRequestException(e.getMessage());
