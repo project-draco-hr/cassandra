@@ -3,11 +3,11 @@
   CfDef cfDef=getCfDef(loadSignature);
   if (cfDef.column_type.equals("Super"))   return null;
   ResourceSchema schema=new ResourceSchema();
-  List<AbstractType> marshallers=getDefaultMarshallers(cfDef);
+  Map<MarshallerType,AbstractType> marshallers=getDefaultMarshallers(cfDef);
   Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
   ResourceFieldSchema keyFieldSchema=new ResourceFieldSchema();
   keyFieldSchema.setName("key");
-  keyFieldSchema.setType(getPigType(marshallers.get(2)));
+  keyFieldSchema.setType(getPigType(marshallers.get(MarshallerType.KEY_VALIDATOR)));
   ResourceSchema bagSchema=new ResourceSchema();
   ResourceFieldSchema bagField=new ResourceFieldSchema();
   bagField.setType(DataType.BAG);
@@ -19,8 +19,8 @@
   ResourceFieldSchema bagvalSchema=new ResourceFieldSchema();
   bagcolSchema.setName("name");
   bagvalSchema.setName("value");
-  bagcolSchema.setType(getPigType(marshallers.get(0)));
-  bagvalSchema.setType(getPigType(marshallers.get(1)));
+  bagcolSchema.setType(getPigType(marshallers.get(MarshallerType.COMPARATOR)));
+  bagvalSchema.setType(getPigType(marshallers.get(MarshallerType.DEFAULT_VALIDATOR)));
   bagTupleSchema.setFields(new ResourceFieldSchema[]{bagcolSchema,bagvalSchema});
   bagTupleField.setSchema(bagTupleSchema);
   bagSchema.setFields(new ResourceFieldSchema[]{bagTupleField});
@@ -35,10 +35,10 @@
     innerTupleField.setName(new String(cdef.getName()));
     ResourceFieldSchema idxColSchema=new ResourceFieldSchema();
     idxColSchema.setName("name");
-    idxColSchema.setType(getPigType(marshallers.get(0)));
+    idxColSchema.setType(getPigType(marshallers.get(MarshallerType.COMPARATOR)));
     ResourceFieldSchema valSchema=new ResourceFieldSchema();
     AbstractType validator=validators.get(cdef.name);
-    if (validator == null)     validator=marshallers.get(1);
+    if (validator == null)     validator=marshallers.get(MarshallerType.DEFAULT_VALIDATOR);
     valSchema.setName("value");
     valSchema.setType(getPigType(validator));
     innerTupleSchema.setFields(new ResourceFieldSchema[]{idxColSchema,valSchema});
@@ -50,7 +50,7 @@
       ResourceFieldSchema idxSchema=new ResourceFieldSchema();
       idxSchema.setName("index_" + new String(cdef.getName()));
       AbstractType validator=validators.get(cdef.name);
-      if (validator == null)       validator=marshallers.get(1);
+      if (validator == null)       validator=marshallers.get(MarshallerType.DEFAULT_VALIDATOR);
       idxSchema.setType(getPigType(validator));
       allSchemaFields.add(idxSchema);
     }
