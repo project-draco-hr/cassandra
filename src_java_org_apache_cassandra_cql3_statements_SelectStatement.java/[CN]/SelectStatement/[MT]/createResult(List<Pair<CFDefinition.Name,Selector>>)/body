@@ -1,19 +1,7 @@
 {
   List<ColumnSpecification> names=new ArrayList<ColumnSpecification>(selection.size());
   for (  Pair<CFDefinition.Name,Selector> p : selection) {
-    if (p.right.hasFunction()) {
-switch (p.right.function()) {
-case WRITE_TIME:
-        names.add(new ColumnSpecification(p.left.ksName,p.left.cfName,new ColumnIdentifier(p.right.toString(),true),LongType.instance));
-      break;
-case TTL:
-    names.add(new ColumnSpecification(p.left.ksName,p.left.cfName,new ColumnIdentifier(p.right.toString(),true),Int32Type.instance));
-  break;
-}
-}
- else {
-names.add(p.left);
-}
-}
-return new ResultSet(names);
+    names.add(p.right.hasFunction() ? new ColumnSpecification(p.left.ksName,p.left.cfName,new ColumnIdentifier(p.right.toString(),true),p.right.function().resultType) : p.left);
+  }
+  return new ResultSet(names);
 }

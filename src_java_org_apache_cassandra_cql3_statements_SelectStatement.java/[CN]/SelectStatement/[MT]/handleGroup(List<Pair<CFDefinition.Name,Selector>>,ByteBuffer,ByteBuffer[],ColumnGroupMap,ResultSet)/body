@@ -4,22 +4,23 @@
     Selector selector=p.right;
 switch (name.kind) {
 case KEY_ALIAS:
-      cqlRows.addColumnValue(keyComponents[name.position]);
+      addReturnValue(cqlRows,selector,keyComponents[name.position]);
     break;
 case COLUMN_ALIAS:
-  cqlRows.addColumnValue(columns.getKeyComponent(name.position));
+  addReturnValue(cqlRows,selector,columns.getKeyComponent(name.position));
 break;
 case VALUE_ALIAS:
 throw new AssertionError();
 case COLUMN_METADATA:
 if (name.type.isCollection()) {
 List<Pair<ByteBuffer,Column>> collection=columns.getCollection(name.name.key);
-if (collection == null) cqlRows.addColumnValue(null);
- else cqlRows.addColumnValue(((CollectionType)name.type).serialize(collection));
-break;
+ByteBuffer value=collection == null ? null : ((CollectionType)name.type).serialize(collection);
+addReturnValue(cqlRows,selector,value);
 }
+ else {
 Column c=columns.getSimple(name.name.key);
 addReturnValue(cqlRows,selector,c);
+}
 break;
 default :
 throw new AssertionError();
