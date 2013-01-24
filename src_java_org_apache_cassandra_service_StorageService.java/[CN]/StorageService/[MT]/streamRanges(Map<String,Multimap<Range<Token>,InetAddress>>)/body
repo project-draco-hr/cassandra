@@ -26,17 +26,7 @@
     for (    final Map.Entry<InetAddress,List<Range<Token>>> rangesEntry : rangesPerEndpoint.entrySet()) {
       final List<Range<Token>> ranges=rangesEntry.getValue();
       final InetAddress newEndpoint=rangesEntry.getKey();
-      final IStreamCallback callback=new IStreamCallback(){
-        public void onSuccess(){
-          latch.countDown();
-        }
-        public void onFailure(){
-          logger.warn("Streaming to " + newEndpoint + " failed");
-          onSuccess();
-        }
-      }
-;
-      StreamOut.transferRanges(newEndpoint,Table.open(table),ranges,callback,OperationType.UNBOOTSTRAP);
+      StreamOut.transferRanges(newEndpoint,Table.open(table),ranges,new CountingDownStreamCallback(latch,newEndpoint),OperationType.UNBOOTSTRAP);
     }
   }
   return latch;
