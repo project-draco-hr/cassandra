@@ -64,13 +64,13 @@
       stmt.comparator=CompositeType.getInstance(types);
     }
   }
-  if (useCompactStorage && stmt.columns.size() <= 1) {
+  if (useCompactStorage && !stmt.columnAliases.isEmpty()) {
     if (stmt.columns.isEmpty()) {
-      if (columnAliases.isEmpty())       throw new InvalidRequestException(String.format("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
       stmt.defaultValidator=BytesType.instance;
       stmt.valueAlias=ByteBufferUtil.EMPTY_BYTE_BUFFER;
     }
  else {
+      if (stmt.columns.size() > 1)       throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
       Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
       stmt.defaultValidator=lastEntry.getValue();
       stmt.valueAlias=lastEntry.getKey().key;
@@ -78,7 +78,7 @@
     }
   }
  else {
-    if (useCompactStorage && !columnAliases.isEmpty())     throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
+    if (useCompactStorage && stmt.columns.isEmpty())     throw new InvalidRequestException("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY, none given");
     stmt.defaultValidator=!stmt.columns.isEmpty() && (stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : BytesType.instance;
   }
   if (!definedOrdering.isEmpty()) {
