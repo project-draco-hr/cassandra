@@ -1,0 +1,35 @@
+{
+  logger.debug("applying {} to {}",cfm,this);
+  validateCompatility(cfm);
+  comparator=cfm.comparator;
+  comment=enforceCommentNotNull(cfm.comment);
+  readRepairChance=cfm.readRepairChance;
+  dcLocalReadRepairChance=cfm.dcLocalReadRepairChance;
+  replicateOnWrite=cfm.replicateOnWrite;
+  gcGraceSeconds=cfm.gcGraceSeconds;
+  defaultValidator=cfm.defaultValidator;
+  keyValidator=cfm.keyValidator;
+  minCompactionThreshold=cfm.minCompactionThreshold;
+  maxCompactionThreshold=cfm.maxCompactionThreshold;
+  if (!cfm.keyAliases.isEmpty())   keyAliases=cfm.keyAliases;
+  if (!cfm.columnAliases.isEmpty())   columnAliases=cfm.columnAliases;
+  if (cfm.valueAlias != null)   valueAlias=cfm.valueAlias;
+  bloomFilterFpChance=cfm.bloomFilterFpChance;
+  memtableFlushPeriod=cfm.memtableFlushPeriod;
+  caching=cfm.caching;
+  defaultTimeToLive=cfm.defaultTimeToLive;
+  speculativeRetry=cfm.speculativeRetry;
+  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(column_metadata,cfm.column_metadata);
+  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnLeft().values())   column_metadata.remove(cd.name);
+  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   column_metadata.put(cd.name,cd);
+  for (  ByteBuffer name : columnDiff.entriesDiffering().keySet()) {
+    ColumnDefinition oldDef=column_metadata.get(name);
+    ColumnDefinition def=cfm.column_metadata.get(name);
+    oldDef.apply(def,getColumnDefinitionComparator(oldDef));
+  }
+  compactionStrategyClass=cfm.compactionStrategyClass;
+  compactionStrategyOptions=cfm.compactionStrategyOptions;
+  compressionParameters=cfm.compressionParameters();
+  updateCfDef();
+  logger.debug("application result is {}",this);
+}

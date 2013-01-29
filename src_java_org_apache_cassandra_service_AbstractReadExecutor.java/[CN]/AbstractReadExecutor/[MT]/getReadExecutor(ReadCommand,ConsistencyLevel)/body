@@ -1,0 +1,15 @@
+{
+  Table table=Table.open(command.table);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(command.cfName);
+  List<InetAddress> allReplicas=StorageProxy.getLiveSortedEndpoints(table,command.key);
+  List<InetAddress> queryTargets=consistency_level.filterForQuery(table,allReplicas,cfs.metadata.newReadRepairDecision());
+switch (cfs.metadata.getSpeculativeRetry().type) {
+case ALWAYS:
+    return new SpeculateAlwaysExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
+case PERCENTILE:
+case CUSTOM:
+  return queryTargets.size() < allReplicas.size() ? new SpeculativeReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets) : new DefaultReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
+default :
+return new DefaultReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
+}
+}
