@@ -3,19 +3,27 @@
   output.write(ByteBufferUtil.getArray(headerBuffer));
   if (header.file == null)   return;
   RandomAccessReader file=RandomAccessReader.open(new File(header.file.getFilename()),true);
+  Descriptor desc=Descriptor.fromFilename(header.file.getFilename());
+  ChecksumValidator metadata=null;
+  if (new File(desc.filenameFor(Component.CRC)).exists())   metadata=DataIntegrityMetadata.checksumValidator(desc);
+  transferBuffer=metadata == null ? new byte[DEFAULT_CHUNK_SIZE] : new byte[metadata.chunkSize];
   compressedoutput=new LZFOutputStream(output);
   StreamingMetrics.activeStreamsOutbound.inc();
   try {
     long totalBytesTransferred=0;
     for (    Pair<Long,Long> section : header.file.sections) {
-      file.seek(section.left);
-      long length=section.right - section.left;
+      long start=metadata == null ? section.left : metadata.chunkStart(section.left);
+      int skipBytes=(int)(section.left - start);
+      file.seek(start);
+      if (metadata != null)       metadata.seek(start);
+      long length=section.right - start;
       long bytesTransferred=0;
       while (bytesTransferred < length) {
-        long lastWrite=write(file,length,bytesTransferred);
+        long lastWrite=write(file,metadata,skipBytes,length,bytesTransferred);
         bytesTransferred+=lastWrite;
         totalBytesTransferred+=lastWrite;
         header.file.progress+=lastWrite;
+        skipBytes=0;
       }
       compressedoutput.flush();
       if (logger.isDebugEnabled())       logger.debug("Bytes transferred " + bytesTransferred + "/"+ header.file.size);
