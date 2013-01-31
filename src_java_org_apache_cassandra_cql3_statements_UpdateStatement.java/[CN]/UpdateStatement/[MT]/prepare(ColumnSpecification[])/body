@@ -9,8 +9,7 @@
     for (int i=0; i < columnNames.size(); i++) {
       CFDefinition.Name name=cfDef.get(columnNames.get(i));
       if (name == null)       throw new InvalidRequestException(String.format("Unknown identifier %s",columnNames.get(i)));
-      Operation operation=columnOperations.get(i);
-      operation.addBoundNames(name,boundNames);
+      Operation operation=columnOperations.get(i).validateAndAddBoundNames(name,boundNames);
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
@@ -21,7 +20,7 @@ case COLUMN_ALIAS:
 case VALUE_ALIAS:
 case COLUMN_METADATA:
 if (processedColumns.containsKey(name)) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
-addNewOperation(name,operation);
+processedColumns.put(name,operation);
 break;
 }
 }
@@ -30,7 +29,7 @@ break;
 for (Pair<ColumnIdentifier,Operation> entry : columns) {
 CFDefinition.Name name=cfDef.get(entry.left);
 if (name == null) throw new InvalidRequestException(String.format("Unknown identifier %s",entry.left));
-Operation operation=entry.right;
+Operation operation=entry.right.validateAndAddBoundNames(name,boundNames);
 switch (operation.getType()) {
 case COUNTER:
 if (type != Type.COUNTER) throw new InvalidRequestException("Invalid counter operation on non-counter table.");
@@ -38,7 +37,6 @@ break;
 case LIST:
 case SET:
 case MAP:
-if (!name.type.isCollection()) throw new InvalidRequestException("Cannot apply collection operation on column " + name + " with "+ name.type+ " type.");
 case COLUMN:
 if (type == Type.COUNTER) throw new InvalidRequestException("Invalid non-counter operation on counter table.");
 break;
@@ -53,8 +51,7 @@ throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SE
 case VALUE_ALIAS:
 case COLUMN_METADATA:
 for (Operation otherOp : processedColumns.get(name)) if (otherOp.getType() == Operation.Type.COLUMN) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
-operation.addBoundNames(name,boundNames);
-addNewOperation(name,operation);
+processedColumns.put(name,operation);
 break;
 }
 }
