@@ -3,24 +3,13 @@
   type=metadata.getDefaultValidator().isCommutative() ? Type.COUNTER : Type.LOGGED;
   cfDef=metadata.getCfDef();
   UpdateStatement.processKeys(cfDef,whereClause,processedKeys,boundNames);
-  for (  Selector column : columns) {
-    CFDefinition.Name name=cfDef.get(column.id());
-    if (name == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",column));
-    if (name.kind != CFDefinition.Name.Kind.COLUMN_METADATA && name.kind != CFDefinition.Name.Kind.VALUE_ALIAS)     throw new InvalidRequestException(String.format("Invalid identifier %s for deletion (should not be a PRIMARY KEY part)",column));
-    if (column.hasKey()) {
-      if (name.type instanceof ListType) {
-        column.key().validateType("list index",Int32Type.instance);
-        if (column.key().isBindMarker())         boundNames[column.key().bindIndex]=ListOperation.indexSpecOf(name);
-      }
- else       if (name.type instanceof MapType) {
-        column.key().validateType("map key",((MapType)name.type).keys);
-        if (column.key().isBindMarker())         boundNames[column.key().bindIndex]=MapOperation.keySpecOf(name,(MapType)name.type);
-      }
- else {
-        throw new InvalidRequestException(String.format("Invalid selection %s since %s is neither a list or a map",column,column.id()));
-      }
-    }
-    toRemove.add(Pair.create(name,column.key()));
+  for (  Operation.RawDeletion deletion : deletions) {
+    CFDefinition.Name name=cfDef.get(deletion.affectedColumn());
+    if (name == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",name));
+    if (name.kind != CFDefinition.Name.Kind.COLUMN_METADATA && name.kind != CFDefinition.Name.Kind.VALUE_ALIAS)     throw new InvalidRequestException(String.format("Invalid identifier %s for deletion (should not be a PRIMARY KEY part)",name));
+    Operation op=deletion.prepare(name);
+    op.collectMarkerSpecification(boundNames);
+    toRemove.add(op);
   }
   return new ParsedStatement.Prepared(this,Arrays.<ColumnSpecification>asList(boundNames));
 }

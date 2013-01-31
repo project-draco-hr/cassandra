@@ -2,56 +2,44 @@
   CFMetaData metadata=validateColumnFamily(keyspace(),columnFamily());
   cfDef=metadata.getCfDef();
   type=metadata.getDefaultValidator().isCommutative() ? Type.COUNTER : Type.LOGGED;
-  if (columns == null) {
+  if (operations == null) {
     if (type == Type.COUNTER)     throw new InvalidRequestException("INSERT statement are not allowed on counter tables, use UPDATE instead");
-    if (columnNames.size() != columnOperations.size())     throw new InvalidRequestException("unmatched column names/values");
-    if (columnNames.size() < 1)     throw new InvalidRequestException("no columns specified for INSERT");
+    if (columnNames.size() != columnValues.size())     throw new InvalidRequestException("Unmatched column names/values");
+    if (columnNames.isEmpty())     throw new InvalidRequestException("No columns provided to INSERT");
     for (int i=0; i < columnNames.size(); i++) {
       CFDefinition.Name name=cfDef.get(columnNames.get(i));
       if (name == null)       throw new InvalidRequestException(String.format("Unknown identifier %s",columnNames.get(i)));
-      Operation operation=columnOperations.get(i).validateAndAddBoundNames(name,boundNames);
+      for (int j=0; j < i; j++)       if (name.name.equals(columnNames.get(j)))       throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
+      Term.Raw value=columnValues.get(i);
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
-        if (processedKeys.containsKey(name.name))         throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s",name));
-      if (operation.getType() != Operation.Type.COLUMN && operation.getType() != Operation.Type.PREPARED)       throw new InvalidRequestException(String.format("Invalid definition for %s, not a collection type",name));
-    processedKeys.put(name.name,operation.getValues());
+        Term t=value.prepare(name);
+      t.collectMarkerSpecification(boundNames);
+    if (processedKeys.put(name.name,Collections.singletonList(t)) != null)     throw new InvalidRequestException(String.format("Multiple definitions found for PRIMARY KEY part %s",name));
   break;
 case VALUE_ALIAS:
 case COLUMN_METADATA:
-if (processedColumns.containsKey(name)) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
-processedColumns.put(name,operation);
+Operation operation=new Operation.SetValue(value).prepare(name);
+operation.collectMarkerSpecification(boundNames);
+processedColumns.add(operation);
 break;
 }
 }
 }
  else {
-for (Pair<ColumnIdentifier,Operation> entry : columns) {
+for (Pair<ColumnIdentifier,Operation.RawUpdate> entry : operations) {
 CFDefinition.Name name=cfDef.get(entry.left);
 if (name == null) throw new InvalidRequestException(String.format("Unknown identifier %s",entry.left));
-Operation operation=entry.right.validateAndAddBoundNames(name,boundNames);
-switch (operation.getType()) {
-case COUNTER:
-if (type != Type.COUNTER) throw new InvalidRequestException("Invalid counter operation on non-counter table.");
-break;
-case LIST:
-case SET:
-case MAP:
-case COLUMN:
-if (type == Type.COUNTER) throw new InvalidRequestException("Invalid non-counter operation on counter table.");
-break;
-case PREPARED:
-if (type == Type.COUNTER && !((PreparedOperation)operation).isPotentialCounterOperation()) throw new InvalidRequestException("Invalid non-counter operation on counter table.");
-break;
-}
+Operation operation=entry.right.prepare(name);
+operation.collectMarkerSpecification(boundNames);
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
 throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part",entry.left));
 case VALUE_ALIAS:
 case COLUMN_METADATA:
-for (Operation otherOp : processedColumns.get(name)) if (otherOp.getType() == Operation.Type.COLUMN) throw new InvalidRequestException(String.format("Multiple definitions found for column %s",name));
-processedColumns.put(name,operation);
+processedColumns.add(operation);
 break;
 }
 }
