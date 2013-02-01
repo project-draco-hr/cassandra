@@ -12,6 +12,14 @@
  else {
         socket.setTcpNoDelay(DatabaseDescriptor.getInterDCTcpNoDelay());
       }
+      if (DatabaseDescriptor.getInternodeSendBufferSize() != null) {
+        try {
+          socket.setSendBufferSize(DatabaseDescriptor.getInternodeSendBufferSize().intValue());
+        }
+ catch (        SocketException se) {
+          logger.warn("Failed to set send buffer size on internode socket.",se);
+        }
+      }
       out=new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(),4096));
       if (targetVersion >= MessagingService.VERSION_12) {
         out.writeInt(MessagingService.PROTOCOL_MAGIC);
