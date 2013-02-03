@@ -1,9 +1,16 @@
 {
-  SortedSet<DataDirectory> directories=ImmutableSortedSet.copyOf(dataFileLocations);
-  for (  DataDirectory directory : directories) {
-    long spaceAvailable=directory.getEstimatedAvailableSpace();
-    if (estimatedSize < spaceAvailable && directory.currentTasks.get() == 0)     return directory;
+  List<DataDirectory> candidates=new ArrayList<DataDirectory>();
+  for (  DataDirectory dataDir : dataFileLocations) {
+    File sstableDir=getLocationForDisk(dataDir);
+    if (BlacklistedDirectories.isUnwritable(sstableDir))     continue;
+    if (dataDir.getEstimatedAvailableSpace() > estimatedSize && sstableDir.getUsableSpace() * 0.9 > estimatedSize)     candidates.add(dataDir);
   }
-  if (estimatedSize < directories.first().getEstimatedAvailableSpace())   return directories.first();
- else   return null;
+  Collections.sort(candidates);
+  Collections.sort(candidates,new Comparator<DataDirectory>(){
+    public int compare(    DataDirectory a,    DataDirectory b){
+      return a.currentTasks.get() - b.currentTasks.get();
+    }
+  }
+);
+  return candidates.isEmpty() ? null : candidates.get(0);
 }
