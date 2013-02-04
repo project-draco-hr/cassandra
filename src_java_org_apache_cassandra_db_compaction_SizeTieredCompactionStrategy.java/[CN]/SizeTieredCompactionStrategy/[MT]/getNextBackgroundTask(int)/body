@@ -1,5 +1,7 @@
 {
-  if (cfs.isCompactionDisabled()) {
+  int minThreshold=cfs.getMinimumCompactionThreshold();
+  int maxThreshold=cfs.getMaximumCompactionThreshold();
+  if (minThreshold == 0 || maxThreshold == 0) {
     logger.debug("Compaction is currently disabled.");
     return null;
   }
@@ -9,14 +11,15 @@
   updateEstimatedCompactionsByTasks(buckets);
   List<List<SSTableReader>> prunedBuckets=new ArrayList<List<SSTableReader>>();
   for (  List<SSTableReader> bucket : buckets) {
-    if (bucket.size() < cfs.getMinimumCompactionThreshold())     continue;
+    if (bucket.size() < minThreshold)     continue;
     Collections.sort(bucket,new Comparator<SSTableReader>(){
       public int compare(      SSTableReader o1,      SSTableReader o2){
         return o1.descriptor.generation - o2.descriptor.generation;
       }
     }
 );
-    prunedBuckets.add(bucket.subList(0,Math.min(bucket.size(),cfs.getMaximumCompactionThreshold())));
+    List<SSTableReader> prunedBucket=bucket.subList(0,Math.min(bucket.size(),maxThreshold));
+    prunedBuckets.add(prunedBucket);
   }
   if (prunedBuckets.isEmpty()) {
     for (    List<SSTableReader> bucket : buckets) {
