@@ -2,8 +2,10 @@
   EndpointState epState=endpointStateMap.get(endpoint);
   epState.updateTimestamp();
   epState.getHeartBeatState().forceNewerGenerationUnsafe();
-  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.removedNonlocal(hostId,computeExpireTime()));
+  long expireTime=computeExpireTime();
+  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.removedNonlocal(hostId,expireTime));
   logger.info("Completing removal of " + endpoint);
+  addExpireTimeForEndpoint(endpoint,expireTime);
   endpointStateMap.put(endpoint,epState);
   try {
     Thread.sleep(intervalInMillis * 2);
