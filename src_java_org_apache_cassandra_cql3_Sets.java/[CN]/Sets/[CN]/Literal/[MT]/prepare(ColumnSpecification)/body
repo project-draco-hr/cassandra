@@ -1,0 +1,15 @@
+{
+  validateAssignableTo(receiver);
+  if (receiver.type instanceof MapType && elements.isEmpty())   return new Maps.Value(Collections.<ByteBuffer,ByteBuffer>emptyMap());
+  ColumnSpecification valueSpec=Sets.valueSpecOf(receiver);
+  Set<ByteBuffer> values=new TreeSet<ByteBuffer>(((SetType)receiver.type).elements);
+  for (  Term.Raw rt : elements) {
+    Term t=rt.prepare(valueSpec);
+    if (!(t instanceof Constants.Value)) {
+      if (t instanceof Term.NonTerminal)       throw new InvalidRequestException(String.format("Invalid set literal for %s: bind variables are not supported inside collection literals",receiver));
+ else       throw new InvalidRequestException(String.format("Invalid set literal for %s: nested collections are not supported",receiver));
+    }
+    if (!values.add(((Constants.Value)t).bytes))     throw new InvalidRequestException(String.format("Invalid set literal: duplicate value %s",rt));
+  }
+  return new Value(values);
+}

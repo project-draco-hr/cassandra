@@ -1,6 +1,5 @@
 {
-  List<Pair<CFDefinition.Name,Selector>> selection=getExpandedSelection();
-  ResultSet cqlRows=createResult(selection);
+  Selection.ResultSetBuilder result=selection.resultSetBuilder();
   for (  org.apache.cassandra.db.Row row : rows) {
     if (row.cf == null)     continue;
     ByteBuffer[] keyComponents=null;
@@ -18,22 +17,21 @@
           components=((CompositeType)cfDef.cfm.comparator).split(c.name());
         }
  else         if (sliceRestriction != null) {
-          if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
-          if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END).getByteBuffer(cfDef.cfm.comparator,variables)))           continue;
+          if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START).bindAndGet(variables)))           continue;
+          if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END).bindAndGet(variables)))           continue;
         }
-        for (        Pair<CFDefinition.Name,Selector> p : selection) {
-          CFDefinition.Name name=p.left;
-          Selector selector=p.right;
+        result.newRow();
+        for (        CFDefinition.Name name : selection.getColumnsList()) {
 switch (name.kind) {
 case KEY_ALIAS:
-            addReturnValue(cqlRows,selector,keyComponents[name.position]);
+            result.add(keyComponents[name.position]);
           break;
 case COLUMN_ALIAS:
         ByteBuffer val=cfDef.isComposite ? (name.position < components.length ? components[name.position] : null) : c.name();
-      addReturnValue(cqlRows,selector,val);
+      result.add(val);
     break;
 case VALUE_ALIAS:
-  addReturnValue(cqlRows,selector,c);
+  result.add(c);
 break;
 case COLUMN_METADATA:
 throw new AssertionError();
@@ -50,23 +48,19 @@ for (Column c : row.cf) {
 if (c.isMarkedForDelete()) continue;
 builder.add(c);
 }
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,row.key.key,keyComponents,group,cqlRows);
+for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,row.key.key,keyComponents,group);
 }
  else {
 if (row.cf.hasOnlyTombstones()) continue;
-for (Pair<CFDefinition.Name,Selector> p : selection) {
-CFDefinition.Name name=p.left;
-Selector selector=p.right;
-if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) {
-addReturnValue(cqlRows,selector,keyComponents[name.position]);
-continue;
-}
-Column c=row.cf.getColumn(name.name.key);
-addReturnValue(cqlRows,selector,c);
+result.newRow();
+for (CFDefinition.Name name : selection.getColumnsList()) {
+if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) result.add(keyComponents[name.position]);
+ else result.add(row.cf.getColumn(name.name.key));
 }
 }
 }
-orderResults(selection,cqlRows);
+ResultSet cqlRows=result.build();
+orderResults(cqlRows);
 if (isReversed) cqlRows.reverse();
 cqlRows.trim(parameters.limit);
 return cqlRows;
