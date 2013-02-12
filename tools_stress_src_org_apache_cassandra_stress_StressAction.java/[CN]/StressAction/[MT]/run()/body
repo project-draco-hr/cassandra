@@ -20,6 +20,7 @@
   int interval=client.getProgressInterval();
   int epochIntervals=client.getProgressInterval() * 10;
   long testStartTime=System.currentTimeMillis();
+  StressStatistics stats=new StressStatistics(client,output);
   while (!terminate) {
     if (stop) {
       producer.stopProducer();
@@ -47,6 +48,9 @@
       int keyDelta=keyCount - oldKeyCount;
       long currentTimeInSeconds=(System.currentTimeMillis() - testStartTime) / 1000;
       output.println(String.format("%d,%d,%d,%.1f,%.1f,%.1f,%d",total,opDelta / interval,keyDelta / interval,latency.getMedian(),latency.get95thPercentile(),latency.get999thPercentile(),currentTimeInSeconds));
+      if (client.outputStatistics()) {
+        stats.addIntervalStats(total,opDelta / interval,keyDelta / interval,latency,currentTimeInSeconds);
+      }
     }
   }
   returnCode=SUCCESS;
@@ -55,6 +59,11 @@
     returnCode=FAILURE;
   }
   for (  Consumer consumer : consumers)   if (consumer.getReturnCode() == FAILURE)   returnCode=FAILURE;
-  if (returnCode == SUCCESS)   output.println("END");
- else   output.println("FAILURE");
+  if (returnCode == SUCCESS) {
+    if (client.outputStatistics())     stats.printStats();
+    output.println("END");
+  }
+ else {
+    output.println("FAILURE");
+  }
 }
