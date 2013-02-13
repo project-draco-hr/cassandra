@@ -1,5 +1,13 @@
 {
-  authenticator().setup();
-  authorizer().setup();
+  setupAuthKeyspace();
+  setupUsersTable();
+  DatabaseDescriptor.getAuthenticator().setup();
+  DatabaseDescriptor.getAuthorizer().setup();
   MigrationManager.instance.register(new MigrationListener());
+  StorageService.tasks.schedule(new Runnable(){
+    public void run(){
+      setupDefaultSuperuser();
+    }
+  }
+,SUPERUSER_SETUP_DELAY,TimeUnit.SECONDS);
 }
