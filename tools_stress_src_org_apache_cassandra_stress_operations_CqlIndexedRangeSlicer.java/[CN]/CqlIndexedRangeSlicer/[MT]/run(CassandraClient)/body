@@ -4,7 +4,7 @@
   if (cqlQuery == null) {
     StringBuilder query=new StringBuilder("SELECT FIRST ").append(session.getColumnsPerKey()).append(" ''..'' FROM Standard1");
     if (session.cqlVersion.startsWith("2"))     query.append(" USING CONSISTENCY ").append(session.getConsistencyLevel());
-    query.append(" WHERE C1=").append(getUnQuotedCqlBlob(values.get(1).array())).append(" AND KEY > ? LIMIT ").append(session.getKeysPerCall());
+    query.append(" WHERE C1=").append(getUnQuotedCqlBlob(values.get(1).array(),session.cqlVersion.startsWith("3"))).append(" AND KEY > ? LIMIT ").append(session.getKeysPerCall());
     cqlQuery=query.toString();
   }
   String format="%0" + session.getTotalKeysLength() + "d";
@@ -16,7 +16,7 @@
     String exceptionMessage=null;
     CqlResult results=null;
     String formattedQuery=null;
-    List<String> queryParms=Collections.singletonList(getUnQuotedCqlBlob(startOffset));
+    List<String> queryParms=Collections.singletonList(getUnQuotedCqlBlob(startOffset,session.cqlVersion.startsWith("3")));
     for (int t=0; t < session.getRetryTimes(); t++) {
       if (success)       break;
       try {
