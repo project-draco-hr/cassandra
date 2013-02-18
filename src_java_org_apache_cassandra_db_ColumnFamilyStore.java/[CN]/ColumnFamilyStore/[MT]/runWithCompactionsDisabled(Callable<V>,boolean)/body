@@ -1,0 +1,37 @@
+{
+synchronized (this) {
+    logger.debug("Cancelling in-progress compactions for {}",metadata.cfName);
+    Iterable<ColumnFamilyStore> selfWithIndexes=concatWithIndexes();
+    for (    ColumnFamilyStore cfs : selfWithIndexes)     cfs.getCompactionStrategy().pause();
+    try {
+      Function<ColumnFamilyStore,CFMetaData> f=new Function<ColumnFamilyStore,CFMetaData>(){
+        public CFMetaData apply(        ColumnFamilyStore cfs){
+          return cfs.metadata;
+        }
+      }
+;
+      Iterable<CFMetaData> allMetadata=Iterables.transform(selfWithIndexes,f);
+      CompactionManager.instance.interruptCompactionFor(allMetadata,interruptValidation);
+      long start=System.currentTimeMillis();
+      while (System.currentTimeMillis() < start + 60000) {
+        if (CompactionManager.instance.isCompacting(selfWithIndexes))         FBUtilities.sleep(100);
+ else         break;
+      }
+      for (      ColumnFamilyStore cfs : selfWithIndexes) {
+        if (!cfs.getDataTracker().getCompacting().isEmpty()) {
+          logger.warn("Unable to cancel in-progress compactios for {}.  Probably there is an unusually large row in progress somewhere.  It is also possible that buggy code left some sstables compacting after it was done with them",metadata.cfName);
+        }
+      }
+      logger.debug("Compactions successfully cancelled");
+      try {
+        return callable.call();
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+  finally {
+      for (      ColumnFamilyStore cfs : selfWithIndexes)       cfs.getCompactionStrategy().resume();
+    }
+  }
+}

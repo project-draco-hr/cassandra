@@ -24,15 +24,7 @@
   }
   if (!needsCleanup)   return;
   logger.info("Fixing timestamps of schema ColumnFamily " + columnFamily + "...");
-  try {
-    cfs.truncate().get();
-  }
- catch (  ExecutionException e) {
-    throw new RuntimeException(e);
-  }
-catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
+  cfs.truncateBlocking();
   long microTimestamp=now.getTime() * 1000;
   for (  Row row : rows) {
     if (Schema.invalidSchemaRow(row))     continue;
@@ -42,13 +34,5 @@ catch (  InterruptedException e) {
     }
     mutation.apply();
   }
-  try {
-    cfs.forceBlockingFlush();
-  }
- catch (  ExecutionException e) {
-    throw new RuntimeException("Could not flush after fixing schema timestamps",e);
-  }
-catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
+  cfs.forceBlockingFlush();
 }

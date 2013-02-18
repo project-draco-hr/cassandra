@@ -1,0 +1,46 @@
+{
+  logger.debug("truncating {}",name);
+  if (DatabaseDescriptor.isAutoSnapshot()) {
+    forceBlockingFlush();
+    try {
+      long starttime=System.currentTimeMillis();
+      while ((System.currentTimeMillis() - starttime) < 1) {
+        Thread.sleep(1);
+      }
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
+    }
+  }
+ else {
+    Table.switchLock.writeLock().lock();
+    try {
+      for (      ColumnFamilyStore cfs : concatWithIndexes()) {
+        Memtable mt=cfs.getMemtableThreadSafe();
+        if (!mt.isClean()) {
+          mt.cfs.data.renewMemtable();
+        }
+      }
+    }
+  finally {
+      Table.switchLock.writeLock().unlock();
+    }
+  }
+  Runnable truncateRunnable=new Runnable(){
+    public void run(){
+      logger.debug("Discarding sstable data for truncated CF + indexes");
+      final long truncatedAt=System.currentTimeMillis();
+      if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Table.getTimestampedSnapshotName(name));
+      ReplayPosition replayAfter=discardSSTables(truncatedAt);
+      for (      SecondaryIndex index : indexManager.getIndexes())       index.truncateBlocking(truncatedAt);
+      SystemTable.saveTruncationPosition(ColumnFamilyStore.this,replayAfter);
+      logger.debug("cleaning out row cache");
+      for (      RowCacheKey key : CacheService.instance.rowCache.getKeySet()) {
+        if (key.cfId == metadata.cfId)         CacheService.instance.rowCache.remove(key);
+      }
+    }
+  }
+;
+  runWithCompactionsDisabled(Executors.callable(truncateRunnable),true);
+  logger.debug("truncate complete");
+}

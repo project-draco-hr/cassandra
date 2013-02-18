@@ -1,22 +1,9 @@
 {
+  final AbstractCompactionTask task=cfStore.getCompactionStrategy().getMaximalTask(gcBefore);
   Runnable runnable=new WrappedRunnable(){
     protected void runMayThrow() throws IOException {
-      compactionLock.writeLock().lock();
-      try {
-        AbstractCompactionTask task=cfStore.getCompactionStrategy().getMaximalTask(gcBefore);
-        if (task == null)         return;
-        compactionLock.readLock().lock();
-        compactionLock.writeLock().unlock();
-        try {
-          task.execute(metrics);
-        }
-  finally {
-          compactionLock.readLock().unlock();
-        }
-      }
-  finally {
-        if (compactionLock.writeLock().isHeldByCurrentThread())         compactionLock.writeLock().unlock();
-      }
+      if (task == null)       return;
+      task.execute(metrics);
     }
   }
 ;

@@ -1,22 +1,15 @@
 {
   Runnable runnable=new Runnable(){
     public void run(){
-      compactionLock.readLock().lock();
+      metrics.beginCompaction(builder);
       try {
-        metrics.beginCompaction(builder);
-        try {
-          builder.build();
-        }
-  finally {
-          metrics.finishCompaction(builder);
-        }
+        builder.build();
       }
   finally {
-        compactionLock.readLock().unlock();
+        metrics.finishCompaction(builder);
       }
     }
   }
 ;
-  if (compactionLock.isWriteLockedByCurrentThread())   return new SimpleFuture(runnable);
- else   return executor.submit(runnable);
+  return executor.submit(runnable);
 }
