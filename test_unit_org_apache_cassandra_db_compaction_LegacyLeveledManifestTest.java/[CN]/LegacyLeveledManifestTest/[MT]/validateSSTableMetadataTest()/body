@@ -1,0 +1,21 @@
+{
+  Map<Descriptor,SSTableMetadata> beforeMigration=new HashMap<Descriptor,SSTableMetadata>();
+  for (int i=0; i <= 2; i++) {
+    Descriptor descriptor=Descriptor.fromFilename(destDir + File.separator + "Keyspace1-legacyleveled-hf-"+ i+ "-Statistics.db");
+    beforeMigration.put(descriptor,SSTableMetadata.serializer.deserialize(descriptor,false));
+  }
+  LegacyLeveledManifest.migrateManifests("Keyspace1","legacyleveled");
+  for (  Map.Entry<Descriptor,SSTableMetadata> entry : beforeMigration.entrySet()) {
+    SSTableMetadata newMetadata=SSTableMetadata.serializer.deserialize(entry.getKey());
+    SSTableMetadata oldMetadata=entry.getValue();
+    assertEquals(newMetadata.estimatedRowSize,oldMetadata.estimatedRowSize);
+    assertEquals(newMetadata.estimatedColumnCount,oldMetadata.estimatedColumnCount);
+    assertEquals(newMetadata.replayPosition,oldMetadata.replayPosition);
+    assertEquals(newMetadata.minTimestamp,oldMetadata.minTimestamp);
+    assertEquals(newMetadata.maxTimestamp,oldMetadata.maxTimestamp);
+    assertEquals(newMetadata.compressionRatio,oldMetadata.compressionRatio,0.01);
+    assertEquals(newMetadata.partitioner,oldMetadata.partitioner);
+    assertEquals(newMetadata.ancestors,oldMetadata.ancestors);
+    assertEquals(newMetadata.estimatedTombstoneDropTime,oldMetadata.estimatedTombstoneDropTime);
+  }
+}
