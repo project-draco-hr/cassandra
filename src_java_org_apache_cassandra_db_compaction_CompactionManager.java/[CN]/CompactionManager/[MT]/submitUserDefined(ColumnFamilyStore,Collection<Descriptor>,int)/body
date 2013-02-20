@@ -13,26 +13,12 @@
             sstables.add(sstable);
           }
         }
-        try {
-          if (sstables.isEmpty()) {
-            logger.info("No file to compact for user defined compaction");
-          }
- else           if (cfs.getDataTracker().markCompacting(sstables)) {
-            try {
-              AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-              AbstractCompactionTask task=strategy.getUserDefinedTask(sstables,gcBefore);
-              task.execute(metrics);
-            }
-  finally {
-              cfs.getDataTracker().unmarkCompacting(sstables);
-            }
-          }
- else {
-            logger.info("SSTables for user defined compaction are already being compacted.");
-          }
+        if (sstables.isEmpty()) {
+          logger.info("No files to compact for user defined compaction");
         }
-  finally {
-          SSTableReader.releaseReferences(sstables);
+ else {
+          AbstractCompactionTask task=cfs.getCompactionStrategy().getUserDefinedTask(sstables,gcBefore);
+          if (task != null)           task.execute(metrics);
         }
       }
   finally {
