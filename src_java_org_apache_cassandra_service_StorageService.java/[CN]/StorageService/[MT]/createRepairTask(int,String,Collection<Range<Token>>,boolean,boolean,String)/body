@@ -6,7 +6,15 @@
       sendNotification("repair",message,new int[]{cmd,AntiEntropyService.Status.STARTED.ordinal()});
       List<AntiEntropyService.RepairFuture> futures=new ArrayList<AntiEntropyService.RepairFuture>(ranges.size());
       for (      Range<Token> range : ranges) {
-        AntiEntropyService.RepairFuture future=forceTableRepair(range,keyspace,isSequential,isLocal,columnFamilies);
+        AntiEntropyService.RepairFuture future;
+        try {
+          future=forceTableRepair(range,keyspace,isSequential,isLocal,columnFamilies);
+        }
+ catch (        IllegalArgumentException e) {
+          logger.error("Repair session failed:",e);
+          sendNotification("repair",message,new int[]{cmd,AntiEntropyService.Status.SESSION_FAILED.ordinal()});
+          continue;
+        }
         if (future == null)         continue;
         futures.add(future);
         try {
