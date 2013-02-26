@@ -1,2 +1,12 @@
 {
+  int maxLiveColumns=resolver.getMaxLiveCount();
+  int count=filter.count;
+  if (maxLiveColumns >= count)   return null;
+  int liveCountInRow=row == null || row.cf == null ? 0 : filter.getLiveCount(row.cf);
+  if (liveCountInRow < getOriginalRequestedCount()) {
+    int retryCount=liveCountInRow == 0 ? count + 1 : ((count * count) / liveCountInRow) + 1;
+    SliceQueryFilter newFilter=filter.withUpdatedCount(retryCount);
+    return new RetriedSliceFromReadCommand(table,key,cfName,newFilter,getOriginalRequestedCount());
+  }
+  return null;
 }
