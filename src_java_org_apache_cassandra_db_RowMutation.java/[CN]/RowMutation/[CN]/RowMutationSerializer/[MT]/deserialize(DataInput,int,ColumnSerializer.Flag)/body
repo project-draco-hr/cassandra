@@ -1,2 +1,18 @@
 {
+  String table=dis.readUTF();
+  ByteBuffer key=ByteBufferUtil.readWithShortLength(dis);
+  int size=dis.readInt();
+  Map<UUID,ColumnFamily> modifications;
+  if (size == 1) {
+    ColumnFamily cf=deserializeOneCf(dis,version,flag);
+    modifications=Collections.singletonMap(cf.id(),cf);
+  }
+ else {
+    modifications=new HashMap<UUID,ColumnFamily>();
+    for (int i=0; i < size; ++i) {
+      ColumnFamily cf=deserializeOneCf(dis,version,flag);
+      modifications.put(cf.id(),cf);
+    }
+  }
+  return new RowMutation(table,key,modifications);
 }
