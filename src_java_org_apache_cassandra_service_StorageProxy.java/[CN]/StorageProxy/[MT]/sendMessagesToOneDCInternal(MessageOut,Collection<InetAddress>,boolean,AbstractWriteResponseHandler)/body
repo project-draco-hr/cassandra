@@ -1,7 +1,7 @@
 {
   Iterator<InetAddress> iter=targets.iterator();
   InetAddress target=iter.next();
-  if (localDC || MessagingService.instance().getVersion(target) < MessagingService.VERSION_11) {
+  if (localDC || MessagingService.instance().getVersion(target) < MessagingService.VERSION_20) {
     MessagingService.instance().sendRR(message,target,handler);
     while (iter.hasNext()) {
       target=iter.next();
@@ -15,11 +15,11 @@
   while (iter.hasNext()) {
     InetAddress destination=iter.next();
     CompactEndpointSerializationHelper.serialize(destination,dos);
-    String id=MessagingService.instance().addCallback(handler,message,destination,message.getTimeout());
-    dos.writeUTF(id);
+    int id=MessagingService.instance().addCallback(handler,message,destination,message.getTimeout());
+    dos.writeInt(id);
     logger.trace("Adding FWD message to {}@{}",id,destination);
   }
   message=message.withParameter(RowMutation.FORWARD_TO,bos.toByteArray());
-  String id=MessagingService.instance().sendRR(message,target,handler);
+  int id=MessagingService.instance().sendRR(message,target,handler);
   logger.trace("Sending message to {}@{}",id,target);
 }
