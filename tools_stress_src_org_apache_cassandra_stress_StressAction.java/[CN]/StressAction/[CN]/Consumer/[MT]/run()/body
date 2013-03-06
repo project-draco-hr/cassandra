@@ -1,19 +1,40 @@
 {
-  CassandraClient connection=client.getClient();
-  for (int i=0; i < items; i++) {
-    if (stop)     break;
-    try {
-      operations.take().run(connection);
-    }
- catch (    Exception e) {
-      if (output == null) {
-        System.err.println(e.getMessage());
-        returnCode=StressAction.FAILURE;
-        System.exit(-1);
+  if (client.use_native_protocol) {
+    SimpleClient connection=client.getNativeClient();
+    for (int i=0; i < items; i++) {
+      if (stop)       break;
+      try {
+        operations.take().run(connection);
       }
-      output.println(e.getMessage());
-      returnCode=StressAction.FAILURE;
-      break;
+ catch (      Exception e) {
+        if (output == null) {
+          System.err.println(e.getMessage());
+          returnCode=StressAction.FAILURE;
+          System.exit(-1);
+        }
+        output.println(e.getMessage());
+        returnCode=StressAction.FAILURE;
+        break;
+      }
+    }
+  }
+ else {
+    CassandraClient connection=client.getClient();
+    for (int i=0; i < items; i++) {
+      if (stop)       break;
+      try {
+        operations.take().run(connection);
+      }
+ catch (      Exception e) {
+        if (output == null) {
+          System.err.println(e.getMessage());
+          returnCode=StressAction.FAILURE;
+          System.exit(-1);
+        }
+        output.println(e.getMessage());
+        returnCode=StressAction.FAILURE;
+        break;
+      }
     }
   }
 }
