@@ -1,58 +1,29 @@
 {
-  ColumnFamilyStore hintStore=Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.HINTS_CF);
-  if (hintStore.isEmpty())   return;
-  if (hintedHandOffPaused) {
-    logger.debug("Hints delivery process is paused, aborting");
-    return;
-  }
-  logger.debug("Checking remote({}) schema before delivering hints",endpoint);
-  try {
-    waitForSchemaAgreement(endpoint);
-  }
- catch (  TimeoutException e) {
-    return;
-  }
-  if (!FailureDetector.instance.isAlive(endpoint)) {
-    logger.debug("Endpoint {} died before hint delivery, aborting",endpoint);
-    return;
-  }
   UUID hostId=Gossiper.instance.getHostId(endpoint);
   logger.info("Started hinted handoff for host: {} with IP: {}",hostId,endpoint);
   final ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
   DecoratedKey epkey=StorageService.getPartitioner().decorateKey(hostIdBytes);
   final AtomicInteger rowsReplayed=new AtomicInteger(0);
   ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
-  int pageSize=PAGE_SIZE;
-  if (hintStore.getMeanColumns() > 0) {
-    int averageColumnSize=(int)(hintStore.getMeanRowSize() / hintStore.getMeanColumns());
-    pageSize=Math.min(PAGE_SIZE,DatabaseDescriptor.getInMemoryCompactionLimit() / averageColumnSize);
-    pageSize=Math.max(2,pageSize);
-    logger.debug("average hinted-row column size is {}; using pageSize of {}",averageColumnSize,pageSize);
-  }
+  int pageSize=calculatePageSize();
+  logger.debug("Using pageSize of {}",pageSize);
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
-  while (true) {
-    if (hintedHandOffPaused) {
-      logger.debug("Hints delivery process is paused, aborting");
-      break;
-    }
+  delivery:   while (true) {
     QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
-    if (pagingFinished(hintsPage,startColumn)) {
-      if (ByteBufferUtil.EMPTY_BYTE_BUFFER.equals(startColumn)) {
-        break;
-      }
- else {
-        startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
-        continue;
-      }
+    if (pagingFinished(hintsPage,startColumn))     break;
+    if (!FailureDetector.instance.isAlive(endpoint)) {
+      logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)",endpoint,rowsReplayed);
+      return;
     }
+    List<WriteResponseHandler> responseHandlers=Lists.newArrayList();
     for (    final Column hint : hintsPage.getSortedColumns()) {
-      if (!hint.isLive())       continue;
       if (hintedHandOffPaused) {
         logger.debug("Hints delivery process is paused, aborting");
-        break;
+        break delivery;
       }
+      if (!hint.isLive())       continue;
       startColumn=hint.name();
       ByteBuffer[] components=comparator.split(hint.name());
       int version=Int32Type.instance.compose(components[1]);
@@ -66,31 +37,37 @@
         deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
         continue;
       }
+catch (      IOException e) {
+        throw new AssertionError(e);
+      }
       MessageOut<RowMutation> message=rm.createMessage();
       rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
-      WrappedRunnable callback=new WrappedRunnable(){
-        public void runMayThrow() throws IOException {
+      Runnable callback=new Runnable(){
+        public void run(){
           rowsReplayed.incrementAndGet();
           deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
         }
       }
 ;
-      IAsyncCallback responseHandler=new WriteResponseHandler(endpoint,WriteType.UNLOGGED_BATCH,callback);
+      WriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.UNLOGGED_BATCH,callback);
       MessagingService.instance().sendRR(message,endpoint,responseHandler);
+      responseHandlers.add(responseHandler);
     }
-    if (!FailureDetector.instance.isAlive(endpoint)) {
-      logger.debug("Endpoint {} died during hint delivery, aborting",endpoint);
-      return;
+    for (    WriteResponseHandler handler : responseHandlers) {
+      try {
+        handler.get();
+      }
+ catch (      WriteTimeoutException e) {
+        logger.info("Timed out replaying hints to {}; aborting ({} delivered)",endpoint,rowsReplayed);
+        return;
+      }
     }
   }
+  logger.info("Finished hinted handoff of {} rows to endpoint {}",rowsReplayed,endpoint);
   try {
     compact().get();
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
-  }
-  logger.info(String.format("Finished hinted handoff of %s rows to endpoint %s",rowsReplayed,endpoint));
-  if (hintedHandOffPaused) {
-    logger.info("Hints delivery process is paused, not delivering further hints");
   }
 }
