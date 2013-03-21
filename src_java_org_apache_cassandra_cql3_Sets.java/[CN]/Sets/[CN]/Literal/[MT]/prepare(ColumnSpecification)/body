@@ -9,7 +9,9 @@
       if (t instanceof Term.NonTerminal)       throw new InvalidRequestException(String.format("Invalid set literal for %s: bind variables are not supported inside collection literals",receiver));
  else       throw new InvalidRequestException(String.format("Invalid set literal for %s: nested collections are not supported",receiver));
     }
-    if (!values.add(((Constants.Value)t).bytes))     throw new InvalidRequestException(String.format("Invalid set literal: duplicate value %s",rt));
+    ByteBuffer bytes=((Constants.Value)t).bytes;
+    if (bytes.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)     throw new InvalidRequestException(String.format("Set value is too long. Set values are limited to %d bytes but %d bytes value provided",FBUtilities.MAX_UNSIGNED_SHORT,bytes.remaining()));
+    if (!values.add(bytes))     throw new InvalidRequestException(String.format("Invalid set literal: duplicate value %s",rt));
   }
   return new Value(values);
 }
