@@ -10,7 +10,11 @@
       if (k instanceof Term.NonTerminal || v instanceof Term.NonTerminal)       throw new InvalidRequestException(String.format("Invalid map literal for %s: bind variables are not supported inside collection literals",receiver));
  else       throw new InvalidRequestException(String.format("Invalid map literal for %s: nested collections are not supported",receiver));
     }
-    if (values.put(((Constants.Value)k).bytes,((Constants.Value)v).bytes) != null)     throw new InvalidRequestException(String.format("Invalid map literal: duplicate entry for key %s",entry.left));
+    ByteBuffer keyBytes=((Constants.Value)k).bytes;
+    if (keyBytes.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)     throw new InvalidRequestException(String.format("Map key is too long. Map keys are limited to %d bytes but %d bytes keys provided",FBUtilities.MAX_UNSIGNED_SHORT,keyBytes.remaining()));
+    ByteBuffer valueBytes=((Constants.Value)v).bytes;
+    if (valueBytes.remaining() > FBUtilities.MAX_UNSIGNED_SHORT)     throw new InvalidRequestException(String.format("Map value is too long. Map values are limited to %d bytes but %d bytes value provided",FBUtilities.MAX_UNSIGNED_SHORT,valueBytes.remaining()));
+    if (values.put(keyBytes,valueBytes) != null)     throw new InvalidRequestException(String.format("Invalid map literal: duplicate entry for key %s",entry.left));
   }
   return new Value(values);
 }
