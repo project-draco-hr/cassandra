@@ -1,0 +1,36 @@
+{
+  ColumnFamilyStore cfs=Table.open("Keyspace1").getColumnFamilyStore("Standard1");
+  cfs.disableAutoCompaction();
+  cfs.metadata.gcGraceSeconds(0);
+  long timestamp=System.currentTimeMillis();
+  RowMutation rm=new RowMutation("Keyspace1",Util.dk("ttl").key);
+  rm.add("Standard1",ByteBufferUtil.bytes("col"),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,1);
+  rm.add("Standard1",ByteBufferUtil.bytes("col7"),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new RowMutation("Keyspace1",Util.dk("ttl").key);
+  rm.add("Standard1",ByteBufferUtil.bytes("col2"),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new RowMutation("Keyspace1",Util.dk("ttl").key);
+  rm.add("Standard1",ByteBufferUtil.bytes("col3"),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  DecoratedKey noTTLKey=Util.dk("nottl");
+  rm=new RowMutation("Keyspace1",noTTLKey.key);
+  rm.add("Standard1",ByteBufferUtil.bytes("col311"),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  Thread.sleep(2000);
+  assertEquals(4,cfs.getSSTables().size());
+  cfs.enableAutoCompaction();
+  FBUtilities.waitOnFutures(CompactionManager.instance.submitBackground(cfs));
+  assertEquals(1,cfs.getSSTables().size());
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  SSTableScanner scanner=sstable.getScanner(new QueryFilter(null,"Standard1",new IdentityQueryFilter()));
+  assertTrue(scanner.hasNext());
+  while (scanner.hasNext()) {
+    OnDiskAtomIterator iter=scanner.next();
+    assertEquals(noTTLKey,iter.getKey());
+  }
+}

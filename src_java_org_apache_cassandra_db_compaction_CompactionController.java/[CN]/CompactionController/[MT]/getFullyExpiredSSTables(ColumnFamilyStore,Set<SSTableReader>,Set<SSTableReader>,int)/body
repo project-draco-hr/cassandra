@@ -1,0 +1,23 @@
+{
+  logger.debug("Checking droppable sstables in {}",cfStore);
+  List<SSTableReader> candidates=new ArrayList<SSTableReader>();
+  long minTimestamp=Integer.MAX_VALUE;
+  for (  SSTableReader sstable : overlapping)   minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
+  for (  SSTableReader candidate : compacting) {
+    if (candidate.getSSTableMetadata().maxLocalDeletionTime < gcBefore)     candidates.add(candidate);
+ else     minTimestamp=Math.min(minTimestamp,candidate.getMinTimestamp());
+  }
+  Collections.sort(candidates,SSTable.maxTimestampComparator);
+  Iterator<SSTableReader> iterator=candidates.iterator();
+  while (iterator.hasNext()) {
+    SSTableReader candidate=iterator.next();
+    if (candidate.getMaxTimestamp() >= minTimestamp) {
+      minTimestamp=Math.min(candidate.getMinTimestamp(),minTimestamp);
+      iterator.remove();
+    }
+ else {
+      logger.debug("Dropping expired SSTable {} (maxLocalDeletionTime={}, gcBefore={})",candidate,candidate.getSSTableMetadata().maxLocalDeletionTime,gcBefore);
+    }
+  }
+  return new HashSet<SSTableReader>(candidates);
+}
