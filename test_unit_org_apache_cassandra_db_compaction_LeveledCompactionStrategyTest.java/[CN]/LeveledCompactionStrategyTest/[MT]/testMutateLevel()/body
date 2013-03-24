@@ -15,13 +15,16 @@
     rm.apply();
     store.forceBlockingFlush();
   }
+  store.disableAutoCompaction();
   LeveledCompactionStrategy strat=(LeveledCompactionStrategy)store.getCompactionStrategy();
   while (strat.getLevelSize(0) > 1) {
     store.forceMajorCompaction();
     Thread.sleep(200);
   }
   Set<SSTableReader> changedSSTables=new HashSet<SSTableReader>();
-  for (  SSTableReader s : table.getColumnFamilyStore(cfname).getSSTables()) {
+  Collection<SSTableReader> sstables=store.getDataTracker().getUncompactingSSTables();
+  store.getDataTracker().markCompacting(sstables);
+  for (  SSTableReader s : sstables) {
     assertTrue(s.getSSTableLevel() != 6);
     strat.manifest.remove(s);
     LeveledManifest.mutateLevel(s.getSSTableMetadata(),s.descriptor,s.descriptor.filenameFor(Component.STATS),6);
@@ -30,10 +33,8 @@
     strat.manifest.add(s);
   }
   for (  SSTableReader s : table.getColumnFamilyStore(cfname).getSSTables()) {
-    assertTrue(!changedSSTables.contains(s) || s.getSSTableLevel() == 6);
+    if (changedSSTables.contains(s))     assertTrue(s.getSSTableLevel() == 6);
   }
   int[] levels=strat.manifest.getAllLevelSize();
-  for (int i=0; i < levels.length; i++) {
-    if (i == 6)     assertEquals(table.getColumnFamilyStore(cfname).getSSTables().size(),levels[i]);
-  }
+  assertEquals(changedSSTables.size(),levels[6]);
 }
