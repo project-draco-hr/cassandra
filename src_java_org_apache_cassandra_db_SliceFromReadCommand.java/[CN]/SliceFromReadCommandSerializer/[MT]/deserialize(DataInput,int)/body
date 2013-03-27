@@ -1,25 +1,25 @@
 {
-  boolean isDigest=dis.readBoolean();
-  String table=dis.readUTF();
-  ByteBuffer key=ByteBufferUtil.readWithShortLength(dis);
+  boolean isDigest=in.readBoolean();
+  String table=in.readUTF();
+  ByteBuffer key=ByteBufferUtil.readWithShortLength(in);
   String cfName;
   ByteBuffer sc=null;
   if (version < MessagingService.VERSION_20) {
-    QueryPath path=QueryPath.deserialize(dis);
+    QueryPath path=QueryPath.deserialize(in);
     cfName=path.columnFamilyName;
     sc=path.superColumnName;
   }
  else {
-    cfName=dis.readUTF();
+    cfName=in.readUTF();
   }
   CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
   SliceQueryFilter filter;
   if (version < MessagingService.VERSION_20) {
-    filter=SliceQueryFilter.serializer.deserialize(dis,version);
+    filter=SliceQueryFilter.serializer.deserialize(in,version);
     if (metadata.cfType == ColumnFamilyType.Super)     filter=SuperColumns.fromSCSliceFilter((CompositeType)metadata.comparator,sc,filter);
   }
  else {
-    filter=SliceQueryFilter.serializer.deserialize(dis,version);
+    filter=SliceQueryFilter.serializer.deserialize(in,version);
   }
   ReadCommand command=new SliceFromReadCommand(table,key,cfName,filter);
   command.setDigestQuery(isDigest);

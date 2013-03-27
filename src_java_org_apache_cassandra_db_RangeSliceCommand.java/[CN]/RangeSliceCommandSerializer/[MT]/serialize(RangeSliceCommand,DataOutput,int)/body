@@ -1,6 +1,6 @@
 {
-  dos.writeUTF(sliceCommand.keyspace);
-  dos.writeUTF(sliceCommand.column_family);
+  out.writeUTF(sliceCommand.keyspace);
+  out.writeUTF(sliceCommand.column_family);
   IDiskAtomFilter filter=sliceCommand.predicate;
   if (version < MessagingService.VERSION_20) {
     ByteBuffer sc=null;
@@ -10,37 +10,37 @@
       sc=scFilter.scName;
       filter=scFilter.updatedFilter;
     }
-    dos.writeInt(sc == null ? 0 : sc.remaining());
-    if (sc != null)     ByteBufferUtil.write(sc,dos);
+    out.writeInt(sc == null ? 0 : sc.remaining());
+    if (sc != null)     ByteBufferUtil.write(sc,out);
   }
   if (version < MessagingService.VERSION_12) {
-    FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),asSlicePredicate(sliceCommand.predicate),dos);
+    FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),asSlicePredicate(sliceCommand.predicate),out);
   }
  else {
-    IDiskAtomFilter.Serializer.instance.serialize(sliceCommand.predicate,dos,version);
+    IDiskAtomFilter.Serializer.instance.serialize(sliceCommand.predicate,out,version);
   }
   if (version >= MessagingService.VERSION_11) {
     if (sliceCommand.row_filter == null) {
-      dos.writeInt(0);
+      out.writeInt(0);
     }
  else {
-      dos.writeInt(sliceCommand.row_filter.size());
+      out.writeInt(sliceCommand.row_filter.size());
       for (      IndexExpression expr : sliceCommand.row_filter) {
         if (version < MessagingService.VERSION_12) {
-          FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),expr,dos);
+          FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),expr,out);
         }
  else {
-          ByteBufferUtil.writeWithShortLength(expr.column_name,dos);
-          dos.writeInt(expr.op.getValue());
-          ByteBufferUtil.writeWithShortLength(expr.value,dos);
+          ByteBufferUtil.writeWithShortLength(expr.column_name,out);
+          out.writeInt(expr.op.getValue());
+          ByteBufferUtil.writeWithShortLength(expr.value,out);
         }
       }
     }
   }
-  AbstractBounds.serializer.serialize(sliceCommand.range,dos,version);
-  dos.writeInt(sliceCommand.maxResults);
+  AbstractBounds.serializer.serialize(sliceCommand.range,out,version);
+  out.writeInt(sliceCommand.maxResults);
   if (version >= MessagingService.VERSION_11) {
-    dos.writeBoolean(sliceCommand.countCQL3Rows);
-    dos.writeBoolean(sliceCommand.isPaging);
+    out.writeBoolean(sliceCommand.countCQL3Rows);
+    out.writeBoolean(sliceCommand.isPaging);
   }
 }

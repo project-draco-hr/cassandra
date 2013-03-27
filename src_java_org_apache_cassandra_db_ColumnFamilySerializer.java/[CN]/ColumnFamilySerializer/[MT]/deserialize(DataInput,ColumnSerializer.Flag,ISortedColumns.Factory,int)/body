@@ -1,16 +1,16 @@
 {
-  if (!dis.readBoolean())   return null;
-  ColumnFamily cf=ColumnFamily.create(deserializeCfId(dis,version),factory);
+  if (!in.readBoolean())   return null;
+  ColumnFamily cf=ColumnFamily.create(deserializeCfId(in,version),factory);
   int expireBefore=(int)(System.currentTimeMillis() / 1000);
   if (cf.metadata().isSuper() && version < MessagingService.VERSION_20) {
-    SuperColumns.deserializerSuperColumnFamily(dis,cf,flag,expireBefore,version);
+    SuperColumns.deserializerSuperColumnFamily(in,cf,flag,expireBefore,version);
   }
  else {
-    cf.delete(DeletionInfo.serializer().deserialize(dis,version,cf.getComparator()));
+    cf.delete(DeletionInfo.serializer().deserialize(in,version,cf.getComparator()));
     ColumnSerializer columnSerializer=Column.serializer;
-    int size=dis.readInt();
+    int size=in.readInt();
     for (int i=0; i < size; ++i) {
-      cf.addColumn(columnSerializer.deserialize(dis,flag,expireBefore));
+      cf.addColumn(columnSerializer.deserialize(in,flag,expireBefore));
     }
   }
   return cf;
