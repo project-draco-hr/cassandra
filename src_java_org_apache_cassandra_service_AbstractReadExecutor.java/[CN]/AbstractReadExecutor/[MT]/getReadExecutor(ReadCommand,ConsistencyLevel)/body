@@ -1,9 +1,13 @@
 {
   Table table=Table.open(command.table);
-  ColumnFamilyStore cfs=table.getColumnFamilyStore(command.cfName);
   List<InetAddress> allReplicas=StorageProxy.getLiveSortedEndpoints(table,command.key);
-  List<InetAddress> queryTargets=consistency_level.filterForQuery(table,allReplicas,cfs.metadata.newReadRepairDecision());
-switch (cfs.metadata.getSpeculativeRetry().type) {
+  CFMetaData metaData=Schema.instance.getCFMetaData(command.table,command.cfName);
+  List<InetAddress> queryTargets=consistency_level.filterForQuery(table,allReplicas,metaData.newReadRepairDecision());
+  if (StorageService.instance.isClientMode()) {
+    return new DefaultReadExecutor(null,command,consistency_level,allReplicas,queryTargets);
+  }
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(command.cfName);
+switch (metaData.getSpeculativeRetry().type) {
 case ALWAYS:
     return new SpeculateAlwaysExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
 case PERCENTILE:
