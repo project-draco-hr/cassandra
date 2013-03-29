@@ -1,0 +1,12 @@
+{
+  if (QueryProcessor.process(new StringBuilder().append("SELECT * FROM system.schema_keyspaces WHERE keyspace_name='").append(KEYSPACE).append("'").toString(),ConsistencyLevel.QUORUM).isEmpty()) {
+    QueryProcessor.process(new StringBuilder().append("CREATE KEYSPACE ").append(KEYSPACE).append(" WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '1' }").toString(),ConsistencyLevel.QUORUM);
+    Thread.sleep(1000);
+  }
+  if (QueryProcessor.process(new StringBuilder().append("SELECT * FROM system.schema_columnfamilies WHERE keyspace_name='").append(KEYSPACE).append("' AND columnfamily_name='").append(COLUMN_FAMILY).append("'").toString(),ConsistencyLevel.QUORUM).isEmpty()) {
+    ClientState state=new ClientState();
+    state.setKeyspace(KEYSPACE);
+    QueryProcessor.process(new StringBuilder().append("CREATE TABLE ").append(COLUMN_FAMILY).append(" ( id ascii PRIMARY KEY, name ascii, value ascii )").toString(),ConsistencyLevel.QUORUM,new QueryState(state));
+    Thread.sleep(1000);
+  }
+}
