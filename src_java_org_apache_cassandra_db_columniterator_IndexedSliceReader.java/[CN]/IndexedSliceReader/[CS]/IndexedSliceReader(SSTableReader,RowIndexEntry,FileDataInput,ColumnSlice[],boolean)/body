@@ -5,12 +5,13 @@
   this.slices=slices;
   this.comparator=sstable.metadata.comparator;
   try {
-    if (sstable.descriptor.version.hasPromotedIndexes) {
+    Descriptor.Version version=sstable.descriptor.version;
+    if (version.hasPromotedIndexes) {
       this.indexes=indexEntry.columnsIndex();
       if (indexes.isEmpty()) {
         setToRowStart(sstable,indexEntry,input);
         this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
-        emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+        emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
         fetcher=new SimpleBlockFetcher();
       }
  else {
@@ -21,10 +22,10 @@
     }
  else {
       setToRowStart(sstable,indexEntry,input);
-      IndexHelper.skipBloomFilter(file);
+      IndexHelper.skipBloomFilter(file,version.filterType);
       this.indexes=IndexHelper.deserializeIndex(file);
       this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
-      emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+      emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
       fetcher=indexes.isEmpty() ? new SimpleBlockFetcher() : new IndexedBlockFetcher(file.getFilePointer() + 4);
     }
   }
