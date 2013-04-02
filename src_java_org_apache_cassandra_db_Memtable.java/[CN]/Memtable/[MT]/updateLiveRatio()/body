@@ -13,9 +13,9 @@
       try {
         activelyMeasuring=Memtable.this;
         long start=System.currentTimeMillis();
-        long deepSize=meter.measure(columnFamilies);
+        long deepSize=meter.measure(rows);
         int objects=0;
-        for (        Map.Entry<RowPosition,ColumnFamily> entry : columnFamilies.entrySet()) {
+        for (        Map.Entry<RowPosition,AtomicSortedColumns> entry : rows.entrySet()) {
           deepSize+=meter.measureDeep(entry.getKey()) + meter.measureDeep(entry.getValue());
           objects+=entry.getValue().getColumnCount();
         }
@@ -30,7 +30,7 @@
         }
         if (newRatio > cfs.liveRatio)         cfs.liveRatio=newRatio;
  else         cfs.liveRatio=(cfs.liveRatio + newRatio) / 2.0;
-        logger.info("{} liveRatio is {} (just-counted was {}).  calculation took {}ms for {} columns",new Object[]{cfs,cfs.liveRatio,newRatio,System.currentTimeMillis() - start,objects});
+        logger.info("{} liveRatio is {} (just-counted was {}).  calculation took {}ms for {} columns",cfs,cfs.liveRatio,newRatio,System.currentTimeMillis() - start,objects);
         activelyMeasuring=null;
       }
   finally {

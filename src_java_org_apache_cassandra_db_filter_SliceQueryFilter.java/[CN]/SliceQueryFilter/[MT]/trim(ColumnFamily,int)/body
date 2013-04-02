@@ -1,21 +1,12 @@
 {
   ColumnCounter counter=getColumnCounter(cf);
-  Collection<ByteBuffer> toRemove=null;
-  boolean trimRemaining=false;
   Collection<Column> columns=reversed ? cf.getReverseSortedColumns() : cf.getSortedColumns();
-  for (  Column column : columns) {
-    if (trimRemaining) {
-      toRemove.add(column.name());
-      continue;
-    }
+  for (Iterator<Column> iter=columns.iterator(); iter.hasNext(); ) {
+    Column column=iter.next();
     counter.count(column,cf);
     if (counter.live() > trimTo) {
-      toRemove=new HashSet<ByteBuffer>();
-      toRemove.add(column.name());
-      trimRemaining=true;
+      iter.remove();
+      while (iter.hasNext())       iter.remove();
     }
-  }
-  if (toRemove != null) {
-    for (    ByteBuffer columnName : toRemove)     cf.remove(columnName);
   }
 }
