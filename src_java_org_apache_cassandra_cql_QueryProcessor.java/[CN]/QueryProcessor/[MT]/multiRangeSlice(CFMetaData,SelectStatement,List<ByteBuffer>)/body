@@ -1,5 +1,4 @@
 {
-  List<org.apache.cassandra.db.Row> rows;
   IPartitioner<?> p=StorageService.getPartitioner();
   AbstractType<?> keyType=Schema.instance.getCFMetaData(metadata.ksName,select.getColumnFamily()).getKeyValidator();
   ByteBuffer startKeyBytes=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType,variables) : null;
@@ -20,12 +19,7 @@
     expressions.add(new IndexExpression(entity,IndexOperator.valueOf(columnRelation.operator().toString()),value));
   }
   int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();
-  try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),columnFilter,bounds,expressions,limit),select.getConsistencyLevel());
-  }
- catch (  IOException e) {
-    throw new RuntimeException(e);
-  }
+  List<org.apache.cassandra.db.Row> rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),columnFilter,bounds,expressions,limit),select.getConsistencyLevel());
   if (select.getKeyStart() != null && !select.includeStartKey() && !rows.isEmpty()) {
     if (rows.get(0).key.key.equals(startKeyBytes))     rows.remove(0);
   }
