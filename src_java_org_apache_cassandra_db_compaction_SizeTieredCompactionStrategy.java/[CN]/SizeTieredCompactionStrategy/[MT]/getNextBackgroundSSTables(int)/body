@@ -6,38 +6,16 @@
     return Collections.emptyList();
   }
   Set<SSTableReader> candidates=cfs.getUncompactingSSTables();
-  List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(filterSuspectSSTables(candidates)));
+  List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(filterSuspectSSTables(candidates)),bucketHigh,bucketLow,minSSTableSize);
   logger.debug("Compaction buckets are {}",buckets);
   updateEstimatedCompactionsByTasks(buckets);
-  List<List<SSTableReader>> prunedBuckets=new ArrayList<List<SSTableReader>>();
-  for (  List<SSTableReader> bucket : buckets) {
-    if (bucket.size() < minThreshold)     continue;
-    Collections.sort(bucket,new Comparator<SSTableReader>(){
-      public int compare(      SSTableReader o1,      SSTableReader o2){
-        return o1.descriptor.generation - o2.descriptor.generation;
-      }
-    }
-);
-    List<SSTableReader> prunedBucket=bucket.subList(0,Math.min(bucket.size(),maxThreshold));
-    prunedBuckets.add(prunedBucket);
+  List<SSTableReader> mostInteresting=mostInterestingBucket(buckets,minThreshold,maxThreshold);
+  if (!mostInteresting.isEmpty())   return mostInteresting;
+  List<SSTableReader> sstablesWithTombstones=new ArrayList<SSTableReader>();
+  for (  SSTableReader sstable : candidates) {
+    if (worthDroppingTombstones(sstable,gcBefore))     sstablesWithTombstones.add(sstable);
   }
-  if (prunedBuckets.isEmpty()) {
-    for (    List<SSTableReader> bucket : buckets) {
-      for (      SSTableReader table : bucket) {
-        if (worthDroppingTombstones(table,gcBefore))         prunedBuckets.add(Collections.singletonList(table));
-      }
-    }
-    if (prunedBuckets.isEmpty())     return Collections.emptyList();
-  }
-  return Collections.min(prunedBuckets,new Comparator<List<SSTableReader>>(){
-    public int compare(    List<SSTableReader> o1,    List<SSTableReader> o2){
-      return Longs.compare(avgSize(o1),avgSize(o2));
-    }
-    private long avgSize(    List<SSTableReader> sstables){
-      long n=0;
-      for (      SSTableReader sstable : sstables)       n+=sstable.bytesOnDisk();
-      return n / sstables.size();
-    }
-  }
-);
+  if (sstablesWithTombstones.isEmpty())   return Collections.emptyList();
+  Collections.sort(sstablesWithTombstones,new SSTableReader.SizeComparator());
+  return Collections.singletonList(sstablesWithTombstones.get(0));
 }
