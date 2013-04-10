@@ -2,7 +2,7 @@
   String ksname="Keyspace1";
   String cfname="StandardLeveled";
   Table table=Table.open(ksname);
-  ColumnFamilyStore store=table.getColumnFamilyStore(cfname);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfname);
   ByteBuffer value=ByteBuffer.wrap(new byte[100 * 1024]);
   int rows=20;
   int columns=10;
@@ -13,17 +13,17 @@
       rm.add(cfname,ByteBufferUtil.bytes("column" + c),value,0);
     }
     rm.apply();
-    store.forceBlockingFlush();
+    cfs.forceBlockingFlush();
   }
-  store.disableAutoCompaction();
-  LeveledCompactionStrategy strat=(LeveledCompactionStrategy)store.getCompactionStrategy();
+  cfs.disableAutoCompaction();
+  LeveledCompactionStrategy strat=(LeveledCompactionStrategy)cfs.getCompactionStrategy();
   while (strat.getLevelSize(0) > 1) {
-    store.forceMajorCompaction();
-    Thread.sleep(200);
+    cfs.forceMajorCompaction();
+    Thread.sleep(100);
   }
   Set<SSTableReader> changedSSTables=new HashSet<SSTableReader>();
-  Collection<SSTableReader> sstables=store.getDataTracker().getUncompactingSSTables();
-  store.getDataTracker().markCompacting(sstables);
+  Collection<SSTableReader> sstables=cfs.getDataTracker().getUncompactingSSTables();
+  cfs.getDataTracker().markCompacting(sstables);
   for (  SSTableReader s : sstables) {
     assertTrue(s.getSSTableLevel() != 6);
     strat.manifest.remove(s);
