@@ -1,0 +1,9 @@
+{
+  logger.debug("committing {}",proposal);
+  RowMutation rm=proposal.makeMutation();
+  Table.open(rm.getTable()).apply(rm,true);
+synchronized (lockFor(proposal.key)) {
+    PaxosState state=SystemTable.loadPaxosState(proposal.key,proposal.update.metadata());
+    SystemTable.savePaxosCommit(proposal,!state.inProgressCommit.isAfter(proposal));
+  }
+}

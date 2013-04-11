@@ -1,0 +1,12 @@
+{
+synchronized (lockFor(proposal.key)) {
+    PaxosState state=SystemTable.loadPaxosState(proposal.key,proposal.update.metadata());
+    if (proposal.hasBallot(state.inProgressCommit.ballot) || proposal.isAfter(state.inProgressCommit)) {
+      logger.debug("accepting {}",proposal);
+      SystemTable.savePaxosProposal(proposal);
+      return true;
+    }
+    logger.debug("accept requested for {} but inProgress is now {}",proposal,state.inProgressCommit);
+    return false;
+  }
+}

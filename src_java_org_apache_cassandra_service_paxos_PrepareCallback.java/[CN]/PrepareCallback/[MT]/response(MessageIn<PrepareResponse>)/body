@@ -1,0 +1,12 @@
+{
+  PrepareResponse response=message.payload;
+  logger.debug("Prepare response {} from {}",response,message.from);
+  if (!response.promised) {
+    promised=false;
+    while (latch.getCount() > 0)     latch.countDown();
+    return;
+  }
+  if (response.mostRecentCommit.isAfter(mostRecentCommit))   mostRecentCommit=response.mostRecentCommit;
+  if (response.inProgressCommit.isAfter(inProgressCommit))   inProgressCommit=response.inProgressCommit;
+  latch.countDown();
+}
