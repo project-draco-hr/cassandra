@@ -1,0 +1,27 @@
+{
+  Message message=entry.message;
+  try {
+    write(message,id,out);
+    completed++;
+    if (active.peek() == null) {
+      out.flush();
+    }
+  }
+ catch (  Exception e) {
+    disconnect();
+    if (e instanceof IOException) {
+      if (logger.isDebugEnabled())       logger.debug("error writing to " + poolReference.endPoint(),e);
+      if (e instanceof SocketException && entry.shouldRetry()) {
+        try {
+          backlog.put(new RetriedEntry(entry));
+        }
+ catch (        InterruptedException e1) {
+          throw new AssertionError(e1);
+        }
+      }
+    }
+ else {
+      logger.error("error writing to " + poolReference.endPoint(),e);
+    }
+  }
+}
