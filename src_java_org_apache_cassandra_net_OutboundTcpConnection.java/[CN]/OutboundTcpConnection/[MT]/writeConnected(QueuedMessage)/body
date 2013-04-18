@@ -14,8 +14,20 @@
     }
   }
  catch (  Exception e) {
-    if (!(e instanceof IOException))     logger.error("error writing to " + poolReference.endPoint(),e);
- else     if (logger.isDebugEnabled())     logger.debug("error writing to " + poolReference.endPoint(),e);
     disconnect();
+    if (e instanceof IOException) {
+      if (logger.isDebugEnabled())       logger.debug("error writing to " + poolReference.endPoint(),e);
+      if (e instanceof SocketException && qm.shouldRetry()) {
+        try {
+          backlog.put(new RetriedQueuedMessage(qm));
+        }
+ catch (        InterruptedException e1) {
+          throw new AssertionError(e1);
+        }
+      }
+    }
+ else {
+      logger.error("error writing to " + poolReference.endPoint(),e);
+    }
   }
 }
