@@ -6,36 +6,27 @@
   this.comparator=sstable.metadata.comparator;
   try {
     Descriptor.Version version=sstable.descriptor.version;
-    emptyColumnFamily=ColumnFamily.create(sstable.metadata);
-    if (version.hasPromotedRowTombstones && !rowEntry.columnsIndex().isEmpty()) {
-      indexes=rowEntry.columnsIndex();
-      emptyColumnFamily.delete(rowEntry.deletionInfo());
-      fetcher=new IndexedBlockFetcher(rowEntry.position);
-      return;
-    }
-    if (input == null) {
-      file=sstable.getFileDataInput(rowEntry.position);
-    }
- else {
-      file=input;
-      file.seek(rowEntry.position);
-    }
-    this.sstable.decodeKey(ByteBufferUtil.readWithShortLength(file));
-    SSTableReader.readRowSize(file,this.sstable.descriptor);
     if (version.hasPromotedIndexes) {
-      indexes=rowEntry.columnsIndex();
-      emptyColumnFamily.delete(rowEntry.deletionInfo());
+      this.indexes=indexEntry.columnsIndex();
+      if (indexes.isEmpty()) {
+        setToRowStart(sstable,indexEntry,input);
+        this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+        emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
+        fetcher=new SimpleBlockFetcher();
+      }
+ else {
+        this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+        emptyColumnFamily.delete(indexEntry.deletionInfo());
+        fetcher=new IndexedBlockFetcher(indexEntry.position);
+      }
     }
  else {
-      IndexHelper.skipSSTableBloomFilter(input,version);
-      indexes=IndexHelper.deserializeIndex(file);
-    }
-    emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
-    if (indexes.isEmpty()) {
-      fetcher=new SimpleBlockFetcher();
-    }
- else {
-      fetcher=version.hasPromotedIndexes ? new IndexedBlockFetcher(rowEntry.position) : new IndexedBlockFetcher(file.getFilePointer() + 4);
+      setToRowStart(sstable,indexEntry,input);
+      IndexHelper.skipSSTableBloomFilter(file,version);
+      this.indexes=IndexHelper.deserializeIndex(file);
+      this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
+      emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
+      fetcher=indexes.isEmpty() ? new SimpleBlockFetcher() : new IndexedBlockFetcher(file.getFilePointer() + 4);
     }
   }
  catch (  IOException e) {
