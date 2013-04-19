@@ -4,22 +4,22 @@
   this.comparator=sstable.metadata.comparator;
   try {
     if (input == null) {
-      this.file=sstable.getFileDataInput(indexEntry.position);
+      this.file=sstable.getFileDataInput(rowEntry.position);
       this.needsClosing=true;
     }
  else {
       this.file=input;
-      input.seek(indexEntry.position);
+      input.seek(rowEntry.position);
       this.needsClosing=false;
     }
     ByteBufferUtil.skipShortLength(file);
     SSTableReader.readRowSize(file,sstable.descriptor);
+    emptyColumnFamily=ColumnFamily.create(sstable.metadata);
     Descriptor.Version version=sstable.descriptor.version;
     if (!version.hasPromotedIndexes) {
       IndexHelper.skipSSTableBloomFilter(file,version);
       IndexHelper.skipIndex(file);
     }
-    emptyColumnFamily=ColumnFamily.create(sstable.metadata);
     emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
     atomSerializer=emptyColumnFamily.getOnDiskSerializer();
     columns=file.readInt();
