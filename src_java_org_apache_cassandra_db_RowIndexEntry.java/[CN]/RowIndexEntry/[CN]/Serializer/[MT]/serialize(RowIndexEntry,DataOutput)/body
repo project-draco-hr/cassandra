@@ -1,10 +1,11 @@
 {
   dos.writeLong(rie.position);
-  if (!rie.columnsIndex().isEmpty() || rie.deletionTime() != DeletionTime.LIVE) {
-    dos.writeInt(rie.promotedSize());
-    DeletionTime.serializer.serialize(rie.deletionTime(),dos);
+  if (rie.isIndexed()) {
+    dos.writeInt(((IndexedEntry)rie).serializedSize());
+    DeletionInfo.serializer().serializeForSSTable(rie.deletionInfo(),dos);
     dos.writeInt(rie.columnsIndex().size());
     for (    IndexHelper.IndexInfo info : rie.columnsIndex())     info.serialize(dos);
+    FilterFactory.serialize(rie.bloomFilter(),dos);
   }
  else {
     dos.writeInt(0);
