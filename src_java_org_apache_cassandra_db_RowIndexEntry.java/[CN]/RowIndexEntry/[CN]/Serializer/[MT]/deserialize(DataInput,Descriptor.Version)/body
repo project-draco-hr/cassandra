@@ -1,18 +1,18 @@
 {
   long position=in.readLong();
-  if (version.hasPromotedIndexes) {
-    int size=in.readInt();
-    if (size > 0) {
-      DeletionInfo delInfo=DeletionInfo.serializer().deserializeFromSSTable(in,version);
-      int entries=in.readInt();
-      List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<IndexHelper.IndexInfo>(entries);
-      for (int i=0; i < entries; i++)       columnsIndex.add(IndexHelper.IndexInfo.deserialize(in));
-      if (version.hasRowLevelBF)       IndexHelper.skipBloomFilter(in,version.filterType);
-      return new IndexedEntry(position,delInfo,columnsIndex);
+  if (!version.hasPromotedIndexes)   return new RowIndexEntry(position);
+  int size=in.readInt();
+  if (size > 0) {
+    DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+    int entries=in.readInt();
+    List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<IndexHelper.IndexInfo>(entries);
+    for (int i=0; i < entries; i++)     columnsIndex.add(IndexHelper.IndexInfo.deserialize(in));
+    if (version.hasRowLevelBF) {
+      in.readInt();
+      int words=in.readInt();
+      FileUtils.skipBytesFully(in,words * 8);
     }
- else {
-      return new RowIndexEntry(position);
-    }
+    return new IndexedEntry(position,deletionTime,columnsIndex);
   }
  else {
     return new RowIndexEntry(position);
