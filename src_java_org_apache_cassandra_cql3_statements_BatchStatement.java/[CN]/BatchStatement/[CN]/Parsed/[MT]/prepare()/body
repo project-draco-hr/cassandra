@@ -1,0 +1,12 @@
+{
+  ColumnSpecification[] boundNames=new ColumnSpecification[getBoundsTerms()];
+  List<ModificationStatement> statements=new ArrayList<ModificationStatement>(parsedStatements.size());
+  for (  ModificationStatement.Parsed parsed : parsedStatements) {
+    ModificationStatement stmt=parsed.prepare(boundNames);
+    if (stmt.hasConditions())     throw new InvalidRequestException("Conditional updates are not allowed in batches");
+    if (stmt.isCounter() && type != Type.COUNTER)     throw new InvalidRequestException("Counter mutations are only allowed in COUNTER batches");
+    if (!stmt.isCounter() && type == Type.COUNTER)     throw new InvalidRequestException("Only counter mutations are allowed in COUNTER batches");
+    statements.add(stmt);
+  }
+  return new ParsedStatement.Prepared(new BatchStatement(getBoundsTerms(),type,statements,attrs),Arrays.<ColumnSpecification>asList(boundNames));
+}

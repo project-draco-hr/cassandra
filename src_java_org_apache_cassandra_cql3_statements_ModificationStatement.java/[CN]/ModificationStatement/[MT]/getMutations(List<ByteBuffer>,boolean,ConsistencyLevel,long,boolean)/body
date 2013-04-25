@@ -1,0 +1,13 @@
+{
+  List<ByteBuffer> keys=buildPartitionKeyNames(variables);
+  ColumnNameBuilder clusteringPrefix=createClusteringPrefixBuilder(variables);
+  Map<ByteBuffer,ColumnGroupMap> rows=readRequiredRows(keys,clusteringPrefix,local,cl);
+  UpdateParameters params=new UpdateParameters(cfm,variables,getTimestamp(now),getTimeToLive(),rows);
+  Collection<IMutation> mutations=new ArrayList<IMutation>();
+  for (  ByteBuffer key : keys) {
+    ThriftValidation.validateKey(cfm,key);
+    ColumnFamily cf=updateForKey(key,clusteringPrefix,params);
+    mutations.add(makeMutation(key,cf,cl,isBatch));
+  }
+  return mutations;
+}

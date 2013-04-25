@@ -1,0 +1,26 @@
+{
+  CFDefinition cfDef=cfm.getCfDef();
+  for (  Relation rel : whereClause) {
+    CFDefinition.Name name=cfDef.get(rel.getEntity());
+    if (name == null)     throw new InvalidRequestException(String.format("Unknown key identifier %s",rel.getEntity()));
+switch (name.kind) {
+case KEY_ALIAS:
+case COLUMN_ALIAS:
+      List<Term.Raw> rawValues;
+    if (rel.operator() == Relation.Type.EQ)     rawValues=Collections.singletonList(rel.getValue());
+ else     if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS && rel.operator() == Relation.Type.IN)     rawValues=rel.getInValues();
+ else     throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),name));
+  List<Term> values=new ArrayList<Term>(rawValues.size());
+for (Term.Raw raw : rawValues) {
+  Term t=raw.prepare(name);
+  t.collectMarkerSpecification(names);
+  values.add(t);
+}
+addKeyValues(name.name,values);
+break;
+case VALUE_ALIAS:
+case COLUMN_METADATA:
+throw new InvalidRequestException(String.format("Non PRIMARY KEY %s found in where clause",name));
+}
+}
+}
