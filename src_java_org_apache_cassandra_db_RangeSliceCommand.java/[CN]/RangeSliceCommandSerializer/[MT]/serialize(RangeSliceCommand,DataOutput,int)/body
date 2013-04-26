@@ -13,34 +13,20 @@
     out.writeInt(sc == null ? 0 : sc.remaining());
     if (sc != null)     ByteBufferUtil.write(sc,out);
   }
-  if (version < MessagingService.VERSION_12) {
-    FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),asSlicePredicate(sliceCommand.predicate),out);
+  IDiskAtomFilter.Serializer.instance.serialize(sliceCommand.predicate,out,version);
+  if (sliceCommand.row_filter == null) {
+    out.writeInt(0);
   }
  else {
-    IDiskAtomFilter.Serializer.instance.serialize(sliceCommand.predicate,out,version);
-  }
-  if (version >= MessagingService.VERSION_11) {
-    if (sliceCommand.row_filter == null) {
-      out.writeInt(0);
-    }
- else {
-      out.writeInt(sliceCommand.row_filter.size());
-      for (      IndexExpression expr : sliceCommand.row_filter) {
-        if (version < MessagingService.VERSION_12) {
-          FBUtilities.serialize(new TSerializer(new TBinaryProtocol.Factory()),expr,out);
-        }
- else {
-          ByteBufferUtil.writeWithShortLength(expr.column_name,out);
-          out.writeInt(expr.op.getValue());
-          ByteBufferUtil.writeWithShortLength(expr.value,out);
-        }
-      }
+    out.writeInt(sliceCommand.row_filter.size());
+    for (    IndexExpression expr : sliceCommand.row_filter) {
+      ByteBufferUtil.writeWithShortLength(expr.column_name,out);
+      out.writeInt(expr.op.getValue());
+      ByteBufferUtil.writeWithShortLength(expr.value,out);
     }
   }
   AbstractBounds.serializer.serialize(sliceCommand.range,out,version);
   out.writeInt(sliceCommand.maxResults);
-  if (version >= MessagingService.VERSION_11) {
-    out.writeBoolean(sliceCommand.countCQL3Rows);
-    out.writeBoolean(sliceCommand.isPaging);
-  }
+  out.writeBoolean(sliceCommand.countCQL3Rows);
+  out.writeBoolean(sliceCommand.isPaging);
 }

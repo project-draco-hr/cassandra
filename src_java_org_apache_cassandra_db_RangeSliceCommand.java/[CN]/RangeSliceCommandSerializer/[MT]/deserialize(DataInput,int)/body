@@ -19,42 +19,23 @@
  else {
       comparator=metadata.comparator;
     }
-    if (version < MessagingService.VERSION_12) {
-      SlicePredicate pred=new SlicePredicate();
-      FBUtilities.deserialize(new TDeserializer(new TBinaryProtocol.Factory()),pred,in);
-      predicate=ThriftValidation.asIFilter(pred,metadata,superColumn);
-    }
- else {
-      predicate=IDiskAtomFilter.Serializer.instance.deserialize(in,version,comparator);
-    }
+    predicate=IDiskAtomFilter.Serializer.instance.deserialize(in,version,comparator);
     if (metadata.cfType == ColumnFamilyType.Super)     predicate=SuperColumns.fromSCFilter((CompositeType)metadata.comparator,superColumn,predicate);
   }
  else {
     predicate=IDiskAtomFilter.Serializer.instance.deserialize(in,version,metadata.comparator);
   }
   List<IndexExpression> rowFilter=null;
-  if (version >= MessagingService.VERSION_11) {
-    int filterCount=in.readInt();
-    rowFilter=new ArrayList<IndexExpression>(filterCount);
-    for (int i=0; i < filterCount; i++) {
-      IndexExpression expr;
-      if (version < MessagingService.VERSION_12) {
-        expr=new IndexExpression();
-        FBUtilities.deserialize(new TDeserializer(new TBinaryProtocol.Factory()),expr,in);
-      }
- else {
-        expr=new IndexExpression(ByteBufferUtil.readWithShortLength(in),IndexOperator.findByValue(in.readInt()),ByteBufferUtil.readWithShortLength(in));
-      }
-      rowFilter.add(expr);
-    }
+  int filterCount=in.readInt();
+  rowFilter=new ArrayList<IndexExpression>(filterCount);
+  for (int i=0; i < filterCount; i++) {
+    IndexExpression expr;
+    expr=new IndexExpression(ByteBufferUtil.readWithShortLength(in),IndexOperator.findByValue(in.readInt()),ByteBufferUtil.readWithShortLength(in));
+    rowFilter.add(expr);
   }
   AbstractBounds<RowPosition> range=AbstractBounds.serializer.deserialize(in,version).toRowBounds();
   int maxResults=in.readInt();
-  boolean countCQL3Rows=false;
-  boolean isPaging=false;
-  if (version >= MessagingService.VERSION_11) {
-    countCQL3Rows=in.readBoolean();
-    isPaging=in.readBoolean();
-  }
+  boolean countCQL3Rows=in.readBoolean();
+  boolean isPaging=in.readBoolean();
   return new RangeSliceCommand(keyspace,columnFamily,predicate,range,rowFilter,maxResults,countCQL3Rows,isPaging);
 }

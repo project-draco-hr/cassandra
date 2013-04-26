@@ -1,22 +1,9 @@
 {
   ColumnFamilyStore schemaCFS=SystemTable.schemaCFS(SystemTable.SCHEMA_KEYSPACES_CF);
   if (schemaCFS.estimateKeys() == 0) {
-    UUID uuid=MigrationManager.getLastMigrationId();
-    if (uuid == null) {
-      logger.info("Couldn't detect any schema definitions in local storage.");
-      if (hasExistingNoSystemTables())       logger.info("Found table data in data directories. Consider using the CLI to define your schema.");
- else       logger.info("To create keyspaces and column families, see 'help create keyspace' in the CLI, or set up a schema using the thrift system_* calls.");
-    }
- else {
-      logger.info("Loading schema version " + uuid.toString());
-      Collection<KSMetaData> tableDefs=DefsTable.loadFromStorage(uuid);
-      if (tableDefs.size() == 0) {
-        logger.warn("No schema definitions were found in local storage.");
-      }
- else {
-        Schema.instance.load(tableDefs);
-      }
-    }
+    logger.info("Couldn't detect any schema definitions in local storage.");
+    if (hasExistingNoSystemTables())     logger.info("Found table data in data directories. Consider using cqlsh to define your schema.");
+ else     logger.info("To create keyspaces and column families, see 'help create table' in cqlsh.");
   }
  else {
     Schema.instance.load(DefsTable.loadFromTable());
