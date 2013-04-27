@@ -10,29 +10,20 @@
     try {
       tokens=StorageService.instance.getTokenMetadata().getTokens(endpoint);
     }
- catch (    AssertionError e) {
+ catch (    Throwable th) {
+      logger.warn("Unable to calculate tokens for {}.  Will use a random one",address);
+      tokens=Collections.singletonList(StorageService.getPartitioner().getRandomToken());
     }
     int generation=epState.getHeartBeatState().getGeneration();
     logger.info("Sleeping for " + StorageService.RING_DELAY + "ms to ensure "+ endpoint+ " does not change");
-    try {
-      Thread.sleep(StorageService.RING_DELAY);
-    }
- catch (    InterruptedException e) {
-      throw new AssertionError(e);
-    }
+    FBUtilities.sleep(StorageService.RING_DELAY);
     epState=endpointStateMap.get(endpoint);
     if (epState.getHeartBeatState().getGeneration() != generation)     throw new RuntimeException("Endpoint " + endpoint + " generation changed while trying to remove it");
     epState.updateTimestamp();
     epState.getHeartBeatState().forceNewerGenerationUnsafe();
   }
-  if (tokens == null)   tokens=Arrays.asList(StorageService.instance.getBootstrapToken());
   epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.left(tokens,computeExpireTime()));
   handleMajorStateChange(endpoint,epState);
-  try {
-    Thread.sleep(intervalInMillis * 4);
-  }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
+  FBUtilities.sleep(intervalInMillis * 4);
   logger.warn("Finished killing {}",endpoint);
 }
