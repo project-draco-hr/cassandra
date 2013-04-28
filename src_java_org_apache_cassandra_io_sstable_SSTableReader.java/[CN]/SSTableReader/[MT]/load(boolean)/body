@@ -9,7 +9,8 @@
     long histogramCount=sstableMetadata.estimatedRowSize.count();
     long estimatedKeys=histogramCount > 0 && !sstableMetadata.estimatedRowSize.isOverflowed() ? histogramCount : estimateRowsFromIndex(primaryIndex);
     if (recreatebloom)     bf=LegacyBloomFilter.getFilter(estimatedKeys,15);
-    if (!summaryLoaded)     indexSummary=new IndexSummary(estimatedKeys);
+    IndexSummaryBuilder summaryBuilder=null;
+    if (!summaryLoaded)     summaryBuilder=new IndexSummaryBuilder(estimatedKeys);
     long indexPosition;
     while (readIndex && (indexPosition=primaryIndex.getFilePointer()) != indexSize) {
       ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
@@ -19,18 +20,18 @@
       last=decoratedKey;
       if (recreatebloom)       bf.add(decoratedKey.key);
       if (!summaryLoaded) {
-        indexSummary.maybeAddEntry(decoratedKey,indexPosition);
+        summaryBuilder.maybeAddEntry(decoratedKey,indexPosition);
         ibuilder.addPotentialBoundary(indexPosition);
         dbuilder.addPotentialBoundary(indexEntry.position);
       }
     }
+    if (!summaryLoaded)     indexSummary=summaryBuilder.build(partitioner);
   }
   finally {
     FileUtils.closeQuietly(primaryIndex);
   }
   first=getMinimalKey(first);
   last=getMinimalKey(last);
-  indexSummary.complete();
   ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
   dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
   if (readIndex)   saveSummary(this,ibuilder,dbuilder);
