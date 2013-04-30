@@ -8,7 +8,7 @@
   this.controller=isOffline ? new ScrubController(cfs) : new CompactionController(cfs,Collections.singleton(sstable),CompactionManager.getDefaultGcBefore(cfs));
   this.isCommutative=cfs.metadata.getDefaultValidator().isCommutative();
   this.expectedBloomFilterSize=Math.max(cfs.metadata.getIndexInterval(),(int)(SSTableReader.getApproximateKeyCount(toScrub,cfs.metadata)));
-  this.dataFile=sstable.openDataReader();
+  this.dataFile=isOffline ? sstable.openDataReader() : sstable.openDataReader(CompactionManager.instance.getRateLimiter());
   this.indexFile=RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX)));
   this.scrubInfo=new ScrubInfo(dataFile,sstable);
 }
