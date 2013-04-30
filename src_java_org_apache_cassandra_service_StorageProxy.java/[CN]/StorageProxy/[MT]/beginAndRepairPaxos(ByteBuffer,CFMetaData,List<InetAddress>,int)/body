@@ -1,0 +1,25 @@
+{
+  UUID ballot=UUIDGen.getTimeUUID();
+  logger.debug("Preparing {}",ballot);
+  Commit toPrepare=Commit.newPrepare(key,metadata,ballot);
+  PrepareCallback summary=preparePaxos(toPrepare,liveEndpoints,requiredParticipants);
+  if (!summary.promised) {
+    logger.debug("Some replicas have already promised a higher ballot than ours; aborting");
+    FBUtilities.sleep(FBUtilities.threadLocalRandom().nextInt(100));
+    return null;
+  }
+  Commit inProgress=summary.inProgressCommit;
+  Commit mostRecent=summary.mostRecentCommit;
+  if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent)) {
+    logger.debug("Finishing incomplete paxos round {}",inProgress);
+    if (proposePaxos(inProgress,liveEndpoints,requiredParticipants))     commitPaxos(inProgress,liveEndpoints);
+    return null;
+  }
+  Iterable<InetAddress> missingMRC=summary.replicasMissingMostRecentCommit();
+  if (Iterables.size(missingMRC) > 0) {
+    logger.debug("Repairing replicas that missed the most recent commit");
+    commitPaxos(mostRecent,missingMRC);
+    return null;
+  }
+  return ballot;
+}

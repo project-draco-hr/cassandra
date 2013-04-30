@@ -7,7 +7,23 @@
   long startTime=System.nanoTime();
   List<Row> rows=null;
   try {
-    rows=fetchRows(commands,consistency_level);
+    if (consistency_level == ConsistencyLevel.SERIAL) {
+      if (commands.size() > 1)       throw new InvalidRequestException("SERIAL consistency may only be requested for one row at a time");
+      ReadCommand command=commands.get(0);
+      CFMetaData metadata=Schema.instance.getCFMetaData(command.table,command.cfName);
+      long timedOut=System.currentTimeMillis() + DatabaseDescriptor.getCasContentionTimeout();
+      while (true) {
+        Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.table,command.key);
+        List<InetAddress> liveEndpoints=p.left;
+        int requiredParticipants=p.right;
+        if (beginAndRepairPaxos(command.key,metadata,liveEndpoints,requiredParticipants) != null)         break;
+        if (System.currentTimeMillis() >= timedOut)         throw new WriteTimeoutException(WriteType.CAS,ConsistencyLevel.SERIAL,-1,-1);
+      }
+      rows=fetchRows(commands,ConsistencyLevel.QUORUM);
+    }
+ else {
+      rows=fetchRows(commands,consistency_level);
+    }
   }
  catch (  UnavailableException e) {
     readMetrics.unavailables.mark();

@@ -2,34 +2,11 @@
   CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
   long timedOut=System.currentTimeMillis() + DatabaseDescriptor.getCasContentionTimeout();
   while (System.currentTimeMillis() < timedOut) {
-    UUID ballot=UUIDGen.getTimeUUID();
-    Token tk=StorageService.getPartitioner().getToken(key);
-    List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table,tk);
-    Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table);
-    int requiredParticipants=pendingEndpoints.size() + 1 + naturalEndpoints.size() / 2;
-    List<InetAddress> liveEndpoints=ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints,pendingEndpoints),IAsyncCallback.isAlive));
-    if (liveEndpoints.size() < requiredParticipants)     throw new UnavailableException(ConsistencyLevel.SERIAL,requiredParticipants,liveEndpoints.size());
-    logger.debug("Preparing {}",ballot);
-    Commit toPrepare=Commit.newPrepare(key,metadata,ballot);
-    PrepareCallback summary=preparePaxos(toPrepare,liveEndpoints,requiredParticipants);
-    if (!summary.promised) {
-      logger.debug("Some replicas have already promised a higher ballot than ours; aborting");
-      FBUtilities.sleep(FBUtilities.threadLocalRandom().nextInt(100));
-      continue;
-    }
-    Commit inProgress=summary.inProgressCommit;
-    Commit mostRecent=summary.mostRecentCommit;
-    if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent)) {
-      logger.debug("Finishing incomplete paxos round {}",inProgress);
-      if (proposePaxos(inProgress,liveEndpoints,requiredParticipants))       commitPaxos(inProgress,liveEndpoints);
-      continue;
-    }
-    Iterable<InetAddress> missingMRC=summary.replicasMissingMostRecentCommit();
-    if (Iterables.size(missingMRC) > 0) {
-      logger.debug("Repairing replicas that missed the most recent commit");
-      commitPaxos(mostRecent,missingMRC);
-      continue;
-    }
+    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(table,key);
+    List<InetAddress> liveEndpoints=p.left;
+    int requiredParticipants=p.right;
+    UUID ballot=beginAndRepairPaxos(key,metadata,liveEndpoints,requiredParticipants);
+    if (ballot == null)     continue;
     logger.debug("Reading existing values for CAS precondition");
     ReadCommand readCommand=expected == null ? new SliceFromReadCommand(table,key,cfName,new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1)) : new SliceByNamesReadCommand(table,key,cfName,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
     List<Row> rows=read(Arrays.asList(readCommand),ConsistencyLevel.QUORUM);
@@ -38,7 +15,7 @@
       logger.debug("CAS precondition {} does not match current values {}",expected,current);
       return false;
     }
-    Commit proposal=toPrepare.makeProposal(updates);
+    Commit proposal=Commit.newProposal(key,ballot,updates);
     logger.debug("CAS precondition is met; proposing client-requested updates for {}",ballot);
     if (proposePaxos(proposal,liveEndpoints,requiredParticipants)) {
       commitPaxos(proposal,liveEndpoints);

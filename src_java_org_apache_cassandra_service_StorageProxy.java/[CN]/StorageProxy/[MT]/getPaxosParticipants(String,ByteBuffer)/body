@@ -1,0 +1,9 @@
+{
+  Token tk=StorageService.getPartitioner().getToken(key);
+  List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table,tk);
+  Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table);
+  int requiredParticipants=pendingEndpoints.size() + 1 + naturalEndpoints.size() / 2;
+  List<InetAddress> liveEndpoints=ImmutableList.copyOf(Iterables.filter(Iterables.concat(naturalEndpoints,pendingEndpoints),IAsyncCallback.isAlive));
+  if (liveEndpoints.size() < requiredParticipants)   throw new UnavailableException(ConsistencyLevel.SERIAL,requiredParticipants,liveEndpoints.size());
+  return Pair.create(liveEndpoints,requiredParticipants);
+}
