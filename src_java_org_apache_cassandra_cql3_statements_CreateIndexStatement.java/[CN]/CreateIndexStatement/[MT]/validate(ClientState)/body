@@ -1,0 +1,20 @@
+{
+  CFMetaData cfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
+  CFDefinition.Name name=cfm.getCfDef().get(columnName);
+  if (name == null)   throw new InvalidRequestException("No column definition found for column " + columnName);
+switch (name.kind) {
+case KEY_ALIAS:
+case COLUMN_ALIAS:
+    throw new InvalidRequestException(String.format("Cannot create index on PRIMARY KEY part %s",columnName));
+case VALUE_ALIAS:
+  throw new InvalidRequestException(String.format("Cannot create index on column %s of compact CF",columnName));
+case COLUMN_METADATA:
+ColumnDefinition cd=cfm.getColumnDefinition(columnName.key);
+if (cd.getIndexType() != null) throw new InvalidRequestException("Index already exists");
+if (cd.getValidator().isCollection()) throw new InvalidRequestException("Indexes on collections are no yet supported");
+props.validate(isCustom);
+break;
+default :
+throw new AssertionError();
+}
+}
