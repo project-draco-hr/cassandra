@@ -2,13 +2,7 @@
   Selection.ResultSetBuilder result=selection.resultSetBuilder();
   for (  org.apache.cassandra.db.Row row : rows) {
     if (row.cf == null)     continue;
-    ByteBuffer[] keyComponents=null;
-    if (cfDef.hasCompositeKey) {
-      keyComponents=((CompositeType)cfDef.cfm.getKeyValidator()).split(row.key.key);
-    }
- else {
-      keyComponents=new ByteBuffer[]{row.key.key};
-    }
+    ByteBuffer[] keyComponents=cfDef.hasCompositeKey ? ((CompositeType)cfDef.cfm.getKeyValidator()).split(row.key.key) : new ByteBuffer[]{row.key.key};
     if (cfDef.isCompact) {
       for (      Column c : columnsInOrder(row.cf,variables)) {
         if (c.isMarkedForDelete())         continue;
@@ -48,7 +42,7 @@ for (Column c : row.cf) {
 if (c.isMarkedForDelete()) continue;
 builder.add(c);
 }
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,row.key.key,keyComponents,group);
+for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyComponents,group);
 }
  else {
 if (row.cf.hasOnlyTombstones()) continue;
