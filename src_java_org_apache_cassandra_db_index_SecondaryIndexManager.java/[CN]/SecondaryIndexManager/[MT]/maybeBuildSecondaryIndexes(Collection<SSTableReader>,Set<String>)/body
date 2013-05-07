@@ -3,15 +3,7 @@
   logger.info(String.format("Submitting index build of %s for data in %s",idxNames,StringUtils.join(sstables,", ")));
   SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,idxNames,new ReducingKeyIterator(sstables));
   Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
-  try {
-    future.get();
-  }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
-catch (  ExecutionException e) {
-    throw new RuntimeException(e);
-  }
+  FBUtilities.waitOnFuture(future);
   flushIndexesBlocking();
   logger.info("Index build of " + idxNames + " complete");
 }

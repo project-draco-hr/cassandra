@@ -3,19 +3,8 @@
   Collection<SSTableReader> sstables=baseCfs.markCurrentSSTablesReferenced();
   SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,Collections.singleton(getIndexName()),new ReducingKeyIterator(sstables));
   Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
-  try {
-    future.get();
-    forceBlockingFlush();
-    setIndexBuilt();
-  }
- catch (  InterruptedException e) {
-    throw new AssertionError(e);
-  }
-catch (  ExecutionException e) {
-    throw new RuntimeException(e);
-  }
- finally {
-    SSTableReader.releaseReferences(sstables);
-  }
+  FBUtilities.waitOnFuture(future);
+  forceBlockingFlush();
+  setIndexBuilt();
   logger.info("Index build of " + getIndexName() + " complete");
 }
