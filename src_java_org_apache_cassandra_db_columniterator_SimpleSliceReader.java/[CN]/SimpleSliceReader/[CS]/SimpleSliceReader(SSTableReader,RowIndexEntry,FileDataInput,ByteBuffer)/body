@@ -1,4 +1,5 @@
 {
+  logger.debug("Slicing {}",sstable);
   this.finishColumn=finishColumn;
   this.comparator=sstable.metadata.comparator;
   try {
@@ -11,13 +12,13 @@
       input.seek(indexEntry.position);
       this.needsClosing=false;
     }
-    ByteBufferUtil.skipShortLength(file);
-    file.readLong();
     Descriptor.Version version=sstable.descriptor.version;
+    ByteBufferUtil.skipShortLength(file);
+    if (version.hasRowSizeAndColumnCount)     file.readLong();
     emptyColumnFamily=EmptyColumns.factory.create(sstable.metadata);
-    emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
-    atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,file.readInt(),version);
-    mark=file.mark();
+    emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,sstable.descriptor.version));
+    int columnCount=version.hasRowSizeAndColumnCount ? file.readInt() : Integer.MAX_VALUE;
+    atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,columnCount,sstable.descriptor.version);
   }
  catch (  IOException e) {
     sstable.markSuspect();

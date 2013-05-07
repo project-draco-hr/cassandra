@@ -1,0 +1,40 @@
+{
+  long currentPosition=beforeAppend(key);
+  DeletionInfo deletionInfo=DeletionInfo.serializer().deserializeFromSSTable(in,descriptor.version);
+  long minTimestamp=Long.MAX_VALUE;
+  long maxTimestamp=Long.MIN_VALUE;
+  int maxLocalDeletionTime=Integer.MIN_VALUE;
+  StreamingHistogram tombstones=new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
+  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(metadata);
+  cf.delete(deletionInfo);
+  ColumnIndex.Builder columnIndexer=new ColumnIndex.Builder(cf,key.key,dataFile.stream,true);
+  OnDiskAtom.Serializer atomSerializer=Column.onDiskSerializer();
+  try {
+    while (true) {
+      OnDiskAtom atom=atomSerializer.deserializeFromSSTable(in,ColumnSerializer.Flag.PRESERVE_SIZE,Integer.MIN_VALUE,Descriptor.Version.CURRENT);
+      if (atom == null)       break;
+      if (atom instanceof CounterColumn)       atom=((CounterColumn)atom).markDeltaToBeCleared();
+      int deletionTime=atom.getLocalDeletionTime();
+      if (deletionTime < Integer.MAX_VALUE) {
+        tombstones.update(deletionTime);
+      }
+      minTimestamp=Math.min(minTimestamp,atom.minTimestamp());
+      maxTimestamp=Math.max(maxTimestamp,atom.maxTimestamp());
+      maxLocalDeletionTime=Math.max(maxLocalDeletionTime,atom.getLocalDeletionTime());
+      columnIndexer.add(atom);
+    }
+    columnIndexer.finish();
+    dataFile.stream.writeShort(END_OF_ROW);
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,dataFile.getPath());
+  }
+  sstableMetadataCollector.updateMinTimestamp(minTimestamp);
+  sstableMetadataCollector.updateMaxTimestamp(maxTimestamp);
+  sstableMetadataCollector.updateMaxLocalDeletionTime(maxLocalDeletionTime);
+  sstableMetadataCollector.addRowSize(dataFile.getFilePointer() - currentPosition);
+  sstableMetadataCollector.addColumnCount(columnIndexer.writtenAtomCount());
+  sstableMetadataCollector.mergeTombstoneHistogram(tombstones);
+  afterAppend(key,currentPosition,RowIndexEntry.create(currentPosition,deletionInfo.getTopLevelDeletion(),columnIndexer.build()));
+  return currentPosition;
+}

@@ -1,7 +1,7 @@
 {
-  SSTableReader reader=SSTableReader.open(desc);
-  SSTableScanner scanner=reader.getScanner();
-  IPartitioner<?> partitioner=reader.partitioner;
+  SSTableReader sstable=SSTableReader.open(desc);
+  RandomAccessReader dfile=sstable.openDataReader();
+  IPartitioner<?> partitioner=sstable.partitioner;
   if (excludes != null)   toExport.removeAll(Arrays.asList(excludes));
   outs.println("[");
   int i=0;
@@ -10,16 +10,19 @@
     DecoratedKey decoratedKey=partitioner.decorateKey(hexToBytes(key));
     if (lastKey != null && lastKey.compareTo(decoratedKey) > 0)     throw new IOException("Key out of order! " + lastKey + " > "+ decoratedKey);
     lastKey=decoratedKey;
-    scanner.seekTo(decoratedKey);
-    if (!scanner.hasNext())     continue;
-    SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
-    if (!row.getKey().equals(decoratedKey))     continue;
-    serializeRow(row,decoratedKey,outs);
+    RowIndexEntry entry=sstable.getPosition(decoratedKey,SSTableReader.Operator.EQ);
+    if (entry == null)     continue;
+    dfile.seek(entry.position);
+    ByteBufferUtil.readWithShortLength(dfile);
+    if (sstable.descriptor.version.hasRowSizeAndColumnCount)     dfile.readLong();
+    DeletionInfo deletionInfo=DeletionInfo.serializer().deserializeFromSSTable(dfile,sstable.descriptor.version);
+    int columnCount=sstable.descriptor.version.hasRowSizeAndColumnCount ? dfile.readInt() : Integer.MAX_VALUE;
+    Iterator<OnDiskAtom> atomIterator=sstable.metadata.getOnDiskIterator(dfile,columnCount,sstable.descriptor.version);
+    serializeRow(deletionInfo,atomIterator,sstable.metadata,decoratedKey,outs);
     if (i != 0)     outs.println(",");
     checkStream(outs);
     i++;
   }
   outs.println("\n]");
   outs.flush();
-  scanner.close();
 }
