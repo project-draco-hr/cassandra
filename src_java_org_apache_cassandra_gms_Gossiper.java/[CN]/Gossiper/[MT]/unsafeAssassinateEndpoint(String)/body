@@ -16,7 +16,7 @@
     }
     int generation=epState.getHeartBeatState().getGeneration();
     logger.info("Sleeping for " + StorageService.RING_DELAY + "ms to ensure "+ endpoint+ " does not change");
-    FBUtilities.sleep(StorageService.RING_DELAY);
+    Uninterruptibles.sleepUninterruptibly(StorageService.RING_DELAY,TimeUnit.MILLISECONDS);
     epState=endpointStateMap.get(endpoint);
     if (epState.getHeartBeatState().getGeneration() != generation)     throw new RuntimeException("Endpoint " + endpoint + " generation changed while trying to remove it");
     epState.updateTimestamp();
@@ -24,6 +24,6 @@
   }
   epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.left(tokens,computeExpireTime()));
   handleMajorStateChange(endpoint,epState);
-  FBUtilities.sleep(intervalInMillis * 4);
+  Uninterruptibles.sleepUninterruptibly(intervalInMillis * 4,TimeUnit.MILLISECONDS);
   logger.warn("Finished killing {}",endpoint);
 }
