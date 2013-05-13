@@ -10,9 +10,10 @@
   }
   logger.debug("Scheduling a background task check for {}.{} with {}",cfs.table.getName(),cfs.name,cfs.getCompactionStrategy().getClass().getSimpleName());
   List<Future<?>> futures=new ArrayList<Future<?>>();
-  while (executor.getActiveCount() + futures.size() < executor.getMaximumPoolSize()) {
+  do {
     futures.add(executor.submit(new BackgroundCompactionTask(cfs)));
     compactingCF.add(cfs);
   }
+ while (executor.getActiveCount() + futures.size() < executor.getMaximumPoolSize());
   return futures;
 }
