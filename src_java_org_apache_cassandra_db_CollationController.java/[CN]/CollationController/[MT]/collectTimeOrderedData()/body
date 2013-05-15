@@ -43,22 +43,9 @@
       temp.clear();
     }
     if (iterators.isEmpty())     return null;
-    CloseableIterator<OnDiskAtom> toCollate=new SimpleAbstractColumnIterator(){
-      final Iterator<Column> iter=container.iterator();
-      protected OnDiskAtom computeNext(){
-        return iter.hasNext() ? iter.next() : endOfData();
-      }
-      public ColumnFamily getColumnFamily(){
-        return container;
-      }
-      public DecoratedKey getKey(){
-        return filter.key;
-      }
-    }
-;
     ColumnFamily returnCF=container.cloneMeShallow();
     Tracing.trace("Collating all results");
-    filter.collateOnDiskAtom(returnCF,Collections.singletonList(toCollate),gcBefore);
+    filter.collateOnDiskAtom(returnCF,Collections.singletonList(container.iterator()),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy) {
       Tracing.trace("Defragmenting requested data");
       RowMutation rm=new RowMutation(cfs.table.getName(),filter.key.key,returnCF.cloneMe());
