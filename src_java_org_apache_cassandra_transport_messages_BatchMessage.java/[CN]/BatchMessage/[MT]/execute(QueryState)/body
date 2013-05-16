@@ -1,0 +1,46 @@
+{
+  try {
+    UUID tracingId=null;
+    if (isTracingRequested()) {
+      tracingId=UUIDGen.getTimeUUID();
+      state.prepareTracingSession(tracingId);
+    }
+    if (state.traceNextQuery()) {
+      state.createTracingSession();
+      Tracing.instance().begin("Execute batch of CQL3 queries",Collections.<String,String>emptyMap());
+    }
+    List<ModificationStatement> statements=new ArrayList<ModificationStatement>(queryOrIdList.size());
+    for (int i=0; i < queryOrIdList.size(); i++) {
+      Object query=queryOrIdList.get(i);
+      CQLStatement statement;
+      if (query instanceof String) {
+        statement=QueryProcessor.parseStatement((String)query,state);
+      }
+ else {
+        statement=QueryProcessor.getPrepared((MD5Digest)query);
+        if (statement == null)         throw new PreparedQueryNotFoundException((MD5Digest)query);
+      }
+      List<ByteBuffer> queryValues=values.get(i);
+      if (queryValues.size() != statement.getBoundsTerms())       throw new InvalidRequestException(String.format("There were %d markers(?) in CQL but %d bound variables",statement.getBoundsTerms(),queryValues.size()));
+      if (!(statement instanceof ModificationStatement))       throw new InvalidRequestException("Invalid statement in batch: only UPDATE, INSERT and DELETE statements are allowed.");
+      ModificationStatement mst=(ModificationStatement)statement;
+      if (mst.isCounter()) {
+        if (type != BatchStatement.Type.COUNTER)         throw new InvalidRequestException("Cannot include counter statement in a non-counter batch");
+      }
+ else {
+        if (type == BatchStatement.Type.COUNTER)         throw new InvalidRequestException("Cannot include non-counter statement in a counter batch");
+      }
+      statements.add(mst);
+    }
+    BatchStatement batch=new BatchStatement(-1,type,statements,new Attributes());
+    Message.Response response=QueryProcessor.processBatch(batch,consistency,state,values);
+    if (tracingId != null)     response.setTracingId(tracingId);
+    return response;
+  }
+ catch (  Exception e) {
+    return ErrorMessage.fromException(e);
+  }
+ finally {
+    Tracing.instance().stopSession();
+  }
+}
