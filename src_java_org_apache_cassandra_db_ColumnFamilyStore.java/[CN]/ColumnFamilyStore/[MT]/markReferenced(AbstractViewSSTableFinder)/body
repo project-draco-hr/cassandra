@@ -1,14 +1,13 @@
 {
-  DataTracker.View view;
   List<SSTableReader> sstables;
+  DataTracker.View view;
   while (true) {
     view=data.getView();
     if (view.intervalTree.isEmpty()) {
       sstables=Collections.emptyList();
       break;
     }
-    RowPosition stopInTree=stopAt.isMinimum() ? view.intervalTree.max() : stopAt;
-    sstables=view.intervalTree.search(Interval.<RowPosition,SSTableReader>create(startWith,stopInTree));
+    sstables=finder.findSSTables(view);
     if (SSTableReader.acquireReferences(sstables))     break;
   }
   return new ViewFragment(sstables,Iterables.concat(Collections.singleton(view.memtable),view.memtablesPendingFlush));
