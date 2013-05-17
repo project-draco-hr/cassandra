@@ -1,0 +1,16 @@
+{
+  boolean hasCounters=false;
+  Collection<RowMutation> tmutations=null;
+  for (  IMutation mutation : updates) {
+    for (    ColumnFamily cf : mutation.getColumnFamilies()) {
+      List<RowMutation> intermediate=execute(mutation.key(),cf);
+      if (intermediate == null)       continue;
+      validate(intermediate);
+      if (tmutations == null)       tmutations=intermediate;
+ else       tmutations.addAll(intermediate);
+    }
+    if (mutation instanceof CounterMutation)     hasCounters=true;
+  }
+  if (tmutations != null && hasCounters)   throw new InvalidRequestException("Counter mutations and trigger mutations cannot be applied together atomically.");
+  return tmutations;
+}
