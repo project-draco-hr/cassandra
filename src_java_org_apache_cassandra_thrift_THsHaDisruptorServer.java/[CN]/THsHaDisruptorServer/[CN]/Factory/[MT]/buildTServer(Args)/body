@@ -1,0 +1,14 @@
+{
+  if (DatabaseDescriptor.getClientEncryptionOptions().enabled)   throw new RuntimeException("Client SSL is not supported for non-blocking sockets (hsha). Please remove client ssl from the configuration.");
+  final InetSocketAddress addr=args.addr;
+  TNonblockingServerTransport serverTransport;
+  try {
+    serverTransport=new TCustomNonblockingServerSocket(addr,args.keepAlive,args.sendBufferSize,args.recvBufferSize);
+  }
+ catch (  TTransportException e) {
+    throw new RuntimeException(String.format("Unable to create thrift socket to %s:%s",addr.getAddress(),addr.getPort()),e);
+  }
+  com.thinkaurelius.thrift.util.TBinaryProtocol.Factory protocolFactory=new com.thinkaurelius.thrift.util.TBinaryProtocol.Factory(true,true);
+  TDisruptorServer.Args serverArgs=new TDisruptorServer.Args(serverTransport).inputTransportFactory(args.inTransportFactory).outputTransportFactory(args.outTransportFactory).inputProtocolFactory(protocolFactory).outputProtocolFactory(protocolFactory).processor(args.processor);
+  return new THsHaDisruptorServer(serverArgs);
+}
