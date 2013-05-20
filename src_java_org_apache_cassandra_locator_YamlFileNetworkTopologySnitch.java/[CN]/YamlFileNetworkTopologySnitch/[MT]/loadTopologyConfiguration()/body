@@ -14,8 +14,15 @@
   if (configFileInputStream == null) {
     throw new ConfigurationException("Could not read topology config file " + topologyConfigFilename);
   }
-  final Yaml yaml=new Yaml(new Loader(configConstructor));
-  final TopologyConfig topologyConfig=(TopologyConfig)yaml.load(configFileInputStream);
+  Yaml yaml;
+  TopologyConfig topologyConfig;
+  try {
+    yaml=new Yaml(new Loader(configConstructor));
+    topologyConfig=(TopologyConfig)yaml.load(configFileInputStream);
+  }
+  finally {
+    FileUtils.closeQuietly(configFileInputStream);
+  }
   final Map<InetAddress,NodeData> nodeDataMap=new HashMap<InetAddress,NodeData>();
   if (topologyConfig.topology == null) {
     throw new ConfigurationException("Topology configuration file is missing the topology section");
