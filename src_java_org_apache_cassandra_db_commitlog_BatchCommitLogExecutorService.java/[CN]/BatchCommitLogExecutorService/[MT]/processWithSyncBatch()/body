@@ -7,10 +7,11 @@
   }
   incompleteTasks.clear();
   taskValues.clear();
-  long end=System.nanoTime() + (long)(1000000 * DatabaseDescriptor.getCommitLogSyncBatchWindow());
+  long start=System.nanoTime();
+  long window=(long)(1000000 * DatabaseDescriptor.getCommitLogSyncBatchWindow());
   incompleteTasks.add(firstTask);
   taskValues.add(firstTask.getRawCallable().call());
-  while (!queue.isEmpty() && queue.peek().getRawCallable() instanceof CommitLog.LogRecordAdder && System.nanoTime() < end) {
+  while (!queue.isEmpty() && queue.peek().getRawCallable() instanceof CommitLog.LogRecordAdder && System.nanoTime() - start < window) {
     CheaterFutureTask task=queue.remove();
     incompleteTasks.add(task);
     taskValues.add(task.getRawCallable().call());
