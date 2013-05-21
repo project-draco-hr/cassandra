@@ -5,10 +5,10 @@
     logger.debug("{} target throughput now {} bytes/ms.",this,newTargetBytesPerMS);
     targetBytesPerMS=newTargetBytesPerMS;
     bytesAtLastDelay+=bytesDelta;
-    timeAtLastDelay=System.currentTimeMillis();
+    timeAtLastDelay=System.nanoTime();
     return;
   }
-  long msSinceLast=System.currentTimeMillis() - timeAtLastDelay;
+  long msSinceLast=TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - timeAtLastDelay);
   long excessBytes=bytesDelta - msSinceLast * targetBytesPerMS;
   long timeToDelay=excessBytes / Math.max(1,targetBytesPerMS);
   if (timeToDelay > 0) {
@@ -16,5 +16,5 @@
     Uninterruptibles.sleepUninterruptibly(timeToDelay,TimeUnit.MILLISECONDS);
   }
   bytesAtLastDelay+=bytesDelta;
-  timeAtLastDelay=System.currentTimeMillis();
+  timeAtLastDelay=System.nanoTime();
 }

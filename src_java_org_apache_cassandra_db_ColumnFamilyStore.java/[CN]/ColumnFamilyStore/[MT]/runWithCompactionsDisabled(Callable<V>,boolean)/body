@@ -12,14 +12,15 @@ synchronized (this) {
 ;
       Iterable<CFMetaData> allMetadata=Iterables.transform(selfWithIndexes,f);
       CompactionManager.instance.interruptCompactionFor(allMetadata,interruptValidation);
-      long start=System.currentTimeMillis();
-      while (System.currentTimeMillis() < start + 60000) {
+      long start=System.nanoTime();
+      long delay=TimeUnit.MINUTES.toNanos(1);
+      while (System.nanoTime() - start < delay) {
         if (CompactionManager.instance.isCompacting(selfWithIndexes))         Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
  else         break;
       }
       for (      ColumnFamilyStore cfs : selfWithIndexes) {
         if (!cfs.getDataTracker().getCompacting().isEmpty()) {
-          logger.warn("Unable to cancel in-progress compactios for {}.  Probably there is an unusually large row in progress somewhere.  It is also possible that buggy code left some sstables compacting after it was done with them",metadata.cfName);
+          logger.warn("Unable to cancel in-progress compactions for {}.  Probably there is an unusually large row in progress somewhere.  It is also possible that buggy code left some sstables compacting after it was done with them",metadata.cfName);
         }
       }
       logger.debug("Compactions successfully cancelled");

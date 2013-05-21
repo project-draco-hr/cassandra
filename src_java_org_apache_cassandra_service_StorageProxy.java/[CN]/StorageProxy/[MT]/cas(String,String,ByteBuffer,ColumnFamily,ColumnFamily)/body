@@ -1,7 +1,8 @@
 {
   CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
-  long timedOut=System.currentTimeMillis() + DatabaseDescriptor.getCasContentionTimeout();
-  while (System.currentTimeMillis() < timedOut) {
+  long start=System.nanoTime();
+  long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+  while (System.nanoTime() - start < timeout) {
     Pair<List<InetAddress>,Integer> p=getPaxosParticipants(table,key);
     List<InetAddress> liveEndpoints=p.left;
     int requiredParticipants=p.right;
