@@ -1,12 +1,8 @@
 {
   if (!isReplaying.compareAndSet(false,true))   return;
+  logger.debug("Started replayAllFailedBatches");
   try {
-    logger.debug("Started replayAllFailedBatches");
-    for (    Row row : getRangeSlice(new NamesQueryFilter(WRITTEN_AT))) {
-      if (row.cf == null || row.cf.isMarkedForDelete())       continue;
-      Column writtenAt=row.cf.getColumn(WRITTEN_AT);
-      if (writtenAt == null || System.currentTimeMillis() > LongType.instance.compose(writtenAt.value()) + TIMEOUT)       replayBatch(row.key);
-    }
+    for (    UntypedResultSet.Row row : process("SELECT id, written_at FROM %s.%s",Table.SYSTEM_KS,SystemTable.BATCHLOG_CF))     if (System.currentTimeMillis() > row.getLong("written_at") + TIMEOUT)     replayBatch(row.getUUID("id"));
     cleanup();
   }
   finally {
