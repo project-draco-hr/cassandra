@@ -1,5 +1,5 @@
 {
-  Map<String,Multimap<MessageOut,InetAddress>> dcMessages=null;
+  Map<String,Collection<InetAddress>> dcGroups=null;
   for (  InetAddress destination : targets) {
     if (totalHintsInProgress.get() > maxHintsInProgress && (hintsInProgress.get(destination).get() > 0 && shouldHint(destination))) {
       throw new OverloadedException("Too many in flight hints: " + totalHintsInProgress.get());
@@ -9,15 +9,14 @@
         insertLocal(rm,responseHandler);
       }
  else {
-        if (logger.isTraceEnabled())         logger.trace("insert writing key " + ByteBufferUtil.bytesToHex(rm.key()) + " to "+ destination);
         String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
-        Multimap<MessageOut,InetAddress> messages=(dcMessages != null) ? dcMessages.get(dc) : null;
+        Collection<InetAddress> messages=(dcGroups != null) ? dcGroups.get(dc) : null;
         if (messages == null) {
-          messages=HashMultimap.create();
-          if (dcMessages == null)           dcMessages=new HashMap<String,Multimap<MessageOut,InetAddress>>();
-          dcMessages.put(dc,messages);
+          messages=new ArrayList<InetAddress>(3);
+          if (dcGroups == null)           dcGroups=new HashMap<String,Collection<InetAddress>>();
+          dcGroups.put(dc,messages);
         }
-        messages.put(rm.createMessage(),destination);
+        messages.add(destination);
       }
     }
  else {
@@ -25,15 +24,13 @@
       submitHint(rm,destination,responseHandler,consistency_level);
     }
   }
-  if (dcMessages != null) {
-    for (    Map.Entry<String,Multimap<MessageOut,InetAddress>> entry : dcMessages.entrySet()) {
+  if (dcGroups != null) {
+    MessageOut<RowMutation> message=rm.createMessage();
+    for (    Map.Entry<String,Collection<InetAddress>> entry : dcGroups.entrySet()) {
       boolean isLocalDC=entry.getKey().equals(localDataCenter);
-      for (      Map.Entry<MessageOut,Collection<InetAddress>> messages : entry.getValue().asMap().entrySet()) {
-        MessageOut message=messages.getKey();
-        Collection<InetAddress> targets1=messages.getValue();
-        message=message.withHeaderRemoved(RowMutation.FORWARD_TO);
-        sendMessagesToOneDC(message,targets1,isLocalDC,responseHandler);
-      }
+      Collection<InetAddress> dcTargets=entry.getValue();
+      message=message.withHeaderRemoved(RowMutation.FORWARD_TO);
+      sendMessagesToOneDC(message,dcTargets,isLocalDC,responseHandler);
     }
   }
 }
