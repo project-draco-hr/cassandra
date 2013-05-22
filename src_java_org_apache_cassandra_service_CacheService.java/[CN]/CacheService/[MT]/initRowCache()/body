@@ -1,7 +1,7 @@
 {
-  logger.info("Initializing row cache with capacity of {} MBs and provider {}",DatabaseDescriptor.getRowCacheSizeInMB(),DatabaseDescriptor.getRowCacheProvider().getClass().getName());
+  logger.info("Initializing row cache with capacity of {} MBs",DatabaseDescriptor.getRowCacheSizeInMB());
   long rowCacheInMemoryCapacity=DatabaseDescriptor.getRowCacheSizeInMB() * 1024 * 1024;
-  ICache<RowCacheKey,IRowCacheEntry> rc=DatabaseDescriptor.getRowCacheProvider().create(rowCacheInMemoryCapacity);
+  ICache<RowCacheKey,IRowCacheEntry> rc=new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
   AutoSavingCache<RowCacheKey,IRowCacheEntry> rowCache=new AutoSavingCache<RowCacheKey,IRowCacheEntry>(rc,CacheType.ROW_CACHE,new RowCacheSerializer());
   int rowCacheKeysToSave=DatabaseDescriptor.getRowCacheKeysToSave();
   logger.info("Scheduling row cache save to each {} seconds (going to save {} keys).",DatabaseDescriptor.getRowCacheSavePeriod(),rowCacheKeysToSave == Integer.MAX_VALUE ? "all" : rowCacheKeysToSave);
