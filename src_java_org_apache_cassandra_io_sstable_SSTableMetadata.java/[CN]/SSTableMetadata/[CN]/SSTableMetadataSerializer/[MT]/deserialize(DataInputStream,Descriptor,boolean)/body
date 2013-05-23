@@ -14,5 +14,23 @@
   StreamingHistogram tombstoneHistogram=StreamingHistogram.serializer.deserialize(in);
   int sstableLevel=0;
   if (loadSSTableLevel && in.available() > 0)   sstableLevel=in.readInt();
-  return new SSTableMetadata(rowSizes,columnCounts,replayPosition,minTimestamp,maxTimestamp,maxLocalDeletionTime,bloomFilterFPChance,compressionRatio,partitioner,ancestors,tombstoneHistogram,sstableLevel);
+  List<ByteBuffer> minColumnNames;
+  List<ByteBuffer> maxColumnNames;
+  if (desc.version.tracksMaxMinColumnNames) {
+    int colCount=in.readInt();
+    minColumnNames=new ArrayList<ByteBuffer>(colCount);
+    for (int i=0; i < colCount; i++) {
+      minColumnNames.add(ByteBufferUtil.readWithShortLength(in));
+    }
+    colCount=in.readInt();
+    maxColumnNames=new ArrayList<ByteBuffer>(colCount);
+    for (int i=0; i < colCount; i++) {
+      maxColumnNames.add(ByteBufferUtil.readWithShortLength(in));
+    }
+  }
+ else {
+    minColumnNames=Collections.emptyList();
+    maxColumnNames=Collections.emptyList();
+  }
+  return new SSTableMetadata(rowSizes,columnCounts,replayPosition,minTimestamp,maxTimestamp,maxLocalDeletionTime,bloomFilterFPChance,compressionRatio,partitioner,ancestors,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames);
 }

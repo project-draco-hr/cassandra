@@ -13,9 +13,19 @@
       }
     }
     Collections.sort(view.sstables,SSTable.maxTimestampComparator);
+    List<SSTableReader> skippedSSTables=null;
     long mostRecentRowTombstone=Long.MIN_VALUE;
+    long minTimestamp=Long.MAX_VALUE;
     for (    SSTableReader sstable : view.sstables) {
+      minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
       if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       break;
+      if (!filter.shouldInclude(sstable)) {
+        if (sstable.getSSTableMetadata().maxLocalDeletionTime != Integer.MAX_VALUE) {
+          if (skippedSSTables == null)           skippedSSTables=new ArrayList<SSTableReader>();
+          skippedSSTables.add(sstable);
+        }
+        continue;
+      }
       OnDiskAtomIterator iter=filter.getSSTableColumnIterator(sstable);
       iterators.add(iter);
       if (iter.getColumnFamily() != null) {
@@ -23,6 +33,19 @@
         if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
         returnCF.delete(cf);
         sstablesIterated++;
+      }
+    }
+    if (skippedSSTables != null) {
+      for (      SSTableReader sstable : skippedSSTables) {
+        if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
+        OnDiskAtomIterator iter=filter.getSSTableColumnIterator(sstable);
+        if (iter.getColumnFamily() == null)         continue;
+        ColumnFamily cf=iter.getColumnFamily();
+        if (cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt > minTimestamp) {
+          iterators.add(iter);
+          returnCF.delete(cf.deletionInfo().getTopLevelDeletion());
+          sstablesIterated++;
+        }
       }
     }
     if (iterators.isEmpty())     return null;

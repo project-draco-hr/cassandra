@@ -1,0 +1,38 @@
+{
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore cfStore=table.getColumnFamilyStore("Standard1");
+  cfStore.disableAutoCompaction();
+  DecoratedKey key=Util.dk("row_maxmin");
+  for (int j=0; j < 10; j++) {
+    ColumnFamily cf=TreeMapBackedSortedColumns.factory.create("Keyspace1","Standard1");
+    for (int i=1000 + (j * 100); i < 1000 + ((j + 1) * 100); i++) {
+      cf.addColumn(column("col" + i,("v" + i),i));
+    }
+    RowMutation rm=new RowMutation("Keyspace1",key.key,cf);
+    rm.apply();
+    cfStore.forceBlockingFlush();
+  }
+  cfStore.metric.sstablesPerReadHistogram.clear();
+  ColumnFamily cf=cfStore.getColumnFamily(key,ByteBufferUtil.bytes(""),ByteBufferUtil.bytes("col1499"),false,1000);
+  assertEquals(cfStore.metric.sstablesPerReadHistogram.max(),5,0.1);
+  int i=0;
+  for (  Column c : cf.getSortedColumns()) {
+    assertEquals(ByteBufferUtil.string(c.name),"col" + (1000 + i++));
+  }
+  assertEquals(i,500);
+  cfStore.metric.sstablesPerReadHistogram.clear();
+  cf=cfStore.getColumnFamily(key,ByteBufferUtil.bytes("col1500"),ByteBufferUtil.bytes("col2000"),false,1000);
+  assertEquals(cfStore.metric.sstablesPerReadHistogram.max(),5,0.1);
+  for (  Column c : cf.getSortedColumns()) {
+    assertEquals(ByteBufferUtil.string(c.name),"col" + (1000 + i++));
+  }
+  assertEquals(i,1000);
+  cfStore.metric.sstablesPerReadHistogram.clear();
+  cf=cfStore.getColumnFamily(key,ByteBufferUtil.bytes("col2000"),ByteBufferUtil.bytes("col1500"),true,1000);
+  assertEquals(cfStore.metric.sstablesPerReadHistogram.max(),5,0.1);
+  i=500;
+  for (  Column c : cf.getSortedColumns()) {
+    assertEquals(ByteBufferUtil.string(c.name),"col" + (1000 + i++));
+  }
+  assertEquals(i,1000);
+}
