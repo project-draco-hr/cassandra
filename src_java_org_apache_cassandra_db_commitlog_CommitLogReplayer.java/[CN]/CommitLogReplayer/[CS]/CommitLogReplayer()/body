@@ -10,7 +10,8 @@
   Map<UUID,Pair<ReplayPosition,Long>> truncationPositions=SystemTable.getTruncationRecords();
   for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
     ReplayPosition rp=ReplayPosition.getReplayPosition(cfs.getSSTables());
-    ReplayPosition truncatedAt=truncationPositions.get(cfs.metadata.cfId).left;
+    Pair<ReplayPosition,Long> truncateRecord=truncationPositions.get(cfs.metadata.cfId);
+    ReplayPosition truncatedAt=truncateRecord == null ? null : truncateRecord.left;
     if (truncatedAt != null)     rp=replayPositionOrdering.max(Arrays.asList(rp,truncatedAt));
     cfPositions.put(cfs.metadata.cfId,rp);
   }
