@@ -1,16 +1,17 @@
 {
   CfDef cfDef=getCfDef(loadSignature);
   ByteBuffer key=null;
-  Tuple tuple=TupleFactory.getInstance().newTuple();
+  Tuple tuple=null;
   DefaultDataBag bag=new DefaultDataBag();
   try {
     while (true) {
       hasNext=reader.nextKeyValue();
       if (!hasNext) {
+        if (tuple == null)         tuple=TupleFactory.getInstance().newTuple();
         if (lastRow != null) {
           if (tuple.size() == 0) {
             key=(ByteBuffer)reader.getCurrentKey();
-            tuple=addKeyToTuple(tuple,key,cfDef,parseType(cfDef.getKey_validation_class()));
+            tuple=keyToTuple(key,cfDef,parseType(cfDef.getKey_validation_class()));
           }
           for (          Map.Entry<ByteBuffer,Column> entry : lastRow.entrySet()) {
             bag.add(columnToTuple(entry.getValue(),cfDef,parseType(cfDef.getComparator_type())));
@@ -37,7 +38,8 @@
       if (key == null) {
         key=(ByteBuffer)reader.getCurrentKey();
         if (lastKey != null && !(key.equals(lastKey))) {
-          tuple=addKeyToTuple(tuple,lastKey,cfDef,parseType(cfDef.getKey_validation_class()));
+          if (tuple == null)           tuple=keyToTuple(lastKey,cfDef,parseType(cfDef.getKey_validation_class()));
+ else           addKeyToTuple(tuple,lastKey,cfDef,parseType(cfDef.getKey_validation_class()));
           for (          Map.Entry<ByteBuffer,Column> entry : lastRow.entrySet()) {
             bag.add(columnToTuple(entry.getValue(),cfDef,parseType(cfDef.getComparator_type())));
           }
@@ -46,7 +48,8 @@
           lastRow=(SortedMap<ByteBuffer,Column>)reader.getCurrentValue();
           return tuple;
         }
-        tuple=addKeyToTuple(tuple,lastKey,cfDef,parseType(cfDef.getKey_validation_class()));
+        if (tuple == null)         tuple=keyToTuple(key,cfDef,parseType(cfDef.getKey_validation_class()));
+ else         addKeyToTuple(tuple,lastKey,cfDef,parseType(cfDef.getKey_validation_class()));
       }
       SortedMap<ByteBuffer,Column> row=(SortedMap<ByteBuffer,Column>)reader.getCurrentValue();
       if (lastRow != null) {
