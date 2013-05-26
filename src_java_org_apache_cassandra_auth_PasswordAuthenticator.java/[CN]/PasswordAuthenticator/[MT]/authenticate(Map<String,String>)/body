@@ -5,9 +5,13 @@
   if (password == null)   throw new AuthenticationException(String.format("Required key '%s' is missing",PASSWORD_KEY));
   UntypedResultSet result;
   try {
-    result=process(String.format("SELECT %s FROM %s.%s WHERE username = '%s'",SALTED_HASH,Auth.AUTH_KS,CREDENTIALS_CF,escape(username)),consistencyForUser(username));
+    ResultMessage.Rows rows=authenticateStatement.execute(consistencyForUser(username),new QueryState(new ClientState(true)),Lists.newArrayList(ByteBufferUtil.bytes(username)));
+    result=new UntypedResultSet(rows.result);
   }
- catch (  RequestExecutionException e) {
+ catch (  RequestValidationException e) {
+    throw new AssertionError(e);
+  }
+catch (  RequestExecutionException e) {
     throw new AuthenticationException(e.toString());
   }
   if (result.isEmpty() || !BCrypt.checkpw(password,result.one().getString(SALTED_HASH)))   throw new AuthenticationException("Username and/or password are incorrect");
