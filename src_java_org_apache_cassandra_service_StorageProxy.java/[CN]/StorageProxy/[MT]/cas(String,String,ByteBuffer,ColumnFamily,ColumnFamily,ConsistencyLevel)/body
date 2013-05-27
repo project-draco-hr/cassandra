@@ -1,0 +1,32 @@
+{
+  consistencyLevel.validateForCas(table);
+  CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
+  long start=System.nanoTime();
+  long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+  while (System.nanoTime() - start < timeout) {
+    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(table,key);
+    List<InetAddress> liveEndpoints=p.left;
+    int requiredParticipants=p.right;
+    UUID ballot=beginAndRepairPaxos(key,metadata,liveEndpoints,requiredParticipants);
+    if (ballot == null)     continue;
+    Tracing.trace("Reading existing values for CAS precondition");
+    ReadCommand readCommand=expected == null ? new SliceFromReadCommand(table,key,cfName,new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1)) : new SliceByNamesReadCommand(table,key,cfName,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
+    List<Row> rows=read(Arrays.asList(readCommand),ConsistencyLevel.QUORUM);
+    ColumnFamily current=rows.get(0).cf;
+    if (!casApplies(expected,current)) {
+      Tracing.trace("CAS precondition {} does not match current values {}",expected,current);
+      return false;
+    }
+    Commit proposal=Commit.newProposal(key,ballot,updates);
+    Tracing.trace("CAS precondition is met; proposing client-requested updates for {}",ballot);
+    if (proposePaxos(proposal,liveEndpoints,requiredParticipants)) {
+      if (consistencyLevel == ConsistencyLevel.SERIAL)       sendCommit(proposal,liveEndpoints);
+ else       commitPaxos(proposal,consistencyLevel);
+      Tracing.trace("CAS successful");
+      return true;
+    }
+    Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
+    Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);
+  }
+  throw new WriteTimeoutException(WriteType.CAS,ConsistencyLevel.SERIAL,-1,-1);
+}

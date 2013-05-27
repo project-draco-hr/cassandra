@@ -12,13 +12,20 @@
   Commit mostRecent=summary.mostRecentCommit;
   if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent)) {
     Tracing.trace("Finishing incomplete paxos round {}",inProgress);
-    if (proposePaxos(inProgress,liveEndpoints,requiredParticipants))     commitPaxos(inProgress,liveEndpoints);
+    if (proposePaxos(inProgress,liveEndpoints,requiredParticipants)) {
+      try {
+        commitPaxos(inProgress,ConsistencyLevel.QUORUM);
+      }
+ catch (      WriteTimeoutException e) {
+        return null;
+      }
+    }
     return null;
   }
   Iterable<InetAddress> missingMRC=summary.replicasMissingMostRecentCommit();
   if (Iterables.size(missingMRC) > 0) {
     Tracing.trace("Repairing replicas that missed the most recent commit");
-    commitPaxos(mostRecent,missingMRC);
+    sendCommit(mostRecent,missingMRC);
     return null;
   }
   return ballot;

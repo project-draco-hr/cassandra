@@ -1,0 +1,13 @@
+{
+  Table table=Table.open(proposal.update.metadata().ksName);
+  Token tk=StorageService.getPartitioner().getToken(proposal.key);
+  List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table.getName(),tk);
+  Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table.getName());
+  AbstractReplicationStrategy rs=table.getReplicationStrategy();
+  AbstractWriteResponseHandler responseHandler=rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,consistencyLevel,null,WriteType.SIMPLE);
+  MessageOut<Commit> message=new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT,proposal,Commit.serializer);
+  for (  InetAddress destination : Iterables.concat(naturalEndpoints,pendingEndpoints)) {
+    if (FailureDetector.instance.isAlive(destination))     MessagingService.instance().sendRR(message,destination,responseHandler);
+  }
+  responseHandler.get();
+}
