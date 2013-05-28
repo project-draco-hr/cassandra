@@ -1,0 +1,22 @@
+{
+  if (isExhausted())   return Collections.emptyList();
+  int currentPageSize=nextPageSize(pageSize);
+  List<Row> rows=filterEmpty(queryNextPage(currentPageSize,consistencyLevel,localQuery));
+  if (rows.isEmpty()) {
+    exhausted=true;
+    return Collections.emptyList();
+  }
+  int liveCount=getPageLiveCount(rows);
+  remaining-=liveCount;
+  if (liveCount < currentPageSize)   exhausted=true;
+  if (containsPreviousLast(rows.get(0))) {
+    rows=discardFirst(rows);
+    remaining++;
+  }
+ else   if (lastWasRecorded && !exhausted) {
+    rows=discardLast(rows);
+    remaining++;
+  }
+  if (!isExhausted())   lastWasRecorded=recordLast(rows.get(rows.size() - 1));
+  return rows;
+}

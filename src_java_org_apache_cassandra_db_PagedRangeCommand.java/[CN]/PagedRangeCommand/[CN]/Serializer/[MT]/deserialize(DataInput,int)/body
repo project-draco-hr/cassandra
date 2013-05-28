@@ -1,0 +1,17 @@
+{
+  String keyspace=in.readUTF();
+  String columnFamily=in.readUTF();
+  long timestamp=in.readLong();
+  AbstractBounds<RowPosition> keyRange=AbstractBounds.serializer.deserialize(in,version).toRowBounds();
+  SliceQueryFilter predicate=SliceQueryFilter.serializer.deserialize(in,version);
+  ByteBuffer start=ByteBufferUtil.readWithShortLength(in);
+  ByteBuffer stop=ByteBufferUtil.readWithShortLength(in);
+  int filterCount=in.readInt();
+  List<IndexExpression> rowFilter=new ArrayList<IndexExpression>(filterCount);
+  for (int i=0; i < filterCount; i++) {
+    IndexExpression expr=new IndexExpression(ByteBufferUtil.readWithShortLength(in),IndexOperator.findByValue(in.readInt()),ByteBufferUtil.readWithShortLength(in));
+    rowFilter.add(expr);
+  }
+  int limit=in.readInt();
+  return new PagedRangeCommand(keyspace,columnFamily,timestamp,keyRange,predicate,start,stop,rowFilter,limit);
+}

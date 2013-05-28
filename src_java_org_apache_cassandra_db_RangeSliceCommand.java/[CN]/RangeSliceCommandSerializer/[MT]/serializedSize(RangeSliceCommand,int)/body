@@ -1,11 +1,11 @@
 {
   long size=TypeSizes.NATIVE.sizeof(rsc.keyspace);
-  size+=TypeSizes.NATIVE.sizeof(rsc.column_family);
+  size+=TypeSizes.NATIVE.sizeof(rsc.columnFamily);
   if (version >= MessagingService.VERSION_20)   size+=TypeSizes.NATIVE.sizeof(rsc.timestamp);
   IDiskAtomFilter filter=rsc.predicate;
   if (version < MessagingService.VERSION_20) {
     ByteBuffer sc=null;
-    CFMetaData metadata=Schema.instance.getCFMetaData(rsc.keyspace,rsc.column_family);
+    CFMetaData metadata=Schema.instance.getCFMetaData(rsc.keyspace,rsc.columnFamily);
     if (metadata.cfType == ColumnFamilyType.Super) {
       SuperColumns.SCFilter scFilter=SuperColumns.filterToSC((CompositeType)metadata.comparator,filter);
       sc=scFilter.scName;
@@ -20,18 +20,18 @@
     }
   }
   size+=IDiskAtomFilter.Serializer.instance.serializedSize(filter,version);
-  if (rsc.row_filter == null) {
+  if (rsc.rowFilter == null) {
     size+=TypeSizes.NATIVE.sizeof(0);
   }
  else {
-    size+=TypeSizes.NATIVE.sizeof(rsc.row_filter.size());
-    for (    IndexExpression expr : rsc.row_filter) {
+    size+=TypeSizes.NATIVE.sizeof(rsc.rowFilter.size());
+    for (    IndexExpression expr : rsc.rowFilter) {
       size+=TypeSizes.NATIVE.sizeofWithShortLength(expr.column_name);
       size+=TypeSizes.NATIVE.sizeof(expr.op.getValue());
       size+=TypeSizes.NATIVE.sizeofWithLength(expr.value);
     }
   }
-  size+=AbstractBounds.serializer.serializedSize(rsc.range,version);
+  size+=AbstractBounds.serializer.serializedSize(rsc.keyRange,version);
   size+=TypeSizes.NATIVE.sizeof(rsc.maxResults);
   size+=TypeSizes.NATIVE.sizeof(rsc.countCQL3Rows);
   size+=TypeSizes.NATIVE.sizeof(rsc.isPaging);

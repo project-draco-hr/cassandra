@@ -1,0 +1,71 @@
+{
+  Tracing.trace("Determining replicas to query");
+  long startTime=System.nanoTime();
+  Table table=Table.open(command.keyspace);
+  List<Row> rows;
+  try {
+    int cql3RowCount=0;
+    rows=new ArrayList<Row>();
+    List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(command.keyRange);
+    int i=0;
+    AbstractBounds<RowPosition> nextRange=null;
+    List<InetAddress> nextEndpoints=null;
+    List<InetAddress> nextFilteredEndpoints=null;
+    while (i < ranges.size()) {
+      AbstractBounds<RowPosition> range=nextRange == null ? ranges.get(i) : nextRange;
+      List<InetAddress> liveEndpoints=nextEndpoints == null ? getLiveSortedEndpoints(table,range.right) : nextEndpoints;
+      List<InetAddress> filteredEndpoints=nextFilteredEndpoints == null ? consistency_level.filterForQuery(table,liveEndpoints) : nextFilteredEndpoints;
+      ++i;
+      while (i < ranges.size()) {
+        nextRange=ranges.get(i);
+        nextEndpoints=getLiveSortedEndpoints(table,nextRange.right);
+        nextFilteredEndpoints=consistency_level.filterForQuery(table,nextEndpoints);
+        if (range.right.isMinimum())         break;
+        List<InetAddress> merged=intersection(liveEndpoints,nextEndpoints);
+        if (!consistency_level.isSufficientLiveNodes(table,merged))         break;
+        List<InetAddress> filteredMerged=consistency_level.filterForQuery(table,merged);
+        if (!DatabaseDescriptor.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged,filteredEndpoints,nextFilteredEndpoints))         break;
+        range=range.withNewRight(nextRange.right);
+        liveEndpoints=merged;
+        filteredEndpoints=filteredMerged;
+        ++i;
+      }
+      AbstractRangeCommand nodeCmd=command.forSubRange(range);
+      RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(nodeCmd.keyspace,command.timestamp);
+      ReadCallback<RangeSliceReply,Iterable<Row>> handler=new ReadCallback(resolver,consistency_level,nodeCmd,filteredEndpoints);
+      handler.assureSufficientLiveNodes();
+      resolver.setSources(filteredEndpoints);
+      if (filteredEndpoints.size() == 1 && filteredEndpoints.get(0).equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
+        StageManager.getStage(Stage.READ).execute(new LocalRangeSliceRunnable(nodeCmd,handler));
+      }
+ else {
+        MessageOut<? extends AbstractRangeCommand> message=nodeCmd.createMessage();
+        for (        InetAddress endpoint : filteredEndpoints) {
+          Tracing.trace("Enqueuing request to {}",endpoint);
+          MessagingService.instance().sendRR(message,endpoint,handler);
+        }
+      }
+      try {
+        for (        Row row : handler.get()) {
+          rows.add(row);
+          if (nodeCmd.countCQL3Rows())           cql3RowCount+=row.getLiveCount(command.predicate,command.timestamp);
+        }
+        FBUtilities.waitOnFutures(resolver.repairResults,DatabaseDescriptor.getWriteRpcTimeout());
+      }
+ catch (      TimeoutException ex) {
+        logger.debug("Range slice timeout: {}",ex.toString());
+        int blockFor=consistency_level.blockFor(table);
+        throw new ReadTimeoutException(consistency_level,blockFor,blockFor,true);
+      }
+catch (      DigestMismatchException e) {
+        throw new AssertionError(e);
+      }
+      int count=nodeCmd.countCQL3Rows() ? cql3RowCount : rows.size();
+      if (count >= nodeCmd.limit())       break;
+    }
+  }
+  finally {
+    rangeMetrics.addNano(System.nanoTime() - startTime);
+  }
+  return trim(command,rows);
+}

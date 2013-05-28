@@ -1,0 +1,23 @@
+{
+switch (state) {
+case UNINITIALIZED:
+    if (type != Message.Type.STARTUP && type != Message.Type.OPTIONS)     throw new ProtocolException(String.format("Unexpected message %s, expecting STARTUP or OPTIONS",type));
+  break;
+case AUTHENTICATION:
+if (type != Message.Type.AUTH_RESPONSE && type != Message.Type.CREDENTIALS) throw new ProtocolException(String.format("Unexpected message %s, expecting %s",type,version == 1 ? "CREDENTIALS" : "SASL_RESPONSE"));
+break;
+case READY:
+if (type == Message.Type.STARTUP) throw new ProtocolException("Unexpected message STARTUP, the connection is already initialized");
+break;
+default :
+throw new AssertionError();
+}
+QueryState qstate=getQueryState(streamId);
+if (qstate.hasPager()) {
+if (type != Message.Type.NEXT) qstate.dropPager();
+}
+ else {
+if (type == Message.Type.NEXT) throw new ProtocolException("Unexpected NEXT message, paging is not set (or is done)");
+}
+return qstate;
+}

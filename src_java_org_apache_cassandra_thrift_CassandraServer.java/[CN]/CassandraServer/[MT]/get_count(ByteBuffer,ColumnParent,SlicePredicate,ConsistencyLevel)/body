@@ -24,30 +24,14 @@
  else {
       pageSize=COUNT_PAGE_SIZE;
     }
-    int totalCount=0;
-    List<ColumnOrSuperColumn> columns;
-    if (predicate.slice_range == null) {
-      predicate.slice_range=new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE);
-    }
-    final int requestedCount=predicate.slice_range.count;
-    int remaining=requestedCount;
-    int pages=0;
-    while (true) {
-      predicate.slice_range.count=Math.min(pageSize,Math.max(2,remaining));
-      columns=getSliceInternal(keyspace,key,column_parent,timestamp,predicate,consistency_level);
-      if (columns.isEmpty())       break;
-      ByteBuffer firstName=getName(columns.get(0));
-      int newColumns=pages == 0 || !firstName.equals(predicate.slice_range.start) ? columns.size() : columns.size() - 1;
-      totalCount+=newColumns;
-      if (totalCount > requestedCount)       return requestedCount;
-      remaining-=newColumns;
-      pages++;
-      if (remaining == 0 || ((columns.size() == 1) && (firstName.equals(predicate.slice_range.start))))       break;
- else       predicate.slice_range.start=getName(columns.get(columns.size() - 1));
-    }
-    return totalCount;
+    SliceRange sliceRange=predicate.slice_range == null ? new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE) : predicate.slice_range;
+    SliceQueryFilter filter=toInternalFilter(cfs.metadata,column_parent,sliceRange);
+    return QueryPagers.countPaged(keyspace,column_parent.column_family,key,filter,ThriftConversion.fromThrift(consistency_level),pageSize,timestamp);
   }
- catch (  RequestValidationException e) {
+ catch (  RequestExecutionException e) {
+    throw ThriftConversion.rethrow(e);
+  }
+catch (  RequestValidationException e) {
     throw ThriftConversion.toThrift(e);
   }
  finally {

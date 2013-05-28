@@ -1,0 +1,17 @@
+{
+  out.writeUTF(cmd.keyspace);
+  out.writeUTF(cmd.columnFamily);
+  out.writeLong(cmd.timestamp);
+  AbstractBounds.serializer.serialize(cmd.keyRange,out,version);
+  SliceQueryFilter filter=(SliceQueryFilter)cmd.predicate;
+  SliceQueryFilter.serializer.serialize(filter,out,version);
+  ByteBufferUtil.writeWithShortLength(cmd.start,out);
+  ByteBufferUtil.writeWithShortLength(cmd.stop,out);
+  out.writeInt(cmd.rowFilter.size());
+  for (  IndexExpression expr : cmd.rowFilter) {
+    ByteBufferUtil.writeWithShortLength(expr.column_name,out);
+    out.writeInt(expr.op.getValue());
+    ByteBufferUtil.writeWithLength(expr.value,out);
+  }
+  out.writeInt(cmd.limit);
+}

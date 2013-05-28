@@ -2,6 +2,7 @@
   try {
     CQLStatement statement=QueryProcessor.getPrepared(statementId);
     if (statement == null)     throw new PreparedQueryNotFoundException(statementId);
+    if (resultPageSize == 0)     throw new ProtocolException("The page size cannot be 0");
     UUID tracingId=null;
     if (isTracingRequested()) {
       tracingId=UUIDGen.getTimeUUID();
@@ -9,9 +10,11 @@
     }
     if (state.traceNextQuery()) {
       state.createTracingSession();
-      Tracing.instance.begin("Execute CQL3 prepared query",Collections.<String,String>emptyMap());
+      ImmutableMap.Builder<String,String> builder=ImmutableMap.builder();
+      if (resultPageSize > 0)       builder.put("page_size",Integer.toString(resultPageSize));
+      Tracing.instance.begin("Execute CQL3 prepared query",builder.build());
     }
-    Message.Response response=QueryProcessor.processPrepared(statement,consistency,state,values);
+    Message.Response response=QueryProcessor.processPrepared(statement,consistency,state,values,resultPageSize);
     if (tracingId != null)     response.setTracingId(tracingId);
     return response;
   }
@@ -20,5 +23,6 @@
   }
  finally {
     Tracing.instance.stopSession();
+    if (!state.hasPager())     state.getAndResetCurrentTracingSession();
   }
 }

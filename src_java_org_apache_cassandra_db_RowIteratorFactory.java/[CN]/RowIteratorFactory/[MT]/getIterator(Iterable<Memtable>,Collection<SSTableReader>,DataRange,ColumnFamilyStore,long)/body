@@ -1,0 +1,39 @@
+{
+  final List<CloseableIterator<OnDiskAtomIterator>> iterators=new ArrayList<CloseableIterator<OnDiskAtomIterator>>();
+  for (  Memtable memtable : memtables) {
+    iterators.add(new ConvertToColumnIterator<AtomicSortedColumns>(range,memtable.getEntryIterator(range.startKey(),range.stopKey())));
+  }
+  for (  SSTableReader sstable : sstables) {
+    final SSTableScanner scanner=sstable.getScanner(range);
+    iterators.add(scanner);
+  }
+  return MergeIterator.get(iterators,COMPARE_BY_KEY,new MergeIterator.Reducer<OnDiskAtomIterator,Row>(){
+    private final int gcBefore=cfs.gcBefore(now);
+    private final List<OnDiskAtomIterator> colIters=new ArrayList<OnDiskAtomIterator>();
+    private DecoratedKey key;
+    private ColumnFamily returnCF;
+    @Override protected void onKeyChange(){
+      this.returnCF=TreeMapBackedSortedColumns.factory.create(cfs.metadata);
+    }
+    public void reduce(    OnDiskAtomIterator current){
+      this.colIters.add(current);
+      this.key=current.getKey();
+      this.returnCF.delete(current.getColumnFamily());
+    }
+    protected Row getReduced(){
+      ColumnFamily cached=cfs.getRawCachedRow(key);
+      if (cached == null) {
+        QueryFilter.collateOnDiskAtom(returnCF,colIters,range.columnFilter(key.key),gcBefore,now);
+      }
+ else {
+        QueryFilter keyFilter=new QueryFilter(key,cfs.name,range.columnFilter(key.key),now);
+        returnCF=cfs.filterColumnFamily(cached,keyFilter);
+      }
+      Row rv=new Row(key,returnCF);
+      colIters.clear();
+      key=null;
+      return rv;
+    }
+  }
+);
+}

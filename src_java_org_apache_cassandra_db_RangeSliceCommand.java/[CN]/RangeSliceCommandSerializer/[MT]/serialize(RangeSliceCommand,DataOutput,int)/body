@@ -1,11 +1,11 @@
 {
   out.writeUTF(sliceCommand.keyspace);
-  out.writeUTF(sliceCommand.column_family);
+  out.writeUTF(sliceCommand.columnFamily);
   if (version >= MessagingService.VERSION_20)   out.writeLong(sliceCommand.timestamp);
   IDiskAtomFilter filter=sliceCommand.predicate;
   if (version < MessagingService.VERSION_20) {
     ByteBuffer sc=null;
-    CFMetaData metadata=Schema.instance.getCFMetaData(sliceCommand.getKeyspace(),sliceCommand.column_family);
+    CFMetaData metadata=Schema.instance.getCFMetaData(sliceCommand.getKeyspace(),sliceCommand.columnFamily);
     if (metadata.cfType == ColumnFamilyType.Super) {
       SuperColumns.SCFilter scFilter=SuperColumns.filterToSC((CompositeType)metadata.comparator,filter);
       sc=scFilter.scName;
@@ -15,18 +15,18 @@
     if (sc != null)     ByteBufferUtil.write(sc,out);
   }
   IDiskAtomFilter.Serializer.instance.serialize(filter,out,version);
-  if (sliceCommand.row_filter == null) {
+  if (sliceCommand.rowFilter == null) {
     out.writeInt(0);
   }
  else {
-    out.writeInt(sliceCommand.row_filter.size());
-    for (    IndexExpression expr : sliceCommand.row_filter) {
+    out.writeInt(sliceCommand.rowFilter.size());
+    for (    IndexExpression expr : sliceCommand.rowFilter) {
       ByteBufferUtil.writeWithShortLength(expr.column_name,out);
       out.writeInt(expr.op.getValue());
       ByteBufferUtil.writeWithShortLength(expr.value,out);
     }
   }
-  AbstractBounds.serializer.serialize(sliceCommand.range,out,version);
+  AbstractBounds.serializer.serialize(sliceCommand.keyRange,out,version);
   out.writeInt(sliceCommand.maxResults);
   out.writeBoolean(sliceCommand.countCQL3Rows);
   out.writeBoolean(sliceCommand.isPaging);

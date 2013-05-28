@@ -1,0 +1,15 @@
+{
+  if (cl == null)   throw new InvalidRequestException("Invalid empty consistency level");
+  cl.validateForRead(keyspace());
+  int limit=getLimit(variables);
+  long now=System.currentTimeMillis();
+  Pageable command=isKeyRange || usesSecondaryIndexing ? getRangeCommand(variables,limit,now) : new Pageable.ReadCommands(getSliceCommands(variables,limit,now));
+  if (parameters.isCount && pageSize < 0)   pageSize=DEFAULT_COUNT_PAGE_SIZE;
+  if (pageSize < 0 || !QueryPagers.mayNeedPaging(command,pageSize)) {
+    return execute(command,cl,variables,limit,now);
+  }
+ else {
+    QueryPager pager=QueryPagers.pager(command,cl);
+    return parameters.isCount ? pageCountQuery(pager,variables,pageSize) : setupPaging(pager,state,variables,limit,pageSize);
+  }
+}
