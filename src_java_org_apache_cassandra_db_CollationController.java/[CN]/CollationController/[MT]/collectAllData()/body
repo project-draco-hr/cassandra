@@ -16,10 +16,12 @@
     List<SSTableReader> skippedSSTables=null;
     long mostRecentRowTombstone=Long.MIN_VALUE;
     long minTimestamp=Long.MAX_VALUE;
+    int nonIntersectingSSTables=0;
     for (    SSTableReader sstable : view.sstables) {
       minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
       if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       break;
       if (!filter.shouldInclude(sstable)) {
+        nonIntersectingSSTables++;
         if (sstable.getSSTableMetadata().maxLocalDeletionTime != Integer.MAX_VALUE) {
           if (skippedSSTables == null)           skippedSSTables=new ArrayList<SSTableReader>();
           skippedSSTables.add(sstable);
@@ -35,6 +37,7 @@
         sstablesIterated++;
       }
     }
+    int includedDueToTombstones=0;
     if (skippedSSTables != null) {
       for (      SSTableReader sstable : skippedSSTables) {
         if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
@@ -42,12 +45,14 @@
         if (iter.getColumnFamily() == null)         continue;
         ColumnFamily cf=iter.getColumnFamily();
         if (cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt > minTimestamp) {
+          includedDueToTombstones++;
           iterators.add(iter);
           returnCF.delete(cf.deletionInfo().getTopLevelDeletion());
           sstablesIterated++;
         }
       }
     }
+    if (Tracing.isTracing())     Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones",new Object[]{nonIntersectingSSTables,view.sstables.size(),includedDueToTombstones});
     if (iterators.isEmpty())     return null;
     Tracing.trace("Merging data from memtables and {} sstables",sstablesIterated);
     filter.collateOnDiskAtom(returnCF,iterators,gcBefore);
