@@ -1,17 +1,10 @@
 {
-  UUIDSerializer.serializer.serialize(srm.sessionId,out,MessagingService.current_version);
-  CompactEndpointSerializationHelper.serialize(srm.target,out);
-  if (srm.file != null) {
-    out.writeBoolean(true);
-    PendingFile.serializer.serialize(srm.file,out,version);
+  out.writeUTF(request.keyspace);
+  out.writeInt(request.ranges.size());
+  for (  Range<Token> range : request.ranges) {
+    Token.serializer.serialize(range.left,out);
+    Token.serializer.serialize(range.right,out);
   }
- else {
-    out.writeBoolean(false);
-    out.writeUTF(srm.table);
-    out.writeInt(srm.ranges.size());
-    for (    Range<Token> range : srm.ranges)     AbstractBounds.serializer.serialize(range,out,version);
-    out.writeUTF(srm.type.name());
-    out.writeInt(Iterables.size(srm.columnFamilies));
-    for (    ColumnFamilyStore cfs : srm.columnFamilies)     ColumnFamily.serializer.serializeCfId(cfs.metadata.cfId,out,version);
-  }
+  out.writeInt(request.columnFamilies.size());
+  for (  String cf : request.columnFamilies)   out.writeUTF(cf);
 }

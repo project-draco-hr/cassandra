@@ -1,0 +1,28 @@
+{
+  long totalSize=totalSize();
+  CompressedInputStream cis=new CompressedInputStream(Channels.newInputStream(channel),compressionInfo);
+  Pair<String,String> kscf=Schema.instance.getCF(cfId);
+  ColumnFamilyStore cfs=Table.open(kscf.left).getColumnFamilyStore(kscf.right);
+  Directories.DataDirectory localDir=cfs.directories.getLocationCapableOfSize(totalSize);
+  if (localDir == null)   throw new IOException("Insufficient disk space to store " + totalSize + " bytes");
+  desc=Descriptor.fromFilename(cfs.getTempSSTablePath(cfs.directories.getLocationForDisk(localDir)));
+  SSTableWriter writer=new SSTableWriter(desc.filenameFor(Component.DATA),estimatedKeys);
+  try {
+    BytesReadTracker in=new BytesReadTracker(new DataInputStream(cis));
+    for (    Pair<Long,Long> section : sections) {
+      long length=section.right - section.left;
+      cis.position(section.left);
+      in.reset(0);
+      while (in.getBytesRead() < length) {
+        writeRow(writer,in,cfs);
+        session.progress(desc,ProgressInfo.Direction.IN,cis.getTotalCompressedBytesRead(),totalSize);
+      }
+    }
+    return writer.closeAndOpenReader();
+  }
+ catch (  Throwable e) {
+    writer.abort();
+    if (e instanceof IOException)     throw (IOException)e;
+ else     throw Throwables.propagate(e);
+  }
+}

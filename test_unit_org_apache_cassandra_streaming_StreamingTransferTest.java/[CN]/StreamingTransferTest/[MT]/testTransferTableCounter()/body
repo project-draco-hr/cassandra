@@ -2,13 +2,13 @@
   final Table table=Table.open("Keyspace1");
   final ColumnFamilyStore cfs=table.getColumnFamilyStore("Counter1");
   final CounterContext cc=new CounterContext();
-  final Map<String,ColumnFamily> cleanedEntries=new HashMap<String,ColumnFamily>();
-  List<String> keys=createAndTransfer(table,cfs,new Mutator(){
+  final Map<String,ColumnFamily> cleanedEntries=new HashMap<>();
+  List<String> keys=createAndTransfer(cfs,new Mutator(){
     /** 
  * Creates a new SSTable per key: all will be merged before streaming. 
  */
     public void mutate(    String key,    String col,    long timestamp) throws Exception {
-      Map<String,ColumnFamily> entries=new HashMap<String,ColumnFamily>();
+      Map<String,ColumnFamily> entries=new HashMap<>();
       ColumnFamily cf=TreeMapBackedSortedColumns.factory.create(cfs.metadata);
       ColumnFamily cfCleaned=TreeMapBackedSortedColumns.factory.create(cfs.metadata);
       CounterContext.ContextState state=CounterContext.ContextState.allocate(4,1);
@@ -29,7 +29,7 @@
   SSTableReader streamed=cfs.getSSTables().iterator().next();
   SSTableUtils.assertContentEquals(cleaned,streamed);
   cfs.clearUnsafe();
-  transfer(table,streamed);
+  transfer(streamed);
   SSTableReader restreamed=cfs.getSSTables().iterator().next();
   SSTableUtils.assertContentEquals(streamed,restreamed);
 }

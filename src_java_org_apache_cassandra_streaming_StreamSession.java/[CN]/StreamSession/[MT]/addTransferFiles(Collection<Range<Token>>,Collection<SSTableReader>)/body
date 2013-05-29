@@ -1,0 +1,17 @@
+{
+  for (  SSTableReader sstable : sstables) {
+    List<Pair<Long,Long>> sections=sstable.getPositionsForRanges(ranges);
+    if (sections.isEmpty()) {
+      sstable.releaseReference();
+      continue;
+    }
+    long estimatedKeys=sstable.estimatedKeysForRanges(ranges);
+    UUID cfId=sstable.metadata.cfId;
+    StreamTransferTask task=transfers.get(cfId);
+    if (task == null) {
+      task=new StreamTransferTask(this,cfId);
+      transfers.put(cfId,task);
+    }
+    task.addTransferFile(sstable,estimatedKeys,sections);
+  }
+}

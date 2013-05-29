@@ -1,8 +1,17 @@
 {
   logger.info("rebuild from dc: {}",sourceDc == null ? "(any dc)" : sourceDc);
-  RangeStreamer streamer=new RangeStreamer(tokenMetadata,FBUtilities.getBroadcastAddress(),OperationType.REBUILD);
+  RangeStreamer streamer=new RangeStreamer(tokenMetadata,FBUtilities.getBroadcastAddress(),"Rebuild");
   streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
   if (sourceDc != null)   streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.getEndpointSnitch(),sourceDc));
   for (  String table : Schema.instance.getNonSystemTables())   streamer.addRanges(table,getLocalRanges(table));
-  streamer.fetch();
+  try {
+    streamer.fetchAsync().get();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException("Interrupted while waiting on rebuild streaming");
+  }
+catch (  ExecutionException e) {
+    logger.error("Error while rebuilding node",e.getCause());
+    throw new RuntimeException("Error while rebuilding node: " + e.getCause().getMessage());
+  }
 }

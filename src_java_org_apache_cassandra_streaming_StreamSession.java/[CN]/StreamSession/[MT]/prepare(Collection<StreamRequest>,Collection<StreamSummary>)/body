@@ -1,0 +1,15 @@
+{
+  logger.debug("Start preparing this session (" + requests.size() + " requests, "+ summaries.size()+ " columnfamilies receiving)");
+  state(State.PREPARING);
+  for (  StreamRequest request : requests)   addTransferRanges(request.keyspace,request.ranges,request.columnFamilies,true);
+  for (  StreamSummary summary : summaries)   prepareReceiving(summary);
+  if (!requests.isEmpty()) {
+    PrepareMessage prepare=new PrepareMessage();
+    for (    StreamTransferTask task : transfers.values())     prepare.summaries.add(task.getSummary());
+    handler.sendMessage(prepare);
+  }
+  if (!maybeCompleted()) {
+    logger.debug("Prepare complete. Start streaming files.");
+    startStreamingFiles();
+  }
+}

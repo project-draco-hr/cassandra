@@ -1,0 +1,19 @@
+{
+  while (!terminated()) {
+    try {
+      StreamMessage next=messageQueue.poll(1,TimeUnit.SECONDS);
+      if (next != null) {
+        logger.debug("Sending " + next);
+        StreamMessage.serialize(next,out,protocolVersion,session);
+        if (next.type == StreamMessage.Type.SESSION_FAILED)         terminate();
+      }
+    }
+ catch (    SocketException e) {
+      session.onError(e);
+      terminate();
+    }
+catch (    InterruptedException|IOException e) {
+      session.onError(e);
+    }
+  }
+}

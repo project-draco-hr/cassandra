@@ -1,47 +1,23 @@
 {
   outs.printf("Mode: %s%n",probe.getOperationMode());
-  Set<InetAddress> hosts=addr == null ? probe.getStreamDestinations() : new HashSet<InetAddress>(){
-{
-      add(addr);
-    }
-  }
-;
-  if (hosts.size() == 0)   outs.println("Not sending any streams.");
-  for (  InetAddress host : hosts) {
-    try {
-      List<String> files=probe.getFilesDestinedFor(host);
-      if (files.size() > 0) {
-        outs.printf("Streaming to: %s%n",host);
-        for (        String file : files)         outs.printf("   %s%n",file);
+  Set<StreamState> statuses=probe.getStreamStatus();
+  if (statuses.isEmpty())   outs.println("Not sending any streams.");
+  for (  StreamState status : statuses) {
+    outs.printf("%s %s%n",status.description,status.planId.toString());
+    for (    SessionInfo info : status.sessions) {
+      outs.printf("    %s%n",info.peer.toString());
+      if (!info.receivingSummaries.isEmpty()) {
+        outs.printf("        Receiving %d files, %d bytes total%n",info.getTotalFilesToReceive(),info.getTotalSizeToReceive());
+        for (        ProgressInfo progress : info.getReceivingFiles()) {
+          outs.printf("            %s%n",progress.toString());
+        }
       }
- else {
-        outs.printf(" Nothing streaming to %s%n",host);
+      if (!info.sendingSummaries.isEmpty()) {
+        outs.printf("        Sending %d files, %d bytes total%n",info.getTotalFilesToSend(),info.getTotalSizeToSend());
+        for (        ProgressInfo progress : info.getSendingFiles()) {
+          outs.printf("            %s%n",progress.toString());
+        }
       }
-    }
- catch (    IOException ex) {
-      outs.printf("   Error retrieving file data for %s%n",host);
-    }
-  }
-  hosts=addr == null ? probe.getStreamSources() : new HashSet<InetAddress>(){
-{
-      add(addr);
-    }
-  }
-;
-  if (hosts.size() == 0)   outs.println("Not receiving any streams.");
-  for (  InetAddress host : hosts) {
-    try {
-      List<String> files=probe.getIncomingFiles(host);
-      if (files.size() > 0) {
-        outs.printf("Streaming from: %s%n",host);
-        for (        String file : files)         outs.printf("   %s%n",file);
-      }
- else {
-        outs.printf(" Nothing streaming from %s%n",host);
-      }
-    }
- catch (    IOException ex) {
-      outs.printf("   Error retrieving file data for %s%n",host);
     }
   }
   outs.printf("Read Repair Statistics:%nAttempted: %d%nMismatch (Blocking): %d%nMismatch (Background): %d%n",probe.getReadRepairAttempted(),probe.getReadRepairRepairedBlocking(),probe.getReadRepairRepairedBackground());

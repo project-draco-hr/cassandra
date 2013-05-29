@@ -1,5 +1,4 @@
 {
-  final Multimap<InetAddress,String> fetchSources=HashMultimap.create();
   Multimap<String,Map.Entry<InetAddress,Collection<Range<Token>>>> rangesToFetch=HashMultimap.create();
   final InetAddress myAddress=FBUtilities.getBroadcastAddress();
   for (  String table : Schema.instance.getNonSystemTables()) {
@@ -10,29 +9,27 @@
     }
     Multimap<InetAddress,Range<Token>> sourceRanges=getNewSourceRanges(table,myNewRanges);
     for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : sourceRanges.asMap().entrySet()) {
-      fetchSources.put(entry.getKey(),table);
       rangesToFetch.put(table,entry);
     }
   }
+  StreamPlan stream=new StreamPlan("Restore replica count");
   for (  final String table : rangesToFetch.keySet()) {
     for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : rangesToFetch.get(table)) {
       final InetAddress source=entry.getKey();
       Collection<Range<Token>> ranges=entry.getValue();
-      final IStreamCallback callback=new IStreamCallback(){
-        public void onSuccess(){
-synchronized (fetchSources) {
-            fetchSources.remove(source,table);
-            if (fetchSources.isEmpty())             sendReplicationNotification(notifyEndpoint);
-          }
-        }
-        public void onFailure(){
-          logger.warn("Streaming from " + source + " failed");
-          onSuccess();
-        }
-      }
-;
       if (logger.isDebugEnabled())       logger.debug("Requesting from " + source + " ranges "+ StringUtils.join(ranges,", "));
-      StreamIn.requestRanges(source,table,ranges,callback,OperationType.RESTORE_REPLICA_COUNT);
+      stream.requestRanges(source,table,ranges);
     }
   }
+  StreamResultFuture future=stream.execute();
+  Futures.addCallback(future,new FutureCallback<StreamState>(){
+    public void onSuccess(    StreamState finalState){
+      sendReplicationNotification(notifyEndpoint);
+    }
+    public void onFailure(    Throwable t){
+      logger.warn("Streaming to restore replica count failed",t);
+      sendReplicationNotification(notifyEndpoint);
+    }
+  }
+);
 }

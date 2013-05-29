@@ -1,2 +1,19 @@
 {
+  LoaderOptions options=LoaderOptions.parseArgs(args);
+  OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
+  SSTableLoader loader=new SSTableLoader(options.directory,new ExternalClient(options.hosts,options.rpcPort,options.user,options.passwd),handler);
+  DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
+  StreamResultFuture future=loader.stream(options.ignores);
+  future.addEventListener(new ProgressIndicator(handler));
+  try {
+    future.get();
+    System.exit(0);
+  }
+ catch (  Exception e) {
+    System.err.println("Streaming to the following hosts failed:");
+    System.err.println(loader.getFailedHosts());
+    System.err.println(e.getMessage());
+    if (options.debug)     e.printStackTrace(System.err);
+    System.exit(1);
+  }
 }

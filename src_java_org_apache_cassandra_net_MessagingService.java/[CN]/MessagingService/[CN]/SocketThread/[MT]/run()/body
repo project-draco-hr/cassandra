@@ -2,8 +2,24 @@
   while (true) {
     try {
       Socket socket=server.accept();
-      if (authenticate(socket))       new IncomingTcpConnection(socket).start();
- else       socket.close();
+      if (authenticate(socket)) {
+        DataInputStream in=new DataInputStream(socket.getInputStream());
+        MessagingService.validateMagic(in.readInt());
+        int header=in.readInt();
+        boolean isStream=MessagingService.getBits(header,3,1) == 1;
+        int version=MessagingService.getBits(header,15,8);
+        logger.debug("Connection version {} from {}",version,socket.getInetAddress());
+        if (isStream) {
+          new IncomingStreamingConnection(version,socket).start();
+        }
+ else {
+          boolean compressed=MessagingService.getBits(header,2,1) == 1;
+          new IncomingTcpConnection(version,compressed,socket).start();
+        }
+      }
+ else {
+        socket.close();
+      }
     }
  catch (    AsynchronousCloseException e) {
       logger.info("MessagingService shutting down server thread.");

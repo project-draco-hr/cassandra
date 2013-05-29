@@ -1,11 +1,19 @@
 {
   if (logger.isDebugEnabled())   logger.debug("Beginning bootstrap process");
-  RangeStreamer streamer=new RangeStreamer(tokenMetadata,address,OperationType.BOOTSTRAP);
+  RangeStreamer streamer=new RangeStreamer(tokenMetadata,address,"Bootstrap");
   streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
   for (  String table : Schema.instance.getNonSystemTables()) {
     AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
     streamer.addRanges(table,strategy.getPendingAddressRanges(tokenMetadata,tokens,address));
   }
-  streamer.fetch();
-  StorageService.instance.finishBootstrapping();
+  try {
+    streamer.fetchAsync().get();
+    StorageService.instance.finishBootstrapping();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException("Interrupted while waiting on boostrap to complete. Bootstrap will have to be restarted.");
+  }
+catch (  ExecutionException e) {
+    throw new RuntimeException("Error during boostrap: " + e.getCause().getMessage(),e.getCause());
+  }
 }

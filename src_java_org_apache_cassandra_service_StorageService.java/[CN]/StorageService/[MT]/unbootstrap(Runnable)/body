@@ -6,14 +6,14 @@
     rangesToStream.put(table,rangesMM);
   }
   setMode(Mode.LEAVING,"streaming data to other nodes",true);
-  CountDownLatch latch=streamRanges(rangesToStream);
-  CountDownLatch hintsLatch=streamHints();
+  Future<StreamState> streamSuccess=streamRanges(rangesToStream);
+  Future<StreamState> hintsSuccess=streamHints();
   logger.debug("waiting for stream aks.");
   try {
-    latch.await();
-    hintsLatch.await();
+    streamSuccess.get();
+    hintsSuccess.get();
   }
- catch (  InterruptedException e) {
+ catch (  ExecutionException|InterruptedException e) {
     throw new RuntimeException(e);
   }
   logger.debug("stream acks all received.");

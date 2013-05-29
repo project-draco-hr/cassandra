@@ -1,20 +1,14 @@
 {
-  UUID sessionId=UUIDSerializer.serializer.deserialize(in,MessagingService.current_version);
-  InetAddress target=CompactEndpointSerializationHelper.deserialize(in);
-  boolean singleFile=in.readBoolean();
-  if (singleFile) {
-    PendingFile file=PendingFile.serializer.deserialize(in,version);
-    return new StreamRequest(target,file,sessionId);
+  String keyspace=in.readUTF();
+  int rangeCount=in.readInt();
+  List<Range<Token>> ranges=new ArrayList<>(rangeCount);
+  for (int i=0; i < rangeCount; i++) {
+    Token left=Token.serializer.deserialize(in);
+    Token right=Token.serializer.deserialize(in);
+    ranges.add(new Range<>(left,right));
   }
- else {
-    String table=in.readUTF();
-    int size=in.readInt();
-    List<Range<Token>> ranges=(size == 0) ? null : new ArrayList<Range<Token>>(size);
-    for (int i=0; i < size; ++i)     ranges.add((Range<Token>)AbstractBounds.serializer.deserialize(in,version).toTokenBounds());
-    OperationType type=OperationType.valueOf(in.readUTF());
-    List<ColumnFamilyStore> stores=new ArrayList<ColumnFamilyStore>();
-    int cfsSize=in.readInt();
-    for (int i=0; i < cfsSize; ++i)     stores.add(Table.open(table).getColumnFamilyStore(ColumnFamily.serializer.deserializeCfId(in,version)));
-    return new StreamRequest(target,ranges,table,stores,sessionId,type);
-  }
+  int cfCount=in.readInt();
+  List<String> columnFamilies=new ArrayList<>(cfCount);
+  for (int i=0; i < cfCount; i++)   columnFamilies.add(in.readUTF());
+  return new StreamRequest(keyspace,ranges,columnFamilies);
 }

@@ -1,13 +1,5 @@
 {
-  ColumnFamilyStore cfstore=Table.open(tableName).getColumnFamilyStore(cfName);
-  try {
-    logger.info(String.format("[streaming task #%s] Performing streaming repair of %d ranges with %s",id,ranges.size(),dst));
-    Collection<ColumnFamilyStore> cfses=Collections.singleton(cfstore);
-    StreamOutSession outsession=StreamOutSession.create(tableName,dst,callback);
-    StreamOut.transferRanges(outsession,cfses,ranges,OperationType.AES,false);
-    StreamIn.requestRanges(dst,tableName,cfses,ranges,callback,OperationType.AES);
-  }
- catch (  Exception e) {
-    throw new RuntimeException("Streaming repair failed",e);
-  }
+  logger.info(String.format("[streaming task #%s] Performing streaming repair of %d ranges with %s",id,ranges.size(),dst));
+  StreamResultFuture op=new StreamPlan("Repair").flushBeforeTransfer(true).requestRanges(dst,tableName,ranges,cfName).transferRanges(dst,tableName,ranges,cfName).execute();
+  op.addEventListener(callback);
 }

@@ -17,19 +17,16 @@
   RangeRelocator relocator=new RangeRelocator(Collections.singleton(newToken),tablesToProcess);
   if (relocator.streamsNeeded()) {
     setMode(Mode.MOVING,"fetching new ranges and streaming old ranges",true);
-    relocator.logStreamsMap("[Move->STREAMING]");
-    CountDownLatch streamLatch=relocator.streams();
-    relocator.logRequestsMap("[Move->FETCHING]");
-    CountDownLatch fetchLatch=relocator.requests();
     try {
-      streamLatch.await();
-      fetchLatch.await();
+      relocator.stream().get();
     }
- catch (    InterruptedException e) {
-      throw new RuntimeException("Interrupted latch while waiting for stream/fetch ranges to finish: " + e.getMessage());
+ catch (    ExecutionException|InterruptedException e) {
+      throw new RuntimeException("Interrupted while waiting for stream/fetch ranges to finish: " + e.getMessage());
     }
   }
- else   setMode(Mode.MOVING,"No ranges to fetch/stream",true);
+ else {
+    setMode(Mode.MOVING,"No ranges to fetch/stream",true);
+  }
   setTokens(Collections.singleton(newToken));
   if (logger.isDebugEnabled())   logger.debug("Successfully moved to new token {}",getLocalTokens().iterator().next());
 }

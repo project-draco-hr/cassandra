@@ -1,0 +1,18 @@
+{
+  Collection<ColumnFamilyStore> stores=new HashSet<>();
+  if (columnFamilies.isEmpty()) {
+    stores.addAll(Table.open(keyspace).getColumnFamilyStores());
+  }
+ else {
+    for (    String cf : columnFamilies)     stores.add(Table.open(keyspace).getColumnFamilyStore(cf));
+  }
+  if (flushTables)   flushSSTables(stores);
+  List<SSTableReader> sstables=Lists.newLinkedList();
+  for (  ColumnFamilyStore cfStore : stores) {
+    List<AbstractBounds<RowPosition>> rowBoundsList=Lists.newLinkedList();
+    for (    Range<Token> range : ranges)     rowBoundsList.add(range.toRowBounds());
+    ColumnFamilyStore.ViewFragment view=cfStore.markReferenced(rowBoundsList);
+    sstables.addAll(view.sstables);
+  }
+  addTransferFiles(ranges,sstables);
+}
