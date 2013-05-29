@@ -1,0 +1,19 @@
+{
+  RepairJobDesc desc=message.payload.desc;
+switch (message.payload.messageType) {
+case VALIDATION_REQUEST:
+    ValidationRequest validationRequest=(ValidationRequest)message.payload;
+  ColumnFamilyStore store=Table.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+Validator validator=new Validator(desc,message.from,validationRequest.gcBefore);
+CompactionManager.instance.submitValidation(store,validator);
+break;
+case SYNC_REQUEST:
+SyncRequest request=(SyncRequest)message.payload;
+StreamingRepairTask task=new StreamingRepairTask(desc,request);
+task.run();
+break;
+default :
+ActiveRepairService.instance.handleMessage(message.from,message.payload);
+break;
+}
+}

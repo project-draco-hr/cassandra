@@ -4,9 +4,9 @@
       String message=String.format("Starting repair command #%d, repairing %d ranges for keyspace %s",cmd,ranges.size(),keyspace);
       logger.info(message);
       sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.STARTED.ordinal()});
-      List<ActiveRepairService.RepairFuture> futures=new ArrayList<ActiveRepairService.RepairFuture>(ranges.size());
+      List<RepairFuture> futures=new ArrayList<RepairFuture>(ranges.size());
       for (      Range<Token> range : ranges) {
-        ActiveRepairService.RepairFuture future;
+        RepairFuture future;
         try {
           future=forceTableRepair(range,keyspace,isSequential,isLocal,columnFamilies);
         }
@@ -26,19 +26,20 @@
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }
       }
-      for (      ActiveRepairService.RepairFuture future : futures) {
+      for (      RepairFuture future : futures) {
         try {
           future.get();
-          message=String.format("Repair session %s for range %s finished",future.session.getName(),future.session.getRange().toString());
+          message=String.format("Repair session %s for range %s finished",future.session.getId(),future.session.getRange().toString());
+          logger.info(message);
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_SUCCESS.ordinal()});
         }
  catch (        ExecutionException e) {
-          message=String.format("Repair session %s for range %s failed with error %s",future.session.getName(),future.session.getRange().toString(),e.getCause().getMessage());
+          message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getCause().getMessage());
           logger.error(message,e);
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }
 catch (        Exception e) {
-          message=String.format("Repair session %s for range %s failed with error %s",future.session.getName(),future.session.getRange().toString(),e.getMessage());
+          message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getMessage());
           logger.error(message,e);
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }

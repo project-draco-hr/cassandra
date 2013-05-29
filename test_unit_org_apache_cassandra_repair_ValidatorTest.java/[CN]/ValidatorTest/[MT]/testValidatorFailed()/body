@@ -1,0 +1,30 @@
+{
+  Range<Token> range=new Range<>(partitioner.getMinimumToken(),partitioner.getRandomToken());
+  final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),keyspace,columnFamily,range);
+  final SimpleCondition lock=new SimpleCondition();
+  SinkManager.add(new IMessageSink(){
+    @SuppressWarnings("unchecked") public MessageOut handleMessage(    MessageOut message,    int id,    InetAddress to){
+      try {
+        if (message.verb == MessagingService.Verb.REPAIR_MESSAGE) {
+          RepairMessage m=(RepairMessage)message.payload;
+          assertEquals(RepairMessage.Type.VALIDATION_COMPLETE,m.messageType);
+          assertEquals(desc,m.desc);
+          assertFalse(((ValidationComplete)m).success);
+          assertNull(((ValidationComplete)m).tree);
+        }
+      }
+  finally {
+        lock.signalAll();
+      }
+      return null;
+    }
+    public MessageIn handleMessage(    MessageIn message,    int id,    InetAddress to){
+      return null;
+    }
+  }
+);
+  InetAddress remote=InetAddress.getByName("127.0.0.2");
+  Validator validator=new Validator(desc,remote,0);
+  validator.fail();
+  if (!lock.isSignaled())   lock.await();
+}

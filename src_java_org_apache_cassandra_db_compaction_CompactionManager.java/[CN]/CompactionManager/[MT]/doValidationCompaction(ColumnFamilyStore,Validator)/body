@@ -1,0 +1,34 @@
+{
+  if (!cfs.isValid())   return;
+  Collection<SSTableReader> sstables;
+  String snapshotName=validator.desc.sessionId.toString();
+  int gcBefore;
+  if (cfs.snapshotExists(snapshotName)) {
+    sstables=cfs.getSnapshotSSTableReader(snapshotName);
+    gcBefore=cfs.gcBefore(cfs.getSnapshotCreationTime(snapshotName));
+  }
+ else {
+    StorageService.instance.forceTableFlush(cfs.table.getName(),cfs.name);
+    sstables=cfs.markCurrentSSTablesReferenced();
+    if (validator.gcBefore > 0)     gcBefore=validator.gcBefore;
+ else     gcBefore=getDefaultGcBefore(cfs);
+  }
+  CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.desc.range,gcBefore);
+  CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
+  metrics.beginCompaction(ci);
+  try {
+    validator.prepare(cfs);
+    while (iter.hasNext()) {
+      if (ci.isStopRequested())       throw new CompactionInterruptedException(ci.getCompactionInfo());
+      AbstractCompactedRow row=iter.next();
+      validator.add(row);
+    }
+    validator.complete();
+  }
+  finally {
+    SSTableReader.releaseReferences(sstables);
+    iter.close();
+    if (cfs.table.snapshotExists(snapshotName))     cfs.table.clearSnapshot(snapshotName);
+    metrics.finishCompaction(ci);
+  }
+}

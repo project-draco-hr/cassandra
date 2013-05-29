@@ -1,17 +1,13 @@
 {
-  Range full=new Range(tok(-1),tok(-1));
-  ByteArrayOutputStream bout=new ByteArrayOutputStream();
-  ObjectOutputStream oout=new ObjectOutputStream(bout);
+  Range<Token> full=new Range<>(tok(-1),tok(-1));
   mt.maxsize(256);
   mt.init();
   for (  TreeRange range : mt.invalids())   range.addAll(new HIterator(range.right));
   byte[] initialhash=mt.hash(full);
-  oout.writeObject(mt);
-  oout.close();
-  ByteArrayInputStream bin=new ByteArrayInputStream(bout.toByteArray());
-  ObjectInputStream oin=new ObjectInputStream(bin);
-  MerkleTree restored=(MerkleTree)oin.readObject();
-  restored.partitioner(partitioner);
-  restored.fullRange=fullRange();
+  ByteArrayDataOutput out=ByteStreams.newDataOutput();
+  MerkleTree.serializer.serialize(mt,out,MessagingService.current_version);
+  byte[] serialized=out.toByteArray();
+  ByteArrayDataInput in=ByteStreams.newDataInput(serialized);
+  MerkleTree restored=MerkleTree.serializer.deserialize(in,MessagingService.current_version);
   assertHashEquals(initialhash,restored.hash(full));
 }

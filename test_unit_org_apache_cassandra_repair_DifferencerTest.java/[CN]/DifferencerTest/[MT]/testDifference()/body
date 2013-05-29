@@ -1,0 +1,17 @@
+{
+  Range<Token> range=new Range<>(partirioner.getMinimumToken(),partirioner.getRandomToken());
+  RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),"Keyspace1","Standard1",range);
+  MerkleTree tree1=createInitialTree(desc);
+  MerkleTree tree2=createInitialTree(desc);
+  Token token=partirioner.midpoint(range.left,range.right);
+  tree1.invalidate(token);
+  MerkleTree.TreeRange changed=tree1.get(token);
+  changed.hash("non-empty hash!".getBytes());
+  Set<Range<Token>> interesting=new HashSet<>();
+  interesting.add(changed);
+  TreeResponse r1=new TreeResponse(InetAddress.getByName("127.0.0.1"),tree1);
+  TreeResponse r2=new TreeResponse(InetAddress.getByName("127.0.0.2"),tree2);
+  Differencer diff=new Differencer(desc,r1,r2);
+  diff.run();
+  assertEquals("Wrong differing ranges",interesting,new HashSet<>(diff.differences));
+}
