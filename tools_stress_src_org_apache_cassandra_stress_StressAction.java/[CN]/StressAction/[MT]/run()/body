@@ -8,9 +8,10 @@
   output.println("total,interval_op_rate,interval_key_rate,latency,95th,99th,elapsed_time");
   int itemsPerThread=client.getKeysPerThread();
   int modulo=client.getNumKeys() % threadCount;
+  RateLimiter rateLimiter=RateLimiter.create(client.getMaxOpsPerSecond());
   for (int i=0; i < threadCount; i++) {
     if (i == threadCount - 1)     itemsPerThread+=modulo;
-    consumers[i]=new Consumer(itemsPerThread);
+    consumers[i]=new Consumer(itemsPerThread,rateLimiter);
   }
   Producer producer=new Producer();
   producer.start();
