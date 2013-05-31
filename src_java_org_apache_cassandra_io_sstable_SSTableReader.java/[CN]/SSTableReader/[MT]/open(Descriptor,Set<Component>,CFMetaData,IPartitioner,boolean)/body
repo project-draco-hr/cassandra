@@ -1,2 +1,16 @@
 {
+  long start=System.currentTimeMillis();
+  SSTableMetadata sstableMetadata=openMetadata(descriptor,components,partitioner);
+  SSTableReader sstable=new SSTableReader(descriptor,components,metadata,partitioner,System.currentTimeMillis(),sstableMetadata);
+  if (descriptor.version.hasStringsInBloomFilter) {
+    sstable.load(true);
+  }
+ else {
+    sstable.load(false);
+    sstable.loadBloomFilter();
+  }
+  if (validate)   sstable.validate();
+  if (logger.isDebugEnabled())   logger.debug("INDEX LOAD TIME for " + descriptor + ": "+ (System.currentTimeMillis() - start)+ " ms.");
+  if (logger.isDebugEnabled() && sstable.getKeyCache() != null)   logger.debug(String.format("key cache contains %s/%s keys",sstable.getKeyCache().size(),sstable.getKeyCache().getCapacity()));
+  return sstable;
 }
