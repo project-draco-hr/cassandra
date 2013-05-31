@@ -1,4 +1,10 @@
 {
+  IAuthenticator authenticator=DatabaseDescriptor.getAuthenticator();
+  if (authenticator.requireAuthentication() && !(authenticator instanceof ISaslAwareAuthenticator)) {
+    logger.error("Not starting native transport as the configured IAuthenticator is not capable of SASL authentication");
+    isRunning.compareAndSet(true,false);
+    return;
+  }
   executionHandler=new ExecutionHandler(new RequestThreadPoolExecutor());
   factory=new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),Executors.newCachedThreadPool());
   ServerBootstrap bootstrap=new ServerBootstrap(factory);
