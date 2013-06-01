@@ -1,12 +1,15 @@
 {
-  if (maxColumnNames.size() == 0)   return candidates;
-  if (candidates.size() == 0)   return maxColumnNames;
+  if (maxColumnNames.isEmpty())   return candidates;
+  if (candidates.isEmpty())   return maxColumnNames;
   if (columnNameComparator instanceof CompositeType) {
     CompositeType ct=(CompositeType)columnNameComparator;
-    List<ByteBuffer> retList=new ArrayList<ByteBuffer>(ct.types.size());
-    for (int i=0; i < maxColumnNames.size(); i++) {
-      retList.add(max(maxColumnNames.get(i),candidates.get(i),ct.types.get(i)));
-    }
+    List<ByteBuffer> biggest=maxColumnNames.size() > candidates.size() ? maxColumnNames : candidates;
+    int typeCount=getTypeCount(ct);
+    int minSize=Math.min(typeCount,Math.min(maxColumnNames.size(),candidates.size()));
+    int maxSize=Math.min(typeCount,biggest.size());
+    List<ByteBuffer> retList=new ArrayList<ByteBuffer>(maxSize);
+    for (int i=0; i < minSize; i++)     retList.add(max(maxColumnNames.get(i),candidates.get(i),ct.types.get(i)));
+    for (int i=minSize; i < maxSize; i++)     retList.add(biggest.get(i));
     return retList;
   }
  else {

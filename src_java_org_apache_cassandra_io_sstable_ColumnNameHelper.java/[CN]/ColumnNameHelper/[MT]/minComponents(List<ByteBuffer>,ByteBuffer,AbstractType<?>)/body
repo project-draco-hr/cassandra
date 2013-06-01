@@ -1,12 +1,15 @@
 {
   if (comparator instanceof CompositeType) {
-    if (minSeen.size() == 0)     return Arrays.asList(((CompositeType)comparator).split(candidate));
-    List<AbstractCompositeType.CompositeComponent> components=((AbstractCompositeType)comparator).deconstruct(candidate);
-    List<ByteBuffer> retList=new ArrayList<ByteBuffer>(components.size());
-    for (int i=0; i < minSeen.size(); i++) {
-      AbstractCompositeType.CompositeComponent component=components.get(i);
-      retList.add(ColumnNameHelper.min(minSeen.get(i),component.value,component.comparator));
-    }
+    CompositeType ct=(CompositeType)comparator;
+    if (minSeen.isEmpty())     return Arrays.asList(ct.split(candidate));
+    int typeCount=getTypeCount(ct);
+    List<ByteBuffer> components=Arrays.asList(ct.split(candidate));
+    List<ByteBuffer> biggest=minSeen.size() > components.size() ? minSeen : components;
+    int minSize=Math.min(typeCount,Math.min(components.size(),minSeen.size()));
+    int maxSize=Math.min(typeCount,biggest.size());
+    List<ByteBuffer> retList=new ArrayList<ByteBuffer>(maxSize);
+    for (int i=0; i < minSize; i++)     retList.add(ColumnNameHelper.min(minSeen.get(i),components.get(i),ct.types.get(i)));
+    for (int i=minSize; i < maxSize; i++)     retList.add(biggest.get(i));
     return retList;
   }
  else {

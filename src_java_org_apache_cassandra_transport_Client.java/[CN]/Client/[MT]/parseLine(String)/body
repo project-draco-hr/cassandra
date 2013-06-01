@@ -49,14 +49,18 @@
     return new OptionsMessage();
   }
  else   if (msgType.equals("CREDENTIALS")) {
+    System.err.println("[WARN] CREDENTIALS command is deprecated, use AUTHENTICATE instead");
     CredentialsMessage msg=new CredentialsMessage();
-    while (iter.hasNext()) {
-      String next=iter.next();
-      String[] kv=next.split("=");
-      if (kv.length != 2)       return null;
-      msg.credentials.put(kv[0],kv[1]);
-    }
+    msg.credentials.putAll(readCredentials(iter));
     return msg;
+  }
+ else   if (msgType.equals("AUTHENTICATE")) {
+    Map<String,String> credentials=readCredentials(iter);
+    if (!credentials.containsKey(IAuthenticator.USERNAME_KEY) || !credentials.containsKey(IAuthenticator.PASSWORD_KEY)) {
+      System.err.println("[ERROR] Authentication requires both 'username' and 'password'");
+      return null;
+    }
+    return new AuthResponse(encodeCredentialsForSasl(credentials));
   }
  else   if (msgType.equals("REGISTER")) {
     String type=line.substring(9).toUpperCase();
