@@ -1,2 +1,32 @@
 {
+  String ksname="Keyspace1";
+  String cfname="StandardLeveled";
+  Table table=Table.open(ksname);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfname);
+  ByteBuffer value=ByteBuffer.wrap(new byte[100 * 1024]);
+  int rows=20;
+  int columns=10;
+  for (int r=0; r < rows; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    RowMutation rm=new RowMutation(ksname,key.key);
+    for (int c=0; c < columns; c++) {
+      rm.add(cfname,ByteBufferUtil.bytes("column" + c),value,0);
+    }
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  waitForLeveling(cfs);
+  LeveledCompactionStrategy strategy=(LeveledCompactionStrategy)cfs.getCompactionStrategy();
+  cfs.disableAutoCompaction();
+  while (CompactionManager.instance.getActiveCompactions() > 0)   Thread.sleep(100);
+  for (  SSTableReader s : cfs.getSSTables()) {
+    assertTrue(s.getSSTableLevel() != 6);
+    strategy.manifest.remove(s);
+    LeveledManifest.mutateLevel(s.getSSTableMetadata(),s.descriptor,s.descriptor.filenameFor(Component.STATS),6);
+    s.reloadSSTableMetadata();
+    strategy.manifest.add(s);
+  }
+  for (  SSTableReader s : cfs.getSSTables())   assertEquals(6,s.getSSTableLevel());
+  int[] levels=strategy.manifest.getAllLevelSize();
+  assertEquals(cfs.getSSTables().size(),levels[6]);
 }
