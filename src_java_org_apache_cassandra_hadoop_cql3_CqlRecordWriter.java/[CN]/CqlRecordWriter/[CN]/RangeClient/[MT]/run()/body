@@ -1,0 +1,46 @@
+{
+  outer:   while (run || !queue.isEmpty()) {
+    Pair<ByteBuffer,List<ByteBuffer>> item;
+    try {
+      item=queue.take();
+    }
+ catch (    InterruptedException e) {
+      continue;
+    }
+    Iterator<InetAddress> iter=endpoints.iterator();
+    while (true) {
+      try {
+        int i=0;
+        int itemId=preparedStatement(client);
+        while (item != null) {
+          List<ByteBuffer> bindVariables=item.right;
+          client.execute_prepared_cql3_query(itemId,bindVariables,ConsistencyLevel.ONE);
+          i++;
+          if (i >= batchThreshold)           break;
+          item=queue.poll();
+        }
+        break;
+      }
+ catch (      Exception e) {
+        closeInternal();
+        if (!iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+      try {
+        InetAddress address=iter.next();
+        String host=address.getHostName();
+        int port=ConfigHelper.getOutputRpcPort(conf);
+        client=CqlOutputFormat.createAuthenticatedClient(host,port,conf);
+      }
+ catch (      Exception e) {
+        closeInternal();
+        if ((!(e instanceof TException)) || !iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+    }
+  }
+}
