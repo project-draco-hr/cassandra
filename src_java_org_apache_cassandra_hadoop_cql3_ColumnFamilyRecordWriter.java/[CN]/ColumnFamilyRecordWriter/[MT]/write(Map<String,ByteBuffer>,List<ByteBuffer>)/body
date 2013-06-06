@@ -1,0 +1,12 @@
+{
+  ByteBuffer rowKey=getRowKey(keys);
+  Range<Token> range=ringCache.getRange(rowKey);
+  RangeClient client=clients.get(range);
+  if (client == null) {
+    client=new RangeClient(ringCache.getEndpoint(range));
+    client.start();
+    clients.put(range,client);
+  }
+  client.put(Pair.create(rowKey,values));
+  progressable.progress();
+}

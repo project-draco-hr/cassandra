@@ -1,0 +1,41 @@
+{
+  String outputReducerType="filesystem";
+  if (args != null && args[0].startsWith(OUTPUT_REDUCER_VAR)) {
+    String[] s=args[0].split("=");
+    if (s != null && s.length == 2)     outputReducerType=s[1];
+  }
+  logger.info("output reducer type: " + outputReducerType);
+  Job job=new Job(getConf(),"wordcount");
+  job.setJarByClass(WordCount.class);
+  job.setMapperClass(TokenizerMapper.class);
+  if (outputReducerType.equalsIgnoreCase("filesystem")) {
+    job.setCombinerClass(ReducerToFilesystem.class);
+    job.setReducerClass(ReducerToFilesystem.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
+    FileOutputFormat.setOutputPath(job,new Path(OUTPUT_PATH_PREFIX));
+  }
+ else {
+    job.setReducerClass(ReducerToCassandra.class);
+    job.setMapOutputKeyClass(Text.class);
+    job.setMapOutputValueClass(IntWritable.class);
+    job.setOutputKeyClass(Map.class);
+    job.setOutputValueClass(List.class);
+    job.setOutputFormatClass(ColumnFamilyOutputFormat.class);
+    ConfigHelper.setOutputColumnFamily(job.getConfiguration(),KEYSPACE,OUTPUT_COLUMN_FAMILY);
+    job.getConfiguration().set(PRIMARY_KEY,"word,sum");
+    String query="INSERT INTO " + KEYSPACE + "."+ OUTPUT_COLUMN_FAMILY+ " (row_id1, row_id2, word, count_num) "+ " values (?, ?, ?, ?)";
+    CQLConfigHelper.setOutputCql(job.getConfiguration(),query);
+    ConfigHelper.setOutputInitialAddress(job.getConfiguration(),"localhost");
+    ConfigHelper.setOutputPartitioner(job.getConfiguration(),"Murmur3Partitioner");
+  }
+  job.setInputFormatClass(ColumnFamilyInputFormat.class);
+  ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
+  ConfigHelper.setInputInitialAddress(job.getConfiguration(),"localhost");
+  ConfigHelper.setInputColumnFamily(job.getConfiguration(),KEYSPACE,COLUMN_FAMILY);
+  ConfigHelper.setInputPartitioner(job.getConfiguration(),"Murmur3Partitioner");
+  CQLConfigHelper.setInputCQLPageRowSize(job.getConfiguration(),"3");
+  CQLConfigHelper.setInputWhereClauses(job.getConfiguration(),"title='A'");
+  job.waitForCompletion(true);
+  return 0;
+}
