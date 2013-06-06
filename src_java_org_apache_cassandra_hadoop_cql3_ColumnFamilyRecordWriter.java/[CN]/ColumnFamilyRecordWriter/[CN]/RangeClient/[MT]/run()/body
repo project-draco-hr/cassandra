@@ -1,8 +1,8 @@
 {
   outer:   while (run || !queue.isEmpty()) {
-    Pair<ByteBuffer,List<ByteBuffer>> bindVariables;
+    Pair<ByteBuffer,List<ByteBuffer>> item;
     try {
-      bindVariables=queue.take();
+      item=queue.take();
     }
  catch (    InterruptedException e) {
       continue;
@@ -12,11 +12,12 @@
       try {
         int i=0;
         int itemId=preparedStatement(client);
-        while (bindVariables != null) {
-          client.execute_prepared_cql3_query(itemId,bindVariables.right,ConsistencyLevel.ONE);
+        while (item != null) {
+          List<ByteBuffer> bindVariables=item.right;
+          client.execute_prepared_cql3_query(itemId,bindVariables,ConsistencyLevel.ONE);
           i++;
           if (i >= batchThreshold)           break;
-          bindVariables=queue.poll();
+          item=queue.poll();
         }
         break;
       }
