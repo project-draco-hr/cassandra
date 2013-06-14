@@ -1,4 +1,4 @@
-def assertQueriesGiveColoredOutput(self, queries_and_expected_outputs, sort_results=False, **kwargs):
+def assertQueriesGiveColoredOutput(self, queries_and_expected_outputs, **kwargs):
     '\n        Allow queries and expected output to be specified in structured tuples,\n        along with expected color information.\n        '
     with testrun_cqlsh(tty=True, **kwargs) as c:
         for (query, expected) in queries_and_expected_outputs:
@@ -7,17 +7,6 @@ def assertQueriesGiveColoredOutput(self, queries_and_expected_outputs, sort_resu
             c_output = ColoredText(output)
             pairs = at_a_time(dedent(expected).split('\n'), 2)
             outlines = c_output.splitlines()
-            if sort_results:
-                if outlines[1].plain().startswith('---'):
-                    firstpart = outlines[:2]
-                    sortme = outlines[2:]
-                else:
-                    firstpart = []
-                    sortme = outlines
-                lastpart = []
-                while (sortme[(-1)].plain() == ''):
-                    lastpart.append(sortme.pop((-1)))
-                outlines = ((firstpart + sorted(sortme, key=(lambda c: c.plain()))) + lastpart)
             for ((plain, colorcodes), outputline) in zip(pairs, outlines):
                 self.assertEqual(outputline.plain().rstrip(), plain)
                 self.assertColorFromTags(outputline, colorcodes)
