@@ -1,19 +1,18 @@
 {
   super(conf);
   this.clients=new HashMap<Range,RangeClient>();
-  cql=CqlConfigHelper.getOutputCql(conf);
   try {
-    String host=getAnyHost();
-    int port=ConfigHelper.getOutputRpcPort(conf);
-    Cassandra.Client client=CqlOutputFormat.createAuthenticatedClient(host,port,conf);
+    Cassandra.Client client=ConfigHelper.getClientFromOutputAddressList(conf);
     retrievePartitionKeyValidator(client);
+    String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
+    if (cqlQuery.toLowerCase().startsWith("insert"))     throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
+    cql=appendKeyWhereClauses(cqlQuery);
     if (client != null) {
       TTransport transport=client.getOutputProtocol().getTransport();
       if (transport.isOpen())       transport.close();
-      client=null;
     }
   }
  catch (  Exception e) {
-    throw new IOException(e);
+    throw new RuntimeException(e);
   }
 }
