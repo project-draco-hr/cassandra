@@ -1,12 +1,14 @@
 {
-  ByteBuffer rowKey=getRowKey(keyColumns);
-  Range<Token> range=ringCache.getRange(rowKey);
+  Range<Token> range=ringCache.getRange(getPartitionKey(keyColumns));
   RangeClient client=clients.get(range);
   if (client == null) {
     client=new RangeClient(ringCache.getEndpoint(range));
     client.start();
     clients.put(range,client);
   }
-  client.put(Pair.create(rowKey,values));
+  List<ByteBuffer> allValues=new ArrayList<ByteBuffer>(values);
+  for (  String column : partitionKeyColumns)   allValues.add(keyColumns.get(column));
+  for (  String column : clusterColumns)   allValues.add(keyColumns.get(column));
+  client.put(allValues);
   progressable.progress();
 }
