@@ -3,13 +3,12 @@
   IPartitioner<?> partitioner=StorageService.getPartitioner();
   RowPosition minPos=partitioner.getMinimumToken().minKeyBound();
   Range<RowPosition> range=new Range<RowPosition>(minPos,minPos);
-  List<Row> rows;
   try {
-    rows=StorageProxy.getRangeSlice(new RangeSliceCommand(Table.SYSTEM_KS,SystemTable.HINTS_CF,predicate,range,null,LARGE_NUMBER),ConsistencyLevel.ONE);
+    RangeSliceCommand cmd=new RangeSliceCommand(Table.SYSTEM_KS,SystemTable.HINTS_CF,System.currentTimeMillis(),predicate,range,null,LARGE_NUMBER);
+    return StorageProxy.getRangeSlice(cmd,ConsistencyLevel.ONE);
   }
  catch (  Exception e) {
     logger.info("HintsCF getEPPendingHints timed out.");
     throw new RuntimeException(e);
   }
-  return rows;
 }

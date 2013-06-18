@@ -20,11 +20,12 @@ select.extractKeyAliasFromColumns(metadata);
 if (select.getKeys().size() > 0) validateKeyAlias(metadata,select.getKeyAlias());
 validateSelect(keyspace,select,variables);
 List<org.apache.cassandra.db.Row> rows;
+long now=System.currentTimeMillis();
 if (!select.isKeyRange() && (select.getKeys().size() > 0)) {
-rows=getSlice(metadata,select,variables);
+rows=getSlice(metadata,select,variables,now);
 }
  else {
-rows=multiRangeSlice(metadata,select,variables);
+rows=multiRangeSlice(metadata,select,variables,now);
 }
 result.type=CqlResultType.ROWS;
 if (select.isCountOperation()) {
@@ -47,7 +48,7 @@ result.schema.value_types.put(metadata.getKeyName(),TypeParser.getShortName(meta
 }
 if (row.cf != null) {
 for (org.apache.cassandra.db.Column c : row.cf.getSortedColumns()) {
-if (c.isMarkedForDelete()) continue;
+if (c.isMarkedForDelete(now)) continue;
 ColumnDefinition cd=metadata.getColumnDefinitionFromColumnName(c.name());
 if (cd != null) result.schema.value_types.put(c.name(),TypeParser.getShortName(cd.getValidator()));
 thriftColumns.add(thriftify(c));
@@ -75,7 +76,7 @@ throw new AssertionError(e);
 ColumnDefinition cd=metadata.getColumnDefinitionFromColumnName(name);
 if (cd != null) result.schema.value_types.put(name,TypeParser.getShortName(cd.getValidator()));
 org.apache.cassandra.db.Column c=row.cf.getColumn(name);
-if (c == null || c.isMarkedForDelete()) thriftColumns.add(new Column().setName(name));
+if (c == null || c.isMarkedForDelete(now)) thriftColumns.add(new Column().setName(name));
  else thriftColumns.add(thriftify(c));
 }
 }

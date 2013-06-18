@@ -12,7 +12,8 @@
     cState.hasColumnFamilyAccess(keyspace,column_parent.column_family,Permission.SELECT);
     Table table=Table.open(keyspace);
     ColumnFamilyStore cfs=table.getColumnFamilyStore(column_parent.column_family);
-    if (predicate.column_names != null)     return get_slice(key,column_parent,predicate,consistency_level).size();
+    long timestamp=System.currentTimeMillis();
+    if (predicate.column_names != null)     return getSliceInternal(keyspace,key,column_parent,timestamp,predicate,consistency_level).size();
     int pageSize;
     if (cfs.getMeanColumns() > 0) {
       int averageColumnSize=(int)(cfs.getMeanRowSize() / cfs.getMeanColumns());
@@ -33,7 +34,7 @@
     int pages=0;
     while (true) {
       predicate.slice_range.count=Math.min(pageSize,Math.max(2,remaining));
-      columns=get_slice(key,column_parent,predicate,consistency_level);
+      columns=getSliceInternal(keyspace,key,column_parent,timestamp,predicate,consistency_level);
       if (columns.isEmpty())       break;
       ByteBuffer firstName=getName(columns.get(0));
       int newColumns=pages == 0 || !firstName.equals(predicate.slice_range.start) ? columns.size() : columns.size() - 1;

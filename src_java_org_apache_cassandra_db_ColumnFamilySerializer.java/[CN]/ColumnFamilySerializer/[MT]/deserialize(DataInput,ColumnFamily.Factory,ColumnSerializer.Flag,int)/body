@@ -1,17 +1,14 @@
 {
   if (!in.readBoolean())   return null;
   ColumnFamily cf=factory.create(Schema.instance.getCFMetaData(deserializeCfId(in,version)));
-  int expireBefore=(int)(System.currentTimeMillis() / 1000);
   if (cf.metadata().isSuper() && version < MessagingService.VERSION_20) {
-    SuperColumns.deserializerSuperColumnFamily(in,cf,flag,expireBefore,version);
+    SuperColumns.deserializerSuperColumnFamily(in,cf,flag,version);
   }
  else {
     cf.delete(DeletionInfo.serializer().deserialize(in,version,cf.getComparator()));
     ColumnSerializer columnSerializer=Column.serializer;
     int size=in.readInt();
-    for (int i=0; i < size; ++i) {
-      cf.addColumn(columnSerializer.deserialize(in,flag,expireBefore));
-    }
+    for (int i=0; i < size; ++i)     cf.addColumn(columnSerializer.deserialize(in,flag));
   }
   return cf;
 }

@@ -1,0 +1,24 @@
+{
+  List<ReadCommand> commands=new ArrayList<ReadCommand>();
+  if (!select.isColumnRange()) {
+    SortedSet<ByteBuffer> columnNames=getColumnNames(select,metadata,variables);
+    validateColumnNames(columnNames);
+    for (    Term rawKey : select.getKeys()) {
+      ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator(),variables);
+      validateKey(key);
+      commands.add(new SliceByNamesReadCommand(metadata.ksName,key,select.getColumnFamily(),now,new NamesQueryFilter(columnNames)));
+    }
+  }
+ else {
+    AbstractType<?> comparator=select.getComparator(metadata.ksName);
+    ByteBuffer start=select.getColumnStart().getByteBuffer(comparator,variables);
+    ByteBuffer finish=select.getColumnFinish().getByteBuffer(comparator,variables);
+    for (    Term rawKey : select.getKeys()) {
+      ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator(),variables);
+      validateKey(key);
+      validateSliceFilter(metadata,start,finish,select.isColumnsReversed());
+      commands.add(new SliceFromReadCommand(metadata.ksName,key,select.getColumnFamily(),now,new SliceQueryFilter(start,finish,select.isColumnsReversed(),select.getColumnsLimit())));
+    }
+  }
+  return StorageProxy.read(commands,select.getConsistencyLevel());
+}

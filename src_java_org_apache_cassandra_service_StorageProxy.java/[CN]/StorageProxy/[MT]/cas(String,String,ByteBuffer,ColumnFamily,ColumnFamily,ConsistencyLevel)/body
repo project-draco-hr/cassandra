@@ -10,7 +10,9 @@
     UUID ballot=beginAndRepairPaxos(key,metadata,liveEndpoints,requiredParticipants);
     if (ballot == null)     continue;
     Tracing.trace("Reading existing values for CAS precondition");
-    ReadCommand readCommand=expected == null ? new SliceFromReadCommand(table,key,cfName,new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1)) : new SliceByNamesReadCommand(table,key,cfName,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
+    long timestamp=System.currentTimeMillis();
+    IDiskAtomFilter filter=expected == null ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1) : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames()));
+    ReadCommand readCommand=filter instanceof SliceQueryFilter ? new SliceFromReadCommand(table,key,cfName,timestamp,(SliceQueryFilter)filter) : new SliceByNamesReadCommand(table,key,cfName,timestamp,(NamesQueryFilter)filter);
     List<Row> rows=read(Arrays.asList(readCommand),ConsistencyLevel.QUORUM);
     ColumnFamily current=rows.get(0).cf;
     if (!casApplies(expected,current)) {

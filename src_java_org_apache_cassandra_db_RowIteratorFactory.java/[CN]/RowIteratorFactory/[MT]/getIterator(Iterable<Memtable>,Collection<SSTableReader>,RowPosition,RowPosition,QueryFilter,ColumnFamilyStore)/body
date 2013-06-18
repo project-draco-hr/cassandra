@@ -8,7 +8,7 @@
     iterators.add(scanner);
   }
   return MergeIterator.get(iterators,COMPARE_BY_KEY,new MergeIterator.Reducer<OnDiskAtomIterator,Row>(){
-    private final int gcBefore=(int)(System.currentTimeMillis() / 1000) - cfs.metadata.getGcGraceSeconds();
+    private final int gcBefore=cfs.gcBefore(filter.timestamp);
     private final List<OnDiskAtomIterator> colIters=new ArrayList<OnDiskAtomIterator>();
     private DecoratedKey key;
     private ColumnFamily returnCF;
@@ -26,8 +26,8 @@
         filter.collateOnDiskAtom(returnCF,colIters,gcBefore);
       }
  else {
-        QueryFilter keyFilter=new QueryFilter(key,filter.cfName,filter.filter);
-        returnCF=cfs.filterColumnFamily(cached,keyFilter,gcBefore);
+        QueryFilter keyFilter=new QueryFilter(key,filter.cfName,filter.filter,filter.timestamp);
+        returnCF=cfs.filterColumnFamily(cached,keyFilter);
       }
       Row rv=new Row(key,returnCF);
       colIters.clear();

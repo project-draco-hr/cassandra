@@ -10,8 +10,9 @@
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB() / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   delivery:   while (true) {
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize);
-    ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(System.currentTimeMillis() / 1000));
+    long now=System.currentTimeMillis();
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize,now);
+    ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(now / 1000));
     if (pagingFinished(hintsPage,startColumn))     break;
     if (!FailureDetector.instance.isAlive(endpoint)) {
       logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)",endpoint,rowsReplayed);
@@ -23,7 +24,7 @@
         logger.debug("Hints delivery process is paused, aborting");
         break delivery;
       }
-      if (!hint.isLive())       continue;
+      if (!hint.isLive(System.currentTimeMillis()))       continue;
       startColumn=hint.name();
       ByteBuffer[] components=comparator.split(hint.name());
       int version=Int32Type.instance.compose(components[1]);
