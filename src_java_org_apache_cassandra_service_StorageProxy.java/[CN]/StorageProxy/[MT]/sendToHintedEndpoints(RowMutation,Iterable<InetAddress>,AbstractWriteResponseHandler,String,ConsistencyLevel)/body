@@ -1,5 +1,5 @@
 {
-  Map<String,Multimap<MessageOut,InetAddress>> dcMessages=new HashMap<String,Multimap<MessageOut,InetAddress>>();
+  Map<String,Collection<InetAddress>> dcGroups=null;
   for (  InetAddress destination : targets) {
     if (totalHintsInProgress.get() > maxHintsInProgress && (hintsInProgress.get(destination).get() > 0 && shouldHint(destination))) {
       throw new OverloadedException("Too many in flight hints: " + totalHintsInProgress.get());
@@ -10,12 +10,13 @@
       }
  else {
         String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
-        Multimap<MessageOut,InetAddress> messages=dcMessages.get(dc);
-        if (messages == null) {
-          messages=HashMultimap.create();
-          dcMessages.put(dc,messages);
+        Collection<InetAddress> dcTargets=(dcGroups != null) ? dcGroups.get(dc) : null;
+        if (dcTargets == null) {
+          dcTargets=new ArrayList<InetAddress>(3);
+          if (dcGroups == null)           dcGroups=new HashMap<String,Collection<InetAddress>>();
+          dcGroups.put(dc,dcTargets);
         }
-        messages.put(rm.createMessage(),destination);
+        dcTargets.add(destination);
       }
     }
  else {
@@ -23,5 +24,12 @@
       submitHint(rm,destination,responseHandler,consistency_level);
     }
   }
-  sendMessages(localDataCenter,dcMessages,responseHandler);
+  if (dcGroups != null) {
+    MessageOut<RowMutation> message=rm.createMessage();
+    for (    Map.Entry<String,Collection<InetAddress>> entry : dcGroups.entrySet()) {
+      boolean isLocalDC=entry.getKey().equals(localDataCenter);
+      Collection<InetAddress> dcTargets=entry.getValue();
+      sendMessagesToOneDC(message,dcTargets,isLocalDC,responseHandler);
+    }
+  }
 }
