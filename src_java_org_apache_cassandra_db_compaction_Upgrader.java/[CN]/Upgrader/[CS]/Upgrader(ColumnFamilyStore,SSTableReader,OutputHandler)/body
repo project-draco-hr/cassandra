@@ -1,0 +1,12 @@
+{
+  this.cfs=cfs;
+  this.sstable=sstable;
+  this.toUpgrade=Collections.singletonList(sstable);
+  this.outputHandler=outputHandler;
+  this.directory=new File(sstable.getFilename()).getParentFile();
+  this.controller=new UpgradeController(cfs);
+  this.strategy=cfs.getCompactionStrategy();
+  long estimatedTotalKeys=Math.max(DatabaseDescriptor.getIndexInterval(),SSTableReader.getApproximateKeyCount(toUpgrade));
+  long estimatedSSTables=Math.max(1,SSTable.getTotalBytes(this.toUpgrade) / strategy.getMaxSSTableSize());
+  this.estimatedRows=(long)Math.ceil((double)estimatedTotalKeys / estimatedSSTables);
+}
