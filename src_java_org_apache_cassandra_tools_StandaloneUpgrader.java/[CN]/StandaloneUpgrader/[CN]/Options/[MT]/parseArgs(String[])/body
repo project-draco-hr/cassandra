@@ -1,0 +1,28 @@
+{
+  CommandLineParser parser=new GnuParser();
+  CmdLineOptions options=getCmdLineOptions();
+  try {
+    CommandLine cmd=parser.parse(options,cmdArgs,false);
+    if (cmd.hasOption(HELP_OPTION)) {
+      printUsage(options);
+      System.exit(0);
+    }
+    String[] args=cmd.getArgs();
+    if (args.length >= 4 || args.length < 2) {
+      String msg=args.length < 2 ? "Missing arguments" : "Too many arguments";
+      errorMsg(msg,options);
+      System.exit(1);
+    }
+    String keyspace=args[0];
+    String cf=args[1];
+    String snapshot=null;
+    if (args.length == 3)     snapshot=args[2];
+    Options opts=new Options(keyspace,cf,snapshot);
+    opts.debug=cmd.hasOption(DEBUG_OPTION);
+    return opts;
+  }
+ catch (  ParseException e) {
+    errorMsg(e.getMessage(),options);
+    return null;
+  }
+}

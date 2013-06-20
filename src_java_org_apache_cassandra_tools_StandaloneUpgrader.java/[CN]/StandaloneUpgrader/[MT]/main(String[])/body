@@ -1,0 +1,49 @@
+{
+  Options options=Options.parseArgs(args);
+  try {
+    DatabaseDescriptor.loadSchemas();
+    if (Schema.instance.getCFMetaData(options.keyspace,options.cf) == null)     throw new IllegalArgumentException(String.format("Unknown keyspace/columnFamily %s.%s",options.keyspace,options.cf));
+    Table table=Table.openWithoutSSTables(options.keyspace);
+    ColumnFamilyStore cfs=table.getColumnFamilyStore(options.cf);
+    OutputHandler handler=new OutputHandler.SystemOutput(false,options.debug);
+    Directories.SSTableLister lister=cfs.directories.sstableLister();
+    if (options.snapshot != null)     lister.onlyBackups(true).snapshots(options.snapshot);
+ else     lister.includeBackups(false);
+    Collection<SSTableReader> readers=new ArrayList<SSTableReader>();
+    for (    Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
+      Set<Component> components=entry.getValue();
+      if (!components.contains(Component.DATA) || !components.contains(Component.PRIMARY_INDEX))       continue;
+      try {
+        SSTableReader sstable=SSTableReader.openNoValidation(entry.getKey(),components,cfs.metadata);
+        if (sstable.descriptor.version.equals(Descriptor.Version.CURRENT))         continue;
+        readers.add(sstable);
+      }
+ catch (      Exception e) {
+        System.err.println(String.format("Error Loading %s: %s",entry.getKey(),e.getMessage()));
+        if (options.debug)         e.printStackTrace(System.err);
+        continue;
+      }
+    }
+    int numSSTables=readers.size();
+    handler.output("Found " + numSSTables + " sstables that need upgrading.");
+    for (    SSTableReader sstable : readers) {
+      try {
+        Upgrader upgrader=new Upgrader(cfs,sstable,handler);
+        upgrader.upgrade();
+        sstable.markCompacted();
+        sstable.releaseReference();
+      }
+ catch (      Exception e) {
+        System.err.println(String.format("Error upgrading %s: %s",sstable,e.getMessage()));
+        if (options.debug)         e.printStackTrace(System.err);
+      }
+    }
+    SSTableDeletingTask.waitForDeletions();
+    System.exit(0);
+  }
+ catch (  Exception e) {
+    System.err.println(e.getMessage());
+    if (options.debug)     e.printStackTrace(System.err);
+    System.exit(1);
+  }
+}
