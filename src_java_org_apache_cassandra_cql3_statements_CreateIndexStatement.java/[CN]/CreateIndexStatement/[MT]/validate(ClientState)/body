@@ -2,7 +2,10 @@
   CFMetaData cfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
   ColumnDefinition cd=cfm.getColumnDefinition(columnName.key);
   if (cd == null)   throw new InvalidRequestException("No column definition found for column " + columnName);
-  if (cd.getIndexType() != null)   throw new InvalidRequestException("Index already exists");
+  if (cd.getIndexType() != null) {
+    if (ifNotExists)     return;
+ else     throw new InvalidRequestException("Index already exists");
+  }
   if (isCustom && indexClass == null)   throw new InvalidRequestException("CUSTOM index requires specifiying the index class");
   if (!isCustom && indexClass != null)   throw new InvalidRequestException("Cannot specify index class for a non-CUSTOM index");
   if (cfm.getCfDef().isCompact && cd.type != ColumnDefinition.Type.REGULAR)   throw new InvalidRequestException(String.format("Secondary index on %s column %s is not yet supported for compact table",cd.type,columnName));
