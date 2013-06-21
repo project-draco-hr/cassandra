@@ -14,13 +14,19 @@
       if (logger.isTraceEnabled())       logger.trace(ep + "local generation " + localGeneration+ ", remote generation "+ remoteGeneration);
       if (remoteGeneration > localGeneration) {
         if (logger.isTraceEnabled())         logger.trace("Updating heartbeat state generation to " + remoteGeneration + " from "+ localGeneration+ " for "+ ep);
+        copyNewerApplicationStates(remoteState,localEpStatePtr);
         handleMajorStateChange(ep,remoteState);
       }
  else       if (remoteGeneration == localGeneration) {
         int localMaxVersion=getMaxEndpointStateVersion(localEpStatePtr);
         int remoteMaxVersion=getMaxEndpointStateVersion(remoteState);
         if (remoteMaxVersion > localMaxVersion) {
-          applyNewStates(ep,localEpStatePtr,remoteState);
+          if (logger.isTraceEnabled()) {
+            logger.trace("Updating heartbeat state version to " + remoteState.getHeartBeatState().getHeartBeatVersion() + " from "+ localEpStatePtr.getHeartBeatState().getHeartBeatVersion()+ " for "+ ep);
+          }
+          localEpStatePtr.setHeartBeatState(remoteState.getHeartBeatState());
+          Map<ApplicationState,VersionedValue> merged=copyNewerApplicationStates(localEpStatePtr,remoteState);
+          for (          Entry<ApplicationState,VersionedValue> appState : merged.entrySet())           doNotifications(ep,appState.getKey(),appState.getValue());
         }
  else         if (logger.isTraceEnabled())         logger.trace("Ignoring remote version " + remoteMaxVersion + " <= "+ localMaxVersion+ " for "+ ep);
         if (!localEpStatePtr.isAlive() && !isDeadState(localEpStatePtr))         markAlive(ep,localEpStatePtr);
