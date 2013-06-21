@@ -11,13 +11,19 @@
     if (ballot == null)     continue;
     Tracing.trace("Reading existing values for CAS precondition");
     long timestamp=System.currentTimeMillis();
-    IDiskAtomFilter filter=expected == null ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1) : new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames()));
-    ReadCommand readCommand=filter instanceof SliceQueryFilter ? new SliceFromReadCommand(table,key,cfName,timestamp,(SliceQueryFilter)filter) : new SliceByNamesReadCommand(table,key,cfName,timestamp,(NamesQueryFilter)filter);
+    ReadCommand readCommand;
+    if (expected == null) {
+      SliceQueryFilter filter=prefix == null ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1) : new SliceQueryFilter(prefix.build(),prefix.buildAsEndOfRange(),false,1,prefix.componentCount());
+      readCommand=new SliceFromReadCommand(table,key,cfName,timestamp,filter);
+    }
+ else {
+      readCommand=new SliceByNamesReadCommand(table,key,cfName,timestamp,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
+    }
     List<Row> rows=read(Arrays.asList(readCommand),ConsistencyLevel.QUORUM);
     ColumnFamily current=rows.get(0).cf;
     if (!casApplies(expected,current)) {
       Tracing.trace("CAS precondition {} does not match current values {}",expected,current);
-      return false;
+      return current;
     }
     Commit proposal=Commit.newProposal(key,ballot,updates);
     Tracing.trace("CAS precondition is met; proposing client-requested updates for {}",ballot);
@@ -25,7 +31,7 @@
       if (consistencyLevel == ConsistencyLevel.SERIAL)       sendCommit(proposal,liveEndpoints);
  else       commitPaxos(proposal,consistencyLevel);
       Tracing.trace("CAS successful");
-      return true;
+      return null;
     }
     Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
     Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);

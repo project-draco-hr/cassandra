@@ -33,7 +33,8 @@
       for (      Column column : expected)       cfExpected.addColumn(column.name,column.value,column.timestamp);
     }
     schedule(DatabaseDescriptor.getWriteRpcTimeout());
-    return StorageProxy.cas(cState.getKeyspace(),column_family,key,cfExpected,cfUpdates,ThriftConversion.fromThrift(consistency_level));
+    ColumnFamily result=StorageProxy.cas(cState.getKeyspace(),column_family,key,null,cfExpected,cfUpdates,ThriftConversion.fromThrift(consistency_level));
+    return result == null ? null : thriftifyColumnsAsColumns(result.getSortedColumns(),System.currentTimeMillis());
   }
  catch (  RequestTimeoutException e) {
     throw ThriftConversion.toThrift(e);
@@ -43,7 +44,7 @@ catch (  RequestValidationException e) {
   }
 catch (  RequestExecutionException e) {
     ThriftConversion.rethrow(e);
-    return false;
+    return null;
   }
  finally {
     Tracing.instance().stopSession();
