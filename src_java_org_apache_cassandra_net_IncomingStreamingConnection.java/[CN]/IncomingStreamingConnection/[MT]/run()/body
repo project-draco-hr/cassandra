@@ -3,7 +3,18 @@
     if (version != StreamMessage.CURRENT_VERSION)     throw new IOException(String.format("Received stream using protocol version %d (my version %d). Terminating connection",version,MessagingService.current_version));
     DataInput input=new DataInputStream(socket.getInputStream());
     StreamInitMessage init=StreamInitMessage.serializer.deserialize(input,version);
-    StreamSession.startReceivingStreamAsync(init.planId,init.description,socket,version);
+    if (init.sentByInitiator) {
+      StreamResultFuture.initReceivingSide(init.planId,init.description,init.from,socket,version);
+    }
+ else {
+      StreamResultFuture stream=StreamManager.instance.getStream(init.planId);
+      if (stream == null) {
+        logger.error("Got StreamInit message for a stream we are supposed to be the initiator of, but stream not found.");
+        socket.close();
+        return;
+      }
+      stream.startStreaming(init.from,socket,version);
+    }
   }
  catch (  IOException e) {
     logger.debug("IOException reading from socket; closing",e);

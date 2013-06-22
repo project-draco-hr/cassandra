@@ -1,0 +1,22 @@
+{
+  int attempts=0;
+  while (true) {
+    try {
+      logger.info("Connecting to {} for streaming",peer);
+      Socket socket=MessagingService.instance().getConnectionPool(peer).newSocket();
+      socket.setSoTimeout(DatabaseDescriptor.getStreamingSocketTimeout());
+      return socket;
+    }
+ catch (    IOException e) {
+      if (++attempts >= MAX_CONNECT_ATTEMPTS)       throw e;
+      long waitms=DatabaseDescriptor.getRpcTimeout() * (long)Math.pow(2,attempts);
+      logger.warn("Failed attempt " + attempts + " to connect to "+ peer+ ". Retrying in "+ waitms+ " ms. ("+ e+ ")");
+      try {
+        Thread.sleep(waitms);
+      }
+ catch (      InterruptedException wtf) {
+        throw new IOException("interrupted",wtf);
+      }
+    }
+  }
+}
