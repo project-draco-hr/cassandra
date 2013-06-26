@@ -1,0 +1,27 @@
+{
+  String query="SELECT type, " + "       comparator," + "       subcomparator,"+ "       default_validator, "+ "       key_validator,"+ "       key_aliases "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s' ";
+  CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(String.format(query,keyspace,column_family)),Compression.NONE,ConsistencyLevel.ONE);
+  if (result == null || result.rows == null || result.rows.isEmpty())   return null;
+  Iterator<CqlRow> iteraRow=result.rows.iterator();
+  CfDef cfDef=new CfDef();
+  cfDef.keyspace=keyspace;
+  cfDef.name=column_family;
+  boolean cql3Table=false;
+  if (iteraRow.hasNext()) {
+    CqlRow cqlRow=iteraRow.next();
+    cfDef.column_type=ByteBufferUtil.string(cqlRow.columns.get(0).value);
+    cfDef.comparator_type=ByteBufferUtil.string(cqlRow.columns.get(1).value);
+    ByteBuffer subComparator=cqlRow.columns.get(2).value;
+    if (subComparator != null)     cfDef.subcomparator_type=ByteBufferUtil.string(subComparator);
+    cfDef.default_validation_class=ByteBufferUtil.string(cqlRow.columns.get(3).value);
+    cfDef.key_validation_class=ByteBufferUtil.string(cqlRow.columns.get(4).value);
+    List<String> keys=null;
+    if (cqlRow.columns.get(5).value != null) {
+      String keyAliases=ByteBufferUtil.string(cqlRow.columns.get(5).value);
+      keys=FBUtilities.fromJsonList(keyAliases);
+    }
+    if (keys != null && keys.size() > 0)     cql3Table=true;
+  }
+  cfDef.column_metadata=getColumnMetadata(client,cql3Table);
+  return cfDef;
+}
