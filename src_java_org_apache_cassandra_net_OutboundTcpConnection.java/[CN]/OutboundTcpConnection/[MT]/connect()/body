@@ -1,9 +1,9 @@
 {
   if (logger.isDebugEnabled())   logger.debug("attempting to connect to " + poolReference.endPoint());
-  targetVersion=MessagingService.instance().getVersion(poolReference.endPoint());
   long start=System.nanoTime();
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getRpcTimeout());
   while (System.nanoTime() - start < timeout) {
+    targetVersion=MessagingService.instance().getVersion(poolReference.endPoint());
     try {
       socket=poolReference.newSocket();
       socket.setKeepAlive(true);
@@ -26,7 +26,12 @@
       writeHeader(out,targetVersion,shouldCompressConnection());
       out.flush();
       DataInputStream in=new DataInputStream(socket.getInputStream());
-      int maxTargetVersion=in.readInt();
+      int maxTargetVersion=handshakeVersion(in);
+      if (maxTargetVersion == NO_VERSION) {
+        logger.debug("Target max version is {}; no version information yet, will retry",maxTargetVersion);
+        disconnect();
+        continue;
+      }
       if (targetVersion > maxTargetVersion) {
         logger.debug("Target max version is {}; will reconnect with that version",maxTargetVersion);
         MessagingService.instance().setVersion(poolReference.endPoint(),maxTargetVersion);
