@@ -1,0 +1,28 @@
+{
+  final AtomicInteger version=new AtomicInteger(NO_VERSION);
+  final CountDownLatch versionLatch=new CountDownLatch(1);
+  new Thread("HANDSHAKE-" + poolReference.endPoint()){
+    @Override public void run(){
+      try {
+        logger.info("Handshaking version with {}",poolReference.endPoint());
+        version.set(inputStream.readInt());
+      }
+ catch (      IOException ex) {
+        final String msg="Cannot handshake version with " + poolReference.endPoint();
+        if (logger.isTraceEnabled())         logger.trace(msg,ex);
+ else         logger.info(msg);
+      }
+ finally {
+        versionLatch.countDown();
+      }
+    }
+  }
+.start();
+  try {
+    versionLatch.await(WAIT_FOR_VERSION_MAX_TIME,TimeUnit.MILLISECONDS);
+  }
+ catch (  InterruptedException ex) {
+    throw new AssertionError(ex);
+  }
+  return version.get();
+}
