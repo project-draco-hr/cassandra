@@ -3,15 +3,15 @@
   IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
   TokenMetadata tokenMetaCloneAllSettled=tokenMetadata.cloneAfterAllSettled();
   TokenMetadata tokenMetaClone=tokenMetadata.cloneOnlyTokenMap();
-  for (  String keyspace : tables) {
+  for (  String keyspace : keyspaceNames) {
     for (    Token newToken : newTokens) {
-      AbstractReplicationStrategy strategy=Table.open(keyspace).getReplicationStrategy();
+      AbstractReplicationStrategy strategy=Keyspace.open(keyspace).getReplicationStrategy();
       Collection<Range<Token>> currentRanges=getRangesForEndpoint(keyspace,localAddress);
       Collection<Range<Token>> updatedRanges=strategy.getPendingAddressRanges(tokenMetadata,newToken,localAddress);
       Multimap<Range<Token>,InetAddress> rangeAddresses=strategy.getRangeAddresses(tokenMetaClone);
-      Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerTable=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
+      Pair<Set<Range<Token>>,Set<Range<Token>>> rangesPerKeyspace=calculateStreamAndFetchRanges(currentRanges,updatedRanges);
       Multimap<Range<Token>,InetAddress> rangesToFetchWithPreferredEndpoints=ArrayListMultimap.create();
-      for (      Range<Token> toFetch : rangesPerTable.right) {
+      for (      Range<Token> toFetch : rangesPerKeyspace.right) {
         for (        Range<Token> range : rangeAddresses.keySet()) {
           if (range.contains(toFetch)) {
             List<InetAddress> endpoints=snitch.getSortedListByProximity(localAddress,rangeAddresses.get(range));
@@ -20,7 +20,7 @@
         }
       }
       Multimap<InetAddress,Range<Token>> endpointRanges=HashMultimap.create();
-      for (      Range<Token> toStream : rangesPerTable.left) {
+      for (      Range<Token> toStream : rangesPerKeyspace.left) {
         Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaClone));
         Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(toStream.right,tokenMetaCloneAllSettled));
         logger.debug("Range:" + toStream + "Current endpoints: "+ currentEndpoints+ " New endpoints: "+ newEndpoints);
@@ -29,7 +29,7 @@
       for (      InetAddress address : endpointRanges.keySet())       streamPlan.transferRanges(address,keyspace,endpointRanges.get(address));
       Multimap<InetAddress,Range<Token>> workMap=RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints);
       for (      InetAddress address : workMap.keySet())       streamPlan.requestRanges(address,keyspace,workMap.get(address));
-      if (logger.isDebugEnabled())       logger.debug("Table {}: work map {}.",keyspace,workMap);
+      if (logger.isDebugEnabled())       logger.debug("Keyspace {}: work map {}.",keyspace,workMap);
     }
   }
 }

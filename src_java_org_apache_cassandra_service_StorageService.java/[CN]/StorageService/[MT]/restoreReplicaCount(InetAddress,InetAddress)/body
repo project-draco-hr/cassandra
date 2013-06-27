@@ -1,24 +1,24 @@
 {
   Multimap<String,Map.Entry<InetAddress,Collection<Range<Token>>>> rangesToFetch=HashMultimap.create();
   final InetAddress myAddress=FBUtilities.getBroadcastAddress();
-  for (  String table : Schema.instance.getNonSystemTables()) {
-    Multimap<Range<Token>,InetAddress> changedRanges=getChangedRangesForLeaving(table,endpoint);
+  for (  String keyspaceName : Schema.instance.getNonSystemKeyspaces()) {
+    Multimap<Range<Token>,InetAddress> changedRanges=getChangedRangesForLeaving(keyspaceName,endpoint);
     Set<Range<Token>> myNewRanges=new HashSet<Range<Token>>();
     for (    Map.Entry<Range<Token>,InetAddress> entry : changedRanges.entries()) {
       if (entry.getValue().equals(myAddress))       myNewRanges.add(entry.getKey());
     }
-    Multimap<InetAddress,Range<Token>> sourceRanges=getNewSourceRanges(table,myNewRanges);
+    Multimap<InetAddress,Range<Token>> sourceRanges=getNewSourceRanges(keyspaceName,myNewRanges);
     for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : sourceRanges.asMap().entrySet()) {
-      rangesToFetch.put(table,entry);
+      rangesToFetch.put(keyspaceName,entry);
     }
   }
   StreamPlan stream=new StreamPlan("Restore replica count");
-  for (  final String table : rangesToFetch.keySet()) {
-    for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : rangesToFetch.get(table)) {
+  for (  final String keyspaceName : rangesToFetch.keySet()) {
+    for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : rangesToFetch.get(keyspaceName)) {
       final InetAddress source=entry.getKey();
       Collection<Range<Token>> ranges=entry.getValue();
       if (logger.isDebugEnabled())       logger.debug("Requesting from " + source + " ranges "+ StringUtils.join(ranges,", "));
-      stream.requestRanges(source,table,ranges);
+      stream.requestRanges(source,keyspaceName,ranges);
     }
   }
   StreamResultFuture future=stream.execute();

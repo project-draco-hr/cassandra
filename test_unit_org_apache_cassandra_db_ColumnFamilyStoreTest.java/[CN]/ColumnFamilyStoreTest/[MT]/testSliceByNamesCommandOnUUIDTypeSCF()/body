@@ -1,9 +1,9 @@
 {
-  String tableName="Keyspace1";
+  String keyspaceName="Keyspace1";
   String cfName="Super6";
   ByteBuffer superColName=LexicalUUIDType.instance.fromString("a4ed3562-0e8e-4b41-bdfd-c45a2774682d");
-  Table table=Table.open(tableName);
-  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
+  Keyspace keyspace=Keyspace.open(keyspaceName);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
   DecoratedKey key=Util.dk("slice-get-uuid-type");
   putColsSuper(cfs,key,superColName,new Column(ByteBufferUtil.bytes("a"),ByteBufferUtil.bytes("A"),1),new Column(ByteBufferUtil.bytes("b"),ByteBufferUtil.bytes("B"),1));
   ColumnFamily cfGet=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
@@ -12,8 +12,8 @@
   SortedSet<ByteBuffer> sliceColNames=new TreeSet<ByteBuffer>(cfs.metadata.comparator);
   sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("a")));
   sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("b")));
-  SliceByNamesReadCommand cmd=new SliceByNamesReadCommand(tableName,key.key,cfName,System.currentTimeMillis(),new NamesQueryFilter(sliceColNames));
-  ColumnFamily cfSliced=cmd.getRow(table).cf;
+  SliceByNamesReadCommand cmd=new SliceByNamesReadCommand(keyspaceName,key.key,cfName,System.currentTimeMillis(),new NamesQueryFilter(sliceColNames));
+  ColumnFamily cfSliced=cmd.getRow(keyspace).cf;
   assertEquals(ByteBufferUtil.bytes("A"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("a"))).value());
   assertEquals(ByteBufferUtil.bytes("B"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("b"))).value());
 }

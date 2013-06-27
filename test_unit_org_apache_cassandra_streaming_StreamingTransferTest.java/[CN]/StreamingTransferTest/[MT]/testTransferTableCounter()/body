@@ -1,6 +1,6 @@
 {
-  final Table table=Table.open("Keyspace1");
-  final ColumnFamilyStore cfs=table.getColumnFamilyStore("Counter1");
+  final Keyspace keyspace=Keyspace.open("Keyspace1");
+  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("Counter1");
   final CounterContext cc=new CounterContext();
   final Map<String,ColumnFamily> cleanedEntries=new HashMap<>();
   List<String> keys=createAndTransfer(cfs,new Mutator(){
@@ -20,12 +20,12 @@
       cfCleaned.addColumn(new CounterColumn(ByteBufferUtil.bytes(col),cc.clearAllDelta(state.context),timestamp));
       entries.put(key,cf);
       cleanedEntries.put(key,cfCleaned);
-      cfs.addSSTable(SSTableUtils.prepare().ks(table.getName()).cf(cfs.name).generation(0).write(entries));
+      cfs.addSSTable(SSTableUtils.prepare().ks(keyspace.getName()).cf(cfs.name).generation(0).write(entries));
     }
   }
 );
   cleanedEntries.keySet().retainAll(keys);
-  SSTableReader cleaned=SSTableUtils.prepare().ks(table.getName()).cf(cfs.name).generation(0).write(cleanedEntries);
+  SSTableReader cleaned=SSTableUtils.prepare().ks(keyspace.getName()).cf(cfs.name).generation(0).write(cleanedEntries);
   SSTableReader streamed=cfs.getSSTables().iterator().next();
   SSTableUtils.assertContentEquals(cleaned,streamed);
   cfs.clearUnsafe();

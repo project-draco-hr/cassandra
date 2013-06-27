@@ -2,9 +2,9 @@
   if (logger.isDebugEnabled())   logger.debug("Beginning bootstrap process");
   RangeStreamer streamer=new RangeStreamer(tokenMetadata,address,"Bootstrap");
   streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
-  for (  String table : Schema.instance.getNonSystemTables()) {
-    AbstractReplicationStrategy strategy=Table.open(table).getReplicationStrategy();
-    streamer.addRanges(table,strategy.getPendingAddressRanges(tokenMetadata,tokens,address));
+  for (  String keyspaceName : Schema.instance.getNonSystemKeyspaces()) {
+    AbstractReplicationStrategy strategy=Keyspace.open(keyspaceName).getReplicationStrategy();
+    streamer.addRanges(keyspaceName,strategy.getPendingAddressRanges(tokenMetadata,tokens,address));
   }
   try {
     streamer.fetchAsync().get();

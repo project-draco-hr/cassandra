@@ -1,6 +1,6 @@
 {
-  final Map<String,Map<InetAddress,List<Range<Token>>>> sessionsToStreamByTable=new HashMap<String,Map<InetAddress,List<Range<Token>>>>();
-  for (  Map.Entry<String,Multimap<Range<Token>,InetAddress>> entry : rangesToStreamByTable.entrySet()) {
+  final Map<String,Map<InetAddress,List<Range<Token>>>> sessionsToStreamByKeyspace=new HashMap<String,Map<InetAddress,List<Range<Token>>>>();
+  for (  Map.Entry<String,Multimap<Range<Token>,InetAddress>> entry : rangesToStreamByKeyspace.entrySet()) {
     String keyspace=entry.getKey();
     Multimap<Range<Token>,InetAddress> rangesWithEndpoints=entry.getValue();
     if (rangesWithEndpoints.isEmpty())     continue;
@@ -15,16 +15,16 @@
       }
       curRanges.add(range);
     }
-    sessionsToStreamByTable.put(keyspace,rangesPerEndpoint);
+    sessionsToStreamByKeyspace.put(keyspace,rangesPerEndpoint);
   }
   StreamPlan streamPlan=new StreamPlan("Unbootstrap");
-  for (  Map.Entry<String,Map<InetAddress,List<Range<Token>>>> entry : sessionsToStreamByTable.entrySet()) {
-    final String table=entry.getKey();
+  for (  Map.Entry<String,Map<InetAddress,List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet()) {
+    final String keyspaceName=entry.getKey();
     final Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=entry.getValue();
     for (    final Map.Entry<InetAddress,List<Range<Token>>> rangesEntry : rangesPerEndpoint.entrySet()) {
       final List<Range<Token>> ranges=rangesEntry.getValue();
       final InetAddress newEndpoint=rangesEntry.getKey();
-      streamPlan.transferRanges(newEndpoint,table,ranges);
+      streamPlan.transferRanges(newEndpoint,keyspaceName,ranges);
     }
   }
   return streamPlan.execute();

@@ -1,9 +1,9 @@
 {
-  String tableName="Keyspace1";
+  String keyspaceName="Keyspace1";
   String cfName="Super1";
   ByteBuffer scfName=ByteBufferUtil.bytes("SuperDuper");
-  Table table=Table.open(tableName);
-  ColumnFamilyStore cfs=table.getColumnFamilyStore(cfName);
+  Keyspace keyspace=Keyspace.open(keyspaceName);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
   DecoratedKey key=Util.dk("flush-resurrection");
   putColsSuper(cfs,key,scfName,new Column(getBytes(1L),ByteBufferUtil.bytes("val1"),1),new Column(getBytes(2L),ByteBufferUtil.bytes("val2"),1),new Column(getBytes(3L),ByteBufferUtil.bytes("val3"),1));
   cfs.forceBlockingFlush();
@@ -14,7 +14,7 @@
   sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
   sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
   assertRowAndColCount(1,6,scfName,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
-  RowMutation rm=new RowMutation(table.getName(),key.key);
+  RowMutation rm=new RowMutation(keyspace.getName(),key.key);
   rm.deleteRange(cfName,SuperColumns.startOf(scfName),SuperColumns.endOf(scfName),2);
   rm.apply();
   assertRowAndColCount(1,0,scfName,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));

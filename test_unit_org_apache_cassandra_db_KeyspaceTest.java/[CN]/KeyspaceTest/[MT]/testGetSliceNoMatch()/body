@@ -1,0 +1,14 @@
+{
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamily cf=TreeMapBackedSortedColumns.factory.create("Keyspace1","Standard2");
+  cf.addColumn(column("col1","val1",1));
+  RowMutation rm=new RowMutation("Keyspace1",ByteBufferUtil.bytes("row1000"),cf);
+  rm.apply();
+  validateGetSliceNoMatch(keyspace);
+  keyspace.getColumnFamilyStore("Standard2").forceBlockingFlush();
+  validateGetSliceNoMatch(keyspace);
+  Collection<SSTableReader> ssTables=keyspace.getColumnFamilyStore("Standard2").getSSTables();
+  assertEquals(1,ssTables.size());
+  ssTables.iterator().next().forceFilterFailures();
+  validateGetSliceNoMatch(keyspace);
+}

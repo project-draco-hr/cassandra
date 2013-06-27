@@ -1,7 +1,7 @@
 {
   Tracing.trace("Determining replicas to query");
   long startTime=System.nanoTime();
-  Table table=Table.open(command.keyspace);
+  Keyspace keyspace=Keyspace.open(command.keyspace);
   List<Row> rows;
   try {
     int cql3RowCount=0;
@@ -13,17 +13,17 @@
     List<InetAddress> nextFilteredEndpoints=null;
     while (i < ranges.size()) {
       AbstractBounds<RowPosition> range=nextRange == null ? ranges.get(i) : nextRange;
-      List<InetAddress> liveEndpoints=nextEndpoints == null ? getLiveSortedEndpoints(table,range.right) : nextEndpoints;
-      List<InetAddress> filteredEndpoints=nextFilteredEndpoints == null ? consistency_level.filterForQuery(table,liveEndpoints) : nextFilteredEndpoints;
+      List<InetAddress> liveEndpoints=nextEndpoints == null ? getLiveSortedEndpoints(keyspace,range.right) : nextEndpoints;
+      List<InetAddress> filteredEndpoints=nextFilteredEndpoints == null ? consistency_level.filterForQuery(keyspace,liveEndpoints) : nextFilteredEndpoints;
       ++i;
       while (i < ranges.size()) {
         nextRange=ranges.get(i);
-        nextEndpoints=getLiveSortedEndpoints(table,nextRange.right);
-        nextFilteredEndpoints=consistency_level.filterForQuery(table,nextEndpoints);
+        nextEndpoints=getLiveSortedEndpoints(keyspace,nextRange.right);
+        nextFilteredEndpoints=consistency_level.filterForQuery(keyspace,nextEndpoints);
         if (range.right.isMinimum())         break;
         List<InetAddress> merged=intersection(liveEndpoints,nextEndpoints);
-        if (!consistency_level.isSufficientLiveNodes(table,merged))         break;
-        List<InetAddress> filteredMerged=consistency_level.filterForQuery(table,merged);
+        if (!consistency_level.isSufficientLiveNodes(keyspace,merged))         break;
+        List<InetAddress> filteredMerged=consistency_level.filterForQuery(keyspace,merged);
         if (!DatabaseDescriptor.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged,filteredEndpoints,nextFilteredEndpoints))         break;
         range=range.withNewRight(nextRange.right);
         liveEndpoints=merged;
@@ -54,7 +54,7 @@
       }
  catch (      TimeoutException ex) {
         logger.debug("Range slice timeout: {}",ex.toString());
-        int blockFor=consistency_level.blockFor(table);
+        int blockFor=consistency_level.blockFor(keyspace);
         throw new ReadTimeoutException(consistency_level,blockFor,blockFor,true);
       }
 catch (      DigestMismatchException e) {

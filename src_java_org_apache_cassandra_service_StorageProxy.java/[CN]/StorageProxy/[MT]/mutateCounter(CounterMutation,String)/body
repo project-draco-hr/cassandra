@@ -1,14 +1,14 @@
 {
-  InetAddress endpoint=findSuitableEndpoint(cm.getTable(),cm.key(),localDataCenter,cm.consistency());
+  InetAddress endpoint=findSuitableEndpoint(cm.getKeyspaceName(),cm.key(),localDataCenter,cm.consistency());
   if (endpoint.equals(FBUtilities.getBroadcastAddress())) {
     return applyCounterMutationOnCoordinator(cm,localDataCenter);
   }
  else {
-    String table=cm.getTable();
-    AbstractReplicationStrategy rs=Table.open(table).getReplicationStrategy();
+    String keyspaceName=cm.getKeyspaceName();
+    AbstractReplicationStrategy rs=Keyspace.open(keyspaceName).getReplicationStrategy();
     Token tk=StorageService.getPartitioner().getToken(cm.key());
-    List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(table,tk);
-    Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,table);
+    List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(keyspaceName,tk);
+    Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,keyspaceName);
     rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,cm.consistency(),null,WriteType.COUNTER).assureSufficientLiveNodes();
     AbstractWriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.COUNTER);
     Tracing.trace("Enqueuing counter update to {}",endpoint);

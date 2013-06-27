@@ -1,0 +1,24 @@
+{
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("StandardComposite2");
+  cfs.disableAutoCompaction();
+  CompositeType ct=CompositeType.getInstance(BytesType.instance,IntegerType.instance);
+  DecoratedKey key=Util.dk("k");
+  for (int j=0; j < 10; j++) {
+    for (int i=0; i < 10; i++) {
+      RowMutation rm=new RowMutation("Keyspace1",key.key);
+      ByteBuffer colName=ct.builder().add(ByteBufferUtil.bytes("a" + i)).add(ByteBufferUtil.bytes(j * 10 + i)).build();
+      rm.add("StandardComposite2",colName,ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+      rm.apply();
+    }
+    cfs.forceBlockingFlush();
+  }
+  ByteBuffer start=ct.builder().add(ByteBufferUtil.bytes("a5")).add(ByteBufferUtil.bytes(85)).build();
+  ByteBuffer finish=ct.builder().add(ByteBufferUtil.bytes("a5")).buildAsEndOfRange();
+  cfs.metric.sstablesPerReadHistogram.clear();
+  ColumnFamily cf=cfs.getColumnFamily(key,start,finish,false,1000,System.currentTimeMillis());
+  int colCount=0;
+  for (  Column c : cf)   colCount++;
+  assertEquals(2,colCount);
+  assertEquals(2,cfs.metric.sstablesPerReadHistogram.max(),0.1);
+}

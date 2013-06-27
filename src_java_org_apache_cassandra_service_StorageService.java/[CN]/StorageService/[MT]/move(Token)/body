@@ -6,15 +6,15 @@
     logger.error("Invalid request to move(Token); This node has more than one token and cannot be moved thusly.");
     throw new UnsupportedOperationException("This node has more than one token and cannot be moved thusly.");
   }
-  List<String> tablesToProcess=Schema.instance.getNonSystemTables();
-  for (  String table : tablesToProcess) {
-    if (tokenMetadata.getPendingRanges(table,localAddress).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
+  List<String> keyspacesToProcess=Schema.instance.getNonSystemKeyspaces();
+  for (  String keyspaceName : keyspacesToProcess) {
+    if (tokenMetadata.getPendingRanges(keyspaceName,localAddress).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
   }
   Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.moving(newToken));
   setMode(Mode.MOVING,String.format("Moving %s from %s to %s.",localAddress,getLocalTokens().iterator().next(),newToken),true);
   setMode(Mode.MOVING,String.format("Sleeping %s ms before start streaming/fetching ranges",RING_DELAY),true);
   Uninterruptibles.sleepUninterruptibly(RING_DELAY,TimeUnit.MILLISECONDS);
-  RangeRelocator relocator=new RangeRelocator(Collections.singleton(newToken),tablesToProcess);
+  RangeRelocator relocator=new RangeRelocator(Collections.singleton(newToken),keyspacesToProcess);
   if (relocator.streamsNeeded()) {
     setMode(Mode.MOVING,"fetching new ranges and streaming old ranges",true);
     try {

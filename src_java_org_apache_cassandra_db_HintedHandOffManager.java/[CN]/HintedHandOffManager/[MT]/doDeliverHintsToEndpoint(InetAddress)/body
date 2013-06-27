@@ -11,7 +11,7 @@
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   delivery:   while (true) {
     long now=System.currentTimeMillis();
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemTable.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize,now);
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemKeyspace.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize,now);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(now / 1000));
     if (pagingFinished(hintsPage,startColumn))     break;
     if (!FailureDetector.instance.isAlive(endpoint)) {
@@ -45,7 +45,7 @@ catch (      IOException e) {
       for (      UUID cfId : ImmutableSet.copyOf((rm.getColumnFamilyIds()))) {
         Long truncatedAt=truncationTimesCache.get(cfId);
         if (truncatedAt == null) {
-          ColumnFamilyStore cfs=Table.open(rm.getTable()).getColumnFamilyStore(cfId);
+          ColumnFamilyStore cfs=Keyspace.open(rm.getKeyspaceName()).getColumnFamilyStore(cfId);
           truncatedAt=cfs.getTruncationTime();
           truncationTimesCache.put(cfId,truncatedAt);
         }

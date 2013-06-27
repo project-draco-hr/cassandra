@@ -1,0 +1,18 @@
+{
+  KSMetaData ksm=Schema.instance.getKSMetaData(ksName);
+  String snapshotName=Keyspace.getTimestampedSnapshotName(ksName);
+  CompactionManager.instance.interruptCompactionFor(ksm.cfMetaData().values(),true);
+  for (  CFMetaData cfm : ksm.cfMetaData().values()) {
+    ColumnFamilyStore cfs=Keyspace.open(ksm.name).getColumnFamilyStore(cfm.cfName);
+    Schema.instance.purge(cfm);
+    if (!StorageService.instance.isClientMode()) {
+      if (DatabaseDescriptor.isAutoSnapshot())       cfs.snapshot(snapshotName);
+      Keyspace.open(ksm.name).dropCf(cfm.cfId);
+    }
+  }
+  Keyspace.clear(ksm.name);
+  Schema.instance.clearKeyspaceDefinition(ksm);
+  if (!StorageService.instance.isClientMode()) {
+    MigrationManager.instance.notifyDropKeyspace(ksm);
+  }
+}

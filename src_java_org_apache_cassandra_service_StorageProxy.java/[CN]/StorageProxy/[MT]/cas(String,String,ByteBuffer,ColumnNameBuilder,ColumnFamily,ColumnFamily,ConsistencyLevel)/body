@@ -1,10 +1,10 @@
 {
-  consistencyLevel.validateForCas(table);
-  CFMetaData metadata=Schema.instance.getCFMetaData(table,cfName);
+  consistencyLevel.validateForCas(keyspaceName);
+  CFMetaData metadata=Schema.instance.getCFMetaData(keyspaceName,cfName);
   long start=System.nanoTime();
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
   while (System.nanoTime() - start < timeout) {
-    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(table,key);
+    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(keyspaceName,key);
     List<InetAddress> liveEndpoints=p.left;
     int requiredParticipants=p.right;
     UUID ballot=beginAndRepairPaxos(key,metadata,liveEndpoints,requiredParticipants);
@@ -14,10 +14,10 @@
     ReadCommand readCommand;
     if (expected == null) {
       SliceQueryFilter filter=prefix == null ? new SliceQueryFilter(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,1) : new SliceQueryFilter(prefix.build(),prefix.buildAsEndOfRange(),false,1,prefix.componentCount());
-      readCommand=new SliceFromReadCommand(table,key,cfName,timestamp,filter);
+      readCommand=new SliceFromReadCommand(keyspaceName,key,cfName,timestamp,filter);
     }
  else {
-      readCommand=new SliceByNamesReadCommand(table,key,cfName,timestamp,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
+      readCommand=new SliceByNamesReadCommand(keyspaceName,key,cfName,timestamp,new NamesQueryFilter(ImmutableSortedSet.copyOf(expected.getColumnNames())));
     }
     List<Row> rows=read(Arrays.asList(readCommand),ConsistencyLevel.QUORUM);
     ColumnFamily current=rows.get(0).cf;

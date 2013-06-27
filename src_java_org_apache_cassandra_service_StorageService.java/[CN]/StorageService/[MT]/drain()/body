@@ -18,19 +18,19 @@
   StorageProxy.instance.verifyNoHintsInProgress();
   setMode(Mode.DRAINING,"flushing column families",false);
   totalCFs=0;
-  for (  Table table : Table.nonSystem())   totalCFs+=table.getColumnFamilyStores().size();
+  for (  Keyspace keyspace : Keyspace.nonSystem())   totalCFs+=keyspace.getColumnFamilyStores().size();
   remainingCFs=totalCFs;
   List<Future<?>> flushes=new ArrayList<Future<?>>();
-  for (  Table table : Table.nonSystem()) {
-    for (    ColumnFamilyStore cfs : table.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
+  for (  Keyspace keyspace : Keyspace.nonSystem()) {
+    for (    ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
   }
   for (  Future f : flushes) {
     FBUtilities.waitOnFuture(f);
     remainingCFs--;
   }
   flushes.clear();
-  for (  Table table : Table.system()) {
-    for (    ColumnFamilyStore cfs : table.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
+  for (  Keyspace keyspace : Keyspace.system()) {
+    for (    ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
   }
   FBUtilities.waitOnFutures(flushes);
   ColumnFamilyStore.postFlushExecutor.shutdown();

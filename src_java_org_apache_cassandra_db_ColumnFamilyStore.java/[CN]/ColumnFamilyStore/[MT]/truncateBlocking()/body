@@ -5,7 +5,7 @@
     Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
   }
  else {
-    Table.switchLock.writeLock().lock();
+    Keyspace.switchLock.writeLock().lock();
     try {
       for (      ColumnFamilyStore cfs : concatWithIndexes()) {
         Memtable mt=cfs.getMemtableThreadSafe();
@@ -15,17 +15,17 @@
       }
     }
   finally {
-      Table.switchLock.writeLock().unlock();
+      Keyspace.switchLock.writeLock().unlock();
     }
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
       logger.debug("Discarding sstable data for truncated CF + indexes");
       final long truncatedAt=System.currentTimeMillis();
-      if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Table.getTimestampedSnapshotName(name));
+      if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Keyspace.getTimestampedSnapshotName(name));
       ReplayPosition replayAfter=discardSSTables(truncatedAt);
       for (      SecondaryIndex index : indexManager.getIndexes())       index.truncateBlocking(truncatedAt);
-      SystemTable.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
+      SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
       logger.debug("cleaning out row cache");
       for (      RowCacheKey key : CacheService.instance.rowCache.getKeySet()) {
         if (key.cfId == metadata.cfId)         CacheService.instance.rowCache.remove(key);

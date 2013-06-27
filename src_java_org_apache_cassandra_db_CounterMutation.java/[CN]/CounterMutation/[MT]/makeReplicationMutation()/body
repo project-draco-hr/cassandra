@@ -3,12 +3,12 @@
   long timestamp=System.currentTimeMillis();
   for (  ColumnFamily columnFamily : rowMutation.getColumnFamilies()) {
     if (!columnFamily.metadata().getReplicateOnWrite())     continue;
-    addReadCommandFromColumnFamily(rowMutation.getTable(),rowMutation.key(),columnFamily,timestamp,readCommands);
+    addReadCommandFromColumnFamily(rowMutation.getKeyspaceName(),rowMutation.key(),columnFamily,timestamp,readCommands);
   }
-  RowMutation replicationMutation=new RowMutation(rowMutation.getTable(),rowMutation.key());
+  RowMutation replicationMutation=new RowMutation(rowMutation.getKeyspaceName(),rowMutation.key());
   for (  ReadCommand readCommand : readCommands) {
-    Table table=Table.open(readCommand.table);
-    Row row=readCommand.getRow(table);
+    Keyspace keyspace=Keyspace.open(readCommand.ksName);
+    Row row=readCommand.getRow(keyspace);
     if (row == null || row.cf == null)     continue;
     ColumnFamily cf=row.cf;
     replicationMutation.add(cf);
