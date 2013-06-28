@@ -2,12 +2,11 @@
   ByteBuffer key=ByteBufferUtil.readWithLength(input);
   int generation=input.readInt();
   SSTableReader reader=findDesc(generation,cfs.getSSTables());
+  input.readBoolean();
   if (reader == null) {
     RowIndexEntry.serializer.skipPromotedIndex(input);
     return null;
   }
-  RowIndexEntry entry;
-  input.readBoolean();
-  entry=RowIndexEntry.serializer.deserialize(input,reader.descriptor.version);
+  RowIndexEntry entry=RowIndexEntry.serializer.deserialize(input,reader.descriptor.version);
   return Futures.immediateFuture(Pair.create(new KeyCacheKey(reader.descriptor,key),entry));
 }
