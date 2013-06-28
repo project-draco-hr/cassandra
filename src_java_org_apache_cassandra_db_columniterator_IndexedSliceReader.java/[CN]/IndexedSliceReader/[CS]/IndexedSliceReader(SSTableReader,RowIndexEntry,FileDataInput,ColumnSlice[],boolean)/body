@@ -13,7 +13,7 @@
       if (indexes.isEmpty()) {
         setToRowStart(sstable,indexEntry,input);
         this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
-        emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
+        emptyColumnFamily.delete(DeletionTime.serializer.deserialize(file));
         fetcher=new SimpleBlockFetcher();
       }
  else {
@@ -27,7 +27,7 @@
       IndexHelper.skipBloomFilter(file);
       this.indexes=IndexHelper.deserializeIndex(file);
       this.emptyColumnFamily=ColumnFamily.create(sstable.metadata);
-      emptyColumnFamily.delete(DeletionInfo.serializer().deserializeFromSSTable(file,version));
+      emptyColumnFamily.delete(indexEntry.deletionTime());
       fetcher=indexes.isEmpty() ? new SimpleBlockFetcher() : new IndexedBlockFetcher(file.getFilePointer() + 4);
     }
   }
