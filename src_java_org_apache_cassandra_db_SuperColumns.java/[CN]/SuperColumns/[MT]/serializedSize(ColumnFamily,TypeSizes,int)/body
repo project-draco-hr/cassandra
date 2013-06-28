@@ -1,2 +1,15 @@
 {
+  Map<ByteBuffer,List<Column>> scMap=groupSuperColumns(scf);
+  DeletionInfo delInfo=scf.deletionInfo();
+  long size=DeletionInfo.serializer().serializedSize(new DeletionInfo(delInfo.getTopLevelDeletion()),version);
+  for (  Map.Entry<ByteBuffer,List<Column>> entry : scMap.entrySet()) {
+    int nameSize=entry.getKey().remaining();
+    size+=typeSizes.sizeof((short)nameSize) + nameSize;
+    DeletionTime delTime=delInfo.rangeCovering(entry.getKey());
+    DeletionInfo scDelInfo=delTime == null ? DeletionInfo.live() : new DeletionInfo(delTime);
+    size+=DeletionTime.serializer.serializedSize(scDelInfo.getTopLevelDeletion(),TypeSizes.NATIVE);
+    size+=typeSizes.sizeof(entry.getValue().size());
+    for (    Column subColumn : entry.getValue())     size+=Column.serializer.serializedSize(subColumn,typeSizes);
+  }
+  return size;
 }
