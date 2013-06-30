@@ -4,14 +4,13 @@
     ClientRequestMetrics.readUnavailables.inc();
     throw new IsBootstrappingException();
   }
-  long startTime=System.nanoTime();
+  long start=System.nanoTime();
   List<Row> rows=null;
   try {
     if (consistency_level == ConsistencyLevel.SERIAL) {
       if (commands.size() > 1)       throw new InvalidRequestException("SERIAL consistency may only be requested for one row at a time");
       ReadCommand command=commands.get(0);
       CFMetaData metadata=Schema.instance.getCFMetaData(command.ksName,command.cfName);
-      long start=System.nanoTime();
       long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
       while (true) {
         Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key);
@@ -37,7 +36,7 @@ catch (  ReadTimeoutException e) {
     throw e;
   }
  finally {
-    readMetrics.addNano(System.nanoTime() - startTime);
+    readMetrics.addNano(System.nanoTime() - start);
   }
   return rows;
 }
