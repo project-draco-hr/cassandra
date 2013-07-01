@@ -2,7 +2,9 @@
   int iflags=body.readInt();
   int columnCount=body.readInt();
   EnumSet<Flag> flags=Flag.deserialize(iflags);
-  if (flags.contains(Flag.NO_METADATA))   return new Metadata(flags,columnCount);
+  PagingState state=null;
+  if (flags.contains(Flag.HAS_MORE_PAGES))   state=PagingState.deserialize(CBUtil.readValue(body));
+  if (flags.contains(Flag.NO_METADATA))   return new Metadata(flags,columnCount).setHasMorePages(state);
   boolean globalTablesSpec=flags.contains(Flag.GLOBAL_TABLES_SPEC);
   String globalKsName=null;
   String globalCfName=null;
@@ -18,5 +20,5 @@
     AbstractType type=DataType.toType(DataType.codec.decodeOne(body));
     names.add(new ColumnSpecification(ksName,cfName,colName,type));
   }
-  return new Metadata(flags,names);
+  return new Metadata(flags,names).setHasMorePages(state);
 }

@@ -1,0 +1,12 @@
+{
+  this.pagers=new SinglePartitionPager[commands.size()];
+  long tstamp=-1;
+  for (int i=0; i < commands.size(); i++) {
+    ReadCommand command=commands.get(i);
+    if (tstamp == -1)     tstamp=command.timestamp;
+ else     if (tstamp != command.timestamp)     throw new IllegalArgumentException("All commands must have the same timestamp or weird results may happen.");
+    PagingState tmpState=state != null && command.key.equals(state.partitionKey) ? state : null;
+    pagers[i]=command instanceof SliceFromReadCommand ? new SliceQueryPager((SliceFromReadCommand)command,consistencyLevel,localQuery,tmpState) : new NamesQueryPager((SliceByNamesReadCommand)command,consistencyLevel,localQuery,tmpState);
+  }
+  timestamp=tstamp;
+}
