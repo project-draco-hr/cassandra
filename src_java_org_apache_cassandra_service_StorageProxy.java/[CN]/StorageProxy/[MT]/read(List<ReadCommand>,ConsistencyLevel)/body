@@ -11,13 +11,14 @@
       if (commands.size() > 1)       throw new InvalidRequestException("SERIAL consistency may only be requested for one row at a time");
       ReadCommand command=commands.get(0);
       CFMetaData metadata=Schema.instance.getCFMetaData(command.ksName,command.cfName);
-      long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
-      while (true) {
-        Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key);
-        List<InetAddress> liveEndpoints=p.left;
-        int requiredParticipants=p.right;
-        if (beginAndRepairPaxos(command.key,metadata,liveEndpoints,requiredParticipants) != null)         break;
-        if (System.nanoTime() - start >= timeout)         throw new WriteTimeoutException(WriteType.CAS,ConsistencyLevel.SERIAL,-1,-1);
+      Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key);
+      List<InetAddress> liveEndpoints=p.left;
+      int requiredParticipants=p.right;
+      try {
+        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants);
+      }
+ catch (      WriteTimeoutException e) {
+        throw new ReadTimeoutException(ConsistencyLevel.SERIAL,-1,-1,false);
       }
       rows=fetchRows(commands,ConsistencyLevel.QUORUM);
     }
