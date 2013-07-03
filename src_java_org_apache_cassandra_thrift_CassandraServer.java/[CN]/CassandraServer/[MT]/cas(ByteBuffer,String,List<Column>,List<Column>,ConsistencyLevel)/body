@@ -25,7 +25,7 @@
     UnsortedColumns cfUpdates=UnsortedColumns.factory.create(cfm);
     for (    Column column : updates)     cfUpdates.addColumn(column.name,column.value,column.timestamp);
     ColumnFamily cfExpected;
-    if (expected == null) {
+    if (expected.isEmpty()) {
       cfExpected=null;
     }
  else {
@@ -34,7 +34,7 @@
     }
     schedule(DatabaseDescriptor.getWriteRpcTimeout());
     ColumnFamily result=StorageProxy.cas(cState.getKeyspace(),column_family,key,null,cfExpected,cfUpdates,ThriftConversion.fromThrift(consistency_level));
-    return result == null ? null : thriftifyColumnsAsColumns(result.getSortedColumns(),System.currentTimeMillis());
+    return result == null ? new CASResult(true) : new CASResult(false).setCurrent_values(thriftifyColumnsAsColumns(result.getSortedColumns(),System.currentTimeMillis()));
   }
  catch (  RequestTimeoutException e) {
     throw ThriftConversion.toThrift(e);
