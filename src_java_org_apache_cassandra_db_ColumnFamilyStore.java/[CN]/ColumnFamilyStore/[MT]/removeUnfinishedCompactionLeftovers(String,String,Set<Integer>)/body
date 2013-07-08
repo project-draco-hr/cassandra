@@ -9,14 +9,13 @@
   for (  Map.Entry<Descriptor,Set<Component>> sstableFiles : directories.sstableLister().list().entrySet()) {
     Descriptor desc=sstableFiles.getKey();
     Set<Component> components=sstableFiles.getValue();
-    SSTableMetadata meta;
+    Set<Integer> ancestors;
     try {
-      meta=SSTableMetadata.serializer.deserialize(desc);
+      ancestors=SSTableMetadata.serializer.deserialize(desc).right;
     }
  catch (    IOException e) {
       throw new FSReadError(e,desc.filenameFor(Component.STATS));
     }
-    Set<Integer> ancestors=meta.ancestors;
     if (!ancestors.isEmpty() && unfinishedGenerations.containsAll(ancestors)) {
       SSTable.delete(desc,components);
     }
