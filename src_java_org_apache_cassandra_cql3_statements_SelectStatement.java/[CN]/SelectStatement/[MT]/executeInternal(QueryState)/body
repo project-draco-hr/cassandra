@@ -1,7 +1,16 @@
 {
   try {
-    List<Row> rows=isKeyRange ? RangeSliceVerbHandler.executeLocally(getRangeCommand(Collections.<ByteBuffer>emptyList())) : readLocally(keyspace(),getSliceCommands(Collections.<ByteBuffer>emptyList()));
-    return processResults(rows,Collections.<ByteBuffer>emptyList());
+    List<ByteBuffer> variables=Collections.<ByteBuffer>emptyList();
+    List<Row> rows;
+    if (isKeyRange) {
+      RangeSliceCommand command=getRangeCommand(variables);
+      rows=command == null ? Collections.<Row>emptyList() : RangeSliceVerbHandler.executeLocally(command);
+    }
+ else {
+      List<ReadCommand> commands=getSliceCommands(variables);
+      rows=commands == null ? Collections.<Row>emptyList() : readLocally(keyspace(),commands);
+    }
+    return processResults(rows,variables);
   }
  catch (  ExecutionException e) {
     throw new RuntimeException(e);
