@@ -52,9 +52,22 @@
         }
         FBUtilities.waitOnFutures(resolver.repairResults,DatabaseDescriptor.getWriteRpcTimeout());
       }
- catch (      TimeoutException ex) {
-        logger.debug("Range slice timeout: {}",ex.toString());
+ catch (      ReadTimeoutException ex) {
         int blockFor=consistency_level.blockFor(keyspace);
+        int responseCount=resolver.responses.size();
+        String gotData=responseCount > 0 ? resolver.isDataPresent() ? " (including data)" : " (only digests)" : "";
+        if (Tracing.isTracing()) {
+          Tracing.trace("Timed out; received {} of {} responses{} for range {} of {}",new Object[]{responseCount,blockFor,gotData,i,ranges.size()});
+        }
+ else         if (logger.isDebugEnabled()) {
+          logger.debug("Range slice timeout; received {} of {} responses{} for range {} of {}",responseCount,blockFor,gotData,i,ranges.size());
+        }
+        throw ex;
+      }
+catch (      TimeoutException ex) {
+        int blockFor=consistency_level.blockFor(keyspace);
+        if (Tracing.isTracing())         Tracing.trace("Timed out while read-repairing after receiving all {} data and digest responses",blockFor);
+ else         logger.debug("Range slice timeout while read-repairing after receiving all {} data and digest responses",blockFor);
         throw new ReadTimeoutException(consistency_level,blockFor,blockFor,true);
       }
 catch (      DigestMismatchException e) {
