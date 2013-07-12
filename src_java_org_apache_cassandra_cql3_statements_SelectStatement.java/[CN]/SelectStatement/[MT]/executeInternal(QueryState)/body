@@ -2,6 +2,14 @@
   List<ByteBuffer> variables=Collections.emptyList();
   int limit=getLimit(variables);
   long now=System.currentTimeMillis();
-  List<Row> rows=isKeyRange || usesSecondaryIndexing ? getRangeCommand(variables,limit,now).executeLocally() : readLocally(keyspace(),getSliceCommands(variables,limit,now));
+  List<Row> rows;
+  if (isKeyRange || usesSecondaryIndexing) {
+    RangeSliceCommand command=getRangeCommand(variables,limit,now);
+    rows=command == null ? Collections.<Row>emptyList() : command.executeLocally();
+  }
+ else {
+    List<ReadCommand> commands=getSliceCommands(variables,limit,now);
+    rows=commands == null ? Collections.<Row>emptyList() : readLocally(keyspace(),commands);
+  }
   return processResults(rows,variables,limit,now);
 }

@@ -3,9 +3,16 @@
   cl.validateForRead(keyspace());
   int limit=getLimit(variables);
   long now=System.currentTimeMillis();
-  Pageable command=isKeyRange || usesSecondaryIndexing ? getRangeCommand(variables,limit,now) : new Pageable.ReadCommands(getSliceCommands(variables,limit,now));
+  Pageable command;
+  if (isKeyRange || usesSecondaryIndexing) {
+    command=getRangeCommand(variables,limit,now);
+  }
+ else {
+    List<ReadCommand> commands=getSliceCommands(variables,limit,now);
+    command=commands == null ? null : new Pageable.ReadCommands(commands);
+  }
   if (parameters.isCount && pageSize < 0)   pageSize=DEFAULT_COUNT_PAGE_SIZE;
-  if (pageSize < 0 || !QueryPagers.mayNeedPaging(command,pageSize)) {
+  if (pageSize < 0 || command == null || !QueryPagers.mayNeedPaging(command,pageSize)) {
     return execute(command,cl,variables,limit,now);
   }
  else {
