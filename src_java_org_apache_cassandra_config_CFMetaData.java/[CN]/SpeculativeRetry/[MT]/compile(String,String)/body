@@ -1,3 +1,11 @@
 {
-  return compile(null,cql,keyspace);
+  try {
+    CreateTableStatement statement=(CreateTableStatement)QueryProcessor.parseStatement(cql).prepare().statement;
+    CFMetaData cfm=newSystemMetadata(keyspace,statement.columnFamily(),"",statement.comparator,null);
+    statement.applyPropertiesTo(cfm);
+    return cfm.rebuild();
+  }
+ catch (  RequestValidationException e) {
+    throw new RuntimeException(e);
+  }
 }
