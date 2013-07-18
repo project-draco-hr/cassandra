@@ -1,0 +1,11 @@
+{
+  if (isEncryptedChannel(endpoint)) {
+    if (Config.getOutboundBindAny())     return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(),endpoint,DatabaseDescriptor.getSSLStoragePort());
+ else     return SSLFactory.getSocket(DatabaseDescriptor.getServerEncryptionOptions(),endpoint,DatabaseDescriptor.getSSLStoragePort(),FBUtilities.getLocalAddress(),0);
+  }
+ else {
+    Socket socket=SocketChannel.open(new InetSocketAddress(endpoint,DatabaseDescriptor.getStoragePort())).socket();
+    if (Config.getOutboundBindAny() && !socket.isBound())     socket.bind(new InetSocketAddress(FBUtilities.getLocalAddress(),0));
+    return socket;
+  }
+}

@@ -1,7 +1,12 @@
 {
-  outgoing=new OutgoingMessageHandler(session,connect(session.peer),StreamMessage.CURRENT_VERSION);
-  logger.debug("Sending stream init... for {}",session.planId());
-  outgoing.sendInitMessage(true);
+  logger.debug("[Stream #{}] Sending stream init for incoming stream",session.planId());
+  Socket incomingSocket=connect(session.peer);
+  incoming=new IncomingMessageHandler(session,incomingSocket,StreamMessage.CURRENT_VERSION);
+  incoming.sendInitMessage(true);
+  incoming.start();
+  logger.debug("[Stream #{}] Sending stream init for outgoing stream",session.planId());
+  Socket outgoingSocket=connect(session.peer);
+  outgoing=new OutgoingMessageHandler(session,outgoingSocket,StreamMessage.CURRENT_VERSION);
+  outgoing.sendInitMessage(false);
   outgoing.start();
-  return this;
 }

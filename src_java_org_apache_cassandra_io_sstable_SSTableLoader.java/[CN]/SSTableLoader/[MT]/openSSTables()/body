@@ -10,7 +10,8 @@
         outputHandler.output(String.format("Skipping file %s because index is missing",name));
         return false;
       }
-      if (!client.validateColumnFamily(keyspace,desc.cfname)) {
+      CFMetaData metadata=client.getCFMetaData(keyspace,desc.cfname);
+      if (metadata == null) {
         outputHandler.output(String.format("Skipping file %s: column family %s.%s doesn't exist",name,keyspace,desc.cfname));
         return false;
       }
@@ -20,7 +21,7 @@
       if (new File(desc.filenameFor(Component.COMPRESSION_INFO)).exists())       components.add(Component.COMPRESSION_INFO);
       if (new File(desc.filenameFor(Component.STATS)).exists())       components.add(Component.STATS);
       try {
-        sstables.add(SSTableReader.open(desc,components,null,client.getPartitioner()));
+        sstables.add(SSTableReader.open(desc,components,metadata,client.getPartitioner()));
       }
  catch (      IOException e) {
         outputHandler.output(String.format("Skipping file %s, error opening it: %s",name,e.getMessage()));
