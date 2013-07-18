@@ -1,0 +1,15 @@
+{
+  for (  SSTableStreamingSections details : sstableDetails) {
+    if (details.sections.isEmpty()) {
+      details.sstable.releaseReference();
+      continue;
+    }
+    UUID cfId=details.sstable.metadata.cfId;
+    StreamTransferTask task=transfers.get(cfId);
+    if (task == null) {
+      task=new StreamTransferTask(this,cfId);
+      transfers.put(cfId,task);
+    }
+    task.addTransferFile(details.sstable,details.estimatedKeys,details.sections);
+  }
+}
