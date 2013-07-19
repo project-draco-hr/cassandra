@@ -1,0 +1,22 @@
+{
+  boolean noMetadata=m.flags.contains(Flag.NO_METADATA);
+  boolean globalTablesSpec=m.flags.contains(Flag.GLOBAL_TABLES_SPEC);
+  boolean hasMorePages=m.flags.contains(Flag.HAS_MORE_PAGES);
+  int size=8;
+  if (hasMorePages)   size+=CBUtil.sizeOfValue(m.pagingState.serialize());
+  if (!noMetadata) {
+    if (globalTablesSpec) {
+      size+=CBUtil.sizeOfString(m.names.get(0).ksName);
+      size+=CBUtil.sizeOfString(m.names.get(0).cfName);
+    }
+    for (    ColumnSpecification name : m.names) {
+      if (!globalTablesSpec) {
+        size+=CBUtil.sizeOfString(name.ksName);
+        size+=CBUtil.sizeOfString(name.cfName);
+      }
+      size+=CBUtil.sizeOfString(name.toString());
+      size+=DataType.codec.oneSerializedSize(DataType.fromType(name.type));
+    }
+  }
+  return size;
+}
