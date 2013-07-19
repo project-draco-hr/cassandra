@@ -10,7 +10,15 @@
     if (frame == null) {
       return null;
     }
-    return Frame.create(frame,connection);
+    Connection connection=(Connection)channel.getAttachment();
+    if (connection == null) {
+      connection=factory.newConnection(channel,version);
+      channel.setAttachment(connection);
+    }
+ else     if (connection.getVersion() != version) {
+      throw new ProtocolException(String.format("Invalid message version. Got %d but previous messages on this connection had version %d",version,connection.getVersion()));
+    }
+    return Frame.create(frame);
   }
  catch (  CorruptedFrameException e) {
     throw new ProtocolException(e.getMessage());
