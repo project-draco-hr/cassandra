@@ -9,10 +9,15 @@
   ColumnFamily cf=ArrayBackedSortedColumns.factory.create(metadata);
   cf.delete(DeletionTime.serializer.deserialize(in));
   ColumnIndex.Builder columnIndexer=new ColumnIndex.Builder(cf,key.key,dataFile.stream);
-  OnDiskAtom.Serializer atomSerializer=Column.onDiskSerializer();
+  int columnCount=Integer.MAX_VALUE;
+  if (version.hasRowSizeAndColumnCount) {
+    in.skipBytes(8);
+    columnCount=in.readInt();
+  }
+  Iterator<OnDiskAtom> iter=metadata.getOnDiskIterator(in,columnCount,ColumnSerializer.Flag.PRESERVE_SIZE,Integer.MIN_VALUE,version);
   try {
-    while (true) {
-      OnDiskAtom atom=atomSerializer.deserializeFromSSTable(in,ColumnSerializer.Flag.PRESERVE_SIZE,Integer.MIN_VALUE,Descriptor.Version.CURRENT);
+    while (iter.hasNext()) {
+      OnDiskAtom atom=iter.next();
       if (atom == null)       break;
       if (atom instanceof CounterColumn)       atom=((CounterColumn)atom).markDeltaToBeCleared();
       int deletionTime=atom.getLocalDeletionTime();
