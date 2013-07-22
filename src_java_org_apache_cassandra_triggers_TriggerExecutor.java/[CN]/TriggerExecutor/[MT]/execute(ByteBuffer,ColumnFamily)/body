@@ -1,14 +1,14 @@
 {
-  Collection<String> triggerNames=columnFamily.metadata().getTriggerClasses();
-  if (triggerNames == null)   return null;
+  Map<String,TriggerDefinition> triggers=columnFamily.metadata().getTriggers();
+  if (triggers.isEmpty())   return null;
   List<RowMutation> tmutations=Lists.newLinkedList();
   Thread.currentThread().setContextClassLoader(customClassLoader);
   try {
-    for (    String triggerName : triggerNames) {
-      ITrigger trigger=cachedTriggers.get(triggerName);
+    for (    TriggerDefinition td : triggers.values()) {
+      ITrigger trigger=cachedTriggers.get(td.classOption);
       if (trigger == null) {
-        trigger=loadTriggerInstance(triggerName);
-        cachedTriggers.put(triggerName,trigger);
+        trigger=loadTriggerInstance(td.classOption);
+        cachedTriggers.put(td.classOption,trigger);
       }
       Collection<RowMutation> temp=trigger.augment(key,columnFamily);
       if (temp != null)       tmutations.addAll(temp);
