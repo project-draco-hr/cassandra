@@ -1,23 +1,26 @@
 {
-  if (row.cf == null)   return Collections.emptyList();
-  List<ColumnDefinition> cds=new ArrayList<ColumnDefinition>();
-  for (  UntypedResultSet.Row result : QueryProcessor.resultify("SELECT * FROM system.schema_columns",row)) {
+  List<ColumnDefinition> cds=new ArrayList<>();
+  String query=String.format("SELECT * FROM %s.%s",Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNS_CF);
+  for (  UntypedResultSet.Row row : QueryProcessor.resultify(query,serializedColumns)) {
+    Type type=row.has(TYPE) ? Enum.valueOf(Type.class,row.getString(TYPE).toUpperCase()) : Type.REGULAR;
+    Integer componentIndex=null;
+    if (row.has(COMPONENT_INDEX))     componentIndex=row.getInt(COMPONENT_INDEX);
+ else     if (type == Type.CLUSTERING_KEY && cfm.isSuper())     componentIndex=1;
+    ByteBuffer name=cfm.getComponentComparator(componentIndex,type).fromString(row.getString(COLUMN_NAME));
+    AbstractType<?> validator;
     try {
-      IndexType index_type=null;
-      Map<String,String> index_options=null;
-      String index_name=null;
-      Integer componentIndex=null;
-      Type type=result.has("type") ? Enum.valueOf(Type.class,result.getString("type").toUpperCase()) : Type.REGULAR;
-      if (result.has("index_type"))       index_type=IndexType.valueOf(result.getString("index_type"));
-      if (result.has("index_options"))       index_options=FBUtilities.fromJsonMap(result.getString("index_options"));
-      if (result.has("index_name"))       index_name=result.getString("index_name");
-      if (result.has("component_index"))       componentIndex=result.getInt("component_index");
- else       if (type == Type.CLUSTERING_KEY && cfm.isSuper())       componentIndex=1;
-      cds.add(new ColumnDefinition(cfm.getComponentComparator(componentIndex,type).fromString(result.getString("column_name")),TypeParser.parse(result.getString("validator")),index_type,index_options,index_name,componentIndex,type));
+      validator=TypeParser.parse(row.getString(VALIDATOR));
     }
  catch (    RequestValidationException e) {
       throw new RuntimeException(e);
     }
+    IndexType indexType=null;
+    if (row.has(INDEX_TYPE))     indexType=IndexType.valueOf(row.getString(INDEX_TYPE));
+    Map<String,String> indexOptions=null;
+    if (row.has(INDEX_OPTIONS))     indexOptions=FBUtilities.fromJsonMap(row.getString(INDEX_OPTIONS));
+    String indexName=null;
+    if (row.has(INDEX_NAME))     indexName=row.getString(INDEX_NAME);
+    cds.add(new ColumnDefinition(name,validator,indexType,indexOptions,indexName,componentIndex,type));
   }
   return cds;
 }
