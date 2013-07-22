@@ -1,23 +1,26 @@
 {
-  lock.lock();
+  timeout=tu.toNanos(timeout);
+  boolean interrupted=false;
   try {
-    boolean bVal=true;
-    try {
-      if (!done.get()) {
-        timeout=tu.toNanos(timeout);
-        long overall_timeout=timeout - (System.nanoTime() - start);
-        bVal=overall_timeout > 0 && condition.await(overall_timeout,TimeUnit.NANOSECONDS);
+synchronized (this) {
+      while (!done) {
+        try {
+          long overallTimeout=timeout - (System.nanoTime() - start);
+          if (overallTimeout <= 0) {
+            throw new TimeoutException("Operation timed out.");
+          }
+          TimeUnit.NANOSECONDS.timedWait(this,overallTimeout);
+        }
+ catch (        InterruptedException e) {
+          interrupted=true;
+        }
       }
-    }
- catch (    InterruptedException ex) {
-      throw new AssertionError(ex);
-    }
-    if (!bVal && !done.get()) {
-      throw new TimeoutException("Operation timed out.");
     }
   }
   finally {
-    lock.unlock();
+    if (interrupted) {
+      Thread.currentThread().interrupt();
+    }
   }
   return result;
 }
