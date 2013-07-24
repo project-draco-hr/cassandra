@@ -1,2 +1,25 @@
 {
+  CompactionManager.instance.disableAutoCompaction();
+  Table table=Table.open(TABLE1);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(COLUMN_FAMILY1);
+  CacheService.instance.invalidateKeyCache();
+  assertKeyCacheSize(0,TABLE1,COLUMN_FAMILY1);
+  DecoratedKey key1=Util.dk("key1");
+  DecoratedKey key2=Util.dk("key2");
+  RowMutation rm;
+  rm=new RowMutation(TABLE1,key1.key);
+  rm.add(new QueryPath(COLUMN_FAMILY1,null,ByteBufferUtil.bytes("1")),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+  rm.apply();
+  rm=new RowMutation(TABLE1,key2.key);
+  rm.add(new QueryPath(COLUMN_FAMILY1,null,ByteBufferUtil.bytes("2")),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,new QueryPath(new ColumnParent(COLUMN_FAMILY1)),ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,10));
+  cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,new QueryPath(new ColumnParent(COLUMN_FAMILY1)),ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,10));
+  assertKeyCacheSize(2,TABLE1,COLUMN_FAMILY1);
+  Util.compactAll(cfs).get();
+  assertKeyCacheSize(4,TABLE1,COLUMN_FAMILY1);
+  cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,new QueryPath(new ColumnParent(COLUMN_FAMILY1)),ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,10));
+  cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,new QueryPath(new ColumnParent(COLUMN_FAMILY1)),ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,10));
+  assertKeyCacheSize(4,TABLE1,COLUMN_FAMILY1);
 }
