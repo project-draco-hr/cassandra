@@ -7,18 +7,18 @@
   long start=System.nanoTime();
   List<Row> rows=null;
   try {
-    if (consistency_level == ConsistencyLevel.SERIAL) {
-      if (commands.size() > 1)       throw new InvalidRequestException("SERIAL consistency may only be requested for one row at a time");
+    if (consistency_level.isSerialConsistency()) {
+      if (commands.size() > 1)       throw new InvalidRequestException("SERIAL/LOCAL_SERIAL consistency may only be requested for one row at a time");
       ReadCommand command=commands.get(0);
       CFMetaData metadata=Schema.instance.getCFMetaData(command.ksName,command.cfName);
-      Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key);
+      Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key,consistency_level);
       List<InetAddress> liveEndpoints=p.left;
       int requiredParticipants=p.right;
       try {
-        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants);
+        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants,consistency_level);
       }
  catch (      WriteTimeoutException e) {
-        throw new ReadTimeoutException(ConsistencyLevel.SERIAL,-1,-1,false);
+        throw new ReadTimeoutException(consistency_level,-1,-1,false);
       }
       rows=fetchRows(commands,ConsistencyLevel.QUORUM);
     }
