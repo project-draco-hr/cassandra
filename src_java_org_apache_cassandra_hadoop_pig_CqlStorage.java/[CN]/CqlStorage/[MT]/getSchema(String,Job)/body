@@ -6,21 +6,12 @@
   Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
   List<ResourceFieldSchema> allSchemaFields=new ArrayList<ResourceFieldSchema>();
   for (  ColumnDef cdef : cfDef.column_metadata) {
-    ResourceSchema innerTupleSchema=new ResourceSchema();
-    ResourceFieldSchema innerTupleField=new ResourceFieldSchema();
-    innerTupleField.setType(DataType.TUPLE);
-    innerTupleField.setSchema(innerTupleSchema);
-    innerTupleField.setName(new String(cdef.getName()));
-    ResourceFieldSchema idxColSchema=new ResourceFieldSchema();
-    idxColSchema.setName("name");
-    idxColSchema.setType(getPigType(UTF8Type.instance));
     ResourceFieldSchema valSchema=new ResourceFieldSchema();
     AbstractType validator=validators.get(cdef.name);
     if (validator == null)     validator=marshallers.get(MarshallerType.DEFAULT_VALIDATOR);
-    valSchema.setName("value");
+    valSchema.setName(new String(cdef.getName()));
     valSchema.setType(getPigType(validator));
-    innerTupleSchema.setFields(new ResourceFieldSchema[]{idxColSchema,valSchema});
-    allSchemaFields.add(innerTupleField);
+    allSchemaFields.add(valSchema);
   }
   schema.setFields(allSchemaFields.toArray(new ResourceFieldSchema[allSchemaFields.size()]));
   return schema;

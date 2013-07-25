@@ -8,7 +8,12 @@
   setConnectionInformation();
   CqlConfigHelper.setInputCQLPageRowSize(conf,String.valueOf(pageSize));
   if (columns != null && !columns.trim().isEmpty())   CqlConfigHelper.setInputColumns(conf,columns);
-  if (whereClause != null && !whereClause.trim().isEmpty())   CqlConfigHelper.setInputWhereClauses(conf,whereClause);
+  String whereClauseForPartitionFilter=getWhereClauseForPartitionFilter();
+  String wc=whereClause != null && !whereClause.trim().isEmpty() ? whereClauseForPartitionFilter == null ? whereClause : String.format("%s AND %s",whereClause.trim(),whereClauseForPartitionFilter) : whereClauseForPartitionFilter;
+  if (wc != null) {
+    logger.debug("where clause: {}",wc);
+    CqlConfigHelper.setInputWhereClauses(conf,wc);
+  }
   if (System.getenv(PIG_INPUT_SPLIT_SIZE) != null) {
     try {
       ConfigHelper.setInputSplitSize(conf,Integer.valueOf(System.getenv(PIG_INPUT_SPLIT_SIZE)));
