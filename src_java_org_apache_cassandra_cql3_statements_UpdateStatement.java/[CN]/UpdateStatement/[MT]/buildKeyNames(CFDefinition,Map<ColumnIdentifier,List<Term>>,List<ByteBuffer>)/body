@@ -3,7 +3,7 @@
   List<ByteBuffer> keys=new ArrayList<ByteBuffer>();
   for (  CFDefinition.Name name : cfDef.keys.values()) {
     List<Term> values=processed.get(name.name);
-    if (values == null || values.isEmpty())     throw new InvalidRequestException(String.format("Missing mandatory PRIMARY KEY part %s",name));
+    if (values == null)     throw new InvalidRequestException(String.format("Missing mandatory PRIMARY KEY part %s",name));
     if (keyBuilder.remainingCount() == 1) {
       for (      Term t : values) {
         ByteBuffer val=t.bindAndGet(variables);
@@ -12,7 +12,7 @@
       }
     }
  else {
-      if (values.size() > 1)       throw new InvalidRequestException("IN is only supported on the last column of the partition key");
+      if (values.isEmpty() || values.size() > 1)       throw new InvalidRequestException("IN is only supported on the last column of the partition key");
       ByteBuffer val=values.get(0).bindAndGet(variables);
       if (val == null)       throw new InvalidRequestException(String.format("Invalid null value for partition key part %s",name));
       keyBuilder.add(val);
