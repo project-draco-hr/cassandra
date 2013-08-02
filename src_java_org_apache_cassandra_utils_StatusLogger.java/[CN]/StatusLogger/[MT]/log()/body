@@ -1,6 +1,6 @@
 {
   MBeanServer server=ManagementFactory.getPlatformMBeanServer();
-  logger.info(String.format("%-25s%10s%10s%10s","Pool Name","Active","Pending","Blocked"));
+  logger.info(String.format("%-25s%10s%10s%15s%10s%18s","Pool Name","Active","Pending","Completed","Blocked","All Time Blocked"));
   Set<ObjectName> request, internal;
   try {
     request=server.queryNames(new ObjectName("org.apache.cassandra.request:type=*"),null);
@@ -12,7 +12,7 @@
   for (  ObjectName objectName : Iterables.concat(request,internal)) {
     String poolName=objectName.getKeyProperty("type");
     JMXEnabledThreadPoolExecutorMBean threadPoolProxy=JMX.newMBeanProxy(server,objectName,JMXEnabledThreadPoolExecutorMBean.class);
-    logger.info(String.format("%-25s%10s%10s%10s",poolName,threadPoolProxy.getActiveCount(),threadPoolProxy.getPendingTasks(),threadPoolProxy.getCurrentlyBlockedTasks()));
+    logger.info(String.format("%-25s%10s%10s%15s%10s%18s",poolName,threadPoolProxy.getActiveCount(),threadPoolProxy.getPendingTasks(),threadPoolProxy.getCompletedTasks(),threadPoolProxy.getCurrentlyBlockedTasks(),threadPoolProxy.getTotalBlockedTasks()));
   }
   CompactionManager cm=CompactionManager.instance;
   logger.info(String.format("%-25s%10s%10s","CompactionManager",cm.getActiveCompactions(),cm.getPendingTasks()));
