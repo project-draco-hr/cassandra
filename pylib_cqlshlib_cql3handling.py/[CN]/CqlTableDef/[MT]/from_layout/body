@@ -1,32 +1,23 @@
 @classmethod
 def from_layout(cls, layout, coldefs):
     '\n        This constructor accepts a dictionary of column-value pairs from a row\n        of system.schema_columnfamilies, and a sequence of similar dictionaries\n        from corresponding rows in system.schema_columns.\n        '
-    try:
-        cfname = layout[u'columnfamily_name']
-        ksname = layout[u'keyspace_name']
-    except KeyError:
-        cfname = layout[u'columnfamily']
-        ksname = layout[u'keyspace']
-    cf = cls(name=cfname)
+    cf = cls(name=layout[u'columnfamily_name'])
+    cf.keyspace = layout[u'keyspace_name']
     for (attr, val) in layout.items():
         setattr(cf, attr.encode('ascii'), val)
-    cf.keyspace = ksname
-    for attr in cls.json_attrs:
-        try:
-            val = getattr(cf, attr)
-            if ((attr == 'key_aliases') and (val is None)):
-                val = '[]'
-            setattr(cf, attr, json.loads(val))
-        except AttributeError:
-            pass
-    cf.partition_key_validator = lookup_casstype(cf.key_validator)
     cf.comparator = lookup_casstype(cf.comparator)
-    cf.default_validator = lookup_casstype(cf.default_validator)
-    cf.coldefs = cf.filter_regular_coldefs(coldefs)
-    cf.compact_storage = cf.is_compact_storage()
-    cf.key_aliases = cf.get_key_aliases()
-    cf.partition_key_components = cf.key_aliases
-    cf.column_aliases = cf.get_column_aliases()
-    cf.primary_key_components = (cf.key_aliases + list(cf.column_aliases))
-    cf.columns = cf.get_columns()
+    for attr in ('compaction_strategy_options', 'compression_parameters'):
+        setattr(cf, attr, json.loads(getattr(cf, attr)))
+    columns = map(CqlColumnDef.from_layout, coldefs)
+    partition_key_cols = filter((lambda c: (c.component_type == u'partition_key')), columns)
+    partition_key_cols.sort(key=(lambda c: c.component_index))
+    cf.partition_key_columns = map((lambda c: c.name), partition_key_cols)
+    clustering_key_cols = filter((lambda c: (c.component_type == u'clustering_key')), columns)
+    clustering_key_cols.sort(key=(lambda c: c.component_index))
+    cf.clustering_key_columns = map((lambda c: c.name), clustering_key_cols)
+    cf.primary_key_columns = (cf.partition_key_columns + cf.clustering_key_columns)
+    regular_cols = list(((set(columns) - set(partition_key_cols)) - set(clustering_key_cols)))
+    regular_cols.sort(key=(lambda c: c.name))
+    cf.regular_columns = map((lambda c: c.name), regular_cols)
+    cf.columns = ((partition_key_cols + clustering_key_cols) + regular_cols)
     return cf
