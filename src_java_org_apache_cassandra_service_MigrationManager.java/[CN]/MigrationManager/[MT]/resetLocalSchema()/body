@@ -1,7 +1,7 @@
 {
   logger.info("Starting local schema reset...");
   try {
-    if (logger.isDebugEnabled())     logger.debug("Truncating schema tables...");
+    logger.debug("Truncating schema tables...");
     FBUtilities.waitOnFutures(new ArrayList<Future<?>>(3){
 {
         SystemTable.schemaCFS(SystemTable.SCHEMA_KEYSPACES_CF).truncate();
@@ -10,14 +10,14 @@
       }
     }
 );
-    if (logger.isDebugEnabled())     logger.debug("Clearing local schema keyspace definitions...");
+    logger.debug("Clearing local schema keyspace definitions...");
     Schema.instance.clear();
     Set<InetAddress> liveEndpoints=Gossiper.instance.getLiveMembers();
     liveEndpoints.remove(FBUtilities.getBroadcastAddress());
     for (    InetAddress node : liveEndpoints) {
-      if (MessagingService.instance().getVersion(node) >= MessagingService.VERSION_117) {
-        if (logger.isDebugEnabled())         logger.debug("Requesting schema from " + node);
-        FBUtilities.waitOnFuture(StageManager.getStage(Stage.MIGRATION).submit(new MigrationTask(node)));
+      if (shouldPullSchemaFrom(node)) {
+        logger.debug("Requesting schema from {}",node);
+        FBUtilities.waitOnFuture(submitMigrationTask(node));
         break;
       }
     }
