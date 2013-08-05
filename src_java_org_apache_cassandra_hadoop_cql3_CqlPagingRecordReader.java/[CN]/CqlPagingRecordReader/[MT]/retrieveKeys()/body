@@ -16,4 +16,14 @@
   keys=FBUtilities.fromJsonList(keyString);
   for (  String key : keys)   clusterColumns.add(new BoundColumn(key));
   parseKeyValidators(ByteBufferUtil.string(ByteBuffer.wrap(cqlRow.columns.get(2).getValue())));
+  Column rawComparator=cqlRow.columns.get(3);
+  String comparator=ByteBufferUtil.string(ByteBuffer.wrap(rawComparator.getValue()));
+  logger.debug("comparator: {}",comparator);
+  AbstractType comparatorValidator=parseType(comparator);
+  if (comparatorValidator instanceof CompositeType) {
+    for (int i=0; i < clusterColumns.size(); i++)     clusterColumns.get(i).reversed=(((CompositeType)comparatorValidator).types.get(i) instanceof ReversedType);
+  }
+ else   if (comparatorValidator instanceof ReversedType) {
+    clusterColumns.get(0).reversed=true;
+  }
 }
