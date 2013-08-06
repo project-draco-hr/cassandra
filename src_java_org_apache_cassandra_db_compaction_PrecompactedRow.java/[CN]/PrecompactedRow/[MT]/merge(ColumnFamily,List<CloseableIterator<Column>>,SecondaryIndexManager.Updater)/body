@@ -5,7 +5,8 @@
     ColumnFamily container=returnCF.cloneMeShallow();
     public void reduce(    Column column){
       container.addColumn(column);
-      if (indexer != SecondaryIndexManager.nullUpdater && !column.isMarkedForDelete(System.currentTimeMillis()) && !container.getColumn(column.name()).equals(column)) {
+      if (indexer == SecondaryIndexManager.nullUpdater)       return;
+      if ((!column.isMarkedForDelete(System.currentTimeMillis()) && !container.getColumn(column.name()).equals(column)) || returnCF.deletionInfo().isDeleted(column.name(),CompactionManager.NO_GC)) {
         indexer.remove(column);
       }
     }
