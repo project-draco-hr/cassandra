@@ -1,0 +1,26 @@
+{
+  if (maxdevs < 0)   throw new IllegalArgumentException("maxdevs must be greater than or equal to zero");
+  final int count=this.count;
+  final long[] values=this.values;
+  if (count == 0)   return new EstimatedHistogram(new long[]{},new long[]{0});
+  long min=Long.MAX_VALUE, max=Long.MIN_VALUE;
+  double sum=0, sumsq=0;
+  for (int i=0; i < count; i++) {
+    final long value=values[i];
+    sum+=value;
+    sumsq+=value * value;
+    if (value < min)     min=value;
+    if (value > max)     max=value;
+  }
+  final long mean=(long)Math.round(sum / count);
+  final double stdev=Math.sqrt((sumsq / count) - (mean * (double)mean));
+  final long[] lowhalf=buildRange(mean,min,true,stdev,maxdevs);
+  final long[] highhalf=buildRange(mean,max,false,stdev,maxdevs);
+  final long[] ranges=new long[lowhalf.length + highhalf.length + 1];
+  System.arraycopy(lowhalf,0,ranges,0,lowhalf.length);
+  ranges[lowhalf.length]=mean;
+  System.arraycopy(highhalf,0,ranges,lowhalf.length + 1,highhalf.length);
+  final EstimatedHistogram hist=new EstimatedHistogram(ranges,new long[ranges.length + 1]);
+  for (int i=0; i < count; i++)   hist.add(values[i]);
+  return hist;
+}
