@@ -149,4 +149,17 @@
   }
 );
   speculativeRetry=Metrics.newCounter(factory.createMetricName("SpeculativeRetry"));
+  keyCacheHitRate=Metrics.newGauge(factory.createMetricName("KeyCacheHitRate"),new RatioGauge(){
+    protected double getNumerator(){
+      long hits=0L;
+      for (      SSTableReader sstable : cfs.getSSTables())       hits+=sstable.getKeyCacheHit();
+      return hits;
+    }
+    protected double getDenominator(){
+      long requests=0L;
+      for (      SSTableReader sstable : cfs.getSSTables())       requests+=sstable.getKeyCacheRequest();
+      return Math.max(requests,1);
+    }
+  }
+);
 }
