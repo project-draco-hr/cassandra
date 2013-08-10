@@ -9,7 +9,7 @@
   double maxLatency=1;
   long maxPenalty=1;
   HashMap<InetAddress,Long> penalties=new HashMap<InetAddress,Long>(samples.size());
-  for (  Map.Entry<InetAddress,ExponentiallyDecayingSample> entry : samples.entrySet()) {
+  for (  Map.Entry<InetAddress,ExponentiallyDecayingReservoir> entry : samples.entrySet()) {
     double mean=entry.getValue().getSnapshot().getMedian();
     if (mean > maxLatency)     maxLatency=mean;
     long timePenalty=lastReceived.containsKey(entry.getKey()) ? lastReceived.get(entry.getKey()) : System.nanoTime();
@@ -18,7 +18,7 @@
     penalties.put(entry.getKey(),timePenalty);
     if (timePenalty > maxPenalty)     maxPenalty=timePenalty;
   }
-  for (  Map.Entry<InetAddress,ExponentiallyDecayingSample> entry : samples.entrySet()) {
+  for (  Map.Entry<InetAddress,ExponentiallyDecayingReservoir> entry : samples.entrySet()) {
     double score=entry.getValue().getSnapshot().getMedian() / maxLatency;
     if (penalties.containsKey(entry.getKey()))     score+=penalties.get(entry.getKey()) / ((double)maxPenalty);
  else     score+=1;
