@@ -1,0 +1,18 @@
+{
+  String selectQuery=String.format("SELECT keyspace_name, columnfamily_name, writetime(type), key_aliases, key_alias FROM %s.%s",Table.SYSTEM_KS,SCHEMA_COLUMNFAMILIES_CF);
+  for (  UntypedResultSet.Row row : processInternal(selectQuery)) {
+    String ks=row.getString("keyspace_name");
+    String cf=row.getString("columnfamily_name");
+    Long timestamp=row.getLong("writetime(type)");
+    String keyAlias=row.has("key_alias") ? row.getString("key_alias") : null;
+    String keyAliases=row.has("key_aliases") ? row.getString("key_aliases") : null;
+    if (keyAliases != null) {
+      if (keyAlias == null)       continue;
+      processInternal(String.format("DELETE key_alias " + "FROM %s.%s " + "USING TIMESTAMP %d "+ "WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",Table.SYSTEM_KS,SCHEMA_COLUMNFAMILIES_CF,timestamp,ks,cf));
+    }
+ else {
+      List<String> aliases=keyAlias == null ? Collections.<String>emptyList() : Collections.singletonList(keyAlias);
+      processInternal(String.format("UPDATE %s.%s " + "USING TIMESTAMP %d " + "SET key_alias = null, key_aliases = '%s' "+ "WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",Table.SYSTEM_KS,SCHEMA_COLUMNFAMILIES_CF,timestamp,FBUtilities.json(aliases),ks,cf));
+    }
+  }
+}
