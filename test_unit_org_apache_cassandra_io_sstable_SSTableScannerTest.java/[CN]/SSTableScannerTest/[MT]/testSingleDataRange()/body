@@ -1,0 +1,24 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore(TABLE);
+  store.clearUnsafe();
+  store.disableAutoCompaction();
+  for (int i=2; i < 10; i++)   insertRowWithKey(i);
+  store.forceBlockingFlush();
+  assertEquals(1,store.getSSTables().size());
+  SSTableReader sstable=store.getSSTables().iterator().next();
+  SSTableScanner scanner=sstable.getScanner();
+  for (int i=2; i < 10; i++)   assertEquals(toKey(i),new String(scanner.next().getKey().key.array()));
+  assertScanMatches(sstable,3,6,3,6);
+  assertScanMatches(sstable,1,9,2,9);
+  assertScanMatches(sstable,2,9,2,9);
+  assertScanMatches(sstable,3,9,3,9);
+  assertScanMatches(sstable,1,8,2,8);
+  assertScanMatches(sstable,1,9,2,9);
+  assertScanMatches(sstable,1,9,2,9);
+  assertScanMatches(sstable,2,2,2,2);
+  assertScanMatches(sstable,5,5,5,5);
+  assertScanMatches(sstable,9,9,9,9);
+  assertScanEmpty(sstable,0,1);
+  assertScanEmpty(sstable,10,11);
+}
