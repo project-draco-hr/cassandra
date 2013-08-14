@@ -1,0 +1,23 @@
+{
+  if (Range.isInRanges(row.getKey().token,ranges))   return row;
+  cfs.invalidateCachedRow(row.getKey());
+  if (indexedColumnsInRow != null)   indexedColumnsInRow.clear();
+  while (row.hasNext()) {
+    OnDiskAtom column=row.next();
+    if (column instanceof CounterColumn)     renewer.maybeRenew((CounterColumn)column);
+    if (column instanceof Column && cfs.indexManager.indexes((Column)column)) {
+      if (indexedColumnsInRow == null)       indexedColumnsInRow=new ArrayList<>();
+      indexedColumnsInRow.add((Column)column);
+    }
+  }
+  if (indexedColumnsInRow != null && !indexedColumnsInRow.isEmpty()) {
+    Keyspace.switchLock.readLock().lock();
+    try {
+      cfs.indexManager.deleteFromIndexes(row.getKey(),indexedColumnsInRow);
+    }
+  finally {
+      Keyspace.switchLock.readLock().unlock();
+    }
+  }
+  return null;
+}

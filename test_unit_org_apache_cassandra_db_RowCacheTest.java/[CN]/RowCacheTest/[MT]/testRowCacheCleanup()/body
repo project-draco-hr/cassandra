@@ -1,0 +1,18 @@
+{
+  StorageService.instance.initServer(0);
+  CacheService.instance.setRowCacheCapacityInMB(1);
+  rowCacheLoad(100,Integer.MAX_VALUE,1000);
+  ColumnFamilyStore store=Keyspace.open(KEYSPACE).getColumnFamilyStore(COLUMN_FAMILY);
+  assertEquals(CacheService.instance.rowCache.getKeySet().size(),100);
+  store.cleanupCache();
+  assertEquals(CacheService.instance.rowCache.getKeySet().size(),100);
+  TokenMetadata tmd=StorageService.instance.getTokenMetadata();
+  byte[] tk1, tk2;
+  tk1="key1000".getBytes();
+  tk2="key1050".getBytes();
+  tmd.updateNormalToken(new BytesToken(tk1),InetAddress.getByName("127.0.0.1"));
+  tmd.updateNormalToken(new BytesToken(tk2),InetAddress.getByName("127.0.0.2"));
+  store.cleanupCache();
+  assertEquals(CacheService.instance.rowCache.getKeySet().size(),50);
+  CacheService.instance.setRowCacheCapacityInMB(0);
+}

@@ -1,2 +1,51 @@
 {
+  try {
+    if (nextEntry == null) {
+      do {
+        if (!rangeIterator.hasNext())         return endOfData();
+        currentRange=rangeIterator.next();
+        seekToCurrentRangeStart();
+        if (ifile.isEOF())         return endOfData();
+        currentKey=sstable.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(ifile));
+        currentEntry=RowIndexEntry.serializer.deserialize(ifile,sstable.descriptor.version);
+      }
+ while (!currentRange.contains(currentKey));
+    }
+ else {
+      currentKey=nextKey;
+      currentEntry=nextEntry;
+    }
+    long readEnd;
+    if (ifile.isEOF()) {
+      nextEntry=null;
+      nextKey=null;
+      readEnd=dfile.length();
+    }
+ else {
+      nextKey=sstable.partitioner.decorateKey(ByteBufferUtil.readWithShortLength(ifile));
+      nextEntry=RowIndexEntry.serializer.deserialize(ifile,sstable.descriptor.version);
+      readEnd=nextEntry.position;
+      if (!currentRange.contains(nextKey)) {
+        nextKey=null;
+        nextEntry=null;
+      }
+    }
+    if (dataRange == null || dataRange.selectsFullRowFor(currentKey.key)) {
+      dfile.seek(currentEntry.position);
+      ByteBufferUtil.readWithShortLength(dfile);
+      if (sstable.descriptor.version.hasRowSizeAndColumnCount)       dfile.readLong();
+      long dataSize=readEnd - dfile.getFilePointer();
+      return new SSTableIdentityIterator(sstable,dfile,currentKey,dataSize);
+    }
+    return new LazyColumnIterator(currentKey,new IColumnIteratorFactory(){
+      public OnDiskAtomIterator create(){
+        return dataRange.columnFilter(currentKey.key).getSSTableColumnIterator(sstable,dfile,currentKey,currentEntry);
+      }
+    }
+);
+  }
+ catch (  IOException e) {
+    sstable.markSuspect();
+    throw new CorruptSSTableException(e,sstable.getFilename());
+  }
 }
