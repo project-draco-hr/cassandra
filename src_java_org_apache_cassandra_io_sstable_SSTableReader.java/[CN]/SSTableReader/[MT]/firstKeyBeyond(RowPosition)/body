@@ -1,0 +1,24 @@
+{
+  long sampledPosition=getIndexScanPosition(token);
+  if (sampledPosition == -1)   sampledPosition=0;
+  Iterator<FileDataInput> segments=ifile.iterator(sampledPosition);
+  while (segments.hasNext()) {
+    FileDataInput in=segments.next();
+    try {
+      while (!in.isEOF()) {
+        ByteBuffer indexKey=ByteBufferUtil.readWithShortLength(in);
+        DecoratedKey indexDecoratedKey=partitioner.decorateKey(indexKey);
+        if (indexDecoratedKey.compareTo(token) > 0)         return indexDecoratedKey;
+        RowIndexEntry.serializer.skip(in);
+      }
+    }
+ catch (    IOException e) {
+      markSuspect();
+      throw new CorruptSSTableException(e,in.getPath());
+    }
+ finally {
+      FileUtils.closeQuietly(in);
+    }
+  }
+  return null;
+}

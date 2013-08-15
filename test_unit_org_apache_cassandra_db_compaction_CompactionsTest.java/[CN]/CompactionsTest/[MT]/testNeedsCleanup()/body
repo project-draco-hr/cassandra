@@ -1,0 +1,30 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard1");
+  store.clearUnsafe();
+  store.disableAutoCompaction();
+  for (int i=1; i < 10; i++) {
+    insertRowWithKey(i);
+    insertRowWithKey(i + 100);
+    insertRowWithKey(i + 200);
+  }
+  store.forceBlockingFlush();
+  assertEquals(1,store.getSSTables().size());
+  SSTableReader sstable=store.getSSTables().iterator().next();
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,209)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,210)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,109,200,209)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,109,200,210)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,210)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(100,109,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,109)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(1,9,100,109,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,101,109,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,109,201,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,8,100,109,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,108,200,209)));
+  assertTrue(CompactionManager.needsCleanup(sstable,makeRanges(0,9,100,109,200,208)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,0,0,9,50,51,100,109,150,199,200,209,300,301)));
+  assertFalse(CompactionManager.needsCleanup(sstable,makeRanges(0,0,0,9,50,51,100,103,150,199,200,209,300,301)));
+}
