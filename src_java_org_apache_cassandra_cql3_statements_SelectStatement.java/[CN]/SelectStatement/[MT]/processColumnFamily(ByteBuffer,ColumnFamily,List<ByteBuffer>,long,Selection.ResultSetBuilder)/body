@@ -1,6 +1,12 @@
 {
   ByteBuffer[] keyComponents=cfDef.hasCompositeKey ? ((CompositeType)cfDef.cfm.getKeyValidator()).split(key) : new ByteBuffer[]{key};
-  if (cfDef.isCompact) {
+  if (parameters.isDistinct) {
+    if (!cf.hasOnlyTombstones(now)) {
+      result.newRow();
+      for (      CFDefinition.Name name : selection.getColumnsList())       result.add(keyComponents[name.position]);
+    }
+  }
+ else   if (cfDef.isCompact) {
     for (    Column c : columnsInOrder(cf,variables)) {
       if (c.isMarkedForDelete(now))       continue;
       ByteBuffer[] components=null;
