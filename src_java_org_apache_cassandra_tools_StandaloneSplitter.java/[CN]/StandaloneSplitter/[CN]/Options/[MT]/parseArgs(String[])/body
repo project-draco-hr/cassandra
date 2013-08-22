@@ -1,0 +1,27 @@
+{
+  CommandLineParser parser=new GnuParser();
+  CmdLineOptions options=getCmdLineOptions();
+  try {
+    CommandLine cmd=parser.parse(options,cmdArgs,false);
+    if (cmd.hasOption(HELP_OPTION)) {
+      printUsage(options);
+      System.exit(0);
+    }
+    String[] args=cmd.getArgs();
+    if (args.length == 0) {
+      System.err.println("No sstables to split");
+      printUsage(options);
+      System.exit(1);
+    }
+    Options opts=new Options(Arrays.asList(args));
+    opts.debug=cmd.hasOption(DEBUG_OPTION);
+    opts.verbose=cmd.hasOption(VERBOSE_OPTION);
+    opts.snapshot=!cmd.hasOption(NO_SNAPSHOT_OPTION);
+    if (cmd.hasOption(SIZE_OPTION))     opts.sizeInMB=Integer.valueOf(cmd.getOptionValue(SIZE_OPTION));
+    return opts;
+  }
+ catch (  ParseException e) {
+    errorMsg(e.getMessage(),options);
+    return null;
+  }
+}

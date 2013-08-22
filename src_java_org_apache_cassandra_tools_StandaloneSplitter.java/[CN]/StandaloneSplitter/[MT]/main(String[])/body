@@ -1,0 +1,75 @@
+{
+  Options options=Options.parseArgs(args);
+  try {
+    DatabaseDescriptor.loadSchemas();
+    String ksName=null;
+    String cfName=null;
+    Map<Descriptor,Set<Component>> parsedFilenames=new HashMap<Descriptor,Set<Component>>();
+    for (    String filename : options.filenames) {
+      File file=new File(filename);
+      if (!file.exists()) {
+        System.out.println("Skipping inexisting file " + file);
+        continue;
+      }
+      Pair<Descriptor,Component> pair=SSTable.tryComponentFromFilename(file.getParentFile(),file.getName());
+      if (pair == null) {
+        System.out.println("Skipping non sstable file " + file);
+        continue;
+      }
+      Descriptor desc=pair.left;
+      if (ksName == null)       ksName=desc.ksname;
+ else       if (!ksName.equals(desc.ksname))       throw new IllegalArgumentException("All sstables must be part of the same keyspace");
+      if (cfName == null)       cfName=desc.cfname;
+ else       if (!cfName.equals(desc.cfname))       throw new IllegalArgumentException("All sstables must be part of the same column family");
+      Set<Component> components=new HashSet<Component>(Arrays.asList(new Component[]{Component.DATA,Component.PRIMARY_INDEX,Component.FILTER,Component.COMPRESSION_INFO,Component.STATS}));
+      Iterator<Component> iter=components.iterator();
+      while (iter.hasNext()) {
+        Component component=iter.next();
+        if (!(new File(desc.filenameFor(component)).exists()))         iter.remove();
+      }
+      parsedFilenames.put(desc,components);
+    }
+    if (ksName == null || cfName == null) {
+      System.err.println("No valid sstables to split");
+      System.exit(1);
+    }
+    Keyspace keyspace=Keyspace.openWithoutSSTables(ksName);
+    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+    String snapshotName="pre-split-" + System.currentTimeMillis();
+    List<SSTableReader> sstables=new ArrayList<SSTableReader>();
+    for (    Map.Entry<Descriptor,Set<Component>> fn : parsedFilenames.entrySet()) {
+      try {
+        SSTableReader sstable=SSTableReader.openNoValidation(fn.getKey(),fn.getValue(),cfs.metadata);
+        sstables.add(sstable);
+        if (options.snapshot) {
+          File snapshotDirectory=Directories.getSnapshotDirectory(sstable.descriptor,snapshotName);
+          sstable.createLinks(snapshotDirectory.getPath());
+        }
+      }
+ catch (      Exception e) {
+        System.err.println(String.format("Error Loading %s: %s",fn.getKey(),e.getMessage()));
+        if (options.debug)         e.printStackTrace(System.err);
+      }
+    }
+    if (options.snapshot)     System.out.println(String.format("Pre-split sstables snapshotted into snapshot %s",snapshotName));
+    cfs.getDataTracker().markCompacting(sstables);
+    for (    SSTableReader sstable : sstables) {
+      try {
+        new SSTableSplitter(cfs,sstable,options.sizeInMB).split();
+        sstable.markObsolete();
+        sstable.releaseReference();
+      }
+ catch (      Exception e) {
+        System.err.println(String.format("Error splitting %s: %s",sstable,e.getMessage()));
+        if (options.debug)         e.printStackTrace(System.err);
+      }
+    }
+    SSTableDeletingTask.waitForDeletions();
+    System.exit(0);
+  }
+ catch (  Exception e) {
+    System.err.println(e.getMessage());
+    if (options.debug)     e.printStackTrace(System.err);
+    System.exit(1);
+  }
+}
