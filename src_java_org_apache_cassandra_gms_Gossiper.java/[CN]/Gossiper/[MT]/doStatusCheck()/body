@@ -8,14 +8,14 @@
     EndpointState epState=endpointStateMap.get(endpoint);
     if (epState != null) {
       if (isFatClient(endpoint) && !justRemovedEndpoints.containsKey(endpoint) && TimeUnit.NANOSECONDS.toMillis(nowNano - epState.getUpdateTimestamp()) > FatClientTimeout) {
-        logger.info("FatClient " + endpoint + " has been silent for "+ FatClientTimeout+ "ms, removing from gossip");
+        logger.info("FatClient {} has been silent for {}ms, removing from gossip",endpoint,FatClientTimeout);
         removeEndpoint(endpoint);
         evictFromMembership(endpoint);
       }
       long expireTime=getExpireTimeForEndpoint(endpoint);
       if (!epState.isAlive() && (now > expireTime) && (!StorageService.instance.getTokenMetadata().isMember(endpoint))) {
         if (logger.isDebugEnabled()) {
-          logger.debug("time is expiring for endpoint : " + endpoint + " ("+ expireTime+ ")");
+          logger.debug("time is expiring for endpoint : {} ({})",endpoint,expireTime);
         }
         evictFromMembership(endpoint);
       }
@@ -24,7 +24,7 @@
   if (!justRemovedEndpoints.isEmpty()) {
     for (    Entry<InetAddress,Long> entry : justRemovedEndpoints.entrySet()) {
       if ((now - entry.getValue()) > QUARANTINE_DELAY) {
-        if (logger.isDebugEnabled())         logger.debug(QUARANTINE_DELAY + " elapsed, " + entry.getKey()+ " gossip quarantine over");
+        if (logger.isDebugEnabled())         logger.debug("{} elapsed, {} gossip quarantine over",QUARANTINE_DELAY,entry.getKey());
         justRemovedEndpoints.remove(entry.getKey());
       }
     }
