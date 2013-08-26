@@ -12,8 +12,10 @@
     Pair<String,String> key=Pair.create(p.left.ksname,p.left.cfname);
     descriptors.put(key,p.left);
   }
+  List<Future<?>> futures=new ArrayList<>();
   for (  Pair<String,String> key : descriptors.keySet()) {
     ColumnFamilyStore cfs=Keyspace.open(key.left).getColumnFamilyStore(key.right);
-    submitUserDefined(cfs,descriptors.get(key),getDefaultGcBefore(cfs));
+    futures.add(submitUserDefined(cfs,descriptors.get(key),getDefaultGcBefore(cfs)));
   }
+  FBUtilities.waitOnFutures(futures);
 }
