@@ -3,11 +3,12 @@
   List<ByteBuffer> keys=buildPartitionKeyNames(variables);
   if (keys.size() > 1)   throw new InvalidRequestException("IN on the partition key is not supported with conditional updates");
   ColumnNameBuilder clusteringPrefix=createClusteringPrefixBuilder(variables);
-  UpdateParameters params=new UpdateParameters(cfm,variables,getTimestamp(queryState.getTimestamp(),variables),getTimeToLive(variables),null);
   ByteBuffer key=keys.get(0);
   ThriftValidation.validateKey(cfm,key);
-  ColumnFamily updates=updateForKey(key,clusteringPrefix,params);
-  ColumnFamily expected=buildConditions(key,clusteringPrefix,params);
+  UpdateParameters updParams=new UpdateParameters(cfm,variables,queryState.getTimestamp(),getTimeToLive(variables),null);
+  ColumnFamily updates=updateForKey(key,clusteringPrefix,updParams);
+  UpdateParameters condParams=new UpdateParameters(cfm,variables,queryState.getTimestamp(),0,null);
+  ColumnFamily expected=buildConditions(key,clusteringPrefix,condParams);
   ColumnFamily result=StorageProxy.cas(keyspace(),columnFamily(),key,clusteringPrefix,expected,updates,options.getSerialConsistency(),options.getConsistency());
   return new ResultMessage.Rows(buildCasResultSet(key,result));
 }
