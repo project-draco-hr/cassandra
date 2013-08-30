@@ -48,7 +48,14 @@
       if (shouldCompressConnection()) {
         out.flush();
         logger.trace("Upgrading OutputStream to be compressed");
-        out=new DataOutputStream(new SnappyOutputStream(new BufferedOutputStream(socket.getOutputStream())));
+        if (targetVersion < MessagingService.VERSION_21) {
+          out=new DataOutputStream(new SnappyOutputStream(new BufferedOutputStream(socket.getOutputStream())));
+        }
+ else {
+          LZ4Compressor compressor=LZ4Factory.fastestInstance().fastCompressor();
+          Checksum checksum=XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED).asChecksum();
+          out=new DataOutputStream(new LZ4BlockOutputStream(new BufferedOutputStream(socket.getOutputStream()),1 << 14,compressor,checksum,true));
+        }
       }
       return true;
     }

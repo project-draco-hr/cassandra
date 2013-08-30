@@ -7,7 +7,12 @@
   from=CompactEndpointSerializationHelper.deserialize(in);
   if (compressed) {
     logger.debug("Upgrading incoming connection to be compressed");
-    in=new DataInputStream(new SnappyInputStream(socket.getInputStream()));
+    if (version < MessagingService.VERSION_21)     in=new DataInputStream(new SnappyInputStream(socket.getInputStream()));
+ else {
+      LZ4Decompressor decompressor=LZ4Factory.fastestInstance().decompressor();
+      Checksum checksum=XXHashFactory.fastestInstance().newStreamingHash32(OutboundTcpConnection.LZ4_HASH_SEED).asChecksum();
+      in=new DataInputStream(new LZ4BlockInputStream(socket.getInputStream(),decompressor,checksum));
+    }
   }
  else {
     in=new DataInputStream(new BufferedInputStream(socket.getInputStream(),4096));
