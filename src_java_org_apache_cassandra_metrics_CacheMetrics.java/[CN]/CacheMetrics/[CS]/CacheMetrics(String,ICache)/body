@@ -1,32 +1,29 @@
 {
-  capacity=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"Capacity",type),new Gauge<Long>(){
-    public Long getValue(){
+  capacity=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"Capacity",type),new Gauge<Long>(){
+    public Long value(){
       return cache.capacity();
     }
   }
 );
-  hits=CassandraMetricRegistry.get().meter(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"Hits",type));
-  requests=CassandraMetricRegistry.get().meter(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"Requests",type));
-  hitRate=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"HitRate",type),new RatioGauge(){
+  hits=Metrics.newMeter(new MetricName(GROUP_NAME,TYPE_NAME,"Hits",type),"hits",TimeUnit.SECONDS);
+  requests=Metrics.newMeter(new MetricName(GROUP_NAME,TYPE_NAME,"Requests",type),"requests",TimeUnit.SECONDS);
+  hitRate=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"HitRate",type),new RatioGauge(){
     protected double getNumerator(){
-      return hits.getCount();
+      return hits.count();
     }
     protected double getDenominator(){
-      return requests.getCount();
-    }
-    public Ratio getRatio(){
-      return Ratio.of(getNumerator(),getDenominator());
+      return requests.count();
     }
   }
 );
-  size=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"Size",type),new Gauge<Long>(){
-    public Long getValue(){
+  size=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"Size",type),new Gauge<Long>(){
+    public Long value(){
       return cache.weightedSize();
     }
   }
 );
-  entries=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"Entries",type),new Gauge<Integer>(){
-    public Integer getValue(){
+  entries=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"Entries",type),new Gauge<Integer>(){
+    public Integer value(){
       return cache.size();
     }
   }

@@ -1,6 +1,6 @@
 {
-  pendingTasks=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"PendingTasks"),new Gauge<Integer>(){
-    public Integer getValue(){
+  pendingTasks=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"PendingTasks"),new Gauge<Integer>(){
+    public Integer value(){
       int n=0;
       for (      String keyspaceName : Schema.instance.getKeyspaces()) {
         for (        ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores())         n+=cfs.getCompactionStrategy().getEstimatedRemainingTasks();
@@ -10,14 +10,14 @@
     }
   }
 );
-  completedTasks=CassandraMetricRegistry.register(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"CompletedTasks"),new Gauge<Long>(){
-    public Long getValue(){
+  completedTasks=Metrics.newGauge(new MetricName(GROUP_NAME,TYPE_NAME,"CompletedTasks"),new Gauge<Long>(){
+    public Long value(){
       long completedTasks=0;
       for (      ThreadPoolExecutor collector : collectors)       completedTasks+=collector.getCompletedTaskCount();
       return completedTasks;
     }
   }
 );
-  totalCompactionsCompleted=CassandraMetricRegistry.get().meter(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"TotalCompactionsCompleted"));
-  bytesCompacted=CassandraMetricRegistry.get().counter(MetricRegistry.name(GROUP_NAME,TYPE_NAME,"BytesCompacted"));
+  totalCompactionsCompleted=Metrics.newMeter(new MetricName(GROUP_NAME,TYPE_NAME,"TotalCompactionsCompleted"),"compaction completed",TimeUnit.SECONDS);
+  bytesCompacted=Metrics.newCounter(new MetricName(GROUP_NAME,TYPE_NAME,"BytesCompacted"));
 }

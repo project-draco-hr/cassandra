@@ -1,20 +1,20 @@
 {
   factory=new ColumnFamilyMetricNameFactory(cfs);
-  memtableColumnsCount=CassandraMetricRegistry.register(factory.createMetricName("MemtableColumnsCount"),new Gauge<Long>(){
-    public Long getValue(){
+  memtableColumnsCount=Metrics.newGauge(factory.createMetricName("MemtableColumnsCount"),new Gauge<Long>(){
+    public Long value(){
       return cfs.getDataTracker().getMemtable().getOperations();
     }
   }
 );
-  memtableDataSize=CassandraMetricRegistry.register(factory.createMetricName("MemtableDataSize"),new Gauge<Long>(){
-    public Long getValue(){
+  memtableDataSize=Metrics.newGauge(factory.createMetricName("MemtableDataSize"),new Gauge<Long>(){
+    public Long value(){
       return cfs.getDataTracker().getMemtable().getLiveSize();
     }
   }
 );
-  memtableSwitchCount=CassandraMetricRegistry.get().counter(factory.createMetricName("MemtableSwitchCount"));
-  estimatedRowSizeHistogram=CassandraMetricRegistry.register(factory.createMetricName("EstimatedRowSizeHistogram"),new Gauge<long[]>(){
-    public long[] getValue(){
+  memtableSwitchCount=Metrics.newCounter(factory.createMetricName("MemtableSwitchCount"));
+  estimatedRowSizeHistogram=Metrics.newGauge(factory.createMetricName("EstimatedRowSizeHistogram"),new Gauge<long[]>(){
+    public long[] value(){
       long[] histogram=new long[90];
       for (      SSTableReader sstable : cfs.getSSTables()) {
         long[] rowSize=sstable.getEstimatedRowSize().getBuckets(false);
@@ -24,8 +24,8 @@
     }
   }
 );
-  estimatedColumnCountHistogram=CassandraMetricRegistry.register(factory.createMetricName("EstimatedColumnCountHistogram"),new Gauge<long[]>(){
-    public long[] getValue(){
+  estimatedColumnCountHistogram=Metrics.newGauge(factory.createMetricName("EstimatedColumnCountHistogram"),new Gauge<long[]>(){
+    public long[] value(){
       long[] histogram=new long[90];
       for (      SSTableReader sstable : cfs.getSSTables()) {
         long[] columnSize=sstable.getEstimatedColumnCount().getBuckets(false);
@@ -35,9 +35,9 @@
     }
   }
 );
-  sstablesPerReadHistogram=CassandraMetricRegistry.get().histogram(factory.createMetricName("SSTablesPerReadHistogram"));
-  compressionRatio=CassandraMetricRegistry.register(factory.createMetricName("CompressionRatio"),new Gauge<Double>(){
-    public Double getValue(){
+  sstablesPerReadHistogram=Metrics.newHistogram(factory.createMetricName("SSTablesPerReadHistogram"));
+  compressionRatio=Metrics.newGauge(factory.createMetricName("CompressionRatio"),new Gauge<Double>(){
+    public Double value(){
       double sum=0;
       int total=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -52,22 +52,22 @@
 );
   readLatency=new LatencyMetrics(factory,"Read");
   writeLatency=new LatencyMetrics(factory,"Write");
-  pendingTasks=CassandraMetricRegistry.register(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
-    public Integer getValue(){
+  pendingTasks=Metrics.newGauge(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
+    public Integer value(){
       return Keyspace.switchLock.getQueueLength();
     }
   }
 );
-  liveSSTableCount=CassandraMetricRegistry.register(factory.createMetricName("LiveSSTableCount"),new Gauge<Integer>(){
-    public Integer getValue(){
+  liveSSTableCount=Metrics.newGauge(factory.createMetricName("LiveSSTableCount"),new Gauge<Integer>(){
+    public Integer value(){
       return cfs.getDataTracker().getSSTables().size();
     }
   }
 );
-  liveDiskSpaceUsed=CassandraMetricRegistry.get().counter(factory.createMetricName("LiveDiskSpaceUsed"));
-  totalDiskSpaceUsed=CassandraMetricRegistry.get().counter(factory.createMetricName("TotalDiskSpaceUsed"));
-  minRowSize=CassandraMetricRegistry.register(factory.createMetricName("MinRowSize"),new Gauge<Long>(){
-    public Long getValue(){
+  liveDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("LiveDiskSpaceUsed"));
+  totalDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("TotalDiskSpaceUsed"));
+  minRowSize=Metrics.newGauge(factory.createMetricName("MinRowSize"),new Gauge<Long>(){
+    public Long value(){
       long min=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
         if (min == 0 || sstable.getEstimatedRowSize().min() < min)         min=sstable.getEstimatedRowSize().min();
@@ -76,8 +76,8 @@
     }
   }
 );
-  maxRowSize=CassandraMetricRegistry.register(factory.createMetricName("MaxRowSize"),new Gauge<Long>(){
-    public Long getValue(){
+  maxRowSize=Metrics.newGauge(factory.createMetricName("MaxRowSize"),new Gauge<Long>(){
+    public Long value(){
       long max=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
         if (sstable.getEstimatedRowSize().max() > max)         max=sstable.getEstimatedRowSize().max();
@@ -86,8 +86,8 @@
     }
   }
 );
-  meanRowSize=CassandraMetricRegistry.register(factory.createMetricName("MeanRowSize"),new Gauge<Long>(){
-    public Long getValue(){
+  meanRowSize=Metrics.newGauge(factory.createMetricName("MeanRowSize"),new Gauge<Long>(){
+    public Long value(){
       long sum=0;
       long count=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -98,24 +98,24 @@
     }
   }
 );
-  bloomFilterFalsePositives=CassandraMetricRegistry.register(factory.createMetricName("BloomFilterFalsePositives"),new Gauge<Long>(){
-    public Long getValue(){
+  bloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("BloomFilterFalsePositives"),new Gauge<Long>(){
+    public Long value(){
       long count=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getBloomFilterFalsePositiveCount();
       return count;
     }
   }
 );
-  recentBloomFilterFalsePositives=CassandraMetricRegistry.register(factory.createMetricName("RecentBloomFilterFalsePositives"),new Gauge<Long>(){
-    public Long getValue(){
+  recentBloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalsePositives"),new Gauge<Long>(){
+    public Long value(){
       long count=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getRecentBloomFilterFalsePositiveCount();
       return count;
     }
   }
 );
-  bloomFilterFalseRatio=CassandraMetricRegistry.register(factory.createMetricName("BloomFilterFalseRatio"),new Gauge<Double>(){
-    public Double getValue(){
+  bloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("BloomFilterFalseRatio"),new Gauge<Double>(){
+    public Double value(){
       long falseCount=0L;
       long trueCount=0L;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -127,8 +127,8 @@
     }
   }
 );
-  recentBloomFilterFalseRatio=CassandraMetricRegistry.register(factory.createMetricName("RecentBloomFilterFalseRatio"),new Gauge<Double>(){
-    public Double getValue(){
+  recentBloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalseRatio"),new Gauge<Double>(){
+    public Double value(){
       long falseCount=0L;
       long trueCount=0L;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -140,16 +140,16 @@
     }
   }
 );
-  bloomFilterDiskSpaceUsed=CassandraMetricRegistry.register(factory.createMetricName("BloomFilterDiskSpaceUsed"),new Gauge<Long>(){
-    public Long getValue(){
+  bloomFilterDiskSpaceUsed=Metrics.newGauge(factory.createMetricName("BloomFilterDiskSpaceUsed"),new Gauge<Long>(){
+    public Long value(){
       long total=0;
       for (      SSTableReader sst : cfs.getSSTables())       total+=sst.getBloomFilterSerializedSize();
       return total;
     }
   }
 );
-  speculativeRetry=CassandraMetricRegistry.get().counter(factory.createMetricName("SpeculativeRetry"));
-  keyCacheHitRate=CassandraMetricRegistry.register(factory.createMetricName("KeyCacheHitRate"),new RatioGauge(){
+  speculativeRetry=Metrics.newCounter(factory.createMetricName("SpeculativeRetry"));
+  keyCacheHitRate=Metrics.newGauge(factory.createMetricName("KeyCacheHitRate"),new RatioGauge(){
     protected double getNumerator(){
       long hits=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       hits+=sstable.getKeyCacheHit();
@@ -159,9 +159,6 @@
       long requests=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       requests+=sstable.getKeyCacheRequest();
       return Math.max(requests,1);
-    }
-    @Override protected Ratio getRatio(){
-      return Ratio.of(getNumerator(),getDenominator());
     }
   }
 );
