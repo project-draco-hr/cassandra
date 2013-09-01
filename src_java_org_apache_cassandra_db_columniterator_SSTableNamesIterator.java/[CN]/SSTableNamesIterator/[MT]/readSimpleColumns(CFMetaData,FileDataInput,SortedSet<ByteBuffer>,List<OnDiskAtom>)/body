@@ -1,17 +1,19 @@
 {
+  AbstractType<?> comparator=metadata.comparator;
   OnDiskAtom.Serializer atomSerializer=cf.getOnDiskSerializer();
+  ByteBuffer maximalColumnName=columnNames.last();
   int count=file.readInt();
-  int n=0;
   for (int i=0; i < count; i++) {
     OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
+    ByteBuffer columnName=column.name();
     if (column instanceof IColumn) {
-      if (columnNames.contains(column.name())) {
+      if (columnNames.contains(columnName)) {
         result.add(column);
-        if (++n >= columns.size())         break;
       }
     }
  else {
       result.add(column);
     }
+    if (comparator.compare(columnName,maximalColumnName) >= 0)     break;
   }
 }

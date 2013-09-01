@@ -13,13 +13,16 @@
   if (ranges.isEmpty())   return;
   for (  IndexHelper.IndexInfo indexInfo : ranges) {
     long positionToSeek=basePosition + indexInfo.offset;
+    ByteBuffer maximalColumnName=columnNames.contains(indexInfo.lastName) ? indexInfo.lastName : columnNames.subSet(indexInfo.firstName,indexInfo.lastName).last();
     if (file == null)     file=createFileDataInput(positionToSeek);
     OnDiskAtom.Serializer atomSerializer=cf.getOnDiskSerializer();
     file.seek(positionToSeek);
     FileMark mark=file.mark();
     while (file.bytesPastMark(mark) < indexInfo.width) {
       OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
-      if (!(column instanceof IColumn) || columnNames.contains(column.name()))       result.add(column);
+      ByteBuffer columnName=column.name();
+      if (!(column instanceof IColumn) || columnNames.contains(columnName))       result.add(column);
+      if (comparator.compare(columnName,maximalColumnName) >= 0)       break;
     }
   }
 }
