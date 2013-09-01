@@ -7,7 +7,10 @@
   for (  InetAddress member : localMembers) {
     if (FailureDetector.instance.isAlive(member))     candidates.add(member);
   }
-  if (candidates.isEmpty())   throw new UnavailableException(ConsistencyLevel.ONE,1,0);
+  if (candidates.isEmpty()) {
+    if (consistencyLevel == ConsistencyLevel.ANY)     return Collections.singleton(FBUtilities.getBroadcastAddress());
+    throw new UnavailableException(ConsistencyLevel.ONE,1,0);
+  }
   if (candidates.size() > 2) {
     IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
     snitch.sortByProximity(FBUtilities.getBroadcastAddress(),candidates);
