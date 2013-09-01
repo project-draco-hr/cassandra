@@ -1,16 +1,18 @@
 {
+  AbstractType<?> comparator=metadata.comparator;
   Iterator<OnDiskAtom> atomIterator=cf.metadata().getOnDiskIterator(file,columnCount,sstable.descriptor.version);
-  int n=0;
+  ByteBuffer maximalColumnName=columnNames.last();
   while (atomIterator.hasNext()) {
     OnDiskAtom column=atomIterator.next();
+    ByteBuffer columnName=column.name();
     if (column instanceof Column) {
-      if (columnNames.contains(column.name())) {
+      if (columnNames.contains(columnName)) {
         result.add(column);
-        if (++n >= columns.size())         break;
       }
     }
  else {
       result.add(column);
     }
+    if (comparator.compare(columnName,maximalColumnName) >= 0)     break;
   }
 }
