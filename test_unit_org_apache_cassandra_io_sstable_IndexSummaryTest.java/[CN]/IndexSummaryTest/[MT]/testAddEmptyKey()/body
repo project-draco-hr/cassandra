@@ -1,0 +1,16 @@
+{
+  IPartitioner p=new RandomPartitioner();
+  IndexSummaryBuilder builder=new IndexSummaryBuilder(1);
+  builder.maybeAddEntry(p.decorateKey(ByteBufferUtil.EMPTY_BYTE_BUFFER),0);
+  IndexSummary summary=builder.build(p);
+  assertEquals(1,summary.size());
+  assertEquals(0,summary.getPosition(0));
+  assertArrayEquals(new byte[0],summary.getKey(0));
+  ByteArrayDataOutput bout=ByteStreams.newDataOutput();
+  IndexSummary.serializer.serialize(summary,bout);
+  ByteArrayDataInput bin=ByteStreams.newDataInput(bout.toByteArray());
+  IndexSummary loaded=IndexSummary.serializer.deserialize(bin,p);
+  assertEquals(1,loaded.size());
+  assertEquals(summary.getPosition(0),loaded.getPosition(0));
+  assertArrayEquals(summary.getKey(0),summary.getKey(0));
+}
