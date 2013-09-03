@@ -13,8 +13,12 @@
     TypeDescription seedDesc=new TypeDescription(SeedProviderDef.class);
     seedDesc.putMapPropertyType("parameters",String.class,String.class);
     constructor.addTypeDescription(seedDesc);
+    MissingPropertiesChecker propertiesChecker=new MissingPropertiesChecker();
+    constructor.setPropertyUtils(propertiesChecker);
     Yaml yaml=new Yaml(constructor);
-    return (Config)yaml.load(input);
+    Config result=yaml.loadAs(input,Config.class);
+    propertiesChecker.check();
+    return result;
   }
  catch (  YAMLException e) {
     throw new ConfigurationException("Invalid yaml",e);
