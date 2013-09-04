@@ -2,13 +2,14 @@
   logger.debug("update_column_family");
   try {
     if (cf_def.keyspace == null || cf_def.name == null)     throw new InvalidRequestException("Keyspace and CF name must be set.");
+    state().hasColumnFamilyAccess(cf_def.keyspace,cf_def.name,Permission.ALTER);
     CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
     if (oldCfm == null)     throw new InvalidRequestException("Could not find column family definition to modify.");
-    state().hasColumnFamilyAccess(cf_def.keyspace,cf_def.name,Permission.ALTER);
     CFMetaData.applyImplicitDefaults(cf_def);
     CFMetaData cfm=CFMetaData.fromThrift(cf_def);
     CFMetaData.validateCompactionOptions(cfm.compactionStrategyClass,cfm.compactionStrategyOptions);
     cfm.addDefaultIndexNames();
+    if (!oldCfm.getTriggers().equals(cfm.getTriggers()))     state().ensureIsSuper("Only superusers are allowed to add or remove triggers.");
     MigrationManager.announceColumnFamilyUpdate(cfm,true);
     return Schema.instance.getVersion().toString();
   }
