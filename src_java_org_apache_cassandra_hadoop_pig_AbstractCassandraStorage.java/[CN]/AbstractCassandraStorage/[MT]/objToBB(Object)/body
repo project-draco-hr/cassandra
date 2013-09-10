@@ -8,23 +8,12 @@
   if (o instanceof UUID)   return ByteBuffer.wrap(UUIDGen.decompose((UUID)o));
   if (o instanceof Tuple) {
     List<Object> objects=((Tuple)o).getAll();
-    List<ByteBuffer> serialized=new ArrayList<ByteBuffer>(objects.size());
-    int totalLength=0;
-    for (    Object sub : objects) {
-      ByteBuffer buffer=objToBB(sub);
-      serialized.add(buffer);
-      totalLength+=2 + buffer.remaining() + 1;
+    if (objects.size() > 0 && objects.get(0) instanceof String) {
+      String collectionType=(String)objects.get(0);
+      if ("set".equalsIgnoreCase(collectionType) || "list".equalsIgnoreCase(collectionType))       return objToListOrSetBB(objects.subList(1,objects.size()));
+ else       if ("map".equalsIgnoreCase(collectionType))       return objToMapBB(objects.subList(1,objects.size()));
     }
-    ByteBuffer out=ByteBuffer.allocate(totalLength);
-    for (    ByteBuffer bb : serialized) {
-      int length=bb.remaining();
-      out.put((byte)((length >> 8) & 0xFF));
-      out.put((byte)(length & 0xFF));
-      out.put(bb);
-      out.put((byte)0);
-    }
-    out.flip();
-    return out;
+    return objToCompositeBB(objects);
   }
   return ByteBuffer.wrap(((DataByteArray)o).get());
 }
