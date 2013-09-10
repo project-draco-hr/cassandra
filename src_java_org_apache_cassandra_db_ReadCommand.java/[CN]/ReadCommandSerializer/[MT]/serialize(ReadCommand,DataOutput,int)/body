@@ -1,22 +1,11 @@
 {
-  ReadCommand newCommand=command;
-  ByteBuffer superColumn=null;
-  if (version < MessagingService.VERSION_20) {
-    CFMetaData metadata=Schema.instance.getCFMetaData(command.ksName,command.cfName);
-    if (metadata.cfType == ColumnFamilyType.Super) {
-      SuperColumns.SCFilter scFilter=SuperColumns.filterToSC((CompositeType)metadata.comparator,command.filter());
-      newCommand=ReadCommand.create(command.ksName,command.key,command.cfName,command.timestamp,scFilter.updatedFilter);
-      newCommand.setDigestQuery(command.isDigestQuery());
-      superColumn=scFilter.scName;
-    }
-  }
-  out.writeByte(newCommand.commandType.serializedValue);
+  out.writeByte(command.commandType.serializedValue);
 switch (command.commandType) {
 case GET_BY_NAMES:
-    SliceByNamesReadCommand.serializer.serialize(newCommand,superColumn,out,version);
+    SliceByNamesReadCommand.serializer.serialize(command,out,version);
   break;
 case GET_SLICES:
-SliceFromReadCommand.serializer.serialize(newCommand,superColumn,out,version);
+SliceFromReadCommand.serializer.serialize(command,out,version);
 break;
 default :
 throw new AssertionError();

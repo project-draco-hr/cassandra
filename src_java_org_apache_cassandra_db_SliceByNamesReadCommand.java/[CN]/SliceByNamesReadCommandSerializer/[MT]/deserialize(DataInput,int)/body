@@ -2,37 +2,11 @@
   boolean isDigest=in.readBoolean();
   String keyspaceName=in.readUTF();
   ByteBuffer key=ByteBufferUtil.readWithShortLength(in);
-  String cfName;
-  ByteBuffer sc=null;
-  if (version < MessagingService.VERSION_20) {
-    QueryPath path=QueryPath.deserialize(in);
-    cfName=path.columnFamilyName;
-    sc=path.superColumnName;
-  }
- else {
-    cfName=in.readUTF();
-  }
-  long timestamp=version < MessagingService.VERSION_20 ? System.currentTimeMillis() : in.readLong();
+  String cfName=in.readUTF();
+  long timestamp=in.readLong();
   CFMetaData metadata=Schema.instance.getCFMetaData(keyspaceName,cfName);
-  ReadCommand command;
-  if (version < MessagingService.VERSION_20) {
-    AbstractType<?> comparator;
-    if (metadata.cfType == ColumnFamilyType.Super) {
-      CompositeType type=(CompositeType)metadata.comparator;
-      comparator=sc == null ? type.types.get(0) : type.types.get(1);
-    }
- else {
-      comparator=metadata.comparator;
-    }
-    IDiskAtomFilter filter=NamesQueryFilter.serializer.deserialize(in,version,comparator);
-    if (metadata.cfType == ColumnFamilyType.Super)     filter=SuperColumns.fromSCFilter((CompositeType)metadata.comparator,sc,filter);
-    if (filter instanceof NamesQueryFilter)     command=new SliceByNamesReadCommand(keyspaceName,key,cfName,timestamp,(NamesQueryFilter)filter);
- else     command=new SliceFromReadCommand(keyspaceName,key,cfName,timestamp,(SliceQueryFilter)filter);
-  }
- else {
-    NamesQueryFilter filter=NamesQueryFilter.serializer.deserialize(in,version,metadata.comparator);
-    command=new SliceByNamesReadCommand(keyspaceName,key,cfName,timestamp,filter);
-  }
+  NamesQueryFilter filter=NamesQueryFilter.serializer.deserialize(in,version,metadata.comparator);
+  ReadCommand command=new SliceByNamesReadCommand(keyspaceName,key,cfName,timestamp,filter);
   command.setDigestQuery(isDigest);
   return command;
 }
