@@ -1,5 +1,5 @@
 {
-  String query="SELECT type, " + "       comparator," + "       subcomparator,"+ "       default_validator, "+ "       key_validator,"+ "       key_aliases "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s' ";
+  String query="SELECT type," + "       comparator," + "       subcomparator,"+ "       default_validator,"+ "       key_validator,"+ "       key_aliases,"+ "       key_alias "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s' ";
   CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(String.format(query,keyspace,column_family)),Compression.NONE,ConsistencyLevel.ONE);
   if (result == null || result.rows == null || result.rows.isEmpty())   return null;
   Iterator<CqlRow> iteraRow=result.rows.iterator();
@@ -19,8 +19,22 @@
     if (cqlRow.columns.get(5).value != null) {
       String keyAliases=ByteBufferUtil.string(cqlRow.columns.get(5).value);
       keys=FBUtilities.fromJsonList(keyAliases);
+      if (keys.size() == 0 && cqlRow.columns.get(6).value == null) {
+        CFDefinition cfDefinition=getCfDefinition(keyspace,column_family,client);
+        for (        ColumnIdentifier column : cfDefinition.keys.keySet()) {
+          String key=column.toString();
+          String type=cfDefinition.keys.get(column).type.toString();
+          logger.debug("name: {}, type: {} ",key,type);
+          keys.add(key);
+        }
+      }
+ else       cql3Table=true;
     }
-    if (keys != null && keys.size() > 0)     cql3Table=true;
+ else {
+      String keyAlias=ByteBufferUtil.string(cqlRow.columns.get(6).value);
+      keys=new ArrayList<String>(1);
+      keys.add(keyAlias);
+    }
   }
   cfDef.column_metadata=getColumnMetadata(client,cql3Table);
   return cfDef;

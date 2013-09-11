@@ -1,0 +1,40 @@
+{
+  String query="SELECT column_name, " + "       validator, " + "       index_type "+ "FROM system.schema_columns "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s'";
+  CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(String.format(query,keyspace,column_family)),Compression.NONE,ConsistencyLevel.ONE);
+  List<CqlRow> rows=result.rows;
+  List<ColumnDef> columnDefs=new ArrayList<ColumnDef>();
+  if (!cassandraStorage && (rows == null || rows.isEmpty())) {
+    CFDefinition cfDefinition=getCfDefinition(keyspace,column_family,client);
+    for (    ColumnIdentifier column : cfDefinition.metadata.keySet()) {
+      ColumnDef cDef=new ColumnDef();
+      String columnName=column.toString();
+      String type=cfDefinition.metadata.get(column).type.toString();
+      logger.debug("name: {}, type: {} ",columnName,type);
+      cDef.name=ByteBufferUtil.bytes(columnName);
+      cDef.validation_class=type;
+      columnDefs.add(cDef);
+    }
+    if (columnDefs.size() == 0) {
+      String value=cfDefinition.value != null ? cfDefinition.value.toString() : null;
+      if ("value".equals(value)) {
+        ColumnDef cDef=new ColumnDef();
+        cDef.name=ByteBufferUtil.bytes(value);
+        cDef.validation_class=cfDefinition.value.type.toString();
+        columnDefs.add(cDef);
+      }
+    }
+    return columnDefs;
+  }
+ else   if (rows == null || rows.isEmpty())   return columnDefs;
+  Iterator<CqlRow> iterator=rows.iterator();
+  while (iterator.hasNext()) {
+    CqlRow row=iterator.next();
+    ColumnDef cDef=new ColumnDef();
+    cDef.setName(ByteBufferUtil.clone(row.getColumns().get(0).value));
+    cDef.validation_class=ByteBufferUtil.string(row.getColumns().get(1).value);
+    ByteBuffer indexType=row.getColumns().get(2).value;
+    if (indexType != null)     cDef.index_type=getIndexType(ByteBufferUtil.string(indexType));
+    columnDefs.add(cDef);
+  }
+  return columnDefs;
+}
