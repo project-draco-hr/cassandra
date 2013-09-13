@@ -2,7 +2,7 @@
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
   PrepareCallback summary=null;
   while (System.nanoTime() - start < timeout) {
-    long ballotMillis=summary == null ? System.currentTimeMillis() : Math.max(System.currentTimeMillis(),1 + UUIDGen.unixTimestamp(summary.inProgressCommit.ballot));
+    long ballotMillis=summary == null ? System.currentTimeMillis() : Math.max(System.currentTimeMillis(),1 + UUIDGen.unixTimestamp(summary.mostRecentInProgressCommit.ballot));
     UUID ballot=UUIDGen.getTimeUUID(ballotMillis);
     Tracing.trace("Preparing {}",ballot);
     Commit toPrepare=Commit.newPrepare(key,metadata,ballot);
@@ -12,7 +12,7 @@
       Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);
       continue;
     }
-    Commit inProgress=summary.inProgressCommit;
+    Commit inProgress=summary.mostRecentInProgressCommitWithUpdate;
     Commit mostRecent=summary.mostRecentCommit;
     if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent)) {
       Tracing.trace("Finishing incomplete paxos round {}",inProgress);
