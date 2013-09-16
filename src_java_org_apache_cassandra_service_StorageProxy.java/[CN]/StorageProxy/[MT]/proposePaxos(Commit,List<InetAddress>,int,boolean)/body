@@ -1,0 +1,9 @@
+{
+  ProposeCallback callback=new ProposeCallback(endpoints.size(),requiredParticipants,!timeoutIfPartial);
+  MessageOut<Commit> message=new MessageOut<Commit>(MessagingService.Verb.PAXOS_PROPOSE,proposal,Commit.serializer);
+  for (  InetAddress target : endpoints)   MessagingService.instance().sendRR(message,target,callback);
+  callback.await();
+  if (callback.isSuccessful())   return true;
+  if (timeoutIfPartial && !callback.isFullyRefused())   throw new WriteTimeoutException(WriteType.CAS,ConsistencyLevel.SERIAL,callback.getAcceptCount(),requiredParticipants);
+  return false;
+}
