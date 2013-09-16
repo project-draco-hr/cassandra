@@ -1,5 +1,8 @@
 {
   logger.debug("Propose response {} from {}",msg.payload,msg.from);
-  if (msg.payload)   successful.incrementAndGet();
+  if (msg.payload)   accepts.incrementAndGet();
   latch.countDown();
+  if (isSuccessful() || (failFast && (latch.getCount() + accepts.get() < requiredAccepts))) {
+    while (latch.getCount() > 0)     latch.countDown();
+  }
 }
