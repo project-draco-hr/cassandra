@@ -1,13 +1,15 @@
 {
-  Memtable activelyMeasuring=Memtable.activelyMeasuring;
-  long flushingBytes=activelyMeasuring == null ? 0 : activelyMeasuring.getLiveSize();
+  long totalMemtableBytesAllowed=DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L;
+  long flushingBytes=Memtable.activelyMeasuring == null ? 0 : Memtable.activelyMeasuring.getMemtableThreadSafe().getLiveSize();
   flushingBytes+=countFlushingBytes();
+  if (flushingBytes > 0)   logger.debug("Currently flushing {} bytes of {} max",flushingBytes,totalMemtableBytesAllowed);
   long liveBytes=0;
   try {
+    long totalMemtableBytesUnused=totalMemtableBytesAllowed - flushingBytes;
     for (    ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
       long size=cfs.getTotalMemtableLiveSize();
       int maxInFlight=(int)Math.ceil((double)(1 + 1 + DatabaseDescriptor.getFlushWriters()+ DatabaseDescriptor.getFlushQueueSize()) / (1 + cfs.indexManager.getIndexesBackedByCfs().size()));
-      if (size > (DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L - flushingBytes) / maxInFlight) {
+      if (totalMemtableBytesUnused > 0 && size > totalMemtableBytesUnused / maxInFlight) {
         logger.info("flushing high-traffic column family {} (estimated {} bytes)",cfs,size);
         cfs.forceFlush();
       }
@@ -15,8 +17,8 @@
         liveBytes+=size;
       }
     }
-    if (flushingBytes + liveBytes <= DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L)     return;
-    logger.info("estimated {} bytes used by all memtables pre-flush",liveBytes);
+    if (flushingBytes + liveBytes <= totalMemtableBytesAllowed)     return;
+    logger.info("estimated {} live and {} flushing bytes used by all memtables",liveBytes,flushingBytes);
     List<ColumnFamilyStore> sorted=new ArrayList<ColumnFamilyStore>();
     Iterables.addAll(sorted,ColumnFamilyStore.all());
     Collections.sort(sorted,new Comparator<ColumnFamilyStore>(){
@@ -29,11 +31,12 @@
       }
     }
 );
-    while (true) {
+    while (!sorted.isEmpty()) {
       flushingBytes=countFlushingBytes();
-      if (liveBytes + flushingBytes <= DatabaseDescriptor.getTotalMemtableSpaceInMB() * 1048576L || sorted.isEmpty())       break;
+      if (liveBytes + flushingBytes <= totalMemtableBytesAllowed)       break;
       ColumnFamilyStore cfs=sorted.remove(sorted.size() - 1);
       long size=cfs.getTotalMemtableLiveSize();
+      if (size == 0)       break;
       logger.info("flushing {} to free up {} bytes",cfs,size);
       liveBytes-=size;
       cfs.forceFlush();
