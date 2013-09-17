@@ -1,43 +1,11 @@
 {
   if (!MemoryMeter.isInitialized()) {
-    logger.warn("MemoryMeter uninitialized (jamm not specified as java agent); assuming liveRatio of 10.0.  Usually this means cassandra-env.sh disabled jamm because you are using a buggy JRE; upgrade to the Sun JRE instead");
-    cfs.liveRatio=10.0;
+    logger.warn("MemoryMeter uninitialized (jamm not specified as java agent); assuming liveRatio of {}.  " + " Usually this means cassandra-env.sh disabled jamm because you are using a buggy JRE; " + " upgrade to the Sun JRE instead",cfs.liveRatio);
     return;
   }
   if (!meteringInProgress.add(cfs)) {
     logger.debug("Metering already pending or active for {}; skipping liveRatio update",cfs);
     return;
   }
-  Runnable runnable=new Runnable(){
-    public void run(){
-      try {
-        activelyMeasuring=Memtable.this;
-        long start=System.nanoTime();
-        long deepSize=meter.measure(rows);
-        int objects=0;
-        for (        Map.Entry<RowPosition,AtomicSortedColumns> entry : rows.entrySet()) {
-          deepSize+=meter.measureDeep(entry.getKey()) + meter.measureDeep(entry.getValue());
-          objects+=entry.getValue().getColumnCount();
-        }
-        double newRatio=(double)deepSize / currentSize.get();
-        if (newRatio < MIN_SANE_LIVE_RATIO) {
-          logger.warn("setting live ratio to minimum of {} instead of {}",MIN_SANE_LIVE_RATIO,newRatio);
-          newRatio=MIN_SANE_LIVE_RATIO;
-        }
-        if (newRatio > MAX_SANE_LIVE_RATIO) {
-          logger.warn("setting live ratio to maximum of {} instead of {}",MAX_SANE_LIVE_RATIO,newRatio);
-          newRatio=MAX_SANE_LIVE_RATIO;
-        }
-        if (newRatio > cfs.liveRatio)         cfs.liveRatio=newRatio;
- else         cfs.liveRatio=(cfs.liveRatio + newRatio) / 2.0;
-        logger.info("{} liveRatio is {} (just-counted was {}).  calculation took {}ms for {} columns",cfs,cfs.liveRatio,newRatio,TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),objects);
-        activelyMeasuring=null;
-      }
-  finally {
-        meteringInProgress.remove(cfs);
-      }
-    }
-  }
-;
-  meterExecutor.submit(runnable);
+  meterExecutor.submit(new MeteringRunnable(cfs));
 }
