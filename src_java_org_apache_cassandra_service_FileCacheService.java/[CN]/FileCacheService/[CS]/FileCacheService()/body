@@ -1,0 +1,10 @@
+{
+  cache=CacheBuilder.<String,Queue<RandomAccessReader>>newBuilder().expireAfterAccess(AFTER_ACCESS_EXPIRATION,TimeUnit.MILLISECONDS).concurrencyLevel(DatabaseDescriptor.getConcurrentReaders()).removalListener(new RemovalListener<String,Queue<RandomAccessReader>>(){
+    @Override public void onRemoval(    RemovalNotification<String,Queue<RandomAccessReader>> notification){
+      Queue<RandomAccessReader> cachedInstances=notification.getValue();
+      if (cachedInstances == null)       return;
+      for (      RandomAccessReader reader : cachedInstances)       reader.deallocate();
+    }
+  }
+).build();
+}
