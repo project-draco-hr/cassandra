@@ -1,0 +1,29 @@
+{
+  try {
+    activelyMeasuring=cfs;
+    Memtable memtable=cfs.getMemtableThreadSafe();
+    long start=System.currentTimeMillis();
+    long deepSize=memtable.meter.measure(memtable.columnFamilies);
+    int objects=0;
+    for (    Map.Entry<RowPosition,ColumnFamily> entry : memtable.columnFamilies.entrySet()) {
+      deepSize+=memtable.meter.measureDeep(entry.getKey()) + memtable.meter.measureDeep(entry.getValue());
+      objects+=entry.getValue().getColumnCount();
+    }
+    double newRatio=(double)deepSize / memtable.currentSize.get();
+    if (newRatio < MIN_SANE_LIVE_RATIO) {
+      logger.warn("setting live ratio to minimum of {} instead of {}",MIN_SANE_LIVE_RATIO,newRatio);
+      newRatio=MIN_SANE_LIVE_RATIO;
+    }
+    if (newRatio > MAX_SANE_LIVE_RATIO) {
+      logger.warn("setting live ratio to maximum of {} instead of {}",MAX_SANE_LIVE_RATIO,newRatio);
+      newRatio=MAX_SANE_LIVE_RATIO;
+    }
+    if (newRatio > cfs.liveRatio)     cfs.liveRatio=newRatio;
+ else     cfs.liveRatio=(cfs.liveRatio + newRatio) / 2.0;
+    logger.info("{} liveRatio is {} (just-counted was {}).  calculation took {}ms for {} columns",cfs,cfs.liveRatio,newRatio,System.currentTimeMillis() - start,objects);
+  }
+  finally {
+    activelyMeasuring=null;
+    meteringInProgress.remove(cfs);
+  }
+}
