@@ -1,2 +1,40 @@
 {
+  if (!usesSecondaryIndexing || restrictedNames.isEmpty())   return Collections.emptyList();
+  List<IndexExpression> expressions=new ArrayList<IndexExpression>();
+  for (  CFDefinition.Name name : restrictedNames) {
+    Restriction restriction;
+switch (name.kind) {
+case KEY_ALIAS:
+      restriction=keyRestrictions[name.position];
+    break;
+case COLUMN_ALIAS:
+  restriction=columnRestrictions[name.position];
+break;
+case COLUMN_METADATA:
+restriction=metadataRestrictions.get(name);
+break;
+default :
+throw new AssertionError();
+}
+if (restriction.isSlice()) {
+Restriction.Slice slice=(Restriction.Slice)restriction;
+for (Bound b : Bound.values()) {
+if (slice.hasBound(b)) {
+ByteBuffer value=slice.bound(b,variables);
+if (value == null) throw new InvalidRequestException(String.format("Unsupported null value for indexed column %s",name));
+if (value.remaining() > 0xFFFF) throw new InvalidRequestException("Index expression values may not be larger than 64K");
+expressions.add(new IndexExpression(name.name.key,slice.getIndexOperator(b),value));
+}
+}
+}
+ else {
+List<ByteBuffer> values=restriction.values(variables);
+if (values.size() != 1) throw new InvalidRequestException("IN restrictions are not supported on indexed columns");
+ByteBuffer value=values.get(0);
+if (value == null) throw new InvalidRequestException(String.format("Unsupported null value for indexed column %s",name));
+if (value.remaining() > 0xFFFF) throw new InvalidRequestException("Index expression values may not be larger than 64K");
+expressions.add(new IndexExpression(name.name.key,IndexExpression.Operator.EQ,value));
+}
+}
+return expressions;
 }
