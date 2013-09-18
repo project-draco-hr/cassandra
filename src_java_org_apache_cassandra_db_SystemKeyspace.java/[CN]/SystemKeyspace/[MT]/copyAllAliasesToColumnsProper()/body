@@ -1,0 +1,12 @@
+{
+  for (  UntypedResultSet.Row row : processInternal(String.format("SELECT * FROM system.%s",SCHEMA_COLUMNFAMILIES_CF))) {
+    CFMetaData table=CFMetaData.fromSchema(row);
+    String query=String.format("SELECT writetime(type) " + "FROM system.%s " + "WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",SCHEMA_COLUMNFAMILIES_CF,table.ksName,table.cfName);
+    long timestamp=processInternal(query).one().getLong("writetime(type)");
+    try {
+      table.toSchema(timestamp).apply();
+    }
+ catch (    ConfigurationException e) {
+    }
+  }
+}
