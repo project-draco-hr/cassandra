@@ -2,7 +2,8 @@
   if (!cfs.isValid())   return;
   Collection<SSTableReader> sstables;
   int gcBefore;
-  if (cfs.snapshotExists(validator.request.sessionid)) {
+  boolean isSnapshotValidation=cfs.snapshotExists(validator.request.sessionid);
+  if (isSnapshotValidation) {
     sstables=cfs.getSnapshotSSTableReader(validator.request.sessionid);
     gcBefore=(int)(cfs.getSnapshotCreationTime(validator.request.sessionid) / 1000) - cfs.metadata.getGcGraceSeconds();
   }
@@ -33,9 +34,14 @@ catch (    InterruptedException e) {
     validator.complete();
   }
   finally {
-    SSTableReader.releaseReferences(sstables);
     iter.close();
-    if (cfs.snapshotExists(validator.request.sessionid))     cfs.clearSnapshot(validator.request.sessionid);
+    if (isSnapshotValidation) {
+      for (      SSTableReader sstable : sstables)       FileUtils.closeQuietly(sstable);
+      cfs.clearSnapshot(validator.request.sessionid);
+    }
+ else {
+      SSTableReader.releaseReferences(sstables);
+    }
     metrics.finishCompaction(ci);
   }
 }
