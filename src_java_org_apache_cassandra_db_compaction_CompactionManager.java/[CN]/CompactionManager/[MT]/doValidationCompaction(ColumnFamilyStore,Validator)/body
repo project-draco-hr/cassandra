@@ -3,7 +3,8 @@
   Collection<SSTableReader> sstables;
   String snapshotName=validator.desc.sessionId.toString();
   int gcBefore;
-  if (cfs.snapshotExists(snapshotName)) {
+  boolean isSnapshotValidation=cfs.snapshotExists(snapshotName);
+  if (isSnapshotValidation) {
     sstables=cfs.getSnapshotSSTableReader(snapshotName);
     gcBefore=cfs.gcBefore(cfs.getSnapshotCreationTime(snapshotName));
   }
@@ -26,9 +27,14 @@
     validator.complete();
   }
   finally {
-    SSTableReader.releaseReferences(sstables);
     iter.close();
-    if (cfs.snapshotExists(snapshotName))     cfs.clearSnapshot(snapshotName);
+    if (isSnapshotValidation) {
+      for (      SSTableReader sstable : sstables)       FileUtils.closeQuietly(sstable);
+      cfs.clearSnapshot(snapshotName);
+    }
+ else {
+      SSTableReader.releaseReferences(sstables);
+    }
     metrics.finishCompaction(ci);
   }
 }
