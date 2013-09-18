@@ -1,10 +1,10 @@
 {
   List<DataDirectory> candidates=new ArrayList<DataDirectory>();
   for (  DataDirectory dataDir : dataFileLocations) {
-    File sstableDir=getLocationForDisk(dataDir);
-    if (BlacklistedDirectories.isUnwritable(sstableDir))     continue;
-    if (dataDir.getEstimatedAvailableSpace() > estimatedSize && sstableDir.getUsableSpace() * 0.9 > estimatedSize)     candidates.add(dataDir);
+    if (BlacklistedDirectories.isUnwritable(getLocationForDisk(dataDir)))     continue;
+    candidates.add(dataDir);
   }
+  if (candidates.isEmpty())   throw new IOError(new IOException("All configured data directories have been blacklisted as unwritable for erroring out"));
   Collections.sort(candidates);
   Collections.sort(candidates,new Comparator<DataDirectory>(){
     public int compare(    DataDirectory a,    DataDirectory b){
@@ -12,5 +12,5 @@
     }
   }
 );
-  return candidates.isEmpty() ? null : candidates.get(0);
+  return candidates.get(0);
 }
