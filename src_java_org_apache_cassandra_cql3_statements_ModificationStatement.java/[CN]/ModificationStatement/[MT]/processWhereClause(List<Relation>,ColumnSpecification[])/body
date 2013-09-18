@@ -6,17 +6,32 @@
 switch (name.kind) {
 case KEY_ALIAS:
 case COLUMN_ALIAS:
-      List<Term.Raw> rawValues;
-    if (rel.operator() == Relation.Type.EQ)     rawValues=Collections.singletonList(rel.getValue());
- else     if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS && rel.operator() == Relation.Type.IN)     rawValues=rel.getInValues();
- else     throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),name));
-  List<Term> values=new ArrayList<Term>(rawValues.size());
-for (Term.Raw raw : rawValues) {
-  Term t=raw.prepare(name);
-  t.collectMarkerSpecification(names);
-  values.add(t);
-}
-addKeyValues(name.name,values);
+      Restriction restriction;
+    if (rel.operator() == Relation.Type.EQ) {
+      Term t=rel.getValue().prepare(name);
+      t.collectMarkerSpecification(names);
+      restriction=new Restriction.EQ(t,false);
+    }
+ else     if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS && rel.operator() == Relation.Type.IN) {
+      if (rel.getValue() != null) {
+        Term t=rel.getValue().prepare(name);
+        t.collectMarkerSpecification(names);
+        restriction=Restriction.IN.create(t);
+      }
+ else {
+        List<Term> values=new ArrayList<Term>(rel.getInValues().size());
+        for (        Term.Raw raw : rel.getInValues()) {
+          Term t=raw.prepare(name);
+          t.collectMarkerSpecification(names);
+          values.add(t);
+        }
+        restriction=Restriction.IN.create(values);
+      }
+    }
+ else {
+      throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),name));
+    }
+  addKeyValues(name.name,restriction);
 break;
 case VALUE_ALIAS:
 case COLUMN_METADATA:
