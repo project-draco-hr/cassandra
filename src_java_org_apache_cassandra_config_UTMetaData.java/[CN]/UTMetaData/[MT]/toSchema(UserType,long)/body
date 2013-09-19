@@ -1,0 +1,16 @@
+{
+  RowMutation rm=new RowMutation(Keyspace.SYSTEM_KS,newType.name);
+  ColumnFamily cf=rm.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
+  ColumnNameBuilder builder=CFMetaData.SchemaUserTypesCf.getColumnNameBuilder();
+  UpdateParameters params=new UpdateParameters(CFMetaData.SchemaUserTypesCf,Collections.<ByteBuffer>emptyList(),timestamp,0,null);
+  List<ByteBuffer> columnTypes=new ArrayList<>(newType.types.size());
+  for (  AbstractType<?> type : newType.types)   columnTypes.add(ByteBufferUtil.bytes(type.toString()));
+  try {
+    new Lists.Setter(new ColumnIdentifier("column_names",false),new Lists.Value(newType.columnNames)).execute(newType.name,cf,builder.copy(),params);
+    new Lists.Setter(new ColumnIdentifier("column_types",false),new Lists.Value(columnTypes)).execute(newType.name,cf,builder,params);
+  }
+ catch (  RequestValidationException e) {
+    throw new AssertionError();
+  }
+  return rm;
+}

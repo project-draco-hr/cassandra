@@ -1,0 +1,28 @@
+{
+  if (isEOS() || str.charAt(idx) != '(')   throw new IllegalStateException();
+  ++idx;
+  skipBlankAndComma();
+  ByteBuffer typeName=fromHex(readNextIdentifier());
+  List<Pair<ByteBuffer,AbstractType>> defs=new ArrayList<>();
+  while (skipBlankAndComma()) {
+    if (str.charAt(idx) == ')') {
+      ++idx;
+      return Pair.create(typeName,defs);
+    }
+    ByteBuffer name=fromHex(readNextIdentifier());
+    skipBlank();
+    if (str.charAt(idx) != ':')     throwSyntaxError("expecting ':' token");
+    ++idx;
+    skipBlank();
+    try {
+      AbstractType type=parse();
+      defs.add(Pair.create(name,type));
+    }
+ catch (    SyntaxException e) {
+      SyntaxException ex=new SyntaxException(String.format("Exception while parsing '%s' around char %d",str,idx));
+      ex.initCause(e);
+      throw ex;
+    }
+  }
+  throw new SyntaxException(String.format("Syntax error parsing '%s' at char %d: unexpected end of string",str,idx));
+}

@@ -1,0 +1,14 @@
+{
+  List<ByteBuffer> newNames=new ArrayList<>(toUpdate.columnNames);
+  List<AbstractType<?>> newTypes=new ArrayList<>(toUpdate.types);
+  for (  Map.Entry<ColumnIdentifier,ColumnIdentifier> entry : renames.entrySet()) {
+    ColumnIdentifier from=entry.getKey();
+    ColumnIdentifier to=entry.getValue();
+    int idx=getIdxOfField(toUpdate,from);
+    if (idx < 0)     throw new InvalidRequestException(String.format("Unknown field %s in type %s",from,name));
+    newNames.set(idx,to.bytes);
+  }
+  UserType updated=new UserType(toUpdate.name,newNames,newTypes);
+  CreateTypeStatement.checkForDuplicateNames(updated);
+  return updated;
+}

@@ -14,6 +14,19 @@
     if (metadata != null)     metadata.add(makeWritetimeOrTTLSpec(cfm,tot,raw.alias));
     return new WritetimeOrTTLSelector(def.name.toString(),addAndGetIndex(def,defs),tot.isWritetime);
   }
+ else   if (raw.selectable instanceof Selectable.WithFieldSelection) {
+    Selectable.WithFieldSelection withField=(Selectable.WithFieldSelection)raw.selectable;
+    Selector selected=makeSelector(cfm,new RawSelector(withField.selected,null),defs,null);
+    AbstractType<?> type=selected.getType();
+    if (!(type instanceof UserType))     throw new InvalidRequestException(String.format("Invalid field selection: %s of type %s is not a user type",withField.selected,type.asCQL3Type()));
+    UserType ut=(UserType)type;
+    for (int i=0; i < ut.types.size(); i++) {
+      if (!ut.columnNames.get(i).equals(withField.field.bytes))       continue;
+      if (metadata != null)       metadata.add(makeFieldSelectSpec(cfm,withField,ut.types.get(i),raw.alias));
+      return new FieldSelector(ut,i,selected);
+    }
+    throw new InvalidRequestException(String.format("%s of type %s has no field %s",withField.selected,type.asCQL3Type(),withField.field));
+  }
  else {
     Selectable.WithFunction withFun=(Selectable.WithFunction)raw.selectable;
     List<Selector> args=new ArrayList<Selector>(withFun.args.size());

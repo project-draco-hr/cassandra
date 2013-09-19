@@ -1,0 +1,20 @@
+{
+  MapDifference<ByteBuffer,UserType> diff=Maps.difference(UTMetaData.fromSchema(old).getAllTypes(),UTMetaData.fromSchema(updated).getAllTypes());
+  for (  UserType newType : diff.entriesOnlyOnRight().values())   Schema.instance.loadType(newType);
+  for (  UserType droppedType : diff.entriesOnlyOnLeft().values())   Schema.instance.dropType(droppedType);
+  for (  MapDifference.ValueDifference<UserType> modified : diff.entriesDiffering().values()) {
+    UserType u1=modified.leftValue();
+    UserType u2=modified.rightValue();
+    if (u1.isCompatibleWith(u2) && !u2.isCompatibleWith(u1)) {
+      Schema.instance.loadType(u1);
+    }
+ else     if (u2.isCompatibleWith(u1) && !u1.isCompatibleWith(u2)) {
+      Schema.instance.loadType(u2);
+    }
+ else {
+      long leftTimestamp=firstTimestampOf(u1.name,old);
+      long rightTimestamp=firstTimestampOf(u1.name,updated);
+      Schema.instance.loadType(leftTimestamp > rightTimestamp ? u1 : u2);
+    }
+  }
+}

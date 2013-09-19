@@ -1,0 +1,22 @@
+{
+  UserType toUpdate=Schema.instance.userTypes.getType(name);
+  if (toUpdate == null)   throw new InvalidRequestException(String.format("No user type named %s exists.",name));
+  UserType updated=makeUpdatedType(toUpdate);
+  MigrationManager.announceTypeUpdate(updated);
+  for (  KSMetaData ksm : Schema.instance.getKeyspaceDefinitions()) {
+    for (    CFMetaData cfm : ksm.cfMetaData().values()) {
+      CFMetaData copy=cfm.clone();
+      boolean modified=false;
+      for (      ColumnDefinition def : copy.allColumns())       modified|=updateDefinition(copy,def,toUpdate.name,updated);
+      if (modified)       MigrationManager.announceColumnFamilyUpdate(copy,false);
+    }
+  }
+  for (  UserType ut : Schema.instance.userTypes.getAllTypes().values()) {
+    if (ut.name.equals(toUpdate.name)) {
+      if (!ut.name.equals(updated.name))       MigrationManager.announceTypeDrop(ut);
+      continue;
+    }
+    AbstractType<?> upd=updateWith(ut,toUpdate.name,updated);
+    if (upd != null)     MigrationManager.announceTypeUpdate((UserType)upd);
+  }
+}
