@@ -11,10 +11,7 @@
       if (iter != null) {
         iterators.add(iter);
         temp.delete(iter.getColumnFamily());
-        while (iter.hasNext()) {
-          OnDiskAtom atom=iter.next();
-          if (atom.getLocalDeletionTime() >= gcBefore)           temp.addAtom(atom);
-        }
+        while (iter.hasNext())         temp.addAtom(iter.next());
       }
       container.addAll(temp,HeapAllocator.instance);
       temp.clear();
@@ -37,24 +34,15 @@
         if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
         temp.delete(cf);
         sstablesIterated++;
-        while (iter.hasNext()) {
-          OnDiskAtom atom=iter.next();
-          if (atom.getLocalDeletionTime() >= gcBefore)           temp.addAtom(atom);
-        }
+        while (iter.hasNext())         temp.addAtom(iter.next());
       }
       container.addAll(temp,HeapAllocator.instance);
       temp.clear();
     }
     if (iterators.isEmpty())     return null;
-    ColumnFamily returnCF;
-    if (container.isMarkedForDelete()) {
-      returnCF=container.cloneMeShallow();
-      Tracing.trace("Removing shadowed cells");
-      filter.collateOnDiskAtom(returnCF,container.iterator(),gcBefore);
-    }
- else {
-      returnCF=container;
-    }
+    ColumnFamily returnCF=container.cloneMeShallow();
+    Tracing.trace("Collating all results");
+    filter.collateOnDiskAtom(returnCF,container.iterator(),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy) {
       Tracing.trace("Defragmenting requested data");
       RowMutation rm=new RowMutation(cfs.keyspace.getName(),filter.key.key,returnCF.cloneMe());
