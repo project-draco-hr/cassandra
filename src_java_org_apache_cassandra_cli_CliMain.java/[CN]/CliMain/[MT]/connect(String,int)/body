@@ -1,18 +1,15 @@
 {
-  TSocket socket=new TSocket(server,port);
   if (transport != null)   transport.close();
-  transport=sessionState.transportFactory.getTransport(socket);
-  TBinaryProtocol binaryProtocol=new TBinaryProtocol(transport,true,true);
-  Cassandra.Client cassandraClient=new Cassandra.Client(binaryProtocol);
   try {
-    if (!transport.isOpen())     transport.open();
+    transport=sessionState.transportFactory.openTransport(server,port);
   }
  catch (  Exception e) {
     e.printStackTrace(sessionState.err);
     String error=(e.getCause() == null) ? e.getMessage() : e.getCause().getMessage();
     throw new RuntimeException("Exception connecting to " + server + "/"+ port+ ". Reason: "+ error+ ".");
   }
-  thriftClient=cassandraClient;
+  TBinaryProtocol binaryProtocol=new TBinaryProtocol(transport,true,true);
+  thriftClient=new Cassandra.Client(binaryProtocol);
   cliClient=new CliClient(sessionState,thriftClient);
   if ((sessionState.username != null) && (sessionState.password != null)) {
     Map<String,String> credentials=new HashMap<String,String>();
@@ -47,11 +44,7 @@ catch (    TException e) {
       cliClient.setKeySpace(sessionState.keyspace);
       updateCompletor(CliUtils.getCfNamesByKeySpace(cliClient.getKSMetaData(sessionState.keyspace)));
     }
- catch (    InvalidRequestException e) {
-      sessionState.err.println("Keyspace " + sessionState.keyspace + " not found");
-      return;
-    }
-catch (    NotFoundException e) {
+ catch (    InvalidRequestException|NotFoundException e) {
       sessionState.err.println("Keyspace " + sessionState.keyspace + " not found");
       return;
     }
