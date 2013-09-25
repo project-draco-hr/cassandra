@@ -1,48 +1,37 @@
 {
-  String query="SELECT key_aliases, " + "       column_aliases, " + "       key_validator, "+ "       comparator, "+ "       keyspace_name, "+ "       value_alias, "+ "       default_validator,"+ "       key_alias  "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name = '%s'"+ "  AND columnfamily_name = '%s' ";
+  String query="SELECT key_aliases, " + "       column_aliases, " + "       key_validator, "+ "       comparator, "+ "       keyspace_name, "+ "       value_alias, "+ "       default_validator "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name = '%s'"+ "  AND columnfamily_name = '%s' ";
   CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(String.format(query,keyspace,column_family)),Compression.NONE,ConsistencyLevel.ONE);
   if (result == null || result.rows == null || result.rows.isEmpty())   return null;
-  List<CqlRow> rows=result.rows;
-  Iterator<CqlRow> iteraRow=rows.iterator();
+  Iterator<CqlRow> iteraRow=result.rows.iterator();
   List<ColumnDef> keys=new ArrayList<ColumnDef>();
   if (iteraRow.hasNext()) {
     CqlRow cqlRow=iteraRow.next();
     String name=ByteBufferUtil.string(cqlRow.columns.get(4).value);
     logger.debug("Found ksDef name: {}",name);
-    String keyString;
-    List<String> keyNames;
-    Iterator<String> iterator;
-    if (cqlRow.columns.get(0).getValue() == null) {
+    String keyString=ByteBufferUtil.string(ByteBuffer.wrap(cqlRow.columns.get(0).getValue()));
+    logger.debug("partition keys: {}",keyString);
+    List<String> keyNames=FBUtilities.fromJsonList(keyString);
+    Iterator<String> iterator=keyNames.iterator();
+    while (iterator.hasNext()) {
       ColumnDef cDef=new ColumnDef();
-      cDef.name=ByteBuffer.wrap(result.rows.get(0).columns.get(7).getValue());
+      cDef.name=ByteBufferUtil.bytes(iterator.next());
       keys.add(cDef);
     }
- else {
-      keyString=ByteBufferUtil.string(ByteBuffer.wrap(cqlRow.columns.get(0).getValue()));
-      logger.debug("partition keys: {}",keyString);
-      keyNames=FBUtilities.fromJsonList(keyString);
-      iterator=keyNames.iterator();
-      while (iterator.hasNext()) {
+    if (keys.size() == 0) {
+      CFDefinition cfDefinition=getCfDefinition(keyspace,column_family,client);
+      for (      ColumnIdentifier column : cfDefinition.keys.keySet()) {
+        String key=column.toString();
+        logger.debug("name: {} ",key);
         ColumnDef cDef=new ColumnDef();
-        cDef.name=ByteBufferUtil.bytes(iterator.next());
+        cDef.name=ByteBufferUtil.bytes(key);
         keys.add(cDef);
       }
-      if (keys.size() == 0) {
-        CFDefinition cfDefinition=getCfDefinition(keyspace,column_family,client);
-        for (        ColumnIdentifier column : cfDefinition.keys.keySet()) {
-          String key=column.toString();
-          logger.debug("name: {} ",key);
-          ColumnDef cDef=new ColumnDef();
-          cDef.name=ByteBufferUtil.bytes(key);
-          keys.add(cDef);
-        }
-        for (        ColumnIdentifier column : cfDefinition.columns.keySet()) {
-          String key=column.toString();
-          logger.debug("name: {} ",key);
-          ColumnDef cDef=new ColumnDef();
-          cDef.name=ByteBufferUtil.bytes(key);
-          keys.add(cDef);
-        }
+      for (      ColumnIdentifier column : cfDefinition.columns.keySet()) {
+        String key=column.toString();
+        logger.debug("name: {} ",key);
+        ColumnDef cDef=new ColumnDef();
+        cDef.name=ByteBufferUtil.bytes(key);
+        keys.add(cDef);
       }
     }
     keyString=ByteBufferUtil.string(ByteBuffer.wrap(cqlRow.columns.get(1).getValue()));
