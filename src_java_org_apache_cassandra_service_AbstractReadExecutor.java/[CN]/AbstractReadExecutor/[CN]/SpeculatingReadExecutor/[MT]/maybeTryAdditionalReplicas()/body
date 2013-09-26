@@ -1,0 +1,15 @@
+{
+  if (cfs.sampleLatency > TimeUnit.MILLISECONDS.toNanos(command.getTimeout()))   return;
+  if (!handler.await(cfs.sampleLatency,TimeUnit.NANOSECONDS)) {
+    ReadCommand retryCommand=command;
+    if (resolver.getData() != null) {
+      retryCommand=command.copy();
+      retryCommand.setDigestQuery(true);
+    }
+    InetAddress extraReplica=Iterables.getLast(targetReplicas);
+    logger.trace("speculating read retry on {}",extraReplica);
+    MessagingService.instance().sendRR(retryCommand.createMessage(),extraReplica,handler);
+    speculated=true;
+    cfs.metric.speculativeRetry.inc();
+  }
+}
