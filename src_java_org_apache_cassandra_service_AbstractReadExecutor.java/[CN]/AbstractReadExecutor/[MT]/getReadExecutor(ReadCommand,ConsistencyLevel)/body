@@ -1,23 +1,27 @@
 {
   Keyspace keyspace=Keyspace.open(command.ksName);
   List<InetAddress> allReplicas=StorageProxy.getLiveSortedEndpoints(keyspace,command.key);
-  CFMetaData metaData=Schema.instance.getCFMetaData(command.ksName,command.cfName);
-  ReadRepairDecision rrDecision=metaData.newReadRepairDecision();
-  if (rrDecision != ReadRepairDecision.NONE) {
-    ReadRepairMetrics.attempted.mark();
-  }
-  List<InetAddress> queryTargets=consistency_level.filterForQuery(keyspace,allReplicas,rrDecision);
-  if (StorageService.instance.isClientMode()) {
-    return new DefaultReadExecutor(null,command,consistency_level,allReplicas,queryTargets);
-  }
+  ReadRepairDecision repairDecision=Schema.instance.getCFMetaData(command.ksName,command.cfName).newReadRepairDecision();
+  List<InetAddress> targetReplicas=consistencyLevel.filterForQuery(keyspace,allReplicas,repairDecision);
+  consistencyLevel.assureSufficientLiveNodes(keyspace,targetReplicas);
+  if (StorageService.instance.isClientMode())   return new NeverSpeculatingReadExecutor(command,consistencyLevel,targetReplicas);
+  if (repairDecision != ReadRepairDecision.NONE)   ReadRepairMetrics.attempted.mark();
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(command.cfName);
-switch (metaData.getSpeculativeRetry().type) {
-case ALWAYS:
-    return new SpeculateAlwaysExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
-case PERCENTILE:
-case CUSTOM:
-  return queryTargets.size() < allReplicas.size() ? new SpeculativeReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets) : new DefaultReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
-default :
-return new DefaultReadExecutor(cfs,command,consistency_level,allReplicas,queryTargets);
-}
+  RetryType retryType=cfs.metadata.getSpeculativeRetry().type;
+  if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(command,consistencyLevel,targetReplicas);
+  if (targetReplicas.size() == allReplicas.size()) {
+    return new AlwaysSpeculatingReadExecutor(cfs,command,consistencyLevel,targetReplicas);
+  }
+  InetAddress extraReplica=allReplicas.get(targetReplicas.size());
+  if (repairDecision == ReadRepairDecision.DC_LOCAL && targetReplicas.contains(extraReplica)) {
+    for (    InetAddress address : allReplicas) {
+      if (!targetReplicas.contains(address)) {
+        extraReplica=address;
+        break;
+      }
+    }
+  }
+  targetReplicas.add(extraReplica);
+  if (retryType == RetryType.ALWAYS)   return new AlwaysSpeculatingReadExecutor(cfs,command,consistencyLevel,targetReplicas);
+ else   return new SpeculatingReadExecutor(cfs,command,consistencyLevel,targetReplicas);
 }
