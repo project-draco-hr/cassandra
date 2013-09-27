@@ -37,7 +37,9 @@ catch (  ReadTimeoutException e) {
     throw e;
   }
  finally {
-    readMetrics.addNano(System.nanoTime() - start);
+    long latency=System.nanoTime() - start;
+    readMetrics.addNano(latency);
+    for (    ReadCommand command : commands)     Keyspace.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency,TimeUnit.NANOSECONDS);
   }
   return rows;
 }
