@@ -1,0 +1,34 @@
+{
+  String keySpace="Keyspace2";
+  String cfName="Indexed3";
+  Keyspace keyspace=Keyspace.open(keySpace);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  cfs.truncateBlocking();
+  ByteBuffer rowKey=ByteBufferUtil.bytes("k1");
+  ByteBuffer clusterKey=ByteBufferUtil.bytes("ck1");
+  ByteBuffer colName=ByteBufferUtil.bytes("col1");
+  CompositeType baseComparator=(CompositeType)cfs.getComparator();
+  CompositeType.Builder builder=baseComparator.builder();
+  builder.add(clusterKey);
+  builder.add(colName);
+  ByteBuffer compositeName=builder.build();
+  ByteBuffer val1=ByteBufferUtil.bytes("v2");
+  RowMutation rm;
+  rm=new RowMutation(keySpace,rowKey);
+  rm.add(cfName,compositeName,val1,0);
+  rm.apply();
+  rm=new RowMutation(keySpace,rowKey);
+  rm.delete(cfName,1);
+  rm.apply();
+  try {
+    Thread.sleep(1000);
+  }
+ catch (  Exception e) {
+  }
+  IndexExpression expr=new IndexExpression(colName,IndexOperator.EQ,val1);
+  List<IndexExpression> clause=Arrays.asList(expr);
+  IDiskAtomFilter filter=new IdentityQueryFilter();
+  Range<RowPosition> range=Util.range("","");
+  List<Row> rows=keyspace.getColumnFamilyStore(cfName).search(range,clause,filter,100);
+  assertEquals(0,rows.size());
+}
