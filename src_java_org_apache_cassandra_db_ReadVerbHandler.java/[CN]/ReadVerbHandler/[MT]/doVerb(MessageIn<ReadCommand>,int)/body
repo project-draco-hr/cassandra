@@ -4,7 +4,13 @@
   }
   ReadCommand command=message.payload;
   Keyspace keyspace=Keyspace.open(command.ksName);
-  Row row=command.getRow(keyspace);
+  Row row;
+  try {
+    row=command.getRow(keyspace);
+  }
+ catch (  TombstoneOverwhelmingException e) {
+    return;
+  }
   MessageOut<ReadResponse> reply=new MessageOut<ReadResponse>(MessagingService.Verb.REQUEST_RESPONSE,getResponse(command,row),ReadResponse.serializer);
   Tracing.trace("Enqueuing response to {}",message.from);
   MessagingService.instance().sendReply(reply,id,message.from);
