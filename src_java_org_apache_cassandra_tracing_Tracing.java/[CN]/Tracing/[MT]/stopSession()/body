@@ -1,2 +1,21 @@
 {
+  TraceState state=this.state.get();
+  if (state == null) {
+    logger.debug("request complete");
+  }
+ else {
+    final int elapsed=state.elapsed();
+    final ByteBuffer sessionIdBytes=state.sessionIdBytes;
+    StageManager.getStage(Stage.TRACING).execute(new Runnable(){
+      public void run(){
+        CFMetaData cfMeta=CFMetaData.TraceSessionsCf;
+        ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cfMeta);
+        addColumn(cf,buildName(cfMeta,bytes("duration")),elapsed);
+        mutateWithCatch(new RowMutation(TRACE_KS,sessionIdBytes,cf));
+      }
+    }
+);
+    sessions.remove(state.sessionId);
+    this.state.set(null);
+  }
 }
