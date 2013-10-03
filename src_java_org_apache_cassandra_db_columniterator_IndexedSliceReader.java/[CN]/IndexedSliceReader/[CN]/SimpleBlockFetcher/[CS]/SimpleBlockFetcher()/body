@@ -3,12 +3,21 @@
   boolean inSlice=false;
   OnDiskAtom.Serializer atomSerializer=emptyColumnFamily.getOnDiskSerializer();
   int columns=file.readInt();
-  for (int i=0; i < columns; i++) {
-    OnDiskAtom column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
-    if (!inSlice && isColumnBeforeSliceStart(column))     continue;
+  OnDiskAtom column=null;
+  int i=0;
+  while (i < columns || column != null) {
+    if (column == null) {
+      column=atomSerializer.deserializeFromSSTable(file,sstable.descriptor.version);
+      i++;
+    }
+    if (!inSlice && isColumnBeforeSliceStart(column)) {
+      column=null;
+      continue;
+    }
     if (isColumnBeforeSliceFinish(column)) {
       inSlice=true;
       addColumn(column);
+      column=null;
     }
  else {
       inSlice=false;
