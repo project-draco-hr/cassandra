@@ -2,25 +2,10 @@
   List<List<SSTableReader>> prunedBuckets=new ArrayList<List<SSTableReader>>();
   for (  List<SSTableReader> bucket : buckets) {
     if (bucket.size() < minThreshold)     continue;
-    Collections.sort(bucket,new Comparator<SSTableReader>(){
-      public int compare(      SSTableReader o1,      SSTableReader o2){
-        return o1.descriptor.generation - o2.descriptor.generation;
-      }
-    }
-);
+    Collections.sort(bucket,generationComparator);
     List<SSTableReader> prunedBucket=bucket.subList(0,Math.min(bucket.size(),maxThreshold));
     prunedBuckets.add(prunedBucket);
   }
   if (prunedBuckets.isEmpty())   return Collections.emptyList();
-  return Collections.min(prunedBuckets,new Comparator<List<SSTableReader>>(){
-    public int compare(    List<SSTableReader> o1,    List<SSTableReader> o2){
-      return Longs.compare(avgSize(o1),avgSize(o2));
-    }
-    private long avgSize(    List<SSTableReader> sstables){
-      long n=0;
-      for (      SSTableReader sstable : sstables)       n+=sstable.bytesOnDisk();
-      return n / sstables.size();
-    }
-  }
-);
+  return Collections.min(prunedBuckets,avgBucketSizeComparator);
 }
