@@ -2,10 +2,10 @@
   Iterator<InetAddress> iter=targets.iterator();
   InetAddress target=iter.next();
   if (localDC || MessagingService.instance().getVersion(target) < MessagingService.VERSION_11) {
-    MessagingService.instance().sendRR(message,target,handler,message.getTimeout(),handler.consistencyLevel);
+    MessagingService.instance().sendRR(message,target,handler);
     while (iter.hasNext()) {
       target=iter.next();
-      MessagingService.instance().sendRR(message,target,handler,message.getTimeout(),handler.consistencyLevel);
+      MessagingService.instance().sendRR(message,target,handler);
     }
     return;
   }
@@ -15,10 +15,10 @@
   while (iter.hasNext()) {
     InetAddress destination=iter.next();
     CompactEndpointSerializationHelper.serialize(destination,dos);
-    String id=MessagingService.instance().addCallback(handler,message,destination,message.getTimeout(),handler.consistencyLevel);
+    String id=MessagingService.instance().addCallback(handler,message,destination,message.getTimeout());
     dos.writeUTF(id);
   }
   message=message.withParameter(RowMutation.FORWARD_TO,bos.toByteArray());
   Tracing.trace("Enqueuing message to {}",target);
-  MessagingService.instance().sendRR(message,target,handler,message.getTimeout(),handler.consistencyLevel);
+  MessagingService.instance().sendRR(message,target,handler);
 }
