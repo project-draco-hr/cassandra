@@ -1,5 +1,7 @@
 {
   String toHash=keyspace == null ? queryString : keyspace + queryString;
+  long statementSize=meter.measureDeep(prepared.statement);
+  if (statementSize > MAX_CACHE_PREPARED_MEMORY)   throw new InvalidRequestException(String.format("Prepared statement of size %d bytes is larger than allowed maximum of %d bytes.",statementSize,MAX_CACHE_PREPARED_MEMORY));
   if (forThrift) {
     int statementId=toHash.hashCode();
     thriftPreparedStatements.put(statementId,prepared.statement);
@@ -8,8 +10,8 @@
   }
  else {
     MD5Digest statementId=MD5Digest.compute(toHash);
-    logger.trace(String.format("Stored prepared statement %s with %d bind markers",statementId,prepared.statement.getBoundsTerms()));
     preparedStatements.put(statementId,prepared.statement);
+    logger.trace(String.format("Stored prepared statement %s with %d bind markers",statementId,prepared.statement.getBoundsTerms()));
     return new ResultMessage.Prepared(statementId,prepared);
   }
 }
