@@ -1,10 +1,15 @@
 {
-  cache=CacheBuilder.<String,Queue<RandomAccessReader>>newBuilder().expireAfterAccess(AFTER_ACCESS_EXPIRATION,TimeUnit.MILLISECONDS).concurrencyLevel(DatabaseDescriptor.getConcurrentReaders()).removalListener(new RemovalListener<String,Queue<RandomAccessReader>>(){
+  RemovalListener<String,Queue<RandomAccessReader>> onRemove=new RemovalListener<String,Queue<RandomAccessReader>>(){
     @Override public void onRemoval(    RemovalNotification<String,Queue<RandomAccessReader>> notification){
       Queue<RandomAccessReader> cachedInstances=notification.getValue();
       if (cachedInstances == null)       return;
-      for (      RandomAccessReader reader : cachedInstances)       reader.deallocate();
+      if (cachedInstances.size() > 0)       logger.debug("Evicting cold readers for {}",cachedInstances.peek().getPath());
+      for (      RandomAccessReader reader : cachedInstances) {
+        memoryUsage.addAndGet(-1 * reader.getTotalBufferSize());
+        reader.deallocate();
+      }
     }
   }
-).build();
+;
+  cache=CacheBuilder.<String,Queue<RandomAccessReader>>newBuilder().expireAfterAccess(AFTER_ACCESS_EXPIRATION,TimeUnit.MILLISECONDS).concurrencyLevel(DatabaseDescriptor.getConcurrentReaders()).removalListener(onRemove).build();
 }

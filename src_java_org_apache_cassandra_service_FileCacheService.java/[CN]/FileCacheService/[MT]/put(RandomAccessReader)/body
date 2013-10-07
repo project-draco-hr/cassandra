@@ -1,5 +1,11 @@
 {
-  long memoryUsage=(cache.size() + 1) * instance.getBufferSize();
-  if (memoryUsage >= MEMORY_USAGE_THRESHOLD)   instance.deallocate();
- else   getCacheFor(instance.getPath()).add(instance);
+  int memoryUsed=memoryUsage.get();
+  if (logger.isDebugEnabled())   logger.debug("Estimated memory usage is {} compared to actual usage {}",memoryUsed,sizeInBytes());
+  if (memoryUsed >= MEMORY_USAGE_THRESHOLD) {
+    instance.deallocate();
+  }
+ else {
+    memoryUsage.addAndGet(instance.getTotalBufferSize());
+    getCacheFor(instance.getPath()).add(instance);
+  }
 }
