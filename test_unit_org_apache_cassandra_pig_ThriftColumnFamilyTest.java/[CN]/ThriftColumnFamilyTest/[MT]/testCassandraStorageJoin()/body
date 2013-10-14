@@ -1,0 +1,41 @@
+{
+  pig.registerQuery("U8 = load 'cassandra://thriftKs/U8?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("Bytes = load 'cassandra://thriftKs/Bytes?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("b = foreach Bytes generate (chararray)key, columns;");
+  pig.registerQuery("a = join Bytes by key, U8 by key;");
+  Iterator<Tuple> it=pig.openIterator("a");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),new DataByteArray("foo".getBytes()));
+    DataBag columns=(DataBag)t.get(1);
+    Iterator<Tuple> iter=columns.iterator();
+    Tuple t1=iter.next();
+    Assert.assertEquals(t1.get(0),"x");
+    Assert.assertEquals(t1.get(1),new DataByteArray("Z".getBytes()));
+    String column=(String)t.get(2);
+    Assert.assertEquals(column,"foo");
+    columns=(DataBag)t.get(3);
+    iter=columns.iterator();
+    Tuple t2=iter.next();
+    Assert.assertEquals(t2.get(0),"x");
+    Assert.assertEquals(t2.get(1),new DataByteArray("Z".getBytes()));
+  }
+  pig.registerQuery("c = join b by (chararray)key, U8 by (chararray)key;");
+  it=pig.openIterator("c");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),"foo");
+    DataBag columns=(DataBag)t.get(1);
+    Iterator<Tuple> iter=columns.iterator();
+    Tuple t1=iter.next();
+    Assert.assertEquals(t1.get(0),"x");
+    Assert.assertEquals(t1.get(1),new DataByteArray("Z".getBytes()));
+    String column=(String)t.get(2);
+    Assert.assertEquals(column,"foo");
+    columns=(DataBag)t.get(3);
+    iter=columns.iterator();
+    Tuple t2=iter.next();
+    Assert.assertEquals(t2.get(0),"x");
+    Assert.assertEquals(t2.get(1),new DataByteArray("Z".getBytes()));
+  }
+}
