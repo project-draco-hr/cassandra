@@ -1,0 +1,45 @@
+{
+  pig.registerQuery("rows = LOAD 'cassandra://cql3ks/cqltable?" + defaultParameters + "' USING CassandraStorage();");
+  Iterator<Tuple> it=pig.openIterator("rows");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    String rowKey=t.get(0).toString();
+    Assert.assertEquals(rowKey,"key1");
+    DataBag columns=(DataBag)t.get(1);
+    Iterator<Tuple> iter=columns.iterator();
+    int i=0;
+    while (iter.hasNext()) {
+      i++;
+      Tuple column=(Tuple)iter.next();
+      if (i == 1) {
+        Assert.assertEquals(((Tuple)column.get(0)).get(0),111);
+        Assert.assertEquals(((Tuple)column.get(0)).get(1),"");
+        Assert.assertEquals(column.get(1).toString(),"");
+      }
+      if (i == 2) {
+        Assert.assertEquals(((Tuple)column.get(0)).get(0),111);
+        Assert.assertEquals(((Tuple)column.get(0)).get(1),"column1");
+        Assert.assertEquals(column.get(1),100);
+      }
+      if (i == 3) {
+        Assert.assertEquals(((Tuple)column.get(0)).get(0),111);
+        Assert.assertEquals(((Tuple)column.get(0)).get(1),"column2");
+        Assert.assertEquals(column.get(1),10.1f);
+      }
+    }
+    Assert.assertEquals(3,columns.size());
+  }
+  pig.registerQuery("compact_rows = LOAD 'cassandra://cql3ks/compactcqltable?" + defaultParameters + "' USING CassandraStorage();");
+  it=pig.openIterator("compact_rows");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    String rowKey=t.get(0).toString();
+    Assert.assertEquals(rowKey,"key1");
+    Tuple column=(Tuple)t.get(1);
+    Assert.assertEquals(column.get(0),"column1");
+    Assert.assertEquals(column.get(1),100);
+    column=(Tuple)t.get(2);
+    Assert.assertEquals(column.get(0),"column2");
+    Assert.assertEquals(column.get(1),10.1f);
+  }
+}

@@ -1,0 +1,68 @@
+{
+  pig.registerQuery("compo = load 'cassandra://thriftKs/Compo?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("compo = foreach compo generate key as method, flatten(columns);");
+  pig.registerQuery("lee = filter compo by columns::name == ('bruce','lee');");
+  Iterator<Tuple> it=pig.openIterator("lee");
+  int count=0;
+  while (it.hasNext()) {
+    count++;
+    Tuple t=it.next();
+    if (count == 1)     Assert.assertEquals(t.get(0),"kick");
+ else     Assert.assertEquals(t.get(0),"punch");
+    Tuple t1=(Tuple)t.get(1);
+    Assert.assertEquals(t1.get(0),"bruce");
+    Assert.assertEquals(t1.get(1),"lee");
+    if (count == 1)     Assert.assertEquals(t.get(2),"oww");
+ else     Assert.assertEquals(t.get(2),"ouch");
+  }
+  Assert.assertEquals(count,2);
+  pig.registerQuery("night = load 'cassandra://thriftKs/CompoInt?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("night = foreach night generate flatten(columns);");
+  pig.registerQuery("night = foreach night generate (int)columns::name.$0+(double)columns::name.$1/60 as hour, columns::value as noise;");
+  pig.registerQuery("darkest = filter night by hour > 2 and hour < 5;");
+  it=pig.openIterator("darkest");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),2.5d);
+    Assert.assertEquals(t.get(1),"daddy?");
+  }
+  pig.setBatchOn();
+  pig.registerQuery("compo_int_rows = LOAD 'cassandra://thriftKs/CompoInt?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("STORE compo_int_rows INTO 'cassandra://thriftKs/CompoIntCopy?" + defaultParameters + "' using CassandraStorage();");
+  pig.executeBatch();
+  pig.registerQuery("compocopy_int_rows = LOAD 'cassandra://thriftKs/CompoIntCopy?" + defaultParameters + "' using CassandraStorage();");
+  it=pig.openIterator("compocopy_int_rows");
+  count=0;
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),"clock");
+    DataBag columns=(DataBag)t.get(1);
+    Iterator<Tuple> iter=columns.iterator();
+    while (iter.hasNext()) {
+      count++;
+      Tuple t1=iter.next();
+      Tuple inner=(Tuple)t1.get(0);
+      if (count == 1) {
+        Assert.assertEquals(inner.get(0),1L);
+        Assert.assertEquals(inner.get(1),0L);
+        Assert.assertEquals(t1.get(1),"z");
+      }
+ else       if (count == 2) {
+        Assert.assertEquals(inner.get(0),1L);
+        Assert.assertEquals(inner.get(1),30L);
+        Assert.assertEquals(t1.get(1),"zzzz");
+      }
+ else       if (count == 3) {
+        Assert.assertEquals(inner.get(0),2L);
+        Assert.assertEquals(inner.get(1),30L);
+        Assert.assertEquals(t1.get(1),"daddy?");
+      }
+ else       if (count == 4) {
+        Assert.assertEquals(inner.get(0),6L);
+        Assert.assertEquals(inner.get(1),30L);
+        Assert.assertEquals(t1.get(1),"coffee...");
+      }
+    }
+    Assert.assertEquals(count,4);
+  }
+}

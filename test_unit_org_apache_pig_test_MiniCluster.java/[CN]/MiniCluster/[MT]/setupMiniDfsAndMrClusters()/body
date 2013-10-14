@@ -1,0 +1,29 @@
+{
+  try {
+    System.setProperty("hadoop.log.dir","build/test/logs");
+    final int dataNodes=4;
+    final int taskTrackers=4;
+    File conf_dir=new File("build/classes/");
+    conf_dir.mkdirs();
+    File conf_file=new File(conf_dir,"hadoop-site.xml");
+    conf_file.delete();
+    Configuration config=new Configuration();
+    m_dfs=new MiniDFSCluster(config,dataNodes,true,null);
+    m_fileSys=m_dfs.getFileSystem();
+    m_mr=new MiniMRCluster(taskTrackers,m_fileSys.getUri().toString(),1);
+    m_conf=m_mr.createJobConf();
+    m_conf.setInt("mapred.submit.replication",2);
+    m_conf.set("dfs.datanode.address","0.0.0.0:0");
+    m_conf.set("dfs.datanode.http.address","0.0.0.0:0");
+    m_conf.set("mapred.map.max.attempts","2");
+    m_conf.set("mapred.reduce.max.attempts","2");
+    m_conf.set("pig.jobcontrol.sleep","100");
+    m_conf.writeXml(new FileOutputStream(conf_file));
+    System.setProperty("cluster",m_conf.get("mapred.job.tracker"));
+    System.setProperty("namenode",m_conf.get("fs.default.name"));
+    System.setProperty("junit.hadoop.conf",conf_dir.getPath());
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}

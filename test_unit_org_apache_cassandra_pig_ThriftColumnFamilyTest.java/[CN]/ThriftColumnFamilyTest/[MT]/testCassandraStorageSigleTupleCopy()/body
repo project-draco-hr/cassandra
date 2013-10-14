@@ -1,0 +1,24 @@
+{
+  createColumnFamily("thriftKs","CopyOfSomeApp",statements[3]);
+  pig.setBatchOn();
+  pig.registerQuery("rows = LOAD 'cassandra://thriftKs/SomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("onecol = FOREACH rows GENERATE key, percent;");
+  pig.registerQuery("STORE onecol INTO 'cassandra://thriftKs/CopyOfSomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.executeBatch();
+  String value=null;
+  try {
+    value=getColumnValue("thriftKs","CopyOfSomeApp","name","qux","UTF8Type");
+  }
+ catch (  NotFoundException e) {
+    Assert.assertTrue(true);
+  }
+  if (value != null)   Assert.fail();
+  try {
+    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","qux","UTF8Type");
+  }
+ catch (  NotFoundException e) {
+    Assert.assertTrue(true);
+  }
+  if (value != null)   Assert.fail();
+  Assert.assertEquals("64.7",getColumnValue("thriftKs","CopyOfSomeApp","percent","qux","FloatType"));
+}
