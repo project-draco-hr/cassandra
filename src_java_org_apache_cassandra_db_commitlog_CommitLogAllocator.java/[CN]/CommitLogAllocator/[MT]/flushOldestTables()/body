@@ -2,15 +2,22 @@
   CommitLogSegment oldestSegment=activeSegments.peek();
   if (oldestSegment != null) {
     for (    UUID dirtyCFId : oldestSegment.getDirtyCFIDs()) {
-      String keypace=Schema.instance.getCF(dirtyCFId).left;
-      final ColumnFamilyStore cfs=Table.open(keypace).getColumnFamilyStore(dirtyCFId);
-      Runnable runnable=new Runnable(){
-        public void run(){
-          cfs.forceFlush();
-        }
+      Pair<String,String> pair=Schema.instance.getCF(dirtyCFId);
+      if (pair == null) {
+        logger.debug("Marking clean CF {} that doesn't exist anymore",dirtyCFId);
+        oldestSegment.markClean(dirtyCFId,oldestSegment.getContext());
       }
+ else {
+        String keypace=pair.left;
+        final ColumnFamilyStore cfs=Table.open(keypace).getColumnFamilyStore(dirtyCFId);
+        Runnable runnable=new Runnable(){
+          public void run(){
+            cfs.forceFlush();
+          }
+        }
 ;
-      StorageService.optionalTasks.execute(runnable);
+        StorageService.optionalTasks.execute(runnable);
+      }
     }
   }
 }
