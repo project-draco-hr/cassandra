@@ -1,19 +1,22 @@
 {
+  OptionFilter filter=new OptionFilter(ignoreMode,filterList);
   Map<String,List<ColumnFamilyStoreMBean>> cfstoreMap=new HashMap<String,List<ColumnFamilyStoreMBean>>();
   Iterator<Map.Entry<String,ColumnFamilyStoreMBean>> cfamilies=probe.getColumnFamilyStoreMBeanProxies();
   while (cfamilies.hasNext()) {
     Entry<String,ColumnFamilyStoreMBean> entry=cfamilies.next();
     String keyspaceName=entry.getKey();
     ColumnFamilyStoreMBean cfsProxy=entry.getValue();
-    if (!cfstoreMap.containsKey(keyspaceName)) {
+    if (!cfstoreMap.containsKey(keyspaceName) && filter.isColumnFamilyIncluded(entry.getKey(),cfsProxy.getColumnFamilyName())) {
       List<ColumnFamilyStoreMBean> columnFamilies=new ArrayList<ColumnFamilyStoreMBean>();
       columnFamilies.add(cfsProxy);
       cfstoreMap.put(keyspaceName,columnFamilies);
     }
- else {
+ else     if (filter.isColumnFamilyIncluded(entry.getKey(),cfsProxy.getColumnFamilyName())) {
       cfstoreMap.get(keyspaceName).add(cfsProxy);
     }
   }
+  filter.verifyKeyspaces(probe.getKeyspaces());
+  filter.verifyColumnFamilies();
   for (  Entry<String,List<ColumnFamilyStoreMBean>> entry : cfstoreMap.entrySet()) {
     String keyspaceName=entry.getKey();
     List<ColumnFamilyStoreMBean> columnFamilies=entry.getValue();
