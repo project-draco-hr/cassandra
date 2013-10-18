@@ -1,0 +1,20 @@
+{
+  buildSeedsList();
+  List<GossipDigest> gDigests=new ArrayList<GossipDigest>();
+  GossipDigestSyn digestSynMessage=new GossipDigestSyn(DatabaseDescriptor.getClusterName(),DatabaseDescriptor.getPartitionerName(),gDigests);
+  MessageOut<GossipDigestSyn> message=new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,digestSynMessage,GossipDigestSyn.serializer);
+  inShadowRound=true;
+  for (  InetAddress seed : seeds)   MessagingService.instance().sendOneWay(message,seed);
+  int slept=0;
+  try {
+    while (true) {
+      Thread.sleep(1000);
+      if (!inShadowRound)       break;
+      slept+=1000;
+      if (slept > StorageService.RING_DELAY)       throw new RuntimeException("Unable to gossip with any seeds");
+    }
+  }
+ catch (  InterruptedException wtf) {
+    throw new RuntimeException(wtf);
+  }
+}
