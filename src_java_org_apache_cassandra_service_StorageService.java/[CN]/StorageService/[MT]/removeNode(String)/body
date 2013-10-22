@@ -7,7 +7,7 @@
   Collection<Token> tokens=tokenMetadata.getTokens(endpoint);
   if (endpoint.equals(myAddress))   throw new UnsupportedOperationException("Cannot remove self");
   if (Gossiper.instance.getLiveMembers().contains(endpoint))   throw new UnsupportedOperationException("Node " + endpoint + " is alive and owns this ID. Use decommission command to remove it from the ring");
-  if (tokenMetadata.isLeaving(endpoint))   logger.warn("Node " + endpoint + " is already being removed, continuing removal anyway");
+  if (tokenMetadata.isLeaving(endpoint))   logger.warn("Node {} is already being removed, continuing removal anyway",endpoint);
   if (!replicatingNodes.isEmpty())   throw new UnsupportedOperationException("This node is already processing a removal. Wait for it to complete, or use 'removetoken force' if this has failed.");
   for (  String keyspaceName : Schema.instance.getNonSystemKeyspaces()) {
     if (Keyspace.open(keyspaceName).getReplicationStrategy().getReplicationFactor() == 1)     continue;
@@ -15,7 +15,7 @@
     IFailureDetector failureDetector=FailureDetector.instance;
     for (    InetAddress ep : changedRanges.values()) {
       if (failureDetector.isAlive(ep))       replicatingNodes.add(ep);
- else       logger.warn("Endpoint " + ep + " is down and will not receive data for re-replication of "+ endpoint);
+ else       logger.warn("Endpoint {} is down and will not receive data for re-replication of {}",ep,endpoint);
     }
   }
   removingNode=endpoint;

@@ -1,6 +1,6 @@
 {
   Collection<Range<Token>> ranges=getRangesForEndpoint(keyspaceName,endpoint);
-  if (logger.isDebugEnabled())   logger.debug("Node " + endpoint + " ranges ["+ StringUtils.join(ranges,", ")+ "]");
+  if (logger.isDebugEnabled())   logger.debug("Node {} ranges [{}]",endpoint,StringUtils.join(ranges,", "));
   Map<Range<Token>,List<InetAddress>> currentReplicaEndpoints=new HashMap<Range<Token>,List<InetAddress>>();
   for (  Range<Token> range : ranges)   currentReplicaEndpoints.put(range,Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right,tokenMetadata.cloneOnlyTokenMap()));
   TokenMetadata temp=tokenMetadata.cloneAfterAllLeft();
@@ -9,8 +9,8 @@
   for (  Range<Token> range : ranges) {
     Collection<InetAddress> newReplicaEndpoints=Keyspace.open(keyspaceName).getReplicationStrategy().calculateNaturalEndpoints(range.right,temp);
     newReplicaEndpoints.removeAll(currentReplicaEndpoints.get(range));
-    if (logger.isDebugEnabled())     if (newReplicaEndpoints.isEmpty())     logger.debug("Range " + range + " already in all replicas");
- else     logger.debug("Range " + range + " will be responsibility of "+ StringUtils.join(newReplicaEndpoints,", "));
+    if (logger.isDebugEnabled())     if (newReplicaEndpoints.isEmpty())     logger.debug("Range {} already in all replicas",range);
+ else     logger.debug("Range {} will be responsibility of {}",range,StringUtils.join(newReplicaEndpoints,", "));
     changedRanges.putAll(range,newReplicaEndpoints);
   }
   return changedRanges;
