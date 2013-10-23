@@ -5,23 +5,16 @@
   ByteBuffer digest=null;
   for (  MessageIn<ReadResponse> message : replies) {
     ReadResponse response=message.payload;
+    ByteBuffer newDigest;
     if (response.isDigestQuery()) {
-      if (digest == null) {
-        digest=response.digest();
-      }
- else {
-        ByteBuffer digest2=response.digest();
-        if (!digest.equals(digest2))         throw new DigestMismatchException(key,digest,digest2);
-      }
+      newDigest=response.digest();
     }
  else {
       data=response.row().cf;
+      newDigest=ColumnFamily.digest(data);
     }
-  }
-  if (digest != null) {
-    ByteBuffer digest2=ColumnFamily.digest(data);
-    if (!digest.equals(digest2))     throw new DigestMismatchException(key,digest,digest2);
-    if (logger.isDebugEnabled())     logger.debug("digests verified");
+    if (digest == null)     digest=newDigest;
+ else     if (!digest.equals(newDigest))     throw new DigestMismatchException(key,digest,newDigest);
   }
   if (logger.isDebugEnabled())   logger.debug("resolve: {} ms.",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
   return new Row(key,data);
