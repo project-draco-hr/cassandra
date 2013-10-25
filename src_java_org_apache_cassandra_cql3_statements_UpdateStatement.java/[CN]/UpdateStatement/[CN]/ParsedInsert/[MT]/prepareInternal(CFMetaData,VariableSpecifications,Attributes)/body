@@ -1,0 +1,27 @@
+{
+  UpdateStatement stmt=new UpdateStatement(boundNames.size(),cfm,attrs);
+  if (stmt.isCounter())   throw new InvalidRequestException("INSERT statement are not allowed on counter tables, use UPDATE instead");
+  if (columnNames.size() != columnValues.size())   throw new InvalidRequestException("Unmatched column names/values");
+  if (columnNames.isEmpty())   throw new InvalidRequestException("No columns provided to INSERT");
+  for (int i=0; i < columnNames.size(); i++) {
+    ColumnDefinition def=cfm.getColumnDefinition(columnNames.get(i));
+    if (def == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",columnNames.get(i)));
+    for (int j=0; j < i; j++)     if (def.name.equals(columnNames.get(j)))     throw new InvalidRequestException(String.format("Multiple definitions found for column %s",def.name));
+    Term.Raw value=columnValues.get(i);
+switch (def.kind) {
+case PARTITION_KEY:
+case CLUSTERING_COLUMN:
+      Term t=value.prepare(def);
+    t.collectMarkerSpecification(boundNames);
+  stmt.addKeyValue(def.name,t);
+break;
+case COMPACT_VALUE:
+case REGULAR:
+Operation operation=new Operation.SetValue(value).prepare(def);
+operation.collectMarkerSpecification(boundNames);
+stmt.addOperation(operation);
+break;
+}
+}
+return stmt;
+}

@@ -1,15 +1,15 @@
 {
   RowMutation rm=new RowMutation(Keyspace.SYSTEM_KS,SystemKeyspace.getSchemaKSKey(ksName));
   newState.toSchemaNoColumnsNoTriggers(rm,modificationTimestamp);
-  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(column_metadata,newState.column_metadata);
+  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(columnMetadata,newState.columnMetadata);
   for (  ColumnDefinition cd : columnDiff.entriesOnlyOnLeft().values()) {
-    if (fromThrift && cd.type != ColumnDefinition.Type.REGULAR)     continue;
-    cd.deleteFromSchema(rm,cfName,getColumnDefinitionComparator(cd),modificationTimestamp);
+    if (fromThrift && cd.kind != ColumnDefinition.Kind.REGULAR)     continue;
+    cd.deleteFromSchema(rm,modificationTimestamp);
   }
-  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   cd.toSchema(rm,cfName,getColumnDefinitionComparator(cd),modificationTimestamp);
+  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   cd.toSchema(rm,modificationTimestamp);
   for (  ByteBuffer name : columnDiff.entriesDiffering().keySet()) {
-    ColumnDefinition cd=newState.getColumnDefinition(name);
-    cd.toSchema(rm,cfName,getColumnDefinitionComparator(cd),modificationTimestamp);
+    ColumnDefinition cd=newState.columnMetadata.get(name);
+    cd.toSchema(rm,modificationTimestamp);
   }
   MapDifference<String,TriggerDefinition> triggerDiff=Maps.difference(triggers,newState.triggers);
   for (  TriggerDefinition td : triggerDiff.entriesOnlyOnLeft().values())   td.deleteFromSchema(rm,cfName,modificationTimestamp);

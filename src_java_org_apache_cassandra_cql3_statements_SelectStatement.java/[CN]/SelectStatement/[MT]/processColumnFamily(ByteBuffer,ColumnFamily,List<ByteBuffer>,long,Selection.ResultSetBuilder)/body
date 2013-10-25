@@ -1,36 +1,36 @@
 {
-  ByteBuffer[] keyComponents=cfDef.hasCompositeKey ? ((CompositeType)cfDef.cfm.getKeyValidator()).split(key) : new ByteBuffer[]{key};
+  ByteBuffer[] keyComponents=cfm.getKeyValidator() instanceof CompositeType ? ((CompositeType)cfm.getKeyValidator()).split(key) : new ByteBuffer[]{key};
   if (parameters.isDistinct) {
     if (!cf.hasOnlyTombstones(now)) {
       result.newRow();
-      for (      CFDefinition.Name name : selection.getColumnsList())       result.add(keyComponents[name.position]);
+      for (      ColumnDefinition def : selection.getColumnsList())       result.add(keyComponents[def.position()]);
     }
   }
- else   if (cfDef.isCompact) {
+ else   if (cfm.isDense()) {
     for (    Column c : columnsInOrder(cf,variables)) {
       if (c.isMarkedForDelete(now))       continue;
       ByteBuffer[] components=null;
-      if (cfDef.isComposite) {
-        components=((CompositeType)cfDef.cfm.comparator).split(c.name());
+      if (cfm.hasCompositeComparator()) {
+        components=((CompositeType)cfm.comparator).split(c.name());
       }
  else       if (sliceRestriction != null) {
         if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START,variables)))         continue;
         if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END,variables)))         continue;
       }
       result.newRow();
-      for (      CFDefinition.Name name : selection.getColumnsList()) {
-switch (name.kind) {
-case KEY_ALIAS:
-          result.add(keyComponents[name.position]);
+      for (      ColumnDefinition def : selection.getColumnsList()) {
+switch (def.kind) {
+case PARTITION_KEY:
+          result.add(keyComponents[def.position()]);
         break;
-case COLUMN_ALIAS:
-      ByteBuffer val=cfDef.isComposite ? (name.position < components.length ? components[name.position] : null) : c.name();
+case CLUSTERING_COLUMN:
+      ByteBuffer val=cfm.hasCompositeComparator() ? (def.position() < components.length ? components[def.position()] : null) : c.name();
     result.add(val);
   break;
-case VALUE_ALIAS:
+case COMPACT_VALUE:
 result.add(c);
 break;
-case COLUMN_METADATA:
+case REGULAR:
 throw new AssertionError();
 default :
 throw new AssertionError();
@@ -38,9 +38,9 @@ throw new AssertionError();
 }
 }
 }
- else if (cfDef.isComposite) {
-CompositeType composite=(CompositeType)cfDef.cfm.comparator;
-ColumnGroupMap.Builder builder=new ColumnGroupMap.Builder(composite,cfDef.hasCollections,now);
+ else if (cfm.hasCompositeComparator()) {
+CompositeType composite=(CompositeType)cfm.comparator;
+ColumnGroupMap.Builder builder=new ColumnGroupMap.Builder(composite,cfm.hasCollections(),now);
 for (Column c : cf) {
 if (c.isMarkedForDelete(now)) continue;
 builder.add(c);
@@ -50,9 +50,9 @@ for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyCo
  else {
 if (cf.hasOnlyTombstones(now)) return;
 result.newRow();
-for (CFDefinition.Name name : selection.getColumnsList()) {
-if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) result.add(keyComponents[name.position]);
- else result.add(cf.getColumn(name.name.key));
+for (ColumnDefinition def : selection.getColumnsList()) {
+if (def.kind == ColumnDefinition.Kind.PARTITION_KEY) result.add(keyComponents[def.position()]);
+ else result.add(cf.getColumn(def.name.bytes));
 }
 }
 }

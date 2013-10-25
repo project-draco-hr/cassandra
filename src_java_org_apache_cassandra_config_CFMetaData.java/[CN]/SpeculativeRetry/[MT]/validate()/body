@@ -6,23 +6,13 @@
   if (comparator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid comparator");
   if (keyValidator instanceof CounterColumnType)   throw new ConfigurationException("CounterColumnType is not a valid key validator");
   if (defaultValidator instanceof CounterColumnType) {
-    for (    ColumnDefinition def : regularColumns)     if (!(def.getValidator() instanceof CounterColumnType))     throw new ConfigurationException("Cannot add a non counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a counter column family");
+    for (    ColumnDefinition def : regularColumns)     if (!(def.type instanceof CounterColumnType))     throw new ConfigurationException("Cannot add a non counter column (" + def.name + ") in a counter column family");
   }
  else {
-    for (    ColumnDefinition def : column_metadata.values())     if (def.getValidator() instanceof CounterColumnType)     throw new ConfigurationException("Cannot add a counter column (" + getColumnDefinitionComparator(def).getString(def.name) + ") in a non counter column family");
+    for (    ColumnDefinition def : allColumns())     if (def.type instanceof CounterColumnType)     throw new ConfigurationException("Cannot add a counter column (" + def.name + ") in a non counter column family");
   }
-  for (  ColumnDefinition def : partitionKeyColumns)   validateAlias(def,"Key");
-  for (  ColumnDefinition def : clusteringKeyColumns)   validateAlias(def,"Column");
-  if (compactValueColumn != null)   validateAlias(compactValueColumn,"Value");
   Set<String> indexNames=existingIndexNames(cfName);
-  for (  ColumnDefinition c : column_metadata.values()) {
-    AbstractType<?> comparator=getColumnDefinitionComparator(c);
-    try {
-      comparator.validate(c.name);
-    }
- catch (    MarshalException e) {
-      throw new ConfigurationException(String.format("Column name %s is not valid for comparator %s",ByteBufferUtil.bytesToHex(c.name),comparator));
-    }
+  for (  ColumnDefinition c : allColumns()) {
     if (c.getIndexType() == null) {
       if (c.getIndexName() != null)       throw new ConfigurationException("Index name cannot be set without index type");
     }

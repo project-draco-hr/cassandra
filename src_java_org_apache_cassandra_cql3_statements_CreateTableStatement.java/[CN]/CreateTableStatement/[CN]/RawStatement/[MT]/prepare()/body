@@ -10,7 +10,7 @@
     CQL3Type pt=entry.getValue();
     if (pt.isCollection()) {
       if (definedCollections == null)       definedCollections=new HashMap<ByteBuffer,CollectionType>();
-      definedCollections.put(id.key,(CollectionType)pt.getType());
+      definedCollections.put(id.bytes,(CollectionType)pt.getType());
     }
     stmt.columns.put(id,pt.getType());
   }
@@ -19,7 +19,7 @@
   List<ColumnIdentifier> kAliases=keyAliases.get(0);
   List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
   for (  ColumnIdentifier alias : kAliases) {
-    stmt.keyAliases.add(alias.key);
+    stmt.keyAliases.add(alias.bytes);
     AbstractType<?> t=getTypeAndRemove(stmt.columns,alias);
     if (t instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",alias));
     keyTypes.add(t);
@@ -29,11 +29,11 @@
     if (useCompactStorage) {
       if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
       if (definedCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-      stmt.comparator=CFDefinition.definitionType;
+      stmt.comparator=UTF8Type.instance;
     }
  else {
       List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(definedCollections == null ? 1 : 2);
-      types.add(CFDefinition.definitionType);
+      types.add(UTF8Type.instance);
       if (definedCollections != null)       types.add(ColumnToCollectionType.getInstance(definedCollections));
       stmt.comparator=CompositeType.getInstance(types);
     }
@@ -41,23 +41,23 @@
  else {
     if (useCompactStorage && columnAliases.size() == 1) {
       if (definedCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-      stmt.columnAliases.add(columnAliases.get(0).key);
+      stmt.columnAliases.add(columnAliases.get(0).bytes);
       stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
       if (stmt.comparator instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
     }
  else {
       List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(columnAliases.size() + 1);
       for (      ColumnIdentifier t : columnAliases) {
-        stmt.columnAliases.add(t.key);
+        stmt.columnAliases.add(t.bytes);
         AbstractType<?> type=getTypeAndRemove(stmt.columns,t);
-        if (type instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t.key));
+        if (type instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t));
         types.add(type);
       }
       if (useCompactStorage) {
         if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
       }
  else {
-        types.add(CFDefinition.definitionType);
+        types.add(UTF8Type.instance);
         if (definedCollections != null)         types.add(ColumnToCollectionType.getInstance(definedCollections));
       }
       if (types.isEmpty())       throw new IllegalStateException("Nonsensical empty parameter list for CompositeType");
@@ -73,7 +73,7 @@
       if (stmt.columns.size() > 1)       throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
       Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
       stmt.defaultValidator=lastEntry.getValue();
-      stmt.valueAlias=lastEntry.getKey().key;
+      stmt.valueAlias=lastEntry.getKey().bytes;
       stmt.columns.remove(lastEntry.getKey());
     }
   }

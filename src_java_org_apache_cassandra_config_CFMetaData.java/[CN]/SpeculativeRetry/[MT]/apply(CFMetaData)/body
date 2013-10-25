@@ -18,13 +18,13 @@
   speculativeRetry=cfm.speculativeRetry;
   populateIoCacheOnFlush=cfm.populateIoCacheOnFlush;
   if (!cfm.droppedColumns.isEmpty())   droppedColumns=cfm.droppedColumns;
-  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(column_metadata,cfm.column_metadata);
-  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnLeft().values())   column_metadata.remove(cd.name);
-  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   column_metadata.put(cd.name,cd);
+  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(columnMetadata,cfm.columnMetadata);
+  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnLeft().values())   removeColumnDefinition(cd);
+  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   addColumnDefinition(cd);
   for (  ByteBuffer name : columnDiff.entriesDiffering().keySet()) {
-    ColumnDefinition oldDef=column_metadata.get(name);
-    ColumnDefinition def=cfm.column_metadata.get(name);
-    oldDef.apply(def,getColumnDefinitionComparator(oldDef));
+    ColumnDefinition oldDef=columnMetadata.get(name);
+    ColumnDefinition def=cfm.columnMetadata.get(name);
+    addOrReplaceColumnDefinition(oldDef.apply(def));
   }
   compactionStrategyClass=cfm.compactionStrategyClass;
   compactionStrategyOptions=cfm.compactionStrategyOptions;

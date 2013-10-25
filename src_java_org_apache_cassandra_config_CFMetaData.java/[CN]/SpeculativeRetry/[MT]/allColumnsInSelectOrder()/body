@@ -1,0 +1,19 @@
+{
+  return new AbstractIterator<ColumnDefinition>(){
+    private final Iterator<ColumnDefinition> partitionKeyIter=partitionKeyColumns.iterator();
+    private final Iterator<ColumnDefinition> clusteringIter=clusteringColumns.iterator();
+    private boolean valueDone;
+    private final Iterator<ColumnDefinition> regularIter=regularColumns.iterator();
+    protected ColumnDefinition computeNext(){
+      if (partitionKeyIter.hasNext())       return partitionKeyIter.next();
+      if (clusteringIter.hasNext())       return clusteringIter.next();
+      if (compactValueColumn != null && !valueDone) {
+        valueDone=true;
+        if (compactValueColumn.name.bytes.hasRemaining())         return compactValueColumn;
+      }
+      if (regularIter.hasNext())       return regularIter.next();
+      return endOfData();
+    }
+  }
+;
+}

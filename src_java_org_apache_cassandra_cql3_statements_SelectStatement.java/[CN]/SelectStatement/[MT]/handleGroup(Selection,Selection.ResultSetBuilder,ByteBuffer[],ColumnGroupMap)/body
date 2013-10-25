@@ -1,23 +1,23 @@
 {
   result.newRow();
-  for (  CFDefinition.Name name : selection.getColumnsList()) {
-switch (name.kind) {
-case KEY_ALIAS:
-      result.add(keyComponents[name.position]);
+  for (  ColumnDefinition def : selection.getColumnsList()) {
+switch (def.kind) {
+case PARTITION_KEY:
+      result.add(keyComponents[def.position()]);
     break;
-case COLUMN_ALIAS:
-  result.add(columns.getKeyComponent(name.position));
+case CLUSTERING_COLUMN:
+  result.add(columns.getKeyComponent(def.position()));
 break;
-case VALUE_ALIAS:
+case COMPACT_VALUE:
 throw new AssertionError();
-case COLUMN_METADATA:
-if (name.type.isCollection()) {
-List<Pair<ByteBuffer,Column>> collection=columns.getCollection(name.name.key);
-ByteBuffer value=collection == null ? null : ((CollectionType)name.type).serialize(collection);
+case REGULAR:
+if (def.type.isCollection()) {
+List<Pair<ByteBuffer,Column>> collection=columns.getCollection(def.name.bytes);
+ByteBuffer value=collection == null ? null : ((CollectionType)def.type).serialize(collection);
 result.add(value);
 }
  else {
-result.add(columns.getSimple(name.name.key));
+result.add(columns.getSimple(def.name.bytes));
 }
 break;
 }

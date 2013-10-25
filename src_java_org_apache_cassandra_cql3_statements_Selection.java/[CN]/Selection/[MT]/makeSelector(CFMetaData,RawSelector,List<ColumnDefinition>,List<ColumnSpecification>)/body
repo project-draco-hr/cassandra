@@ -1,0 +1,28 @@
+{
+  if (raw.selectable instanceof ColumnIdentifier) {
+    ColumnDefinition def=cfm.getColumnDefinition((ColumnIdentifier)raw.selectable);
+    if (def == null)     throw new InvalidRequestException(String.format("Undefined name %s in selection clause",raw.selectable));
+    if (metadata != null)     metadata.add(raw.alias == null ? def : makeAliasSpec(cfm,def.type,raw.alias));
+    return new SimpleSelector(def.name.toString(),addAndGetIndex(def,defs),def.type);
+  }
+ else   if (raw.selectable instanceof Selectable.WritetimeOrTTL) {
+    Selectable.WritetimeOrTTL tot=(Selectable.WritetimeOrTTL)raw.selectable;
+    ColumnDefinition def=cfm.getColumnDefinition(tot.id);
+    if (def == null)     throw new InvalidRequestException(String.format("Undefined name %s in selection clause",tot.id));
+    if (def.kind != ColumnDefinition.Kind.REGULAR && def.kind != ColumnDefinition.Kind.COMPACT_VALUE)     throw new InvalidRequestException(String.format("Cannot use selection function %s on PRIMARY KEY part %s",tot.isWritetime ? "writeTime" : "ttl",def.name));
+    if (def.type.isCollection())     throw new InvalidRequestException(String.format("Cannot use selection function %s on collections",tot.isWritetime ? "writeTime" : "ttl"));
+    if (metadata != null)     metadata.add(makeWritetimeOrTTLSpec(cfm,tot,raw.alias));
+    return new WritetimeOrTTLSelector(def.name.toString(),addAndGetIndex(def,defs),tot.isWritetime);
+  }
+ else {
+    Selectable.WithFunction withFun=(Selectable.WithFunction)raw.selectable;
+    List<Selector> args=new ArrayList<Selector>(withFun.args.size());
+    for (    Selectable rawArg : withFun.args)     args.add(makeSelector(cfm,new RawSelector(rawArg,null),defs,null));
+    AbstractType<?> returnType=Functions.getReturnType(withFun.functionName,cfm.ksName,cfm.cfName);
+    if (returnType == null)     throw new InvalidRequestException(String.format("Unknown function '%s'",withFun.functionName));
+    ColumnSpecification spec=makeFunctionSpec(cfm,withFun,returnType,raw.alias);
+    Function fun=Functions.get(withFun.functionName,args,spec);
+    if (metadata != null)     metadata.add(spec);
+    return new FunctionSelector(fun,args);
+  }
+}

@@ -1,6 +1,6 @@
 {
   validateKey(key);
-  AbstractType<?> comparator=getComparator(keyspace);
+  AbstractType<?> comparator=metadata.comparator;
   boolean hasCounterColumn=false;
   RowMutation rm=new RowMutation(keyspace,key);
   for (  Map.Entry<Term,Operation> column : getColumns().entrySet()) {
@@ -8,7 +8,7 @@
     Operation op=column.getValue();
     if (op.isUnary()) {
       if (hasCounterColumn)       throw new InvalidRequestException("Mix of commutative and non-commutative operations is not allowed.");
-      ByteBuffer colValue=op.a.getByteBuffer(getValueValidator(keyspace,colName),variables);
+      ByteBuffer colValue=op.a.getByteBuffer(metadata.getValueValidatorFromCellName(colName),variables);
       validateColumn(metadata,colName,colValue);
       rm.add(columnFamily,colName,colValue,(timestamp == null) ? getTimestamp(clientState) : timestamp,getTimeToLive());
     }

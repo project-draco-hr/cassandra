@@ -5,8 +5,9 @@
   if (select.isKeyRange() && (select.getKeyFinish() != null) && (select.getColumnRelations().size() > 0))   throw new InvalidRequestException("You cannot combine key range and by-column clauses in a SELECT");
   if (!select.isMultiKey() && select.getKeys().size() > 1)   throw new InvalidRequestException("You cannot use more than one KEY = in a SELECT");
   if (select.getColumnRelations().size() > 0) {
-    AbstractType<?> comparator=select.getComparator(keyspace);
-    SecondaryIndexManager idxManager=Keyspace.open(keyspace).getColumnFamilyStore(select.getColumnFamily()).indexManager;
+    ColumnFamilyStore cfstore=Keyspace.open(keyspace).getColumnFamilyStore(select.getColumnFamily());
+    AbstractType<?> comparator=cfstore.metadata.comparator;
+    SecondaryIndexManager idxManager=cfstore.indexManager;
     for (    Relation relation : select.getColumnRelations()) {
       ByteBuffer name=relation.getEntity().getByteBuffer(comparator,variables);
       if ((relation.operator() == RelationType.EQ) && idxManager.indexes(name))       return;

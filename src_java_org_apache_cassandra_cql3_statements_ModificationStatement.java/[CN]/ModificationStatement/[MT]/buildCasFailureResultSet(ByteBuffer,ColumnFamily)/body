@@ -1,16 +1,15 @@
 {
-  CFDefinition cfDef=cfm.getCfDef();
   Selection selection;
   if (ifNotExists) {
-    selection=Selection.wildcard(cfDef);
+    selection=Selection.wildcard(cfm);
   }
  else {
-    List<CFDefinition.Name> names=new ArrayList<CFDefinition.Name>(columnConditions.size());
-    for (    Operation condition : columnConditions)     names.add(cfDef.get(condition.columnName));
-    selection=Selection.forColumns(names);
+    List<ColumnDefinition> defs=new ArrayList<>(columnConditions.size());
+    for (    Operation condition : columnConditions)     defs.add(cfm.getColumnDefinition(condition.columnName));
+    selection=Selection.forColumns(defs);
   }
   long now=System.currentTimeMillis();
   Selection.ResultSetBuilder builder=selection.resultSetBuilder(now);
-  SelectStatement.forSelection(cfDef,selection).processColumnFamily(key,cf,Collections.<ByteBuffer>emptyList(),now,builder);
+  SelectStatement.forSelection(cfm,selection).processColumnFamily(key,cf,Collections.<ByteBuffer>emptyList(),now,builder);
   return builder.build();
 }

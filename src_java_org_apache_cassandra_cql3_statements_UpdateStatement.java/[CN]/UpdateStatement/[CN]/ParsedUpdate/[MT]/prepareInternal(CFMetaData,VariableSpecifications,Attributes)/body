@@ -1,0 +1,20 @@
+{
+  UpdateStatement stmt=new UpdateStatement(boundNames.size(),cfm,attrs);
+  for (  Pair<ColumnIdentifier,Operation.RawUpdate> entry : updates) {
+    ColumnDefinition def=cfm.getColumnDefinition(entry.left);
+    if (def == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",entry.left));
+    Operation operation=entry.right.prepare(def);
+    operation.collectMarkerSpecification(boundNames);
+switch (def.kind) {
+case PARTITION_KEY:
+case CLUSTERING_COLUMN:
+      throw new InvalidRequestException(String.format("PRIMARY KEY part %s found in SET part",entry.left));
+case COMPACT_VALUE:
+case REGULAR:
+    stmt.addOperation(operation);
+  break;
+}
+}
+stmt.processWhereClause(whereClause,boundNames);
+return stmt;
+}

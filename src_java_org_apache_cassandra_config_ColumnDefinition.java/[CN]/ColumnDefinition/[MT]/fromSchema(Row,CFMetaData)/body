@@ -2,14 +2,15 @@
   List<ColumnDefinition> cds=new ArrayList<>();
   String query=String.format("SELECT * FROM %s.%s",Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNS_CF);
   for (  UntypedResultSet.Row row : QueryProcessor.resultify(query,serializedColumns)) {
-    Type type=row.has(TYPE) ? Enum.valueOf(Type.class,row.getString(TYPE).toUpperCase()) : Type.REGULAR;
+    Kind kind=row.has(KIND) ? Kind.deserialize(row.getString(KIND)) : Kind.REGULAR;
     Integer componentIndex=null;
     if (row.has(COMPONENT_INDEX))     componentIndex=row.getInt(COMPONENT_INDEX);
- else     if (type == Type.CLUSTERING_KEY && cfm.isSuper())     componentIndex=1;
-    ByteBuffer name=cfm.getComponentComparator(componentIndex,type).fromString(row.getString(COLUMN_NAME));
+ else     if (kind == Kind.CLUSTERING_COLUMN && cfm.isSuper())     componentIndex=1;
+    AbstractType<?> comparator=cfm.getComponentComparator(componentIndex,kind);
+    ColumnIdentifier name=new ColumnIdentifier(comparator.fromString(row.getString(COLUMN_NAME)),comparator);
     AbstractType<?> validator;
     try {
-      validator=TypeParser.parse(row.getString(VALIDATOR));
+      validator=TypeParser.parse(row.getString(TYPE));
     }
  catch (    RequestValidationException e) {
       throw new RuntimeException(e);
@@ -20,7 +21,7 @@
     if (row.has(INDEX_OPTIONS))     indexOptions=FBUtilities.fromJsonMap(row.getString(INDEX_OPTIONS));
     String indexName=null;
     if (row.has(INDEX_NAME))     indexName=row.getString(INDEX_NAME);
-    cds.add(new ColumnDefinition(name,validator,indexType,indexOptions,indexName,componentIndex,type));
+    cds.add(new ColumnDefinition(cfm.ksName,cfm.cfName,name,validator,indexType,indexOptions,indexName,componentIndex,kind));
   }
   return cds;
 }
