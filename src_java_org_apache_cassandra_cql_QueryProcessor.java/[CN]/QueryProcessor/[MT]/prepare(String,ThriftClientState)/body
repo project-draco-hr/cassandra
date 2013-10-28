@@ -5,5 +5,9 @@
   logger.trace("Discovered " + statement.boundTerms + " bound variables.");
   clientState.getPrepared().put(statementId,statement);
   logger.trace(String.format("Stored prepared statement #%d with %d bind markers",statementId,statement.boundTerms));
+  if (!postPreparationHooks.isEmpty()) {
+    PreparationContext context=new PreparationContext(clientState,queryString,statement);
+    for (    PostPreparationHook hook : postPreparationHooks)     hook.processStatement(statement,context);
+  }
   return new CqlPreparedResult(statementId,statement.boundTerms);
 }
