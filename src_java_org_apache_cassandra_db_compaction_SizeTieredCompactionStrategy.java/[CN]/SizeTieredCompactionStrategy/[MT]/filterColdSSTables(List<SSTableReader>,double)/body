@@ -1,0 +1,23 @@
+{
+  Collections.sort(sstables,new Comparator<SSTableReader>(){
+    public int compare(    SSTableReader o1,    SSTableReader o2){
+      int comparison=Double.compare(hotness(o1),hotness(o2));
+      if (comparison != 0)       return comparison;
+      return Long.compare(o1.bytesOnDisk(),o2.bytesOnDisk());
+    }
+  }
+);
+  double totalReads=0.0;
+  for (  SSTableReader sstr : sstables)   if (sstr.readMeter != null)   totalReads+=sstr.readMeter.twoHourRate();
+  if (totalReads == 0.0)   return sstables;
+  double maxColdReads=coldReadsToOmit * totalReads;
+  double totalColdReads=0.0;
+  int cutoffIndex=0;
+  while (cutoffIndex < sstables.size()) {
+    double reads=sstables.get(cutoffIndex).readMeter.twoHourRate();
+    if (totalColdReads + reads > maxColdReads)     break;
+    totalColdReads+=reads;
+    cutoffIndex++;
+  }
+  return sstables.subList(cutoffIndex,sstables.size());
+}

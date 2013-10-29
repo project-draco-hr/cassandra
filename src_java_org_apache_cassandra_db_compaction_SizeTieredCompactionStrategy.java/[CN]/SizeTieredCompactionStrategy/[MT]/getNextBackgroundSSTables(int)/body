@@ -2,8 +2,9 @@
   if (!isEnabled())   return Collections.emptyList();
   int minThreshold=cfs.getMinimumCompactionThreshold();
   int maxThreshold=cfs.getMaximumCompactionThreshold();
-  Set<SSTableReader> candidates=cfs.getUncompactingSSTables();
-  List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(filterSuspectSSTables(candidates)),options.bucketHigh,options.bucketLow,options.minSSTableSize);
+  Iterable<SSTableReader> candidates=filterSuspectSSTables(cfs.getUncompactingSSTables());
+  candidates=filterColdSSTables(Lists.newArrayList(candidates),options.coldReadsToOmit);
+  List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(candidates),options.bucketHigh,options.bucketLow,options.minSSTableSize);
   logger.debug("Compaction buckets are {}",buckets);
   updateEstimatedCompactionsByTasks(buckets);
   List<SSTableReader> mostInteresting=mostInterestingBucket(buckets,minThreshold,maxThreshold);
