@@ -1,15 +1,15 @@
 {
   IDiskAtomFilter filter;
+  CellNameType columnType=metadata.isSuper() ? new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0)) : metadata.comparator;
   if (predicate.column_names != null) {
     if (metadata.isSuper()) {
-      CompositeType type=(CompositeType)metadata.comparator;
-      SortedSet s=new TreeSet<ByteBuffer>(parent.isSetSuper_column() ? type.types.get(1) : type.types.get(0));
-      s.addAll(predicate.column_names);
-      filter=SuperColumns.fromSCNamesFilter(type,parent.bufferForSuper_column(),new NamesQueryFilter(s));
+      SortedSet<CellName> s=new TreeSet<CellName>(columnType);
+      for (      ByteBuffer bb : predicate.column_names)       s.add(columnType.cellFromByteBuffer(bb));
+      filter=SuperColumns.fromSCNamesFilter(metadata.comparator,parent.bufferForSuper_column(),new NamesQueryFilter(s));
     }
  else {
-      SortedSet s=new TreeSet<ByteBuffer>(metadata.comparator);
-      s.addAll(predicate.column_names);
+      SortedSet<CellName> s=new TreeSet<CellName>(metadata.comparator);
+      for (      ByteBuffer bb : predicate.column_names)       s.add(metadata.comparator.cellFromByteBuffer(bb));
       filter=new NamesQueryFilter(s);
     }
   }

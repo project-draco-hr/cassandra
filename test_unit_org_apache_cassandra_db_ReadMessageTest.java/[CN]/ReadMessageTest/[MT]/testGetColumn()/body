@@ -1,12 +1,13 @@
 {
   Keyspace keyspace=Keyspace.open("Keyspace1");
+  CellNameType type=keyspace.getColumnFamilyStore("Standard1").getComparator();
   RowMutation rm;
   DecoratedKey dk=Util.dk("key1");
   rm=new RowMutation("Keyspace1",dk.key);
-  rm.add("Standard1",ByteBufferUtil.bytes("Column1"),ByteBufferUtil.bytes("abcd"),0);
+  rm.add("Standard1",Util.cellname("Column1"),ByteBufferUtil.bytes("abcd"),0);
   rm.apply();
-  ReadCommand command=new SliceByNamesReadCommand("Keyspace1",dk.key,"Standard1",System.currentTimeMillis(),new NamesQueryFilter(ByteBufferUtil.bytes("Column1")));
+  ReadCommand command=new SliceByNamesReadCommand("Keyspace1",dk.key,"Standard1",System.currentTimeMillis(),new NamesQueryFilter(FBUtilities.singleton(Util.cellname("Column1"),type)));
   Row row=command.getRow(keyspace);
-  Column col=row.cf.getColumn(ByteBufferUtil.bytes("Column1"));
+  Column col=row.cf.getColumn(Util.cellname("Column1"));
   assertEquals(col.value(),ByteBuffer.wrap("abcd".getBytes()));
 }

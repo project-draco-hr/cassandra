@@ -1,0 +1,16 @@
+{
+  if (!bytes.hasRemaining())   return Composites.EMPTY;
+  ByteBuffer[] elements=new ByteBuffer[fullSize];
+  int idx=bytes.position(), i=0;
+  byte eoc=0;
+  while (idx < bytes.limit()) {
+    checkRemaining(bytes,idx,2);
+    int length=bytes.getShort(idx) & 0xFFFF;
+    idx+=2;
+    checkRemaining(bytes,idx,length + 1);
+    elements[i++]=sliceBytes(bytes,idx,length);
+    idx+=length;
+    eoc=bytes.get(idx++);
+  }
+  return makeWith(elements,i,Composite.EOC.from(eoc));
+}

@@ -2,18 +2,20 @@
   super(reversed ? slices.length - 1 : 0);
   boolean inSlice=false;
   int columnCount=sstable.descriptor.version.hasRowSizeAndColumnCount ? file.readInt() : Integer.MAX_VALUE;
-  Iterator<OnDiskAtom> atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,columnCount,sstable.descriptor.version);
-  OnDiskAtom column=null;
-  while (atomIterator.hasNext() || column != null) {
-    if (column == null)     column=atomIterator.next();
-    if (!inSlice && isColumnBeforeSliceStart(column)) {
-      column=null;
+  AtomDeserializer deserializer=emptyColumnFamily.metadata().getOnDiskDeserializer(file,sstable.descriptor.version);
+  int deserialized=0;
+  while (deserializer.hasNext() && deserialized < columnCount) {
+    Composite start=currentStart();
+    if (!inSlice && !start.isEmpty() && deserializer.compareNextTo(start) < 0) {
+      deserializer.skipNext();
+      ++deserialized;
       continue;
     }
-    if (isColumnBeforeSliceFinish(column)) {
+    Composite finish=currentFinish();
+    if (finish.isEmpty() || deserializer.compareNextTo(finish) <= 0) {
       inSlice=true;
-      addColumn(column);
-      column=null;
+      addColumn(deserializer.readNext());
+      ++deserialized;
     }
  else {
       inSlice=false;

@@ -1,15 +1,14 @@
 {
   CfDef cfDef=cfInfo.cfDef;
   Tuple pair=TupleFactory.getInstance().newTuple(2);
-  if (comparator instanceof AbstractCompositeType)   setTupleValue(pair,0,composeComposite((AbstractCompositeType)comparator,col.name()));
- else   setTupleValue(pair,0,cassandraToObj(comparator,col.name()));
+  ByteBuffer colName=col.name().toByteBuffer();
+  if (comparator instanceof AbstractCompositeType)   setTupleValue(pair,0,composeComposite((AbstractCompositeType)comparator,colName));
+ else   setTupleValue(pair,0,cassandraToObj(comparator,col.name().toByteBuffer()));
   Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
-  ByteBuffer colName;
   if (cfInfo.cql3Table && !cfInfo.compactCqlTable) {
-    ByteBuffer[] names=((AbstractCompositeType)parseType(cfDef.comparator_type)).split(col.name());
+    ByteBuffer[] names=((AbstractCompositeType)parseType(cfDef.comparator_type)).split(colName);
     colName=names[names.length - 1];
   }
- else   colName=col.name();
   if (validators.get(colName) == null) {
     Map<MarshallerType,AbstractType> marshallers=getDefaultMarshallers(cfDef);
     setTupleValue(pair,1,cassandraToObj(marshallers.get(MarshallerType.DEFAULT_VALIDATOR),col.value()));

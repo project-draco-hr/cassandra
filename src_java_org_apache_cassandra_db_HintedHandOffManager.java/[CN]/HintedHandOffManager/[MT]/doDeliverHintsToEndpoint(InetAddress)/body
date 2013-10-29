@@ -4,14 +4,14 @@
   final ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
   DecoratedKey epkey=StorageService.getPartitioner().decorateKey(hostIdBytes);
   final AtomicInteger rowsReplayed=new AtomicInteger(0);
-  ByteBuffer startColumn=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  Composite startColumn=Composites.EMPTY;
   int pageSize=calculatePageSize();
   logger.debug("Using pageSize of {}",pageSize);
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB() / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   delivery:   while (true) {
     long now=System.currentTimeMillis();
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemKeyspace.HINTS_CF,startColumn,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,pageSize,now);
+    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemKeyspace.HINTS_CF,startColumn,Composites.EMPTY,false,pageSize,now);
     ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(now / 1000));
     if (pagingFinished(hintsPage,startColumn))     break;
     if (!FailureDetector.instance.isAlive(endpoint)) {
@@ -27,8 +27,7 @@
       }
       if (!hint.isLive(System.currentTimeMillis()))       continue;
       startColumn=hint.name();
-      ByteBuffer[] components=comparator.split(hint.name());
-      int version=Int32Type.instance.compose(components[1]);
+      int version=Int32Type.instance.compose(hint.name().get(1));
       DataInputStream in=new DataInputStream(ByteBufferUtil.inputStream(hint.value()));
       RowMutation rm;
       try {

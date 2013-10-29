@@ -1,0 +1,18 @@
+{
+  if (del.predicate != null && del.predicate.column_names != null) {
+    for (    ByteBuffer c : del.predicate.column_names) {
+      if (del.super_column == null && cfm.isSuper())       rm.deleteRange(cfm.cfName,SuperColumns.startOf(c),SuperColumns.endOf(c),del.timestamp);
+ else       if (del.super_column != null)       rm.delete(cfm.cfName,cfm.comparator.makeCellName(del.super_column,c),del.timestamp);
+ else       rm.delete(cfm.cfName,cfm.comparator.cellFromByteBuffer(c),del.timestamp);
+    }
+  }
+ else   if (del.predicate != null && del.predicate.slice_range != null) {
+    if (del.super_column == null && cfm.isSuper())     rm.deleteRange(cfm.cfName,SuperColumns.startOf(del.predicate.getSlice_range().start),SuperColumns.startOf(del.predicate.getSlice_range().finish),del.timestamp);
+ else     if (del.super_column != null)     rm.deleteRange(cfm.cfName,cfm.comparator.makeCellName(del.super_column,del.predicate.getSlice_range().start),cfm.comparator.makeCellName(del.super_column,del.predicate.getSlice_range().finish),del.timestamp);
+ else     rm.deleteRange(cfm.cfName,cfm.comparator.cellFromByteBuffer(del.predicate.getSlice_range().start),cfm.comparator.cellFromByteBuffer(del.predicate.getSlice_range().finish),del.timestamp);
+  }
+ else {
+    if (del.super_column != null)     rm.deleteRange(cfm.cfName,SuperColumns.startOf(del.super_column),SuperColumns.endOf(del.super_column),del.timestamp);
+ else     rm.delete(cfm.cfName,del.timestamp);
+  }
+}

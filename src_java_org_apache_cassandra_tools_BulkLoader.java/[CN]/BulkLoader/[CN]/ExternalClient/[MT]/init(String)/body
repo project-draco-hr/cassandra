@@ -12,10 +12,13 @@
           addRangeForEndpoint(range,InetAddress.getByName(ep));
         }
       }
-      String query=String.format("SELECT * FROM %s.%s WHERE keyspace_name = '%s'",Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,keyspace);
-      CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(query),Compression.NONE,ConsistencyLevel.ONE);
-      for (      CqlRow row : result.rows) {
-        CFMetaData metadata=CFMetaData.fromThriftCqlRow(row);
+      String cfQuery=String.format("SELECT * FROM %s.%s WHERE keyspace_name = '%s'",Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF,keyspace);
+      CqlResult cfRes=client.execute_cql3_query(ByteBufferUtil.bytes(cfQuery),Compression.NONE,ConsistencyLevel.ONE);
+      for (      CqlRow row : cfRes.rows) {
+        String columnFamily=UTF8Type.instance.getString(row.columns.get(1).bufferForName());
+        String columnsQuery=String.format("SELECT * FROM %s.%s WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNS_CF,keyspace,columnFamily);
+        CqlResult columnsRes=client.execute_cql3_query(ByteBufferUtil.bytes(columnsQuery),Compression.NONE,ConsistencyLevel.ONE);
+        CFMetaData metadata=CFMetaData.fromThriftCqlRow(row,columnsRes);
         knownCfs.put(metadata.cfName,metadata);
       }
       break;

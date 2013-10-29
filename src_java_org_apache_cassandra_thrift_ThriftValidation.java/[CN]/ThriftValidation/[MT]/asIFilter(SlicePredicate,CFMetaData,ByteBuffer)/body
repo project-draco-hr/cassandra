@@ -1,15 +1,15 @@
 {
   SliceRange sr=sp.slice_range;
   IDiskAtomFilter filter;
+  CellNameType comparator=metadata.isSuper() ? new SimpleDenseCellNameType(metadata.comparator.subtype(superColumn == null ? 0 : 1)) : metadata.comparator;
   if (sr == null) {
-    AbstractType<?> comparator=metadata.isSuper() ? ((CompositeType)metadata.comparator).types.get(superColumn == null ? 0 : 1) : metadata.comparator;
-    SortedSet<ByteBuffer> ss=new TreeSet<ByteBuffer>(comparator);
-    ss.addAll(sp.column_names);
+    SortedSet<CellName> ss=new TreeSet<CellName>(comparator);
+    for (    ByteBuffer bb : sp.column_names)     ss.add(comparator.cellFromByteBuffer(bb));
     filter=new NamesQueryFilter(ss);
   }
  else {
-    filter=new SliceQueryFilter(sr.start,sr.finish,sr.reversed,sr.count);
+    filter=new SliceQueryFilter(comparator.fromByteBuffer(sr.start),comparator.fromByteBuffer(sr.finish),sr.reversed,sr.count);
   }
-  if (metadata.isSuper())   filter=SuperColumns.fromSCFilter((CompositeType)metadata.comparator,superColumn,filter);
+  if (metadata.isSuper())   filter=SuperColumns.fromSCFilter(metadata.comparator,superColumn,filter);
   return filter;
 }

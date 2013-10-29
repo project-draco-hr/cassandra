@@ -4,18 +4,18 @@
   final DecoratedKey ROW=Util.dk("row4");
   for (int i=0; i < 10; i++) {
     ColumnFamily cf=TreeMapBackedSortedColumns.factory.create("Keyspace1","StandardLong1");
-    cf.addColumn(new Column(ByteBufferUtil.bytes((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
+    cf.addColumn(new Column(cellname((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
     RowMutation rm=new RowMutation("Keyspace1",ROW.key,cf);
     rm.apply();
   }
   cfs.forceBlockingFlush();
   for (int i=10; i < 20; i++) {
     ColumnFamily cf=TreeMapBackedSortedColumns.factory.create("Keyspace1","StandardLong1");
-    cf.addColumn(new Column(ByteBufferUtil.bytes((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
+    cf.addColumn(new Column(cellname((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
     RowMutation rm=new RowMutation("Keyspace1",ROW.key,cf);
     rm.apply();
-    cf=cfs.getColumnFamily(ROW,ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,true,1,System.currentTimeMillis());
+    cf=cfs.getColumnFamily(ROW,Composites.EMPTY,Composites.EMPTY,true,1,System.currentTimeMillis());
     assertEquals(1,Iterables.size(cf.getColumnNames()));
-    assertEquals(i,cf.getColumnNames().iterator().next().getLong());
+    assertEquals(i,cf.getColumnNames().iterator().next().toByteBuffer().getLong());
   }
 }

@@ -5,14 +5,14 @@
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
   cfs.truncateBlocking();
   ByteBuffer rowKey=ByteBufferUtil.bytes("k1");
-  ByteBuffer colName=ByteBufferUtil.bytes("birthdate");
+  CellName colName=cellname("birthdate");
   ByteBuffer val1=ByteBufferUtil.bytes(1L);
   ByteBuffer val2=ByteBufferUtil.bytes(2L);
   RowMutation rm;
   rm=new RowMutation(keySpace,rowKey);
   rm.add(cfName,colName,val1,0);
   rm.apply();
-  IndexExpression expr=new IndexExpression(colName,IndexExpression.Operator.EQ,val1);
+  IndexExpression expr=new IndexExpression(ByteBufferUtil.bytes("birthdate"),IndexExpression.Operator.EQ,val1);
   List<IndexExpression> clause=Arrays.asList(expr);
   IDiskAtomFilter filter=new IdentityQueryFilter();
   Range<RowPosition> range=Util.range("","");
@@ -24,7 +24,7 @@
   keyspace.apply(rm,true,false);
   rows=keyspace.getColumnFamilyStore(cfName).search(range,clause,filter,100);
   assertEquals(0,rows.size());
-  expr=new IndexExpression(colName,IndexExpression.Operator.EQ,val2);
+  expr=new IndexExpression(ByteBufferUtil.bytes("birthdate"),IndexExpression.Operator.EQ,val2);
   clause=Arrays.asList(expr);
   filter=new IdentityQueryFilter();
   range=Util.range("","");
@@ -33,7 +33,7 @@
   rm=new RowMutation(keySpace,rowKey);
   rm.add(cfName,colName,ByteBufferUtil.bytes(1L),3);
   keyspace.apply(rm,true,false);
-  expr=new IndexExpression(colName,IndexExpression.Operator.EQ,ByteBufferUtil.bytes(1L));
+  expr=new IndexExpression(ByteBufferUtil.bytes("birthdate"),IndexExpression.Operator.EQ,ByteBufferUtil.bytes(1L));
   clause=Arrays.asList(expr);
   filter=new IdentityQueryFilter();
   range=Util.range("","");

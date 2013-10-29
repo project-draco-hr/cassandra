@@ -1,18 +1,19 @@
 {
+  CellNameType cellType=subComparator == null ? comparator : new CompoundDenseCellNameType(Arrays.asList(comparator.asAbstractType(),subComparator));
   while (true) {
     if (columns.hasNext()) {
       ColumnOrSuperColumn cosc=columns.next();
-      SortedMap<ByteBuffer,Column> map;
+      SortedMap<CellName,Column> map;
       List<Column> columns=unthriftify(cosc);
       if (columns.size() == 1) {
         map=ImmutableSortedMap.of(columns.get(0).name(),columns.get(0));
       }
  else {
         assert isSuper;
-        map=new TreeMap<ByteBuffer,Column>(CompositeType.getInstance(comparator,subComparator));
+        map=new TreeMap<CellName,Column>(cellType);
         for (        Column column : columns)         map.put(column.name(),column);
       }
-      return Pair.<ByteBuffer,SortedMap<ByteBuffer,Column>>create(currentRow.key,map);
+      return Pair.<ByteBuffer,SortedMap<CellName,Column>>create(currentRow.key,map);
     }
     if (!rows.hasNext())     return endOfData();
     nextRow();

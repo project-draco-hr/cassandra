@@ -8,33 +8,36 @@
   IndexInfo currentIndex=indexes.get(lastDeserializedBlock);
   long positionToSeek=columnsStart + currentIndex.offset;
   if (file == null)   file=originalInput == null ? sstable.getFileDataInput(positionToSeek) : originalInput;
-  Iterator<OnDiskAtom> atomIterator=emptyColumnFamily.metadata().getOnDiskIterator(file,Integer.MAX_VALUE,sstable.descriptor.version);
+  AtomDeserializer deserializer=emptyColumnFamily.metadata().getOnDiskDeserializer(file,sstable.descriptor.version);
   file.seek(positionToSeek);
   FileMark mark=file.mark();
   boolean inSlice=false;
-  OnDiskAtom column=null;
-  while (file.bytesPastMark(mark) < currentIndex.width || column != null) {
-    if (column == null)     column=atomIterator.next();
-    if (!inSlice && isColumnBeforeSliceStart(column)) {
+  while (file.bytesPastMark(mark) < currentIndex.width || deserializer.hasUnprocessed()) {
+    Composite start=currentStart();
+    if (!inSlice && !start.isEmpty() && deserializer.compareNextTo(start) < 0) {
       if (reversed) {
-        prefetched.addFirst(column);
+        prefetched.addFirst(deserializer.readNext());
       }
-      column=null;
-    }
- else     if (isColumnBeforeSliceFinish(column)) {
-      inSlice=true;
-      addColumn(column);
-      column=null;
+ else {
+        deserializer.skipNext();
+      }
     }
  else {
-      if (reversed && prefetched.isEmpty())       break;
-      if (!setNextSlice())       break;
-      inSlice=false;
-      if (nextIndexIdx != lastDeserializedBlock) {
-        if (reversed)         prefetched.clear();
-        break;
+      Composite finish=currentFinish();
+      if (finish.isEmpty() || deserializer.compareNextTo(finish) <= 0) {
+        inSlice=true;
+        addColumn(deserializer.readNext());
       }
-      if (reversed)       break;
+ else {
+        if (reversed && prefetched.isEmpty())         break;
+        if (!setNextSlice())         break;
+        inSlice=false;
+        if (nextIndexIdx != lastDeserializedBlock) {
+          if (reversed)           prefetched.clear();
+          break;
+        }
+        if (reversed)         break;
+      }
     }
   }
   return true;

@@ -1,2 +1,22 @@
 {
+  try {
+    if (subColumnsIterator != null && subColumnsIterator.hasNext()) {
+      Column c=subColumnsIterator.next();
+      return c.withUpdatedName(type.makeCellName(scName,c.name().toByteBuffer()));
+    }
+    ++read;
+    scName=ByteBufferUtil.readWithShortLength(in);
+    DeletionInfo delInfo=new DeletionInfo(DeletionTime.serializer.deserialize(in));
+    int size=in.readInt();
+    List<Column> subColumns=new ArrayList<>(size);
+    ColumnSerializer colSer=subType(type).columnSerializer();
+    for (int i=0; i < size; ++i)     subColumns.add(colSer.deserialize(in,flag,expireBefore));
+    subColumnsIterator=subColumns.iterator();
+    DeletionTime dtime=delInfo.getTopLevelDeletion();
+    if (!dtime.equals(DeletionTime.LIVE))     return new RangeTombstone(startOf(scName),endOf(scName),dtime);
+    return next();
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
 }

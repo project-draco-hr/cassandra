@@ -1,0 +1,27 @@
+{
+  maybeReadNext();
+  if (composite.isEmpty())   return nextFull == EMPTY ? 0 : 1;
+  if (nextFull == EMPTY)   return -1;
+  ByteBuffer previous=null;
+  for (int i=0; i < composite.size(); i++) {
+    if (!hasComponent(i))     return nextEOC == Composite.EOC.END ? 1 : -1;
+    AbstractType<?> comparator=type.subtype(i);
+    ByteBuffer value1=nextComponents[i];
+    ByteBuffer value2=composite.get(i);
+    int cmp=comparator.compareCollectionMembers(value1,value2,previous);
+    if (cmp != 0)     return cmp;
+    previous=value1;
+  }
+  if (!allComponentsDeserialized() || composite.size() < nextSize)   return composite.eoc() == Composite.EOC.END ? -1 : 1;
+  if (nextEOC != composite.eoc()) {
+switch (nextEOC) {
+case START:
+      return -1;
+case END:
+    return 1;
+case NONE:
+  return composite.eoc() == Composite.EOC.START ? 1 : -1;
+}
+}
+return 0;
+}

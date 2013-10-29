@@ -11,14 +11,15 @@
       throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("[%s]=[%s] failed name validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
     }
     if (expression.value.remaining() > 0xFFFF)     throw new org.apache.cassandra.exceptions.InvalidRequestException("Index expression values may not be larger than 64K");
-    AbstractType<?> valueValidator=metadata.getValueValidatorFromCellName(expression.column_name);
+    CellName name=metadata.comparator.cellFromByteBuffer(expression.column_name);
+    AbstractType<?> valueValidator=metadata.getValueValidator(name);
     try {
       valueValidator.validate(expression.value);
     }
  catch (    MarshalException me) {
       throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("[%s]=[%s] failed value validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
     }
-    isIndexed|=(expression.op == IndexOperator.EQ) && idxManager.indexes(expression.column_name);
+    isIndexed|=(expression.op == IndexOperator.EQ) && idxManager.indexes(name);
   }
   return isIndexed;
 }

@@ -1,0 +1,33 @@
+{
+  return new CQL3Row.Builder(){
+    public Iterator<CQL3Row> group(    final Iterator<Column> cells){
+      return new AbstractIterator<CQL3Row>(){
+        private CellName previous;
+        private CQL3RowOfSparse currentRow;
+        protected CQL3Row computeNext(){
+          while (cells.hasNext()) {
+            final Column cell=cells.next();
+            if (cell.isMarkedForDelete(now))             continue;
+            CQL3Row toReturn=null;
+            CellName current=cell.name();
+            if (currentRow == null || !current.isSameCQL3RowAs(previous)) {
+              toReturn=currentRow;
+              currentRow=new CQL3RowOfSparse(current);
+            }
+            currentRow.add(cell);
+            previous=current;
+            if (toReturn != null)             return toReturn;
+          }
+          if (currentRow != null) {
+            CQL3Row toReturn=currentRow;
+            currentRow=null;
+            return toReturn;
+          }
+          return endOfData();
+        }
+      }
+;
+    }
+  }
+;
+}

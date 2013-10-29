@@ -1,11 +1,11 @@
 {
   ColumnFamily cf=rm.addOrGet(CFMetaData.SchemaColumnsCf);
-  int ldt=(int)(System.currentTimeMillis() / 1000);
-  cf.addColumn(Column.create("",timestamp,cfName,name.toString(),""));
-  cf.addColumn(Column.create(type.toString(),timestamp,cfName,name.toString(),TYPE));
-  cf.addColumn(indexType == null ? DeletedColumn.create(ldt,timestamp,cfName,name.toString(),INDEX_TYPE) : Column.create(indexType.toString(),timestamp,cfName,name.toString(),INDEX_TYPE));
-  cf.addColumn(indexOptions == null ? DeletedColumn.create(ldt,timestamp,cfName,name.toString(),INDEX_OPTIONS) : Column.create(json(indexOptions),timestamp,cfName,name.toString(),INDEX_OPTIONS));
-  cf.addColumn(indexName == null ? DeletedColumn.create(ldt,timestamp,cfName,name.toString(),INDEX_NAME) : Column.create(indexName,timestamp,cfName,name.toString(),INDEX_NAME));
-  cf.addColumn(componentIndex == null ? DeletedColumn.create(ldt,timestamp,cfName,name.toString(),COMPONENT_INDEX) : Column.create(componentIndex,timestamp,cfName,name.toString(),COMPONENT_INDEX));
-  cf.addColumn(Column.create(kind.serialize(),timestamp,cfName,name.toString(),KIND));
+  Composite prefix=CFMetaData.SchemaColumnsCf.comparator.make(cfName,name.toString());
+  CFRowAdder adder=new CFRowAdder(cf,prefix,timestamp);
+  adder.add(TYPE,type.toString());
+  adder.add(INDEX_TYPE,indexType == null ? null : indexType.toString());
+  adder.add(INDEX_OPTIONS,json(indexOptions));
+  adder.add(INDEX_NAME,indexName);
+  adder.add(COMPONENT_INDEX,componentIndex);
+  adder.add(KIND,kind.serialize());
 }

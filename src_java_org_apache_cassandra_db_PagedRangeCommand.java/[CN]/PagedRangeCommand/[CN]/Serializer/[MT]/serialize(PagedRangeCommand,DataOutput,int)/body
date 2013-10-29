@@ -3,10 +3,11 @@
   out.writeUTF(cmd.columnFamily);
   out.writeLong(cmd.timestamp);
   AbstractBounds.serializer.serialize(cmd.keyRange,out,version);
+  CFMetaData metadata=Schema.instance.getCFMetaData(cmd.keyspace,cmd.columnFamily);
   SliceQueryFilter filter=(SliceQueryFilter)cmd.predicate;
-  SliceQueryFilter.serializer.serialize(filter,out,version);
-  ByteBufferUtil.writeWithShortLength(cmd.start,out);
-  ByteBufferUtil.writeWithShortLength(cmd.stop,out);
+  metadata.comparator.sliceQueryFilterSerializer().serialize(filter,out,version);
+  metadata.comparator.serializer().serialize(cmd.start,out);
+  metadata.comparator.serializer().serialize(cmd.stop,out);
   out.writeInt(cmd.rowFilter.size());
   for (  IndexExpression expr : cmd.rowFilter) {
     ByteBufferUtil.writeWithShortLength(expr.column,out);

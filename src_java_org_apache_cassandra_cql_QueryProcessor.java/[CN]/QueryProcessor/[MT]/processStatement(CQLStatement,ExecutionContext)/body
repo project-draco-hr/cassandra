@@ -39,7 +39,7 @@ List<Column> columns=Collections.singletonList(new Column(countBytes).setValue(B
 result.rows=Collections.singletonList(new CqlRow(countBytes,columns));
 return result;
 }
-result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),TypeParser.getShortName(metadata.comparator),TypeParser.getShortName(metadata.getDefaultValidator()));
+result.schema=new CqlMetadata(new HashMap<ByteBuffer,String>(),new HashMap<ByteBuffer,String>(),TypeParser.getShortName(metadata.comparator.asAbstractType()),TypeParser.getShortName(metadata.getDefaultValidator()));
 List<CqlRow> cqlRows=new ArrayList<CqlRow>(rows.size());
 for (org.apache.cassandra.db.Row row : rows) {
 List<Column> thriftColumns=new ArrayList<Column>();
@@ -53,8 +53,8 @@ result.schema.value_types.put(keyName,TypeParser.getShortName(metadata.getKeyVal
 if (row.cf != null) {
 for (org.apache.cassandra.db.Column c : row.cf.getSortedColumns()) {
 if (c.isMarkedForDelete(now)) continue;
-ColumnDefinition cd=metadata.getColumnDefinitionFromCellName(c.name());
-if (cd != null) result.schema.value_types.put(c.name(),TypeParser.getShortName(cd.type));
+ColumnDefinition cd=metadata.getColumnDefinition(c.name());
+if (cd != null) result.schema.value_types.put(c.name().toByteBuffer(),TypeParser.getShortName(cd.type));
 thriftColumns.add(thriftify(c));
 }
 }
@@ -70,17 +70,18 @@ result.schema.value_types.put(requestedKey,TypeParser.getShortName(metadata.getK
 continue;
 }
 if (row.cf == null) continue;
-ByteBuffer name;
+ByteBuffer nameBytes;
 try {
-name=term.getByteBuffer(metadata.comparator,variables);
+nameBytes=term.getByteBuffer(metadata.comparator.asAbstractType(),variables);
 }
  catch (InvalidRequestException e) {
 throw new AssertionError(e);
 }
-ColumnDefinition cd=metadata.getColumnDefinitionFromCellName(name);
-if (cd != null) result.schema.value_types.put(name,TypeParser.getShortName(cd.type));
+CellName name=metadata.comparator.cellFromByteBuffer(nameBytes);
+ColumnDefinition cd=metadata.getColumnDefinition(name);
+if (cd != null) result.schema.value_types.put(nameBytes,TypeParser.getShortName(cd.type));
 org.apache.cassandra.db.Column c=row.cf.getColumn(name);
-if (c == null || c.isMarkedForDelete(now)) thriftColumns.add(new Column().setName(name));
+if (c == null || c.isMarkedForDelete(System.currentTimeMillis())) thriftColumns.add(new Column().setName(nameBytes));
  else thriftColumns.add(thriftify(c));
 }
 }
@@ -191,14 +192,14 @@ CFMetaData cfm=oldCfm.clone();
 for (ColumnDefinition cd : cfm.regularColumns()) {
 if (cd.name.bytes.equals(columnName)) {
 if (cd.getIndexType() != null) throw new InvalidRequestException("Index already exists");
-if (logger.isDebugEnabled()) logger.debug("Updating column {} definition for index {}",cfm.comparator.getString(columnName),createIdx.getIndexName());
+if (logger.isDebugEnabled()) logger.debug("Updating column {} definition for index {}",cfm.comparator.getString(cfm.comparator.fromByteBuffer(columnName)),createIdx.getIndexName());
 cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
 cd.setIndexName(createIdx.getIndexName());
 columnExists=true;
 break;
 }
 }
-if (!columnExists) throw new InvalidRequestException("No column definition found for column " + oldCfm.comparator.getString(columnName));
+if (!columnExists) throw new InvalidRequestException("No column definition found for column " + oldCfm.comparator.getString(cfm.comparator.fromByteBuffer(columnName)));
 try {
 cfm.addDefaultIndexNames();
 MigrationManager.announceColumnFamilyUpdate(cfm,true);

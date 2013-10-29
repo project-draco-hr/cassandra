@@ -1,0 +1,33 @@
+{
+  CellNameType comparator=metadata.comparator;
+  List<IndexHelper.IndexInfo> ranges=new ArrayList<IndexHelper.IndexInfo>();
+  int lastIndexIdx=-1;
+  for (  CellName name : columnNames) {
+    int index=IndexHelper.indexFor(name,indexList,comparator,false,lastIndexIdx);
+    if (index < 0 || index == indexList.size())     continue;
+    IndexHelper.IndexInfo indexInfo=indexList.get(index);
+    if (comparator.compare(name,indexInfo.firstName) < 0 || index == lastIndexIdx)     continue;
+    ranges.add(indexInfo);
+    lastIndexIdx=index;
+  }
+  if (ranges.isEmpty())   return;
+  Iterator<CellName> toFetch=columnNames.iterator();
+  CellName nextToFetch=toFetch.next();
+  for (  IndexHelper.IndexInfo indexInfo : ranges) {
+    long positionToSeek=basePosition + indexInfo.offset;
+    if (file == null)     file=createFileDataInput(positionToSeek);
+    AtomDeserializer deserializer=cf.metadata().getOnDiskDeserializer(file,sstable.descriptor.version);
+    file.seek(positionToSeek);
+    FileMark mark=file.mark();
+    while (file.bytesPastMark(mark) < indexInfo.width && nextToFetch != null) {
+      int cmp=deserializer.compareNextTo(nextToFetch);
+      if (cmp == 0) {
+        nextToFetch=toFetch.hasNext() ? toFetch.next() : null;
+        result.add(deserializer.readNext());
+        continue;
+      }
+      deserializer.skipNext();
+      if (cmp > 0)       nextToFetch=toFetch.hasNext() ? toFetch.next() : null;
+    }
+  }
+}

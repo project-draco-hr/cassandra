@@ -29,21 +29,19 @@
     if (useCompactStorage) {
       if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
       if (definedCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-      stmt.comparator=UTF8Type.instance;
+      stmt.comparator=new SimpleSparseCellNameType(UTF8Type.instance);
     }
  else {
-      List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(definedCollections == null ? 1 : 2);
-      types.add(UTF8Type.instance);
-      if (definedCollections != null)       types.add(ColumnToCollectionType.getInstance(definedCollections));
-      stmt.comparator=CompositeType.getInstance(types);
+      stmt.comparator=definedCollections == null ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList()) : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(),ColumnToCollectionType.getInstance(definedCollections));
     }
   }
  else {
     if (useCompactStorage && columnAliases.size() == 1) {
       if (definedCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
       stmt.columnAliases.add(columnAliases.get(0).bytes);
-      stmt.comparator=getTypeAndRemove(stmt.columns,columnAliases.get(0));
-      if (stmt.comparator instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
+      AbstractType<?> at=getTypeAndRemove(stmt.columns,columnAliases.get(0));
+      if (at instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
+      stmt.comparator=new SimpleDenseCellNameType(at);
     }
  else {
       List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(columnAliases.size() + 1);
@@ -55,13 +53,11 @@
       }
       if (useCompactStorage) {
         if (definedCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
+        stmt.comparator=new CompoundDenseCellNameType(types);
       }
  else {
-        types.add(UTF8Type.instance);
-        if (definedCollections != null)         types.add(ColumnToCollectionType.getInstance(definedCollections));
+        stmt.comparator=definedCollections == null ? new CompoundSparseCellNameType(types) : new CompoundSparseCellNameType.WithCollection(types,ColumnToCollectionType.getInstance(definedCollections));
       }
-      if (types.isEmpty())       throw new IllegalStateException("Nonsensical empty parameter list for CompositeType");
-      stmt.comparator=CompositeType.getInstance(types);
     }
   }
   if (useCompactStorage && !stmt.columnAliases.isEmpty()) {

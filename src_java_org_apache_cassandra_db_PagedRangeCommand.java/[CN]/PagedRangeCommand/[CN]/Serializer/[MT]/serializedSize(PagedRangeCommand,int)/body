@@ -4,9 +4,10 @@
   size+=TypeSizes.NATIVE.sizeof(cmd.columnFamily);
   size+=TypeSizes.NATIVE.sizeof(cmd.timestamp);
   size+=AbstractBounds.serializer.serializedSize(cmd.keyRange,version);
-  size+=SliceQueryFilter.serializer.serializedSize((SliceQueryFilter)cmd.predicate,version);
-  size+=TypeSizes.NATIVE.sizeofWithShortLength(cmd.start);
-  size+=TypeSizes.NATIVE.sizeofWithShortLength(cmd.stop);
+  CFMetaData metadata=Schema.instance.getCFMetaData(cmd.keyspace,cmd.columnFamily);
+  size+=metadata.comparator.sliceQueryFilterSerializer().serializedSize((SliceQueryFilter)cmd.predicate,version);
+  size+=metadata.comparator.serializer().serializedSize(cmd.start,TypeSizes.NATIVE);
+  size+=metadata.comparator.serializer().serializedSize(cmd.stop,TypeSizes.NATIVE);
   size+=TypeSizes.NATIVE.sizeof(cmd.rowFilter.size());
   for (  IndexExpression expr : cmd.rowFilter) {
     size+=TypeSizes.NATIVE.sizeofWithShortLength(expr.column);

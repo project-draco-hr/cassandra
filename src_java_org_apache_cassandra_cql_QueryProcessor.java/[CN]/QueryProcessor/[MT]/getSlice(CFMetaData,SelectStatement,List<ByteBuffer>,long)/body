@@ -1,7 +1,7 @@
 {
   List<ReadCommand> commands=new ArrayList<ReadCommand>();
   if (!select.isColumnRange()) {
-    SortedSet<ByteBuffer> columnNames=getColumnNames(select,metadata,variables);
+    SortedSet<CellName> columnNames=getColumnNames(select,metadata,variables);
     validateColumnNames(columnNames);
     for (    Term rawKey : select.getKeys()) {
       ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator(),variables);
@@ -10,9 +10,9 @@
     }
   }
  else {
-    AbstractType<?> comparator=metadata.comparator;
-    ByteBuffer start=select.getColumnStart().getByteBuffer(comparator,variables);
-    ByteBuffer finish=select.getColumnFinish().getByteBuffer(comparator,variables);
+    AbstractType<?> at=metadata.comparator.asAbstractType();
+    Composite start=metadata.comparator.fromByteBuffer(select.getColumnStart().getByteBuffer(at,variables));
+    Composite finish=metadata.comparator.fromByteBuffer(select.getColumnFinish().getByteBuffer(at,variables));
     for (    Term rawKey : select.getKeys()) {
       ByteBuffer key=rawKey.getByteBuffer(metadata.getKeyValidator(),variables);
       validateKey(key);

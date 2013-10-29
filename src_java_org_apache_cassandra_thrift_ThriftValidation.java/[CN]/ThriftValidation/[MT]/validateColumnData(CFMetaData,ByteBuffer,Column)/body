@@ -1,0 +1,16 @@
+{
+  validateTtl(column);
+  if (!column.isSetValue())   throw new org.apache.cassandra.exceptions.InvalidRequestException("Column value is required");
+  if (!column.isSetTimestamp())   throw new org.apache.cassandra.exceptions.InvalidRequestException("Column timestamp is required");
+  CellName cn=scName == null ? metadata.comparator.cellFromByteBuffer(column.name) : metadata.comparator.makeCellName(scName,column.name);
+  ColumnDefinition columnDef=metadata.getColumnDefinition(cn);
+  try {
+    AbstractType<?> validator=metadata.getValueValidator(columnDef);
+    if (validator != null)     validator.validate(column.value);
+  }
+ catch (  MarshalException me) {
+    if (logger.isDebugEnabled())     logger.debug("rejecting invalid value {}",ByteBufferUtil.bytesToHex(summarize(column.value)));
+    throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("(%s) [%s][%s][%s] failed validation",me.getMessage(),metadata.ksName,metadata.cfName,(SuperColumns.getComparatorFor(metadata,scName != null)).getString(column.name)));
+  }
+  if (!Keyspace.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager.validate(asDBColumn(cn,column)))   throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("Can't index column value of size %d for index %s in CF %s of KS %s",column.value.remaining(),columnDef.getIndexName(),metadata.cfName,metadata.ksName));
+}

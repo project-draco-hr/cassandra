@@ -3,9 +3,10 @@
   String columnFamily=in.readUTF();
   long timestamp=in.readLong();
   AbstractBounds<RowPosition> keyRange=AbstractBounds.serializer.deserialize(in,version).toRowBounds();
-  SliceQueryFilter predicate=SliceQueryFilter.serializer.deserialize(in,version);
-  ByteBuffer start=ByteBufferUtil.readWithShortLength(in);
-  ByteBuffer stop=ByteBufferUtil.readWithShortLength(in);
+  CFMetaData metadata=Schema.instance.getCFMetaData(keyspace,columnFamily);
+  SliceQueryFilter predicate=metadata.comparator.sliceQueryFilterSerializer().deserialize(in,version);
+  Composite start=metadata.comparator.serializer().deserialize(in);
+  Composite stop=metadata.comparator.serializer().deserialize(in);
   int filterCount=in.readInt();
   List<IndexExpression> rowFilter=new ArrayList<IndexExpression>(filterCount);
   for (int i=0; i < filterCount; i++) {

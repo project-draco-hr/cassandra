@@ -1,13 +1,13 @@
 {
-  if (key.remaining() == 0)   return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-  ColumnNameBuilder builder;
+  if (key.remaining() == 0)   return Composites.EMPTY;
+  Composite prefix;
   IDiskAtomFilter columnFilter=filter.columnFilter(key);
   if (columnFilter instanceof SliceQueryFilter) {
     SliceQueryFilter sqf=(SliceQueryFilter)columnFilter;
-    builder=index.makeIndexColumnNameBuilder(key,isStart ? sqf.start() : sqf.finish());
+    prefix=index.makeIndexColumnPrefix(key,isStart ? sqf.start() : sqf.finish());
   }
  else {
-    builder=index.getIndexComparator().builder().add(key);
+    prefix=index.getIndexComparator().make(key);
   }
-  return isStart ? builder.build() : builder.buildAsEndOfRange();
+  return isStart ? prefix.start() : prefix.end();
 }

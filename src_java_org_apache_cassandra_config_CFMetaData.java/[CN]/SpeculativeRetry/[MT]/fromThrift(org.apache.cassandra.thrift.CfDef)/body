@@ -3,7 +3,11 @@
   if (cfType == null)   throw new InvalidRequestException("Invalid column type " + cf_def.column_type);
   applyImplicitDefaults(cf_def);
   try {
-    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,TypeParser.parse(cf_def.comparator_type),cf_def.subcomparator_type == null ? null : TypeParser.parse(cf_def.subcomparator_type));
+    AbstractType<?> rawComparator=TypeParser.parse(cf_def.comparator_type);
+    AbstractType<?> subComparator=cfType == ColumnFamilyType.Standard ? null : cf_def.subcomparator_type == null ? BytesType.instance : TypeParser.parse(cf_def.subcomparator_type);
+    boolean isDense=(cf_def.column_metadata == null || cf_def.column_metadata.isEmpty()) && !isCQL3OnlyPKComparator(rawComparator);
+    CellNameType comparator=CellNames.fromAbstractType(makeRawAbstractType(rawComparator,subComparator),isDense);
+    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator);
     if (cf_def.isSetGc_grace_seconds()) {
       newCFMD.gcGraceSeconds(cf_def.gc_grace_seconds);
     }
@@ -29,10 +33,8 @@
     if (cf_def.isSetKey_validation_class()) {
       newCFMD.keyValidator(TypeParser.parse(cf_def.key_validation_class));
     }
-    if (cf_def.isSetKey_alias() && !(newCFMD.keyValidator instanceof CompositeType)) {
-      newCFMD.columnMetadata.put(cf_def.key_alias,ColumnDefinition.partitionKeyDef(newCFMD,cf_def.key_alias,newCFMD.keyValidator,null));
-    }
-    return newCFMD.comment(cf_def.comment).replicateOnWrite(cf_def.replicate_on_write).defaultValidator(TypeParser.parse(cf_def.default_validation_class)).columnMetadata(ColumnDefinition.fromThrift(newCFMD,cf_def.column_metadata)).compressionParameters(cp).rebuild();
+    if (cf_def.isSetKey_alias() && !(newCFMD.keyValidator instanceof CompositeType))     newCFMD.addOrReplaceColumnDefinition(ColumnDefinition.partitionKeyDef(newCFMD,cf_def.key_alias,newCFMD.keyValidator,null));
+    return newCFMD.addAllColumnDefinitions(ColumnDefinition.fromThrift(newCFMD,cf_def.column_metadata)).comment(cf_def.comment).replicateOnWrite(cf_def.replicate_on_write).defaultValidator(TypeParser.parse(cf_def.default_validation_class)).compressionParameters(cp).rebuild();
   }
  catch (  SyntaxException|MarshalException e) {
     throw new ConfigurationException(e.getMessage());

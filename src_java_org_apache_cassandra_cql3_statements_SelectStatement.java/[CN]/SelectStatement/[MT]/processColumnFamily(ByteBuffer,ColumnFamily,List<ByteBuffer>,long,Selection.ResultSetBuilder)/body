@@ -1,58 +1,39 @@
 {
-  ByteBuffer[] keyComponents=cfm.getKeyValidator() instanceof CompositeType ? ((CompositeType)cfm.getKeyValidator()).split(key) : new ByteBuffer[]{key};
-  if (parameters.isDistinct) {
-    if (!cf.hasOnlyTombstones(now)) {
-      result.newRow();
-      for (      ColumnDefinition def : selection.getColumnsList())       result.add(keyComponents[def.position()]);
-    }
+  CFMetaData cfm=cf.metadata();
+  ByteBuffer[] keyComponents=null;
+  if (cfm.getKeyValidator() instanceof CompositeType) {
+    keyComponents=((CompositeType)cfm.getKeyValidator()).split(key);
   }
- else   if (cfm.isDense()) {
-    for (    Column c : columnsInOrder(cf,variables)) {
-      if (c.isMarkedForDelete(now))       continue;
-      ByteBuffer[] components=null;
-      if (cfm.hasCompositeComparator()) {
-        components=((CompositeType)cfm.comparator).split(c.name());
-      }
- else       if (sliceRestriction != null) {
-        if (!sliceRestriction.isInclusive(Bound.START) && c.name().equals(sliceRestriction.bound(Bound.START,variables)))         continue;
-        if (!sliceRestriction.isInclusive(Bound.END) && c.name().equals(sliceRestriction.bound(Bound.END,variables)))         continue;
-      }
-      result.newRow();
-      for (      ColumnDefinition def : selection.getColumnsList()) {
+ else {
+    keyComponents=new ByteBuffer[]{key};
+  }
+  Iterator<Column> cells=cf.getSortedColumns().iterator();
+  if (sliceRestriction != null)   cells=applySliceRestriction(cells,variables);
+  for (Iterator<CQL3Row> iter=cfm.comparator.CQL3RowBuilder(now).group(cells); iter.hasNext(); ) {
+    CQL3Row cql3Row=iter.next();
+    result.newRow();
+    for (    ColumnDefinition def : selection.getColumnsList()) {
 switch (def.kind) {
 case PARTITION_KEY:
-          result.add(keyComponents[def.position()]);
-        break;
+        result.add(keyComponents[def.position()]);
+      break;
 case CLUSTERING_COLUMN:
-      ByteBuffer val=cfm.hasCompositeComparator() ? (def.position() < components.length ? components[def.position()] : null) : c.name();
-    result.add(val);
+    result.add(cql3Row.getClusteringColumn(def.position()));
   break;
 case COMPACT_VALUE:
-result.add(c);
+result.add(cql3Row.getColumn(null));
 break;
 case REGULAR:
-throw new AssertionError();
-default :
-throw new AssertionError();
-}
-}
-}
-}
- else if (cfm.hasCompositeComparator()) {
-CompositeType composite=(CompositeType)cfm.comparator;
-ColumnGroupMap.Builder builder=new ColumnGroupMap.Builder(composite,cfm.hasCollections(),now);
-for (Column c : cf) {
-if (c.isMarkedForDelete(now)) continue;
-builder.add(c);
-}
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyComponents,group);
+if (def.type.isCollection()) {
+List<Column> collection=cql3Row.getCollection(def.name);
+ByteBuffer value=collection == null ? null : ((CollectionType)def.type).serialize(collection);
+result.add(value);
 }
  else {
-if (cf.hasOnlyTombstones(now)) return;
-result.newRow();
-for (ColumnDefinition def : selection.getColumnsList()) {
-if (def.kind == ColumnDefinition.Kind.PARTITION_KEY) result.add(keyComponents[def.position()]);
- else result.add(cf.getColumn(def.name.bytes));
+result.add(cql3Row.getColumn(def.name));
+}
+break;
+}
 }
 }
 }

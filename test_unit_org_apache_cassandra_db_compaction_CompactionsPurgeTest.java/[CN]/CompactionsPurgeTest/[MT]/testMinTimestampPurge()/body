@@ -6,21 +6,21 @@
   RowMutation rm;
   DecoratedKey key3=Util.dk("key3");
   rm=new RowMutation(KEYSPACE2,key3.key);
-  rm.add(cfName,ByteBufferUtil.bytes("c1"),ByteBufferUtil.EMPTY_BYTE_BUFFER,8);
-  rm.add(cfName,ByteBufferUtil.bytes("c2"),ByteBufferUtil.EMPTY_BYTE_BUFFER,8);
+  rm.add(cfName,cellname("c1"),ByteBufferUtil.EMPTY_BYTE_BUFFER,8);
+  rm.add(cfName,cellname("c2"),ByteBufferUtil.EMPTY_BYTE_BUFFER,8);
   rm.apply();
   cfs.forceBlockingFlush();
   rm=new RowMutation(KEYSPACE2,key3.key);
-  rm.delete(cfName,ByteBufferUtil.bytes("c1"),10);
+  rm.delete(cfName,cellname("c1"),10);
   rm.apply();
   cfs.forceBlockingFlush();
   Collection<SSTableReader> sstablesIncomplete=cfs.getSSTables();
   rm=new RowMutation(KEYSPACE2,key3.key);
-  rm.delete(cfName,ByteBufferUtil.bytes("c2"),9);
+  rm.delete(cfName,cellname("c2"),9);
   rm.apply();
   cfs.forceBlockingFlush();
   cfs.getCompactionStrategy().getUserDefinedTask(sstablesIncomplete,Integer.MAX_VALUE).execute(null);
   ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key3,cfName,System.currentTimeMillis()));
-  assertFalse(cf.getColumn(ByteBufferUtil.bytes("c2")).isLive(System.currentTimeMillis()));
+  assertFalse(cf.getColumn(cellname("c2")).isLive(System.currentTimeMillis()));
   assertEquals(2,cf.getColumnCount());
 }

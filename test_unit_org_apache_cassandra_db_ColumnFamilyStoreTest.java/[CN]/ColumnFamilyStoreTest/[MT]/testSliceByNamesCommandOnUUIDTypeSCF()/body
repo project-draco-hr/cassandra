@@ -5,15 +5,15 @@
   Keyspace keyspace=Keyspace.open(keyspaceName);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
   DecoratedKey key=Util.dk("slice-get-uuid-type");
-  putColsSuper(cfs,key,superColName,new Column(ByteBufferUtil.bytes("a"),ByteBufferUtil.bytes("A"),1),new Column(ByteBufferUtil.bytes("b"),ByteBufferUtil.bytes("B"),1));
+  putColsSuper(cfs,key,superColName,new Column(cellname("a"),ByteBufferUtil.bytes("A"),1),new Column(cellname("b"),ByteBufferUtil.bytes("B"),1));
   ColumnFamily cfGet=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
-  assertEquals(ByteBufferUtil.bytes("A"),cfGet.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("a"))).value());
-  assertEquals(ByteBufferUtil.bytes("B"),cfGet.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("b"))).value());
-  SortedSet<ByteBuffer> sliceColNames=new TreeSet<ByteBuffer>(cfs.metadata.comparator);
-  sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("a")));
-  sliceColNames.add(CompositeType.build(superColName,ByteBufferUtil.bytes("b")));
+  assertEquals(ByteBufferUtil.bytes("A"),cfGet.getColumn(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("a"))).value());
+  assertEquals(ByteBufferUtil.bytes("B"),cfGet.getColumn(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("b"))).value());
+  SortedSet<CellName> sliceColNames=new TreeSet<CellName>(cfs.metadata.comparator);
+  sliceColNames.add(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("a")));
+  sliceColNames.add(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("b")));
   SliceByNamesReadCommand cmd=new SliceByNamesReadCommand(keyspaceName,key.key,cfName,System.currentTimeMillis(),new NamesQueryFilter(sliceColNames));
   ColumnFamily cfSliced=cmd.getRow(keyspace).cf;
-  assertEquals(ByteBufferUtil.bytes("A"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("a"))).value());
-  assertEquals(ByteBufferUtil.bytes("B"),cfSliced.getColumn(CompositeType.build(superColName,ByteBufferUtil.bytes("b"))).value());
+  assertEquals(ByteBufferUtil.bytes("A"),cfSliced.getColumn(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("a"))).value());
+  assertEquals(ByteBufferUtil.bytes("B"),cfSliced.getColumn(CellNames.compositeDense(superColName,ByteBufferUtil.bytes("b"))).value());
 }

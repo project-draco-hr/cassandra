@@ -1,11 +1,11 @@
 {
   Keyspace keyspace=Keyspace.open("Keyspace1");
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("StandardComposite2");
-  CompositeType ct=CompositeType.getInstance(BytesType.instance,IntegerType.instance);
+  CellNameType type=cfs.getComparator();
   ByteBuffer key=ByteBufferUtil.bytes("k");
   for (int i=0; i < 10; i++) {
     RowMutation rm=new RowMutation("Keyspace1",key);
-    ByteBuffer colName=ct.builder().add(ByteBufferUtil.bytes("a" + (9 - i))).add(ByteBufferUtil.bytes(i)).build();
+    CellName colName=type.makeCellName(ByteBufferUtil.bytes("a" + (9 - i)),ByteBufferUtil.bytes(i));
     rm.add("StandardComposite2",colName,ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
     rm.apply();
   }
@@ -13,7 +13,7 @@
   key=ByteBufferUtil.bytes("k2");
   for (int i=0; i < 10; i++) {
     RowMutation rm=new RowMutation("Keyspace1",key);
-    ByteBuffer colName=ct.builder().add(ByteBufferUtil.bytes("b" + (9 - i))).add(ByteBufferUtil.bytes(i)).build();
+    CellName colName=type.makeCellName(ByteBufferUtil.bytes("b" + (9 - i)),ByteBufferUtil.bytes(i));
     rm.add("StandardComposite2",colName,ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
     rm.apply();
   }

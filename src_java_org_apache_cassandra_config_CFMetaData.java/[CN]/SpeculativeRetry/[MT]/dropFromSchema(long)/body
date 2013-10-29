@@ -2,9 +2,8 @@
   RowMutation rm=new RowMutation(Keyspace.SYSTEM_KS,SystemKeyspace.getSchemaKSKey(ksName));
   ColumnFamily cf=rm.addOrGet(SchemaColumnFamiliesCf);
   int ldt=(int)(System.currentTimeMillis() / 1000);
-  ColumnNameBuilder builder=SchemaColumnFamiliesCf.getColumnNameBuilder();
-  builder.add(ByteBufferUtil.bytes(cfName));
-  cf.addAtom(new RangeTombstone(builder.build(),builder.buildAsEndOfRange(),timestamp,ldt));
+  Composite prefix=SchemaColumnFamiliesCf.comparator.make(cfName);
+  cf.addAtom(new RangeTombstone(prefix,prefix.end(),timestamp,ldt));
   for (  ColumnDefinition cd : allColumns())   cd.deleteFromSchema(rm,timestamp);
   for (  TriggerDefinition td : triggers.values())   td.deleteFromSchema(rm,cfName,timestamp);
   return rm;
