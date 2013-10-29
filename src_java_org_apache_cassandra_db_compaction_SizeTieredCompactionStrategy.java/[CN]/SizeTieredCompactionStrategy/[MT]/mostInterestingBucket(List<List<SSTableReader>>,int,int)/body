@@ -1,11 +1,10 @@
 {
-  List<List<SSTableReader>> prunedBuckets=new ArrayList<List<SSTableReader>>();
+  final List<Pair<List<SSTableReader>,Double>> prunedBucketsAndHotness=new ArrayList<>(buckets.size());
   for (  List<SSTableReader> bucket : buckets) {
-    if (bucket.size() < minThreshold)     continue;
-    Collections.sort(bucket,generationComparator);
-    List<SSTableReader> prunedBucket=bucket.subList(0,Math.min(bucket.size(),maxThreshold));
-    prunedBuckets.add(prunedBucket);
+    Pair<List<SSTableReader>,Double> bucketAndHotness=trimToThresholdWithHotness(bucket,maxThreshold);
+    if (bucketAndHotness != null && bucketAndHotness.left.size() >= minThreshold)     prunedBucketsAndHotness.add(bucketAndHotness);
   }
-  if (prunedBuckets.isEmpty())   return Collections.emptyList();
-  return Collections.min(prunedBuckets,avgBucketSizeComparator);
+  if (prunedBucketsAndHotness.isEmpty())   return Collections.emptyList();
+  Pair<List<SSTableReader>,Double> hottest=Collections.max(prunedBucketsAndHotness,bucketsByHotnessComparator);
+  return hottest.left;
 }

@@ -1,0 +1,30 @@
+{
+  String ksname="Keyspace1";
+  String cfname="Standard1";
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  int numSSTables=3;
+  for (int r=0; r < numSSTables; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    RowMutation rm=new RowMutation(ksname,key.key);
+    rm.add(cfname,ByteBufferUtil.bytes("column"),value,0);
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  cfs.forceBlockingFlush();
+  List<SSTableReader> sstrs=new ArrayList<>(cfs.getSSTables());
+  Pair<List<SSTableReader>,Double> bucket;
+  List<SSTableReader> interestingBucket=mostInterestingBucket(Collections.singletonList(sstrs.subList(0,2)),4,32);
+  assertTrue("nothing should be returned when all buckets are below the min threshold",interestingBucket.isEmpty());
+  sstrs.get(0).readMeter=new RestorableMeter(100.0,100.0);
+  sstrs.get(1).readMeter=new RestorableMeter(200.0,200.0);
+  sstrs.get(2).readMeter=new RestorableMeter(300.0,300.0);
+  long estimatedKeys=sstrs.get(0).estimatedKeys();
+  bucket=trimToThresholdWithHotness(sstrs,2);
+  assertEquals("one bucket should have been dropped",2,bucket.left.size());
+  double expectedBucketHotness=(200.0 + 300.0) / estimatedKeys;
+  assertEquals(String.format("bucket hotness (%f) should be close to %f",bucket.right,expectedBucketHotness),expectedBucketHotness,bucket.right,1.0);
+}

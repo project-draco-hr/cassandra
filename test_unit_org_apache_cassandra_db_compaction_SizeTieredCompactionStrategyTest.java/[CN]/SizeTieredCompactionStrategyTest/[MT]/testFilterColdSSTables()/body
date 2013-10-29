@@ -1,0 +1,44 @@
+{
+  String ksname="Keyspace1";
+  String cfname="Standard1";
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  int numSSTables=10;
+  for (int r=0; r < numSSTables; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    RowMutation rm=new RowMutation(ksname,key.key);
+    rm.add(cfname,ByteBufferUtil.bytes("column"),value,0);
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  cfs.forceBlockingFlush();
+  List<SSTableReader> filtered;
+  List<SSTableReader> sstrs=new ArrayList<>(cfs.getSSTables());
+  for (  SSTableReader sstr : sstrs)   sstr.readMeter=null;
+  filtered=filterColdSSTables(sstrs,0.05);
+  assertEquals("when there are no read meters, no sstables should be filtered",sstrs.size(),filtered.size());
+  for (  SSTableReader sstr : sstrs)   sstr.readMeter=new RestorableMeter(0.0,0.0);
+  filtered=filterColdSSTables(sstrs,0.05);
+  assertEquals("when all read meters are zero, no sstables should be filtered",sstrs.size(),filtered.size());
+  sstrs.get(0).readMeter=new RestorableMeter(1000.0,1000.0);
+  filtered=filterColdSSTables(sstrs,0.05);
+  assertEquals("there should only be one hot sstable",1,filtered.size());
+  assertEquals(1000.0,filtered.get(0).readMeter.twoHourRate(),0.5);
+  for (  SSTableReader sstr : sstrs)   sstr.readMeter=new RestorableMeter(0.0,0.0);
+  sstrs.get(0).readMeter=new RestorableMeter(97.0,97.0);
+  sstrs.get(1).readMeter=new RestorableMeter(1.0,1.0);
+  sstrs.get(2).readMeter=new RestorableMeter(1.0,1.0);
+  sstrs.get(3).readMeter=new RestorableMeter(1.0,1.0);
+  filtered=filterColdSSTables(sstrs,0.025);
+  assertEquals(2,filtered.size());
+  assertEquals(98.0,filtered.get(0).readMeter.twoHourRate() + filtered.get(1).readMeter.twoHourRate(),0.5);
+  for (  SSTableReader sstr : sstrs)   sstr.readMeter=new RestorableMeter(1.0,1.0);
+  filtered=filterColdSSTables(sstrs,0.0);
+  assertEquals(sstrs.size(),filtered.size());
+  for (  SSTableReader sstr : sstrs)   sstr.readMeter=new RestorableMeter(1.0,1.0);
+  filtered=filterColdSSTables(sstrs,1.0);
+  assertTrue(filtered.isEmpty());
+}
