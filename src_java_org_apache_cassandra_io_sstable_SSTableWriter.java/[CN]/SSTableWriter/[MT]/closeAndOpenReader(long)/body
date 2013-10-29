@@ -1,10 +1,7 @@
 {
-  iwriter.close();
-  dataFile.close();
-  SSTableMetadata sstableMetadata=sstableMetadataCollector.finalizeMetadata(partitioner.getClass().getCanonicalName(),metadata.getBloomFilterFpChance());
-  writeMetadata(descriptor,sstableMetadata,sstableMetadataCollector.ancestors);
-  SSTable.appendTOC(descriptor,components);
-  final Descriptor newdesc=rename(descriptor,components);
+  Pair<Descriptor,SSTableMetadata> p=close();
+  Descriptor newdesc=p.left;
+  SSTableMetadata sstableMetadata=p.right;
   SegmentedFile ifile=iwriter.builder.complete(newdesc.filenameFor(SSTable.COMPONENT_INDEX));
   SegmentedFile dfile=dbuilder.complete(newdesc.filenameFor(SSTable.COMPONENT_DATA));
   SSTableReader sstable=SSTableReader.internalOpen(newdesc,components,metadata,partitioner,ifile,dfile,iwriter.summary.build(partitioner),iwriter.bf,maxDataAge,sstableMetadata);
