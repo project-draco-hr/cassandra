@@ -1,5 +1,9 @@
 {
-  ByteBuffer key=ByteBufferUtil.readWithLength(input);
+  int keyLength=input.readInt();
+  if (keyLength > FBUtilities.MAX_UNSIGNED_SHORT) {
+    throw new IOException(String.format("Corrupted key cache. Key length of %d is longer than maximum of %d",keyLength,FBUtilities.MAX_UNSIGNED_SHORT));
+  }
+  ByteBuffer key=ByteBufferUtil.read(input,keyLength);
   int generation=input.readInt();
   SSTableReader reader=findDesc(generation,cfs.getSSTables());
   input.readBoolean();
