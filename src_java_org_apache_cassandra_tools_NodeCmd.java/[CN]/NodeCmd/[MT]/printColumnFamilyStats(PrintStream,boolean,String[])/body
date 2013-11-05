@@ -27,17 +27,18 @@
     double keyspaceTotalWriteTime=0.0f;
     outs.println("Keyspace: " + keyspaceName);
     for (    ColumnFamilyStoreMBean cfstore : columnFamilies) {
-      long writeCount=cfstore.getWriteCount();
-      long readCount=cfstore.getReadCount();
+      String cfName=cfstore.getColumnFamilyName();
+      long writeCount=((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"WriteLatency")).getCount();
+      long readCount=((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadLatency")).getCount();
       if (readCount > 0) {
         keyspaceReadCount+=readCount;
-        keyspaceTotalReadTime+=cfstore.getTotalReadLatencyMicros();
+        keyspaceTotalReadTime+=(long)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadTotalLatency");
       }
       if (writeCount > 0) {
         keyspaceWriteCount+=writeCount;
-        keyspaceTotalWriteTime+=cfstore.getTotalWriteLatencyMicros();
+        keyspaceTotalWriteTime+=(long)probe.getColumnFamilyMetric(keyspaceName,cfName,"WriteTotalLatency");
       }
-      keyspacePendingTasks+=cfstore.getPendingTasks();
+      keyspacePendingTasks+=(int)probe.getColumnFamilyMetric(keyspaceName,cfName,"PendingTasks");
     }
     double keyspaceReadLatency=keyspaceReadCount > 0 ? keyspaceTotalReadTime / keyspaceReadCount / 1000 : Double.NaN;
     double keyspaceWriteLatency=keyspaceWriteCount > 0 ? keyspaceTotalWriteTime / keyspaceWriteCount / 1000 : Double.NaN;
@@ -50,7 +51,7 @@
       String cfName=cfstore.getColumnFamilyName();
       if (cfName.contains("."))       outs.println("\t\tTable (index): " + cfName);
  else       outs.println("\t\tTable: " + cfName);
-      outs.println("\t\tSSTable count: " + cfstore.getLiveSSTableCount());
+      outs.println("\t\tSSTable count: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveSSTableCount"));
       int[] leveledSStables=cfstore.getSSTableCountPerLevel();
       if (leveledSStables != null) {
         outs.print("\t\tSSTables in each level: [");
@@ -64,26 +65,29 @@
  else           outs.println("]");
         }
       }
-      outs.println("\t\tSpace used (live), bytes: " + cfstore.getLiveDiskSpaceUsed());
-      outs.println("\t\tSpace used (total), bytes: " + cfstore.getTotalDiskSpaceUsed());
-      outs.println("\t\tSSTable Compression Ratio: " + cfstore.getCompressionRatio());
-      outs.println("\t\tNumber of keys (estimate): " + cfstore.estimateKeys());
-      outs.println("\t\tMemtable cell count: " + cfstore.getMemtableColumnsCount());
-      outs.println("\t\tMemtable data size, bytes: " + cfstore.getMemtableDataSize());
-      outs.println("\t\tMemtable switch count: " + cfstore.getMemtableSwitchCount());
-      outs.println("\t\tLocal read count: " + cfstore.getReadCount());
-      outs.printf("\t\tLocal read latency: %01.3f ms%n",cfstore.getRecentReadLatencyMicros() / 1000);
-      outs.println("\t\tLocal write count: " + cfstore.getWriteCount());
-      outs.printf("\t\tLocal write latency: %01.3f ms%n",cfstore.getRecentWriteLatencyMicros() / 1000);
-      outs.println("\t\tPending tasks: " + cfstore.getPendingTasks());
-      outs.println("\t\tBloom filter false positives: " + cfstore.getBloomFilterFalsePositives());
-      outs.println("\t\tBloom filter false ratio: " + String.format("%01.5f",cfstore.getRecentBloomFilterFalseRatio()));
-      outs.println("\t\tBloom filter space used, bytes: " + cfstore.getBloomFilterDiskSpaceUsed());
-      outs.println("\t\tCompacted partition minimum bytes: " + cfstore.getMinRowSize());
-      outs.println("\t\tCompacted partition maximum bytes: " + cfstore.getMaxRowSize());
-      outs.println("\t\tCompacted partition mean bytes: " + cfstore.getMeanRowSize());
-      outs.println("\t\tAverage live cells per slice (last five minutes): " + cfstore.getLiveCellsPerSlice());
-      outs.println("\t\tAverage tombstones per slice (last five minutes): " + cfstore.getTombstonesPerSlice());
+      outs.println("\t\tSpace used (live), bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveDiskSpaceUsed"));
+      outs.println("\t\tSpace used (total), bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"TotalDiskSpaceUsed"));
+      outs.println("\t\tSSTable Compression Ratio: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"CompressionRatio"));
+      outs.println("\t\tMemtable cell count: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableColumnsCount"));
+      outs.println("\t\tMemtable data size, bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableDataSize"));
+      outs.println("\t\tMemtable switch count: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableSwitchCount"));
+      outs.println("\t\tLocal read count: " + ((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadLatency")).getCount());
+      double localReadLatency=((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadLatency")).getMean() / 1000;
+      double localRLatency=localReadLatency > 0 ? localReadLatency : Double.NaN;
+      outs.printf("\t\tLocal read latency: %01.3f ms%n",localRLatency);
+      outs.println("\t\tLocal write count: " + ((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"WriteLatency")).getCount());
+      double localWriteLatency=((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"WriteLatency")).getMean() / 1000;
+      double localWLatency=localWriteLatency > 0 ? localWriteLatency : Double.NaN;
+      outs.printf("\t\tLocal write latency: %01.3f ms%n",localWLatency);
+      outs.println("\t\tPending tasks: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"PendingTasks"));
+      outs.println("\t\tBloom filter false positives: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterFalsePositives"));
+      outs.println("\t\tBloom filter false ratio: " + String.format("%01.5f",probe.getColumnFamilyMetric(keyspaceName,cfName,"RecentBloomFilterFalseRatio")));
+      outs.println("\t\tBloom filter space used, bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterDiskSpaceUsed"));
+      outs.println("\t\tCompacted partition minimum bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MinRowSize"));
+      outs.println("\t\tCompacted partition maximum bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MaxRowSize"));
+      outs.println("\t\tCompacted partition mean bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MeanRowSize"));
+      outs.println("\t\tAverage live cells per slice (last five minutes): " + ((JmxReporter.HistogramMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveScannedHistogram")).getMean());
+      outs.println("\t\tAverage tombstones per slice (last five minutes): " + ((JmxReporter.HistogramMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"TombstoneScannedHistogram")).getMean());
       outs.println("");
     }
     outs.println("----------------");
