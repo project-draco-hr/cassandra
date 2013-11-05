@@ -16,9 +16,20 @@
   partitioner=ConfigHelper.getInputPartitioner(context.getConfiguration());
   try {
     if (client != null)     return;
-    String location=getLocation();
-    int port=ConfigHelper.getInputRpcPort(conf);
-    client=CqlPagingInputFormat.createAuthenticatedClient(location,port,conf);
+    String[] locations=split.getLocations();
+    Exception lastException=null;
+    for (    String location : locations) {
+      int port=ConfigHelper.getInputRpcPort(conf);
+      try {
+        client=CqlPagingInputFormat.createAuthenticatedClient(location,port,conf);
+        break;
+      }
+ catch (      Exception e) {
+        lastException=e;
+        logger.warn("Failed to create authenticated client to {}:{}",location,port);
+      }
+    }
+    if (client == null && lastException != null)     throw lastException;
     retrieveKeys();
     client.set_keyspace(keyspace);
   }
