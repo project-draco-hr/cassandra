@@ -1,8 +1,12 @@
 {
   OutboundTcpConnectionPool cp=connectionManagers.get(to);
   if (cp == null) {
-    connectionManagers.putIfAbsent(to,new OutboundTcpConnectionPool(to));
-    cp=connectionManagers.get(to);
+    cp=new OutboundTcpConnectionPool(to);
+    OutboundTcpConnectionPool existingPool=connectionManagers.putIfAbsent(to,cp);
+    if (existingPool != null) {
+      cp.close();
+      cp=existingPool;
+    }
   }
   return cp;
 }
