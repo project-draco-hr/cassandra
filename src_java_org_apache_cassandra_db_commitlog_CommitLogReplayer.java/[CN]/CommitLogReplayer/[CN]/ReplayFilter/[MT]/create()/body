@@ -1,0 +1,13 @@
+{
+  if (System.getProperty("cassandra.replayList") == null)   return new AlwaysReplayFilter();
+  Multimap<String,String> toReplay=HashMultimap.create();
+  for (  String rawPair : System.getProperty("cassandra.replayList").split(",")) {
+    String[] pair=rawPair.trim().split(".");
+    if (pair.length != 2)     throw new IllegalArgumentException("Each table to be replayed must be fully qualified with keyspace name, e.g., 'system.peers'");
+    Keyspace ks=Schema.instance.getKeyspaceInstance(pair[0]);
+    if (ks == null)     throw new IllegalArgumentException("Unknown keyspace " + pair[0]);
+    if (ks.getColumnFamilyStore(pair[1]) == null)     throw new IllegalArgumentException(String.format("Unknown table %s.%s",pair[0],pair[1]));
+    toReplay.put(pair[0],pair[1]);
+  }
+  return new CustomReplayFilter(toReplay);
+}
