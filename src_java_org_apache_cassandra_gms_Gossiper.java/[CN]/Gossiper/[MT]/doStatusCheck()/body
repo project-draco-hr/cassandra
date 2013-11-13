@@ -1,6 +1,15 @@
 {
+  if (logger.isTraceEnabled())   logger.trace("Performing status check ...");
   long now=System.currentTimeMillis();
   long nowNano=System.nanoTime();
+  long pending=((JMXEnabledThreadPoolExecutor)StageManager.getStage(Stage.GOSSIP)).getPendingTasks();
+  if (pending > 0 && lastProcessedMessageAt < now - 1000) {
+    Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
+    if (lastProcessedMessageAt < now - 1000) {
+      logger.warn("Gossip stage has {} pending tasks; skipping status check (no nodes will be marked down)",pending);
+      return;
+    }
+  }
   Set<InetAddress> eps=endpointStateMap.keySet();
   for (  InetAddress endpoint : eps) {
     if (endpoint.equals(FBUtilities.getBroadcastAddress()))     continue;
