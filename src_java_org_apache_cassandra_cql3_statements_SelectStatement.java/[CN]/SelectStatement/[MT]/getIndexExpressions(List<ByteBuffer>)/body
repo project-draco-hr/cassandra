@@ -20,19 +20,26 @@ if (restriction.isSlice()) {
 Restriction.Slice slice=(Restriction.Slice)restriction;
 for (Bound b : Bound.values()) {
 if (slice.hasBound(b)) {
-ByteBuffer value=slice.bound(b,variables);
-if (value == null) throw new InvalidRequestException(String.format("Unsupported null value for indexed column %s",def.name));
-if (value.remaining() > 0xFFFF) throw new InvalidRequestException("Index expression values may not be larger than 64K");
+ByteBuffer value=validateIndexedValue(def,slice.bound(b,variables));
 expressions.add(new IndexExpression(def.name.bytes,slice.getIndexOperator(b),value));
 }
+}
+}
+ else if (restriction.isContains()) {
+Restriction.Contains contains=(Restriction.Contains)restriction;
+for (ByteBuffer value : contains.values(variables)) {
+validateIndexedValue(def,value);
+expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.CONTAINS,value));
+}
+for (ByteBuffer key : contains.keys(variables)) {
+validateIndexedValue(def,key);
+expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.CONTAINS_KEY,key));
 }
 }
  else {
 List<ByteBuffer> values=restriction.values(variables);
 if (values.size() != 1) throw new InvalidRequestException("IN restrictions are not supported on indexed columns");
-ByteBuffer value=values.get(0);
-if (value == null) throw new InvalidRequestException(String.format("Unsupported null value for indexed column %s",def.name));
-if (value.remaining() > 0xFFFF) throw new InvalidRequestException("Index expression values may not be larger than 64K");
+ByteBuffer value=validateIndexedValue(def,values.get(0));
 expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.EQ,value));
 }
 }

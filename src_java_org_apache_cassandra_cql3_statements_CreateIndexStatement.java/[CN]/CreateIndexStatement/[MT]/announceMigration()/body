@@ -3,9 +3,17 @@
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).clone();
   ColumnDefinition cd=cfm.getColumnDefinition(columnName);
   if (cd.getIndexType() != null && ifNotExists)   return;
-  if (isCustom)   cd.setIndexType(IndexType.CUSTOM,Collections.singletonMap(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,indexClass));
- else   if (cfm.hasCompositeComparator())   cd.setIndexType(IndexType.COMPOSITES,Collections.<String,String>emptyMap());
- else   cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+  if (isCustom) {
+    cd.setIndexType(IndexType.CUSTOM,Collections.singletonMap(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,indexClass));
+  }
+ else   if (cfm.hasCompositeComparator()) {
+    Map<String,String> options=Collections.emptyMap();
+    if (cd.type.isCollection())     options=ImmutableMap.of("index_values","");
+    cd.setIndexType(IndexType.COMPOSITES,options);
+  }
+ else {
+    cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+  }
   cd.setIndexName(indexName);
   cfm.addDefaultIndexNames();
   MigrationManager.announceColumnFamilyUpdate(cfm,false);
