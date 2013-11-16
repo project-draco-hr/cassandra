@@ -5,13 +5,16 @@
   deletingTask=new SSTableDeletingTask(this);
   if (Keyspace.SYSTEM_KS.equals(desc.ksname) || Config.isClientMode()) {
     readMeter=null;
+    readMeterSyncFuture=null;
     return;
   }
   readMeter=SystemKeyspace.getSSTableReadMeter(desc.ksname,desc.cfname,desc.generation);
-  syncExecutor.scheduleAtFixedRate(new Runnable(){
+  readMeterSyncFuture=syncExecutor.scheduleAtFixedRate(new Runnable(){
     public void run(){
-      meterSyncThrottle.acquire();
-      SystemKeyspace.persistSSTableReadMeter(desc.ksname,desc.cfname,desc.generation,readMeter);
+      if (!isCompacted.get()) {
+        meterSyncThrottle.acquire();
+        SystemKeyspace.persistSSTableReadMeter(desc.ksname,desc.cfname,desc.generation,readMeter);
+      }
     }
   }
 ,1,5,TimeUnit.MINUTES);
