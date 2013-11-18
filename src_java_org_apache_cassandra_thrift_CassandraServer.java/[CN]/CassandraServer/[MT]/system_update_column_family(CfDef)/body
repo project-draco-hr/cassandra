@@ -4,6 +4,7 @@
     if (cf_def.keyspace == null || cf_def.name == null)     throw new InvalidRequestException("Keyspace and CF name must be set.");
     CFMetaData oldCfm=Schema.instance.getCFMetaData(cf_def.keyspace,cf_def.name);
     if (oldCfm == null)     throw new InvalidRequestException("Could not find column family definition to modify.");
+    if (!oldCfm.isThriftIncompatible())     throw new InvalidRequestException("Cannot modify CQL3 table " + oldCfm.cfName + " as it may break the schema. You should use cqlsh to modify CQL3 tables instead.");
     state().hasColumnFamilyAccess(cf_def.keyspace,cf_def.name,Permission.ALTER);
     CFMetaData.applyImplicitDefaults(cf_def);
     CFMetaData cfm=CFMetaData.fromThrift(cf_def);
