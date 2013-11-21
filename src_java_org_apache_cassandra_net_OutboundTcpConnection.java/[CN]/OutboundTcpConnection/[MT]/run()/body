@@ -1,25 +1,33 @@
 {
-  while (true) {
-    QueuedMessage qm=active.poll();
-    if (qm == null) {
+  final List<QueuedMessage> drainedMessages=new ArrayList<>(128);
+  outer:   while (true) {
+    if (backlog.drainTo(drainedMessages,drainedMessages.size()) == 0) {
       try {
-        qm=backlog.take();
+        drainedMessages.add(backlog.take());
       }
  catch (      InterruptedException e) {
         throw new AssertionError(e);
       }
-      BlockingQueue<QueuedMessage> tmp=backlog;
-      backlog=active;
-      active=tmp;
     }
-    MessageOut<?> m=qm.message;
-    if (m == CLOSE_SENTINEL) {
-      disconnect();
-      if (isStopped)       break;
-      continue;
+    currentMsgBufferCount=drainedMessages.size();
+    int count=drainedMessages.size();
+    for (    QueuedMessage qm : drainedMessages) {
+      try {
+        MessageOut<?> m=qm.message;
+        if (m == CLOSE_SENTINEL) {
+          disconnect();
+          if (isStopped)           break outer;
+          continue;
+        }
+        if (qm.timestamp < System.currentTimeMillis() - m.getTimeout())         dropped.incrementAndGet();
+ else         if (socket != null || connect())         writeConnected(qm,count == 1 && backlog.size() == 0);
+ else         backlog.clear();
+      }
+ catch (      Exception e) {
+        logger.error("error processing a message intended for {}",poolReference.endPoint(),e);
+      }
+      currentMsgBufferCount=--count;
     }
-    if (qm.timestamp < System.currentTimeMillis() - m.getTimeout())     dropped.incrementAndGet();
- else     if (socket != null || connect())     writeConnected(qm);
- else     active.clear();
+    drainedMessages.clear();
   }
 }
