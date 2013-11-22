@@ -1,0 +1,24 @@
+{
+  Collections.sort(toDownsample,new Comparator<ResampleEntry>(){
+    public int compare(    ResampleEntry o1,    ResampleEntry o2){
+      return Double.compare(o1.sstable.getIndexSummaryOffHeapSize() - o1.newSpaceUsed,o2.sstable.getIndexSummaryOffHeapSize() - o2.newSpaceUsed);
+    }
+  }
+);
+  int noDownsampleCutoff=0;
+  List<SSTableReader> willNotDownsample=new ArrayList<>();
+  while (remainingSpace > 0 && noDownsampleCutoff < toDownsample.size()) {
+    ResampleEntry entry=toDownsample.get(noDownsampleCutoff);
+    long extraSpaceRequired=entry.sstable.getIndexSummaryOffHeapSize() - entry.newSpaceUsed;
+    if (extraSpaceRequired <= remainingSpace) {
+      logger.trace("Using leftover space to keep {} at the current sampling level ({})",entry.sstable,entry.sstable.getIndexSummarySamplingLevel());
+      willNotDownsample.add(entry.sstable);
+      remainingSpace-=extraSpaceRequired;
+    }
+ else {
+      break;
+    }
+    noDownsampleCutoff++;
+  }
+  return Pair.create(willNotDownsample,toDownsample.subList(noDownsampleCutoff,toDownsample.size()));
+}

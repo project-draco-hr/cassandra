@@ -1,0 +1,22 @@
+{
+  int oldInterval=this.resizeIntervalInMinutes;
+  this.resizeIntervalInMinutes=resizeIntervalInMinutes;
+  long initialDelay;
+  if (future != null) {
+    initialDelay=oldInterval < 0 ? resizeIntervalInMinutes : Math.max(0,resizeIntervalInMinutes - (oldInterval - future.getDelay(TimeUnit.MINUTES)));
+    future.cancel(false);
+  }
+ else {
+    initialDelay=resizeIntervalInMinutes;
+  }
+  if (this.resizeIntervalInMinutes < 0) {
+    future=null;
+    return;
+  }
+  future=executor.scheduleWithFixedDelay(new WrappedRunnable(){
+    protected void runMayThrow() throws Exception {
+      redistributeSummaries();
+    }
+  }
+,initialDelay,resizeIntervalInMinutes,TimeUnit.MINUTES);
+}

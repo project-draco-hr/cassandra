@@ -1,0 +1,43 @@
+{
+  IndexSummaryManager manager=IndexSummaryManager.instance;
+  assertNotNull(manager.getResizeIntervalInMinutes());
+  manager.setResizeIntervalInMinutes(-1);
+  assertNull(manager.getTimeToNextResize(TimeUnit.MINUTES));
+  manager.setResizeIntervalInMinutes(10);
+  assertEquals(10,manager.getResizeIntervalInMinutes());
+  assertEquals(10,manager.getTimeToNextResize(TimeUnit.MINUTES),1);
+  manager.setResizeIntervalInMinutes(15);
+  assertEquals(15,manager.getResizeIntervalInMinutes());
+  assertEquals(15,manager.getTimeToNextResize(TimeUnit.MINUTES),2);
+  assertTrue(manager.getMemoryPoolCapacityInMB() >= 0);
+  manager.setMemoryPoolCapacityInMB(10);
+  assertEquals(10,manager.getMemoryPoolCapacityInMB());
+  String ksname="Keyspace1";
+  String cfname="StandardLowIndexInterval";
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  int numSSTables=2;
+  int numRows=10;
+  for (int sstable=0; sstable < numSSTables; sstable++) {
+    for (int row=0; row < numRows; row++) {
+      DecoratedKey key=Util.dk(String.valueOf(row));
+      RowMutation rm=new RowMutation(ksname,key.key);
+      rm.add(cfname,ByteBufferUtil.bytes("column"),value,0);
+      rm.apply();
+    }
+    cfs.forceBlockingFlush();
+  }
+  assertEquals(1.0,manager.getAverageSamplingRatio(),0.001);
+  Map<String,Double> samplingRatios=manager.getSamplingRatios();
+  for (  Map.Entry<String,Double> entry : samplingRatios.entrySet())   assertEquals(1.0,entry.getValue(),0.001);
+  manager.setMemoryPoolCapacityInMB(0);
+  manager.redistributeSummaries();
+  assertTrue(manager.getAverageSamplingRatio() < 0.99);
+  samplingRatios=manager.getSamplingRatios();
+  for (  Map.Entry<String,Double> entry : samplingRatios.entrySet()) {
+    if (entry.getKey().contains("StandardLowIndexInterval"))     assertTrue(entry.getValue() < 0.9);
+  }
+}

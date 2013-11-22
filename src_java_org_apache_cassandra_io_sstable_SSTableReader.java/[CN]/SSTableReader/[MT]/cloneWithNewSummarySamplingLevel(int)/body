@@ -1,0 +1,22 @@
+{
+  IndexSummary newSummary;
+  if (samplingLevel < indexSummary.getSamplingLevel()) {
+    newSummary=IndexSummaryBuilder.downsample(indexSummary,samplingLevel,partitioner);
+    SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
+    SegmentedFile.Builder dbuilder=compression ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+    saveSummary(ibuilder,dbuilder,newSummary);
+  }
+ else   if (samplingLevel > indexSummary.getSamplingLevel()) {
+    newSummary=upsampleSummary(samplingLevel);
+  }
+ else {
+    throw new AssertionError("Attempted to clone SSTableReader with the same index summary sampling level");
+  }
+  markReplaced();
+  if (readMeterSyncFuture != null)   readMeterSyncFuture.cancel(false);
+  SSTableReader replacement=new SSTableReader(descriptor,components,metadata,partitioner,ifile,dfile,newSummary,bf,maxDataAge,sstableMetadata);
+  replacement.readMeter=this.readMeter;
+  replacement.first=this.first;
+  replacement.last=this.last;
+  return replacement;
+}

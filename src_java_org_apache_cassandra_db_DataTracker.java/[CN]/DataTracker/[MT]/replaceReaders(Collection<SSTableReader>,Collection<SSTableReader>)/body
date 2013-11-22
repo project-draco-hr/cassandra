@@ -1,0 +1,15 @@
+{
+  long sizeIncrease=0;
+  for (  SSTableReader sstable : oldSSTables)   sizeIncrease-=sstable.bytesOnDisk();
+  for (  SSTableReader sstable : newSSTables)   sizeIncrease+=sstable.bytesOnDisk();
+  View currentView, newView;
+  do {
+    currentView=view.get();
+    newView=currentView.replace(oldSSTables,newSSTables);
+  }
+ while (!view.compareAndSet(currentView,newView));
+  StorageMetrics.load.inc(sizeIncrease);
+  cfstore.metric.liveDiskSpaceUsed.inc(sizeIncrease);
+  for (  SSTableReader sstable : newSSTables)   sstable.setTrackedBy(this);
+  for (  SSTableReader sstable : oldSSTables)   sstable.releaseReference();
+}

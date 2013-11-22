@@ -1,0 +1,20 @@
+{
+  File summariesFile=new File(descriptor.filenameFor(Component.SUMMARY));
+  if (summariesFile.exists())   FileUtils.deleteWithConfirm(summariesFile);
+  DataOutputStream oStream=null;
+  try {
+    oStream=new DataOutputStream(new FileOutputStream(summariesFile));
+    IndexSummary.serializer.serialize(summary,oStream,descriptor.version.hasSamplingLevel);
+    ByteBufferUtil.writeWithLength(first.key,oStream);
+    ByteBufferUtil.writeWithLength(last.key,oStream);
+    ibuilder.serializeBounds(oStream);
+    dbuilder.serializeBounds(oStream);
+  }
+ catch (  IOException e) {
+    logger.debug("Cannot save SSTable Summary: ",e);
+    if (summariesFile.exists())     FileUtils.deleteWithConfirm(summariesFile);
+  }
+ finally {
+    FileUtils.closeQuietly(oStream);
+  }
+}

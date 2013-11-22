@@ -1,10 +1,20 @@
 {
   if (keysWritten % indexInterval == 0) {
-    byte[] key=ByteBufferUtil.getArray(decoratedKey.key);
-    keys.add(key);
-    offheapSize+=key.length;
-    positions.add(indexPosition);
-    offheapSize+=TypeSizes.NATIVE.sizeof(indexPosition);
+    indexIntervalMatches++;
+    boolean shouldSkip=false;
+    for (    int start : startPoints) {
+      if ((indexIntervalMatches - start) % BASE_SAMPLING_LEVEL == 0) {
+        shouldSkip=true;
+        break;
+      }
+    }
+    if (!shouldSkip) {
+      byte[] key=ByteBufferUtil.getArray(decoratedKey.key);
+      keys.add(key);
+      offheapSize+=key.length;
+      positions.add(indexPosition);
+      offheapSize+=TypeSizes.NATIVE.sizeof(indexPosition);
+    }
   }
   keysWritten++;
   return this;
