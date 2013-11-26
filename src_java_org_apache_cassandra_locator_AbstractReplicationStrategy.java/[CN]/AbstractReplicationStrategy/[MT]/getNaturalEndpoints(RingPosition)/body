@@ -3,10 +3,14 @@
   Token keyToken=TokenMetadata.firstToken(tokenMetadata.sortedTokens(),searchToken);
   ArrayList<InetAddress> endpoints=getCachedEndpoints(keyToken);
   if (endpoints == null) {
-    TokenMetadata tokenMetadataClone=tokenMetadata.cloneOnlyTokenMap();
-    keyToken=TokenMetadata.firstToken(tokenMetadataClone.sortedTokens(),searchToken);
+    if (tokenMetadataClone == null) {
+synchronized (this) {
+        if (tokenMetadataClone == null)         tokenMetadataClone=tokenMetadata.cloneOnlyTokenMap();
+      }
+      keyToken=TokenMetadata.firstToken(tokenMetadataClone.sortedTokens(),searchToken);
+    }
     endpoints=new ArrayList<InetAddress>(calculateNaturalEndpoints(searchToken,tokenMetadataClone));
-    cacheEndpoint(keyToken,endpoints);
+    cachedEndpoints.put(keyToken,endpoints);
   }
   return new ArrayList<InetAddress>(endpoints);
 }
