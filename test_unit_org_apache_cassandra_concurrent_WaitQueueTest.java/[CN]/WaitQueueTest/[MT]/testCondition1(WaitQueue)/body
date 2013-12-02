@@ -1,0 +1,28 @@
+{
+  final AtomicBoolean cond1=new AtomicBoolean(false);
+  final AtomicBoolean fail=new AtomicBoolean(false);
+  Thread t1=new Thread(new Runnable(){
+    @Override public void run(){
+      try {
+        Thread.sleep(200);
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+      WaitQueue.Signal wait=queue.register();
+      if (!cond1.get()) {
+        System.err.println("Condition should have already been met");
+        fail.set(true);
+      }
+    }
+  }
+);
+  t1.start();
+  Thread.sleep(50);
+  cond1.set(true);
+  Thread.sleep(300);
+  queue.signal();
+  t1.join(300);
+  assertFalse(queue.getClass().getName(),t1.isAlive());
+  assertFalse(fail.get());
+}

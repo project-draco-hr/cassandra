@@ -1,0 +1,15 @@
+{
+  if (isCapExceeded() || CommitLogDescriptor.fromFileName(file.getName()).getMessagingVersion() != MessagingService.current_version) {
+    logger.debug("(Unopened) segment {} is no longer needed and will be deleted now",file);
+    FileUtils.deleteWithConfirm(file);
+    return;
+  }
+  logger.debug("Recycling {}",file);
+  size.addAndGet(DatabaseDescriptor.getCommitLogSegmentSize());
+  segmentManagementTasks.add(new Callable<CommitLogSegment>(){
+    public CommitLogSegment call(){
+      return new CommitLogSegment(file.getPath());
+    }
+  }
+);
+}

@@ -1,0 +1,26 @@
+{
+  while (true) {
+    Iterator<CommitLogSegment> iter=availableSegments.iterator();
+    if (iter.hasNext()) {
+      CommitLogSegment next;
+      if (!allocatingFromUpdater.compareAndSet(this,old,next=iter.next()))       return;
+      iter.remove();
+      activeSegments.add(next);
+      if (availableSegments.isEmpty()) {
+        wakeManager();
+      }
+      if (old != null) {
+        CommitLog.instance.archiver.maybeArchive(old.getPath(),old.getName());
+      }
+      if (old != null)       old.discardUnusedTail();
+      CommitLog.instance.requestExtraSync();
+      return;
+    }
+    WaitQueue.Signal signal=hasAvailableSegments.register();
+    wakeManager();
+    if (availableSegments.isEmpty()) {
+      if (allocatingFrom != old)       return;
+      signal.awaitUninterruptibly();
+    }
+  }
+}

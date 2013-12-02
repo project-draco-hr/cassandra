@@ -1,11 +1,42 @@
 {
-  if (needsSync) {
-    try {
-      buffer.force();
+  try {
+    if (allocatePosition.get() <= lastSyncedOffset + SYNC_MARKER_SIZE)     return;
+    int nextMarker;
+    nextMarker=allocate(SYNC_MARKER_SIZE);
+    boolean close=false;
+    if (nextMarker < 0) {
+      discardUnusedTail();
+      close=true;
+      if (discardedTailFrom < buffer.capacity() - SYNC_MARKER_SIZE) {
+        nextMarker=discardedTailFrom;
+      }
+ else {
+        nextMarker=buffer.capacity();
+      }
     }
- catch (    Exception e) {
-      throw new FSWriteError(e,getPath());
+    AppendLock curAppendLock=appendLock.get();
+    appendLock.set(new AppendLock());
+    curAppendLock.expireAndWaitForCompletion();
+    int offset=lastSyncedOffset;
+    final PureJavaCrc32 crc=new PureJavaCrc32();
+    crc.update((int)(id & 0xFFFFFFFFL));
+    crc.update((int)(id >>> 32));
+    crc.update(offset);
+    buffer.putInt(offset,nextMarker);
+    buffer.putLong(offset + 4,crc.getValue());
+    if (nextMarker < buffer.capacity()) {
+      buffer.putInt(nextMarker,0);
+      buffer.putLong(nextMarker + 4,0);
     }
-    needsSync=false;
+    buffer.force();
+    syncComplete.signalAll();
+    if (close) {
+      close();
+      nextMarker=buffer.capacity();
+    }
+    lastSyncedOffset=nextMarker;
+  }
+ catch (  Exception e) {
+    throw new FSWriteError(e,getPath());
   }
 }

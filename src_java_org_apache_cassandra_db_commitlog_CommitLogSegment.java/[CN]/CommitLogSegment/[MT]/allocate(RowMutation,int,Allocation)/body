@@ -1,0 +1,20 @@
+{
+  final AppendLock appendLock=lockForAppend();
+  try {
+    int position=allocate(size);
+    if (position < 0) {
+      appendLock.unlock();
+      return false;
+    }
+    alloc.buffer=(ByteBuffer)buffer.duplicate().position(position).limit(position + size);
+    alloc.position=position;
+    alloc.segment=this;
+    alloc.appendLock=appendLock;
+    markDirty(rowMutation,position);
+    return true;
+  }
+ catch (  Throwable t) {
+    appendLock.unlock();
+    throw t;
+  }
+}

@@ -1,0 +1,25 @@
+{
+  Thread[] ts=new Thread[4];
+  for (int i=0; i < ts.length; i++)   ts[i]=new Thread(new Runnable(){
+    @Override public void run(){
+      WaitQueue.Signal wait=queue.register();
+      try {
+        wait.await();
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+  }
+);
+  for (int i=0; i < ts.length; i++)   ts[i].start();
+  Thread.sleep(100);
+  queue.signal();
+  queue.signal();
+  queue.signal();
+  queue.signal();
+  for (int i=0; i < ts.length; i++) {
+    ts[i].join(100);
+    assertFalse(queue.getClass().getName(),ts[i].isAlive());
+  }
+}

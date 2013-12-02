@@ -1,0 +1,30 @@
+{
+  int NUM_THREADS=Runtime.getRuntime().availableProcessors();
+  if (args.length >= 1) {
+    NUM_THREADS=Integer.parseInt(args[0]);
+    System.out.println("Setting num threads to: " + NUM_THREADS);
+  }
+  ExecutorService executor=new JMXEnabledThreadPoolExecutor(NUM_THREADS,NUM_THREADS,60,TimeUnit.SECONDS,new ArrayBlockingQueue<Runnable>(10 * NUM_THREADS),new NamedThreadFactory(""),"");
+  ScheduledExecutorService scheduled=Executors.newScheduledThreadPool(1);
+  org.apache.cassandra.SchemaLoader.loadSchema();
+  final AtomicLong count=new AtomicLong();
+  final long start=System.currentTimeMillis();
+  System.out.println(String.format(format,"seconds","max_mb","allocated_mb","free_mb","diffrence","count"));
+  scheduled.scheduleAtFixedRate(new Runnable(){
+    long lastUpdate=0;
+    public void run(){
+      Runtime runtime=Runtime.getRuntime();
+      long maxMemory=mb(runtime.maxMemory());
+      long allocatedMemory=mb(runtime.totalMemory());
+      long freeMemory=mb(runtime.freeMemory());
+      long temp=count.get();
+      System.out.println(String.format(format,((System.currentTimeMillis() - start) / 1000),maxMemory,allocatedMemory,freeMemory,(temp - lastUpdate),lastUpdate));
+      lastUpdate=temp;
+    }
+  }
+,1,1,TimeUnit.SECONDS);
+  while (true) {
+    executor.execute(new CommitlogExecutor());
+    count.incrementAndGet();
+  }
+}

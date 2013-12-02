@@ -1,3 +1,12 @@
 {
-  return cfLastWrite.keySet();
+  removeCleanFromDirty();
+  if (cfClean.isEmpty() || cfDirty.isEmpty())   return cfDirty.keySet();
+  List<UUID> r=new ArrayList<>(cfDirty.size());
+  for (  Map.Entry<UUID,AtomicInteger> dirty : cfDirty.entrySet()) {
+    UUID cfId=dirty.getKey();
+    AtomicInteger dirtyPos=dirty.getValue();
+    AtomicInteger cleanPos=cfClean.get(cfId);
+    if (cleanPos == null || cleanPos.intValue() < dirtyPos.intValue())     r.add(dirty.getKey());
+  }
+  return r;
 }

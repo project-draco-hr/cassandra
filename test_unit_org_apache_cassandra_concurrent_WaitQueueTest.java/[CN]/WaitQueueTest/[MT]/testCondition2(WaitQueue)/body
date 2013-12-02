@@ -1,0 +1,32 @@
+{
+  final AtomicBoolean condition=new AtomicBoolean(false);
+  final AtomicBoolean fail=new AtomicBoolean(false);
+  Thread t=new Thread(new Runnable(){
+    @Override public void run(){
+      WaitQueue.Signal wait=queue.register();
+      if (condition.get()) {
+        System.err.println("");
+        fail.set(true);
+      }
+      try {
+        Thread.sleep(200);
+        wait.await();
+      }
+ catch (      InterruptedException e) {
+        e.printStackTrace();
+      }
+      if (!condition.get()) {
+        System.err.println("Woke up when condition not met");
+        fail.set(true);
+      }
+    }
+  }
+);
+  t.start();
+  Thread.sleep(50);
+  condition.set(true);
+  queue.signal();
+  t.join(300);
+  assertFalse(queue.getClass().getName(),t.isAlive());
+  assertFalse(fail.get());
+}

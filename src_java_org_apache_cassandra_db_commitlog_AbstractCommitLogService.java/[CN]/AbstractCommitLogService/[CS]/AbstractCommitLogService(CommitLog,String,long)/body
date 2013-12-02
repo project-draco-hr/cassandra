@@ -1,0 +1,40 @@
+{
+  if (pollIntervalMillis < 1)   throw new IllegalArgumentException(String.format("Commit log flush interval must be positive: %dms",pollIntervalMillis));
+  Runnable runnable=new Runnable(){
+    public void run(){
+      boolean run=true;
+      while (run) {
+        try {
+          run=!shutdown;
+          long syncStarted=System.currentTimeMillis();
+          commitLog.sync(shutdown);
+          lastSyncedAt=syncStarted;
+          syncComplete.signalAll();
+          long sleep=syncStarted + pollIntervalMillis - System.currentTimeMillis();
+          if (sleep < 0) {
+            logger.warn(String.format("Commit log sync took longer than sync interval (by %.2fs), indicating it is a bottleneck",sleep / -1000d));
+            continue;
+          }
+          try {
+            haveWork.tryAcquire(sleep,TimeUnit.MILLISECONDS);
+          }
+ catch (          InterruptedException e) {
+            throw new AssertionError();
+          }
+        }
+ catch (        Throwable t) {
+          logger.error("Commit log sync failed",t);
+          try {
+            haveWork.tryAcquire(pollIntervalMillis,TimeUnit.MILLISECONDS);
+          }
+ catch (          InterruptedException e) {
+            throw new AssertionError();
+          }
+        }
+      }
+    }
+  }
+;
+  thread=new Thread(runnable,name);
+  thread.start();
+}

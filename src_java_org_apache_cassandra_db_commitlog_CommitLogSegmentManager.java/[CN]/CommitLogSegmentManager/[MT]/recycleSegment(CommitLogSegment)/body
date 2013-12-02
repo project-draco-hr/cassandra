@@ -1,0 +1,18 @@
+{
+  activeSegments.remove(segment);
+  if (!CommitLog.instance.archiver.maybeWaitForArchiving(segment.getName())) {
+    discardSegment(segment,false);
+    return;
+  }
+  if (isCapExceeded()) {
+    discardSegment(segment,true);
+    return;
+  }
+  logger.debug("Recycling {}",segment);
+  segmentManagementTasks.add(new Callable<CommitLogSegment>(){
+    public CommitLogSegment call(){
+      return segment.recycle();
+    }
+  }
+);
+}

@@ -16,11 +16,9 @@
     if (isCreating)     logger.debug("Creating new commit log segment {}",logFile.getPath());
     logFileAccessor.setLength(DatabaseDescriptor.getCommitLogSegmentSize());
     buffer=logFileAccessor.getChannel().map(FileChannel.MapMode.READ_WRITE,0,DatabaseDescriptor.getCommitLogSegmentSize());
-    checksum=new PureJavaCrc32();
-    bufferStream=new DataOutputStream(new ChecksummedOutputStream(new ByteBufferOutputStream(buffer),checksum));
-    buffer.putInt(CommitLog.END_OF_SEGMENT_MARKER);
-    buffer.position(0);
-    needsSync=true;
+    buffer.putInt(0,0);
+    buffer.putLong(4,0);
+    allocatePosition.set(SYNC_MARKER_SIZE);
   }
  catch (  IOException e) {
     throw new FSWriteError(e,logFile);

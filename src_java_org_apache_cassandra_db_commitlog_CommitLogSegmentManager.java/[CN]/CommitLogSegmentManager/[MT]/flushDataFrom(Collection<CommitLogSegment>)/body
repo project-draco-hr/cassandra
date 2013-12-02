@@ -1,0 +1,30 @@
+{
+  final Map<UUID,Future<?>> flushes=new LinkedHashMap<>();
+  for (  CommitLogSegment segment : segments) {
+    for (    UUID dirtyCFId : segment.getDirtyCFIDs()) {
+      Pair<String,String> pair=Schema.instance.getCF(dirtyCFId);
+      if (pair == null) {
+        logger.debug("Marking clean CF {} that doesn't exist anymore",dirtyCFId);
+        segment.markClean(dirtyCFId,segment.getContext());
+      }
+ else       if (!flushes.containsKey(dirtyCFId)) {
+        String keyspace=pair.left;
+        final ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(dirtyCFId);
+        Runnable runnable=new Runnable(){
+          public void run(){
+            cfs.forceFlush();
+          }
+        }
+;
+        flushes.put(dirtyCFId,StorageService.optionalTasks.submit(runnable));
+      }
+    }
+  }
+  return new FutureTask<>(new Callable<Object>(){
+    public Object call(){
+      FBUtilities.waitOnFutures(flushes.values());
+      return null;
+    }
+  }
+);
+}
