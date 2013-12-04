@@ -1,0 +1,16 @@
+{
+  if (!(receiver.type instanceof CollectionType))   throw new InvalidRequestException(String.format("Invalid operation (%s) for non collection column %s",toString(receiver),receiver));
+switch (((CollectionType)receiver.type).kind) {
+case LIST:
+    Term idx=selector.prepare(keyspace,Lists.indexSpecOf(receiver));
+  Term lval=value.prepare(keyspace,Lists.valueSpecOf(receiver));
+return new Lists.SetterByIndex(receiver,idx,lval);
+case SET:
+throw new InvalidRequestException(String.format("Invalid operation (%s) for set column %s",toString(receiver),receiver));
+case MAP:
+Term key=selector.prepare(keyspace,Maps.keySpecOf(receiver));
+Term mval=value.prepare(keyspace,Maps.valueSpecOf(receiver));
+return new Maps.SetterByKey(receiver,key,mval);
+}
+throw new AssertionError();
+}

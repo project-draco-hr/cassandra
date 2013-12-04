@@ -1,17 +1,3 @@
 {
-  Mutation mutation=new Mutation(Keyspace.SYSTEM_KS,newType.name);
-  ColumnFamily cf=mutation.addOrGet(SystemKeyspace.SCHEMA_USER_TYPES_CF);
-  CFMetaData cfm=CFMetaData.SchemaUserTypesCf;
-  UpdateParameters params=new UpdateParameters(cfm,Collections.<ByteBuffer>emptyList(),timestamp,0,null);
-  Composite prefix=cfm.comparator.builder().build();
-  List<ByteBuffer> columnTypes=new ArrayList<>(newType.types.size());
-  for (  AbstractType<?> type : newType.types)   columnTypes.add(ByteBufferUtil.bytes(type.toString()));
-  try {
-    new Lists.Setter(cfm.getColumnDefinition(COLUMN_NAMES),new Lists.Value(newType.columnNames)).execute(newType.name,cf,prefix,params);
-    new Lists.Setter(cfm.getColumnDefinition(COLUMN_TYPES),new Lists.Value(columnTypes)).execute(newType.name,cf,prefix,params);
-  }
- catch (  RequestValidationException e) {
-    throw new AssertionError();
-  }
-  return mutation;
+  return toSchema(new Mutation(Keyspace.SYSTEM_KS,SystemKeyspace.getSchemaKSKey(newType.keyspace)),newType,timestamp);
 }

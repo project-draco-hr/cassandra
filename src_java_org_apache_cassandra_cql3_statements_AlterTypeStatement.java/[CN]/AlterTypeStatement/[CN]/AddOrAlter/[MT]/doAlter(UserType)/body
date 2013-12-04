@@ -2,9 +2,9 @@
   int idx=getIdxOfField(toUpdate,fieldName);
   if (idx < 0)   throw new InvalidRequestException(String.format("Unknown field %s in type %s",fieldName,name));
   AbstractType<?> previous=toUpdate.types.get(idx);
-  if (!type.getType().isCompatibleWith(previous))   throw new InvalidRequestException(String.format("Type %s is incompatible with previous type %s of field %s in user type %s",type,previous.asCQL3Type(),fieldName,name));
+  if (!type.prepare(keyspace()).getType().isCompatibleWith(previous))   throw new InvalidRequestException(String.format("Type %s is incompatible with previous type %s of field %s in user type %s",type,previous.asCQL3Type(),fieldName,name));
   List<ByteBuffer> newNames=new ArrayList<>(toUpdate.columnNames);
   List<AbstractType<?>> newTypes=new ArrayList<>(toUpdate.types);
-  newTypes.set(idx,type.getType());
-  return new UserType(toUpdate.name,newNames,newTypes);
+  newTypes.set(idx,type.prepare(keyspace()).getType());
+  return new UserType(toUpdate.keyspace,toUpdate.name,newNames,newTypes);
 }

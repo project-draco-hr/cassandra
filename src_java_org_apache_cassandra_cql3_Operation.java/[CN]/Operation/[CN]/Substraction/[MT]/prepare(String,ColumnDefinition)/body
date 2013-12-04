@@ -1,0 +1,16 @@
+{
+  Term v=value.prepare(keyspace,receiver);
+  if (!(receiver.type instanceof CollectionType)) {
+    if (!(receiver.type instanceof CounterColumnType))     throw new InvalidRequestException(String.format("Invalid operation (%s) for non counter column %s",toString(receiver),receiver));
+    return new Constants.Substracter(receiver,v);
+  }
+switch (((CollectionType)receiver.type).kind) {
+case LIST:
+    return new Lists.Discarder(receiver,v);
+case SET:
+  return new Sets.Discarder(receiver,v);
+case MAP:
+throw new InvalidRequestException(String.format("Invalid operation (%s) for map column %s",toString(receiver),receiver));
+}
+throw new AssertionError();
+}

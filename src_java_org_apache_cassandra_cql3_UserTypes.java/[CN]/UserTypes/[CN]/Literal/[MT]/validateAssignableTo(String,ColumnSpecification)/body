@@ -1,0 +1,11 @@
+{
+  if (!(receiver.type instanceof UserType))   throw new InvalidRequestException(String.format("Invalid user type literal for %s of type %s",receiver,receiver.type.asCQL3Type()));
+  UserType ut=(UserType)receiver.type;
+  for (int i=0; i < ut.types.size(); i++) {
+    ColumnIdentifier field=new ColumnIdentifier(ut.columnNames.get(i),UTF8Type.instance);
+    Term.Raw value=entries.get(field);
+    if (value == null)     throw new InvalidRequestException(String.format("Invalid user type literal for %s: missing field %s",receiver,field));
+    ColumnSpecification fieldSpec=fieldSpecOf(receiver,i);
+    if (!value.isAssignableTo(keyspace,fieldSpec))     throw new InvalidRequestException(String.format("Invalid user type literal for %s: field %s is not of type %s",receiver,field,fieldSpec.type.asCQL3Type()));
+  }
+}
