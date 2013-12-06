@@ -1,0 +1,17 @@
+{
+  if (!source.deletionInfo().hasRanges())   return Iterators.<RangeTombstone>emptyIterator();
+  return new AbstractIterator<RangeTombstone>(){
+    private final Iterator<CellName> names=columns.iterator();
+    private RangeTombstone lastFindRange;
+    protected RangeTombstone computeNext(){
+      while (names.hasNext()) {
+        CellName next=names.next();
+        if (lastFindRange != null && lastFindRange.includes(source.getComparator(),next))         return lastFindRange;
+        lastFindRange=source.deletionInfo().rangeCovering(next);
+        if (lastFindRange != null)         return lastFindRange;
+      }
+      return endOfData();
+    }
+  }
+;
+}
