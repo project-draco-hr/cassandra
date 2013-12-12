@@ -1,0 +1,32 @@
+{
+  String keyspace="cql_keyspace";
+  String table="table1";
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  cfs.disableAutoCompaction();
+  processInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",keyspace,table,1,"foo",1));
+  cfs.forceBlockingFlush();
+  UntypedResultSet result=processInternal(String.format("SELECT * FROM %s.%s WHERE k = %d",keyspace,table,1));
+  assertEquals(1,result.size());
+  processInternal(String.format("DELETE FROM %s.%s WHERE k = %d",keyspace,table,1));
+  cfs.forceBlockingFlush();
+  assertEquals(2,cfs.getSSTables().size());
+  result=processInternal(String.format("SELECT * FROM %s.%s WHERE k = %d",keyspace,table,1));
+  assertEquals(0,result.size());
+  Future future=CompactionManager.instance.submitMaximal(cfs,(int)(System.currentTimeMillis() / 1000) - 10000);
+  future.get();
+  assertEquals(1,cfs.getSSTables().size());
+  result=processInternal(String.format("SELECT * FROM %s.%s WHERE k = %d",keyspace,table,1));
+  assertEquals(0,result.size());
+  processInternal(String.format("INSERT INTO %s.%s (k, v1, v2) VALUES (%d, '%s', %d)",keyspace,table,1,"foo",1));
+  cfs.forceBlockingFlush();
+  assertEquals(2,cfs.getSSTables().size());
+  result=processInternal(String.format("SELECT * FROM %s.%s WHERE k = %d",keyspace,table,1));
+  assertEquals(1,result.size());
+  processInternal(String.format("DELETE FROM %s.%s WHERE k = %d",keyspace,table,1));
+  cfs.forceBlockingFlush();
+  future=CompactionManager.instance.submitMaximal(cfs,(int)(System.currentTimeMillis() / 1000) + 10000);
+  future.get();
+  assertEquals(0,cfs.getSSTables().size());
+  result=processInternal(String.format("SELECT * FROM %s.%s WHERE k = %d",keyspace,table,1));
+  assertEquals(0,result.size());
+}

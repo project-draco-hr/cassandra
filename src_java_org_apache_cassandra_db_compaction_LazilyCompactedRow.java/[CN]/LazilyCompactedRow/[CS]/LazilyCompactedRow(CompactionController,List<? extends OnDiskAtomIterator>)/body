@@ -1,2 +1,17 @@
 {
+  super(rows.get(0).getKey());
+  this.rows=rows;
+  this.controller=controller;
+  indexer=controller.cfs.indexManager.updaterFor(key);
+  deletionInfo=DeletionInfo.live();
+  maxTombstoneTimestamp=Long.MIN_VALUE;
+  for (  OnDiskAtomIterator row : rows) {
+    DeletionInfo delInfo=row.getColumnFamily().deletionInfo();
+    maxTombstoneTimestamp=Math.max(maxTombstoneTimestamp,delInfo.maxTimestamp());
+    deletionInfo=deletionInfo.add(delInfo);
+  }
+  this.shouldPurge=controller.shouldPurge(key,Long.MAX_VALUE);
+  emptyColumnFamily=ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
+  emptyColumnFamily.setDeletionInfo(deletionInfo.copy());
+  if (shouldPurge)   emptyColumnFamily.purgeTombstones(controller.gcBefore);
 }
