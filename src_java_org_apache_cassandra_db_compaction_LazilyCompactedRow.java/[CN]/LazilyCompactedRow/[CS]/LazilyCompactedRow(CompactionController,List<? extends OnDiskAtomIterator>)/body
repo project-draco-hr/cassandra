@@ -1,2 +1,14 @@
 {
+  super(rows.get(0).getKey());
+  this.rows=rows;
+  this.controller=controller;
+  indexer=controller.cfs.indexManager.updaterFor(key);
+  deletionInfo=DeletionInfo.live();
+  for (  OnDiskAtomIterator row : rows)   deletionInfo=deletionInfo.add(row.getColumnFamily().deletionInfo());
+  maxPurgeableTimestamp=controller.maxPurgeableTimestamp(key);
+  emptyColumnFamily=ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
+  emptyColumnFamily.setDeletionInfo(deletionInfo.copy());
+  if (deletionInfo.maxTimestamp() < maxPurgeableTimestamp)   emptyColumnFamily.purgeTombstones(controller.gcBefore);
+  reducer=new Reducer();
+  merger=Iterators.filter(MergeIterator.get(rows,emptyColumnFamily.getComparator().onDiskAtomComparator,reducer),Predicates.notNull());
 }

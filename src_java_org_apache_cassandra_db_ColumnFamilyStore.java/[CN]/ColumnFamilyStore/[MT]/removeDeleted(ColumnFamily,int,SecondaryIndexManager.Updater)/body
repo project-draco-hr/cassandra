@@ -2,15 +2,5 @@
   if (cf == null) {
     return null;
   }
-  Iterator<Column> iter=cf.iterator();
-  DeletionInfo.InOrderTester tester=cf.inOrderDeletionTester();
-  boolean hasDroppedColumns=!cf.metadata.getDroppedColumns().isEmpty();
-  while (iter.hasNext()) {
-    Column c=iter.next();
-    if (c.getLocalDeletionTime() < gcBefore || tester.isDeleted(c) || (hasDroppedColumns && isDroppedColumn(c,cf.metadata()))) {
-      iter.remove();
-      indexer.remove(c);
-    }
-  }
-  return removeDeletedCF(cf,gcBefore);
+  return removeDeletedCF(removeDeletedColumnsOnly(cf,gcBefore,indexer),gcBefore);
 }
