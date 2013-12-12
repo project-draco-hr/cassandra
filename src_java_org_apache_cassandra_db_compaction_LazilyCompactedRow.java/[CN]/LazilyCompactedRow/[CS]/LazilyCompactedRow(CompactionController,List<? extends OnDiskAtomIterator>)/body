@@ -3,12 +3,15 @@
   this.rows=rows;
   this.controller=controller;
   indexer=controller.cfs.indexManager.updaterFor(key);
-  deletionInfo=DeletionInfo.live();
-  for (  OnDiskAtomIterator row : rows)   deletionInfo=deletionInfo.add(row.getColumnFamily().deletionInfo());
+  maxRowTombstone=DeletionTime.LIVE;
+  for (  OnDiskAtomIterator row : rows) {
+    DeletionTime rowTombstone=row.getColumnFamily().deletionInfo().getTopLevelDeletion();
+    if (maxRowTombstone.compareTo(rowTombstone) < 0)     maxRowTombstone=rowTombstone;
+  }
   maxPurgeableTimestamp=controller.maxPurgeableTimestamp(key);
-  emptyColumnFamily=ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
-  emptyColumnFamily.setDeletionInfo(deletionInfo.copy());
-  if (deletionInfo.maxTimestamp() < maxPurgeableTimestamp)   emptyColumnFamily.purgeTombstones(controller.gcBefore);
+  emptyColumnFamily=EmptyColumns.factory.create(controller.cfs.metadata);
+  emptyColumnFamily.delete(maxRowTombstone);
+  if (maxRowTombstone.markedForDeleteAt < maxPurgeableTimestamp)   emptyColumnFamily.purgeTombstones(controller.gcBefore);
   reducer=new Reducer();
   merger=Iterators.filter(MergeIterator.get(rows,emptyColumnFamily.getComparator().onDiskAtomComparator,reducer),Predicates.notNull());
 }

@@ -11,13 +11,14 @@
   }
  else {
     boolean shouldPurge=container.getSortedColumns().iterator().next().timestamp() < maxPurgeableTimestamp;
-    container.setDeletionInfo(deletionInfo);
-    ColumnFamily purged=removeDeletedAndOldShards(key,shouldPurge,controller,container);
-    if (purged == null || !purged.iterator().hasNext()) {
+    container.delete(maxRowTombstone);
+    removeDeletedAndOldShards(key,shouldPurge,controller,container);
+    Iterator<Column> iter=container.iterator();
+    if (!iter.hasNext()) {
       container.clear();
       return null;
     }
-    Column reduced=purged.iterator().next();
+    Column reduced=iter.next();
     container.clear();
     if (indexBuilder.tombstoneTracker().isDeleted(reduced)) {
       indexer.remove(reduced);
