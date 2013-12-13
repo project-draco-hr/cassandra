@@ -1,5 +1,5 @@
 {
-  String query="SELECT column_name, " + "       validator, " + "       index_type "+ "FROM system.schema_columns "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s'";
+  String query="SELECT column_name, " + "       validator, " + "       index_type, "+ "       type "+ "FROM system.schema_columns "+ "WHERE keyspace_name = '%s' "+ "  AND columnfamily_name = '%s'";
   CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(String.format(query,keyspace,column_family)),Compression.NONE,ConsistencyLevel.ONE);
   List<CqlRow> rows=result.rows;
   List<ColumnDef> columnDefs=new ArrayList<ColumnDef>();
@@ -30,6 +30,8 @@
   while (iterator.hasNext()) {
     CqlRow row=iterator.next();
     ColumnDef cDef=new ColumnDef();
+    String type=ByteBufferUtil.string(row.getColumns().get(3).value);
+    if (!type.equals("regular"))     continue;
     cDef.setName(ByteBufferUtil.clone(row.getColumns().get(0).value));
     cDef.validation_class=ByteBufferUtil.string(row.getColumns().get(1).value);
     ByteBuffer indexType=row.getColumns().get(2).value;
