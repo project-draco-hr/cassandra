@@ -1,0 +1,30 @@
+{
+  EstimatedHistogram rowSizes=EstimatedHistogram.serializer.deserialize(in);
+  EstimatedHistogram columnCounts=EstimatedHistogram.serializer.deserialize(in);
+  ReplayPosition replayPosition=ReplayPosition.serializer.deserialize(in);
+  long minTimestamp=in.readLong();
+  long maxTimestamp=in.readLong();
+  int maxLocalDeletionTime=version.tracksMaxLocalDeletionTime ? in.readInt() : Integer.MAX_VALUE;
+  double compressionRatio=in.readDouble();
+  StreamingHistogram tombstoneHistogram=StreamingHistogram.serializer.deserialize(in);
+  int sstableLevel=in.readInt();
+  List<ByteBuffer> minColumnNames;
+  List<ByteBuffer> maxColumnNames;
+  if (version.tracksMaxMinColumnNames) {
+    int colCount=in.readInt();
+    minColumnNames=new ArrayList<>(colCount);
+    for (int i=0; i < colCount; i++) {
+      minColumnNames.add(ByteBufferUtil.readWithShortLength(in));
+    }
+    colCount=in.readInt();
+    maxColumnNames=new ArrayList<>(colCount);
+    for (int i=0; i < colCount; i++) {
+      maxColumnNames.add(ByteBufferUtil.readWithShortLength(in));
+    }
+  }
+ else {
+    minColumnNames=Collections.emptyList();
+    maxColumnNames=Collections.emptyList();
+  }
+  return new StatsMetadata(rowSizes,columnCounts,replayPosition,minTimestamp,maxTimestamp,maxLocalDeletionTime,compressionRatio,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames);
+}

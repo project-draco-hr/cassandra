@@ -1,0 +1,27 @@
+{
+  EstimatedHistogram rowSizes=new EstimatedHistogram(new long[]{1L,2L},new long[]{3L,4L,5L});
+  EstimatedHistogram columnCounts=new EstimatedHistogram(new long[]{6L,7L},new long[]{8L,9L,10L});
+  ReplayPosition rp=new ReplayPosition(11L,12);
+  long minTimestamp=2162517136L;
+  long maxTimestamp=4162517136L;
+  MetadataCollector collector=new MetadataCollector(BytesType.instance).estimatedRowSize(rowSizes).estimatedColumnCount(columnCounts).replayPosition(rp);
+  collector.updateMinTimestamp(minTimestamp);
+  collector.updateMaxTimestamp(maxTimestamp);
+  Set<Integer> ancestors=Sets.newHashSet(1,2,3,4);
+  for (  int i : ancestors)   collector.addAncestor(i);
+  String partitioner=RandomPartitioner.class.getCanonicalName();
+  double bfFpChance=0.1;
+  Map<MetadataType,MetadataComponent> originalMetadata=collector.finalizeMetadata(partitioner,bfFpChance);
+  MetadataSerializer serializer=new MetadataSerializer();
+  File statsFile=File.createTempFile(Component.STATS.name,null);
+  try (DataOutputStream out=new DataOutputStream(new FileOutputStream(statsFile))){
+    serializer.serialize(originalMetadata,out);
+  }
+   Descriptor desc=new Descriptor(Descriptor.Version.CURRENT,statsFile.getParentFile(),"","",0,false);
+  try (RandomAccessReader in=RandomAccessReader.open(statsFile)){
+    Map<MetadataType,MetadataComponent> deserialized=serializer.deserialize(desc,in,EnumSet.allOf(MetadataType.class));
+    for (    MetadataType type : MetadataType.values()) {
+      assertEquals(originalMetadata.get(type),deserialized.get(type));
+    }
+  }
+ }

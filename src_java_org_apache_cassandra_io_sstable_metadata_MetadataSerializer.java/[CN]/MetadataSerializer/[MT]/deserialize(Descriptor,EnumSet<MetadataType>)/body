@@ -1,0 +1,16 @@
+{
+  Map<MetadataType,MetadataComponent> components;
+  logger.debug("Load metadata for {}",descriptor);
+  File statsFile=new File(descriptor.filenameFor(Component.STATS));
+  if (!statsFile.exists()) {
+    logger.debug("No sstable stats for {}",descriptor);
+    components=Maps.newHashMap();
+    components.put(MetadataType.STATS,MetadataCollector.defaultStatsMetadata());
+  }
+ else {
+    try (RandomAccessReader r=RandomAccessReader.open(statsFile)){
+      components=deserialize(descriptor,r,types);
+    }
+   }
+  return components;
+}
