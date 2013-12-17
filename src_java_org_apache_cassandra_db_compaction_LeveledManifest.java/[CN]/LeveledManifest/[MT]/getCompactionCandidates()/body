@@ -12,15 +12,18 @@
         List<Pair<SSTableReader,Long>> pairs=SizeTieredCompactionStrategy.createSSTableAndLengthPairs(AbstractCompactionStrategy.filterSuspectSSTables(candidates));
         List<List<SSTableReader>> buckets=SizeTieredCompactionStrategy.getBuckets(pairs,options.bucketHigh,options.bucketLow,options.minSSTableSize);
         List<SSTableReader> mostInteresting=SizeTieredCompactionStrategy.mostInterestingBucket(buckets,4,32);
-        if (!mostInteresting.isEmpty())         return Pair.create(mostInteresting,0);
+        if (!mostInteresting.isEmpty()) {
+          logger.debug("L0 is too far behind, performing size-tiering there first");
+          return new CompactionCandidate(mostInteresting,0,Long.MAX_VALUE);
+        }
       }
       Collection<SSTableReader> candidates=getCandidatesFor(i);
       if (logger.isDebugEnabled())       logger.debug("Compaction candidates for L{} are {}",i,toString(candidates));
-      if (!candidates.isEmpty())       return Pair.create(candidates,getNextLevel(candidates));
+      if (!candidates.isEmpty())       return new CompactionCandidate(candidates,getNextLevel(candidates),cfs.getCompactionStrategy().getMaxSSTableBytes());
     }
   }
   if (generations[0].isEmpty())   return null;
   Collection<SSTableReader> candidates=getCandidatesFor(0);
   if (candidates.isEmpty())   return null;
-  return Pair.create(candidates,getNextLevel(candidates));
+  return new CompactionCandidate(candidates,getNextLevel(candidates),cfs.getCompactionStrategy().getMaxSSTableBytes());
 }
