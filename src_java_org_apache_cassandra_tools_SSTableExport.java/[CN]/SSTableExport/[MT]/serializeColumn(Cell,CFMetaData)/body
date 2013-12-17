@@ -1,0 +1,27 @@
+{
+  CellNameType comparator=cfMetaData.comparator;
+  ArrayList<Object> serializedColumn=new ArrayList<Object>();
+  ByteBuffer value=ByteBufferUtil.clone(cell.value());
+  serializedColumn.add(comparator.getString(cell.name()));
+  if (cell instanceof DeletedCell) {
+    serializedColumn.add(ByteBufferUtil.bytesToHex(value));
+  }
+ else {
+    AbstractType<?> validator=cfMetaData.getValueValidator(cell.name());
+    serializedColumn.add(validator.getString(value));
+  }
+  serializedColumn.add(cell.timestamp());
+  if (cell instanceof DeletedCell) {
+    serializedColumn.add("d");
+  }
+ else   if (cell instanceof ExpiringCell) {
+    serializedColumn.add("e");
+    serializedColumn.add(((ExpiringCell)cell).getTimeToLive());
+    serializedColumn.add(cell.getLocalDeletionTime());
+  }
+ else   if (cell instanceof CounterCell) {
+    serializedColumn.add("c");
+    serializedColumn.add(((CounterCell)cell).timestampOfLastDelete());
+  }
+  return serializedColumn;
+}

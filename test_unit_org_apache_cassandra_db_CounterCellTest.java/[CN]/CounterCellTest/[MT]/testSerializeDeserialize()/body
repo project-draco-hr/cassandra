@@ -1,0 +1,25 @@
+{
+  Allocator allocator=HeapAllocator.instance;
+  CounterContext.ContextState state=CounterContext.ContextState.allocate(4,2,allocator);
+  state.writeElement(CounterId.fromInt(1),4L,4L);
+  state.writeElement(CounterId.fromInt(2),4L,4L,true);
+  state.writeElement(CounterId.fromInt(3),4L,4L);
+  state.writeElement(CounterId.fromInt(4),4L,4L,true);
+  CellNameType type=new SimpleDenseCellNameType(UTF8Type.instance);
+  CounterCell original=new CounterCell(Util.cellname("x"),state.context,1L);
+  byte[] serialized;
+  try (DataOutputBuffer bufOut=new DataOutputBuffer()){
+    type.columnSerializer().serialize(original,bufOut);
+    serialized=bufOut.getData();
+  }
+   ByteArrayInputStream bufIn=new ByteArrayInputStream(serialized,0,serialized.length);
+  CounterCell deserialized=(CounterCell)type.columnSerializer().deserialize(new DataInputStream(bufIn));
+  Assert.assertEquals(original,deserialized);
+  bufIn=new ByteArrayInputStream(serialized,0,serialized.length);
+  CounterCell deserializedOnRemote=(CounterCell)type.columnSerializer().deserialize(new DataInputStream(bufIn),ColumnSerializer.Flag.FROM_REMOTE);
+  Assert.assertEquals(deserializedOnRemote.name(),original.name());
+  Assert.assertEquals(deserializedOnRemote.total(),original.total());
+  Assert.assertEquals(deserializedOnRemote.value(),cc.clearAllDelta(original.value()));
+  Assert.assertEquals(deserializedOnRemote.timestamp(),deserialized.timestamp());
+  Assert.assertEquals(deserializedOnRemote.timestampOfLastDelete(),deserialized.timestampOfLastDelete());
+}

@@ -1,17 +1,17 @@
 {
-  Map<CellName,List<Column>> scMap=groupSuperColumns(scf);
+  Map<CellName,List<Cell>> scMap=groupSuperColumns(scf);
   DeletionInfo delInfo=scf.deletionInfo();
   long size=scType(scf.getComparator()).deletionInfoSerializer().serializedSize(new DeletionInfo(delInfo.getTopLevelDeletion()),version);
   CellNameType scType=scType(scf.getComparator());
   CellNameType subType=subType(scf.getComparator());
   ColumnSerializer colSer=subType.columnSerializer();
-  for (  Map.Entry<CellName,List<Column>> entry : scMap.entrySet()) {
+  for (  Map.Entry<CellName,List<Cell>> entry : scMap.entrySet()) {
     size+=scType.cellSerializer().serializedSize(entry.getKey(),typeSizes);
     DeletionTime delTime=delInfo.rangeCovering(entry.getKey());
     DeletionInfo scDelInfo=delTime == null ? DeletionInfo.live() : new DeletionInfo(delTime);
     size+=DeletionTime.serializer.serializedSize(scDelInfo.getTopLevelDeletion(),TypeSizes.NATIVE);
     size+=typeSizes.sizeof(entry.getValue().size());
-    for (    Column subColumn : entry.getValue())     size+=colSer.serializedSize(subColumn,typeSizes);
+    for (    Cell subCell : entry.getValue())     size+=colSer.serializedSize(subCell,typeSizes);
   }
   return size;
 }

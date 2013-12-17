@@ -1,0 +1,22 @@
+{
+  Holder current, modified;
+  long sizeDelta;
+  main_loop:   do {
+    sizeDelta=0;
+    current=ref.get();
+    DeletionInfo newDelInfo=current.deletionInfo.copy().add(cm.deletionInfo());
+    modified=new Holder(current.map.clone(),newDelInfo);
+    if (cm.deletionInfo().hasRanges()) {
+      for (      Cell currentCell : Iterables.concat(current.map.values(),cm)) {
+        if (cm.deletionInfo().isDeleted(currentCell))         indexer.remove(currentCell);
+      }
+    }
+    for (    Cell cell : cm) {
+      sizeDelta+=modified.addColumn(transformation.apply(cell),allocator,indexer);
+      if (ref.get() != current)       continue main_loop;
+    }
+  }
+ while (!ref.compareAndSet(current,modified));
+  indexer.updateRowLevelIndexes();
+  return sizeDelta;
+}

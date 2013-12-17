@@ -1,0 +1,16 @@
+{
+  CellName name=cell.name();
+  while (true) {
+    Cell oldCell=map.putIfAbsent(name,cell);
+    if (oldCell == null) {
+      indexer.insert(cell);
+      return cell.dataSize();
+    }
+    Cell reconciledCell=cell.reconcile(oldCell,allocator);
+    if (map.replace(name,oldCell,reconciledCell)) {
+      if (reconciledCell == cell)       indexer.update(oldCell,reconciledCell);
+ else       indexer.update(cell,reconciledCell);
+      return reconciledCell.dataSize() - oldCell.dataSize();
+    }
+  }
+}

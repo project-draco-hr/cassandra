@@ -1,0 +1,15 @@
+{
+  ArrayList<ColumnOrSuperColumn> thriftSuperColumns=new ArrayList<ColumnOrSuperColumn>(cells.size());
+  CounterSuperColumn current=null;
+  for (  Cell cell : cells) {
+    if (cell.isMarkedForDelete(now))     continue;
+    ByteBuffer scName=SuperColumns.scName(cell.name());
+    if (current == null || !scName.equals(current.bufferForName())) {
+      current=new CounterSuperColumn(scName,new ArrayList<CounterColumn>());
+      thriftSuperColumns.add(new ColumnOrSuperColumn().setCounter_super_column(current));
+    }
+    current.getColumns().add(thriftifySubCounter(cell).setName(SuperColumns.subName(cell.name())));
+  }
+  if (reverseOrder)   Collections.reverse(thriftSuperColumns);
+  return thriftSuperColumns;
+}

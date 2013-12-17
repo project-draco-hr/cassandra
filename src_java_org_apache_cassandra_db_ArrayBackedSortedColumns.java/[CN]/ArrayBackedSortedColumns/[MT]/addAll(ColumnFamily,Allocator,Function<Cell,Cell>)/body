@@ -1,0 +1,33 @@
+{
+  delete(cm.deletionInfo());
+  if (cm.getColumnCount() == 0)   return;
+  Cell[] copy=cells.toArray(new Cell[getColumnCount()]);
+  int idx=0;
+  Iterator<Cell> other=reversed ? cm.reverseIterator(ColumnSlice.ALL_COLUMNS_ARRAY) : cm.iterator();
+  Cell otherCell=other.next();
+  cells.clear();
+  while (idx < copy.length && otherCell != null) {
+    int c=internalComparator().compare(copy[idx].name(),otherCell.name());
+    if (c < 0) {
+      cells.add(copy[idx]);
+      idx++;
+    }
+ else     if (c > 0) {
+      cells.add(transformation.apply(otherCell));
+      otherCell=other.hasNext() ? other.next() : null;
+    }
+ else {
+      cells.add(copy[idx]);
+      resolveAgainst(getColumnCount() - 1,transformation.apply(otherCell),allocator);
+      idx++;
+      otherCell=other.hasNext() ? other.next() : null;
+    }
+  }
+  while (idx < copy.length) {
+    cells.add(copy[idx++]);
+  }
+  while (otherCell != null) {
+    cells.add(transformation.apply(otherCell));
+    otherCell=other.hasNext() ? other.next() : null;
+  }
+}
