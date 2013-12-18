@@ -1,11 +1,13 @@
 {
-  int remaining=pageSize;
   List<Row> result=new ArrayList<Row>();
-  while (!isExhausted() && remaining > 0) {
-    List<Row> page=pagers[current].fetchPage(remaining);
+  int remainingThisQuery=pageSize;
+  while (remainingThisQuery > 0 && !isExhausted()) {
+    List<Row> page=pagers[current].fetchPage(remainingThisQuery);
     if (page.isEmpty())     continue;
     Row row=page.get(0);
-    remaining-=pagers[current].columnCounter().countAll(row.cf).live();
+    int fetched=pagers[current].columnCounter().countAll(row.cf).live();
+    remaining-=fetched;
+    remainingThisQuery-=fetched;
     result.add(row);
   }
   return result;
