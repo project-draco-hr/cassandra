@@ -1,14 +1,14 @@
 {
-  logger.debug("Updating column {} definition for index {}",columnName,indexName);
+  logger.debug("Updating column {} definition for index {}",target.column,indexName);
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).clone();
-  ColumnDefinition cd=cfm.getColumnDefinition(columnName);
+  ColumnDefinition cd=cfm.getColumnDefinition(target.column);
   if (cd.getIndexType() != null && ifNotExists)   return;
   if (properties.isCustom) {
     cd.setIndexType(IndexType.CUSTOM,properties.getOptions());
   }
  else   if (cfm.comparator.isCompound()) {
     Map<String,String> options=Collections.emptyMap();
-    if (cd.type.isCollection())     options=ImmutableMap.of("index_values","");
+    if (cd.type.isCollection())     options=ImmutableMap.of(target.isCollectionKeys ? "index_keys" : "index_values","");
     cd.setIndexType(IndexType.COMPOSITES,options);
   }
  else {
