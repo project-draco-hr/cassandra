@@ -1,10 +1,10 @@
 {
-  RowMutation rm=new RowMutation(Keyspace.SYSTEM_KS,SystemKeyspace.getSchemaKSKey(ksName));
-  ColumnFamily cf=rm.addOrGet(SchemaColumnFamiliesCf);
+  Mutation mutation=new Mutation(Keyspace.SYSTEM_KS,SystemKeyspace.getSchemaKSKey(ksName));
+  ColumnFamily cf=mutation.addOrGet(SchemaColumnFamiliesCf);
   int ldt=(int)(System.currentTimeMillis() / 1000);
   Composite prefix=SchemaColumnFamiliesCf.comparator.make(cfName);
   cf.addAtom(new RangeTombstone(prefix,prefix.end(),timestamp,ldt));
-  for (  ColumnDefinition cd : allColumns())   cd.deleteFromSchema(rm,timestamp);
-  for (  TriggerDefinition td : triggers.values())   td.deleteFromSchema(rm,cfName,timestamp);
-  return rm;
+  for (  ColumnDefinition cd : allColumns())   cd.deleteFromSchema(mutation,timestamp);
+  for (  TriggerDefinition td : triggers.values())   td.deleteFromSchema(mutation,cfName,timestamp);
+  return mutation;
 }

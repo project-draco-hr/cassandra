@@ -29,9 +29,9 @@
       startColumn=hint.name();
       int version=Int32Type.instance.compose(hint.name().get(1));
       DataInputStream in=new DataInputStream(ByteBufferUtil.inputStream(hint.value()));
-      RowMutation rm;
+      Mutation mutation;
       try {
-        rm=RowMutation.serializer.deserialize(in,version);
+        mutation=Mutation.serializer.deserialize(in,version);
       }
  catch (      UnknownColumnFamilyException e) {
         logger.debug("Skipping delivery of hint for deleted columnfamily",e);
@@ -42,23 +42,23 @@ catch (      IOException e) {
         throw new AssertionError(e);
       }
       truncationTimesCache.clear();
-      for (      UUID cfId : ImmutableSet.copyOf((rm.getColumnFamilyIds()))) {
+      for (      UUID cfId : ImmutableSet.copyOf((mutation.getColumnFamilyIds()))) {
         Long truncatedAt=truncationTimesCache.get(cfId);
         if (truncatedAt == null) {
-          ColumnFamilyStore cfs=Keyspace.open(rm.getKeyspaceName()).getColumnFamilyStore(cfId);
+          ColumnFamilyStore cfs=Keyspace.open(mutation.getKeyspaceName()).getColumnFamilyStore(cfId);
           truncatedAt=cfs.getTruncationTime();
           truncationTimesCache.put(cfId,truncatedAt);
         }
         if (hint.maxTimestamp() < truncatedAt) {
           logger.debug("Skipping delivery of hint for truncated columnfamily {}",cfId);
-          rm=rm.without(cfId);
+          mutation=mutation.without(cfId);
         }
       }
-      if (rm.isEmpty()) {
+      if (mutation.isEmpty()) {
         deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
         continue;
       }
-      MessageOut<RowMutation> message=rm.createMessage();
+      MessageOut<Mutation> message=mutation.createMessage();
       rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
       Runnable callback=new Runnable(){
         public void run(){

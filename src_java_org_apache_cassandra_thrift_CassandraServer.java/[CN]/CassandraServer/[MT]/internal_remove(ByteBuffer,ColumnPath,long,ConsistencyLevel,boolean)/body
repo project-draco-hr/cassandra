@@ -6,11 +6,11 @@
   ThriftValidation.validateKey(metadata,key);
   ThriftValidation.validateColumnPathOrParent(metadata,column_path);
   if (isCommutativeOp)   ThriftConversion.fromThrift(consistency_level).validateCounterForWrite(metadata);
-  RowMutation rm=new RowMutation(keyspace,key);
-  if (column_path.super_column == null && column_path.column == null)   rm.delete(column_path.column_family,timestamp);
- else   if (column_path.super_column == null)   rm.delete(column_path.column_family,metadata.comparator.cellFromByteBuffer(column_path.column),timestamp);
- else   if (column_path.column == null)   rm.deleteRange(column_path.column_family,SuperColumns.startOf(column_path.super_column),SuperColumns.endOf(column_path.super_column),timestamp);
- else   rm.delete(column_path.column_family,metadata.comparator.makeCellName(column_path.super_column,column_path.column),timestamp);
-  if (isCommutativeOp)   doInsert(consistency_level,Arrays.asList(new CounterMutation(rm,ThriftConversion.fromThrift(consistency_level))));
- else   doInsert(consistency_level,Arrays.asList(rm));
+  org.apache.cassandra.db.Mutation mutation=new org.apache.cassandra.db.Mutation(keyspace,key);
+  if (column_path.super_column == null && column_path.column == null)   mutation.delete(column_path.column_family,timestamp);
+ else   if (column_path.super_column == null)   mutation.delete(column_path.column_family,metadata.comparator.cellFromByteBuffer(column_path.column),timestamp);
+ else   if (column_path.column == null)   mutation.deleteRange(column_path.column_family,SuperColumns.startOf(column_path.super_column),SuperColumns.endOf(column_path.super_column),timestamp);
+ else   mutation.delete(column_path.column_family,metadata.comparator.makeCellName(column_path.super_column,column_path.column),timestamp);
+  if (isCommutativeOp)   doInsert(consistency_level,Arrays.asList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))));
+ else   doInsert(consistency_level,Arrays.asList(mutation));
 }

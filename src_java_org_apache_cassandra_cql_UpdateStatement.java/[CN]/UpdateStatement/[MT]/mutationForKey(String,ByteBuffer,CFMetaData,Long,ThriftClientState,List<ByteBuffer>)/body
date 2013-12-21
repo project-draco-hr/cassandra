@@ -3,7 +3,7 @@
   CellNameType comparator=metadata.comparator;
   AbstractType<?> at=comparator.asAbstractType();
   boolean hasCounterColumn=false;
-  RowMutation rm=new RowMutation(keyspace,key);
+  Mutation mutation=new Mutation(keyspace,key);
   for (  Map.Entry<Term,Operation> column : getColumns().entrySet()) {
     CellName colName=comparator.cellFromByteBuffer(column.getKey().getByteBuffer(at,variables));
     Operation op=column.getValue();
@@ -11,7 +11,7 @@
       if (hasCounterColumn)       throw new InvalidRequestException("Mix of commutative and non-commutative operations is not allowed.");
       ByteBuffer colValue=op.a.getByteBuffer(metadata.getValueValidator(colName),variables);
       validateColumn(metadata,colName,colValue);
-      rm.add(columnFamily,colName,colValue,(timestamp == null) ? getTimestamp(clientState) : timestamp,getTimeToLive());
+      mutation.add(columnFamily,colName,colValue,(timestamp == null) ? getTimestamp(clientState) : timestamp,getTimeToLive());
     }
  else {
       hasCounterColumn=true;
@@ -23,8 +23,8 @@
  catch (      NumberFormatException e) {
         throw new InvalidRequestException(String.format("'%s' is an invalid value, should be a long.",op.b.getText()));
       }
-      rm.addCounter(columnFamily,colName,value);
+      mutation.addCounter(columnFamily,colName,value);
     }
   }
-  return (hasCounterColumn) ? new CounterMutation(rm,getConsistencyLevel()) : rm;
+  return (hasCounterColumn) ? new CounterMutation(mutation,getConsistencyLevel()) : mutation;
 }

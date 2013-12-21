@@ -1,0 +1,21 @@
+{
+  try {
+    byte[] from=message.parameters.get(Mutation.FORWARD_FROM);
+    InetAddress replyTo;
+    if (from == null) {
+      replyTo=message.from;
+      byte[] forwardBytes=message.parameters.get(Mutation.FORWARD_TO);
+      if (forwardBytes != null)       forwardToLocalNodes(message.payload,message.verb,forwardBytes,message.from);
+    }
+ else {
+      replyTo=InetAddress.getByAddress(from);
+    }
+    message.payload.apply();
+    WriteResponse response=new WriteResponse();
+    Tracing.trace("Enqueuing response to {}",replyTo);
+    MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
+  }
+ catch (  IOException e) {
+    logger.error("Error in mutation",e);
+  }
+}
