@@ -1,4 +1,8 @@
 {
+  if (range.count < 0)   throw new org.apache.cassandra.exceptions.InvalidRequestException("get_slice requires non-negative count");
+  int maxNameLength=org.apache.cassandra.db.Column.MAX_NAME_LENGTH;
+  if (range.start.remaining() > maxNameLength)   throw new org.apache.cassandra.exceptions.InvalidRequestException("range start length cannot be larger than " + maxNameLength);
+  if (range.finish.remaining() > maxNameLength)   throw new org.apache.cassandra.exceptions.InvalidRequestException("range finish length cannot be larger than " + maxNameLength);
   AbstractType<?> comparator=SuperColumns.getComparatorFor(metadata,column_parent.super_column);
   try {
     comparator.validate(range.start);
@@ -7,7 +11,6 @@
  catch (  MarshalException e) {
     throw new org.apache.cassandra.exceptions.InvalidRequestException(e.getMessage());
   }
-  if (range.count < 0)   throw new org.apache.cassandra.exceptions.InvalidRequestException("get_slice requires non-negative count");
   Comparator<ByteBuffer> orderedComparator=range.isReversed() ? comparator.reverseComparator : comparator;
   if (range.start.remaining() > 0 && range.finish.remaining() > 0 && orderedComparator.compare(range.start,range.finish) > 0) {
     throw new org.apache.cassandra.exceptions.InvalidRequestException("range finish must come after start in the order of traversal");
