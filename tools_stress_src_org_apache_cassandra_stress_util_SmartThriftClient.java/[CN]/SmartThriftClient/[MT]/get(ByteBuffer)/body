@@ -1,0 +1,17 @@
+{
+  Set<Host> hosts=metadata.getReplicas(keyspace,pk);
+  int count=roundrobin.incrementAndGet() % hosts.size();
+  if (count < 0)   count=-count;
+  Iterator<Host> iter=hosts.iterator();
+  while (count > 0 && iter.hasNext())   iter.next();
+  Host host=iter.next();
+  ConcurrentLinkedQueue<Client> q=cache.get(host);
+  if (q == null) {
+    ConcurrentLinkedQueue<Client> newQ=new ConcurrentLinkedQueue<Client>();
+    q=cache.putIfAbsent(host,newQ);
+    if (q == null)     q=newQ;
+  }
+  Client tclient=q.poll();
+  if (tclient != null)   return tclient;
+  return new Client(settings.getRawThriftClient(host.getAddress().getHostAddress()),host);
+}

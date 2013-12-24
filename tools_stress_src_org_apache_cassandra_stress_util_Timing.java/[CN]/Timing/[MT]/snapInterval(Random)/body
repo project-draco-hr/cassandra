@@ -1,0 +1,12 @@
+{
+  final Timer[] timers=this.timers.toArray(new Timer[0]);
+  final CountDownLatch ready=new CountDownLatch(timers.length);
+  for (int i=0; i < timers.length; i++) {
+    final Timer timer=timers[i];
+    timer.requestReport(ready);
+  }
+  if (!ready.await(2L,TimeUnit.MINUTES))   throw new RuntimeException("Timed out waiting for a timer thread - seems one got stuck");
+  List<TimingInterval> intervals=new ArrayList<>();
+  for (  Timer timer : timers)   intervals.add(timer.report);
+  return TimingInterval.merge(rnd,intervals,Integer.MAX_VALUE,history.endNanos());
+}

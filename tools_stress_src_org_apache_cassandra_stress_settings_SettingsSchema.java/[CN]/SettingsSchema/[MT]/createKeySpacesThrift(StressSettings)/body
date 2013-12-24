@@ -1,0 +1,50 @@
+{
+  KsDef ksdef=new KsDef();
+  CfDef standardCfDef=new CfDef(keyspace,columnFamily);
+  Map<String,String> compressionOptions=new HashMap<String,String>();
+  if (compression != null)   compressionOptions.put("sstable_compression",compression);
+  String comparator=settings.columns.comparator;
+  standardCfDef.setComparator_type(comparator).setDefault_validation_class(DEFAULT_VALIDATOR).setCompression_options(compressionOptions);
+  if (!settings.columns.useTimeUUIDComparator) {
+    for (int i=0; i < settings.columns.maxColumnsPerKey; i++) {
+      standardCfDef.addToColumn_metadata(new ColumnDef(ByteBufferUtil.bytes("C" + i),"BytesType"));
+    }
+  }
+  if (indexType != null) {
+    ColumnDef standardColumn=new ColumnDef(ByteBufferUtil.bytes("C1"),"BytesType");
+    standardColumn.setIndex_type(indexType).setIndex_name("Idx1");
+    standardCfDef.setColumn_metadata(Arrays.asList(standardColumn));
+  }
+  CfDef superCfDef=new CfDef(keyspace,"Super1").setColumn_type("Super");
+  superCfDef.setComparator_type(DEFAULT_COMPARATOR).setSubcomparator_type(comparator).setDefault_validation_class(DEFAULT_VALIDATOR).setCompression_options(compressionOptions);
+  CfDef counterCfDef=new CfDef(keyspace,"Counter1").setComparator_type(comparator).setDefault_validation_class("CounterColumnType").setReplicate_on_write(replicateOnWrite).setCompression_options(compressionOptions);
+  CfDef counterSuperCfDef=new CfDef(keyspace,"SuperCounter1").setComparator_type(comparator).setDefault_validation_class("CounterColumnType").setReplicate_on_write(replicateOnWrite).setColumn_type("Super").setCompression_options(compressionOptions);
+  ksdef.setName(keyspace);
+  ksdef.setStrategy_class(replicationStrategy);
+  if (!replicationStrategyOptions.isEmpty()) {
+    ksdef.setStrategy_options(replicationStrategyOptions);
+  }
+  if (compactionStrategy != null) {
+    standardCfDef.setCompaction_strategy(compactionStrategy);
+    superCfDef.setCompaction_strategy(compactionStrategy);
+    counterCfDef.setCompaction_strategy(compactionStrategy);
+    counterSuperCfDef.setCompaction_strategy(compactionStrategy);
+  }
+  ksdef.setCf_defs(new ArrayList<CfDef>(Arrays.asList(standardCfDef,superCfDef,counterCfDef,counterSuperCfDef)));
+  Cassandra.Client client=settings.getRawThriftClient(false);
+  try {
+    client.system_add_keyspace(ksdef);
+    client.set_cql_version("3.0.0");
+    client.set_keyspace(keyspace);
+    client.execute_cql3_query(createCounterCFStatementForCQL3(settings),Compression.NONE,ConsistencyLevel.ONE);
+    if (settings.mode.cqlVersion.isCql())     client.set_cql_version(settings.mode.cqlVersion.connectVersion);
+    System.out.println(String.format("Created keyspaces. Sleeping %ss for propagation.",settings.node.nodes.size()));
+    Thread.sleep(settings.node.nodes.size() * 1000);
+  }
+ catch (  InvalidRequestException e) {
+    System.err.println("Unable to create stress keyspace: " + e.getWhy());
+  }
+catch (  Exception e) {
+    System.err.println("!!!! " + e.getMessage());
+  }
+}

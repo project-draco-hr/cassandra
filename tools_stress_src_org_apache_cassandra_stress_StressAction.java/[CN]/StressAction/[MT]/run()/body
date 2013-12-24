@@ -1,65 +1,12 @@
 {
-  Snapshot latency;
-  long oldLatency;
-  int epoch, total, oldTotal, keyCount, oldKeyCount;
-  if (client.getOperation() == Stress.Operations.INSERT || client.getOperation() == Stress.Operations.COUNTER_ADD)   client.createKeySpaces();
-  int threadCount=client.getThreads();
-  Consumer[] consumers=new Consumer[threadCount];
-  output.println("total,interval_op_rate,interval_key_rate,latency,95th,99.9th,elapsed_time");
-  int itemsPerThread=client.getKeysPerThread();
-  int modulo=client.getNumKeys() % threadCount;
-  RateLimiter rateLimiter=RateLimiter.create(client.getMaxOpsPerSecond());
-  for (int i=0; i < threadCount; i++) {
-    if (i == threadCount - 1)     itemsPerThread+=modulo;
-    consumers[i]=new Consumer(itemsPerThread,rateLimiter);
-  }
-  Producer producer=new Producer();
-  producer.start();
-  for (int i=0; i < threadCount; i++)   consumers[i].start();
-  boolean terminate=false;
-  epoch=total=keyCount=0;
-  int interval=client.getProgressInterval();
-  int epochIntervals=client.getProgressInterval() * 10;
-  long testStartTime=System.nanoTime();
-  StressStatistics stats=new StressStatistics(client,output);
-  while (!terminate) {
-    if (stop) {
-      producer.stopProducer();
-      for (      Consumer consumer : consumers)       consumer.stopConsume();
-      break;
-    }
-    Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
-    int alive=0;
-    for (    Thread thread : consumers)     if (thread.isAlive())     alive++;
-    if (alive == 0)     terminate=true;
-    epoch++;
-    if (terminate || epoch > epochIntervals) {
-      epoch=0;
-      oldTotal=total;
-      oldKeyCount=keyCount;
-      total=client.operations.get();
-      keyCount=client.keys.get();
-      latency=client.latency.getSnapshot();
-      int opDelta=total - oldTotal;
-      int keyDelta=keyCount - oldKeyCount;
-      long currentTimeInSeconds=TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - testStartTime);
-      output.println(String.format("%d,%d,%d,%.1f,%.1f,%.1f,%d",total,opDelta / interval,keyDelta / interval,latency.getMedian(),latency.get95thPercentile(),latency.get999thPercentile(),currentTimeInSeconds));
-      if (client.outputStatistics()) {
-        stats.addIntervalStats(total,opDelta / interval,keyDelta / interval,latency,currentTimeInSeconds);
-      }
-    }
-  }
-  returnCode=SUCCESS;
-  if (producer.isAlive()) {
-    producer.interrupt();
-    returnCode=FAILURE;
-  }
-  for (  Consumer consumer : consumers)   if (consumer.getReturnCode() == FAILURE)   returnCode=FAILURE;
-  if (returnCode == SUCCESS) {
-    if (client.outputStatistics())     stats.printStats();
-    output.println("END");
-  }
- else {
-    output.println("FAILURE");
-  }
+  settings.maybeCreateKeyspaces();
+  warmup(settings.command.type,settings.command);
+  output.println("Sleeping 2s...");
+  Uninterruptibles.sleepUninterruptibly(2,TimeUnit.SECONDS);
+  boolean success;
+  if (settings.rate.auto)   success=runAuto();
+ else   success=null != run(settings.command.type,settings.rate.threadCount,settings.command.count,output);
+  if (success)   output.println("END");
+ else   output.println("FAILURE");
+  settings.disconnect();
 }

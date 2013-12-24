@@ -1,42 +1,58 @@
 {
-  if (client.use_native_protocol) {
-    SimpleClient connection=client.getNativeClient();
-    for (int i=0; i < items; i++) {
-      if (stop)       break;
-      try {
-        rateLimiter.acquire();
-        operations.take().run(connection);
-      }
- catch (      Exception e) {
-        if (output == null) {
-          System.err.println(e.getMessage());
-          returnCode=StressAction.FAILURE;
-          System.exit(-1);
-        }
-        output.println(e.getMessage());
-        returnCode=StressAction.FAILURE;
-        break;
-      }
-    }
-  }
- else {
-    CassandraClient connection=client.getClient();
-    for (int i=0; i < items; i++) {
-      if (stop)       break;
-      try {
-        rateLimiter.acquire();
-        operations.take().run(connection);
-      }
- catch (      Exception e) {
-        if (output == null) {
-          System.err.println(e.getMessage());
-          returnCode=StressAction.FAILURE;
-          System.exit(-1);
-        }
-        output.println(e.getMessage());
-        returnCode=StressAction.FAILURE;
-        break;
-      }
-    }
-  }
+  try {
+    SimpleClient sclient=null;
+    ThriftClient tclient=null;
+    JavaDriverClient jclient=null;
+switch (settings.mode.api) {
+case JAVA_DRIVER_NATIVE:
+      jclient=settings.getJavaDriverClient();
+    break;
+case SIMPLE_NATIVE:
+  sclient=settings.getSimpleNativeClient();
+break;
+case THRIFT:
+tclient=settings.getThriftClient();
+break;
+case THRIFT_SMART:
+tclient=settings.getSmartThriftClient();
+break;
+default :
+throw new IllegalStateException();
+}
+Work work;
+while (null != (work=workQueue.poll())) {
+if (rateLimiter != null) rateLimiter.acquire(work.count);
+for (int i=0; i < work.count; i++) {
+try {
+Operation op=createOperation(state,i + work.offset);
+switch (settings.mode.api) {
+case JAVA_DRIVER_NATIVE:
+op.run(jclient);
+break;
+case SIMPLE_NATIVE:
+op.run(sclient);
+break;
+default :
+op.run(tclient);
+}
+}
+ catch (Exception e) {
+if (output == null) {
+System.err.println(e.getMessage());
+success=false;
+System.exit(-1);
+}
+e.printStackTrace(output);
+success=false;
+workQueue.stop();
+state.metrics.cancel();
+return;
+}
+}
+}
+}
+  finally {
+done.countDown();
+state.timer.close();
+}
 }

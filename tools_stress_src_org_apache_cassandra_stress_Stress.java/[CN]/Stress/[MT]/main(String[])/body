@@ -1,18 +1,20 @@
 {
+  final StressSettings settings;
   try {
-    session=new Session(arguments);
+    settings=StressSettings.parse(arguments);
   }
  catch (  IllegalArgumentException e) {
     printHelpMessage();
+    e.printStackTrace();
     return;
   }
-  PrintStream outStream=session.getOutputStream();
-  if (session.sendToDaemon != null) {
-    Socket socket=new Socket(session.sendToDaemon,2159);
+  PrintStream logout=settings.log.getOutput();
+  if (settings.sendToDaemon != null) {
+    Socket socket=new Socket(settings.sendToDaemon,2159);
     ObjectOutputStream out=new ObjectOutputStream(socket.getOutputStream());
     BufferedReader inp=new BufferedReader(new InputStreamReader(socket.getInputStream()));
     Runtime.getRuntime().addShutdownHook(new ShutDown(socket,out));
-    out.writeObject(session);
+    out.writeObject(settings);
     String line;
     try {
       while (!socket.isClosed() && (line=inp.readLine()) != null) {
@@ -20,7 +22,7 @@
           out.writeInt(1);
           break;
         }
-        outStream.println(line);
+        logout.println(line);
       }
     }
  catch (    SocketException e) {
@@ -31,9 +33,7 @@
     socket.close();
   }
  else {
-    StressAction stressAction=new StressAction(session,outStream);
-    stressAction.start();
-    stressAction.join();
-    System.exit(stressAction.getReturnCode());
+    StressAction stressAction=new StressAction(settings,logout);
+    stressAction.run();
   }
 }

@@ -1,0 +1,21 @@
+{
+  int operationCount=0, keyCount=0;
+  long maxLatency=0, totalLatency=0;
+  List<SampleOfLongs> latencies=new ArrayList<>();
+  long end=0;
+  long pauseStart=0, pauseEnd=Long.MAX_VALUE;
+  for (  TimingInterval interval : intervals) {
+    end=Math.max(end,interval.end);
+    operationCount+=interval.operationCount;
+    maxLatency=Math.max(interval.maxLatency,maxLatency);
+    totalLatency+=interval.totalLatency;
+    keyCount+=interval.keyCount;
+    latencies.addAll(Arrays.asList(interval.sample));
+    if (interval.pauseLength > 0) {
+      pauseStart=Math.max(pauseStart,interval.pauseStart);
+      pauseEnd=Math.min(pauseEnd,interval.pauseStart + interval.pauseLength);
+    }
+  }
+  if (pauseEnd < pauseStart)   pauseEnd=pauseStart=0;
+  return new TimingInterval(start,end,maxLatency,pauseStart,pauseEnd - pauseStart,keyCount,totalLatency,operationCount,SampleOfLongs.merge(rnd,latencies,maxSamples));
+}

@@ -1,0 +1,95 @@
+{
+  CommandLineParser parser=new PosixParser();
+  final Converter r=new Converter();
+  try {
+    CommandLine cmd=parser.parse(availableOptions,arguments);
+    if (cmd.getArgs().length > 0) {
+      System.err.println("Application does not allow arbitrary arguments: " + Arrays.asList(cmd.getArgList()));
+      System.exit(1);
+    }
+    if (cmd.hasOption("h"))     printHelpMessage();
+    if (cmd.hasOption("C"))     System.out.println("Ignoring deprecated option -C");
+    if (cmd.hasOption("o"))     r.setCommand(cmd.getOptionValue("o").toLowerCase());
+ else     r.setCommand("insert");
+    if (cmd.hasOption("K"))     r.add("command","tries=" + cmd.getOptionValue("K"));
+    if (cmd.hasOption("k")) {
+      if (!cmd.hasOption("K"))       r.add("command","retry=1");
+      r.add("command","ignore_errors");
+    }
+    if (cmd.hasOption("g"))     r.add("command","at-once=" + cmd.getOptionValue("g"));
+    if (cmd.hasOption("e"))     r.add("command","cl=" + cmd.getOptionValue("e"));
+    String numKeys;
+    if (cmd.hasOption("n"))     numKeys=cmd.getOptionValue("n");
+ else     numKeys="1000000";
+    r.add("command","n=" + numKeys);
+    String uniqueKeys;
+    if (cmd.hasOption("F"))     uniqueKeys=cmd.getOptionValue("F");
+ else     uniqueKeys=numKeys;
+    if (r.opts.containsKey("write") || r.opts.containsKey("counterwrite")) {
+      if (!uniqueKeys.equals(numKeys))       r.add("-key","populate=1.." + uniqueKeys);
+    }
+ else     if (cmd.hasOption("r")) {
+      r.add("-key","dist=uniform(1.." + uniqueKeys + ")");
+    }
+ else {
+      if (!cmd.hasOption("s"))       r.add("-key","dist=gauss(1.." + uniqueKeys + ",5)");
+ else       r.add("-key",String.format("dist=gauss(1..%s,%.2f)",uniqueKeys,0.5 / Float.parseFloat(cmd.getOptionValue("s"))));
+    }
+    String colCount;
+    if (cmd.hasOption("c"))     colCount=cmd.getOptionValue("c");
+ else     colCount="5";
+    String colSize;
+    if (cmd.hasOption("S"))     colSize=cmd.getOptionValue("S");
+ else     colSize="34";
+    r.add("-col","n=fixed(" + colCount + ")");
+    if (cmd.hasOption("V")) {
+      r.add("-col","size=uniform(1.." + Integer.parseInt(colSize) * 2 + ")");
+      r.add("-col","data=rand()");
+    }
+ else {
+      r.add("-col","size=fixed(" + colSize + ")");
+      r.add("-col","data=repeat(1)");
+    }
+    if (cmd.hasOption("Q"))     r.add("-col","names=" + cmd.getOptionValue("Q"));
+    if (cmd.hasOption("U"))     r.add("-col","comparator=" + cmd.getOptionValue("U"));
+    if (cmd.hasOption("y") && cmd.getOptionValue("y").equals("Super"))     r.add("-col","super=" + (cmd.hasOption("u") ? cmd.getOptionValue("u") : "1"));
+    if (cmd.hasOption("t"))     r.add("-rate","threads=" + cmd.getOptionValue("t"));
+ else     r.add("-rate","threads=50");
+    if (cmd.hasOption("th"))     r.add("-rate","limit=" + cmd.getOptionValue("th") + "/s");
+    if (cmd.hasOption("f"))     r.add("-log","file=" + cmd.getOptionValue("f"));
+    if (cmd.hasOption("p"))     r.add("-port",cmd.getOptionValue("p"));
+    if (cmd.hasOption("i"))     r.add("-log","interval=" + cmd.getOptionValue("i"));
+ else     r.add("-log","interval=10");
+    if (cmd.hasOption("x"))     r.add("-schema","index=" + cmd.getOptionValue("x"));
+    if (cmd.hasOption("R") || cmd.hasOption("l") || cmd.hasOption("O")) {
+      StringBuilder rep=new StringBuilder();
+      if (cmd.hasOption("R"))       rep.append("strategy=" + cmd.getOptionValue("R"));
+      if (cmd.hasOption("l")) {
+        if (rep.length() > 0)         rep.append(",");
+        rep.append("factor=" + cmd.getOptionValue("l"));
+      }
+      if (cmd.hasOption("O")) {
+        if (rep.length() > 0)         rep.append(",");
+        rep.append(cmd.getOptionValue("O").replace(':','='));
+      }
+      r.add("-schema","replication(" + rep + ")");
+    }
+    if (cmd.hasOption("L"))     r.add("-mode",cmd.hasOption("P") ? "prepared cql2" : "cql2");
+ else     if (cmd.hasOption("L3"))     r.add("-mode",(cmd.hasOption("P") ? "prepared" : "") + (cmd.hasOption("b") ? "native" : "") + "cql3");
+ else     r.add("-mode","thrift");
+    if (cmd.hasOption("W"))     r.add("-schema","no-replicate-on-write");
+    if (cmd.hasOption("I"))     r.add("-schema","compression=" + cmd.getOptionValue("I"));
+    if (cmd.hasOption("d"))     r.add("-node",cmd.getOptionValue("d"));
+    if (cmd.hasOption("D"))     r.add("-node","file=" + cmd.getOptionValue("D"));
+    if (cmd.hasOption("send-to"))     r.add("-send-to",cmd.getOptionValue("send-to"));
+    if (cmd.hasOption("Z"))     r.add("-schema","compaction=" + cmd.getOptionValue("Z"));
+    if (cmd.hasOption("ns"))     r.add("-log","no-summary");
+    if (cmd.hasOption("tf"))     r.add("-transport","factory=" + cmd.getOptionValue("tf"));
+  }
+ catch (  ParseException e) {
+    printHelpMessage();
+    System.exit(1);
+  }
+  r.printNewCommand();
+  return r.get();
+}

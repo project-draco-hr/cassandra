@@ -1,0 +1,30 @@
+{
+  int prevThreadCount=-1;
+  int threadCount=settings.rate.minAutoThreads;
+  List<StressMetrics> results=new ArrayList<>();
+  List<String> runIds=new ArrayList<>();
+  do {
+    output.println(String.format("Running with %d threadCount",threadCount));
+    StressMetrics result=run(settings.command.type,threadCount,settings.command.count,output);
+    if (result == null)     return false;
+    results.add(result);
+    if (prevThreadCount > 0)     System.out.println(String.format("Improvement over %d threadCount: %.0f%%",prevThreadCount,100 * averageImprovement(results,1)));
+    runIds.add(threadCount + " threadCount");
+    prevThreadCount=threadCount;
+    if (threadCount < 16)     threadCount*=2;
+ else     threadCount*=1.5;
+    if (!results.isEmpty() && threadCount > settings.rate.maxAutoThreads)     break;
+    if (settings.command.type.updates) {
+      output.println("Sleeping for 15s");
+      try {
+        Thread.sleep(15 * 1000);
+      }
+ catch (      InterruptedException e) {
+        return false;
+      }
+    }
+  }
+ while (hasAverageImprovement(results,3,0) && hasAverageImprovement(results,5,settings.command.targetUncertainty));
+  StressMetrics.summarise(runIds,results,output);
+  return true;
+}
