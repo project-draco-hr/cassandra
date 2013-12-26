@@ -7,13 +7,11 @@
   List<ByteBuffer> maxColumnNames=Collections.emptyList();
   StreamingHistogram tombstones=new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
   ColumnFamily cf=ArrayBackedSortedColumns.factory.create(metadata);
+  if (version.hasRowSizeAndColumnCount)   FileUtils.skipBytesFully(in,8);
   cf.delete(DeletionTime.serializer.deserialize(in));
   ColumnIndex.Builder columnIndexer=new ColumnIndex.Builder(cf,key.key,dataFile.stream);
   int columnCount=Integer.MAX_VALUE;
-  if (version.hasRowSizeAndColumnCount) {
-    FileUtils.skipBytesFully(in,8);
-    columnCount=in.readInt();
-  }
+  if (version.hasRowSizeAndColumnCount)   columnCount=in.readInt();
   Iterator<OnDiskAtom> iter=metadata.getOnDiskIterator(in,columnCount,ColumnSerializer.Flag.PRESERVE_SIZE,Integer.MIN_VALUE,version);
   try {
     while (iter.hasNext()) {
