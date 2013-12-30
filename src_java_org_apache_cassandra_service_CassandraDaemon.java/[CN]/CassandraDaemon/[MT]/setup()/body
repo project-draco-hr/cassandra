@@ -52,14 +52,12 @@
     System.exit(100);
   }
   DatabaseDescriptor.loadSchemas();
+  Map<Pair<String,String>,Map<Integer,UUID>> unfinishedCompactions=SystemKeyspace.getUnfinishedCompactions();
+  for (  Pair<String,String> kscf : unfinishedCompactions.keySet())   ColumnFamilyStore.removeUnfinishedCompactionLeftovers(kscf.left,kscf.right,unfinishedCompactions.get(kscf));
+  SystemKeyspace.discardCompactionsInProgress();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
     for (    CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())     ColumnFamilyStore.scrubDataDirectories(keyspaceName,cfm.cfName);
   }
-  SetMultimap<Pair<String,String>,Integer> unfinishedCompactions=SystemKeyspace.getUnfinishedCompactions();
-  for (  Pair<String,String> kscf : unfinishedCompactions.keySet()) {
-    ColumnFamilyStore.removeUnfinishedCompactionLeftovers(kscf.left,kscf.right,unfinishedCompactions.get(kscf));
-  }
-  SystemKeyspace.discardCompactionsInProgress();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
     if (logger.isDebugEnabled())     logger.debug("opening keyspace {}",keyspaceName);
     for (    ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores()) {

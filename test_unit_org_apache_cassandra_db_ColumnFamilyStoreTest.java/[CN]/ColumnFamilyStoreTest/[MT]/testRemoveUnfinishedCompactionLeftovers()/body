@@ -1,0 +1,37 @@
+{
+  String ks="Keyspace1";
+  String cf="Standard3";
+  final CFMetaData cfmeta=Schema.instance.getCFMetaData(ks,cf);
+  Directories dir=Directories.create(ks,cf);
+  ByteBuffer key=bytes("key");
+  SSTableSimpleWriter writer=new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),cfmeta,StorageService.getPartitioner());
+  writer.newRow(key);
+  writer.addColumn(bytes("col"),bytes("val"),1);
+  writer.close();
+  Map<Descriptor,Set<Component>> sstables=dir.sstableLister().list();
+  assertEquals(1,sstables.size());
+  Map.Entry<Descriptor,Set<Component>> sstableToOpen=sstables.entrySet().iterator().next();
+  final SSTableReader sstable1=SSTableReader.open(sstableToOpen.getKey());
+  writer=new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),cfmeta,StorageService.getPartitioner()){
+    protected SSTableWriter getWriter(){
+      MetadataCollector collector=new MetadataCollector(cfmeta.comparator);
+      collector.addAncestor(sstable1.descriptor.generation);
+      return new SSTableWriter(makeFilename(directory,metadata.ksName,metadata.cfName),0,metadata,StorageService.getPartitioner(),collector);
+    }
+  }
+;
+  writer.newRow(key);
+  writer.addColumn(bytes("col"),bytes("val"),1);
+  writer.close();
+  sstables=dir.sstableLister().list();
+  assertEquals(2,sstables.size());
+  UUID compactionTaskID=SystemKeyspace.startCompaction(Keyspace.open(ks).getColumnFamilyStore(cf),Collections.singleton(SSTableReader.open(sstable1.descriptor)));
+  Map<Integer,UUID> unfinishedCompaction=new HashMap<>();
+  unfinishedCompaction.put(sstable1.descriptor.generation,compactionTaskID);
+  ColumnFamilyStore.removeUnfinishedCompactionLeftovers(ks,cf,unfinishedCompaction);
+  sstables=dir.sstableLister().list();
+  assertEquals(1,sstables.size());
+  assertTrue(sstables.containsKey(sstable1.descriptor));
+  Map<Pair<String,String>,Map<Integer,UUID>> unfinished=SystemKeyspace.getUnfinishedCompactions();
+  assertTrue(unfinished.isEmpty());
+}

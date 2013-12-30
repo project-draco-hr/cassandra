@@ -1,12 +1,17 @@
 {
   String req="SELECT * FROM system.%s";
   UntypedResultSet resultSet=processInternal(String.format(req,COMPACTION_LOG));
-  SetMultimap<Pair<String,String>,Integer> unfinishedCompactions=HashMultimap.create();
+  Map<Pair<String,String>,Map<Integer,UUID>> unfinishedCompactions=new HashMap<>();
   for (  UntypedResultSet.Row row : resultSet) {
     String keyspace=row.getString("keyspace_name");
     String columnfamily=row.getString("columnfamily_name");
     Set<Integer> inputs=row.getSet("inputs",Int32Type.instance);
-    unfinishedCompactions.putAll(Pair.create(keyspace,columnfamily),inputs);
+    UUID taskID=row.getUUID("id");
+    Pair<String,String> kscf=Pair.create(keyspace,columnfamily);
+    Map<Integer,UUID> generationToTaskID=unfinishedCompactions.get(kscf);
+    if (generationToTaskID == null)     generationToTaskID=new HashMap<>(inputs.size());
+    for (    Integer generation : inputs)     generationToTaskID.put(generation,taskID);
+    unfinishedCompactions.put(kscf,generationToTaskID);
   }
   return unfinishedCompactions;
 }
