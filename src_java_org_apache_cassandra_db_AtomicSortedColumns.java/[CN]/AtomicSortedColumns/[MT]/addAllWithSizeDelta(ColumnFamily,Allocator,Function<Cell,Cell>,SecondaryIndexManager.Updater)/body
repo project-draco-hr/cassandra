@@ -3,7 +3,7 @@
   long sizeDelta;
   main_loop:   do {
     sizeDelta=0;
-    current=ref.get();
+    current=ref;
     DeletionInfo newDelInfo=current.deletionInfo.copy().add(cm.deletionInfo());
     modified=new Holder(current.map.clone(),newDelInfo);
     if (cm.deletionInfo().hasRanges()) {
@@ -13,10 +13,10 @@
     }
     for (    Cell cell : cm) {
       sizeDelta+=modified.addColumn(transformation.apply(cell),allocator,indexer);
-      if (ref.get() != current)       continue main_loop;
+      if (ref != current)       continue main_loop;
     }
   }
- while (!ref.compareAndSet(current,modified));
+ while (!refUpdater.compareAndSet(this,current,modified));
   indexer.updateRowLevelIndexes();
   return sizeDelta;
 }
