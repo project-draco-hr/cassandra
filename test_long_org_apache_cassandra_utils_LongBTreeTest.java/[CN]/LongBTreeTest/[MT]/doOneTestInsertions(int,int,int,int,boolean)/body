@@ -1,0 +1,40 @@
+{
+  ListenableFutureTask<List<ListenableFuture<?>>> f=ListenableFutureTask.create(new Callable<List<ListenableFuture<?>>>(){
+    @Override public List<ListenableFuture<?>> call(){
+      final List<ListenableFuture<?>> r=new ArrayList<>();
+      SnapTreeMap<Integer,Integer> canon=new SnapTreeMap<>();
+      Object[] btree=BTree.empty();
+      final TreeMap<Integer,Integer> buffer=new TreeMap<>();
+      final Random rnd=new Random();
+      for (int i=0; i < iterations; i++) {
+        buffer.clear();
+        int mods=(averageModsPerIteration >> 1) + 1 + rnd.nextInt(averageModsPerIteration);
+        while (mods > 0) {
+          int v=rnd.nextInt(upperBound);
+          int rc=Math.max(0,Math.min(mods,maxRunLength) - 1);
+          int c=1 + (rc <= 0 ? 0 : rnd.nextInt(rc));
+          for (int j=0; j < c; j++) {
+            buffer.put(v,v);
+            v++;
+          }
+          mods-=c;
+        }
+        TimerContext ctxt;
+        ctxt=TREE_TIMER.time();
+        canon=canon.clone();
+        canon.putAll(buffer);
+        ctxt.stop();
+        ctxt=BTREE_TIMER.time();
+        btree=BTree.update(btree,ICMP,buffer.keySet(),true,null,null);
+        ctxt.stop();
+        if (quickEquality)         testEqual("",BTree.<Integer>slice(btree,true),canon.keySet().iterator());
+ else         r.addAll(testAllSlices("RND",btree,canon.keySet()));
+        if (!BTree.isWellFormed(btree))         System.out.println("ERROR: Not well formed");
+      }
+      return r;
+    }
+  }
+);
+  MODIFY.execute(f);
+  return f;
+}
