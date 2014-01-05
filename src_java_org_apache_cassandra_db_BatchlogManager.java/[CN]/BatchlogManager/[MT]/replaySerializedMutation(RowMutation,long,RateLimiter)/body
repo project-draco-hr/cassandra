@@ -4,7 +4,9 @@
   Set<InetAddress> liveEndpoints=new HashSet<InetAddress>();
   String ks=mutation.getTable();
   Token tk=StorageService.getPartitioner().getToken(mutation.key());
+  int mutationSize=(int)RowMutation.serializer.serializedSize(mutation,VERSION);
   for (  InetAddress endpoint : Iterables.concat(StorageService.instance.getNaturalEndpoints(ks,tk),StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,ks))) {
+    rateLimiter.acquire(mutationSize);
     if (endpoint.equals(FBUtilities.getBroadcastAddress()))     mutation.apply();
  else     if (FailureDetector.instance.isAlive(endpoint))     liveEndpoints.add(endpoint);
  else     StorageProxy.writeHintForMutation(mutation,ttl,endpoint);
