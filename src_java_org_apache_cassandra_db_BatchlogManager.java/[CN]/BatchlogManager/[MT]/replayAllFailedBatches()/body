@@ -1,8 +1,10 @@
 {
   if (!isReplaying.compareAndSet(false,true))   return;
   logger.debug("Started replayAllFailedBatches");
+  int throttleInKB=DatabaseDescriptor.getBatchlogReplayThrottleInKB() / StorageService.instance.getTokenMetadata().getAllEndpoints().size();
+  RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   try {
-    for (    UntypedResultSet.Row row : process("SELECT id, written_at FROM %s.%s",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF))     if (System.currentTimeMillis() > row.getLong("written_at") + TIMEOUT)     replayBatch(row.getUUID("id"));
+    for (    UntypedResultSet.Row row : process("SELECT id, written_at FROM %s.%s",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF))     if (System.currentTimeMillis() > row.getLong("written_at") + TIMEOUT)     replayBatch(row.getUUID("id"),rateLimiter);
     cleanup();
   }
   finally {
