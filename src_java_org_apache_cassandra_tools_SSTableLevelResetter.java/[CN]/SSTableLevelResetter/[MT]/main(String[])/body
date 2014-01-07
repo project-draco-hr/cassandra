@@ -11,11 +11,13 @@
     out.println("Usage: sstablelevelreset --really-reset <keyspace> <columnfamily>");
     System.exit(1);
   }
-  String keyspace=args[1];
+  DatabaseDescriptor.loadSchemas();
+  String keyspaceName=args[1];
   String columnfamily=args[2];
-  Directories directories=Directories.create(keyspace,columnfamily);
+  Keyspace keyspace=Keyspace.openWithoutSSTables(keyspaceName);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(columnfamily);
   boolean foundSSTable=false;
-  for (  Map.Entry<Descriptor,Set<Component>> sstable : directories.sstableLister().list().entrySet()) {
+  for (  Map.Entry<Descriptor,Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet()) {
     if (sstable.getValue().contains(Component.STATS)) {
       foundSSTable=true;
       Descriptor descriptor=sstable.getKey();

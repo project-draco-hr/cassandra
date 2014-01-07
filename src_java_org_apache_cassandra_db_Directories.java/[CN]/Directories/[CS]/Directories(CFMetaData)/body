@@ -1,0 +1,31 @@
+{
+  this.metadata=metadata;
+  this.sstableDirectories=new File[dataFileLocations.length];
+  for (int i=0; i < dataFileLocations.length; ++i) {
+    sstableDirectories[i]=new File(dataFileLocations[i].location,join(metadata.ksName,metadata.cfName));
+  }
+  boolean olderDirectoryExists=Iterables.any(Arrays.asList(sstableDirectories),new Predicate<File>(){
+    public boolean apply(    File file){
+      return file.exists();
+    }
+  }
+);
+  if (olderDirectoryExists)   return;
+  String directoryName;
+  String cfId=ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(metadata.cfId));
+  int idx=metadata.cfName.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
+  if (idx > 0)   directoryName=metadata.cfName.substring(0,idx) + "-" + cfId;
+ else   directoryName=metadata.cfName + "-" + cfId;
+  for (int i=0; i < dataFileLocations.length; ++i)   sstableDirectories[i]=new File(dataFileLocations[i].location,join(metadata.ksName,directoryName));
+  if (!StorageService.instance.isClientMode()) {
+    for (    File dir : sstableDirectories) {
+      try {
+        FileUtils.createDirectory(dir);
+      }
+ catch (      FSError e) {
+        logger.error("Failed to create {} directory",dir);
+        FileUtils.handleFSError(e);
+      }
+    }
+  }
+}

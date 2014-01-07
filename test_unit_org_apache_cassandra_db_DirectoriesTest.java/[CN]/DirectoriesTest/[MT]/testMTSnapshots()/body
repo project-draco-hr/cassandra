@@ -1,18 +1,18 @@
 {
-  for (  final String cf : CFS) {
-    final Directories directories=Directories.create(KS,cf);
-    Assert.assertEquals(cfDir(cf),directories.getDirectoryForNewSSTables());
+  for (  final CFMetaData cfm : CFM) {
+    final Directories directories=new Directories(cfm);
+    assertEquals(cfDir(cfm),directories.getDirectoryForNewSSTables());
     final String n=Long.toString(System.nanoTime());
     Callable<File> directoryGetter=new Callable<File>(){
       public File call() throws Exception {
-        Descriptor desc=new Descriptor(cfDir(cf),KS,cf,1,false);
-        return directories.getSnapshotDirectory(desc,n);
+        Descriptor desc=new Descriptor(cfDir(cfm),KS,cfm.cfName,1,false);
+        return Directories.getSnapshotDirectory(desc,n);
       }
     }
 ;
     List<Future<File>> invoked=Executors.newFixedThreadPool(2).invokeAll(Arrays.asList(directoryGetter,directoryGetter));
     for (    Future<File> fut : invoked) {
-      Assert.assertTrue(fut.get().exists());
+      assertTrue(fut.get().exists());
     }
   }
 }

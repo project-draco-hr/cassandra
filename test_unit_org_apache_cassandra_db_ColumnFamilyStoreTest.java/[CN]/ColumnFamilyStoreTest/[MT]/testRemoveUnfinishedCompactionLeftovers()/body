@@ -2,7 +2,7 @@
   String ks="Keyspace1";
   String cf="Standard3";
   final CFMetaData cfmeta=Schema.instance.getCFMetaData(ks,cf);
-  Directories dir=Directories.create(ks,cf);
+  Directories dir=new Directories(cfmeta);
   ByteBuffer key=bytes("key");
   SSTableSimpleWriter writer=new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),cfmeta,StorageService.getPartitioner());
   writer.newRow(key);
@@ -28,7 +28,7 @@
   UUID compactionTaskID=SystemKeyspace.startCompaction(Keyspace.open(ks).getColumnFamilyStore(cf),Collections.singleton(SSTableReader.open(sstable1.descriptor)));
   Map<Integer,UUID> unfinishedCompaction=new HashMap<>();
   unfinishedCompaction.put(sstable1.descriptor.generation,compactionTaskID);
-  ColumnFamilyStore.removeUnfinishedCompactionLeftovers(ks,cf,unfinishedCompaction);
+  ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfmeta,unfinishedCompaction);
   sstables=dir.sstableLister().list();
   assertEquals(1,sstables.size());
   assertTrue(sstables.containsKey(sstable1.descriptor));

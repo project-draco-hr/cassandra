@@ -7,7 +7,9 @@
     AbstractType<?> subComparator=cfType == ColumnFamilyType.Standard ? null : cf_def.subcomparator_type == null ? BytesType.instance : TypeParser.parse(cf_def.subcomparator_type);
     boolean isDense=(cf_def.column_metadata == null || cf_def.column_metadata.isEmpty()) && !isCQL3OnlyPKComparator(rawComparator);
     CellNameType comparator=CellNames.fromAbstractType(makeRawAbstractType(rawComparator,subComparator),isDense);
-    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator);
+    UUID cfId=Schema.instance.getId(cf_def.keyspace,cf_def.name);
+    if (cfId == null)     cfId=UUIDGen.getTimeUUID();
+    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator,cfId);
     if (cf_def.isSetGc_grace_seconds()) {
       newCFMD.gcGraceSeconds(cf_def.gc_grace_seconds);
     }

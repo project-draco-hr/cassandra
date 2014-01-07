@@ -43,7 +43,7 @@
     }
   }
   if (CacheService.instance == null)   throw new RuntimeException("Failed to initialize Cache Service.");
-  for (  CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())   ColumnFamilyStore.scrubDataDirectories(Keyspace.SYSTEM_KS,cfm.cfName);
+  for (  CFMetaData cfm : Schema.instance.getKeyspaceMetaData(Keyspace.SYSTEM_KS).values())   ColumnFamilyStore.scrubDataDirectories(cfm);
   try {
     SystemKeyspace.checkHealth();
   }
@@ -53,10 +53,13 @@
   }
   DatabaseDescriptor.loadSchemas();
   Map<Pair<String,String>,Map<Integer,UUID>> unfinishedCompactions=SystemKeyspace.getUnfinishedCompactions();
-  for (  Pair<String,String> kscf : unfinishedCompactions.keySet())   ColumnFamilyStore.removeUnfinishedCompactionLeftovers(kscf.left,kscf.right,unfinishedCompactions.get(kscf));
+  for (  Pair<String,String> kscf : unfinishedCompactions.keySet()) {
+    CFMetaData cfm=Schema.instance.getCFMetaData(kscf.left,kscf.right);
+    ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfm,unfinishedCompactions.get(kscf));
+  }
   SystemKeyspace.discardCompactionsInProgress();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
-    for (    CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())     ColumnFamilyStore.scrubDataDirectories(keyspaceName,cfm.cfName);
+    for (    CFMetaData cfm : Schema.instance.getKeyspaceMetaData(keyspaceName).values())     ColumnFamilyStore.scrubDataDirectories(cfm);
   }
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
     if (logger.isDebugEnabled())     logger.debug("opening keyspace {}",keyspaceName);
