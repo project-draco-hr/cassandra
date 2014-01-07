@@ -1,0 +1,14 @@
+@classmethod
+def deserialize_safe(cls, byts):
+    p = 0
+    result = []
+    for (col_name, col_type) in zip(cls.fieldnames, cls.subtypes):
+        if (p == len(byts)):
+            break
+        itemlen = uint16_unpack(byts[p:(p + 2)])
+        p += 2
+        item = byts[p:(p + itemlen)]
+        p += itemlen
+        result.append((str(col_name), col_type.from_binary(item)))
+        p += 1
+    return result
