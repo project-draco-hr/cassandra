@@ -1,21 +1,16 @@
 {
   String[] filenames=dataFiles.split(",");
-  Multimap<Pair<String,String>,Descriptor> descriptors=ArrayListMultimap.create();
+  Multimap<ColumnFamilyStore,Descriptor> descriptors=ArrayListMultimap.create();
   for (  String filename : filenames) {
     Descriptor desc=Descriptor.fromFilename(filename.trim());
     if (Schema.instance.getCFMetaData(desc) == null) {
       logger.warn("Schema does not exist for file {}. Skipping.",filename);
       continue;
     }
-    File directory=new File(desc.ksname + File.separator + desc.cfname);
-    Pair<Descriptor,String> p=Descriptor.fromFilename(directory,filename.trim());
-    Pair<String,String> key=Pair.create(p.left.ksname,p.left.cfname);
-    descriptors.put(key,p.left);
+    ColumnFamilyStore cfs=Keyspace.open(desc.ksname).getColumnFamilyStore(desc.cfname);
+    descriptors.put(cfs,cfs.directories.find(filename.trim()));
   }
   List<Future<?>> futures=new ArrayList<>();
-  for (  Pair<String,String> key : descriptors.keySet()) {
-    ColumnFamilyStore cfs=Keyspace.open(key.left).getColumnFamilyStore(key.right);
-    futures.add(submitUserDefined(cfs,descriptors.get(key),getDefaultGcBefore(cfs)));
-  }
+  for (  ColumnFamilyStore cfs : descriptors.keySet())   futures.add(submitUserDefined(cfs,descriptors.get(cfs),getDefaultGcBefore(cfs)));
   FBUtilities.waitOnFutures(futures);
 }
