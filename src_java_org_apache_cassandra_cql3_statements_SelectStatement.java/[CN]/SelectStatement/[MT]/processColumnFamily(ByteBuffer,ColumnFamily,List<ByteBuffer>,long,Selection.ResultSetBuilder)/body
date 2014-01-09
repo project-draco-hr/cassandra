@@ -31,6 +31,7 @@ case VALUE_ALIAS:
 result.add(c);
 break;
 case COLUMN_METADATA:
+case STATIC:
 throw new AssertionError();
 default :
 throw new AssertionError();
@@ -45,7 +46,22 @@ for (Column c : cf) {
 if (c.isMarkedForDelete(now)) continue;
 builder.add(c);
 }
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyComponents,group);
+Map<CFDefinition.Name,ByteBuffer> staticValues=Collections.emptyMap();
+if (!builder.isEmpty() && builder.firstGroup().isStatic) {
+staticValues=new HashMap<>();
+ColumnGroupMap group=builder.firstGroup();
+for (CFDefinition.Name name : Iterables.filter(selection.getColumnsList(),isStaticFilter)) staticValues.put(name,name.type.isCollection() ? getCollectionValue(name,group) : getSimpleValue(name,group));
+builder.discardFirst();
+if (!staticValues.isEmpty() && builder.isEmpty() && !usesSecondaryIndexing&& hasNoClusteringColumnsRestriction()) {
+result.newRow();
+for (CFDefinition.Name name : selection.getColumnsList()) {
+if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) result.add(keyComponents[name.position]);
+ else result.add(name.kind == CFDefinition.Name.Kind.STATIC ? staticValues.get(name) : null);
+}
+return;
+}
+}
+for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyComponents,group,staticValues);
 }
  else {
 if (cf.hasOnlyTombstones(now)) return;

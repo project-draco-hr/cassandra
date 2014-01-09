@@ -2,14 +2,16 @@
   CFDefinition cfDef=cfm.getCfDef();
   ColumnNameBuilder keyBuilder=cfDef.getKeyNameBuilder();
   List<ByteBuffer> keys=new ArrayList<ByteBuffer>();
-  for (  CFDefinition.Name name : cfDef.keys.values()) {
+  for (  CFDefinition.Name name : cfDef.partitionKeys()) {
     Restriction r=processedKeys.get(name.name);
     if (r == null)     throw new InvalidRequestException(String.format("Missing mandatory PRIMARY KEY part %s",name));
     List<ByteBuffer> values=r.values(variables);
     if (keyBuilder.remainingCount() == 1) {
       for (      ByteBuffer val : values) {
         if (val == null)         throw new InvalidRequestException(String.format("Invalid null value for partition key part %s",name));
-        keys.add(keyBuilder.copy().add(val).build());
+        ByteBuffer key=keyBuilder.copy().add(val).build();
+        ThriftValidation.validateKey(cfm,key);
+        keys.add(key);
       }
     }
  else {
