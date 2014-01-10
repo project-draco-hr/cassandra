@@ -1,0 +1,32 @@
+{
+  joiningNodes=probe.getJoiningNodes();
+  leavingNodes=probe.getLeavingNodes();
+  movingNodes=probe.getMovingNodes();
+  loadMap=probe.getLoadMap();
+  tokensToEndpoints=probe.getTokenToEndpointMap();
+  liveNodes=probe.getLiveNodes();
+  unreachableNodes=probe.getUnreachableNodes();
+  hostIDMap=probe.getHostIdMap();
+  epSnitchInfo=probe.getEndpointSnitchInfoProxy();
+  SetHostStat ownerships;
+  try {
+    ownerships=new SetHostStat(probe.effectiveOwnership(keyspace));
+    hasEffectiveOwns=true;
+  }
+ catch (  IllegalStateException e) {
+    ownerships=new SetHostStat(probe.getOwnership());
+  }
+  if (new HashSet<>(tokensToEndpoints.values()).size() < tokensToEndpoints.keySet().size())   isTokenPerNode=false;
+  Map<String,SetHostStat> dcs=getOwnershipByDc(probe,ownerships);
+  findMaxAddressLength(dcs);
+  for (  Map.Entry<String,SetHostStat> dc : dcs.entrySet()) {
+    String dcHeader=String.format("Datacenter: %s%n",dc.getKey());
+    System.out.printf(dcHeader);
+    for (int i=0; i < (dcHeader.length() - 1); i++)     System.out.print('=');
+    System.out.println();
+    System.out.println("Status=Up/Down");
+    System.out.println("|/ State=Normal/Leaving/Joining/Moving");
+    printNodesHeader(hasEffectiveOwns,isTokenPerNode);
+    for (    HostStat entry : dc.getValue())     printNode(probe,entry,hasEffectiveOwns,isTokenPerNode);
+  }
+}

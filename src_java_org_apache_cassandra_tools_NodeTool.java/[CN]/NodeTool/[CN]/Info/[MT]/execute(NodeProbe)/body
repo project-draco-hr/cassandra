@@ -1,0 +1,25 @@
+{
+  boolean gossipInitialized=probe.isInitialized();
+  System.out.printf("%-17s: %s%n","ID",probe.getLocalHostId());
+  System.out.printf("%-17s: %s%n","Gossip active",gossipInitialized);
+  System.out.printf("%-17s: %s%n","Thrift active",probe.isThriftServerRunning());
+  System.out.printf("%-17s: %s%n","Native Transport active",probe.isNativeTransportRunning());
+  System.out.printf("%-17s: %s%n","Load",probe.getLoadString());
+  if (gossipInitialized)   System.out.printf("%-17s: %s%n","Generation No",probe.getCurrentGenerationNumber());
+ else   System.out.printf("%-17s: %s%n","Generation No",0);
+  long secondsUp=probe.getUptime() / 1000;
+  System.out.printf("%-17s: %d%n","Uptime (seconds)",secondsUp);
+  MemoryUsage heapUsage=probe.getHeapMemoryUsage();
+  double memUsed=(double)heapUsage.getUsed() / (1024 * 1024);
+  double memMax=(double)heapUsage.getMax() / (1024 * 1024);
+  System.out.printf("%-17s: %.2f / %.2f%n","Heap Memory (MB)",memUsed,memMax);
+  System.out.printf("%-17s: %s%n","Data Center",probe.getDataCenter());
+  System.out.printf("%-17s: %s%n","Rack",probe.getRack());
+  System.out.printf("%-17s: %s%n","Exceptions",probe.getStorageMetric("Exceptions"));
+  CacheServiceMBean cacheService=probe.getCacheServiceMBean();
+  System.out.printf("%-17s: entries %d, size %d (bytes), capacity %d (bytes), %d hits, %d requests, %.3f recent hit rate, %d save period in seconds%n","Key Cache",probe.getCacheMetric("KeyCache","Entries"),probe.getCacheMetric("KeyCache","Size"),probe.getCacheMetric("KeyCache","Capacity"),probe.getCacheMetric("KeyCache","Hits"),probe.getCacheMetric("KeyCache","Requests"),probe.getCacheMetric("KeyCache","HitRate"),cacheService.getKeyCacheSavePeriodInSeconds());
+  System.out.printf("%-17s: entries %d, size %d (bytes), capacity %d (bytes), %d hits, %d requests, %.3f recent hit rate, %d save period in seconds%n","Row Cache",probe.getCacheMetric("RowCache","Entries"),probe.getCacheMetric("RowCache","Size"),probe.getCacheMetric("RowCache","Capacity"),probe.getCacheMetric("RowCache","Hits"),probe.getCacheMetric("RowCache","Requests"),probe.getCacheMetric("RowCache","HitRate"),cacheService.getRowCacheSavePeriodInSeconds());
+  List<String> tokens=probe.getTokens();
+  if (tokens.size() == 1 || this.tokens)   for (  String token : tokens)   System.out.printf("%-17s: %s%n","Token",token);
+ else   System.out.printf("%-17s: (invoke with -T/--tokens to see all %d tokens)%n","Token",tokens.size());
+}
