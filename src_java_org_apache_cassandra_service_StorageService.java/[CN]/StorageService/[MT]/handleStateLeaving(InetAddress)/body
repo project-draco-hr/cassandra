@@ -1,0 +1,15 @@
+{
+  Collection<Token> tokens;
+  tokens=getTokensFor(endpoint);
+  if (logger.isDebugEnabled())   logger.debug("Node {} state leaving, tokens {}",endpoint,tokens);
+  if (!tokenMetadata.isMember(endpoint)) {
+    logger.info("Node {} state jump to leaving",endpoint);
+    tokenMetadata.updateNormalTokens(tokens,endpoint);
+  }
+ else   if (!tokenMetadata.getTokens(endpoint).containsAll(tokens)) {
+    logger.warn("Node {} 'leaving' token mismatch. Long network partition?",endpoint);
+    tokenMetadata.updateNormalTokens(tokens,endpoint);
+  }
+  tokenMetadata.addLeavingEndpoint(endpoint);
+  PendingRangeCalculatorService.instance.update();
+}

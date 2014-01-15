@@ -1,0 +1,66 @@
+{
+  Collection<Token> tokens;
+  tokens=getTokensFor(endpoint);
+  if (logger.isDebugEnabled())   logger.debug("Node {} state normal, token {}",endpoint,tokens);
+  if (tokenMetadata.isMember(endpoint))   logger.info("Node {} state jump to normal",endpoint);
+  if (Gossiper.instance.usesHostId(endpoint)) {
+    UUID hostId=Gossiper.instance.getHostId(endpoint);
+    if (DatabaseDescriptor.isReplacing() && Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) != null && (hostId.equals(Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress()))))     logger.warn("Not updating token metadata for {} because I am replacing it",endpoint);
+ else     tokenMetadata.updateHostId(hostId,endpoint);
+  }
+  Set<Token> tokensToUpdateInMetadata=new HashSet<Token>();
+  Set<Token> tokensToUpdateInSystemKeyspace=new HashSet<Token>();
+  Set<Token> localTokensToRemove=new HashSet<Token>();
+  Set<InetAddress> endpointsToRemove=new HashSet<InetAddress>();
+  for (  final Token token : tokens) {
+    InetAddress currentOwner=tokenMetadata.getEndpoint(token);
+    if (currentOwner == null) {
+      logger.debug("New node {} at token {}",endpoint,token);
+      tokensToUpdateInMetadata.add(token);
+      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+    }
+ else     if (endpoint.equals(currentOwner)) {
+      tokensToUpdateInMetadata.add(token);
+    }
+ else     if (tokenMetadata.isRelocating(token) && tokenMetadata.getRelocatingRanges().get(token).equals(endpoint)) {
+      tokensToUpdateInMetadata.add(token);
+      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+      optionalTasks.schedule(new Runnable(){
+        public void run(){
+          logger.info("Removing RELOCATION state for {} {}",endpoint,token);
+          getTokenMetadata().removeFromRelocating(token,endpoint);
+        }
+      }
+,RING_DELAY,TimeUnit.MILLISECONDS);
+      if (currentOwner.equals(FBUtilities.getBroadcastAddress()))       localTokensToRemove.add(token);
+      logger.info("Token {} relocated to {}",token,endpoint);
+    }
+ else     if (tokenMetadata.isRelocating(token)) {
+      logger.info("Token {} is relocating to {}, ignoring update from {}",token,tokenMetadata.getRelocatingRanges().get(token),endpoint);
+    }
+ else     if (Gossiper.instance.compareEndpointStartup(endpoint,currentOwner) > 0) {
+      tokensToUpdateInMetadata.add(token);
+      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+      Multimap<InetAddress,Token> epToTokenCopy=getTokenMetadata().getEndpointToTokenMapForReading();
+      epToTokenCopy.get(currentOwner).remove(token);
+      if (epToTokenCopy.get(currentOwner).size() < 1)       endpointsToRemove.add(currentOwner);
+      logger.info(String.format("Nodes %s and %s have the same token %s.  %s is the new owner",endpoint,currentOwner,token,endpoint));
+      if (logger.isDebugEnabled())       logger.debug("Relocating ranges: {}",tokenMetadata.printRelocatingRanges());
+    }
+ else {
+      logger.info(String.format("Nodes %s and %s have the same token %s.  Ignoring %s",endpoint,currentOwner,token,endpoint));
+      if (logger.isDebugEnabled())       logger.debug("Relocating ranges: {}",tokenMetadata.printRelocatingRanges());
+    }
+  }
+  tokenMetadata.updateNormalTokens(tokensToUpdateInMetadata,endpoint);
+  for (  InetAddress ep : endpointsToRemove)   removeEndpoint(ep);
+  if (!tokensToUpdateInSystemKeyspace.isEmpty())   SystemKeyspace.updateTokens(endpoint,tokensToUpdateInSystemKeyspace);
+  if (!localTokensToRemove.isEmpty())   SystemKeyspace.updateLocalTokens(Collections.<Token>emptyList(),localTokensToRemove);
+  if (tokenMetadata.isMoving(endpoint)) {
+    tokenMetadata.removeFromMoving(endpoint);
+    if (!isClientMode) {
+      for (      IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)       subscriber.onMove(endpoint);
+    }
+  }
+  PendingRangeCalculatorService.instance.update();
+}

@@ -1,0 +1,12 @@
+{
+  Collection<Token> tokens;
+  tokens=getTokensFor(endpoint);
+  if (logger.isDebugEnabled())   logger.debug("Node {} state bootstrapping, token {}",endpoint,tokens);
+  if (tokenMetadata.isMember(endpoint)) {
+    if (!tokenMetadata.isLeaving(endpoint))     logger.info("Node {} state jump to bootstrap",endpoint);
+    tokenMetadata.removeEndpoint(endpoint);
+  }
+  tokenMetadata.addBootstrapTokens(tokens,endpoint);
+  PendingRangeCalculatorService.instance.update();
+  if (Gossiper.instance.usesHostId(endpoint))   tokenMetadata.updateHostId(Gossiper.instance.getHostId(endpoint),endpoint);
+}
