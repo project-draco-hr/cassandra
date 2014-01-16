@@ -1,0 +1,16 @@
+{
+  int count=Math.abs(context.getShort(context.position()));
+  if (count == 0)   return context;
+  List<Short> globalShardIndexes=new ArrayList<>(count);
+  for (int i=0; i < count; i++) {
+    short elt=context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH);
+    if (elt < 0)     globalShardIndexes.add(elt);
+  }
+  if (count == globalShardIndexes.size())   return context;
+  ByteBuffer cleared=ByteBuffer.allocate(context.remaining() - (count - globalShardIndexes.size()) * HEADER_ELT_LENGTH);
+  cleared.putShort(cleared.position(),(short)globalShardIndexes.size());
+  for (int i=0; i < globalShardIndexes.size(); i++)   cleared.putShort(cleared.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH,globalShardIndexes.get(i));
+  int origHeaderLength=headerLength(context);
+  ByteBufferUtil.arrayCopy(context,context.position() + origHeaderLength,cleared,cleared.position() + headerLength(cleared),context.remaining() - origHeaderLength);
+  return cleared;
+}
