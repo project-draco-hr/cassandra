@@ -1,87 +1,44 @@
 {
-  ContextState leftState=new ContextState(left,headerLength(left));
-  ContextState rightState=new ContextState(right,headerLength(right));
-  int mergedHeaderLength=HEADER_SIZE_LENGTH;
-  int mergedBodyLength=0;
+  int globalCount=0;
+  int localCount=0;
+  int remoteCount=0;
+  ContextState leftState=ContextState.wrap(left);
+  ContextState rightState=ContextState.wrap(right);
   while (leftState.hasRemaining() && rightState.hasRemaining()) {
     int cmp=leftState.compareIdTo(rightState);
     if (cmp == 0) {
-      mergedBodyLength+=STEP_LENGTH;
-      if (leftState.isDelta() || rightState.isDelta())       mergedHeaderLength+=HEADER_ELT_LENGTH;
+      if (leftState.isGlobal() || rightState.isGlobal())       globalCount+=1;
+ else       if (leftState.isLocal() || rightState.isLocal())       localCount+=1;
+ else       remoteCount+=1;
       leftState.moveToNext();
       rightState.moveToNext();
     }
  else     if (cmp > 0) {
-      mergedBodyLength+=STEP_LENGTH;
-      if (rightState.isDelta())       mergedHeaderLength+=HEADER_ELT_LENGTH;
+      if (rightState.isGlobal())       globalCount+=1;
+ else       if (rightState.isLocal())       localCount+=1;
+ else       remoteCount+=1;
       rightState.moveToNext();
     }
  else {
-      mergedBodyLength+=STEP_LENGTH;
-      if (leftState.isDelta())       mergedHeaderLength+=HEADER_ELT_LENGTH;
-      leftState.moveToNext();
-    }
-  }
-  mergedHeaderLength+=leftState.remainingHeaderLength() + rightState.remainingHeaderLength();
-  mergedBodyLength+=leftState.remainingBodyLength() + rightState.remainingBodyLength();
-  ByteBuffer merged=allocator.allocate(mergedHeaderLength + mergedBodyLength);
-  merged.putShort(merged.position(),(short)((mergedHeaderLength - HEADER_SIZE_LENGTH) / HEADER_ELT_LENGTH));
-  ContextState mergedState=new ContextState(merged,mergedHeaderLength);
-  leftState.reset();
-  rightState.reset();
-  while (leftState.hasRemaining() && rightState.hasRemaining()) {
-    int cmp=leftState.compareIdTo(rightState);
-    if (cmp == 0) {
-      if (leftState.isDelta() || rightState.isDelta()) {
-        if (leftState.isDelta() && rightState.isDelta()) {
-          long clock=leftState.getClock() + rightState.getClock();
-          long count=leftState.getCount() + rightState.getCount();
-          mergedState.writeElement(leftState.getCounterId(),clock,count,true);
-        }
- else {
-          (leftState.isDelta() ? leftState : rightState).copyTo(mergedState);
-        }
-      }
- else {
-        long leftClock=leftState.getClock();
-        long rightClock=rightState.getClock();
-        if (leftClock == rightClock) {
-          long leftCount=leftState.getCount();
-          long rightCount=rightState.getCount();
-          if (leftCount != rightCount && CompactionManager.isCompactionManager.get()) {
-            logger.warn("invalid counter shard detected; ({}, {}, {}) and ({}, {}, {}) differ only in " + "count; will pick highest to self-heal on compaction",leftState.getCounterId(),leftClock,leftCount,rightState.getCounterId(),rightClock,rightCount);
-          }
-          if (leftCount > rightCount) {
-            leftState.copyTo(mergedState);
-          }
- else {
-            rightState.copyTo(mergedState);
-          }
-        }
- else {
-          if ((leftClock >= 0 && rightClock > 0 && leftClock >= rightClock) || (leftClock < 0 && (rightClock > 0 || leftClock < rightClock)))           leftState.copyTo(mergedState);
- else           rightState.copyTo(mergedState);
-        }
-      }
-      rightState.moveToNext();
-      leftState.moveToNext();
-    }
- else     if (cmp > 0) {
-      rightState.copyTo(mergedState);
-      rightState.moveToNext();
-    }
- else {
-      leftState.copyTo(mergedState);
+      if (leftState.isGlobal())       globalCount+=1;
+ else       if (leftState.isLocal())       localCount+=1;
+ else       remoteCount+=1;
       leftState.moveToNext();
     }
   }
   while (leftState.hasRemaining()) {
-    leftState.copyTo(mergedState);
+    if (leftState.isGlobal())     globalCount+=1;
+ else     if (leftState.isLocal())     localCount+=1;
+ else     remoteCount+=1;
     leftState.moveToNext();
   }
   while (rightState.hasRemaining()) {
-    rightState.copyTo(mergedState);
+    if (rightState.isGlobal())     globalCount+=1;
+ else     if (rightState.isLocal())     localCount+=1;
+ else     remoteCount+=1;
     rightState.moveToNext();
   }
-  return merged;
+  leftState.reset();
+  rightState.reset();
+  return merge(ContextState.allocate(globalCount,localCount,remoteCount,allocator),leftState,rightState);
 }

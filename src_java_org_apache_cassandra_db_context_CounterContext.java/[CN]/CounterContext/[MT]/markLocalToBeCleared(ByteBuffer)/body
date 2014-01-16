@@ -1,0 +1,16 @@
+{
+  short count=context.getShort(context.position());
+  if (count <= 0)   return context;
+  boolean hasLocalShards=false;
+  for (int i=0; i < count; i++) {
+    if (context.getShort(context.position() + HEADER_SIZE_LENGTH + i * HEADER_ELT_LENGTH) >= 0) {
+      hasLocalShards=true;
+      break;
+    }
+  }
+  if (!hasLocalShards)   return context;
+  ByteBuffer marked=ByteBuffer.allocate(context.remaining());
+  marked.putShort(marked.position(),(short)(count * -1));
+  ByteBufferUtil.arrayCopy(context,context.position() + HEADER_SIZE_LENGTH,marked,marked.position() + HEADER_SIZE_LENGTH,context.remaining() - HEADER_SIZE_LENGTH);
+  return marked;
+}
