@@ -1,7 +1,18 @@
 {
   Table table=getValidTable(tableName);
-  if (cfNames.length == 0)   return table.getColumnFamilyStores();
   Set<ColumnFamilyStore> valid=new HashSet<ColumnFamilyStore>();
+  if (cfNames.length == 0) {
+    for (    ColumnFamilyStore cfStore : table.getColumnFamilyStores()) {
+      valid.add(cfStore);
+      if (autoAddIndexes) {
+        for (        SecondaryIndex si : cfStore.indexManager.getIndexes()) {
+          logger.info("adding secondary index {} to operation",si.getIndexName());
+          valid.add(si.getIndexCfs());
+        }
+      }
+    }
+    return valid;
+  }
   for (  String cfName : cfNames) {
     String baseCfName=cfName;
     String idxName=null;
