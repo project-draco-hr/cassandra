@@ -1,0 +1,17 @@
+{
+  final Map<String,TabularData> snapshotMap=new HashMap<>();
+  for (  final Keyspace keyspace : Keyspace.all()) {
+    if (Keyspace.SYSTEM_KS.equals(keyspace.getName()))     continue;
+    for (    final ColumnFamilyStore cfStore : keyspace.getColumnFamilyStores()) {
+      for (      final Map.Entry<String,Pair<Long,Long>> snapshotDetail : cfStore.getSnapshotDetails().entrySet()) {
+        TabularDataSupport data=(TabularDataSupport)snapshotMap.get(snapshotDetail.getKey());
+        if (data == null) {
+          data=new TabularDataSupport(SnapshotDetailsTabularData.TABULAR_TYPE);
+          snapshotMap.put(snapshotDetail.getKey(),data);
+        }
+        SnapshotDetailsTabularData.from(snapshotDetail.getKey(),keyspace.getName(),cfStore.getColumnFamilyName(),snapshotDetail,data);
+      }
+    }
+  }
+  return snapshotMap;
+}
