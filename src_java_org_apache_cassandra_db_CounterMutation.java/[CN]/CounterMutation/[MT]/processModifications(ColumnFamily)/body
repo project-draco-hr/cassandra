@@ -1,0 +1,20 @@
+{
+  Allocator allocator=HeapAllocator.instance;
+  ColumnFamilyStore cfs=Keyspace.open(getKeyspaceName()).getColumnFamilyStore(changesCF.id());
+  ColumnFamily resultCF=changesCF.cloneMeShallow();
+  List<CounterUpdateCell> counterUpdateCells=new ArrayList<>(changesCF.getColumnCount());
+  for (  Cell cell : changesCF) {
+    if (cell instanceof CounterUpdateCell)     counterUpdateCells.add((CounterUpdateCell)cell);
+ else     resultCF.addColumn(cell.localCopy(cfs,allocator));
+  }
+  if (counterUpdateCells.isEmpty())   return resultCF;
+  ClockAndCount[] currentValues=getCurrentValues(counterUpdateCells,cfs);
+  for (int i=0; i < counterUpdateCells.size(); i++) {
+    ClockAndCount currentValue=currentValues[i];
+    CounterUpdateCell update=counterUpdateCells.get(i);
+    long clock=currentValue.clock + 1L;
+    long count=currentValue.count + update.delta();
+    resultCF.addColumn(new CounterCell(update.name().copy(allocator),CounterContext.instance().createGlobal(CounterId.getLocalId(),clock,count,allocator),update.timestamp()));
+  }
+  return resultCF;
+}

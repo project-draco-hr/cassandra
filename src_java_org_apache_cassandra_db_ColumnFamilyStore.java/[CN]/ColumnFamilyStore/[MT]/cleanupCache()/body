@@ -4,4 +4,10 @@
     DecoratedKey dk=partitioner.decorateKey(ByteBuffer.wrap(key.key));
     if (key.cfId == metadata.cfId && !Range.isInRanges(dk.token,ranges))     invalidateCachedRow(dk);
   }
+  if (metadata.isCounter()) {
+    for (    CounterCacheKey key : CacheService.instance.counterCache.getKeySet()) {
+      DecoratedKey dk=partitioner.decorateKey(ByteBuffer.wrap(key.partitionKey));
+      if (key.cfId == metadata.cfId && !Range.isInRanges(dk.token,ranges))       CacheService.instance.counterCache.remove(key);
+    }
+  }
 }

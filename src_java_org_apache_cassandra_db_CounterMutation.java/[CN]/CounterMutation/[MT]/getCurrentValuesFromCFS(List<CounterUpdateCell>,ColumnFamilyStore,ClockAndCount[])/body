@@ -1,0 +1,13 @@
+{
+  SortedSet<CellName> names=new TreeSet<>(cfs.metadata.comparator);
+  for (int i=0; i < currentValues.length; i++)   if (currentValues[i] == null)   names.add(counterUpdateCells.get(i).name);
+  ReadCommand cmd=new SliceByNamesReadCommand(getKeyspaceName(),key(),cfs.metadata.cfName,Long.MIN_VALUE,new NamesQueryFilter(names));
+  Row row=cmd.getRow(cfs.keyspace);
+  ColumnFamily cf=row == null ? null : row.cf;
+  for (int i=0; i < currentValues.length; i++) {
+    if (currentValues[i] != null)     continue;
+    Cell cell=cf == null ? null : cf.getColumn(counterUpdateCells.get(i).name());
+    if (cell == null || cell.isMarkedForDelete(Long.MIN_VALUE))     currentValues[i]=ClockAndCount.BLANK;
+ else     currentValues[i]=CounterContext.instance().getLocalClockAndCount(cell.value());
+  }
+}

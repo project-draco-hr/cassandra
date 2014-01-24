@@ -1,11 +1,25 @@
 {
-  Mutation m=new Mutation(mutation.getKeyspaceName(),ByteBufferUtil.clone(mutation.key()));
-  Keyspace keyspace=Keyspace.open(m.getKeyspaceName());
-  for (  ColumnFamily cf_ : mutation.getColumnFamilies()) {
-    ColumnFamily cf=cf_.cloneMeShallow();
-    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cf.id());
-    for (    Cell cell : cf_)     cf.addColumn(cell.localCopy(cfs),HeapAllocator.instance);
-    m.add(cf);
+  Mutation result=new Mutation(getKeyspaceName(),ByteBufferUtil.clone(key()));
+  Keyspace keyspace=Keyspace.open(getKeyspaceName());
+  ArrayList<UUID> cfIds=new ArrayList<>(getColumnFamilyIds());
+  Collections.sort(cfIds);
+  ArrayList<Lock> locks=new ArrayList<>(cfIds.size());
+  try {
+    Tracing.trace("Acquiring {} counter locks",cfIds.size());
+    for (    UUID cfId : cfIds) {
+      Lock lock=keyspace.getColumnFamilyStore(cfId).counterLockFor(key());
+      if (!lock.tryLock(getTimeout(),TimeUnit.MILLISECONDS))       throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
+      locks.add(lock);
+    }
+    for (    ColumnFamily cf : getColumnFamilies())     result.add(processModifications(cf));
+    result.apply();
+    updateCounterCache(result,keyspace);
+    return result;
   }
-  m.apply();
+ catch (  InterruptedException e) {
+    throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
+  }
+ finally {
+    for (    Lock lock : locks)     lock.unlock();
+  }
 }

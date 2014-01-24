@@ -1,0 +1,18 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KS).getColumnFamilyStore(CF);
+  CacheService.instance.invalidateCounterCache();
+  assertEquals(0,CacheService.instance.counterCache.size());
+  assertNull(cfs.getCachedCounter(bytes(1),cellname(1)));
+  assertNull(cfs.getCachedCounter(bytes(1),cellname(2)));
+  assertNull(cfs.getCachedCounter(bytes(2),cellname(1)));
+  assertNull(cfs.getCachedCounter(bytes(2),cellname(2)));
+  cfs.putCachedCounter(bytes(1),cellname(1),ClockAndCount.create(1L,1L));
+  cfs.putCachedCounter(bytes(1),cellname(2),ClockAndCount.create(1L,2L));
+  cfs.putCachedCounter(bytes(2),cellname(1),ClockAndCount.create(2L,1L));
+  cfs.putCachedCounter(bytes(2),cellname(2),ClockAndCount.create(2L,2L));
+  assertEquals(4,CacheService.instance.counterCache.size());
+  assertEquals(ClockAndCount.create(1L,1L),cfs.getCachedCounter(bytes(1),cellname(1)));
+  assertEquals(ClockAndCount.create(1L,2L),cfs.getCachedCounter(bytes(1),cellname(2)));
+  assertEquals(ClockAndCount.create(2L,1L),cfs.getCachedCounter(bytes(2),cellname(1)));
+  assertEquals(ClockAndCount.create(2L,2L),cfs.getCachedCounter(bytes(2),cellname(2)));
+}

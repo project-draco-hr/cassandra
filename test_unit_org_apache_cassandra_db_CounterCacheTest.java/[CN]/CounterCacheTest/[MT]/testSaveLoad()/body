@@ -1,0 +1,18 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KS).getColumnFamilyStore(CF);
+  CacheService.instance.invalidateCounterCache();
+  ColumnFamily cells=UnsortedColumns.factory.create(cfs.metadata);
+  cells.addColumn(new CounterUpdateCell(cellname(1),1L,FBUtilities.timestampMicros()));
+  cells.addColumn(new CounterUpdateCell(cellname(2),2L,FBUtilities.timestampMicros()));
+  new CounterMutation(new Mutation(KS,bytes(1),cells),ConsistencyLevel.ONE).apply();
+  new CounterMutation(new Mutation(KS,bytes(2),cells),ConsistencyLevel.ONE).apply();
+  CacheService.instance.counterCache.submitWrite(Integer.MAX_VALUE).get();
+  CacheService.instance.invalidateCounterCache();
+  assertEquals(0,CacheService.instance.counterCache.size());
+  CacheService.instance.counterCache.loadSaved(cfs);
+  assertEquals(4,CacheService.instance.counterCache.size());
+  assertEquals(ClockAndCount.create(1L,1L),cfs.getCachedCounter(bytes(1),cellname(1)));
+  assertEquals(ClockAndCount.create(1L,2L),cfs.getCachedCounter(bytes(1),cellname(2)));
+  assertEquals(ClockAndCount.create(1L,1L),cfs.getCachedCounter(bytes(2),cellname(1)));
+  assertEquals(ClockAndCount.create(1L,2L),cfs.getCachedCounter(bytes(2),cellname(2)));
+}
