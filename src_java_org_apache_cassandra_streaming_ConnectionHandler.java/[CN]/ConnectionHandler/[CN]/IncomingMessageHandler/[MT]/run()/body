@@ -1,18 +1,21 @@
 {
-  while (!isClosed()) {
-    try {
+  try {
+    ReadableByteChannel in=getReadChannel(socket);
+    while (!isClosed()) {
       StreamMessage message=StreamMessage.deserialize(in,protocolVersion,session);
       if (message != null) {
         logger.debug("[Stream #{}] Received {}",session.planId(),message);
         session.messageReceived(message);
       }
     }
- catch (    SocketException e) {
-      close();
-    }
-catch (    Throwable e) {
-      session.onError(e);
-    }
   }
-  signalCloseDone();
+ catch (  SocketException e) {
+    close();
+  }
+catch (  Throwable e) {
+    session.onError(e);
+  }
+ finally {
+    signalCloseDone();
+  }
 }
