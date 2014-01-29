@@ -1,5 +1,5 @@
 {
-  if (toDiscard == 0)   return rows;
+  if (toDiscard == 0 || rows.isEmpty())   return rows;
   int i=0;
   DecoratedKey firstKey=null;
   ColumnFamily firstCf=null;
@@ -9,10 +9,10 @@
     firstCf=first.cf.cloneMeShallow();
     toDiscard-=isReversed() ? discardLast(first.cf,toDiscard,firstCf) : discardFirst(first.cf,toDiscard,firstCf);
   }
-  if (toDiscard > 0 && i >= rows.size())   return Collections.<Row>emptyList();
+  if (toDiscard > 0)   return Collections.<Row>emptyList();
   int count=firstCf.getColumnCount();
-  int newSize=rows.size() - i;
-  List<Row> newRows=new ArrayList<Row>(count == 0 ? newSize - 1 : newSize);
+  int newSize=rows.size() - (count == 0 ? i : i - 1);
+  List<Row> newRows=new ArrayList<Row>(newSize);
   if (count != 0)   newRows.add(new Row(firstKey,firstCf));
   newRows.addAll(rows.subList(i,rows.size()));
   return newRows;
