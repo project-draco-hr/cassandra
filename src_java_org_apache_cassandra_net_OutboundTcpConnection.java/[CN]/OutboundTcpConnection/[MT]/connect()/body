@@ -28,7 +28,19 @@
         DataInputStream in=new DataInputStream(socket.getInputStream());
         int maxTargetVersion=handshakeVersion(in);
         if (maxTargetVersion == NO_VERSION) {
-          logger.debug("Target max version is {}; no version information yet, will retry",maxTargetVersion);
+          if (System.getProperty("cassandra.default_messaging_version") != null) {
+            try {
+              int defaultVersion=Integer.parseInt(System.getProperty("cassandra.default_messaging_version"));
+              logger.debug("No messaging version received; assuming default of {} ",defaultVersion);
+              MessagingService.instance().setVersion(poolReference.endPoint(),defaultVersion);
+            }
+ catch (            NumberFormatException e) {
+              logger.debug("Unable to parse the value of cassandra.default_messaging_version");
+            }
+          }
+ else {
+            logger.debug("No messaging version received; will retry",maxTargetVersion);
+          }
           disconnect();
           continue;
         }
