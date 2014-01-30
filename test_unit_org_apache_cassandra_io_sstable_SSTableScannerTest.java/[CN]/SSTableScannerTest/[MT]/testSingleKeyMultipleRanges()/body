@@ -1,0 +1,14 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore(TABLE);
+  store.clearUnsafe();
+  store.disableAutoCompaction();
+  insertRowWithKey(205);
+  store.forceBlockingFlush();
+  assertEquals(1,store.getSSTables().size());
+  SSTableReader sstable=store.getSSTables().iterator().next();
+  SSTableScanner fullScanner=sstable.getScanner();
+  assertScanContainsRanges(fullScanner,205,205);
+  ICompactionScanner scanner=sstable.getScanner(makeRanges(101,109,201,209),null);
+  assertScanContainsRanges(scanner,205,205);
+}
