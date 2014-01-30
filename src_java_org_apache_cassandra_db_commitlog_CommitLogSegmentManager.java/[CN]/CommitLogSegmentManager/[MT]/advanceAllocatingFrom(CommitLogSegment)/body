@@ -16,11 +16,13 @@
       CommitLog.instance.requestExtraSync();
       return;
     }
-    WaitQueue.Signal signal=hasAvailableSegments.register();
+    WaitQueue.Signal signal=hasAvailableSegments.register(CommitLog.instance.metrics.waitingOnSegmentAllocation.time());
     wakeManager();
-    if (availableSegments.isEmpty()) {
+    if (!availableSegments.isEmpty() || allocatingFrom != old) {
+      signal.cancel();
       if (allocatingFrom != old)       return;
-      signal.awaitUninterruptibly();
+      continue;
     }
+    signal.awaitUninterruptibly();
   }
 }

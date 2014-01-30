@@ -1,6 +1,7 @@
 {
-  Set<Memtable> newPending=ImmutableSet.copyOf(Sets.difference(memtablesPendingFlush,Collections.singleton(flushedMemtable)));
+  int index=flushingMemtables.indexOf(flushedMemtable);
+  List<Memtable> newQueuedMemtables=ImmutableList.<Memtable>builder().addAll(flushingMemtables.subList(0,index)).addAll(flushingMemtables.subList(index + 1,flushingMemtables.size())).build();
   Set<SSTableReader> newSSTables=newSSTable == null ? sstables : newSSTables(newSSTable);
   SSTableIntervalTree intervalTree=buildIntervalTree(newSSTables);
-  return new View(memtable,newPending,newSSTables,compacting,intervalTree);
+  return new View(liveMemtables,newQueuedMemtables,newSSTables,compacting,intervalTree);
 }

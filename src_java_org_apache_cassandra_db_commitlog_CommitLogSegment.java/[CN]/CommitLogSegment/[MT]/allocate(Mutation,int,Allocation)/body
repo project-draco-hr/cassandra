@@ -1,20 +1,20 @@
 {
-  final AppendLock appendLock=lockForAppend();
+  final OpOrder.Group commandOrder=appendOrder.start();
   try {
     int position=allocate(size);
     if (position < 0) {
-      appendLock.unlock();
+      commandOrder.finishOne();
       return false;
     }
     alloc.buffer=(ByteBuffer)buffer.duplicate().position(position).limit(position + size);
     alloc.position=position;
     alloc.segment=this;
-    alloc.appendLock=appendLock;
+    alloc.appendOp=commandOrder;
     markDirty(mutation,position);
     return true;
   }
  catch (  Throwable t) {
-    appendLock.unlock();
+    commandOrder.finishOne();
     throw t;
   }
 }

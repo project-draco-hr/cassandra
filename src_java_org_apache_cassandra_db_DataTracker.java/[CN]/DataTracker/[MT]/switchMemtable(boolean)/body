@@ -1,0 +1,13 @@
+{
+  Memtable newMemtable=new Memtable(cfstore);
+  Memtable toFlushMemtable;
+  View currentView, newView;
+  do {
+    currentView=view.get();
+    toFlushMemtable=currentView.getCurrentMemtable();
+    newView=currentView.switchMemtable(newMemtable);
+  }
+ while (!view.compareAndSet(currentView,newView));
+  if (truncating)   notifyRenewed(newMemtable);
+  return toFlushMemtable;
+}

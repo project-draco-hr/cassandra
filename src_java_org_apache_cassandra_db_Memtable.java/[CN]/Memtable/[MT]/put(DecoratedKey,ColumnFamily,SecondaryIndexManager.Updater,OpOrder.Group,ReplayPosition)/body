@@ -1,0 +1,33 @@
+{
+  if (replayPosition != null && writeBarrier != null) {
+    replayPosition=replayPosition.clone();
+    while (true) {
+      ReplayPosition last=lastReplayPosition.get();
+      if (last.compareTo(replayPosition) >= 0)       break;
+      if (lastReplayPosition.compareAndSet(last,replayPosition))       break;
+    }
+  }
+  AtomicBTreeColumns previous=rows.get(key);
+  if (previous == null) {
+    AtomicBTreeColumns empty=cf.cloneMeShallow(AtomicBTreeColumns.factory,false);
+    final DecoratedKey cloneKey=new DecoratedKey(key.token,allocator.clone(key.key,opGroup));
+    previous=rows.putIfAbsent(cloneKey,empty);
+    if (previous == null) {
+      previous=empty;
+      int overhead=(int)(cfs.partitioner.getHeapSizeOf(key.token) + ROW_OVERHEAD_HEAP_SIZE);
+      allocator.allocate(overhead,opGroup);
+    }
+ else {
+      allocator.free(cloneKey.key);
+    }
+  }
+  ContextAllocator contextAllocator=allocator.wrap(opGroup,cfs);
+  AtomicBTreeColumns.Delta delta=previous.addAllWithSizeDelta(cf,contextAllocator,contextAllocator,indexer,new AtomicBTreeColumns.Delta());
+  liveDataSize.addAndGet(delta.dataSize());
+  currentOperations.addAndGet((cf.getColumnCount() == 0) ? cf.isMarkedForDelete() ? 1 : 0 : cf.getColumnCount());
+  for (  Cell cell : delta.reclaimed()) {
+    cell.name.free(allocator);
+    allocator.free(cell.value);
+  }
+  allocator.allocate((int)delta.excessHeapSize(),opGroup);
+}

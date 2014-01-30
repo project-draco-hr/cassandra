@@ -1,0 +1,20 @@
+{
+  if (!hasWaiters())   return;
+  List<Thread> woke=null;
+  if (logger.isTraceEnabled())   woke=new ArrayList<>();
+  long start=System.nanoTime();
+  RegisteredSignal last=queue.getLast();
+  Iterator<RegisteredSignal> iter=queue.iterator();
+  while (iter.hasNext()) {
+    RegisteredSignal signal=iter.next();
+    if (logger.isTraceEnabled()) {
+      Thread thread=signal.thread;
+      if (signal.signal())       woke.add(thread);
+    }
+ else     signal.signal();
+    iter.remove();
+    if (signal == last)     break;
+  }
+  long end=System.nanoTime();
+  if (woke != null)   logger.trace("Woke up {} in {}ms from {}",woke,(end - start) * 0.000001d,Thread.currentThread().getStackTrace()[2]);
+}

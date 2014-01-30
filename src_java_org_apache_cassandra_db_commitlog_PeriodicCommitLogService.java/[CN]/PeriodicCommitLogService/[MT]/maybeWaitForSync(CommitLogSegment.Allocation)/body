@@ -3,8 +3,9 @@
     long started=System.currentTimeMillis();
     pending.incrementAndGet();
     while (waitForSyncToCatchUp(started)) {
-      WaitQueue.Signal signal=syncComplete.register();
+      WaitQueue.Signal signal=syncComplete.register(CommitLog.instance.metrics.waitingOnCommit.time());
       if (waitForSyncToCatchUp(started))       signal.awaitUninterruptibly();
+ else       signal.cancel();
     }
     pending.decrementAndGet();
   }

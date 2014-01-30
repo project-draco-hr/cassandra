@@ -1,0 +1,25 @@
+{
+  writeBarrier.markBlocking();
+  writeBarrier.await();
+  Iterator<Memtable> iter=memtables.iterator();
+  while (iter.hasNext()) {
+    Memtable memtable=iter.next();
+    memtable.cfs.data.markFlushing(memtable);
+    if (memtable.isClean() || truncate) {
+      memtable.cfs.replaceFlushed(memtable,null);
+      memtable.setDiscarded();
+      iter.remove();
+    }
+  }
+  if (memtables.isEmpty()) {
+    postFlush.latch.countDown();
+    return;
+  }
+  metric.memtableSwitchCount.inc();
+  for (  final Memtable memtable : memtables) {
+    MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
+    memtable.setDiscarded();
+  }
+  postFlush.lastReplayPosition=memtables.get(0).getLastReplayPosition();
+  postFlush.latch.countDown();
+}

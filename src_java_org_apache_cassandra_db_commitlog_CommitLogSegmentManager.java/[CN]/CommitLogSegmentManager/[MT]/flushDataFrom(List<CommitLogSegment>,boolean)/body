@@ -1,0 +1,20 @@
+{
+  if (segments.isEmpty())   return Futures.immediateFuture(null);
+  final ReplayPosition maxReplayPosition=segments.get(segments.size() - 1).getContext();
+  final Map<UUID,ListenableFuture<?>> flushes=new LinkedHashMap<>();
+  for (  CommitLogSegment segment : segments) {
+    for (    UUID dirtyCFId : segment.getDirtyCFIDs()) {
+      Pair<String,String> pair=Schema.instance.getCF(dirtyCFId);
+      if (pair == null) {
+        logger.debug("Marking clean CF {} that doesn't exist anymore",dirtyCFId);
+        segment.markClean(dirtyCFId,segment.getContext());
+      }
+ else       if (!flushes.containsKey(dirtyCFId)) {
+        String keyspace=pair.left;
+        final ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(dirtyCFId);
+        flushes.put(dirtyCFId,force ? cfs.forceFlush() : cfs.forceFlush(maxReplayPosition));
+      }
+    }
+  }
+  return Futures.allAsList(flushes.values());
+}

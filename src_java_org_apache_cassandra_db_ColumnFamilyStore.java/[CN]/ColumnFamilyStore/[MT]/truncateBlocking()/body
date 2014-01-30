@@ -4,15 +4,12 @@
     forceBlockingFlush();
     Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
   }
-  Keyspace.switchLock.writeLock().lock();
-  try {
-    for (    ColumnFamilyStore cfs : concatWithIndexes()) {
-      Memtable mt=cfs.getMemtableThreadSafe();
-      if (!mt.isClean())       mt.cfs.data.renewMemtable();
+ else {
+synchronized (data) {
+      final Flush flush=new Flush(true);
+      flushExecutor.execute(flush);
+      postFlushExecutor.submit(flush.postFlush);
     }
-  }
-  finally {
-    Keyspace.switchLock.writeLock().unlock();
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){

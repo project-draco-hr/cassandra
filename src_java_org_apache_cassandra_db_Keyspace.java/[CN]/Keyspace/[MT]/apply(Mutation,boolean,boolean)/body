@@ -1,10 +1,13 @@
 {
-  Tracing.trace("Acquiring switchLock read lock");
-  switchLock.readLock().lock();
+  final OpOrder.Group opGroup=writeOrder.start();
   try {
+    final ReplayPosition replayPosition;
     if (writeCommitLog) {
       Tracing.trace("Appending to commitlog");
-      CommitLog.instance.add(mutation);
+      replayPosition=CommitLog.instance.add(mutation);
+    }
+ else {
+      replayPosition=CommitLog.instance.getContext();
     }
     DecoratedKey key=StorageService.getPartitioner().decorateKey(mutation.key());
     for (    ColumnFamily cf : mutation.getColumnFamilies()) {
@@ -14,10 +17,11 @@
         continue;
       }
       Tracing.trace("Adding to {} memtable",cf.metadata().cfName);
-      cfs.apply(key,cf,updateIndexes ? cfs.indexManager.updaterFor(key,cf) : SecondaryIndexManager.nullUpdater);
+      SecondaryIndexManager.Updater updater=updateIndexes ? cfs.indexManager.updaterFor(key,opGroup) : SecondaryIndexManager.nullUpdater;
+      cfs.apply(key,cf,updater,opGroup,replayPosition);
     }
   }
   finally {
-    switchLock.readLock().unlock();
+    opGroup.finishOne();
   }
 }

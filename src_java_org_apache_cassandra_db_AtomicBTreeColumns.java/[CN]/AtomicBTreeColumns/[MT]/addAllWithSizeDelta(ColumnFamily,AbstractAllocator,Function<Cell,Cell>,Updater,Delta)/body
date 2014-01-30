@@ -1,0 +1,34 @@
+{
+  boolean transformed=false;
+  Collection<Cell> insert;
+  if (cm instanceof UnsortedColumns) {
+    insert=transform(metadata.comparator.columnComparator(),cm,transformation,true);
+    transformed=true;
+  }
+ else   insert=cm.getSortedColumns();
+  while (true) {
+    Holder current=ref;
+    DeletionInfo deletionInfo=cm.deletionInfo();
+    if (deletionInfo.hasRanges()) {
+      for (      Iterator<Cell> iter : new Iterator[]{insert.iterator(),BTree.<Cell>slice(current.tree,true)}) {
+        while (iter.hasNext()) {
+          Cell col=iter.next();
+          if (deletionInfo.isDeleted(col))           indexer.remove(col);
+        }
+      }
+    }
+    delta.reset();
+    deletionInfo=current.deletionInfo.copy().add(deletionInfo);
+    delta.addHeapSize(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
+    ColumnUpdater updater=new ColumnUpdater(this,current,allocator,transformation,indexer,delta);
+    Object[] tree=BTree.update(current.tree,metadata.comparator.columnComparator(),insert,true,updater);
+    if (tree != null && refUpdater.compareAndSet(this,current,new Holder(tree,deletionInfo))) {
+      indexer.updateRowLevelIndexes();
+      return updater.delta;
+    }
+    if (!transformed) {
+      insert=transform(metadata.comparator.columnComparator(),cm,transformation,false);
+      transformed=true;
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  this.truncate=truncate;
+  metric.pendingFlushes.inc();
+  writeBarrier=keyspace.writeOrder.newBarrier();
+  memtables=new ArrayList<>();
+  final ReplayPosition minReplayPosition=CommitLog.instance.getContext();
+  for (  ColumnFamilyStore cfs : concatWithIndexes()) {
+    Memtable mt=cfs.data.switchMemtable(truncate);
+    mt.setDiscarding(writeBarrier,minReplayPosition);
+    memtables.add(mt);
+  }
+  writeBarrier.issue();
+  postFlush=new PostFlush(!truncate,writeBarrier);
+}

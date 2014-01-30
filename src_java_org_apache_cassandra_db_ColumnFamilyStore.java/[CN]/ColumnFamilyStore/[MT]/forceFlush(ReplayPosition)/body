@@ -1,0 +1,17 @@
+{
+synchronized (data) {
+    boolean clean=true;
+    for (    ColumnFamilyStore cfs : concatWithIndexes())     clean&=cfs.data.getView().getCurrentMemtable().isCleanAfter(flushIfDirtyBefore);
+    if (clean) {
+      ListenableFutureTask<?> task=ListenableFutureTask.create(new Runnable(){
+        public void run(){
+          logger.debug("forceFlush requested but everything is clean in {}",name);
+        }
+      }
+,null);
+      postFlushExecutor.execute(task);
+      return task;
+    }
+    return switchMemtable();
+  }
+}

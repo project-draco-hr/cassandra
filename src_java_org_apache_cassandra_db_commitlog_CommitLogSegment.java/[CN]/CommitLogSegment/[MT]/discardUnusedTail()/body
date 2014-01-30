@@ -1,11 +1,17 @@
 {
-  if (discardedTailFrom > 0)   return;
-  while (true) {
-    int prev=allocatePosition.get();
-    int next=buffer.capacity();
-    if (allocatePosition.compareAndSet(prev,next)) {
-      discardedTailFrom=prev;
-      return;
+  OpOrder.Group group=appendOrder.start();
+  try {
+    while (true) {
+      int prev=allocatePosition.get();
+      int next=buffer.capacity() + 1;
+      if (prev == next)       return;
+      if (allocatePosition.compareAndSet(prev,next)) {
+        discardedTailFrom=prev;
+        return;
+      }
     }
+  }
+  finally {
+    group.finishOne();
   }
 }

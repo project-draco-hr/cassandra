@@ -10,12 +10,12 @@
     }
   }
   if (indexedColumnsInRow != null && !indexedColumnsInRow.isEmpty()) {
-    Keyspace.switchLock.readLock().lock();
+    final OpOrder.Group opGroup=cfs.keyspace.writeOrder.start();
     try {
-      cfs.indexManager.deleteFromIndexes(row.getKey(),indexedColumnsInRow);
+      cfs.indexManager.deleteFromIndexes(row.getKey(),indexedColumnsInRow,opGroup);
     }
   finally {
-      Keyspace.switchLock.readLock().unlock();
+      opGroup.finishOne();
     }
   }
   return null;

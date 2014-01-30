@@ -1,0 +1,25 @@
+{
+  boolean delete;
+  if (checkCount >= 0) {
+    if (checkCount != totalCount()) {
+      errors.incrementAndGet();
+      logger.error("Received size changed after barrier finished: {} vs {}",checkCount,totalCount());
+    }
+    delete=true;
+  }
+ else {
+    checkCount=totalCount();
+    delete=false;
+  }
+  for (  Map.Entry<OpOrder.Group,AtomicInteger> e : count.entrySet()) {
+    if (e.getKey().compareTo(barrier.getSyncPoint()) > 0) {
+      errors.incrementAndGet();
+      logger.error("Received an operation that was created after the barrier was issued.");
+    }
+    if (TestOrdering.this.count.get(e.getKey()).intValue() != e.getValue().intValue()) {
+      errors.incrementAndGet();
+      logger.error("Missing registered operations. {} vs {}",TestOrdering.this.count.get(e.getKey()).intValue(),e.getValue().intValue());
+    }
+    if (delete)     TestOrdering.this.count.remove(e.getKey());
+  }
+}

@@ -1,0 +1,20 @@
+{
+  float largestRatio=0f;
+  Memtable largest=null;
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    Memtable current=cfs.getDataTracker().getView().getCurrentMemtable();
+    float onHeap=0f;
+    onHeap+=current.getAllocator().ownershipRatio();
+    for (    SecondaryIndex index : cfs.indexManager.getIndexes()) {
+      if (index.getOnHeapAllocator() != null)       onHeap+=index.getOnHeapAllocator().ownershipRatio();
+    }
+    if (onHeap > largestRatio) {
+      largest=current;
+      largestRatio=onHeap;
+    }
+  }
+  if (largest != null) {
+    largest.cfs.switchMemtableIfCurrent(largest);
+    logger.info("Reclaiming {} of {} retained memtable bytes",largest.getAllocator().reclaiming(),Memtable.memoryPool.used());
+  }
+}

@@ -1,0 +1,19 @@
+{
+  writeBarrier.await();
+  if (flushSecondaryIndexes) {
+    for (    SecondaryIndex index : indexManager.getIndexesNotBackedByCfs()) {
+      logger.info("Flushing SecondaryIndex {}",index);
+      index.forceBlockingFlush();
+    }
+  }
+  try {
+    latch.await();
+  }
+ catch (  InterruptedException e) {
+    throw new IllegalStateException();
+  }
+  if (lastReplayPosition != null) {
+    CommitLog.instance.discardCompletedSegments(metadata.cfId,lastReplayPosition);
+  }
+  metric.pendingFlushes.dec();
+}

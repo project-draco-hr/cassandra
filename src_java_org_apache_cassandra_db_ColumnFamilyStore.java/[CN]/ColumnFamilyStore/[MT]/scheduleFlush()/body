@@ -4,9 +4,16 @@
     logger.debug("scheduling flush in {} ms",period);
     WrappedRunnable runnable=new WrappedRunnable(){
       protected void runMayThrow() throws Exception {
-        if (getMemtableThreadSafe().isExpired()) {
-          if (isClean())           scheduleFlush();
- else           forceFlush();
+synchronized (data) {
+          Memtable current=data.getView().getCurrentMemtable();
+          if (current.isExpired()) {
+            if (current.isClean()) {
+              scheduleFlush();
+            }
+ else {
+              forceFlush();
+            }
+          }
         }
       }
     }

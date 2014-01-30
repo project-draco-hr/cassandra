@@ -2,19 +2,35 @@
   factory=new ColumnFamilyMetricNameFactory(cfs);
   memtableColumnsCount=Metrics.newGauge(factory.createMetricName("MemtableColumnsCount"),new Gauge<Long>(){
     public Long value(){
-      return cfs.getDataTracker().getMemtable().getOperations();
+      return cfs.getDataTracker().getView().getCurrentMemtable().getOperations();
     }
   }
 );
-  memtableDataSize=Metrics.newGauge(factory.createMetricName("MemtableDataSize"),new Gauge<Long>(){
+  memtableHeapSize=Metrics.newGauge(factory.createMetricName("MemtableHeapSize"),new Gauge<Long>(){
     public Long value(){
-      return cfs.getDataTracker().getMemtable().getLiveSize();
+      return cfs.getDataTracker().getView().getCurrentMemtable().getAllocator().owns();
     }
   }
 );
-  allMemtablesDataSize=Metrics.newGauge(factory.createMetricName("AllMemtablesDataSize"),new Gauge<Long>(){
+  memtableLiveDataSize=Metrics.newGauge(factory.createMetricName("MemtableLiveDataSize"),new Gauge<Long>(){
     public Long value(){
-      return cfs.getTotalAllMemtablesLiveSize();
+      return cfs.getDataTracker().getView().getCurrentMemtable().getLiveDataSize();
+    }
+  }
+);
+  allMemtablesHeapSize=Metrics.newGauge(factory.createMetricName("AllMemtablesHeapSize"),new Gauge<Long>(){
+    public Long value(){
+      long size=0;
+      for (      ColumnFamilyStore cfs2 : cfs.concatWithIndexes())       size+=cfs2.getDataTracker().getView().getCurrentMemtable().getAllocator().owns();
+      return size;
+    }
+  }
+);
+  allMemtablesLiveDataSize=Metrics.newGauge(factory.createMetricName("AllMemtablesLiveDataSize"),new Gauge<Long>(){
+    public Long value(){
+      long size=0;
+      for (      ColumnFamilyStore cfs2 : cfs.concatWithIndexes())       size+=cfs2.getDataTracker().getView().getCurrentMemtable().getLiveDataSize();
+      return size;
     }
   }
 );
@@ -58,12 +74,7 @@
 );
   readLatency=new LatencyMetrics(factory,"Read");
   writeLatency=new LatencyMetrics(factory,"Write");
-  pendingTasks=Metrics.newGauge(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
-    public Integer value(){
-      return Keyspace.switchLock.getQueueLength();
-    }
-  }
-);
+  pendingFlushes=Metrics.newCounter(factory.createMetricName("PendingFlushes"));
   liveSSTableCount=Metrics.newGauge(factory.createMetricName("LiveSSTableCount"),new Gauge<Integer>(){
     public Integer value(){
       return cfs.getDataTracker().getSSTables().size();
@@ -172,6 +183,7 @@
   liveScannedHistogram=Metrics.newHistogram(factory.createMetricName("LiveScannedHistogram"),true);
   coordinatorReadLatency=Metrics.newTimer(factory.createMetricName("CoordinatorReadLatency"),TimeUnit.MICROSECONDS,TimeUnit.SECONDS);
   coordinatorScanLatency=Metrics.newTimer(factory.createMetricName("CoordinatorScanLatency"),TimeUnit.MICROSECONDS,TimeUnit.SECONDS);
+  waitingOnFreeMemtableSpace=Metrics.newTimer(factory.createMetricName("WaitingOnFreeMemtableSpace"),TimeUnit.MICROSECONDS,TimeUnit.SECONDS);
   trueSnapshotsSize=Metrics.newGauge(factory.createMetricName("SnapshotsSize"),new Gauge<Long>(){
     public Long value(){
       return cfs.trueSnapshotsSize();
