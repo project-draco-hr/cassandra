@@ -1,16 +1,12 @@
 {
-  if (options instanceof SSLOptions) {
-    throw new UnsupportedOperationException();
+  this.options=options;
+  this.fqFactoryClass=options.factory.value();
+  try {
+    Class<?> clazz=Class.forName(fqFactoryClass);
+    if (!ITransportFactory.class.isAssignableFrom(clazz))     throw new ClassCastException();
+    clazz.newInstance();
   }
- else {
-    this.fqFactoryClass=options.factory.value();
-    try {
-      Class<?> clazz=Class.forName(fqFactoryClass);
-      if (!TTransportFactory.class.isAssignableFrom(clazz))       throw new ClassCastException();
-      clazz.newInstance();
-    }
- catch (    Exception e) {
-      throw new IllegalArgumentException("Invalid transport factory class: " + options.factory.value(),e);
-    }
+ catch (  Exception e) {
+    throw new IllegalArgumentException("Invalid transport factory class: " + options.factory.value(),e);
   }
 }
