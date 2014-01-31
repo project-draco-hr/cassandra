@@ -1,0 +1,29 @@
+{
+  Keyspace table=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
+  ByteBuffer key=ByteBufferUtil.bytes("k6");
+  ByteBuffer indexedColumnName=ByteBufferUtil.bytes(1);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
+  if (cfs.indexManager.getIndexForColumn(indexedColumnName) == null) {
+    ColumnDefinition cd=new ColumnDefinition(indexedColumnName,cfs.getComparator(),IndexType.CUSTOM,ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,TestIndex.class.getName()),"test_index",0,null);
+    cfs.indexManager.addIndexedColumn(cd);
+  }
+  TestIndex index=((TestIndex)cfs.indexManager.getIndexForColumn(indexedColumnName));
+  index.resetCounts();
+  RowMutation rm=new RowMutation(KSNAME,key);
+  add(rm,1,0);
+  rm.apply();
+  rm=new RowMutation(KSNAME,key);
+  ColumnFamily cf=rm.addOrGet(CFNAME);
+  delete(cf,0,1,1);
+  rm.apply();
+  rm=new RowMutation(KSNAME,key);
+  add(rm,1,2);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  assertEquals(2,index.inserts.size());
+  CompactionManager.instance.performMaximal(cfs);
+  assertEquals(2,index.deletes.size());
+}
