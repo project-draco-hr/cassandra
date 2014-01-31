@@ -1,13 +1,3 @@
 {
-  if (!SSTableReader.acquireReferences(sstables))   throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
-  try {
-    Pair<String,String> kscf=Schema.instance.getCF(cfId);
-    ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-    cfs.addSSTables(sstables);
-    cfs.indexManager.maybeBuildSecondaryIndexes(sstables,cfs.indexManager.allIndexesNames());
-  }
-  finally {
-    SSTableReader.releaseReferences(sstables);
-  }
-  session.taskCompleted(this);
+  if (!sstables.isEmpty())   StorageService.tasks.submit(new OnCompletionRunnable(this));
 }

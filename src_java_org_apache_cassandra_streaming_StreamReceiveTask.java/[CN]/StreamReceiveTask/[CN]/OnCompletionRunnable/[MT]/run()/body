@@ -1,0 +1,18 @@
+{
+  Pair<String,String> kscf=Schema.instance.getCF(task.cfId);
+  ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+  StreamLockfile lockfile=new StreamLockfile(cfs.directories.getWriteableLocationAsFile(),UUID.randomUUID());
+  lockfile.create(task.sstables);
+  List<SSTableReader> readers=new ArrayList<>();
+  for (  SSTableWriter writer : task.sstables)   readers.add(writer.closeAndOpenReader());
+  lockfile.delete();
+  if (!SSTableReader.acquireReferences(readers))   throw new AssertionError("We shouldn't fail acquiring a reference on a sstable that has just been transferred");
+  try {
+    cfs.addSSTables(readers);
+    cfs.indexManager.maybeBuildSecondaryIndexes(readers,cfs.indexManager.allIndexesNames());
+  }
+  finally {
+    SSTableReader.releaseReferences(readers);
+  }
+  task.session.taskCompleted(task);
+}
