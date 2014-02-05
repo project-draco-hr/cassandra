@@ -8,18 +8,20 @@
  else   insert=cm.getSortedColumns();
   while (true) {
     Holder current=ref;
+    delta.reset();
     DeletionInfo deletionInfo=cm.deletionInfo();
-    if (deletionInfo.hasRanges()) {
-      for (      Iterator<Cell> iter : new Iterator[]{insert.iterator(),BTree.<Cell>slice(current.tree,true)}) {
-        while (iter.hasNext()) {
-          Cell col=iter.next();
-          if (deletionInfo.isDeleted(col))           indexer.remove(col);
+    if (deletionInfo.mayModify(current.deletionInfo)) {
+      if (deletionInfo.hasRanges()) {
+        for (        Iterator<Cell> iter : new Iterator[]{insert.iterator(),BTree.<Cell>slice(current.tree,true)}) {
+          while (iter.hasNext()) {
+            Cell col=iter.next();
+            if (deletionInfo.isDeleted(col))             indexer.remove(col);
+          }
         }
       }
+      deletionInfo=current.deletionInfo.copy().add(deletionInfo);
+      delta.addHeapSize(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
     }
-    delta.reset();
-    deletionInfo=current.deletionInfo.copy().add(deletionInfo);
-    delta.addHeapSize(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
     ColumnUpdater updater=new ColumnUpdater(this,current,allocator,transformation,indexer,delta);
     Object[] tree=BTree.update(current.tree,metadata.comparator.columnComparator(),insert,true,updater);
     if (tree != null && refUpdater.compareAndSet(this,current,new Holder(tree,deletionInfo))) {
