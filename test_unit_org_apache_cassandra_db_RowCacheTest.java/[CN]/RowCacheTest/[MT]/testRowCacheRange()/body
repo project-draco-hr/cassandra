@@ -1,0 +1,36 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  String cf="CachedIntCF";
+  ColumnFamilyStore cachedStore=keyspace.getColumnFamilyStore(cf);
+  long startRowCacheHits=cachedStore.metric.rowCacheHit.count();
+  long startRowCacheOutOfRange=cachedStore.metric.rowCacheHitOutOfRange.count();
+  CacheService.instance.invalidateRowCache();
+  CacheService.instance.setRowCacheCapacityInMB(1);
+  ByteBuffer key=ByteBufferUtil.bytes("rowcachekey");
+  DecoratedKey dk=cachedStore.partitioner.decorateKey(key);
+  RowCacheKey rck=new RowCacheKey(cachedStore.metadata.cfId,dk);
+  Mutation mutation=new Mutation(KEYSPACE,key);
+  for (int i=0; i < 200; i++)   mutation.add(cf,Util.cellname(i),ByteBufferUtil.bytes("val" + i),System.currentTimeMillis());
+  mutation.applyUnsafe();
+  cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
+  assertEquals(startRowCacheHits,cachedStore.metric.rowCacheHit.count());
+  cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,Composites.EMPTY,Composites.EMPTY,false,20,System.currentTimeMillis()));
+  assertEquals(++startRowCacheHits,cachedStore.metric.rowCacheHit.count());
+  assertEquals(startRowCacheOutOfRange,cachedStore.metric.rowCacheHitOutOfRange.count());
+  cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,CellNames.simpleDense(ByteBufferUtil.bytes(95)),CellNames.simpleDense(ByteBufferUtil.bytes(105)),false,10,System.currentTimeMillis()));
+  assertEquals(startRowCacheHits,cachedStore.metric.rowCacheHit.count());
+  assertEquals(++startRowCacheOutOfRange,cachedStore.metric.rowCacheHitOutOfRange.count());
+  cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,Composites.EMPTY,Composites.EMPTY,false,101,System.currentTimeMillis()));
+  assertEquals(startRowCacheHits,cachedStore.metric.rowCacheHit.count());
+  assertEquals(++startRowCacheOutOfRange,cachedStore.metric.rowCacheHitOutOfRange.count());
+  CacheService.instance.invalidateRowCache();
+  cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,Composites.EMPTY,Composites.EMPTY,false,105,System.currentTimeMillis()));
+  assertEquals(startRowCacheHits,cachedStore.metric.rowCacheHit.count());
+  ColumnFamily cachedCf=(ColumnFamily)CacheService.instance.rowCache.get(rck);
+  assertEquals(cachedCf.getColumnCount(),100);
+  int i=0;
+  for (  Cell c : cachedCf) {
+    assertEquals(c.name,Util.cellname(i++));
+  }
+}

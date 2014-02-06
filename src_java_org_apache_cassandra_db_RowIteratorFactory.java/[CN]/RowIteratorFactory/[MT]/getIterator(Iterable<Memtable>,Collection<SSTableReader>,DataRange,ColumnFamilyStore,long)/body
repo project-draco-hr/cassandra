@@ -22,11 +22,12 @@
     }
     protected Row getReduced(){
       ColumnFamily cached=cfs.getRawCachedRow(key);
-      if (cached == null) {
-        QueryFilter.collateOnDiskAtom(returnCF,colIters,range.columnFilter(key.key),gcBefore,now);
+      IDiskAtomFilter filter=range.columnFilter(key.key);
+      if (cached == null || !cfs.isFilterFullyCoveredBy(filter,cached,now)) {
+        QueryFilter.collateOnDiskAtom(returnCF,colIters,filter,gcBefore,now);
       }
  else {
-        QueryFilter keyFilter=new QueryFilter(key,cfs.name,range.columnFilter(key.key),now);
+        QueryFilter keyFilter=new QueryFilter(key,cfs.name,filter,now);
         returnCF=cfs.filterColumnFamily(cached,keyFilter);
       }
       Row rv=new Row(key,returnCF);
