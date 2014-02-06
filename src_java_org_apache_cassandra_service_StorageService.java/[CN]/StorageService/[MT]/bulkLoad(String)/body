@@ -1,27 +1,6 @@
 {
-  File dir=new File(directory);
-  if (!dir.exists() || !dir.isDirectory())   throw new IllegalArgumentException("Invalid directory " + directory);
-  SSTableLoader.Client client=new SSTableLoader.Client(){
-    public void init(    String keyspace){
-      try {
-        setPartitioner(DatabaseDescriptor.getPartitioner());
-        for (        Map.Entry<Range<Token>,List<InetAddress>> entry : StorageService.instance.getRangeToAddressMap(keyspace).entrySet()) {
-          Range<Token> range=entry.getKey();
-          for (          InetAddress endpoint : entry.getValue())           addRangeForEndpoint(range,endpoint);
-        }
-      }
- catch (      Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-    public CFMetaData getCFMetaData(    String keyspace,    String cfName){
-      return Schema.instance.getCFMetaData(keyspace,cfName);
-    }
-  }
-;
-  SSTableLoader loader=new SSTableLoader(dir,client,new OutputHandler.LogOutput());
   try {
-    loader.stream().get();
+    bulkLoadInternal(directory).get();
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
