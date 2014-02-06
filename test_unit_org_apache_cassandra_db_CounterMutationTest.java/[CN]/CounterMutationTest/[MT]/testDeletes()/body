@@ -1,21 +1,21 @@
 {
   ColumnFamilyStore cfs=Keyspace.open(KS).getColumnFamilyStore(CF1);
   cfs.truncateBlocking();
-  ColumnFamily cells=UnsortedColumns.factory.create(cfs.metadata);
+  ColumnFamily cells=ArrayBackedSortedColumns.factory.create(cfs.metadata);
   cells.addCounter(cellname(1),1L);
   cells.addCounter(cellname(2),1L);
   new CounterMutation(new Mutation(KS,bytes(1),cells),ConsistencyLevel.ONE).apply();
   ColumnFamily current=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)),CF1,System.currentTimeMillis()));
   assertEquals(1L,CounterContext.instance().total(current.getColumn(cellname(1)).value()));
   assertEquals(1L,CounterContext.instance().total(current.getColumn(cellname(2)).value()));
-  cells=UnsortedColumns.factory.create(cfs.metadata);
+  cells=ArrayBackedSortedColumns.factory.create(cfs.metadata);
   cells.addTombstone(cellname(1),(int)System.currentTimeMillis() / 1000,FBUtilities.timestampMicros());
   cells.addCounter(cellname(2),1L);
   new CounterMutation(new Mutation(KS,bytes(1),cells),ConsistencyLevel.ONE).apply();
   current=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)),CF1,System.currentTimeMillis()));
   assertNull(current.getColumn(cellname(1)));
   assertEquals(2L,CounterContext.instance().total(current.getColumn(cellname(2)).value()));
-  cells=UnsortedColumns.factory.create(cfs.metadata);
+  cells=ArrayBackedSortedColumns.factory.create(cfs.metadata);
   cells.addCounter(cellname(1),1L);
   new CounterMutation(new Mutation(KS,bytes(1),cells),ConsistencyLevel.ONE).apply();
   current=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)),CF1,System.currentTimeMillis()));
@@ -26,7 +26,7 @@
   current=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(bytes(1)),CF1,System.currentTimeMillis()));
   assertNull(current.getColumn(cellname(1)));
   assertNull(current.getColumn(cellname(2)));
-  cells=UnsortedColumns.factory.create(cfs.metadata);
+  cells=ArrayBackedSortedColumns.factory.create(cfs.metadata);
   cells.addCounter(cellname(1),1L);
   cells.addCounter(cellname(2),1L);
   new CounterMutation(new Mutation(KS,bytes(1),cells),ConsistencyLevel.ONE).apply();
