@@ -1,0 +1,33 @@
+{
+  consistencyForPaxos.validateForCas();
+  consistencyForCommit.validateForCasCommit(keyspaceName);
+  CFMetaData metadata=Schema.instance.getCFMetaData(keyspaceName,cfName);
+  long start=System.nanoTime();
+  long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+  while (System.nanoTime() - start < timeout) {
+    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(keyspaceName,key,consistencyForPaxos);
+    List<InetAddress> liveEndpoints=p.left;
+    int requiredParticipants=p.right;
+    UUID ballot=beginAndRepairPaxos(start,key,metadata,liveEndpoints,requiredParticipants,consistencyForPaxos);
+    Tracing.trace("Reading existing values for CAS precondition");
+    long timestamp=System.currentTimeMillis();
+    ReadCommand readCommand=ReadCommand.create(keyspaceName,key,cfName,timestamp,conditions.readFilter());
+    List<Row> rows=read(Arrays.asList(readCommand),consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
+    ColumnFamily current=rows.get(0).cf;
+    if (!conditions.appliesTo(current)) {
+      Tracing.trace("CAS precondition {} does not match current values {}",conditions,current);
+      return current == null ? EmptyColumns.factory.create(metadata) : current;
+    }
+    Commit proposal=Commit.newProposal(key,ballot,updates);
+    Tracing.trace("CAS precondition is met; proposing client-requested updates for {}",ballot);
+    if (proposePaxos(proposal,liveEndpoints,requiredParticipants,true)) {
+      if (consistencyForCommit == ConsistencyLevel.ANY)       sendCommit(proposal,liveEndpoints);
+ else       commitPaxos(proposal,consistencyForCommit);
+      Tracing.trace("CAS successful");
+      return null;
+    }
+    Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
+    Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);
+  }
+  throw new WriteTimeoutException(WriteType.CAS,consistencyForPaxos,0,consistencyForPaxos.blockFor(Keyspace.open(keyspaceName)));
+}
