@@ -1,0 +1,25 @@
+{
+  PrintStream out=System.out;
+  if (args.length == 0) {
+    out.println("This command should be run with Cassandra stopped!");
+    out.println("Usage: sstablerepairedset [--is-repaired | --is-unrepaired] <sstable>");
+    System.exit(1);
+  }
+  for (  String s : args)   System.out.println(s);
+  if (args.length != 3 || !args[0].equals("--really-set") || (!args[1].equals("--is-repaired") && !args[1].equals("--is-unrepaired"))) {
+    out.println("This command should be run with Cassandra stopped, otherwise you will get very strange behavior");
+    out.println("Verify that Cassandra is not running and then execute the command like this:");
+    out.println("Usage: sstablelevelreset --really-set [--is-repaired | --is-unrepaired] <sstable>");
+    System.exit(1);
+  }
+  boolean setIsRepaired=args[1].equals("--is-repaired");
+  String fname=args[2];
+  Descriptor descriptor=Descriptor.fromFilename(fname);
+  if (setIsRepaired) {
+    FileTime f=Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
+    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,f.toMillis());
+  }
+ else {
+    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,ActiveRepairService.UNREPAIRED_SSTABLE);
+  }
+}
