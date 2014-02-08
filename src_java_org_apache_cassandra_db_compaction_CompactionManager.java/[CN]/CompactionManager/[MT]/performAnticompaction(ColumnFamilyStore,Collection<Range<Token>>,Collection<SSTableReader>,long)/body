@@ -1,0 +1,37 @@
+{
+  logger.info("Starting anticompaction for ranges {}",ranges);
+  Set<SSTableReader> sstables=new HashSet<>(validatedForRepair);
+  Set<SSTableReader> mutatedRepairStatuses=new HashSet<>();
+  Set<SSTableReader> nonAnticompacting=new HashSet<>();
+  Iterator<SSTableReader> sstableIterator=sstables.iterator();
+  while (sstableIterator.hasNext()) {
+    SSTableReader sstable=sstableIterator.next();
+    for (    Range<Token> r : Range.normalize(ranges)) {
+      Range<Token> sstableRange=new Range<>(sstable.first.token,sstable.last.token,sstable.partitioner);
+      if (r.contains(sstableRange)) {
+        logger.info("SSTable {} fully contained in range {}, mutating repairedAt instead of anticompacting",sstable,r);
+        sstable.descriptor.getMetadataSerializer().mutateRepairedAt(sstable.descriptor,repairedAt);
+        sstable.reloadSSTableMetadata();
+        mutatedRepairStatuses.add(sstable);
+        sstableIterator.remove();
+        break;
+      }
+ else       if (!sstableRange.intersects(r)) {
+        logger.info("SSTable {} ({}) does not intersect repaired range {}, not touching repairedAt.",sstable,sstableRange,r);
+        nonAnticompacting.add(sstable);
+        sstableIterator.remove();
+      }
+ else {
+        logger.info("SSTable {} ({}) will be anticompacted on range {}",sstable,sstableRange,r);
+      }
+    }
+  }
+  cfs.getDataTracker().notifySSTableRepairedStatusChanged(mutatedRepairStatuses);
+  cfs.getDataTracker().unmarkCompacting(Sets.union(nonAnticompacting,mutatedRepairStatuses));
+  Collection<SSTableReader> antiCompactedSSTables=null;
+  if (!sstables.isEmpty())   antiCompactedSSTables=doAntiCompaction(cfs,ranges,sstables,repairedAt);
+  if (antiCompactedSSTables != null && antiCompactedSSTables.size() > 0)   cfs.replaceCompactedSSTables(sstables,antiCompactedSSTables,OperationType.ANTICOMPACTION);
+  SSTableReader.releaseReferences(sstables);
+  cfs.getDataTracker().unmarkCompacting(sstables);
+  logger.info(String.format("Completed anticompaction successfully"));
+}

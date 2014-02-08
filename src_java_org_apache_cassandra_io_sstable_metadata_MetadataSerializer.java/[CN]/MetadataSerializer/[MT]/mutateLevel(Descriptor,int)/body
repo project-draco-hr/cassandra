@@ -3,11 +3,5 @@
   Map<MetadataType,MetadataComponent> currentComponents=deserialize(descriptor,EnumSet.allOf(MetadataType.class));
   StatsMetadata stats=(StatsMetadata)currentComponents.remove(MetadataType.STATS);
   currentComponents.put(MetadataType.STATS,stats.mutateLevel(newLevel));
-  Descriptor tmpDescriptor=descriptor.asTemporary(true);
-  try (DataOutputStream out=new DataOutputStream(new FileOutputStream(tmpDescriptor.filenameFor(Component.STATS)))){
-    serialize(currentComponents,out);
-    out.flush();
-  }
-   if (!FBUtilities.isUnix())   FileUtils.delete(descriptor.filenameFor(Component.STATS));
-  FileUtils.renameWithConfirm(tmpDescriptor.filenameFor(Component.STATS),descriptor.filenameFor(Component.STATS));
+  rewriteSSTableMetadata(descriptor,currentComponents);
 }

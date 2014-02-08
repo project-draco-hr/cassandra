@@ -1,0 +1,15 @@
+{
+  Map<UUID,Set<SSTableReader>> sstablesToRepair=new HashMap<>();
+  for (  ColumnFamilyStore cfs : columnFamilyStores) {
+    Set<SSTableReader> sstables=new HashSet<>();
+    for (    SSTableReader sstable : cfs.getSSTables()) {
+      if (new Bounds<>(sstable.first.token,sstable.last.token).intersects(ranges)) {
+        if (!sstable.isRepaired()) {
+          sstables.add(sstable);
+        }
+      }
+    }
+    sstablesToRepair.put(cfs.metadata.cfId,sstables);
+  }
+  parentRepairSessions.put(parentRepairSession,new ParentRepairSession(columnFamilyStores,ranges,sstablesToRepair,System.currentTimeMillis()));
+}

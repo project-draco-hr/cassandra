@@ -1,9 +1,20 @@
 {
   RepairJobDesc desc=message.payload.desc;
 switch (message.payload.messageType) {
+case PREPARE_MESSAGE:
+    PrepareMessage prepareMessage=(PrepareMessage)message.payload;
+  List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
+for (UUID cfId : prepareMessage.cfIds) {
+  Pair<String,String> kscf=Schema.instance.getCF(cfId);
+  ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+  columnFamilyStores.add(columnFamilyStore);
+}
+ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges);
+MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
+break;
 case VALIDATION_REQUEST:
-    ValidationRequest validationRequest=(ValidationRequest)message.payload;
-  ColumnFamilyStore store=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+ValidationRequest validationRequest=(ValidationRequest)message.payload;
+ColumnFamilyStore store=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 Validator validator=new Validator(desc,message.from,validationRequest.gcBefore);
 CompactionManager.instance.submitValidation(store,validator);
 break;
@@ -11,6 +22,17 @@ case SYNC_REQUEST:
 SyncRequest request=(SyncRequest)message.payload;
 StreamingRepairTask task=new StreamingRepairTask(desc,request);
 task.run();
+break;
+case ANTICOMPACTION_REQUEST:
+logger.debug("Got anticompaction request");
+AnticompactionRequest anticompactionRequest=(AnticompactionRequest)message.payload;
+try {
+List<Future<?>> futures=ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
+FBUtilities.waitOnFutures(futures);
+}
+ catch (Exception e) {
+throw new RuntimeException(e);
+}
 break;
 default :
 ActiveRepairService.instance.handleMessage(message.from,message.payload);

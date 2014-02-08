@@ -1,0 +1,17 @@
+{
+  this.desc=new RepairJobDesc(parentSessionId,sessionId,keyspace,columnFamily,range);
+  this.isSequential=isSequential;
+  this.treeRequests=new RequestCoordinator<InetAddress>(isSequential){
+    public void send(    InetAddress endpoint){
+      ValidationRequest request=new ValidationRequest(desc,gcBefore);
+      MessagingService.instance().sendOneWay(request.createMessage(),endpoint);
+    }
+  }
+;
+  this.differencers=new RequestCoordinator<Differencer>(isSequential){
+    public void send(    Differencer d){
+      StageManager.getStage(Stage.ANTI_ENTROPY).execute(d);
+    }
+  }
+;
+}

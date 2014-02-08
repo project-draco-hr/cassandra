@@ -1,0 +1,29 @@
+{
+  UUID parentRepairSession=UUIDGen.getTimeUUID();
+  registerParentRepairSession(parentRepairSession,columnFamilyStores,ranges);
+  prepareLatch=new CountDownLatch(endpoints.size());
+  IAsyncCallback callback=new IAsyncCallback(){
+    @Override public void response(    MessageIn msg){
+      ActiveRepairService.this.prepareLatch.countDown();
+    }
+    @Override public boolean isLatencyForSnitch(){
+      return false;
+    }
+  }
+;
+  List<UUID> cfIds=new ArrayList<>(columnFamilyStores.size());
+  for (  ColumnFamilyStore cfs : columnFamilyStores)   cfIds.add(cfs.metadata.cfId);
+  for (  InetAddress neighbour : endpoints) {
+    PrepareMessage message=new PrepareMessage(parentRepairSession,cfIds,ranges);
+    MessageOut<RepairMessage> msg=message.createMessage();
+    MessagingService.instance().sendRR(msg,neighbour,callback);
+  }
+  try {
+    prepareLatch.await(1,TimeUnit.HOURS);
+  }
+ catch (  InterruptedException e) {
+    parentRepairSessions.remove(parentRepairSession);
+    throw new RuntimeException("Did not get replies from all endpoints.",e);
+  }
+  return parentRepairSession;
+}

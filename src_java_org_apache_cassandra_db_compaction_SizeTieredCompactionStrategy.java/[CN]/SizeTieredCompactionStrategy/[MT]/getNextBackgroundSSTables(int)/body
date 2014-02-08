@@ -4,12 +4,19 @@
   int maxThreshold=cfs.getMaximumCompactionThreshold();
   Iterable<SSTableReader> candidates=filterSuspectSSTables(cfs.getUncompactingSSTables());
   candidates=filterColdSSTables(Lists.newArrayList(candidates),options.coldReadsToOmit);
+  Pair<Set<SSTableReader>,Set<SSTableReader>> repairedUnrepaired=splitInRepairedAndUnrepaired(candidates);
+  if (repairedUnrepaired.left.size() > repairedUnrepaired.right.size()) {
+    candidates=repairedUnrepaired.left;
+  }
+ else {
+    candidates=repairedUnrepaired.right;
+  }
   List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(candidates),options.bucketHigh,options.bucketLow,options.minSSTableSize);
   logger.debug("Compaction buckets are {}",buckets);
   updateEstimatedCompactionsByTasks(buckets);
   List<SSTableReader> mostInteresting=mostInterestingBucket(buckets,minThreshold,maxThreshold);
   if (!mostInteresting.isEmpty())   return mostInteresting;
-  List<SSTableReader> sstablesWithTombstones=new ArrayList<SSTableReader>();
+  List<SSTableReader> sstablesWithTombstones=new ArrayList<>();
   for (  SSTableReader sstable : candidates) {
     if (worthDroppingTombstones(sstable,gcBefore))     sstablesWithTombstones.add(sstable);
   }

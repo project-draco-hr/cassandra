@@ -1,0 +1,70 @@
+{
+  return new FutureTask<>(new WrappedRunnable(){
+    protected void runMayThrow() throws Exception {
+      String message=String.format("Starting repair command #%d, repairing %d ranges for keyspace %s (seq=%b, full=%b)",cmd,ranges.size(),keyspace,isSequential,fullRepair);
+      logger.info(message);
+      sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.STARTED.ordinal()});
+      if (isSequential && !fullRepair) {
+        message="It is not possible to mix sequential repair and incremental repairs.";
+        logger.error(message);
+        sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+        return;
+      }
+      if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.getLocalDataCenter())) {
+        message=String.format("Cancelling repair command #%d (the local data center must be part of the repair)",cmd);
+        logger.error(message);
+        sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+        return;
+      }
+      Set<InetAddress> neighbours=new HashSet<>();
+      for (      Range<Token> range : ranges)       neighbours.addAll(ActiveRepairService.getNeighbors(keyspace,range,dataCenters));
+      List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>();
+      for (      ColumnFamilyStore cfs : getValidColumnFamilies(false,false,keyspace,columnFamilies))       columnFamilyStores.add(cfs);
+      UUID parentSession=null;
+      if (!fullRepair)       parentSession=ActiveRepairService.instance.prepareForRepair(neighbours,ranges,columnFamilyStores);
+      List<RepairFuture> futures=new ArrayList<>(ranges.size());
+      for (      Range<Token> range : ranges) {
+        RepairFuture future;
+        try {
+          future=forceKeyspaceRepair(parentSession,range,keyspace,isSequential,neighbours,columnFamilies);
+        }
+ catch (        IllegalArgumentException e) {
+          logger.error("Repair session failed:",e);
+          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
+          continue;
+        }
+        if (future == null)         continue;
+        futures.add(future);
+        try {
+          future.session.differencingDone.await();
+        }
+ catch (        InterruptedException e) {
+          message="Interrupted while waiting for the differencing of repair session " + future.session + " to be done. Repair may be imprecise.";
+          logger.error(message,e);
+          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
+        }
+      }
+      for (      RepairFuture future : futures) {
+        try {
+          future.get();
+          message=String.format("Repair session %s for range %s finished",future.session.getId(),future.session.getRange().toString());
+          logger.info(message);
+          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_SUCCESS.ordinal()});
+        }
+ catch (        ExecutionException e) {
+          message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getCause().getMessage());
+          logger.error(message,e);
+          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
+        }
+catch (        Exception e) {
+          message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getMessage());
+          logger.error(message,e);
+          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
+        }
+      }
+      if (!fullRepair)       ActiveRepairService.instance.finishParentSession(parentSession,neighbours);
+      sendNotification("repair",String.format("Repair command #%d finished",cmd),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+    }
+  }
+,null);
+}
