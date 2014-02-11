@@ -1,4 +1,36 @@
 {
   close();
-  if (deleteFile)   FileUtils.deleteWithConfirm(logFile);
+  if (deleteFile) {
+    try {
+      FileUtils.deleteWithConfirm(logFile);
+    }
+ catch (    FSWriteError e) {
+      File file=logFile;
+      try {
+        File newFile=new File(file.getPath() + ".discarded");
+        FileUtils.renameWithConfirm(file,newFile);
+        file=newFile;
+      }
+ catch (      Throwable t) {
+      }
+      try {
+        RandomAccessFile raf=new RandomAccessFile(file,"rw");
+        ByteBuffer write=ByteBuffer.allocate(8);
+        write.putInt(CommitLog.END_OF_SEGMENT_MARKER);
+        write.position(0);
+        raf.getChannel().write(write);
+        raf.close();
+        logger.error("{} {}, as we failed to delete it.",file == logFile ? "Zeroed" : "Renamed and zeroed",file);
+      }
+ catch (      Throwable t) {
+        if (logFile == file) {
+          logger.error("Could not rename or zero {}, which we also failed to delete. In the face of other issues this could result in unnecessary log replay.",t,file);
+        }
+ else {
+          logger.error("Renamed {} to {}, as we failed to delete it, however we failed to zero its header.",t,logFile,file);
+        }
+      }
+      throw e;
+    }
+  }
 }
