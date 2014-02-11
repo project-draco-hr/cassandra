@@ -24,8 +24,22 @@
   new Thread(new Runnable(){
     public void run(){
       while (run) {
-        FBUtilities.waitOnFuture(submit(syncer));
-        Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.getCommitLogSyncPeriod(),TimeUnit.MILLISECONDS);
+        try {
+          FBUtilities.waitOnFuture(submit(syncer));
+          Uninterruptibles.sleepUninterruptibly(DatabaseDescriptor.getCommitLogSyncPeriod(),TimeUnit.MILLISECONDS);
+        }
+ catch (        Throwable t) {
+          if (!CommitLog.handleCommitError("Failed to persist commits to disk",t)) {
+            PeriodicCommitLogExecutorService.this.run=false;
+            try {
+              appendingThread.join();
+            }
+ catch (            InterruptedException e) {
+              throw new IllegalStateException();
+            }
+            return;
+          }
+        }
       }
     }
   }

@@ -1,0 +1,17 @@
+{
+  File commitDir=new File(DatabaseDescriptor.getCommitLogLocation());
+  try {
+    DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
+    commitDir.setWritable(false);
+    RowMutation rm=new RowMutation("Keyspace1",bytes("k"));
+    rm.add("Standard1",bytes("c1"),ByteBuffer.allocate(100),0);
+    CommitLog.instance.add(rm);
+    Uninterruptibles.sleepUninterruptibly((int)DatabaseDescriptor.getCommitLogSyncBatchWindow(),TimeUnit.MILLISECONDS);
+    Assert.assertFalse(StorageService.instance.isRPCServerRunning());
+    Assert.assertFalse(StorageService.instance.isNativeTransportRunning());
+    Assert.assertFalse(StorageService.instance.isInitialized());
+  }
+  finally {
+    commitDir.setWritable(true);
+  }
+}

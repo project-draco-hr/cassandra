@@ -3,7 +3,12 @@
   Runnable runnable=new WrappedRunnable(){
     public void runMayThrow() throws Exception {
       while (run) {
-        if (processWithSyncBatch())         completedTaskCount++;
+        try {
+          if (processWithSyncBatch())           completedTaskCount++;
+        }
+ catch (        Throwable t) {
+          if (!CommitLog.handleCommitError("Failed to persist commits to disk",t))           return;
+        }
       }
     }
   }
