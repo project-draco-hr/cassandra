@@ -1,4 +1,14 @@
 {
   if (timeToLive < 0)   throw new InvalidRequestException("A TTL must be greater or equal to 0");
   if (timeToLive > ExpiringColumn.MAX_TTL)   throw new InvalidRequestException(String.format("ttl is too large. requested (%d) maximum (%d)",timeToLive,ExpiringColumn.MAX_TTL));
+  if (type == Type.COUNTER) {
+    if (timestamp != null && !loggedCounterTimestamp) {
+      logger.warn("Detected use of 'USING TIMESTAMP' in a counter UPDATE. This is invalid " + "because counters do not use timestamps, and the timestamp has been ignored. " + "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+      loggedCounterTimestamp=true;
+    }
+    if (timeToLive != 0 && !loggedCounterTTL) {
+      logger.warn("Detected use of 'USING TTL' in a counter UPDATE. This is invalid " + "because counter tables do not support TTL, and the TTL value has been ignored. " + "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
+      loggedCounterTTL=true;
+    }
+  }
 }
