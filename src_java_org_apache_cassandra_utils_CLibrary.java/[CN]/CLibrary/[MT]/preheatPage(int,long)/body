@@ -3,6 +3,10 @@
     return posix_fadvise(fd,position,4096,POSIX_FADV_WILLNEED);
   }
  catch (  UnsatisfiedLinkError e) {
-    return -1;
   }
+catch (  RuntimeException e) {
+    if (!(e instanceof LastErrorException))     throw e;
+    logger.warn(String.format("posix_fadvise(%d, %d) failed, errno (%d).",fd,position,errno(e)));
+  }
+  return -1;
 }

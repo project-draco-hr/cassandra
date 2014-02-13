@@ -18,6 +18,13 @@
   logger.info("Heap size: {}/{}",Runtime.getRuntime().totalMemory(),Runtime.getRuntime().maxMemory());
   for (  MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans())   logger.info("{} {}: {}",pool.getName(),pool.getType(),pool.getPeakUsage());
   logger.info("Classpath: {}",System.getProperty("java.class.path"));
+  if (!CLibrary.jnaAvailable()) {
+    boolean jnaRequired=!Boolean.getBoolean("cassandra.boot_without_jna");
+    if (jnaRequired) {
+      logger.error("JNA failing to initialize properly. Use -Dcassandra.boot_without_jna=true to bootstrap even so.");
+      System.exit(3);
+    }
+  }
   CLibrary.tryMlockall();
   Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
     public void uncaughtException(    Thread t,    Throwable e){
