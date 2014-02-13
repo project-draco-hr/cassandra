@@ -1,16 +1,19 @@
 {
+  int minIndexInterval=metadata.getMinIndexInterval();
+  int maxIndexInterval=metadata.getMaxIndexInterval();
+  double effectiveInterval=indexSummary.getEffectiveIndexInterval();
   IndexSummary newSummary;
-  if (samplingLevel < indexSummary.getSamplingLevel()) {
-    newSummary=IndexSummaryBuilder.downsample(indexSummary,samplingLevel,partitioner);
+  if (samplingLevel > indexSummary.getSamplingLevel() || indexSummary.getMinIndexInterval() != minIndexInterval || effectiveInterval > maxIndexInterval) {
+    newSummary=buildSummaryAtLevel(samplingLevel);
+  }
+ else   if (samplingLevel < indexSummary.getSamplingLevel()) {
+    newSummary=IndexSummaryBuilder.downsample(indexSummary,samplingLevel,minIndexInterval,partitioner);
     SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
     SegmentedFile.Builder dbuilder=compression ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
     saveSummary(ibuilder,dbuilder,newSummary);
   }
- else   if (samplingLevel > indexSummary.getSamplingLevel()) {
-    newSummary=upsampleSummary(samplingLevel);
-  }
  else {
-    throw new AssertionError("Attempted to clone SSTableReader with the same index summary sampling level");
+    throw new AssertionError("Attempted to clone SSTableReader with the same index summary sampling level and " + "no adjustments to min/max_index_interval");
   }
   markReplaced();
   if (readMeterSyncFuture != null)   readMeterSyncFuture.cancel(false);

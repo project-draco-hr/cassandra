@@ -1,0 +1,30 @@
+{
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ArrayList<Future> futures=new ArrayList<>(numSSTables);
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  for (int sstable=0; sstable < numSSTables; sstable++) {
+    for (int row=0; row < numRows; row++) {
+      DecoratedKey key=Util.dk(String.format("%3d",row));
+      Mutation rm=new Mutation(ksname,key.key);
+      rm.add(cfname,Util.cellname("column"),value,0);
+      rm.applyUnsafe();
+    }
+    futures.add(cfs.forceFlush());
+  }
+  for (  Future future : futures) {
+    try {
+      future.get();
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+catch (    ExecutionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  assertEquals(numSSTables,cfs.getSSTables().size());
+  validateData(cfs,numRows);
+}

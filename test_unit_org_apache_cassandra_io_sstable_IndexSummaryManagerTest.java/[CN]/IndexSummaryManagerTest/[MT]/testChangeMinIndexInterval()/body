@@ -1,0 +1,47 @@
+{
+  String ksname="Keyspace1";
+  String cfname="StandardLowIndexInterval";
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  int numSSTables=1;
+  int numRows=256;
+  createSSTables(ksname,cfname,numSSTables,numRows);
+  List<SSTableReader> sstables=new ArrayList<>(cfs.getSSTables());
+  for (  SSTableReader sstable : sstables)   sstable.readMeter=new RestorableMeter(100.0,100.0);
+  for (  SSTableReader sstable : sstables)   assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+  cfs.metadata.minIndexInterval(originalMinIndexInterval * 2);
+  IndexSummaryManager.instance.redistributeSummaries();
+  for (  SSTableReader sstable : cfs.getSSTables()) {
+    assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+    assertEquals(numRows / cfs.metadata.getMinIndexInterval(),sstable.getIndexSummarySize());
+  }
+  cfs.metadata.minIndexInterval(originalMinIndexInterval);
+  IndexSummaryManager.instance.redistributeSummaries();
+  for (  SSTableReader sstable : cfs.getSSTables()) {
+    assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+    assertEquals(numRows / cfs.metadata.getMinIndexInterval(),sstable.getIndexSummarySize());
+  }
+  cfs.metadata.minIndexInterval(originalMinIndexInterval / 2);
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  long summarySpace=sstable.getIndexSummaryOffHeapSize();
+  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,Arrays.asList(sstable),summarySpace);
+  sstable=cfs.getSSTables().iterator().next();
+  assertEquals(originalMinIndexInterval,sstable.getEffectiveIndexInterval(),0.001);
+  assertEquals(numRows / originalMinIndexInterval,sstable.getIndexSummarySize());
+  double previousInterval=sstable.getEffectiveIndexInterval();
+  int previousSize=sstable.getIndexSummarySize();
+  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,Arrays.asList(sstable),(long)Math.ceil(summarySpace * 1.5));
+  sstable=cfs.getSSTables().iterator().next();
+  assertEquals(previousSize * 1.5,(double)sstable.getIndexSummarySize(),1);
+  assertEquals(previousInterval * (1.0 / 1.5),sstable.getEffectiveIndexInterval(),0.001);
+  cfs.metadata.minIndexInterval(originalMinIndexInterval);
+  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,Arrays.asList(sstable),(long)Math.ceil(summarySpace / 2));
+  sstable=cfs.getSSTables().iterator().next();
+  assertEquals(originalMinIndexInterval * 2,sstable.getEffectiveIndexInterval(),0.001);
+  assertEquals(numRows / (originalMinIndexInterval * 2),sstable.getIndexSummarySize());
+  cfs.metadata.minIndexInterval(originalMinIndexInterval * 4);
+  cfs.metadata.maxIndexInterval(originalMinIndexInterval * 4);
+  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,Arrays.asList(sstable),10);
+  sstable=cfs.getSSTables().iterator().next();
+  assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+}

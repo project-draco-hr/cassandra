@@ -2,10 +2,10 @@
   Keyspace t=Keyspace.open(keyspaceName);
   ColumnFamilyStore cfs=t.getColumnFamilyStore(cfName);
   List<DecoratedKey> keys=keySamples(Collections.singleton(cfs),range);
-  final long totalRowCountEstimate=(keys.size() + 1) * metadata.getIndexInterval();
+  long totalRowCountEstimate=cfs.estimatedKeysForRange(range);
   final int minSamplesPerSplit=4;
   final int maxSplitCount=keys.size() / minSamplesPerSplit + 1;
   final int splitCount=Math.max(1,Math.min(maxSplitCount,(int)(totalRowCountEstimate / keysPerSplit)));
   List<Token> tokens=keysToTokens(range,keys);
-  return getSplits(tokens,splitCount,metadata);
+  return getSplits(tokens,splitCount,metadata,cfs);
 }
