@@ -3,7 +3,7 @@
   UntypedResultSet results=processInternal(String.format(req,PAXOS_CF,ByteBufferUtil.bytesToHex(key),metadata.cfId));
   if (results.isEmpty())   return new PaxosState(key,metadata);
   UntypedResultSet.Row row=results.one();
-  Commit promised=row.has("in_progress_ballot") ? new Commit(key,row.getUUID("in_progress_ballot"),EmptyColumns.factory.create(metadata)) : Commit.emptyCommit(key,metadata);
+  Commit promised=row.has("in_progress_ballot") ? new Commit(key,row.getUUID("in_progress_ballot"),ArrayBackedSortedColumns.factory.create(metadata)) : Commit.emptyCommit(key,metadata);
   Commit accepted=row.has("proposal") ? new Commit(key,row.getUUID("proposal_ballot"),ColumnFamily.fromBytes(row.getBytes("proposal"))) : Commit.emptyCommit(key,metadata);
   Commit mostRecent=row.has("most_recent_commit") ? new Commit(key,row.getUUID("most_recent_commit_at"),ColumnFamily.fromBytes(row.getBytes("most_recent_commit"))) : Commit.emptyCommit(key,metadata);
   return new PaxosState(promised,accepted,mostRecent);
