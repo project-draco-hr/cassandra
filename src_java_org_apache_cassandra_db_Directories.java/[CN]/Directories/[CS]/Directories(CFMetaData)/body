@@ -1,31 +1,34 @@
 {
   this.metadata=metadata;
-  this.sstableDirectories=new File[dataFileLocations.length];
-  for (int i=0; i < dataFileLocations.length; ++i) {
-    sstableDirectories[i]=new File(dataFileLocations[i].location,join(metadata.ksName,metadata.cfName));
+  if (StorageService.instance.isClientMode()) {
+    dataPaths=null;
+    flushPath=null;
+    return;
   }
-  boolean olderDirectoryExists=Iterables.any(Arrays.asList(sstableDirectories),new Predicate<File>(){
+  String cfId=ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(metadata.cfId));
+  int idx=metadata.cfName.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
+  String directoryName=idx > 0 ? metadata.cfName.substring(0,idx) + "-" + cfId : metadata.cfName + "-" + cfId;
+  this.dataPaths=new File[dataDirectories.length];
+  for (int i=0; i < dataDirectories.length; ++i) {
+    dataPaths[i]=new File(dataDirectories[i].location,join(metadata.ksName,this.metadata.cfName));
+  }
+  boolean olderDirectoryExists=Iterables.any(Arrays.asList(dataPaths),new Predicate<File>(){
     public boolean apply(    File file){
       return file.exists();
     }
   }
 );
-  if (olderDirectoryExists)   return;
-  String directoryName;
-  String cfId=ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(metadata.cfId));
-  int idx=metadata.cfName.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
-  if (idx > 0)   directoryName=metadata.cfName.substring(0,idx) + "-" + cfId;
- else   directoryName=metadata.cfName + "-" + cfId;
-  for (int i=0; i < dataFileLocations.length; ++i)   sstableDirectories[i]=new File(dataFileLocations[i].location,join(metadata.ksName,directoryName));
-  if (!StorageService.instance.isClientMode()) {
-    for (    File dir : sstableDirectories) {
-      try {
-        FileUtils.createDirectory(dir);
-      }
- catch (      FSError e) {
-        logger.error("Failed to create {} directory",dir);
-        FileUtils.handleFSError(e);
-      }
+  if (!olderDirectoryExists) {
+    for (int i=0; i < dataDirectories.length; ++i)     dataPaths[i]=new File(dataDirectories[i].location,join(metadata.ksName,directoryName));
+  }
+  flushPath=new File(flushDirectory.location,join(metadata.ksName,directoryName));
+  for (  File dir : allSSTablePaths()) {
+    try {
+      FileUtils.createDirectory(dir);
+    }
+ catch (    FSError e) {
+      logger.error("Failed to create {} directory",dir);
+      FileUtils.handleFSError(e);
     }
   }
 }

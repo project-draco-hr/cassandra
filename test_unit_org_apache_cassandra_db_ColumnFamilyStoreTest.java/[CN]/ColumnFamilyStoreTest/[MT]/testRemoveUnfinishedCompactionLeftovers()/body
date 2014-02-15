@@ -4,7 +4,7 @@
   final CFMetaData cfmeta=Schema.instance.getCFMetaData(ks,cf);
   Directories dir=new Directories(cfmeta);
   ByteBuffer key=bytes("key");
-  SSTableSimpleWriter writer=new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),cfmeta,StorageService.getPartitioner());
+  SSTableSimpleWriter writer=new SSTableSimpleWriter(dir.getDirectoryForCompactedSSTables(),cfmeta,StorageService.getPartitioner());
   writer.newRow(key);
   writer.addColumn(bytes("col"),bytes("val"),1);
   writer.close();
@@ -12,7 +12,7 @@
   assertEquals(1,sstables.size());
   Map.Entry<Descriptor,Set<Component>> sstableToOpen=sstables.entrySet().iterator().next();
   final SSTableReader sstable1=SSTableReader.open(sstableToOpen.getKey());
-  writer=new SSTableSimpleWriter(dir.getDirectoryForNewSSTables(),cfmeta,StorageService.getPartitioner()){
+  writer=new SSTableSimpleWriter(dir.getDirectoryForCompactedSSTables(),cfmeta,StorageService.getPartitioner()){
     protected SSTableWriter getWriter(){
       MetadataCollector collector=new MetadataCollector(cfmeta.comparator);
       collector.addAncestor(sstable1.descriptor.generation);
