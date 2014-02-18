@@ -1,10 +1,26 @@
 {
   List<InetAddress> allEndpoints=new ArrayList<>(endpoints);
   allEndpoints.add(FBUtilities.getBroadcastAddress());
-  if (isSequential)   makeSnapshots(allEndpoints);
-  this.gcBefore=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).gcBefore(System.currentTimeMillis());
-  for (  InetAddress endpoint : allEndpoints)   treeRequests.add(endpoint);
-  logger.info(String.format("[repair #%s] requesting merkle trees for %s (to %s)",desc.sessionId,desc.columnFamily,allEndpoints));
-  treeRequests.start();
-  requestsSent.signalAll();
+  if (isSequential) {
+    List<ListenableFuture<InetAddress>> snapshotTasks=new ArrayList<>(allEndpoints.size());
+    for (    InetAddress endpoint : allEndpoints) {
+      SnapshotTask snapshotTask=new SnapshotTask(desc,endpoint);
+      snapshotTasks.add(snapshotTask);
+      taskExecutor.execute(snapshotTask);
+    }
+    ListenableFuture<List<InetAddress>> allSnapshotTasks=Futures.allAsList(snapshotTasks);
+    Futures.addCallback(allSnapshotTasks,new FutureCallback<List<InetAddress>>(){
+      public void onSuccess(      List<InetAddress> endpoints){
+        sendTreeRequestsInternal(endpoints);
+      }
+      public void onFailure(      Throwable throwable){
+        logger.error("Error while snapshot",throwable);
+        failed=true;
+      }
+    }
+,taskExecutor);
+  }
+ else {
+    sendTreeRequestsInternal(allEndpoints);
+  }
 }
