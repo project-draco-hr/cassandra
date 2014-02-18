@@ -25,5 +25,24 @@
     }
     return Sets.intersection(neighbors,dcEndpoints);
   }
+ else   if (hosts != null) {
+    Set<InetAddress> specifiedHost=new HashSet<>();
+    for (    final String host : hosts) {
+      try {
+        final InetAddress endpoint=InetAddress.getByName(host.trim());
+        if (endpoint.equals(FBUtilities.getBroadcastAddress()) || neighbors.contains(endpoint))         specifiedHost.add(endpoint);
+      }
+ catch (      UnknownHostException e) {
+        throw new IllegalArgumentException("Unknown host specified " + host,e);
+      }
+    }
+    if (!specifiedHost.contains(FBUtilities.getBroadcastAddress()))     throw new IllegalArgumentException("The current host must be part of the repair");
+    if (specifiedHost.size() <= 1) {
+      String msg="Repair requires at least two endpoints that are neighbours before it can continue, the endpoint used for this repair is %s, " + "other available neighbours are %s but these neighbours were not part of the supplied list of hosts to use during the repair (%s).";
+      throw new IllegalArgumentException(String.format(msg,specifiedHost,neighbors,hosts));
+    }
+    specifiedHost.remove(FBUtilities.getBroadcastAddress());
+    return specifiedHost;
+  }
   return neighbors;
 }
