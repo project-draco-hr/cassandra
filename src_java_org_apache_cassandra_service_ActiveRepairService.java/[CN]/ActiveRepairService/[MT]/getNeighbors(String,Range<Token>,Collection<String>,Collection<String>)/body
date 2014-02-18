@@ -1,0 +1,48 @@
+{
+  if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.getLocalDataCenter()))   throw new IllegalArgumentException("The local data center must be part of the repair");
+  StorageService ss=StorageService.instance;
+  Map<Range<Token>,List<InetAddress>> replicaSets=ss.getRangeToAddressMap(keyspaceName);
+  Range<Token> rangeSuperSet=null;
+  for (  Range<Token> range : ss.getLocalRanges(keyspaceName)) {
+    if (range.contains(toRepair)) {
+      rangeSuperSet=range;
+      break;
+    }
+ else     if (range.intersects(toRepair)) {
+      throw new IllegalArgumentException("Requested range intersects a local range but is not fully contained in one; this would lead to imprecise repair");
+    }
+  }
+  if (rangeSuperSet == null || !replicaSets.containsKey(rangeSuperSet))   return Collections.emptySet();
+  Set<InetAddress> neighbors=new HashSet<>(replicaSets.get(rangeSuperSet));
+  neighbors.remove(FBUtilities.getBroadcastAddress());
+  if (dataCenters != null) {
+    TokenMetadata.Topology topology=ss.getTokenMetadata().cloneOnlyTokenMap().getTopology();
+    Set<InetAddress> dcEndpoints=Sets.newHashSet();
+    Multimap<String,InetAddress> dcEndpointsMap=topology.getDatacenterEndpoints();
+    for (    String dc : dataCenters) {
+      Collection<InetAddress> c=dcEndpointsMap.get(dc);
+      if (c != null)       dcEndpoints.addAll(c);
+    }
+    return Sets.intersection(neighbors,dcEndpoints);
+  }
+ else   if (hosts != null) {
+    Set<InetAddress> specifiedHost=new HashSet<>();
+    for (    final String host : hosts) {
+      try {
+        final InetAddress endpoint=InetAddress.getByName(host.trim());
+        if (endpoint.equals(FBUtilities.getBroadcastAddress()) || neighbors.contains(endpoint))         specifiedHost.add(endpoint);
+      }
+ catch (      UnknownHostException e) {
+        throw new IllegalArgumentException("Unknown host specified " + host,e);
+      }
+    }
+    if (!specifiedHost.contains(FBUtilities.getBroadcastAddress()))     throw new IllegalArgumentException("The current host must be part of the repair");
+    if (specifiedHost.size() <= 1) {
+      String msg="Repair requires at least two endpoints that are neighbours before it can continue, the endpoint used for this repair is %s, " + "other available neighbours are %s but these neighbours were not part of the supplied list of hosts to use during the repair (%s).";
+      throw new IllegalArgumentException(String.format(msg,specifiedHost,neighbors,hosts));
+    }
+    specifiedHost.remove(FBUtilities.getBroadcastAddress());
+    return specifiedHost;
+  }
+  return neighbors;
+}

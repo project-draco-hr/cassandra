@@ -13,12 +13,15 @@ case REPAIR:
       boolean sequential=!cmd.hasOption(PARALLEL_REPAIR_OPT.left);
     boolean localDC=cmd.hasOption(LOCAL_DC_REPAIR_OPT.left);
   boolean specificDC=cmd.hasOption(DC_REPAIR_OPT.left);
+boolean specificHosts=cmd.hasOption(HOST_REPAIR_OPT.left);
 boolean primaryRange=cmd.hasOption(PRIMARY_RANGE_OPT.left);
 Collection<String> dataCenters=null;
+Collection<String> hosts=null;
 if (specificDC) dataCenters=Arrays.asList(cmd.getOptionValue(DC_REPAIR_OPT.left).split(","));
  else if (localDC) dataCenters=Arrays.asList(probe.getDataCenter());
-if (cmd.hasOption(START_TOKEN_OPT.left) || cmd.hasOption(END_TOKEN_OPT.left)) probe.forceRepairRangeAsync(System.out,keyspace,sequential,dataCenters,cmd.getOptionValue(START_TOKEN_OPT.left),cmd.getOptionValue(END_TOKEN_OPT.left),columnFamilies);
- else probe.forceRepairAsync(System.out,keyspace,sequential,dataCenters,primaryRange,columnFamilies);
+ else if (specificHosts) hosts=Arrays.asList(cmd.getOptionValue(HOST_REPAIR_OPT.left).split(","));
+if (cmd.hasOption(START_TOKEN_OPT.left) || cmd.hasOption(END_TOKEN_OPT.left)) probe.forceRepairRangeAsync(System.out,keyspace,sequential,dataCenters,hosts,cmd.getOptionValue(START_TOKEN_OPT.left),cmd.getOptionValue(END_TOKEN_OPT.left),columnFamilies);
+ else probe.forceRepairAsync(System.out,keyspace,sequential,dataCenters,hosts,primaryRange,columnFamilies);
 break;
 case FLUSH:
 try {
