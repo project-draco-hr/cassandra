@@ -21,15 +21,15 @@
  else     if (!key.equals(pks.get(0))) {
       throw new InvalidRequestException("Batch with conditions cannot span multiple partitions");
     }
+    ColumnNameBuilder clusteringPrefix=statement.createClusteringPrefixBuilder(statementVariables);
     if (statement.hasConditions()) {
-      ColumnNameBuilder clusteringPrefix=statement.createClusteringPrefixBuilder(statementVariables);
       statement.addUpdatesAndConditions(key,clusteringPrefix,updates,conditions,statementVariables,timestamp);
       if (statement.hasIfNotExistCondition())       columnsWithConditions=null;
  else       if (columnsWithConditions != null)       Iterables.addAll(columnsWithConditions,statement.getColumnsWithConditions());
     }
  else {
-      IMutation mut=statement.getMutations(statementVariables,false,cl,timestamp,true).iterator().next();
-      updates.resolve(mut.getColumnFamilies().iterator().next());
+      UpdateParameters params=statement.makeUpdateParameters(Collections.singleton(key),clusteringPrefix,statementVariables,false,cl,now);
+      statement.addUpdateForKey(updates,key,clusteringPrefix,params);
     }
   }
   ColumnFamily result=StorageProxy.cas(ksName,cfName,key,conditions,updates,serialCf,cl);

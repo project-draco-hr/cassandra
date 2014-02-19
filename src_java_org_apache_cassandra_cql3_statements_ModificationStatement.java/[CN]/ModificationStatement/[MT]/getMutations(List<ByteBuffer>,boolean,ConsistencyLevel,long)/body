@@ -1,14 +1,14 @@
 {
   List<ByteBuffer> keys=buildPartitionKeyNames(variables);
   ColumnNameBuilder clusteringPrefix=createClusteringPrefixBuilder(variables);
-  Map<ByteBuffer,ColumnGroupMap> rows=readRequiredRows(keys,clusteringPrefix,local,cl);
-  UpdateParameters params=new UpdateParameters(cfm,variables,getTimestamp(now,variables),getTimeToLive(variables),rows);
+  UpdateParameters params=makeUpdateParameters(keys,clusteringPrefix,variables,local,cl,now);
   Collection<IMutation> mutations=new ArrayList<IMutation>();
   for (  ByteBuffer key : keys) {
     ThriftValidation.validateKey(cfm,key);
     ColumnFamily cf=UnsortedColumns.factory.create(cfm);
     addUpdateForKey(cf,key,clusteringPrefix,params);
-    mutations.add(makeMutation(key,cf,cl,isBatch));
+    RowMutation rm=new RowMutation(cfm.ksName,key,cf);
+    mutations.add(isCounter() ? new CounterMutation(rm,cl) : rm);
   }
   return mutations;
 }
