@@ -56,7 +56,12 @@
           for (          ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())           flushes.add(cfs.forceFlush());
         }
       }
-      FBUtilities.waitOnFutures(flushes);
+      try {
+        FBUtilities.waitOnFutures(flushes);
+      }
+ catch (      Throwable e) {
+        logger.warn("Caught exception while waiting for memtable flushes during shutdown hook",e);
+      }
       CommitLog.instance.shutdownBlocking();
       tasks.shutdown();
       if (!tasks.awaitTermination(1,TimeUnit.MINUTES))       logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
