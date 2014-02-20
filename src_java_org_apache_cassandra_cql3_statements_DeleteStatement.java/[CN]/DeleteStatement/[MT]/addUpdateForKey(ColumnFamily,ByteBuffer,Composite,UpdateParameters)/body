@@ -1,0 +1,20 @@
+{
+  List<Operation> deletions=getOperations();
+  if (prefix.size() < cfm.clusteringColumns().size() && !deletions.isEmpty()) {
+    for (    Operation deletion : deletions)     if (!deletion.column.isStatic())     throw new InvalidRequestException(String.format("Missing mandatory PRIMARY KEY part %s since %s specified",getFirstEmptyKey(),deletion.column.name));
+  }
+  if (deletions.isEmpty()) {
+    if (prefix.isEmpty()) {
+      cf.delete(new DeletionInfo(params.timestamp,params.localDeletionTime));
+    }
+ else     if (cfm.comparator.isDense() && prefix.size() == cfm.clusteringColumns().size()) {
+      cf.addAtom(params.makeTombstone(cfm.comparator.create(prefix,null)));
+    }
+ else {
+      cf.addAtom(params.makeRangeTombstone(prefix.slice()));
+    }
+  }
+ else {
+    for (    Operation op : deletions)     op.execute(key,cf,prefix,params);
+  }
+}
