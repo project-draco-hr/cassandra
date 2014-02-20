@@ -1,5 +1,5 @@
 {
-  if (size == sortedSize)   return;
+  if (isSorted)   return;
   Comparator<Cell> comparator=reversed ? getComparator().columnReverseComparator() : getComparator().columnComparator();
   Arrays.sort(cells,sortedSize,size,comparator);
   int pos=binarySearch(0,sortedSize,cells[sortedSize].name,internalComparator());
@@ -7,17 +7,16 @@
   Cell[] leftCopy=pos == sortedSize ? EMPTY_ARRAY : Arrays.copyOfRange(cells,pos,sortedSize);
   int rightStart=sortedSize;
   int rightEnd=size;
-  sortedSize=-1;
-  size=pos;
+  size=sortedSize=pos;
   int l=0, r=rightStart;
   while (l < leftCopy.length && r < rightEnd) {
     int cmp=comparator.compare(leftCopy[l],cells[r]);
-    if (cmp < 0)     internalAppend(leftCopy[l++]);
- else     if (cmp == 0)     internalAppend(leftCopy[l++].reconcile(cells[r++]));
- else     internalAppendOrReconcile(cells[r++]);
+    if (cmp < 0)     append(leftCopy[l++]);
+ else     if (cmp == 0)     append(leftCopy[l++].reconcile(cells[r++]));
+ else     appendOrReconcile(cells[r++]);
   }
-  while (l < leftCopy.length)   internalAppend(leftCopy[l++]);
-  while (r < rightEnd)   internalAppendOrReconcile(cells[r++]);
-  sortedSize=size;
+  while (l < leftCopy.length)   append(leftCopy[l++]);
+  while (r < rightEnd)   appendOrReconcile(cells[r++]);
   for (int i=size; i < rightEnd; i++)   cells[i]=null;
+  isSorted=true;
 }
