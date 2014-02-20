@@ -1,14 +1,24 @@
 {
   VariableSpecifications boundNames=getBoundVariables();
   List<ModificationStatement> statements=new ArrayList<ModificationStatement>(parsedStatements.size());
+  boolean hasConditions=false;
   for (  ModificationStatement.Parsed parsed : parsedStatements) {
     ModificationStatement stmt=parsed.prepare(boundNames);
-    if (stmt.hasConditions())     throw new InvalidRequestException("Conditional updates are not allowed in batches");
+    if (stmt.hasConditions())     hasConditions=true;
     if (stmt.isCounter() && type != Type.COUNTER)     throw new InvalidRequestException("Counter mutations are only allowed in COUNTER batches");
     if (!stmt.isCounter() && type == Type.COUNTER)     throw new InvalidRequestException("Only counter mutations are allowed in COUNTER batches");
     statements.add(stmt);
   }
+  if (hasConditions) {
+    String ksName=null;
+    String cfName=null;
+    for (    ModificationStatement stmt : statements) {
+      if (ksName != null && (!stmt.keyspace().equals(ksName) || !stmt.columnFamily().equals(cfName)))       throw new InvalidRequestException("Batch with conditions cannot span multiple tables");
+      ksName=stmt.keyspace();
+      cfName=stmt.columnFamily();
+    }
+  }
   Attributes prepAttrs=attrs.prepare("[batch]","[batch]");
   prepAttrs.collectMarkerSpecification(boundNames);
-  return new ParsedStatement.Prepared(new BatchStatement(boundNames.size(),type,statements,prepAttrs),boundNames);
+  return new ParsedStatement.Prepared(new BatchStatement(boundNames.size(),type,statements,prepAttrs,hasConditions),boundNames);
 }

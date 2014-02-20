@@ -1,5 +1,5 @@
 {
-  UpdateStatement stmt=new UpdateStatement(boundNames.size(),cfm,attrs);
+  UpdateStatement stmt=new UpdateStatement(ModificationStatement.StatementType.INSERT,boundNames.size(),cfm,attrs);
   if (stmt.isCounter())   throw new InvalidRequestException("INSERT statement are not allowed on counter tables, use UPDATE instead");
   if (columnNames.size() != columnValues.size())   throw new InvalidRequestException("Unmatched column names/values");
   if (columnNames.isEmpty())   throw new InvalidRequestException("No columns provided to INSERT");
@@ -13,10 +13,9 @@ case PARTITION_KEY:
 case CLUSTERING_COLUMN:
       Term t=value.prepare(keyspace(),def);
     t.collectMarkerSpecification(boundNames);
-  stmt.addKeyValue(def.name,t);
+  stmt.addKeyValue(def,t);
 break;
-case COMPACT_VALUE:
-case REGULAR:
+default :
 Operation operation=new Operation.SetValue(value).prepare(keyspace(),def);
 operation.collectMarkerSpecification(boundNames);
 stmt.addOperation(operation);

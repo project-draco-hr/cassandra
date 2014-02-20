@@ -3,6 +3,11 @@
   ByteBuffer[] elements=new ByteBuffer[size()];
   int idx=bytes.position(), i=0;
   byte eoc=0;
+  boolean isStatic=false;
+  if (CompositeType.isStaticName(bytes)) {
+    isStatic=true;
+    idx+=2;
+  }
   while (idx < bytes.limit()) {
     checkRemaining(bytes,idx,2);
     int length=bytes.getShort(idx) & 0xFFFF;
@@ -12,5 +17,5 @@
     idx+=length;
     eoc=bytes.get(idx++);
   }
-  return new CompoundComposite(elements,i).withEOC(Composite.EOC.from(eoc));
+  return new CompoundComposite(elements,i,isStatic).withEOC(Composite.EOC.from(eoc));
 }
