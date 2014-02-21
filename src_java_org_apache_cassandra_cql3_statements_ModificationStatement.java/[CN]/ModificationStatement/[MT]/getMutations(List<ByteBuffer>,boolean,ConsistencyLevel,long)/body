@@ -1,14 +1,14 @@
 {
   List<ByteBuffer> keys=buildPartitionKeyNames(variables);
   Composite clusteringPrefix=createClusteringPrefix(variables);
-  Map<ByteBuffer,CQL3Row> rows=readRequiredRows(keys,clusteringPrefix,local,cl);
-  UpdateParameters params=new UpdateParameters(cfm,variables,getTimestamp(now,variables),getTimeToLive(variables),rows);
+  UpdateParameters params=makeUpdateParameters(keys,clusteringPrefix,variables,local,cl,now);
   Collection<IMutation> mutations=new ArrayList<IMutation>();
   for (  ByteBuffer key : keys) {
     ThriftValidation.validateKey(cfm,key);
     ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cfm);
     addUpdateForKey(cf,key,clusteringPrefix,params);
-    mutations.add(makeMutation(key,cf,cl,isBatch));
+    Mutation mut=new Mutation(cfm.ksName,key,cf);
+    mutations.add(isCounter() ? new CounterMutation(mut,cl) : mut);
   }
   return mutations;
 }
