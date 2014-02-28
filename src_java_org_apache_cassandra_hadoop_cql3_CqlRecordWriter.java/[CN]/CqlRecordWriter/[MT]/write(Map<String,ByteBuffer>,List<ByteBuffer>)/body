@@ -1,10 +1,11 @@
 {
   Range<Token> range=ringCache.getRange(getPartitionKey(keyColumns));
-  RangeClient client=clients.get(range);
+  final InetAddress address=ringCache.getEndpoint(range).get(0);
+  RangeClient client=clients.get(address);
   if (client == null) {
     client=new RangeClient(ringCache.getEndpoint(range));
     client.start();
-    clients.put(range,client);
+    clients.put(address,client);
   }
   List<ByteBuffer> allValues=new ArrayList<ByteBuffer>(values);
   for (  String column : partitionKeyColumns)   allValues.add(keyColumns.get(column));
