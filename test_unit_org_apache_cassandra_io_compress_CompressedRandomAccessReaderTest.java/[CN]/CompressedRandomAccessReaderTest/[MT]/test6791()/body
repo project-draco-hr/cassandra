@@ -1,0 +1,23 @@
+{
+  File f=File.createTempFile("compressed6791_","3");
+  String filename=f.getAbsolutePath();
+  try {
+    SSTableMetadata.Collector sstableMetadataCollector=SSTableMetadata.createCollector(BytesType.instance).replayPosition(null);
+    CompressedSequentialWriter writer=new CompressedSequentialWriter(f,filename + ".metadata",false,new CompressionParameters(SnappyCompressor.instance,32,Collections.<String,String>emptyMap()),sstableMetadataCollector);
+    for (int i=0; i < 20; i++)     writer.write("x".getBytes());
+    FileMark mark=writer.mark();
+    for (int i=0; i < 40; ++i)     writer.write("y".getBytes());
+    writer.resetAndTruncate(mark);
+    for (int i=0; i < 20; i++)     writer.write("x".getBytes());
+    writer.close();
+    CompressedRandomAccessReader reader=CompressedRandomAccessReader.open(filename,new CompressionMetadata(filename + ".metadata",f.length(),true));
+    String res=reader.readLine();
+    assertEquals(res,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    assertEquals(40,res.length());
+  }
+  finally {
+    if (f.exists())     f.delete();
+    File metadata=new File(filename + ".metadata");
+    if (metadata.exists())     metadata.delete();
+  }
+}
