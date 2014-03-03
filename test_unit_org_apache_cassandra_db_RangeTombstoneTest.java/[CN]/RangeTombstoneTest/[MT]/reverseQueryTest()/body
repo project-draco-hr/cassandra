@@ -1,2 +1,20 @@
 {
+  Keyspace table=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
+  String key="k3";
+  Mutation rm;
+  ColumnFamily cf;
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  add(rm,2,0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  delete(rm.addOrGet(CFNAME),0,10,1);
+  add(rm,1,2);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  cf=cfs.getColumnFamily(QueryFilter.getSliceFilter(dk(key),CFNAME,Composites.EMPTY,Composites.EMPTY,true,1,System.currentTimeMillis()));
+  assertFalse(cf.isEmpty());
+  int last=i(cf.getSortedColumns().iterator().next().name());
+  assertTrue("Last column should be column 1 since column 2 has been deleted",last == 1);
 }

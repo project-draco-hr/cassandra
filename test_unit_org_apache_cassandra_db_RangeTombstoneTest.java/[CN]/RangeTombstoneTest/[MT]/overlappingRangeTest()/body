@@ -1,2 +1,36 @@
 {
+  CompactionManager.instance.disableAutoCompaction();
+  Keyspace keyspace=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CFNAME);
+  String key="k2";
+  Mutation rm;
+  ColumnFamily cf;
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  for (int i=0; i < 20; i++)   add(rm,i,0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  cf=rm.addOrGet(CFNAME);
+  delete(cf,5,15,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  cf=rm.addOrGet(CFNAME);
+  delete(cf,5,10,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  cf=rm.addOrGet(CFNAME);
+  delete(cf,5,8,2);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key),CFNAME,System.currentTimeMillis()));
+  for (int i=0; i < 5; i++)   assertTrue("Cell " + i + " should be live",isLive(cf,cf.getColumn(b(i))));
+  for (int i=16; i < 20; i++)   assertTrue("Cell " + i + " should be live",isLive(cf,cf.getColumn(b(i))));
+  for (int i=5; i <= 15; i++)   assertTrue("Cell " + i + " shouldn't be live",!isLive(cf,cf.getColumn(b(i))));
+  CompactionManager.instance.performMaximal(cfs);
+  cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(dk(key),CFNAME,System.currentTimeMillis()));
+  for (int i=0; i < 5; i++)   assertTrue("Cell " + i + " should be live",isLive(cf,cf.getColumn(b(i))));
+  for (int i=16; i < 20; i++)   assertTrue("Cell " + i + " should be live",isLive(cf,cf.getColumn(b(i))));
+  for (int i=5; i <= 15; i++)   assertTrue("Cell " + i + " shouldn't be live",!isLive(cf,cf.getColumn(b(i))));
 }
