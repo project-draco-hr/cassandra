@@ -1,2 +1,28 @@
 {
+  CompactionManager.instance.disableAutoCompaction();
+  String keyspaceName="RowCacheSpace";
+  String cfName="CachedCF";
+  Keyspace keyspace=Keyspace.open(keyspaceName);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  DecoratedKey key=Util.dk("key3");
+  Mutation rm;
+  rm=new Mutation(keyspaceName,key.key);
+  for (int i=0; i < 10; i++) {
+    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+  }
+  rm.apply();
+  cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
+  rm=new Mutation(keyspaceName,key.key);
+  rm.delete(cfName,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  Util.compactAll(cfs,Integer.MAX_VALUE).get();
+  rm=new Mutation(keyspaceName,key.key);
+  for (int i=0; i < 10; i++) {
+    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+  }
+  rm.apply();
+  ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
+  assertEquals(10,cf.getColumnCount());
+  for (  Cell c : cf)   assertFalse(c.isMarkedForDelete(System.currentTimeMillis()));
 }
