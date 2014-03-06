@@ -1,0 +1,18 @@
+{
+  String confFile=FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
+  final GossipingPropertyFileSnitch snitch=new GossipingPropertyFileSnitch(1);
+  YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch,FBUtilities.getBroadcastAddress().getHostAddress(),"DC1","RAC1");
+  final Path effectiveFile=Paths.get(confFile);
+  final Path backupFile=Paths.get(confFile + ".bak");
+  final Path modifiedFile=Paths.get(confFile + ".mod");
+  try {
+    Files.copy(effectiveFile,backupFile);
+    Files.copy(modifiedFile,effectiveFile,java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    Thread.sleep(1500);
+    YamlFileNetworkTopologySnitchTest.checkEndpoint(snitch,FBUtilities.getBroadcastAddress().getHostAddress(),"DC2","RAC2");
+  }
+  finally {
+    Files.copy(backupFile,effectiveFile,java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    Files.delete(backupFile);
+  }
+}
