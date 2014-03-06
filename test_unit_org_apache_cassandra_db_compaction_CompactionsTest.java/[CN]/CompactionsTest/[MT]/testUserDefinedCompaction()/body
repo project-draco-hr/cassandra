@@ -1,2 +1,27 @@
 {
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  final String cfname="Standard3";
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.disableAutoCompaction();
+  final int ROWS_PER_SSTABLE=10;
+  for (int i=0; i < ROWS_PER_SSTABLE; i++) {
+    DecoratedKey key=Util.dk(String.valueOf(i));
+    Mutation rm=new Mutation(KEYSPACE1,key.key);
+    rm.add(cfname,Util.cellname("col"),ByteBufferUtil.EMPTY_BYTE_BUFFER,System.currentTimeMillis());
+    rm.apply();
+  }
+  cfs.forceBlockingFlush();
+  Collection<SSTableReader> sstables=cfs.getSSTables();
+  assertEquals(1,sstables.size());
+  SSTableReader sstable=sstables.iterator().next();
+  int prevGeneration=sstable.descriptor.generation;
+  String file=new File(sstable.descriptor.filenameFor(Component.DATA)).getName();
+  CompactionManager.instance.forceUserDefinedCompaction(file);
+  do {
+    Thread.sleep(100);
+  }
+ while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0);
+  sstables=cfs.getSSTables();
+  assertEquals(1,sstables.size());
+  assertEquals(prevGeneration + 1,sstables.iterator().next().descriptor.generation);
 }

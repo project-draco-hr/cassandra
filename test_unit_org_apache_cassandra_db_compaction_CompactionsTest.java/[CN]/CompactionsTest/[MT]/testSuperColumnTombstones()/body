@@ -1,2 +1,24 @@
 {
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("Super1");
+  cfs.disableAutoCompaction();
+  DecoratedKey key=Util.dk("tskey");
+  ByteBuffer scName=ByteBufferUtil.bytes("TestSuperColumn");
+  Mutation rm=new Mutation(KEYSPACE1,key.key);
+  rm.add("Super1",Util.cellname(scName,ByteBufferUtil.bytes(0)),ByteBufferUtil.EMPTY_BYTE_BUFFER,FBUtilities.timestampMicros());
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KEYSPACE1,key.key);
+  rm.deleteRange("Super1",SuperColumns.startOf(scName),SuperColumns.endOf(scName),FBUtilities.timestampMicros());
+  rm.apply();
+  cfs.forceBlockingFlush();
+  CompactionManager.instance.performMaximal(cfs);
+  assertEquals(1,cfs.getSSTables().size());
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  Range keyRange=new Range<RowPosition>(key,sstable.partitioner.getMinimumToken().maxKeyBound());
+  SSTableScanner scanner=sstable.getScanner(DataRange.forKeyRange(keyRange));
+  OnDiskAtomIterator iter=scanner.next();
+  assertEquals(key,iter.getKey());
+  assertTrue(iter.next() instanceof RangeTombstone);
+  assertFalse(iter.hasNext());
 }

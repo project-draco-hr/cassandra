@@ -1,2 +1,22 @@
 {
+  SystemKeyspace.discardCompactionsInProgress();
+  String cf="Standard4";
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(cf);
+  insertData(KEYSPACE1,cf,0,1);
+  cfs.forceBlockingFlush();
+  Collection<SSTableReader> sstables=cfs.getSSTables();
+  assertFalse(sstables.isEmpty());
+  Set<Integer> generations=Sets.newHashSet(Iterables.transform(sstables,new Function<SSTableReader,Integer>(){
+    public Integer apply(    SSTableReader sstable){
+      return sstable.descriptor.generation;
+    }
+  }
+));
+  UUID taskId=SystemKeyspace.startCompaction(cfs,sstables);
+  Map<Pair<String,String>,Map<Integer,UUID>> compactionLogs=SystemKeyspace.getUnfinishedCompactions();
+  Set<Integer> unfinishedCompactions=compactionLogs.get(Pair.create(KEYSPACE1,cf)).keySet();
+  assertTrue(unfinishedCompactions.containsAll(generations));
+  SystemKeyspace.finishCompaction(taskId);
+  compactionLogs=SystemKeyspace.getUnfinishedCompactions();
+  assertFalse(compactionLogs.containsKey(Pair.create(KEYSPACE1,cf)));
 }
