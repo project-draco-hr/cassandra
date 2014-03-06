@@ -1,0 +1,17 @@
+{
+  final SnitchProperties properties=new SnitchProperties();
+  String newDc=properties.get("dc",null);
+  String newRack=properties.get("rack",null);
+  if (newDc == null || newRack == null)   throw new ConfigurationException("DC or rack not found in snitch properties, check your configuration in: " + SnitchProperties.RACKDC_PROPERTY_FILENAME);
+  newDc=newDc.trim();
+  newRack=newRack.trim();
+  final boolean newPreferLocal=Boolean.parseBoolean(properties.get("prefer_local","false"));
+  if (myDC != newDc || myRack != newRack || (preferLocal != newPreferLocal)) {
+    myDC=newDc;
+    myRack=newRack;
+    preferLocal=newPreferLocal;
+    reloadGossiperState();
+    if (StorageService.instance != null)     StorageService.instance.getTokenMetadata().invalidateCachedRings();
+    if (gossipStarted)     StorageService.instance.gossipSnitchInfo();
+  }
+}

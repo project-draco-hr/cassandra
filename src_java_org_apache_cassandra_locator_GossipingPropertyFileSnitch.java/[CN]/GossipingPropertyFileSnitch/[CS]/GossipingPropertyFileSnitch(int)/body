@@ -1,0 +1,24 @@
+{
+  snitchHelperReference=new AtomicReference<ReconnectableSnitchHelper>();
+  reloadConfiguration();
+  try {
+    psnitch=new PropertyFileSnitch();
+    logger.info("Loaded {} for compatibility",PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
+  }
+ catch (  ConfigurationException e) {
+    logger.info("Unable to load {}; compatibility mode disabled",PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
+  }
+  try {
+    FBUtilities.resourceToFile(SnitchProperties.RACKDC_PROPERTY_FILENAME);
+    Runnable runnable=new WrappedRunnable(){
+      protected void runMayThrow() throws ConfigurationException {
+        reloadConfiguration();
+      }
+    }
+;
+    ResourceWatcher.watch(SnitchProperties.RACKDC_PROPERTY_FILENAME,runnable,refreshPeriodInSeconds * 1000);
+  }
+ catch (  ConfigurationException ex) {
+    logger.error("{} found, but does not look like a plain file. Will not watch it for changes",SnitchProperties.RACKDC_PROPERTY_FILENAME);
+  }
+}
