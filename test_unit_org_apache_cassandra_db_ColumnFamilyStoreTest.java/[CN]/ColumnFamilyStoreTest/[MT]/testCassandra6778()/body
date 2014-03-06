@@ -1,0 +1,27 @@
+{
+  String cfname="StandardInteger1";
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  RowMutation rm=new RowMutation("Keyspace1",ByteBufferUtil.bytes("k1"));
+  byte[] column1={1};
+  rm.add(cfname,ByteBuffer.wrap(column1),ByteBufferUtil.bytes("data1"),1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new RowMutation("Keyspace1",ByteBufferUtil.bytes("k1"));
+  byte[] column2={0,0,1};
+  rm.add(cfname,ByteBuffer.wrap(column2),ByteBufferUtil.bytes("data2"),2);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  SliceByNamesReadCommand cmd=new SliceByNamesReadCommand("Keyspace1",ByteBufferUtil.bytes("k1"),cfname,System.currentTimeMillis(),new NamesQueryFilter(FBUtilities.singleton(ByteBuffer.wrap(column1),cfs.getComparator())));
+  ColumnFamily cf=cmd.getRow(keyspace).cf;
+  assertEquals(1,cf.getColumnCount());
+  Column column=cf.getColumn(ByteBuffer.wrap(column1));
+  assertEquals("data2",ByteBufferUtil.string(column.value()));
+  assertEquals(ByteBuffer.wrap(column2),column.name());
+  cmd=new SliceByNamesReadCommand("Keyspace1",ByteBufferUtil.bytes("k1"),cfname,System.currentTimeMillis(),new NamesQueryFilter(FBUtilities.singleton(ByteBuffer.wrap(column2),cfs.getComparator())));
+  cf=cmd.getRow(keyspace).cf;
+  assertEquals(1,cf.getColumnCount());
+  column=cf.getColumn(ByteBuffer.wrap(column2));
+  assertEquals("data2",ByteBufferUtil.string(column.value()));
+  assertEquals(ByteBuffer.wrap(column2),column.name());
+}
