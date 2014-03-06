@@ -1,6 +1,7 @@
 {
   try {
-    CQLStatement statement=QueryProcessor.getPrepared(statementId);
+    QueryHandler handler=state.getClientState().getCQLQueryHandler();
+    CQLStatement statement=handler.getPrepared(statementId);
     if (statement == null)     throw new PreparedQueryNotFoundException(statementId);
     if (options.getPageSize() == 0)     throw new ProtocolException("The page size cannot be 0");
     UUID tracingId=null;
@@ -14,7 +15,7 @@
       if (options.getPageSize() > 0)       builder.put("page_size",Integer.toString(options.getPageSize()));
       Tracing.instance.begin("Execute CQL3 prepared query",builder.build());
     }
-    Message.Response response=QueryProcessor.processPrepared(statement,state,options);
+    Message.Response response=handler.processPrepared(statement,state,options);
     if (options.skipMetadata() && response instanceof ResultMessage.Rows)     ((ResultMessage.Rows)response).result.metadata.setSkipMetadata();
     if (tracingId != null)     response.setTracingId(tracingId);
     return response;
