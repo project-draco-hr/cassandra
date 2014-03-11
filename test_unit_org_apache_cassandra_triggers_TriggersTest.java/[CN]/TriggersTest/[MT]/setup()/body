@@ -1,0 +1,16 @@
+{
+  StorageService.instance.initServer(0);
+  if (thriftServer == null || !thriftServer.isRunning()) {
+    thriftServer=new ThriftServer(InetAddress.getLocalHost(),9170,50);
+    thriftServer.start();
+  }
+  String cql=String.format("CREATE KEYSPACE IF NOT EXISTS %s " + "WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1}",ksName);
+  QueryProcessor.process(cql,ConsistencyLevel.ONE);
+  cql=String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int, v1 int, v2 int, PRIMARY KEY (k))",ksName,cfName);
+  QueryProcessor.process(cql,ConsistencyLevel.ONE);
+  if (!triggerCreated) {
+    cql=String.format("CREATE TRIGGER trigger_1 ON %s.%s USING '%s'",ksName,cfName,TestTrigger.class.getName());
+    QueryProcessor.process(cql,ConsistencyLevel.ONE);
+    triggerCreated=true;
+  }
+}
