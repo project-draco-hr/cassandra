@@ -1,0 +1,11 @@
+{
+  TriggerDefinition td=TriggerDefinition.create(triggerName,triggerClass);
+  CFMetaData cfm1=CFMetaData.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)",cfName),ksName);
+  cfm1.addTriggerDefinition(td);
+  KSMetaData ksm=KSMetaData.newKeyspace(ksName,SimpleStrategy.class,Collections.singletonMap("replication_factor","1"),true,Collections.singletonList(cfm1));
+  MigrationManager.announceNewKeyspace(ksm);
+  CFMetaData cfm2=Schema.instance.getCFMetaData(ksName,cfName);
+  assertFalse(cfm2.getTriggers().isEmpty());
+  assertEquals(1,cfm2.getTriggers().size());
+  assertEquals(td,cfm2.getTriggers().get(triggerName));
+}
