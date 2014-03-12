@@ -1,2 +1,29 @@
 {
+  DecoratedKey dk=Util.dk("dropCf");
+  final KSMetaData ks=Schema.instance.getKSMetaData("Keyspace1");
+  Assert.assertNotNull(ks);
+  final CFMetaData cfm=ks.cfMetaData().get("Standard1");
+  Assert.assertNotNull(cfm);
+  Mutation rm=new Mutation(ks.name,dk.key);
+  for (int i=0; i < 100; i++)   rm.add(cfm.cfName,cellname("col" + i),ByteBufferUtil.bytes("anyvalue"),1L);
+  rm.apply();
+  ColumnFamilyStore store=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+  Assert.assertNotNull(store);
+  store.forceBlockingFlush();
+  Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
+  MigrationManager.announceColumnFamilyDrop(ks.name,cfm.cfName);
+  Assert.assertFalse(Schema.instance.getKSMetaData(ks.name).cfMetaData().containsKey(cfm.cfName));
+  rm=new Mutation(ks.name,dk.key);
+  boolean success=true;
+  try {
+    rm.add("Standard1",cellname("col0"),ByteBufferUtil.bytes("value0"),1L);
+    rm.apply();
+  }
+ catch (  Throwable th) {
+    success=false;
+  }
+  Assert.assertFalse("This mutation should have failed since the CF no longer exists.",success);
+  for (  File file : store.directories.sstableLister().listFiles()) {
+    if (file.getPath().endsWith("Data.db") && !new File(file.getPath().replace("Data.db","Compacted")).exists())     throw new AssertionError("undeleted file " + file);
+  }
 }

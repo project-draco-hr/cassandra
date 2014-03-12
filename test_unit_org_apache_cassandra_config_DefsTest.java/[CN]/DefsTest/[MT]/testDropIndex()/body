@@ -1,2 +1,19 @@
 {
+  Schema.instance.getKSMetaData("Keyspace6").toSchema(System.currentTimeMillis()).apply();
+  ColumnFamilyStore cfs=Keyspace.open("Keyspace6").getColumnFamilyStore("Indexed1");
+  Mutation rm=new Mutation("Keyspace6",ByteBufferUtil.bytes("k1"));
+  rm.add("Indexed1",cellname("notbirthdate"),ByteBufferUtil.bytes(1L),0);
+  rm.add("Indexed1",cellname("birthdate"),ByteBufferUtil.bytes(1L),0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  ColumnFamilyStore indexedCfs=cfs.indexManager.getIndexForColumn(ByteBufferUtil.bytes("birthdate")).getIndexCfs();
+  Descriptor desc=indexedCfs.getSSTables().iterator().next().descriptor;
+  CFMetaData meta=cfs.metadata.clone();
+  ColumnDefinition cdOld=meta.regularColumns().iterator().next();
+  ColumnDefinition cdNew=ColumnDefinition.regularDef(meta,cdOld.name.bytes,cdOld.type,null);
+  meta.addOrReplaceColumnDefinition(cdNew);
+  MigrationManager.announceColumnFamilyUpdate(meta,false);
+  Assert.assertTrue(cfs.indexManager.getIndexes().isEmpty());
+  SSTableDeletingTask.waitForDeletions();
+  Assert.assertFalse(new File(desc.filenameFor(Component.DATA)).exists());
 }

@@ -1,2 +1,22 @@
 {
+  final String ks="Keyspace1";
+  final String cf="BrandNewCf";
+  KSMetaData original=Schema.instance.getKSMetaData(ks);
+  CFMetaData newCf=addTestCF(original.name,cf,"A New Column Family");
+  Assert.assertFalse(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+  MigrationManager.announceNewColumnFamily(newCf);
+  Assert.assertTrue(Schema.instance.getKSMetaData(ks).cfMetaData().containsKey(newCf.cfName));
+  Assert.assertEquals(newCf,Schema.instance.getKSMetaData(ks).cfMetaData().get(newCf.cfName));
+  CellName col0=cellname("col0");
+  DecoratedKey dk=Util.dk("key0");
+  Mutation rm=new Mutation(ks,dk.key);
+  rm.add(cf,col0,ByteBufferUtil.bytes("value0"),1L);
+  rm.apply();
+  ColumnFamilyStore store=Keyspace.open(ks).getColumnFamilyStore(cf);
+  Assert.assertNotNull(store);
+  store.forceBlockingFlush();
+  ColumnFamily cfam=store.getColumnFamily(Util.namesQueryFilter(store,dk,col0));
+  Assert.assertNotNull(cfam.getColumn(col0));
+  Cell col=cfam.getColumn(col0);
+  Assert.assertEquals(ByteBufferUtil.bytes("value0"),col.value());
 }

@@ -1,2 +1,18 @@
 {
+  CFMetaData cfm=new CFMetaData("Keyspace1","TestApplyCFM_CF",ColumnFamilyType.Standard,new SimpleDenseCellNameType(BytesType.instance));
+  for (int i=0; i < 5; i++) {
+    ByteBuffer name=ByteBuffer.wrap(new byte[]{(byte)i});
+    cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm,name,BytesType.instance,null).setIndex(Integer.toString(i),IndexType.KEYS,null));
+  }
+  cfm.comment("No comment").readRepairChance(0.5).gcGraceSeconds(100000).minCompactionThreshold(500).maxCompactionThreshold(500);
+  Assert.assertNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{5})));
+  CFMetaData cfNew=cfm.clone();
+  ColumnDefinition addIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{5}),BytesType.instance,null).setIndex("5",IndexType.KEYS,null);
+  cfNew.addColumnDefinition(addIndexDef);
+  ColumnDefinition removeIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{0}),BytesType.instance,null).setIndex("0",IndexType.KEYS,null);
+  Assert.assertTrue(cfNew.removeColumnDefinition(removeIndexDef));
+  cfm.apply(cfNew);
+  for (int i=1; i < cfm.allColumns().size(); i++)   Assert.assertNotNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{1})));
+  Assert.assertNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{0})));
+  Assert.assertNotNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{5})));
 }

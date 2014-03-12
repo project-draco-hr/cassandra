@@ -1,2 +1,68 @@
 {
+  CFMetaData cf=addTestCF("UpdatedCfKs","Standard1added","A new cf that will be updated");
+  KSMetaData ksm=KSMetaData.testMetadata(cf.ksName,SimpleStrategy.class,KSMetaData.optsWithRF(1),cf);
+  MigrationManager.announceNewKeyspace(ksm);
+  Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
+  Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName),ksm);
+  Assert.assertNotNull(Schema.instance.getCFMetaData(cf.ksName,cf.cfName));
+  CFMetaData newCfm=cf.clone();
+  newCfm.defaultValidator(BytesType.instance);
+  newCfm.minCompactionThreshold(5);
+  newCfm.maxCompactionThreshold(31);
+  newCfm.comment("Modified comment");
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  newCfm.readRepairChance(0.23);
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  newCfm.gcGraceSeconds(12);
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  newCfm.defaultValidator(UTF8Type.instance);
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  newCfm.minCompactionThreshold(3);
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  newCfm.maxCompactionThreshold(33);
+  MigrationManager.announceColumnFamilyUpdate(newCfm,false);
+  Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName,cf.cfName).getComment(),newCfm.getComment());
+  Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName,cf.cfName).getReadRepairChance(),newCfm.getReadRepairChance(),0.0001);
+  Assert.assertEquals(Schema.instance.getCFMetaData(cf.ksName,cf.cfName).getGcGraceSeconds(),newCfm.getGcGraceSeconds());
+  Assert.assertEquals(UTF8Type.instance,Schema.instance.getCFMetaData(cf.ksName,cf.cfName).getDefaultValidator());
+  newCfm=new CFMetaData(cf.ksName,cf.cfName,cf.cfType,cf.comparator,UUID.randomUUID());
+  CFMetaData.copyOpts(newCfm,cf);
+  try {
+    cf.apply(newCfm);
+    throw new AssertionError("Should have blown up when you used a different id.");
+  }
+ catch (  ConfigurationException expected) {
+  }
+  newCfm=new CFMetaData(cf.ksName,cf.cfName + "_renamed",cf.cfType,cf.comparator);
+  CFMetaData.copyOpts(newCfm,cf);
+  try {
+    cf.apply(newCfm);
+    throw new AssertionError("Should have blown up when you used a different name.");
+  }
+ catch (  ConfigurationException expected) {
+  }
+  newCfm=new CFMetaData(cf.ksName + "_renamed",cf.cfName,cf.cfType,cf.comparator);
+  CFMetaData.copyOpts(newCfm,cf);
+  try {
+    cf.apply(newCfm);
+    throw new AssertionError("Should have blown up when you used a different keyspace.");
+  }
+ catch (  ConfigurationException expected) {
+  }
+  newCfm=new CFMetaData(cf.ksName,cf.cfName,ColumnFamilyType.Super,cf.comparator);
+  CFMetaData.copyOpts(newCfm,cf);
+  try {
+    cf.apply(newCfm);
+    throw new AssertionError("Should have blwon up when you used a different cf type.");
+  }
+ catch (  ConfigurationException expected) {
+  }
+  newCfm=new CFMetaData(cf.ksName,cf.cfName,cf.cfType,new SimpleDenseCellNameType(TimeUUIDType.instance));
+  CFMetaData.copyOpts(newCfm,cf);
+  try {
+    cf.apply(newCfm);
+    throw new AssertionError("Should have blown up when you used a different comparator.");
+  }
+ catch (  ConfigurationException expected) {
+  }
 }

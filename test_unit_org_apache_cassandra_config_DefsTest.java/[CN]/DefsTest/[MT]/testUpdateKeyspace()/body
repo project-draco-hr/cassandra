@@ -1,2 +1,19 @@
 {
+  CFMetaData cf=addTestCF("UpdatedKeyspace","AddedStandard1","A new cf for a new ks");
+  KSMetaData oldKs=KSMetaData.testMetadata(cf.ksName,SimpleStrategy.class,KSMetaData.optsWithRF(5),cf);
+  MigrationManager.announceNewKeyspace(oldKs);
+  Assert.assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
+  Assert.assertEquals(Schema.instance.getKSMetaData(cf.ksName),oldKs);
+  KSMetaData newBadKs2=KSMetaData.testMetadata(cf.ksName + "trash",SimpleStrategy.class,KSMetaData.optsWithRF(4));
+  try {
+    MigrationManager.announceKeyspaceUpdate(newBadKs2);
+    throw new AssertionError("Should not have been able to update a KS with an invalid KS name.");
+  }
+ catch (  ConfigurationException ex) {
+  }
+  KSMetaData newKs=KSMetaData.testMetadata(cf.ksName,OldNetworkTopologyStrategy.class,KSMetaData.optsWithRF(1));
+  MigrationManager.announceKeyspaceUpdate(newKs);
+  KSMetaData newFetchedKs=Schema.instance.getKSMetaData(newKs.name);
+  Assert.assertEquals(newFetchedKs.strategyClass,newKs.strategyClass);
+  Assert.assertFalse(newFetchedKs.strategyClass.equals(oldKs.strategyClass));
 }

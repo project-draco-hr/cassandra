@@ -1,2 +1,12 @@
 {
+  DecoratedKey dk=Util.dk("dropKs");
+  final KSMetaData ks=Schema.instance.getKSMetaData("Keyspace3");
+  Assert.assertNotNull(ks);
+  final CFMetaData cfm=ks.cfMetaData().get("Standard1");
+  Assert.assertNotNull(cfm);
+  Mutation rm=new Mutation(ks.name,dk.key);
+  for (int i=0; i < 100; i++)   rm.add(cfm.cfName,cellname("col" + i),ByteBufferUtil.bytes("anyvalue"),1L);
+  rm.apply();
+  MigrationManager.announceKeyspaceDrop(ks.name);
+  Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
 }

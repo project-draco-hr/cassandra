@@ -1,2 +1,19 @@
 {
+  DecoratedKey dk=Util.dk("key0");
+  CFMetaData newCf=addTestCF("NewKeyspace1","AddedStandard1","A new cf for a new ks");
+  KSMetaData newKs=KSMetaData.testMetadata(newCf.ksName,SimpleStrategy.class,KSMetaData.optsWithRF(5),newCf);
+  MigrationManager.announceNewKeyspace(newKs);
+  Assert.assertNotNull(Schema.instance.getKSMetaData(newCf.ksName));
+  Assert.assertEquals(Schema.instance.getKSMetaData(newCf.ksName),newKs);
+  CellName col0=cellname("col0");
+  Mutation rm=new Mutation(newCf.ksName,dk.key);
+  rm.add(newCf.cfName,col0,ByteBufferUtil.bytes("value0"),1L);
+  rm.apply();
+  ColumnFamilyStore store=Keyspace.open(newCf.ksName).getColumnFamilyStore(newCf.cfName);
+  Assert.assertNotNull(store);
+  store.forceBlockingFlush();
+  ColumnFamily cfam=store.getColumnFamily(Util.namesQueryFilter(store,dk,col0));
+  Assert.assertNotNull(cfam.getColumn(col0));
+  Cell col=cfam.getColumn(col0);
+  Assert.assertEquals(ByteBufferUtil.bytes("value0"),col.value());
 }
