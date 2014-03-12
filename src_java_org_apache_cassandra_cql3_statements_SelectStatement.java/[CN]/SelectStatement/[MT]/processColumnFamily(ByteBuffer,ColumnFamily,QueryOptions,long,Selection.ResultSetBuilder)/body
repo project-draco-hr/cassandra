@@ -1,0 +1,53 @@
+{
+  CFMetaData cfm=cf.metadata();
+  ByteBuffer[] keyComponents=null;
+  if (cfm.getKeyValidator() instanceof CompositeType) {
+    keyComponents=((CompositeType)cfm.getKeyValidator()).split(key);
+  }
+ else {
+    keyComponents=new ByteBuffer[]{key};
+  }
+  Iterator<Cell> cells=cf.getSortedColumns().iterator();
+  if (sliceRestriction != null)   cells=applySliceRestriction(cells,options);
+  CQL3Row.RowIterator iter=cfm.comparator.CQL3RowBuilder(cfm,now).group(cells);
+  CQL3Row staticRow=iter.getStaticRow();
+  if (staticRow != null && !iter.hasNext() && !usesSecondaryIndexing && hasNoClusteringColumnsRestriction()) {
+    result.newRow();
+    for (    ColumnDefinition def : selection.getColumnsList()) {
+switch (def.kind) {
+case PARTITION_KEY:
+        result.add(keyComponents[def.position()]);
+      break;
+case STATIC:
+    addValue(result,def,staticRow,options);
+  break;
+default :
+result.add((ByteBuffer)null);
+}
+}
+return;
+}
+while (iter.hasNext()) {
+CQL3Row cql3Row=iter.next();
+result.newRow();
+for (ColumnDefinition def : selection.getColumnsList()) {
+switch (def.kind) {
+case PARTITION_KEY:
+result.add(keyComponents[def.position()]);
+break;
+case CLUSTERING_COLUMN:
+result.add(cql3Row.getClusteringColumn(def.position()));
+break;
+case COMPACT_VALUE:
+result.add(cql3Row.getColumn(null));
+break;
+case REGULAR:
+addValue(result,def,cql3Row,options);
+break;
+case STATIC:
+addValue(result,def,staticRow,options);
+break;
+}
+}
+}
+}
