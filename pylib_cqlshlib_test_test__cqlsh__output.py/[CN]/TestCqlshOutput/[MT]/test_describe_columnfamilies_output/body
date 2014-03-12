@@ -1,7 +1,7 @@
 def test_describe_columnfamilies_output(self):
     output_re = '\n            \\n\n            Keyspace [ ] (?P<ksname> \\S+ ) \\n\n            -----------* \\n\n            (?P<cfnames> .*? )\n            \\n\n        '
     ks = get_test_keyspace()
-    with testrun_cqlsh(tty=True, keyspace=None, cqlver=3) as c:
+    with testrun_cqlsh(tty=True, keyspace=None, cqlver='3.1.5') as c:
         for cmdword in ('DESCRIBE COLUMNFAMILIES', 'desc tables'):
             for semicolon in (';', ''):
                 ksnames = []
@@ -16,8 +16,8 @@ def test_describe_columnfamilies_output(self):
                     if (ksname == ks):
                         self.assertIn('ascii_with_invalid_and_special_chars', cfnames)
                 self.assertIn('system', ksnames)
-                self.assertIn(quote_name('3.0.0', ks), ksnames)
-        c.send(('USE %s;\n' % quote_name('3.0.0', ks)))
+                self.assertIn(quote_name(ks), ksnames)
+        c.send(('USE %s;\n' % quote_name(ks)))
         c.read_to_next_prompt()
         for cmdword in ('DESCRIBE COLUMNFAMILIES', 'desc tables'):
             for semicolon in (';', ''):
@@ -25,6 +25,6 @@ def test_describe_columnfamilies_output(self):
                 self.assertNoHasColors(output)
                 self.assertEqual(output[0], '\n')
                 self.assertEqual(output[(-1)], '\n')
-                self.assertNotIn(('Keyspace %s' % quote_name('3.0.0', ks)), output)
+                self.assertNotIn(('Keyspace %s' % quote_name(ks)), output)
                 self.assertIn('has_value_encoding_errors', output)
                 self.assertIn('undefined_values_table', output)
