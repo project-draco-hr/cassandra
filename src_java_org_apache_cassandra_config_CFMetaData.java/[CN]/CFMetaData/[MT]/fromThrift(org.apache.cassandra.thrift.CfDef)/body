@@ -1,0 +1,45 @@
+{
+  ColumnFamilyType cfType=ColumnFamilyType.create(cf_def.column_type);
+  if (cfType == null)   throw new InvalidRequestException("Invalid column type " + cf_def.column_type);
+  applyImplicitDefaults(cf_def);
+  try {
+    AbstractType<?> rawComparator=TypeParser.parse(cf_def.comparator_type);
+    AbstractType<?> subComparator=cfType == ColumnFamilyType.Standard ? null : cf_def.subcomparator_type == null ? BytesType.instance : TypeParser.parse(cf_def.subcomparator_type);
+    boolean isDense=(cf_def.column_metadata == null || cf_def.column_metadata.isEmpty()) && !isCQL3OnlyPKComparator(rawComparator);
+    CellNameType comparator=CellNames.fromAbstractType(makeRawAbstractType(rawComparator,subComparator),isDense);
+    UUID cfId=Schema.instance.getId(cf_def.keyspace,cf_def.name);
+    if (cfId == null)     cfId=UUIDGen.getTimeUUID();
+    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator,cfId);
+    if (cf_def.isSetGc_grace_seconds()) {
+      newCFMD.gcGraceSeconds(cf_def.gc_grace_seconds);
+    }
+    if (cf_def.isSetMin_compaction_threshold()) {
+      newCFMD.minCompactionThreshold(cf_def.min_compaction_threshold);
+    }
+    if (cf_def.isSetMax_compaction_threshold()) {
+      newCFMD.maxCompactionThreshold(cf_def.max_compaction_threshold);
+    }
+    if (cf_def.isSetCompaction_strategy())     newCFMD.compactionStrategyClass=createCompactionStrategy(cf_def.compaction_strategy);
+    if (cf_def.isSetCompaction_strategy_options())     newCFMD.compactionStrategyOptions(new HashMap<>(cf_def.compaction_strategy_options));
+    if (cf_def.isSetBloom_filter_fp_chance())     newCFMD.bloomFilterFpChance(cf_def.bloom_filter_fp_chance);
+    if (cf_def.isSetMemtable_flush_period_in_ms())     newCFMD.memtableFlushPeriod(cf_def.memtable_flush_period_in_ms);
+    if (cf_def.isSetCaching() || cf_def.isSetCells_per_row_to_cache())     newCFMD.caching(CachingOptions.fromThrift(cf_def.caching,cf_def.cells_per_row_to_cache));
+    if (cf_def.isSetRead_repair_chance())     newCFMD.readRepairChance(cf_def.read_repair_chance);
+    if (cf_def.isSetDefault_time_to_live())     newCFMD.defaultTimeToLive(cf_def.default_time_to_live);
+    if (cf_def.isSetDclocal_read_repair_chance())     newCFMD.dcLocalReadRepairChance(cf_def.dclocal_read_repair_chance);
+    if (cf_def.isSetMin_index_interval())     newCFMD.minIndexInterval(cf_def.min_index_interval);
+    if (cf_def.isSetMax_index_interval())     newCFMD.maxIndexInterval(cf_def.max_index_interval);
+    if (cf_def.isSetSpeculative_retry())     newCFMD.speculativeRetry(SpeculativeRetry.fromString(cf_def.speculative_retry));
+    if (cf_def.isSetPopulate_io_cache_on_flush())     newCFMD.populateIoCacheOnFlush(cf_def.populate_io_cache_on_flush);
+    if (cf_def.isSetTriggers())     newCFMD.triggers(TriggerDefinition.fromThrift(cf_def.triggers));
+    CompressionParameters cp=CompressionParameters.create(cf_def.compression_options);
+    if (cf_def.isSetKey_validation_class()) {
+      newCFMD.keyValidator(TypeParser.parse(cf_def.key_validation_class));
+    }
+    if (cf_def.isSetKey_alias() && !(newCFMD.keyValidator instanceof CompositeType))     newCFMD.addOrReplaceColumnDefinition(ColumnDefinition.partitionKeyDef(newCFMD,cf_def.key_alias,newCFMD.keyValidator,null));
+    return newCFMD.addAllColumnDefinitions(ColumnDefinition.fromThrift(newCFMD,cf_def.column_metadata)).comment(cf_def.comment).defaultValidator(TypeParser.parse(cf_def.default_validation_class)).compressionParameters(cp).rebuild();
+  }
+ catch (  SyntaxException|MarshalException e) {
+    throw new ConfigurationException(e.getMessage());
+  }
+}
