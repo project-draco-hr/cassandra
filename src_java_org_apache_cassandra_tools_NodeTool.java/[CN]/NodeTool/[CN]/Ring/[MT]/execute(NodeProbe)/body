@@ -18,19 +18,8 @@
     ownerships=probe.getOwnership();
     System.out.printf("Note: Ownership information does not include topology; for complete information, specify a keyspace%n");
   }
-  try {
-    System.out.println();
-    Map<String,Map<InetAddress,Float>> perDcOwnerships=Maps.newLinkedHashMap();
-    for (    Map.Entry<InetAddress,Float> ownership : ownerships.entrySet()) {
-      String dc=probe.getEndpointSnitchInfoProxy().getDatacenter(ownership.getKey().getHostAddress());
-      if (!perDcOwnerships.containsKey(dc))       perDcOwnerships.put(dc,new LinkedHashMap<InetAddress,Float>());
-      perDcOwnerships.get(dc).put(ownership.getKey(),ownership.getValue());
-    }
-    for (    Map.Entry<String,Map<InetAddress,Float>> entry : perDcOwnerships.entrySet())     printDc(probe,format,entry.getKey(),endpointsToTokens,entry.getValue());
-  }
- catch (  UnknownHostException e) {
-    throw new RuntimeException(e);
-  }
+  System.out.println();
+  for (  Entry<String,SetHostStat> entry : getOwnershipByDc(probe,false,tokensToEndpoints,ownerships).entrySet())   printDc(probe,format,entry.getKey(),endpointsToTokens,entry.getValue());
   if (DatabaseDescriptor.getNumTokens() > 1) {
     System.out.println("  Warning: \"nodetool ring\" is used to output all the tokens of a node.");
     System.out.println("  To view status related info of a node use \"nodetool status\" instead.\n");
