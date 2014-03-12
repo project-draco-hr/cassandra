@@ -1,15 +1,15 @@
 {
-  SetHostStat ownerships;
+  Map<InetAddress,Float> ownerships;
   boolean hasEffectiveOwns=false, isTokenPerNode=true;
   try {
-    ownerships=new SetHostStat(probe.effectiveOwnership(kSpace));
+    ownerships=probe.effectiveOwnership(kSpace);
     hasEffectiveOwns=true;
   }
  catch (  IllegalStateException e) {
-    ownerships=new SetHostStat(probe.getOwnership());
+    ownerships=probe.getOwnership();
   }
-  if (new HashSet<String>(tokensToEndpoints.values()).size() < tokensToEndpoints.keySet().size())   isTokenPerNode=false;
-  Map<String,SetHostStat> dcs=getOwnershipByDc(ownerships);
+  if (tokensToEndpoints.values().size() < tokensToEndpoints.keySet().size())   isTokenPerNode=false;
+  Map<String,SetHostStat> dcs=getOwnershipByDc(resolveIp,tokensToEndpoints,ownerships);
   findMaxAddressLength(dcs);
   for (  Map.Entry<String,SetHostStat> dc : dcs.entrySet()) {
     String dcHeader=String.format("Datacenter: %s%n",dc.getKey());
@@ -18,6 +18,12 @@
     outs.println();
     printStatusLegend();
     printNodesHeader(hasEffectiveOwns,isTokenPerNode);
-    for (    HostStat entry : dc.getValue())     printNode(entry,hasEffectiveOwns,isTokenPerNode);
+    ArrayListMultimap<String,String> hostToTokens=ArrayListMultimap.create();
+    for (    HostStat stat : dc.getValue())     hostToTokens.put(stat.ipOrDns(),stat.token);
+    for (    String endpoint : hostToTokens.keySet()) {
+      Float owns=ownerships.get(InetAddress.getByName(endpoint));
+      List<String> tokens=hostToTokens.get(endpoint);
+      printNode(endpoint,owns,tokens,hasEffectiveOwns,isTokenPerNode);
+    }
   }
 }

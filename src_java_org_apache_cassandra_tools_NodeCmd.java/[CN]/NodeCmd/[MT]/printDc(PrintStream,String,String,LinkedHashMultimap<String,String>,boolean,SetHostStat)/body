@@ -9,15 +9,15 @@
   outs.println("==========");
   List<String> tokens=new ArrayList<String>();
   String lastToken="";
-  for (  Map.Entry<InetAddress,Float> entry : filteredOwnerships.entrySet()) {
-    tokens.addAll(endpointsToTokens.get(entry.getKey().getHostAddress()));
+  for (  HostStat stat : hoststats) {
+    tokens.addAll(endpointsToTokens.get(stat.ip));
     lastToken=tokens.get(tokens.size() - 1);
   }
   outs.printf(format,"Address","Rack","Status","State","Load","Owns","Token");
-  if (filteredOwnerships.size() > 1)   outs.printf(format,"","","","","","",lastToken);
+  if (hoststats.size() > 1)   outs.printf(format,"","","","","","",lastToken);
  else   outs.println();
-  for (  Map.Entry<String,String> entry : endpointsToTokens.entries()) {
-    String endpoint=entry.getKey();
+  for (  HostStat stat : hoststats) {
+    String endpoint=stat.ip;
     String rack;
     try {
       rack=probe.getEndpointSnitchInfoProxy().getRack(endpoint);
@@ -31,16 +31,8 @@
  else     if (leavingNodes.contains(endpoint))     state="Leaving";
  else     if (movingNodes.contains(endpoint))     state="Moving";
     String load=loadMap.containsKey(endpoint) ? loadMap.get(endpoint) : "?";
-    String owns;
-    try {
-      InetAddress ep=InetAddress.getByName(endpoint);
-      Float percent=filteredOwnerships.get(ep);
-      owns=(percent != null) ? new DecimalFormat("##0.00%").format(percent) : "?";
-    }
- catch (    UnknownHostException e) {
-      throw new RuntimeException(e);
-    }
-    outs.printf(format,endpoint,rack,status,state,load,owns,entry.getValue());
+    String owns=stat.owns != null ? new DecimalFormat("##0.00%").format(stat.owns) : "?";
+    outs.printf(format,endpoint,rack,status,state,load,owns,stat.token);
   }
   outs.println();
 }
