@@ -1,8 +1,8 @@
 def test_describe_keyspace_output(self):
-    fullcqlver = '3.1.0'
+    fullcqlver = '3.1.5'
     with testrun_cqlsh(tty=True, cqlver=fullcqlver) as c:
         ks = get_test_keyspace()
-        qks = quote_name(fullcqlver, ks)
+        qks = quote_name(ks)
         for cmd in ('describe keyspace', 'desc keyspace'):
             for givename in ('system', '', qks):
                 for semicolon in ('', ';'):
@@ -11,7 +11,7 @@ def test_describe_keyspace_output(self):
                     self.check_describe_keyspace_output(desc, (givename or qks), fullcqlver)
         new_ks_name = ('COPY_OF_' + ks)
         copy_desc = desc.replace(ks, new_ks_name)
-        statements = split_cql_commands(copy_desc, cqlver=fullcqlver)
+        statements = split_cql_commands(copy_desc)
         do_drop = True
         with cassandra_cursor(cql_version=fullcqlver) as curs:
             try:
@@ -21,4 +21,4 @@ def test_describe_keyspace_output(self):
             finally:
                 curs.execute('use system')
                 if do_drop:
-                    curs.execute(('drop keyspace %s' % quote_name(fullcqlver, new_ks_name)))
+                    curs.execute(('drop keyspace %s' % quote_name(new_ks_name)))

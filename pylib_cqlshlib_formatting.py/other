@@ -1,10 +1,11 @@
 import re
 import time
-import binascii
+import calendar
 import math
 from collections import defaultdict
 from . import wcwidth
 from .displaying import colorme, FormattedValue, DEFAULT_VALUE_COLORS
+from cassandra.cqltypes import EMPTY
 unicode_controlchars_re = re.compile('[\\x00-\\x31\\x7f-\\xa0]')
 controlchars_re = re.compile('[\\x00-\\x31\\x7f-\\xff]')
 bits_to_turn_red_re = re.compile('\\\\([^uUx]|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|U[0-9a-fA-F]{8})')
@@ -14,11 +15,13 @@ default_float_precision = 3
 default_colormap = DEFAULT_VALUE_COLORS
 empty_colormap = defaultdict((lambda : ''))
 _formatters = {}
-formatter_for('timeuuid')(format_value_uuid)
+formatter_for('buffer')(format_value_blob)
 formatter_for('float')(format_floating_point_type)
-formatter_for('double')(format_floating_point_type)
-formatter_for('bigint')(format_integer_type)
+formatter_for('long')(format_integer_type)
 formatter_for('int')(format_integer_type)
-formatter_for('varint')(format_integer_type)
-formatter_for('counter')(format_integer_type)
-formatter_for('varchar')(format_value_text)
+formatter_for('datetime')(format_value_timestamp)
+formatter_for('unicode')(format_value_text)
+formatter_for('tuple')(format_value_list)
+formatter_for('frozenset')(format_value_set)
+formatter_for('sortedset')(format_value_set)
+formatter_for('OrderedDict')(format_value_map)
