@@ -1,7 +1,5 @@
 {
-  final SlicePredicate predicate=new SlicePredicate();
-  if (state.settings.columns.names == null)   predicate.setSlice_range(new SliceRange().setStart(new byte[]{}).setFinish(new byte[]{}).setReversed(false).setCount(state.settings.columns.maxColumnsPerKey));
- else   predicate.setColumn_names(state.settings.columns.names);
+  final SlicePredicate predicate=slicePredicate();
   final ByteBuffer key=getKey();
   final List<ByteBuffer> expect=state.rowGen.isDeterministic() ? generateColumnValues(key) : null;
   for (  final ColumnParent parent : state.columnParents) {
@@ -9,6 +7,7 @@
       @Override public boolean run() throws Exception {
         List<ColumnOrSuperColumn> row=client.get_slice(key,parent,predicate,state.settings.command.consistencyLevel);
         if (expect == null)         return !row.isEmpty();
+        if (row == null)         return false;
         if (!state.settings.columns.useSuperColumns) {
           if (row.size() != expect.size())           return false;
           for (int i=0; i < row.size(); i++)           if (!row.get(i).getColumn().bufferForValue().equals(expect.get(i)))           return false;
