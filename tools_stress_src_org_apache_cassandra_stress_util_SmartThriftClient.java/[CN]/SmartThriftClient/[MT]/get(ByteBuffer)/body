@@ -1,10 +1,8 @@
 {
   Set<Host> hosts=metadata.getReplicas(metadata.quote(keyspace),pk);
-  int count=roundrobin.incrementAndGet() % hosts.size();
-  if (count < 0)   count=-count;
-  Iterator<Host> iter=hosts.iterator();
-  while (count > 0 && iter.hasNext())   iter.next();
-  Host host=iter.next();
+  int pos=roundrobin.incrementAndGet() % hosts.size();
+  if (pos < 0)   pos=-pos;
+  Host host=Iterators.get(hosts.iterator(),pos);
   ConcurrentLinkedQueue<Client> q=cache.get(host);
   if (q == null) {
     ConcurrentLinkedQueue<Client> newQ=new ConcurrentLinkedQueue<Client>();
