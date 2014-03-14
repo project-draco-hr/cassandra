@@ -1,16 +1,15 @@
 {
-  bootstrap=new ClientBootstrap(new NioClientSocketChannelFactory(Executors.newCachedThreadPool(),Executors.newCachedThreadPool()));
-  bootstrap.setOption("tcpNoDelay",true);
+  bootstrap=new Bootstrap().group(new NioEventLoopGroup()).channel(io.netty.channel.socket.nio.NioSocketChannel.class).option(ChannelOption.TCP_NODELAY,true);
   if (encryptionOptions.enabled) {
-    bootstrap.setPipelineFactory(new SecurePipelineFactory());
+    bootstrap.handler(new SecureInitializer());
   }
  else {
-    bootstrap.setPipelineFactory(new PipelineFactory());
+    bootstrap.handler(new Initializer());
   }
   ChannelFuture future=bootstrap.connect(new InetSocketAddress(host,port));
-  channel=future.awaitUninterruptibly().getChannel();
+  channel=future.awaitUninterruptibly().channel();
   if (!future.isSuccess()) {
-    bootstrap.releaseExternalResources();
-    throw new IOException("Connection Error",future.getCause());
+    bootstrap.group().shutdownGracefully();
+    throw new IOException("Connection Error",future.cause());
   }
 }

@@ -1,0 +1,14 @@
+{
+  Connection connection=ctx.channel().attr(Connection.attributeKey).get();
+  if (frame.header.type == Message.Type.STARTUP || connection == null) {
+    results.add(frame);
+    return;
+  }
+  FrameCompressor compressor=connection.getCompressor();
+  if (compressor == null) {
+    results.add(frame);
+    return;
+  }
+  frame.header.flags.add(Header.Flag.COMPRESSED);
+  results.add(compressor.compress(frame));
+}
