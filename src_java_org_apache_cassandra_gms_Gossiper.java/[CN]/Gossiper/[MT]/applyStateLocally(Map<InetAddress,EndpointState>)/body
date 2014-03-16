@@ -3,7 +3,7 @@
     InetAddress ep=entry.getKey();
     if (ep.equals(FBUtilities.getBroadcastAddress()) && !isInShadowRound())     continue;
     if (justRemovedEndpoints.containsKey(ep)) {
-      if (logger.isTraceEnabled())       logger.trace("Ignoring gossip for " + ep + " because it is quarantined");
+      if (logger.isTraceEnabled())       logger.trace("Ignoring gossip for {} because it is quarantined",ep);
       continue;
     }
     EndpointState localEpStatePtr=endpointStateMap.get(ep);
@@ -11,9 +11,9 @@
     if (localEpStatePtr != null) {
       int localGeneration=localEpStatePtr.getHeartBeatState().getGeneration();
       int remoteGeneration=remoteState.getHeartBeatState().getGeneration();
-      if (logger.isTraceEnabled())       logger.trace(ep + "local generation " + localGeneration+ ", remote generation "+ remoteGeneration);
+      if (logger.isTraceEnabled())       logger.trace("{} local generation {}, remote generation {}",ep,localGeneration,remoteGeneration);
       if (remoteGeneration > localGeneration) {
-        if (logger.isTraceEnabled())         logger.trace("Updating heartbeat state generation to " + remoteGeneration + " from "+ localGeneration+ " for "+ ep);
+        if (logger.isTraceEnabled())         logger.trace("Updating heartbeat state generation to {} from {} for {}",remoteGeneration,localGeneration,ep);
         handleMajorStateChange(ep,remoteState);
       }
  else       if (remoteGeneration == localGeneration) {
@@ -22,11 +22,11 @@
         if (remoteMaxVersion > localMaxVersion) {
           applyNewStates(ep,localEpStatePtr,remoteState);
         }
- else         if (logger.isTraceEnabled())         logger.trace("Ignoring remote version " + remoteMaxVersion + " <= "+ localMaxVersion+ " for "+ ep);
+ else         if (logger.isTraceEnabled())         logger.trace("Ignoring remote version {} <= {} for {}",remoteMaxVersion,localMaxVersion,ep);
         if (!localEpStatePtr.isAlive() && !isDeadState(localEpStatePtr))         markAlive(ep,localEpStatePtr);
       }
  else {
-        if (logger.isTraceEnabled())         logger.trace("Ignoring remote generation " + remoteGeneration + " < "+ localGeneration);
+        if (logger.isTraceEnabled())         logger.trace("Ignoring remote generation {} < {}",remoteGeneration,localGeneration);
       }
     }
  else {
