@@ -9,7 +9,7 @@
   stopped=false;
   while (!stopped) {
     while (activeClients.get() >= args.maxWorkerThreads) {
-      Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
+      Uninterruptibles.sleepUninterruptibly(10,TimeUnit.MILLISECONDS);
     }
     try {
       TTransport client=serverTransport_.accept();
@@ -22,6 +22,10 @@
       if (!stopped) {
         logger.warn("Transport error occurred during acceptance of message.",ttx);
       }
+    }
+catch (    RejectedExecutionException e) {
+      logger.debug("Dropping client connection because our limit of {} has been reached",args.maxWorkerThreads);
+      continue;
     }
     if (activeClients.get() >= args.maxWorkerThreads)     logger.warn("Maximum number of clients {} reached",args.maxWorkerThreads);
   }
