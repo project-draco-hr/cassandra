@@ -1,0 +1,12 @@
+{
+  String cf="cf" + System.nanoTime();
+  try {
+    setupTableWithTrigger(cf,CrossTableTrigger.class);
+    Cassandra.Client client=new Cassandra.Client(new TBinaryProtocol(new TFramedTransportFactory().openTransport(InetAddress.getLocalHost().getHostName(),9170)));
+    client.set_keyspace(ksName);
+    client.cas(ByteBufferUtil.bytes(10),cf,Collections.EMPTY_LIST,Collections.singletonList(getColumnForInsert("v1",10)),org.apache.cassandra.thrift.ConsistencyLevel.LOCAL_SERIAL,org.apache.cassandra.thrift.ConsistencyLevel.ONE);
+  }
+  finally {
+    assertUpdateNotExecuted(cf,10);
+  }
+}
