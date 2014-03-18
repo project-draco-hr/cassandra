@@ -1,0 +1,24 @@
+{
+  Map<String,TriggerDefinition> triggers=columnFamily.metadata().getTriggers();
+  if (triggers.isEmpty())   return null;
+  List<Mutation> tmutations=Lists.newLinkedList();
+  Thread.currentThread().setContextClassLoader(customClassLoader);
+  try {
+    for (    TriggerDefinition td : triggers.values()) {
+      ITrigger trigger=cachedTriggers.get(td.classOption);
+      if (trigger == null) {
+        trigger=loadTriggerInstance(td.classOption);
+        cachedTriggers.put(td.classOption,trigger);
+      }
+      Collection<Mutation> temp=trigger.augment(key,columnFamily);
+      if (temp != null)       tmutations.addAll(temp);
+    }
+    return tmutations;
+  }
+ catch (  Exception ex) {
+    throw new RuntimeException(String.format("Exception while creating trigger on CF with ID: %s",columnFamily.id()),ex);
+  }
+ finally {
+    Thread.currentThread().setContextClassLoader(parent);
+  }
+}
