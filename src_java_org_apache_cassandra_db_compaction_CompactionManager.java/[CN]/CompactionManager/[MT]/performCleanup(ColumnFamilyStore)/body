@@ -1,10 +1,21 @@
 {
-  performAllSSTableOperation(cfStore,new AllSSTablesOperation(){
-    public void perform(    ColumnFamilyStore store,    Iterable<SSTableReader> sstables) throws IOException {
+  final Iterable<SSTableReader> sstables=cfStore.markAllCompacting();
+  if (sstables == null) {
+    logger.info("Aborting cleanup of {}.{} after failing to interrupt other compaction operations",cfStore.keyspace.getName(),cfStore.name);
+    return AllSSTableOpStatus.ABORTED;
+  }
+  if (Iterables.isEmpty(sstables)) {
+    logger.info("No sstables to cleanup for {}.{}",cfStore.keyspace.getName(),cfStore.name);
+    return AllSSTableOpStatus.SUCCESSFUL;
+  }
+  Runnable runnable=new UnmarkingRunnable(cfStore,sstables){
+    protected void runMayThrow() throws IOException {
       List<SSTableReader> sortedSSTables=Lists.newArrayList(sstables);
       Collections.sort(sortedSSTables,new SSTableReader.SizeComparator());
-      doCleanupCompaction(store,sortedSSTables);
+      doCleanupCompaction(cfStore,sortedSSTables);
     }
   }
-);
+;
+  executor.submit(runnable).get();
+  return AllSSTableOpStatus.SUCCESSFUL;
 }
