@@ -21,7 +21,7 @@
           logger.warn("Failed to set send buffer size on internode socket.",se);
         }
       }
-      out=new DataOutputStream(new BufferedOutputStream(socket.getOutputStream(),4096));
+      out=new DataOutputStreamPlus(new BufferedOutputStream(socket.getOutputStream(),4096));
       out.writeInt(MessagingService.PROTOCOL_MAGIC);
       writeHeader(out,targetVersion,shouldCompressConnection());
       out.flush();
@@ -49,12 +49,12 @@
         out.flush();
         logger.trace("Upgrading OutputStream to be compressed");
         if (targetVersion < MessagingService.VERSION_21) {
-          out=new DataOutputStream(new SnappyOutputStream(new BufferedOutputStream(socket.getOutputStream())));
+          out=new DataOutputStreamPlus(new SnappyOutputStream(socket.getOutputStream()));
         }
  else {
           LZ4Compressor compressor=LZ4Factory.fastestInstance().fastCompressor();
           Checksum checksum=XXHashFactory.fastestInstance().newStreamingHash32(LZ4_HASH_SEED).asChecksum();
-          out=new DataOutputStream(new LZ4BlockOutputStream(new BufferedOutputStream(socket.getOutputStream()),1 << 14,compressor,checksum,true));
+          out=new DataOutputStreamPlus(new LZ4BlockOutputStream(socket.getOutputStream(),1 << 14,compressor,checksum,true));
         }
       }
       return true;
