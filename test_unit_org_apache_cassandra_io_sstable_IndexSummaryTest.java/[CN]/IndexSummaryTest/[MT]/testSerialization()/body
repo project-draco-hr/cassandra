@@ -1,12 +1,11 @@
 {
   Pair<List<DecoratedKey>,IndexSummary> random=generateRandomIndex(100,1);
-  ByteArrayOutputStream aos=new ByteArrayOutputStream();
-  DataOutputStream dos=new DataOutputStream(aos);
+  DataOutputBuffer dos=new DataOutputBuffer();
   IndexSummary.serializer.serialize(random.right,dos,false);
   dos.writeUTF("JUNK");
   dos.writeUTF("JUNK");
   FileUtils.closeQuietly(dos);
-  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(aos.toByteArray()));
+  DataInputStream dis=new DataInputStream(new ByteArrayInputStream(dos.toByteArray()));
   IndexSummary is=IndexSummary.serializer.deserialize(dis,DatabaseDescriptor.getPartitioner(),false,1,1);
   for (int i=0; i < 100; i++)   assertEquals(i,is.binarySearch(random.left.get(i)));
   assertEquals(dis.readUTF(),"JUNK");
