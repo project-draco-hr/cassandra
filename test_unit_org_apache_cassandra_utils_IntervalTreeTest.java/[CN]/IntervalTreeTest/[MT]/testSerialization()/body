@@ -14,7 +14,7 @@
   intervals.add(Interval.<Integer,String>create(49,60,"l"));
   IntervalTree<Integer,String,Interval<Integer,String>> it=IntervalTree.build(intervals);
   IVersionedSerializer<IntervalTree<Integer,String,Interval<Integer,String>>> serializer=IntervalTree.serializer(new ISerializer<Integer>(){
-    public void serialize(    Integer i,    DataOutput out) throws IOException {
+    public void serialize(    Integer i,    DataOutputPlus out) throws IOException {
       out.writeInt(i);
     }
     public Integer deserialize(    DataInput in) throws IOException {
@@ -25,7 +25,7 @@
     }
   }
 ,new ISerializer<String>(){
-    public void serialize(    String v,    DataOutput out) throws IOException {
+    public void serialize(    String v,    DataOutputPlus out) throws IOException {
       out.writeUTF(v);
     }
     public String deserialize(    DataInput in) throws IOException {
@@ -35,11 +35,10 @@
       return v.length();
     }
   }
-,Interval.class.getConstructor(Object.class,Object.class,Object.class));
-  ByteArrayOutputStream baos=new ByteArrayOutputStream();
-  DataOutputStream out=new DataOutputStream(baos);
+,(Constructor<Interval<Integer,String>>)(Object)Interval.class.getConstructor(Object.class,Object.class,Object.class));
+  DataOutputBuffer out=new DataOutputBuffer();
   serializer.serialize(it,out,0);
-  DataInputStream in=new DataInputStream(new ByteArrayInputStream(baos.toByteArray()));
+  DataInputStream in=new DataInputStream(new ByteArrayInputStream(out.toByteArray()));
   IntervalTree<Integer,String,Interval<Integer,String>> it2=serializer.deserialize(in,0);
   List<Interval<Integer,String>> intervals2=new ArrayList<Interval<Integer,String>>();
   for (  Interval<Integer,String> i : it2)   intervals2.add(i);
