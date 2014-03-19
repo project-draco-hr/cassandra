@@ -3,6 +3,8 @@
     MessageDigest versionDigest=MessageDigest.getInstance("MD5");
     for (    Row row : SystemKeyspace.serializedSchema()) {
       if (invalidSchemaRow(row) || ignoredSchemaRow(row))       continue;
+      ColumnFamilyStore.removeDeletedColumnsOnly(row.cf,Integer.MAX_VALUE);
+      row.cf.purgeTombstones(Integer.MAX_VALUE);
       row.cf.updateDigest(versionDigest);
     }
     version=UUID.nameUUIDFromBytes(versionDigest.digest());
