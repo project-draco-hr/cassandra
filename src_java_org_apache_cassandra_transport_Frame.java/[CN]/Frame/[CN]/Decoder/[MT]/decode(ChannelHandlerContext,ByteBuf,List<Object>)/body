@@ -1,0 +1,43 @@
+{
+  if (discardingTooLongFrame) {
+    bytesToDiscard=discard(buffer,bytesToDiscard);
+    if (bytesToDiscard <= 0)     fail();
+    return;
+  }
+  if (buffer.readableBytes() < Header.LENGTH)   return;
+  int idx=buffer.readerIndex();
+  int firstByte=buffer.getByte(idx);
+  Message.Direction direction=Message.Direction.extractFromVersion(firstByte);
+  int version=firstByte & 0x7F;
+  if (version > Server.CURRENT_VERSION)   throw new ProtocolException("Invalid or unsupported protocol version: " + version);
+  int flags=buffer.getByte(idx + 1);
+  int streamId=buffer.getByte(idx + 2);
+  Message.Type type=Message.Type.fromOpcode(buffer.getByte(idx + 3),direction);
+  long bodyLength=buffer.getUnsignedInt(idx + Header.BODY_LENGTH_OFFSET);
+  if (bodyLength < 0) {
+    buffer.skipBytes(Header.LENGTH);
+    throw new ProtocolException("Invalid frame body length: " + bodyLength);
+  }
+  long frameLength=bodyLength + Header.LENGTH;
+  if (frameLength > MAX_FRAME_LENGTH) {
+    discardingTooLongFrame=true;
+    tooLongStreamId=streamId;
+    tooLongFrameLength=frameLength;
+    bytesToDiscard=discard(buffer,frameLength);
+    if (bytesToDiscard <= 0)     fail();
+    return;
+  }
+  int frameLengthInt=(int)frameLength;
+  if (buffer.readableBytes() < frameLengthInt)   return;
+  ByteBuf body=Unpooled.copiedBuffer(buffer.duplicate().slice(idx + Header.LENGTH,(int)bodyLength));
+  buffer.readerIndex(idx + frameLengthInt);
+  Connection connection=ctx.channel().attr(Connection.attributeKey).get();
+  if (connection == null) {
+    connection=factory.newConnection(ctx.channel(),version);
+    ctx.channel().attr(Connection.attributeKey).set(connection);
+  }
+ else   if (connection.getVersion() != version) {
+    throw new ProtocolException(String.format("Invalid message version. Got %d but previous messages on this connection had version %d",version,connection.getVersion()));
+  }
+  results.add(new Frame(new Header(version,flags,streamId,type),body));
+}
