@@ -28,17 +28,12 @@
     System.out.println("Status=Up/Down");
     System.out.println("|/ State=Normal/Leaving/Joining/Moving");
     printNodesHeader(hasEffectiveOwns,isTokenPerNode);
-    ArrayListMultimap<String,String> hostToTokens=ArrayListMultimap.create();
-    for (    HostStat stat : dc.getValue())     hostToTokens.put(stat.ipOrDns(),stat.token);
-    try {
-      for (      String endpoint : hostToTokens.keySet()) {
-        Float owns=ownerships.get(InetAddress.getByName(endpoint));
-        List<String> tokens=hostToTokens.get(endpoint);
-        printNode(endpoint,owns,tokens,hasEffectiveOwns,isTokenPerNode);
-      }
-    }
- catch (    UnknownHostException e) {
-      throw new RuntimeException(e);
+    ArrayListMultimap<InetAddress,HostStat> hostToTokens=ArrayListMultimap.create();
+    for (    HostStat stat : dc.getValue())     hostToTokens.put(stat.endpoint,stat);
+    for (    InetAddress endpoint : hostToTokens.keySet()) {
+      Float owns=ownerships.get(endpoint);
+      List<HostStat> tokens=hostToTokens.get(endpoint);
+      printNode(endpoint.getHostAddress(),owns,tokens,hasEffectiveOwns,isTokenPerNode);
     }
   }
 }
