@@ -1,0 +1,36 @@
+{
+  boolean transformed=false;
+  Collection<Cell> insert=cm.getSortedColumns();
+  while (true) {
+    Holder current=ref;
+    delta.reset();
+    DeletionInfo deletionInfo;
+    if (cm.deletionInfo().mayModify(current.deletionInfo)) {
+      if (indexer != SecondaryIndexManager.nullUpdater && cm.deletionInfo().hasRanges()) {
+        for (Iterator<RangeTombstone> rangeIterator=cm.deletionInfo().rangeIterator(); rangeIterator.hasNext(); ) {
+          RangeTombstone rt=rangeIterator.next();
+          long deleteAt=rt.timestamp();
+          for (Iterator<Cell> iter=current.cellRange(getComparator().columnComparator(),rt.min,rt.max); iter.hasNext(); ) {
+            Cell c=iter.next();
+            if (deleteAt >= c.timestamp())             indexer.remove(c);
+          }
+        }
+      }
+      deletionInfo=current.deletionInfo.copy().add(cm.deletionInfo());
+      delta.addHeapSize(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
+    }
+ else {
+      deletionInfo=current.deletionInfo;
+    }
+    ColumnUpdater updater=new ColumnUpdater(this,current,transformation,indexer,delta);
+    Object[] tree=BTree.update(current.tree,metadata.comparator.columnComparator(),insert,true,updater);
+    if (tree != null && refUpdater.compareAndSet(this,current,new Holder(tree,deletionInfo))) {
+      indexer.updateRowLevelIndexes();
+      return updater.delta;
+    }
+    if (!transformed) {
+      insert=transform(metadata.comparator.columnComparator(),cm,transformation,false);
+      transformed=true;
+    }
+  }
+}
