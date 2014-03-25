@@ -6,9 +6,15 @@
     }
   }
 );
-  memtableHeapSize=Metrics.newGauge(factory.createMetricName("MemtableHeapSize"),new Gauge<Long>(){
+  memtableOnHeapSize=Metrics.newGauge(factory.createMetricName("MemtableHeapSize"),new Gauge<Long>(){
     public Long value(){
-      return cfs.getDataTracker().getView().getCurrentMemtable().getAllocator().owns();
+      return cfs.getDataTracker().getView().getCurrentMemtable().getAllocator().onHeap().owns();
+    }
+  }
+);
+  memtableOffHeapSize=Metrics.newGauge(factory.createMetricName("MemtableHeapSize"),new Gauge<Long>(){
+    public Long value(){
+      return cfs.getDataTracker().getView().getCurrentMemtable().getAllocator().offHeap().owns();
     }
   }
 );
@@ -18,10 +24,18 @@
     }
   }
 );
-  allMemtablesHeapSize=Metrics.newGauge(factory.createMetricName("AllMemtablesHeapSize"),new Gauge<Long>(){
+  allMemtablesOnHeapSize=Metrics.newGauge(factory.createMetricName("AllMemtablesHeapSize"),new Gauge<Long>(){
     public Long value(){
       long size=0;
-      for (      ColumnFamilyStore cfs2 : cfs.concatWithIndexes())       size+=cfs2.getDataTracker().getView().getCurrentMemtable().getAllocator().owns();
+      for (      ColumnFamilyStore cfs2 : cfs.concatWithIndexes())       size+=cfs2.getDataTracker().getView().getCurrentMemtable().getAllocator().onHeap().owns();
+      return size;
+    }
+  }
+);
+  allMemtablesOffHeapSize=Metrics.newGauge(factory.createMetricName("AllMemtablesHeapSize"),new Gauge<Long>(){
+    public Long value(){
+      long size=0;
+      for (      ColumnFamilyStore cfs2 : cfs.concatWithIndexes())       size+=cfs2.getDataTracker().getView().getCurrentMemtable().getAllocator().offHeap().owns();
       return size;
     }
   }

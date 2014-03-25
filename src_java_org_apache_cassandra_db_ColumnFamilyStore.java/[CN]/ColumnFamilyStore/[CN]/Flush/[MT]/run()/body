@@ -18,7 +18,15 @@
   metric.memtableSwitchCount.inc();
   for (  final Memtable memtable : memtables) {
     MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
-    memtable.setDiscarded();
+    final OpOrder.Barrier readBarrier=readOrdering.newBarrier();
+    readBarrier.issue();
+    reclaimExecutor.execute(new WrappedRunnable(){
+      public void runMayThrow() throws InterruptedException, ExecutionException {
+        readBarrier.await();
+        memtable.setDiscarded();
+      }
+    }
+);
   }
   postFlush.lastReplayPosition=memtables.get(0).getLastReplayPosition();
   postFlush.latch.countDown();
