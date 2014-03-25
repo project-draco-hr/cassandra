@@ -1,27 +1,13 @@
 {
   String outputReducerType="filesystem";
-  String inputMapperType="native";
-  String outputReducer=null;
-  String inputMapper=null;
-  if (args != null) {
-    if (args[0].startsWith(OUTPUT_REDUCER_VAR))     outputReducer=args[0];
-    if (args[0].startsWith(INPUT_MAPPER_VAR))     inputMapper=args[0];
-    if (args.length == 2) {
-      if (args[1].startsWith(OUTPUT_REDUCER_VAR))       outputReducer=args[1];
-      if (args[1].startsWith(INPUT_MAPPER_VAR))       inputMapper=args[1];
-    }
-  }
-  if (outputReducer != null) {
-    String[] s=outputReducer.split("=");
+  if (args != null && args[0].startsWith(OUTPUT_REDUCER_VAR)) {
+    String[] s=args[0].split("=");
     if (s != null && s.length == 2)     outputReducerType=s[1];
   }
   logger.info("output reducer type: " + outputReducerType);
-  if (inputMapper != null) {
-    String[] s=inputMapper.split("=");
-    if (s != null && s.length == 2)     inputMapperType=s[1];
-  }
   Job job=new Job(getConf(),"wordcount");
   job.setJarByClass(WordCount.class);
+  job.setMapperClass(TokenizerMapper.class);
   if (outputReducerType.equalsIgnoreCase("filesystem")) {
     job.setCombinerClass(ReducerToFilesystem.class);
     job.setReducerClass(ReducerToFilesystem.class);
@@ -43,16 +29,8 @@
     ConfigHelper.setOutputInitialAddress(job.getConfiguration(),"localhost");
     ConfigHelper.setOutputPartitioner(job.getConfiguration(),"Murmur3Partitioner");
   }
-  if (inputMapperType.equalsIgnoreCase("native")) {
-    job.setMapperClass(NativeTokenizerMapper.class);
-    job.setInputFormatClass(CqlInputFormat.class);
-    CqlConfigHelper.setInputCql(job.getConfiguration(),"select * from " + COLUMN_FAMILY + " where token(id) > ? and token(id) <= ? allow filtering");
-  }
- else {
-    job.setMapperClass(TokenizerMapper.class);
-    job.setInputFormatClass(CqlPagingInputFormat.class);
-    ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
-  }
+  job.setInputFormatClass(CqlPagingInputFormat.class);
+  ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
   ConfigHelper.setInputInitialAddress(job.getConfiguration(),"localhost");
   ConfigHelper.setInputColumnFamily(job.getConfiguration(),KEYSPACE,COLUMN_FAMILY);
   ConfigHelper.setInputPartitioner(job.getConfiguration(),"Murmur3Partitioner");
