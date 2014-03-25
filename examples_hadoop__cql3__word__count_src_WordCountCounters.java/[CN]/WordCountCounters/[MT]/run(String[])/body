@@ -1,30 +1,18 @@
 {
-  String inputMapperType="native";
-  if (args != null && args[0].startsWith(INPUT_MAPPER_VAR)) {
-    String[] arg0=args[0].split("=");
-    if (arg0 != null && arg0.length == 2)     inputMapperType=arg0[1];
-  }
   Job job=new Job(getConf(),"wordcountcounters");
+  job.setJarByClass(WordCountCounters.class);
+  job.setMapperClass(SumMapper.class);
   job.setCombinerClass(ReducerToFilesystem.class);
   job.setReducerClass(ReducerToFilesystem.class);
-  job.setJarByClass(WordCountCounters.class);
+  job.setOutputKeyClass(Text.class);
+  job.setOutputValueClass(LongWritable.class);
+  FileOutputFormat.setOutputPath(job,new Path(OUTPUT_PATH_PREFIX));
+  job.setInputFormatClass(CqlPagingInputFormat.class);
+  ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
   ConfigHelper.setInputInitialAddress(job.getConfiguration(),"localhost");
   ConfigHelper.setInputPartitioner(job.getConfiguration(),"Murmur3Partitioner");
   ConfigHelper.setInputColumnFamily(job.getConfiguration(),WordCount.KEYSPACE,WordCount.OUTPUT_COLUMN_FAMILY);
   CqlConfigHelper.setInputCQLPageRowSize(job.getConfiguration(),"3");
-  if ("native".equals(inputMapperType)) {
-    job.setMapperClass(SumNativeMapper.class);
-    job.setInputFormatClass(CqlInputFormat.class);
-    CqlConfigHelper.setInputCql(job.getConfiguration(),"select * from " + WordCount.OUTPUT_COLUMN_FAMILY + " where token(word) > ? and token(word) <= ? allow filtering");
-  }
- else {
-    job.setMapperClass(SumMapper.class);
-    job.setInputFormatClass(CqlPagingInputFormat.class);
-    ConfigHelper.setInputRpcPort(job.getConfiguration(),"9160");
-  }
-  job.setOutputKeyClass(Text.class);
-  job.setOutputValueClass(LongWritable.class);
-  FileOutputFormat.setOutputPath(job,new Path(OUTPUT_PATH_PREFIX));
   job.waitForCompletion(true);
   return 0;
 }
