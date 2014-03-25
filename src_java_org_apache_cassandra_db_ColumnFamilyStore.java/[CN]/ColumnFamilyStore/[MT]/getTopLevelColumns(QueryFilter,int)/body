@@ -1,7 +1,10 @@
 {
   Tracing.trace("Executing single-partition query on {}",name);
   CollationController controller=new CollationController(this,filter,gcBefore);
-  ColumnFamily columns=controller.getTopLevelColumns();
-  metric.updateSSTableIterated(controller.getSstablesIterated());
+  ColumnFamily columns;
+  try (OpOrder.Group op=readOrdering.start()){
+    columns=controller.getTopLevelColumns(Memtable.memoryPool.needToCopyOnHeap());
+  }
+   metric.updateSSTableIterated(controller.getSstablesIterated());
   return columns;
 }

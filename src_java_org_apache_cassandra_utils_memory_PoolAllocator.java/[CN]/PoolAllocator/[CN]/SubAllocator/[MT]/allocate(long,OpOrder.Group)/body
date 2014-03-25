@@ -1,0 +1,17 @@
+{
+  while (true) {
+    if (parent.tryAllocate(size)) {
+      acquired(size);
+      return;
+    }
+    WaitQueue.Signal signal=opGroup.isBlockingSignal(parent.hasRoom().register());
+    boolean allocated=parent.tryAllocate(size);
+    if (allocated || opGroup.isBlocking()) {
+      signal.cancel();
+      if (allocated)       acquired(size);
+ else       allocated(size);
+      return;
+    }
+ else     signal.awaitUninterruptibly();
+  }
+}
