@@ -4,26 +4,43 @@
     String[] pieces=apStateValue.split(VersionedValue.DELIMITER_STR,-1);
     assert(pieces.length > 0);
     String moveName=pieces[0];
-    if (moveName.equals(VersionedValue.STATUS_BOOTSTRAPPING))     handleStateBootstrap(endpoint);
- else     if (moveName.equals(VersionedValue.STATUS_NORMAL))     handleStateNormal(endpoint);
- else     if (moveName.equals(VersionedValue.REMOVING_TOKEN) || moveName.equals(VersionedValue.REMOVED_TOKEN))     handleStateRemoving(endpoint,pieces);
- else     if (moveName.equals(VersionedValue.STATUS_LEAVING))     handleStateLeaving(endpoint);
- else     if (moveName.equals(VersionedValue.STATUS_LEFT))     handleStateLeft(endpoint,pieces);
- else     if (moveName.equals(VersionedValue.STATUS_MOVING))     handleStateMoving(endpoint,pieces);
- else     if (moveName.equals(VersionedValue.STATUS_RELOCATING))     handleStateRelocating(endpoint,pieces);
-  }
+switch (moveName) {
+case VersionedValue.STATUS_BOOTSTRAPPING:
+      handleStateBootstrap(endpoint);
+    break;
+case VersionedValue.STATUS_NORMAL:
+  handleStateNormal(endpoint);
+break;
+case VersionedValue.REMOVING_TOKEN:
+case VersionedValue.REMOVED_TOKEN:
+handleStateRemoving(endpoint,pieces);
+break;
+case VersionedValue.STATUS_LEAVING:
+handleStateLeaving(endpoint);
+break;
+case VersionedValue.STATUS_LEFT:
+handleStateLeft(endpoint,pieces);
+break;
+case VersionedValue.STATUS_MOVING:
+handleStateMoving(endpoint,pieces);
+break;
+case VersionedValue.STATUS_RELOCATING:
+handleStateRelocating(endpoint,pieces);
+break;
+}
+}
  else {
-    EndpointState epState=Gossiper.instance.getEndpointStateForEndpoint(endpoint);
-    if (epState == null || Gossiper.instance.isDeadState(epState)) {
-      logger.debug("Ignoring state change for dead or unknown endpoint: {}",endpoint);
-      return;
-    }
+EndpointState epState=Gossiper.instance.getEndpointStateForEndpoint(endpoint);
+if (epState == null || Gossiper.instance.isDeadState(epState)) {
+logger.debug("Ignoring state change for dead or unknown endpoint: {}",endpoint);
+return;
+}
 switch (state) {
 case RELEASE_VERSION:
-      SystemKeyspace.updatePeerInfo(endpoint,"release_version",quote(value.value));
-    break;
+SystemKeyspace.updatePeerInfo(endpoint,"release_version",quote(value.value));
+break;
 case DC:
-  SystemKeyspace.updatePeerInfo(endpoint,"data_center",quote(value.value));
+SystemKeyspace.updatePeerInfo(endpoint,"data_center",quote(value.value));
 break;
 case RACK:
 SystemKeyspace.updatePeerInfo(endpoint,"rack",quote(value.value));
