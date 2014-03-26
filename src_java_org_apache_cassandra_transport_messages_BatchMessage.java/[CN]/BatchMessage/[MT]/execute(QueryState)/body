@@ -9,6 +9,7 @@
       state.createTracingSession();
       Tracing.instance.begin("Execute batch of CQL3 queries",Collections.<String,String>emptyMap());
     }
+    QueryHandler handler=state.getClientState().getCQLQueryHandler();
     List<ModificationStatement> statements=new ArrayList<ModificationStatement>(queryOrIdList.size());
     for (int i=0; i < queryOrIdList.size(); i++) {
       Object query=queryOrIdList.get(i);
@@ -17,7 +18,7 @@
         statement=QueryProcessor.parseStatement((String)query,state);
       }
  else {
-        statement=QueryProcessor.getPrepared((MD5Digest)query);
+        statement=handler.getPrepared((MD5Digest)query);
         if (statement == null)         throw new PreparedQueryNotFoundException((MD5Digest)query);
       }
       List<ByteBuffer> queryValues=values.get(i);
@@ -33,7 +34,7 @@
       statements.add(mst);
     }
     BatchStatement batch=new BatchStatement(-1,type,statements,Attributes.none());
-    Message.Response response=QueryProcessor.processBatch(batch,consistency,state,values,queryOrIdList);
+    Message.Response response=handler.processBatch(batch,state,new BatchQueryOptions(consistency,values,queryOrIdList));
     if (tracingId != null)     response.setTracingId(tracingId);
     return response;
   }
