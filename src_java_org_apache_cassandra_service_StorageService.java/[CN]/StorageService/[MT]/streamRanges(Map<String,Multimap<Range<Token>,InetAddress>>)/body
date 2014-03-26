@@ -1,16 +1,16 @@
 {
-  final Map<String,Map<InetAddress,List<Range<Token>>>> sessionsToStreamByKeyspace=new HashMap<String,Map<InetAddress,List<Range<Token>>>>();
+  Map<String,Map<InetAddress,List<Range<Token>>>> sessionsToStreamByKeyspace=new HashMap<>();
   for (  Map.Entry<String,Multimap<Range<Token>,InetAddress>> entry : rangesToStreamByKeyspace.entrySet()) {
     String keyspace=entry.getKey();
     Multimap<Range<Token>,InetAddress> rangesWithEndpoints=entry.getValue();
     if (rangesWithEndpoints.isEmpty())     continue;
-    Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=new HashMap<InetAddress,List<Range<Token>>>();
-    for (    final Map.Entry<Range<Token>,InetAddress> endPointEntry : rangesWithEndpoints.entries()) {
-      final Range<Token> range=endPointEntry.getKey();
-      final InetAddress endpoint=endPointEntry.getValue();
+    Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=new HashMap<>();
+    for (    Map.Entry<Range<Token>,InetAddress> endPointEntry : rangesWithEndpoints.entries()) {
+      Range<Token> range=endPointEntry.getKey();
+      InetAddress endpoint=endPointEntry.getValue();
       List<Range<Token>> curRanges=rangesPerEndpoint.get(endpoint);
       if (curRanges == null) {
-        curRanges=new LinkedList<Range<Token>>();
+        curRanges=new LinkedList<>();
         rangesPerEndpoint.put(endpoint,curRanges);
       }
       curRanges.add(range);
@@ -19,11 +19,11 @@
   }
   StreamPlan streamPlan=new StreamPlan("Unbootstrap");
   for (  Map.Entry<String,Map<InetAddress,List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet()) {
-    final String keyspaceName=entry.getKey();
-    final Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=entry.getValue();
-    for (    final Map.Entry<InetAddress,List<Range<Token>>> rangesEntry : rangesPerEndpoint.entrySet()) {
-      final List<Range<Token>> ranges=rangesEntry.getValue();
-      final InetAddress newEndpoint=rangesEntry.getKey();
+    String keyspaceName=entry.getKey();
+    Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=entry.getValue();
+    for (    Map.Entry<InetAddress,List<Range<Token>>> rangesEntry : rangesPerEndpoint.entrySet()) {
+      List<Range<Token>> ranges=rangesEntry.getValue();
+      InetAddress newEndpoint=rangesEntry.getKey();
       streamPlan.transferRanges(newEndpoint,keyspaceName,ranges);
     }
   }
