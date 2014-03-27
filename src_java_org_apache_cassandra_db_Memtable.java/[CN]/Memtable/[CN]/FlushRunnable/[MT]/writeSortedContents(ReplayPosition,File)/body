@@ -5,10 +5,10 @@
   try {
     for (    Map.Entry<RowPosition,AtomicBTreeColumns> entry : rows.entrySet()) {
       ColumnFamily cf=entry.getValue();
-      if (cf.isMarkedForDelete()) {
-        if (cfs.name.equals(SystemKeyspace.BATCHLOG_CF) && cfs.keyspace.getName().equals(Keyspace.SYSTEM_KS) && !(cf.getColumnCount() == 0))         continue;
+      if (cf.isMarkedForDelete() && cf.hasColumns()) {
+        if (cfs.name.equals(SystemKeyspace.BATCHLOG_CF) && cfs.keyspace.getName().equals(Keyspace.SYSTEM_KS))         continue;
       }
-      if (cf.getColumnCount() > 0 || cf.isMarkedForDelete())       writer.append((DecoratedKey)entry.getKey(),cf);
+      if (!cf.isEmpty())       writer.append((DecoratedKey)entry.getKey(),cf);
     }
     if (writer.getFilePointer() > 0) {
       writer.isolateReferences();

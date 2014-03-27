@@ -1,2 +1,22 @@
 {
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  final ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard2");
+  Mutation rm;
+  rm=new Mutation("Keyspace1",ByteBufferUtil.bytes("key1"));
+  rm.delete("Standard2",System.currentTimeMillis());
+  rm.apply();
+  Runnable r=new WrappedRunnable(){
+    public void runMayThrow() throws IOException {
+      QueryFilter sliceFilter=QueryFilter.getSliceFilter(Util.dk("key1"),"Standard2",Composites.EMPTY,Composites.EMPTY,false,1,System.currentTimeMillis());
+      ColumnFamily cf=store.getColumnFamily(sliceFilter);
+      assertTrue(cf.isMarkedForDelete());
+      assertFalse(cf.hasColumns());
+      QueryFilter namesFilter=Util.namesQueryFilter(store,Util.dk("key1"),"a");
+      cf=store.getColumnFamily(namesFilter);
+      assertTrue(cf.isMarkedForDelete());
+      assertFalse(cf.hasColumns());
+    }
+  }
+;
+  KeyspaceTest.reTest(store,r);
 }

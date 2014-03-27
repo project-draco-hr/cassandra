@@ -10,12 +10,12 @@
   cfs.forceBlockingFlush();
   Collection<SSTableReader> sstablesBefore=cfs.getSSTables();
   QueryFilter filter=QueryFilter.getIdentityFilter(key,cfname,System.currentTimeMillis());
-  assertTrue(0 != cfs.getColumnFamily(filter).getColumnCount());
+  assertTrue(cfs.getColumnFamily(filter).hasColumns());
   rm=new Mutation(KEYSPACE1,key.key);
   rm.delete(cfname,2);
   rm.apply();
   ColumnFamily cf=cfs.getColumnFamily(filter);
-  assertTrue("should be empty: " + cf,cf == null || cf.getColumnCount() == 0);
+  assertTrue("should be empty: " + cf,cf == null || !cf.hasColumns());
   Thread.sleep(1000);
   cfs.forceBlockingFlush();
   Collection<SSTableReader> sstablesAfter=cfs.getSSTables();
@@ -23,5 +23,5 @@
   for (  SSTableReader sstable : sstablesAfter)   if (!sstablesBefore.contains(sstable))   toCompact.add(sstable);
   Util.compact(cfs,toCompact);
   cf=cfs.getColumnFamily(filter);
-  assertTrue("should be empty: " + cf,cf == null || cf.getColumnCount() == 0);
+  assertTrue("should be empty: " + cf,cf == null || !cf.hasColumns());
 }
