@@ -2,7 +2,7 @@
   MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
   for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
     ColumnFamily cfAttrs=entry.getValue();
-    if (!(cfAttrs.getColumnCount() == 0)) {
+    if (cfAttrs.hasColumns()) {
       Map<String,CFMetaData> cfDefs=KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(),cfAttrs));
       for (      CFMetaData cfDef : cfDefs.values())       addColumnFamily(cfDef);
     }
@@ -13,10 +13,10 @@
     ColumnFamily prevValue=valueDiff.leftValue();
     ColumnFamily newValue=valueDiff.rightValue();
     Row newRow=new Row(keyspace,newValue);
-    if (prevValue.getColumnCount() == 0) {
+    if (!prevValue.hasColumns()) {
       for (      CFMetaData cfm : KSMetaData.deserializeColumnFamilies(newRow).values())       addColumnFamily(cfm);
     }
- else     if (newValue.getColumnCount() == 0) {
+ else     if (!newValue.hasColumns()) {
       for (      CFMetaData cfm : KSMetaData.deserializeColumnFamilies(new Row(keyspace,prevValue)).values())       dropColumnFamily(cfm.ksName,cfm.cfName);
     }
  else {

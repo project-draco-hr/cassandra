@@ -1,2 +1,27 @@
 {
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.clearUnsafe();
+  cfs.disableAutoCompaction();
+  DecoratedKey key=Util.dk(k);
+  Mutation rm=new Mutation(KEYSPACE1,key.key);
+  rm.add(cfname,Util.cellname(ByteBufferUtil.bytes("sc"),ByteBufferUtil.bytes("c")),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  Collection<SSTableReader> sstablesBefore=cfs.getSSTables();
+  QueryFilter filter=QueryFilter.getIdentityFilter(key,cfname,System.currentTimeMillis());
+  assertTrue(cfs.getColumnFamily(filter).hasColumns());
+  rm=new Mutation(KEYSPACE1,key.key);
+  rm.delete(cfname,2);
+  rm.apply();
+  ColumnFamily cf=cfs.getColumnFamily(filter);
+  assertTrue("should be empty: " + cf,cf == null || !cf.hasColumns());
+  Thread.sleep(1000);
+  cfs.forceBlockingFlush();
+  Collection<SSTableReader> sstablesAfter=cfs.getSSTables();
+  Collection<SSTableReader> toCompact=new ArrayList<SSTableReader>();
+  for (  SSTableReader sstable : sstablesAfter)   if (!sstablesBefore.contains(sstable))   toCompact.add(sstable);
+  Util.compact(cfs,toCompact);
+  cf=cfs.getColumnFamily(filter);
+  assertTrue("should be empty: " + cf,cf == null || !cf.hasColumns());
 }

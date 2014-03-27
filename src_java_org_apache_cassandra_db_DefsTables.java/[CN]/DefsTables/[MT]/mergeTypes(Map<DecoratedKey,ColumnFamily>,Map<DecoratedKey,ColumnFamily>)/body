@@ -2,17 +2,17 @@
   MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
   for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
     ColumnFamily cfTypes=entry.getValue();
-    if (cfTypes.getColumnCount() == 0)     continue;
+    if (!cfTypes.hasColumns())     continue;
     for (    UserType ut : UTMetaData.fromSchema(new Row(entry.getKey(),cfTypes)).values())     addType(ut);
   }
   for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntry : diff.entriesDiffering().entrySet()) {
     DecoratedKey keyspace=modifiedEntry.getKey();
     ColumnFamily prevCFTypes=modifiedEntry.getValue().leftValue();
     ColumnFamily newCFTypes=modifiedEntry.getValue().rightValue();
-    if (prevCFTypes.getColumnCount() == 0) {
+    if (!prevCFTypes.hasColumns()) {
       for (      UserType ut : UTMetaData.fromSchema(new Row(keyspace,newCFTypes)).values())       addType(ut);
     }
- else     if (newCFTypes.getColumnCount() == 0) {
+ else     if (!newCFTypes.hasColumns()) {
       for (      UserType ut : UTMetaData.fromSchema(new Row(keyspace,prevCFTypes)).values())       dropType(ut);
     }
  else {
