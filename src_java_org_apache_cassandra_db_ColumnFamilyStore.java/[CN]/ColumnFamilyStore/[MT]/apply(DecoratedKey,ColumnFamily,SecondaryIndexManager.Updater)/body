@@ -4,13 +4,5 @@
   mt.put(key,columnFamily,indexer);
   maybeUpdateRowCache(key);
   metric.writeLatency.addNano(System.nanoTime() - start);
-  while (true) {
-    long last=liveRatioComputedAt.get();
-    long operations=metric.writeLatency.latency.count();
-    if (operations < 2 * last)     break;
-    if (liveRatioComputedAt.compareAndSet(last,operations)) {
-      logger.debug("computing liveRatio of {} at {} ops",this,operations);
-      mt.updateLiveRatio();
-    }
-  }
+  mt.maybeUpdateLiveRatio();
 }
