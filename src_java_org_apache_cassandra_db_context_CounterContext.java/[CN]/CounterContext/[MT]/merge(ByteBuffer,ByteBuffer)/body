@@ -1,4 +1,6 @@
 {
+  boolean leftIsSuperSet=true;
+  boolean rightIsSuperSet=true;
   int globalCount=0;
   int localCount=0;
   int remoteCount=0;
@@ -7,6 +9,10 @@
   while (leftState.hasRemaining() && rightState.hasRemaining()) {
     int cmp=leftState.compareIdTo(rightState);
     if (cmp == 0) {
+      Relationship rel=compare(leftState,rightState);
+      if (rel == Relationship.GREATER_THAN)       rightIsSuperSet=false;
+ else       if (rel == Relationship.LESS_THAN)       leftIsSuperSet=false;
+ else       if (rel == Relationship.DISJOINT)       leftIsSuperSet=rightIsSuperSet=false;
       if (leftState.isGlobal() || rightState.isGlobal())       globalCount+=1;
  else       if (leftState.isLocal() || rightState.isLocal())       localCount+=1;
  else       remoteCount+=1;
@@ -14,18 +20,24 @@
       rightState.moveToNext();
     }
  else     if (cmp > 0) {
+      leftIsSuperSet=false;
       if (rightState.isGlobal())       globalCount+=1;
  else       if (rightState.isLocal())       localCount+=1;
  else       remoteCount+=1;
       rightState.moveToNext();
     }
  else {
+      rightIsSuperSet=false;
       if (leftState.isGlobal())       globalCount+=1;
  else       if (leftState.isLocal())       localCount+=1;
  else       remoteCount+=1;
       leftState.moveToNext();
     }
   }
+  if (leftState.hasRemaining())   rightIsSuperSet=false;
+ else   if (rightState.hasRemaining())   leftIsSuperSet=false;
+  if (leftIsSuperSet)   return left;
+ else   if (rightIsSuperSet)   return right;
   while (leftState.hasRemaining()) {
     if (leftState.isGlobal())     globalCount+=1;
  else     if (leftState.isLocal())     localCount+=1;

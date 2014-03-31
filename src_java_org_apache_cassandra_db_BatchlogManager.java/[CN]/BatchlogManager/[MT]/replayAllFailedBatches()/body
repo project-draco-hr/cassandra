@@ -4,11 +4,11 @@
   int throttleInKB=DatabaseDescriptor.getBatchlogReplayThrottleInKB() / StorageService.instance.getTokenMetadata().getAllEndpoints().size();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   try {
-    UntypedResultSet page=process("SELECT id, data, written_at FROM %s.%s LIMIT %d",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF,PAGE_SIZE);
+    UntypedResultSet page=process("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF,PAGE_SIZE);
     while (!page.isEmpty()) {
       UUID id=processBatchlogPage(page,rateLimiter);
       if (page.size() < PAGE_SIZE)       break;
-      page=process("SELECT id, data, written_at FROM %s.%s WHERE token(id) > token(%s) LIMIT %d",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF,id,PAGE_SIZE);
+      page=process("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(%s) LIMIT %d",Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF,id,PAGE_SIZE);
     }
     cleanup();
   }
