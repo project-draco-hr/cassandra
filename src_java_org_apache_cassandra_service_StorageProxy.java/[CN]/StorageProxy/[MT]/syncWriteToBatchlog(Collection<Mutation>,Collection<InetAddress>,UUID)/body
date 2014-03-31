@@ -1,5 +1,17 @@
 {
   AbstractWriteResponseHandler handler=new WriteResponseHandler(endpoints,Collections.<InetAddress>emptyList(),ConsistencyLevel.ONE,Keyspace.open(Keyspace.SYSTEM_KS),null,WriteType.BATCH_LOG);
-  updateBatchlog(BatchlogManager.getBatchlogMutationFor(mutations,uuid),endpoints,handler);
+  MessageOut<Mutation> message=BatchlogManager.getBatchlogMutationFor(mutations,uuid,MessagingService.current_version).createMessage();
+  for (  InetAddress target : endpoints) {
+    int targetVersion=MessagingService.instance().getVersion(target);
+    if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
+      insertLocal(message.payload,handler);
+    }
+ else     if (targetVersion == MessagingService.current_version) {
+      MessagingService.instance().sendRR(message,target,handler);
+    }
+ else {
+      MessagingService.instance().sendRR(BatchlogManager.getBatchlogMutationFor(mutations,uuid,targetVersion).createMessage(),target,handler);
+    }
+  }
   handler.get();
 }

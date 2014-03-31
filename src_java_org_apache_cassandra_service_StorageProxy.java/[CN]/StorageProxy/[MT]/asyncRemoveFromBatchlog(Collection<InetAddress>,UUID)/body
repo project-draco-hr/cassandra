@@ -1,6 +1,10 @@
 {
-  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(Schema.instance.getCFMetaData(Keyspace.SYSTEM_KS,SystemKeyspace.BATCHLOG_CF));
-  cf.delete(new DeletionInfo(FBUtilities.timestampMicros(),(int)(System.currentTimeMillis() / 1000)));
   AbstractWriteResponseHandler handler=new WriteResponseHandler(endpoints,Collections.<InetAddress>emptyList(),ConsistencyLevel.ANY,Keyspace.open(Keyspace.SYSTEM_KS),null,WriteType.SIMPLE);
-  updateBatchlog(new Mutation(Keyspace.SYSTEM_KS,UUIDType.instance.decompose(uuid),cf),endpoints,handler);
+  Mutation mutation=new Mutation(Keyspace.SYSTEM_KS,UUIDType.instance.decompose(uuid));
+  mutation.delete(SystemKeyspace.BATCHLOG_CF,FBUtilities.timestampMicros());
+  MessageOut<Mutation> message=mutation.createMessage();
+  for (  InetAddress target : endpoints) {
+    if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)     insertLocal(message.payload,handler);
+ else     MessagingService.instance().sendRR(message,target,handler);
+  }
 }
