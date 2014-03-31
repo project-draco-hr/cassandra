@@ -1,21 +1,17 @@
 {
   super(reversed ? slices.length - 1 : 0);
   boolean inSlice=false;
-  int columnCount=sstable.descriptor.version.hasRowSizeAndColumnCount ? file.readInt() : Integer.MAX_VALUE;
   AtomDeserializer deserializer=emptyColumnFamily.metadata().getOnDiskDeserializer(file,sstable.descriptor.version);
-  int deserialized=0;
-  while (deserializer.hasNext() && deserialized < columnCount) {
+  while (deserializer.hasNext()) {
     Composite start=currentStart();
     if (!inSlice && !start.isEmpty() && deserializer.compareNextTo(start) < 0) {
       deserializer.skipNext();
-      ++deserialized;
       continue;
     }
     Composite finish=currentFinish();
     if (finish.isEmpty() || deserializer.compareNextTo(finish) <= 0) {
       inSlice=true;
       addColumn(deserializer.readNext());
-      ++deserialized;
     }
  else {
       inSlice=false;
