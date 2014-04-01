@@ -8,6 +8,7 @@
     if (i < 500)     timestamp-=DatabaseDescriptor.getWriteRpcTimeout() * 2;
     BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),UUIDGen.getTimeUUID(),timestamp * 1000).apply();
   }
+  Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
   assertEquals(1000,BatchlogManager.instance.countAllBatches());
   assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed());
   BatchlogManager.instance.replayAllFailedBatches();
