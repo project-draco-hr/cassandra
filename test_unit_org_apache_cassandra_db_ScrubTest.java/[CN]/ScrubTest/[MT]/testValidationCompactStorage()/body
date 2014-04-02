@@ -1,0 +1,16 @@
+{
+  QueryProcessor.process("CREATE TABLE \"Keyspace1\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE",ConsistencyLevel.ONE);
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("test_compact_dynamic_columns");
+  QueryProcessor.processInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')");
+  QueryProcessor.processInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'b', 'bar')");
+  QueryProcessor.processInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'c', 'boo')");
+  cfs.forceBlockingFlush();
+  CompactionManager.instance.performScrub(cfs,true);
+  UntypedResultSet rs=QueryProcessor.processInternal("SELECT * FROM \"Keyspace1\".test_compact_dynamic_columns");
+  assertEquals(3,rs.size());
+  Iterator<UntypedResultSet.Row> iter=rs.iterator();
+  assertEquals("foo",iter.next().getString("c"));
+  assertEquals("bar",iter.next().getString("c"));
+  assertEquals("boo",iter.next().getString("c"));
+}
