@@ -1,0 +1,12 @@
+{
+  CFMetaData metaData=Schema.instance.getCFMetaData("Keyspace1","UUIDKeys");
+  ColumnDefinition definition=metaData.getColumnDefinition(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS));
+  assertNotNull(definition);
+  assertEquals(ColumnDefinition.Kind.PARTITION_KEY,definition.type);
+  Column column=new Column(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS));
+  column.setValue(ByteBufferUtil.bytes("not a uuid"));
+  column.setTimestamp(1234);
+  ThriftValidation.validateColumnData(metaData,null,column);
+  IndexExpression expression=new IndexExpression(ByteBufferUtil.bytes(CFMetaData.DEFAULT_KEY_ALIAS),IndexOperator.EQ,ByteBufferUtil.bytes("a"));
+  ThriftValidation.validateFilterClauses(metaData,Arrays.asList(expression));
+}
