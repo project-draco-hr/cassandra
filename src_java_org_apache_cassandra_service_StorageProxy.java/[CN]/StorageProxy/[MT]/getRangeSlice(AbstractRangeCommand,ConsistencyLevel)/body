@@ -5,8 +5,10 @@
   List<Row> rows;
   try {
     int cql3RowCount=0;
-    rows=new ArrayList<Row>();
-    List<AbstractBounds<RowPosition>> ranges=getRestrictedRanges(command.keyRange);
+    rows=new ArrayList<>();
+    List<? extends AbstractBounds<RowPosition>> ranges;
+    if (keyspace.getReplicationStrategy() instanceof LocalStrategy)     ranges=command.keyRange.unwrap();
+ else     ranges=getRestrictedRanges(command.keyRange);
     float resultRowsPerRange=estimateResultRowsPerRange(command,keyspace);
     resultRowsPerRange-=resultRowsPerRange * CONCURRENT_SUBREQUESTS_MARGIN;
     int concurrencyFactor=resultRowsPerRange == 0.0 ? 1 : Math.max(1,Math.min(ranges.size(),(int)Math.ceil(command.limit() / resultRowsPerRange)));
