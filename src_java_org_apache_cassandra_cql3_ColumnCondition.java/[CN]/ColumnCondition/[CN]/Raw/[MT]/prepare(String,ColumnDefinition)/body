@@ -1,4 +1,14 @@
 {
   if (receiver.type instanceof CounterColumnType)   throw new InvalidRequestException("Condtions on counters are not supported");
-  return ColumnCondition.equal(receiver,value.prepare(keyspace,receiver));
+  if (collectionElement == null)   return ColumnCondition.equal(receiver,value.prepare(keyspace,receiver));
+  if (!(receiver.type.isCollection()))   throw new InvalidRequestException(String.format("Invalid element access syntax for non-collection column %s",receiver.name));
+switch (((CollectionType)receiver.type).kind) {
+case LIST:
+    return ColumnCondition.equal(receiver,collectionElement.prepare(keyspace,Lists.indexSpecOf(receiver)),value.prepare(keyspace,Lists.valueSpecOf(receiver)));
+case SET:
+  throw new InvalidRequestException(String.format("Invalid element access syntax for set column %s",receiver.name));
+case MAP:
+return ColumnCondition.equal(receiver,collectionElement.prepare(keyspace,Maps.keySpecOf(receiver)),value.prepare(keyspace,Maps.valueSpecOf(receiver)));
+}
+throw new AssertionError();
 }
