@@ -1,0 +1,11 @@
+{
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("UUIDKeys");
+  ColumnFamily cf=ArrayBackedSortedColumns.factory.create("Keyspace1","UUIDKeys");
+  cf.addColumn(column(CFMetaData.DEFAULT_KEY_ALIAS,"not a uuid",1L));
+  Mutation mutation=new Mutation("Keyspace1",ByteBufferUtil.bytes(UUIDGen.getTimeUUID()),cf);
+  mutation.applyUnsafe();
+  cfs.forceBlockingFlush();
+  CompactionManager.instance.performScrub(cfs,false);
+  assertEquals(1,cfs.getSSTables().size());
+}
