@@ -3,16 +3,21 @@
   int currentPageSize=nextPageSize(pageSize);
   List<Row> rows=filterEmpty(queryNextPage(currentPageSize,consistencyLevel,localQuery));
   if (rows.isEmpty()) {
+    logger.debug("Got empty set of rows, considering pager exhausted");
     exhausted=true;
     return Collections.emptyList();
   }
   int liveCount=getPageLiveCount(rows);
+  logger.debug("Fetched {} live rows",liveCount);
   if (liveCount > currentPageSize) {
     rows=discardLast(rows,liveCount - currentPageSize);
     liveCount=currentPageSize;
   }
   remaining-=liveCount;
-  if (liveCount < currentPageSize)   exhausted=true;
+  if (liveCount < currentPageSize) {
+    logger.debug("Got result ({}) smaller than page size ({}), considering pager exhausted",liveCount,currentPageSize);
+    exhausted=true;
+  }
   if (containsPreviousLast(rows.get(0))) {
     rows=discardFirst(rows);
     remaining++;
@@ -21,6 +26,7 @@
     rows=discardLast(rows);
     remaining++;
   }
+  logger.debug("Remaining rows to page: {}",remaining);
   if (!isExhausted())   lastWasRecorded=recordLast(rows.get(rows.size() - 1));
   return rows;
 }
