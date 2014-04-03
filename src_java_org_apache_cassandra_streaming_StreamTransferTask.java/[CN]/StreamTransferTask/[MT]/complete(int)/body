@@ -1,4 +1,10 @@
 {
-  files.remove(sequenceNumber);
-  if (files.isEmpty())   session.taskCompleted(this);
+  OutgoingFileMessage file=files.remove(sequenceNumber);
+  if (file != null) {
+    file.sstable.releaseReference();
+    if (files.isEmpty()) {
+      timeoutExecutor.shutdownNow();
+      session.taskCompleted(this);
+    }
+  }
 }
