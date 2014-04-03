@@ -1,0 +1,24 @@
+{
+  String ks="Keyspace1";
+  String cf="Standard1";
+  StreamSession session=new StreamSession(FBUtilities.getBroadcastAddress());
+  ColumnFamilyStore cfs=Keyspace.open(ks).getColumnFamilyStore(cf);
+  for (int i=0; i < 2; i++) {
+    insertData(ks,cf,i,1);
+    cfs.forceBlockingFlush();
+  }
+  StreamTransferTask task=new StreamTransferTask(session,cfs.metadata.cfId);
+  for (  SSTableReader sstable : cfs.getSSTables()) {
+    List<Range<Token>> ranges=new ArrayList<>();
+    ranges.add(new Range<>(sstable.first.getToken(),sstable.last.getToken()));
+    task.addTransferFile(sstable,1,sstable.getPositionsForRanges(ranges));
+  }
+  assertEquals(2,task.getTotalNumberOfFiles());
+  ScheduledFuture f=task.scheduleTimeout(0,1,TimeUnit.SECONDS);
+  task.complete(0);
+  f.get();
+  f=task.scheduleTimeout(1,1,TimeUnit.MILLISECONDS);
+  f.get();
+  assertEquals(StreamSession.State.WAIT_COMPLETE,session.state());
+  assertNull(task.scheduleTimeout(1,1,TimeUnit.SECONDS));
+}
