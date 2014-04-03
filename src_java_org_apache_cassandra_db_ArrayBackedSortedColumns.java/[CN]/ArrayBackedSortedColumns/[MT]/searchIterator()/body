@@ -1,2 +1,27 @@
 {
+  maybeSortCells();
+  return new SearchIterator<CellName,Cell>(){
+    private int i=0;
+    private int range=size / 2;
+    public boolean hasNext(){
+      return i < size;
+    }
+    public Cell next(    CellName name){
+      if (!isSorted || !hasNext())       throw new IllegalStateException();
+      if (metadata.comparator.compare(name,cells[i].name()) == 0)       return cells[i++];
+      int limit=Math.min(size,i + range);
+      int i2=binarySearch(i + 1,limit,name,internalComparator());
+      if (-1 - i2 == limit)       i2=binarySearch(limit,size,name,internalComparator());
+      if (i2 > 0) {
+        range=i2 - i;
+        i=i2 + 1;
+        return cells[i2];
+      }
+      i2=-1 - i2;
+      range=i2 - i;
+      i=i2;
+      return null;
+    }
+  }
+;
 }
