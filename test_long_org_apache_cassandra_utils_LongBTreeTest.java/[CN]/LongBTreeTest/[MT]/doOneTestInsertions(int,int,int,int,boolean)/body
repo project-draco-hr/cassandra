@@ -24,11 +24,16 @@
         canon.putAll(buffer);
         ctxt.stop();
         ctxt=BTREE_TIMER.time();
-        btree=BTree.update(btree,ICMP,buffer.keySet(),true,null);
+        Object[] next=null;
+        while (next == null)         next=BTree.update(btree,ICMP,buffer.keySet(),true,SPORADIC_ABORT);
+        btree=next;
         ctxt.stop();
+        if (!BTree.isWellFormed(btree,ICMP)) {
+          System.out.println("ERROR: Not well formed");
+          throw new AssertionError("Not well formed!");
+        }
         if (quickEquality)         testEqual("",BTree.<Integer>slice(btree,true),canon.keySet().iterator());
  else         r.addAll(testAllSlices("RND",btree,new TreeSet<>(canon.keySet())));
-        if (!BTree.isWellFormed(btree))         System.out.println("ERROR: Not well formed");
       }
       return r;
     }
