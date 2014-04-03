@@ -1,25 +1,18 @@
 {
-  Mutation result=new Mutation(getKeyspaceName(),ByteBufferUtil.clone(key()));
+  Mutation result=new Mutation(getKeyspaceName(),key());
   Keyspace keyspace=Keyspace.open(getKeyspaceName());
-  ArrayList<UUID> cfIds=new ArrayList<>(getColumnFamilyIds());
-  Collections.sort(cfIds);
-  ArrayList<Lock> locks=new ArrayList<>(cfIds.size());
+  int count=0;
+  for (  ColumnFamily cf : getColumnFamilies())   count+=cf.getColumnCount();
+  List<Lock> locks=new ArrayList<>(count);
+  Tracing.trace("Acquiring {} counter locks",count);
   try {
-    Tracing.trace("Acquiring {} counter locks",cfIds.size());
-    for (    UUID cfId : cfIds) {
-      Lock lock=keyspace.getColumnFamilyStore(cfId).counterLockFor(key());
-      if (!lock.tryLock(getTimeout(),TimeUnit.MILLISECONDS))       throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
-      locks.add(lock);
-    }
+    grabCounterLocks(keyspace,locks);
     for (    ColumnFamily cf : getColumnFamilies())     result.add(processModifications(cf));
     result.apply();
     updateCounterCache(result,keyspace);
     return result;
   }
- catch (  InterruptedException e) {
-    throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
-  }
- finally {
+  finally {
     for (    Lock lock : locks)     lock.unlock();
   }
 }

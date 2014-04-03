@@ -1,0 +1,13 @@
+{
+  long startTime=System.nanoTime();
+  for (  Lock lock : Keyspace.counterLocksFor(getCounterLockKeys())) {
+    long timeout=TimeUnit.MILLISECONDS.toNanos(getTimeout()) - (System.nanoTime() - startTime);
+    try {
+      if (!lock.tryLock(timeout,TimeUnit.NANOSECONDS))       throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
+      locks.add(lock);
+    }
+ catch (    InterruptedException e) {
+      throw new WriteTimeoutException(WriteType.COUNTER,consistency(),0,consistency().blockFor(keyspace));
+    }
+  }
+}
