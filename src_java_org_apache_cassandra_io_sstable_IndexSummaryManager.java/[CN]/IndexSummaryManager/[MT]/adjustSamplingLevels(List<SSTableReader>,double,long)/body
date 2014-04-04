@@ -69,8 +69,9 @@
   for (  ResampleEntry entry : toDownsample) {
     SSTableReader sstable=entry.sstable;
     logger.debug("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",sstable,sstable.getIndexSummarySamplingLevel(),Downsampling.BASE_SAMPLING_LEVEL,entry.newSamplingLevel,Downsampling.BASE_SAMPLING_LEVEL);
-    SSTableReader replacement=sstable.cloneWithNewSummarySamplingLevel(entry.newSamplingLevel);
-    DataTracker tracker=Keyspace.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName()).getDataTracker();
+    ColumnFamilyStore cfs=Keyspace.open(sstable.getKeyspaceName()).getColumnFamilyStore(sstable.getColumnFamilyName());
+    SSTableReader replacement=sstable.cloneWithNewSummarySamplingLevel(cfs,entry.newSamplingLevel);
+    DataTracker tracker=cfs.getDataTracker();
     replacedByTracker.put(tracker,sstable);
     replacementsByTracker.put(tracker,replacement);
   }
