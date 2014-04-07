@@ -1,6 +1,6 @@
 {
   logger.info("Gathering node replacement information for {}",DatabaseDescriptor.getReplaceAddress());
-  MessagingService.instance().listen(FBUtilities.getLocalAddress());
+  if (!MessagingService.instance().isListening())   MessagingService.instance().listen(FBUtilities.getLocalAddress());
   Gossiper.instance.doShadowRound();
   UUID hostId=null;
   if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) == null)   throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress() + " because it doesn't exist in gossip");
@@ -9,7 +9,6 @@
     if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)     throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
     Collection<Token> tokens=TokenSerializer.deserialize(getPartitioner(),new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(),ApplicationState.TOKENS))));
     SystemKeyspace.setLocalHostId(hostId);
-    MessagingService.instance().shutdown();
     Gossiper.instance.resetEndpointStateMap();
     return tokens;
   }
