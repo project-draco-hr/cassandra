@@ -1,15 +1,19 @@
 {
-  super(file,"r");
   this.owner=owner;
-  channel=super.getChannel();
   filePath=file.getAbsolutePath();
+  try {
+    channel=FileChannel.open(file.toPath(),StandardOpenOption.READ);
+  }
+ catch (  IOException e) {
+    throw new FileNotFoundException(filePath);
+  }
   if (bufferSize <= 0)   throw new IllegalArgumentException("bufferSize must be positive");
-  buffer=new byte[bufferSize];
   try {
     fileLength=channel.size();
   }
  catch (  IOException e) {
     throw new FSReadError(e,filePath);
   }
-  validBufferBytes=-1;
+  buffer=allocateBuffer(bufferSize);
+  buffer.limit(0);
 }
