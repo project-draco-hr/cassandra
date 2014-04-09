@@ -14,10 +14,18 @@
   StorageService.scheduledTasks.scheduleWithFixedDelay(logDropped,LOG_DROPPED_INTERVAL_IN_MS,LOG_DROPPED_INTERVAL_IN_MS,TimeUnit.MILLISECONDS);
   Function<Pair<Integer,ExpiringMap.CacheableObject<CallbackInfo>>,?> timeoutReporter=new Function<Pair<Integer,ExpiringMap.CacheableObject<CallbackInfo>>,Object>(){
     public Object apply(    Pair<Integer,ExpiringMap.CacheableObject<CallbackInfo>> pair){
-      CallbackInfo expiredCallbackInfo=pair.right.value;
+      final CallbackInfo expiredCallbackInfo=pair.right.value;
       maybeAddLatency(expiredCallbackInfo.callback,expiredCallbackInfo.target,pair.right.timeout);
       ConnectionMetrics.totalTimeouts.mark();
       getConnectionPool(expiredCallbackInfo.target).incrementTimeout();
+      if (expiredCallbackInfo.isFailureCallback()) {
+        StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable(){
+          @Override public void run(){
+            ((IAsyncCallbackWithFailure)expiredCallbackInfo.callback).onFailure(expiredCallbackInfo.target);
+          }
+        }
+);
+      }
       if (expiredCallbackInfo.shouldHint()) {
         Mutation mutation=(Mutation)((WriteCallbackInfo)expiredCallbackInfo).sentMessage.payload;
         return StorageProxy.submitHint(mutation,expiredCallbackInfo.target,null);

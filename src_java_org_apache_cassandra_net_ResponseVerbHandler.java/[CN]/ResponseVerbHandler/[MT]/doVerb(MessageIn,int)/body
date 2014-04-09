@@ -9,6 +9,11 @@
   }
   Tracing.trace("Processing response from {}",message.from);
   IAsyncCallback cb=callbackInfo.callback;
-  MessagingService.instance().maybeAddLatency(cb,message.from,latency);
-  cb.response(message);
+  if (message.isFailureResponse()) {
+    ((IAsyncCallbackWithFailure)cb).onFailure(message.from);
+  }
+ else {
+    MessagingService.instance().maybeAddLatency(cb,message.from,latency);
+    cb.response(message);
+  }
 }
