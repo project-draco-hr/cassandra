@@ -34,6 +34,8 @@
     for (    ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
   }
   FBUtilities.waitOnFutures(flushes);
+  BatchlogManager.batchlogTasks.shutdown();
+  BatchlogManager.batchlogTasks.awaitTermination(60,TimeUnit.SECONDS);
   CommitLog.instance.forceRecycleAllSegments();
   ColumnFamilyStore.postFlushExecutor.shutdown();
   ColumnFamilyStore.postFlushExecutor.awaitTermination(60,TimeUnit.SECONDS);
