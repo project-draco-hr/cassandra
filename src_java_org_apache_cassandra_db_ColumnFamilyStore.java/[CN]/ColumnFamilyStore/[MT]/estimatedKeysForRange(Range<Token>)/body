@@ -1,5 +1,11 @@
 {
-  long count=0;
-  for (  SSTableReader sstable : getSSTables())   count+=sstable.estimatedKeysForRanges(Collections.singleton(range));
-  return count;
+  Collection<SSTableReader> sstables=markCurrentSSTablesReferenced();
+  try {
+    long count=0;
+    for (    SSTableReader sstable : sstables)     count+=sstable.estimatedKeysForRanges(Collections.singleton(range));
+    return count;
+  }
+  finally {
+    SSTableReader.releaseReferences(sstables);
+  }
 }
