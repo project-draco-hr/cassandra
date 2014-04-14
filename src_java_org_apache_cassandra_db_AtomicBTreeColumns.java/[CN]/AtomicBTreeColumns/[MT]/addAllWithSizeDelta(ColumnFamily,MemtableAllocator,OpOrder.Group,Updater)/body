@@ -1,0 +1,22 @@
+{
+  ColumnUpdater updater=new ColumnUpdater(this,cm.metadata,allocator,writeOp,indexer);
+  while (true) {
+    Holder current=ref;
+    updater.ref=current;
+    updater.reset();
+    DeletionInfo deletionInfo;
+    if (cm.deletionInfo().mayModify(current.deletionInfo)) {
+      deletionInfo=current.deletionInfo.copy().add(cm.deletionInfo());
+      updater.allocated(deletionInfo.unsharedHeapSize() - current.deletionInfo.unsharedHeapSize());
+    }
+ else {
+      deletionInfo=current.deletionInfo;
+    }
+    Object[] tree=BTree.update(current.tree,metadata.comparator.columnComparator(),cm,cm.getColumnCount(),true,updater);
+    if (tree != null && refUpdater.compareAndSet(this,current,new Holder(tree,deletionInfo))) {
+      indexer.updateRowLevelIndexes();
+      updater.finish();
+      return updater.dataSize;
+    }
+  }
+}

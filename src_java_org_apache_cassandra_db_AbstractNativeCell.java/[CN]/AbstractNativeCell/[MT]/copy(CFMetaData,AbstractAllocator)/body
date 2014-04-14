@@ -1,0 +1,32 @@
+{
+  ByteBuffer[] r;
+switch (nametype()) {
+case SIMPLE_DENSE:
+    return CellNames.simpleDense(allocator.clone(get(0)));
+case COMPOUND_DENSE:
+  r=new ByteBuffer[size()];
+for (int i=0; i < r.length; i++) r[i]=allocator.clone(get(i));
+return CellNames.compositeDense(r);
+case COMPOUND_SPARSE_STATIC:
+case COMPOUND_SPARSE:
+int clusteringSize=clusteringSize();
+r=clusteringSize == 0 ? EMPTY : new ByteBuffer[clusteringSize()];
+for (int i=0; i < clusteringSize; i++) r[i]=allocator.clone(get(i));
+ByteBuffer nameBuffer=get(r.length);
+ColumnIdentifier name;
+if (nameBuffer.remaining() == 0) {
+name=CompoundSparseCellNameType.rowMarkerId;
+}
+ else {
+name=getIdentifier(cfm,nameBuffer);
+}
+if (clusteringSizeDelta() == 2) {
+ByteBuffer element=allocator.clone(get(size() - 1));
+return CellNames.compositeSparseWithCollection(r,element,name,isStatic());
+}
+return CellNames.compositeSparse(r,name,isStatic());
+case SIMPLE_SPARSE:
+return CellNames.simpleSparse(getIdentifier(cfm,get(0)));
+}
+throw new IllegalStateException();
+}

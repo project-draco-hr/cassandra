@@ -3,7 +3,7 @@
   AbstractType<?> keyType=Schema.instance.getCFMetaData(metadata.ksName,select.getColumnFamily()).getKeyValidator();
   ByteBuffer startKeyBytes=(select.getKeyStart() != null) ? select.getKeyStart().getByteBuffer(keyType,variables) : null;
   ByteBuffer finishKeyBytes=(select.getKeyFinish() != null) ? select.getKeyFinish().getByteBuffer(keyType,variables) : null;
-  RowPosition startKey=RowPosition.forKey(startKeyBytes,p), finishKey=RowPosition.forKey(finishKeyBytes,p);
+  RowPosition startKey=RowPosition.ForKey.get(startKeyBytes,p), finishKey=RowPosition.ForKey.get(finishKeyBytes,p);
   if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum(p)) {
     if (p instanceof RandomPartitioner)     throw new InvalidRequestException("Start key sorts after end key. This is not allowed; you probably should not specify end key at all, under RandomPartitioner");
  else     throw new InvalidRequestException("Start key must sort before (or equal to) finish key in your partitioner!");
@@ -21,11 +21,11 @@
   int limit=select.isKeyRange() && select.getKeyStart() != null ? select.getNumRecords() + 1 : select.getNumRecords();
   List<org.apache.cassandra.db.Row> rows=StorageProxy.getRangeSlice(new RangeSliceCommand(metadata.ksName,select.getColumnFamily(),now,columnFilter,bounds,expressions,limit),select.getConsistencyLevel());
   if (select.getKeyStart() != null && !select.includeStartKey() && !rows.isEmpty()) {
-    if (rows.get(0).key.key.equals(startKeyBytes))     rows.remove(0);
+    if (rows.get(0).key.getKey().equals(startKeyBytes))     rows.remove(0);
   }
   if (select.getKeyFinish() != null && !select.includeFinishKey() && !rows.isEmpty()) {
     int lastIndex=rows.size() - 1;
-    if (rows.get(lastIndex).key.key.equals(finishKeyBytes))     rows.remove(lastIndex);
+    if (rows.get(lastIndex).key.getKey().equals(finishKeyBytes))     rows.remove(lastIndex);
   }
   return rows.subList(0,select.getNumRecords() < rows.size() ? select.getNumRecords() : rows.size());
 }
