@@ -12,6 +12,18 @@ for (UUID cfId : prepareMessage.cfIds) {
 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
+case SNAPSHOT:
+ColumnFamilyStore cfs=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+final Range<Token> repairingRange=desc.range;
+cfs.snapshot(desc.sessionId.toString(),new Predicate<SSTableReader>(){
+public boolean apply(SSTableReader sstable){
+return sstable != null && new Bounds<>(sstable.first.token,sstable.last.token).intersects(Collections.singleton(repairingRange));
+}
+}
+);
+logger.debug("Enqueuing response to snapshot request {} to {}",desc.sessionId,message.from);
+MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
+break;
 case VALIDATION_REQUEST:
 ValidationRequest validationRequest=(ValidationRequest)message.payload;
 ColumnFamilyStore store=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
