@@ -6,5 +6,9 @@
   cf.addAtom(new RangeTombstone(prefix,prefix.end(),timestamp,ldt));
   for (  ColumnDefinition cd : allColumns())   cd.deleteFromSchema(mutation,timestamp);
   for (  TriggerDefinition td : triggers.values())   td.deleteFromSchema(mutation,cfName,timestamp);
+  for (  String indexName : Keyspace.open(this.ksName).getColumnFamilyStore(this.cfName).getBuiltIndexes()) {
+    ColumnFamily indexCf=mutation.addOrGet(IndexCf);
+    indexCf.addTombstone(indexCf.getComparator().makeCellName(indexName),ldt,timestamp);
+  }
   return mutation;
 }
