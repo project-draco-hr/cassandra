@@ -1,0 +1,33 @@
+{
+  for (int i=0; i < 1000; i++) {
+    RowMutation mutation1=new RowMutation("Keyspace1",bytes(i));
+    mutation1.add(new QueryPath("Standard2",null,bytes(i)),bytes(i),0);
+    RowMutation mutation2=new RowMutation("Keyspace1",bytes(i));
+    mutation2.add(new QueryPath("Standard3",null,bytes(i)),bytes(i),0);
+    List<RowMutation> mutations=Lists.newArrayList(mutation1,mutation2);
+    long timestamp=System.currentTimeMillis() - DatabaseDescriptor.getWriteRpcTimeout() * 2;
+    if (i == 500)     SystemTable.saveTruncationRecord(Table.open("Keyspace1").getColumnFamilyStore("Standard2"),timestamp,ReplayPosition.NONE);
+    if (i >= 500)     timestamp++;
+ else     timestamp--;
+    BatchlogManager.getBatchlogMutationFor(mutations,UUIDGen.getTimeUUID(),timestamp * 1000).apply();
+  }
+  Table.open(Table.SYSTEM_KS).getColumnFamilyStore(SystemTable.BATCHLOG_CF).forceFlush();
+  BatchlogManager.instance.replayAllFailedBatches();
+  for (int i=0; i < 1000; i++) {
+    UntypedResultSet result=QueryProcessor.processInternal(String.format("SELECT * FROM \"Keyspace1\".\"Standard2\" WHERE key = intAsBlob(%d)",i));
+    if (i >= 500) {
+      assertEquals(bytes(i),result.one().getBytes("key"));
+      assertEquals(bytes(i),result.one().getBytes("column1"));
+      assertEquals(bytes(i),result.one().getBytes("value"));
+    }
+ else {
+      assertTrue(result.isEmpty());
+    }
+  }
+  for (int i=0; i < 1000; i++) {
+    UntypedResultSet result=QueryProcessor.processInternal(String.format("SELECT * FROM \"Keyspace1\".\"Standard3\" WHERE key = intAsBlob(%d)",i));
+    assertEquals(bytes(i),result.one().getBytes("key"));
+    assertEquals(bytes(i),result.one().getBytes("column1"));
+    assertEquals(bytes(i),result.one().getBytes("value"));
+  }
+}

@@ -1,6 +1,6 @@
 {
-  List<WriteResponseHandler> handlers=Lists.newArrayList();
-  final CopyOnWriteArraySet<InetAddress> undelivered=new CopyOnWriteArraySet<InetAddress>(endpoints);
+  final List<WriteResponseHandler> handlers=Lists.newArrayList();
+  final Set<InetAddress> undelivered=Collections.synchronizedSet(new HashSet<InetAddress>());
   for (  final InetAddress ep : endpoints) {
     Runnable callback=new Runnable(){
       public void run(){
@@ -20,8 +20,5 @@
       logger.debug("Timed out replaying a batched mutation to a node, will write a hint");
     }
   }
-  if (!undelivered.isEmpty()) {
-    int ttl=calculateHintTTL(mutation,writtenAt);
-    if (ttl > 0)     for (    InetAddress endpoint : undelivered)     StorageProxy.writeHintForMutation(mutation,ttl,endpoint);
-  }
+  return undelivered;
 }
