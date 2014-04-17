@@ -64,10 +64,17 @@
   }
 ,"StorageServiceShutdownHook");
   Runtime.getRuntime().addShutdownHook(drainOnShutdown);
+  prepareToJoin();
   if (Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))) {
     joinTokenRing(delay);
   }
  else {
+    Collection<Token> tokens=SystemKeyspace.getSavedTokens();
+    if (!tokens.isEmpty()) {
+      tokenMetadata.updateNormalTokens(tokens,FBUtilities.getBroadcastAddress());
+      Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS,valueFactory.tokens(tokens));
+      Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.hibernate(true));
+    }
     logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
   }
 }
