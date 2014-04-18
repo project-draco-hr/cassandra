@@ -1,0 +1,35 @@
+{
+  CellNameType comparator2=Keyspace.open("Keyspace1").getColumnFamilyStore("Standard2").metadata.comparator;
+  CellNameType comparator3=Keyspace.open("Keyspace1").getColumnFamilyStore("Standard3").metadata.comparator;
+  for (int i=0; i < 1000; i++) {
+    Mutation mutation1=new Mutation("Keyspace1",bytes(i));
+    mutation1.add("Standard2",comparator2.makeCellName(bytes(i)),bytes(i),0);
+    Mutation mutation2=new Mutation("Keyspace1",bytes(i));
+    mutation2.add("Standard3",comparator3.makeCellName(bytes(i)),bytes(i),0);
+    List<Mutation> mutations=Lists.newArrayList(mutation1,mutation2);
+    long timestamp=System.currentTimeMillis() - DatabaseDescriptor.getWriteRpcTimeout() * 2;
+    if (i == 500)     SystemKeyspace.saveTruncationRecord(Keyspace.open("Keyspace1").getColumnFamilyStore("Standard2"),timestamp,ReplayPosition.NONE);
+    if (i >= 500)     timestamp++;
+ else     timestamp--;
+    BatchlogManager.getBatchlogMutationFor(mutations,UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp * 1000).apply();
+  }
+  Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceFlush();
+  BatchlogManager.instance.replayAllFailedBatches();
+  for (int i=0; i < 1000; i++) {
+    UntypedResultSet result=QueryProcessor.processInternal(String.format("SELECT * FROM \"Keyspace1\".\"Standard2\" WHERE key = intAsBlob(%d)",i));
+    if (i >= 500) {
+      assertEquals(bytes(i),result.one().getBytes("key"));
+      assertEquals(bytes(i),result.one().getBytes("column1"));
+      assertEquals(bytes(i),result.one().getBytes("value"));
+    }
+ else {
+      assertTrue(result.isEmpty());
+    }
+  }
+  for (int i=0; i < 1000; i++) {
+    UntypedResultSet result=QueryProcessor.processInternal(String.format("SELECT * FROM \"Keyspace1\".\"Standard3\" WHERE key = intAsBlob(%d)",i));
+    assertEquals(bytes(i),result.one().getBytes("key"));
+    assertEquals(bytes(i),result.one().getBytes("column1"));
+    assertEquals(bytes(i),result.one().getBytes("value"));
+  }
+}
