@@ -24,7 +24,6 @@
       break;
     }
     List<WriteResponseHandler> responseHandlers=Lists.newArrayList();
-    Map<UUID,Long> truncationTimesCache=new HashMap<UUID,Long>();
     for (    final Cell hint : hintsPage) {
       if (hintedHandOffPaused) {
         logger.debug("Hints delivery process is paused, aborting");
@@ -46,15 +45,8 @@
 catch (      IOException e) {
         throw new AssertionError(e);
       }
-      truncationTimesCache.clear();
-      for (      UUID cfId : ImmutableSet.copyOf((mutation.getColumnFamilyIds()))) {
-        Long truncatedAt=truncationTimesCache.get(cfId);
-        if (truncatedAt == null) {
-          ColumnFamilyStore cfs=Keyspace.open(mutation.getKeyspaceName()).getColumnFamilyStore(cfId);
-          truncatedAt=cfs.getTruncationTime();
-          truncationTimesCache.put(cfId,truncatedAt);
-        }
-        if (hint.timestamp() < truncatedAt) {
+      for (      UUID cfId : mutation.getColumnFamilyIds()) {
+        if (hint.timestamp() <= SystemKeyspace.getTruncatedAt(cfId)) {
           logger.debug("Skipping delivery of hint for truncated columnfamily {}",cfId);
           mutation=mutation.without(cfId);
         }

@@ -1,6 +1,6 @@
 {
-  assertEquals(0,BatchlogManager.instance.countAllBatches());
-  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed());
+  long initialAllBatches=BatchlogManager.instance.countAllBatches();
+  long initialReplayedBatches=BatchlogManager.instance.getTotalBatchesReplayed();
   CellNameType comparator=Keyspace.open("Keyspace1").getColumnFamilyStore("Standard1").metadata.comparator;
   for (int i=0; i < 1000; i++) {
     Mutation mutation=new Mutation("Keyspace1",bytes(i));
@@ -10,11 +10,11 @@
     BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp * 1000).apply();
   }
   Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
-  assertEquals(1000,BatchlogManager.instance.countAllBatches());
-  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed());
+  assertEquals(1000,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
   BatchlogManager.instance.replayAllFailedBatches();
-  assertEquals(500,BatchlogManager.instance.countAllBatches());
-  assertEquals(500,BatchlogManager.instance.getTotalBatchesReplayed());
+  assertEquals(500,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(500,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
   for (int i=0; i < 1000; i++) {
     UntypedResultSet result=QueryProcessor.processInternal(String.format("SELECT * FROM \"Keyspace1\".\"Standard1\" WHERE key = intAsBlob(%d)",i));
     if (i < 500) {
