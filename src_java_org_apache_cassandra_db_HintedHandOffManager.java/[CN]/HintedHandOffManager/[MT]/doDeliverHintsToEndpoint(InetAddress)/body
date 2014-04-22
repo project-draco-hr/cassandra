@@ -55,8 +55,7 @@ catch (      IOException e) {
         deleteHint(hostIdBytes,hint.name(),hint.maxTimestamp());
         continue;
       }
-      MessageOut<RowMutation> message=rm.createMessage();
-      rateLimiter.acquire(message.serializedSize(MessagingService.current_version));
+      rateLimiter.acquire((int)RowMutation.serializer.serializedSize(rm,MessagingService.current_version));
       Runnable callback=new Runnable(){
         public void run(){
           rowsReplayed.incrementAndGet();
@@ -64,8 +63,8 @@ catch (      IOException e) {
         }
       }
 ;
-      WriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.UNLOGGED_BATCH,callback);
-      MessagingService.instance().sendRR(message,endpoint,responseHandler);
+      WriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.SIMPLE,callback);
+      MessagingService.instance().sendUnhintableMutation(rm,endpoint,responseHandler);
       responseHandlers.add(responseHandler);
     }
     for (    WriteResponseHandler handler : responseHandlers) {
