@@ -1,5 +1,11 @@
 {
   DataInputStream in=new DataInputStream(ByteBufferUtil.inputStream(data));
   int size=in.readInt();
-  for (int i=0; i < size; i++)   replaySerializedMutation(RowMutation.serializer.deserialize(in,version),writtenAt,version,rateLimiter);
+  List<RowMutation> mutations=new ArrayList<>(size);
+  for (int i=0; i < size; i++) {
+    RowMutation mutation=RowMutation.serializer.deserialize(in,version);
+    for (    UUID cfId : mutation.getColumnFamilyIds())     if (writtenAt <= SystemKeyspace.getTruncatedAt(cfId))     mutation=mutation.without(cfId);
+    if (!mutation.isEmpty())     mutations.add(mutation);
+  }
+  if (!mutations.isEmpty())   replayMutations(mutations,writtenAt,version,rateLimiter);
 }
