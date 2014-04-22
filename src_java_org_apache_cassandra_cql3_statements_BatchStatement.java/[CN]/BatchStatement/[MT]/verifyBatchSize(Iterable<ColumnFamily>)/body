@@ -1,0 +1,11 @@
+{
+  long size=0;
+  long warnThreshold=DatabaseDescriptor.getBatchSizeWarnThreshold();
+  for (  ColumnFamily cf : cfs)   size+=cf.dataSize();
+  if (size > warnThreshold) {
+    Set<String> ksCfPairs=new HashSet<>();
+    for (    ColumnFamily cf : cfs)     ksCfPairs.add(cf.metadata().ksName + "." + cf.metadata().cfName);
+    String format="Batch of prepared statements for {} is of size {}, exceeding specified threshold of {} by {}.";
+    logger.warn(format,ksCfPairs,size,warnThreshold,size - warnThreshold);
+  }
+}
