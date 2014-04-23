@@ -10,12 +10,16 @@
       continue;
     }
     logger.info("Anticompacting {}",sstable);
+    Set<SSTableReader> sstableAsSet=new HashSet<>();
+    sstableAsSet.add(sstable);
     File destination=cfs.directories.getDirectoryForCompactedSSTables();
-    SSTableWriter repairedSSTableWriter=CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,repairedAt,sstable);
-    SSTableWriter unRepairedSSTableWriter=CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstable);
+    SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
+    SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
+    AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
+    List<ICompactionScanner> scanners=strategy.getScanners(Arrays.asList(sstable));
     try (CompactionController controller=new CompactionController(cfs,new HashSet<>(Collections.singleton(sstable)),CFMetaData.DEFAULT_GC_GRACE_SECONDS)){
-      AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-      List<ICompactionScanner> scanners=strategy.getScanners(Arrays.asList(sstable));
+      repairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,repairedAt,sstable));
+      unRepairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstable));
       CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners,controller);
       try (CloseableIterator<AbstractCompactedRow> iter=ci.iterator()){
         while (iter.hasNext()) {
@@ -30,10 +34,10 @@
           }
         }
       }
-       if (repairedKeyCount > 0)       anticompactedSSTables.add(repairedSSTableWriter.closeAndOpenReader(sstable.maxDataAge));
- else       repairedSSTableWriter.abort();
-      if (unrepairedKeyCount > 0)       anticompactedSSTables.add(unRepairedSSTableWriter.closeAndOpenReader(sstable.maxDataAge));
- else       unRepairedSSTableWriter.abort();
+       repairedSSTableWriter.finish(false,repairedAt);
+      unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE);
+      anticompactedSSTables.addAll(repairedSSTableWriter.finished());
+      anticompactedSSTables.addAll(unRepairedSSTableWriter.finished());
     }
  catch (    Throwable e) {
       logger.error("Error anticompacting " + sstable,e);

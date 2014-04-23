@@ -17,9 +17,13 @@
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
+  Set<SSTableReader> readers=cfs.getDataTracker().getSSTables();
+  for (  SSTableReader reader : readers)   reader.acquireReference();
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
   assertKeyCacheSize(4,KEYSPACE1,COLUMN_FAMILY1);
+  for (  SSTableReader reader : readers)   reader.releaseReference();
+  assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
-  assertKeyCacheSize(4,KEYSPACE1,COLUMN_FAMILY1);
+  assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
 }

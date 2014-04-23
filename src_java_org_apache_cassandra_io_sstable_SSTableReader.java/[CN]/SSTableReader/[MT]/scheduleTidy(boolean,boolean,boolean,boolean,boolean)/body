@@ -1,2 +1,31 @@
 {
+  if (references.get() != 0)   throw new IllegalStateException("SSTable is not fully released (" + references.get() + " references)");
+  final ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreInstance(metadata.cfId);
+  final OpOrder.Barrier barrier;
+  if (cfs != null) {
+    barrier=cfs.readOrdering.newBarrier();
+    barrier.issue();
+  }
+ else   barrier=null;
+  StorageService.tasks.execute(new Runnable(){
+    public void run(){
+      if (barrier != null)       barrier.await();
+      if (closeBf)       bf.close();
+      if (closeSummary)       indexSummary.close();
+      if (closeFiles) {
+        ifile.cleanup();
+        dfile.cleanup();
+      }
+      if (runOnClose != null)       runOnClose.run();
+      if (deleteAll) {
+        dropPageCache();
+        deletingTask.run();
+      }
+ else       if (deleteFiles) {
+        FileUtils.deleteWithConfirm(new File(dfile.path));
+        FileUtils.deleteWithConfirm(new File(ifile.path));
+      }
+    }
+  }
+);
 }

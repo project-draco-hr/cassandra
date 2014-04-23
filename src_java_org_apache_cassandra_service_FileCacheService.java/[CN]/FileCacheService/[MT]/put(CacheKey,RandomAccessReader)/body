@@ -1,0 +1,19 @@
+{
+  int memoryUsed=memoryUsage.get();
+  if (logger.isDebugEnabled())   logger.debug("Estimated memory usage is {} compared to actual usage {}",memoryUsed,sizeInBytes());
+  CacheBucket bucket=cache.getIfPresent(cacheKey);
+  if (memoryUsed >= MEMORY_USAGE_THRESHOLD || bucket == null) {
+    instance.deallocate();
+  }
+ else {
+    memoryUsage.addAndGet(instance.getTotalBufferSize());
+    bucket.queue.add(instance);
+    if (bucket.discarded) {
+      RandomAccessReader reader=bucket.queue.poll();
+      if (reader != null) {
+        memoryUsage.addAndGet(-1 * reader.getTotalBufferSize());
+        reader.deallocate();
+      }
+    }
+  }
+}

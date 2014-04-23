@@ -1,0 +1,20 @@
+{
+  maybeReopenEarly(row.key);
+  RowIndexEntry index=writer.append(row);
+  if (!isOffline) {
+    if (index == null) {
+      cfs.invalidateCachedRow(row.key);
+    }
+ else {
+      boolean save=false;
+      for (      SSTableReader reader : rewriting) {
+        if (reader.getCachedPosition(row.key,false) != null) {
+          save=true;
+          break;
+        }
+      }
+      if (save)       cachedKeys.put(row.key,index);
+    }
+  }
+  return index;
+}
