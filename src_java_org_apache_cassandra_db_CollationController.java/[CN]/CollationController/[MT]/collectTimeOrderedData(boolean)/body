@@ -2,7 +2,7 @@
   final ColumnFamily container=ArrayBackedSortedColumns.factory.create(cfs.metadata,filter.filter.isReversed());
   List<OnDiskAtomIterator> iterators=new ArrayList<>();
   Tracing.trace("Acquiring sstable references");
-  ColumnFamilyStore.ViewFragment view=cfs.markReferenced(filter.key);
+  ColumnFamilyStore.ViewFragment view=cfs.select(cfs.viewFilter(filter.key));
   try {
     Tracing.trace("Merging memtable contents");
     for (    Memtable memtable : view.memtables) {
@@ -52,6 +52,5 @@
   }
   finally {
     for (    OnDiskAtomIterator iter : iterators)     FileUtils.closeQuietly(iter);
-    SSTableReader.releaseReferences(view.sstables);
   }
 }
