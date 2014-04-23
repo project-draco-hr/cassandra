@@ -1,16 +1,18 @@
 {
   boolean hasCounters=false;
-  Collection<RowMutation> tmutations=null;
-  for (  IMutation mutation : updates) {
-    for (    ColumnFamily cf : mutation.getColumnFamilies()) {
-      List<RowMutation> intermediate=executeInternal(mutation.key(),cf);
-      if (intermediate == null)       continue;
-      validate(intermediate);
-      if (tmutations == null)       tmutations=intermediate;
- else       tmutations.addAll(intermediate);
-    }
+  List<RowMutation> augmentedMutations=null;
+  for (  IMutation mutation : mutations) {
     if (mutation instanceof CounterMutation)     hasCounters=true;
+    for (    ColumnFamily cf : mutation.getColumnFamilies()) {
+      List<RowMutation> augmentations=executeInternal(mutation.key(),cf);
+      if (augmentations == null || augmentations.isEmpty())       continue;
+      validate(augmentations);
+      if (augmentedMutations == null)       augmentedMutations=new LinkedList<>();
+      augmentedMutations.addAll(augmentations);
+    }
   }
-  if (tmutations != null && hasCounters)   throw new InvalidRequestException("Counter mutations and trigger mutations cannot be applied together atomically.");
-  return tmutations;
+  if (augmentedMutations == null)   return null;
+  if (hasCounters)   throw new InvalidRequestException("Counter mutations and trigger mutations cannot be applied together atomically.");
+  @SuppressWarnings("unchecked") Collection<RowMutation> originalMutations=(Collection<RowMutation>)mutations;
+  return mergeMutations(Iterables.concat(originalMutations,augmentedMutations));
 }

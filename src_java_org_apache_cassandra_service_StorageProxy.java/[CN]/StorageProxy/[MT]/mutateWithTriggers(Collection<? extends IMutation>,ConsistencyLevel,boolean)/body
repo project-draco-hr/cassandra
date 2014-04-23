@@ -1,11 +1,6 @@
 {
-  Collection<RowMutation> tmutations=TriggerExecutor.instance.execute(mutations);
-  if (mutateAtomically || tmutations != null) {
-    Collection<RowMutation> allMutations=new ArrayList<>((Collection<RowMutation>)mutations);
-    if (tmutations != null)     allMutations.addAll(tmutations);
-    StorageProxy.mutateAtomically(allMutations,consistencyLevel);
-  }
- else {
-    StorageProxy.mutate(mutations,consistencyLevel);
-  }
+  Collection<RowMutation> augmented=TriggerExecutor.instance.execute(mutations);
+  if (augmented != null)   mutateAtomically(augmented,consistencyLevel);
+ else   if (mutateAtomically)   mutateAtomically((Collection<RowMutation>)mutations,consistencyLevel);
+ else   mutate(mutations,consistencyLevel);
 }

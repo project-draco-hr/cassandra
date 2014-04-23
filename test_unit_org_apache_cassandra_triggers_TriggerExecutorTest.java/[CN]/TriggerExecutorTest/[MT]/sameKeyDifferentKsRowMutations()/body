@@ -1,0 +1,26 @@
+{
+  CFMetaData metadata=makeCfMetaData("ks1","cf1",TriggerDefinition.create("test",SameKeyDifferentKsTrigger.class.getName()));
+  ColumnFamily cf1=makeCf(metadata,"k1v1",null);
+  ColumnFamily cf2=makeCf(metadata,"k2v1",null);
+  RowMutation rm1=new RowMutation(bytes("k1"),cf1);
+  RowMutation rm2=new RowMutation(bytes("k2"),cf2);
+  List<? extends IMutation> tmutations=new ArrayList<>(TriggerExecutor.instance.execute(Arrays.asList(rm1,rm2)));
+  assertEquals(4,tmutations.size());
+  Collections.sort(tmutations,new RmComparator());
+  List<ColumnFamily> mutatedCFs=new ArrayList<>(tmutations.get(0).getColumnFamilies());
+  assertEquals(1,mutatedCFs.size());
+  assertEquals(bytes("k1v1"),mutatedCFs.get(0).getColumn(getColumnName(metadata,"c1")).value());
+  assertNull(mutatedCFs.get(0).getColumn(getColumnName(metadata,"c2")));
+  mutatedCFs=new ArrayList<>(tmutations.get(1).getColumnFamilies());
+  assertEquals(1,mutatedCFs.size());
+  assertEquals(bytes("k2v1"),mutatedCFs.get(0).getColumn(getColumnName(metadata,"c1")).value());
+  assertNull(mutatedCFs.get(0).getColumn(getColumnName(metadata,"c2")));
+  mutatedCFs=new ArrayList<>(tmutations.get(2).getColumnFamilies());
+  assertEquals(1,mutatedCFs.size());
+  assertNull(mutatedCFs.get(0).getColumn(getColumnName(metadata,"c1")));
+  assertEquals(bytes("trigger"),mutatedCFs.get(0).getColumn(getColumnName(metadata,"c2")).value());
+  mutatedCFs=new ArrayList<>(tmutations.get(3).getColumnFamilies());
+  assertEquals(1,mutatedCFs.size());
+  assertNull(mutatedCFs.get(0).getColumn(getColumnName(metadata,"c1")));
+  assertEquals(bytes("trigger"),mutatedCFs.get(0).getColumn(getColumnName(metadata,"c2")).value());
+}
