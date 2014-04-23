@@ -15,17 +15,16 @@
   file.seek(startPosition);
   file.writeBytes(StringUtils.repeat('z',(int)(endPosition - startPosition)));
   file.close();
-  Scrubber scrubber=new Scrubber(cfs,sstable,false);
+  Scrubber scrubber=new Scrubber(cfs,sstable,false,false);
   try {
     scrubber.scrub();
     fail("Expected a CorruptSSTableException to be thrown");
   }
  catch (  IOError err) {
   }
-  scrubber=new Scrubber(cfs,sstable,true);
+  scrubber=new Scrubber(cfs,sstable,true,false);
   scrubber.scrub();
   scrubber.close();
-  cfs.replaceCompactedSSTables(Collections.singletonList(sstable),Collections.singletonList(scrubber.getNewSSTable()),OperationType.SCRUB);
   assertEquals(1,cfs.getSSTables().size());
   rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
   assertEquals(1,rows.size());

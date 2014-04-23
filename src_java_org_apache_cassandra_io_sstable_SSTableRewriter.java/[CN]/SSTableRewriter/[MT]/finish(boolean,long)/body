@@ -1,0 +1,22 @@
+{
+  if (writer.getFilePointer() > 0) {
+    SSTableReader reader=repairedAt < 0 ? writer.closeAndOpenReader(maxAge) : writer.closeAndOpenReader(maxAge,repairedAt);
+    finished.add(reader);
+    replaceReader(currentlyOpenedEarly,reader);
+    moveStarts(reader,Functions.constant(reader.last),false);
+  }
+ else {
+    writer.abort();
+    writer=null;
+  }
+  if (!isOffline) {
+    dataTracker.unmarkCompacting(finished);
+    if (cleanupOldReaders)     dataTracker.markCompactedSSTablesReplaced(rewriting,finished,rewriteType);
+  }
+ else   if (cleanupOldReaders) {
+    for (    SSTableReader reader : rewriting) {
+      reader.markObsolete();
+      reader.releaseReference();
+    }
+  }
+}

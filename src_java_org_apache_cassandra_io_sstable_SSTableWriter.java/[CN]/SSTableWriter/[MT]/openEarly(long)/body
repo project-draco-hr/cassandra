@@ -1,0 +1,26 @@
+{
+  StatsMetadata sstableMetadata=(StatsMetadata)sstableMetadataCollector.finalizeMetadata(partitioner.getClass().getCanonicalName(),metadata.getBloomFilterFpChance(),repairedAt).get(MetadataType.STATS);
+  DecoratedKey exclusiveUpperBoundOfReadableIndex=iwriter.getMaxReadableKey(0);
+  if (exclusiveUpperBoundOfReadableIndex == null)   return null;
+  Descriptor link=descriptor.asType(Descriptor.Type.TEMPLINK);
+  if (!new File(link.filenameFor(Component.PRIMARY_INDEX)).exists()) {
+    FileUtils.createHardLink(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)),new File(link.filenameFor(Component.PRIMARY_INDEX)));
+    FileUtils.createHardLink(new File(descriptor.filenameFor(Component.DATA)),new File(link.filenameFor(Component.DATA)));
+  }
+  SegmentedFile ifile=iwriter.builder.openEarly(link.filenameFor(Component.PRIMARY_INDEX));
+  SegmentedFile dfile=dbuilder.openEarly(link.filenameFor(Component.DATA));
+  SSTableReader sstable=SSTableReader.internalOpen(descriptor.asType(Descriptor.Type.FINAL),components,metadata,partitioner,ifile,dfile,iwriter.summary.build(partitioner,exclusiveUpperBoundOfReadableIndex),iwriter.bf,maxDataAge,sstableMetadata);
+  sstable.first=getMinimalKey(first);
+  sstable.last=getMinimalKey(exclusiveUpperBoundOfReadableIndex);
+  DecoratedKey inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(1);
+  if (inclusiveUpperBoundOfReadableData == null)   return null;
+  int offset=2;
+  while (true) {
+    RowIndexEntry indexEntry=sstable.getPosition(inclusiveUpperBoundOfReadableData,SSTableReader.Operator.GT);
+    if (indexEntry != null && indexEntry.position <= dataFile.getLastFlushOffset())     break;
+    inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(offset++);
+    if (inclusiveUpperBoundOfReadableData == null)     return null;
+  }
+  sstable.last=getMinimalKey(inclusiveUpperBoundOfReadableData);
+  return sstable;
+}
