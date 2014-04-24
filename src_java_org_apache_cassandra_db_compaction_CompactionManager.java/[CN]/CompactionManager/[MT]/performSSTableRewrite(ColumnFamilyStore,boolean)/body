@@ -1,25 +1,19 @@
 {
-  final Iterable<SSTableReader> sstables=cfs.markAllCompacting();
-  if (sstables == null) {
-    logger.info("Aborting sstable format upgrade of {}.{} after failing to interrupt other compaction operations",cfs.keyspace.getName(),cfs.name);
-    return AllSSTableOpStatus.ABORTED;
-  }
-  if (Iterables.isEmpty(sstables)) {
-    logger.info("No sstables to upgrade for {}.{}",cfs.keyspace.getName(),cfs.name);
-    return AllSSTableOpStatus.SUCCESSFUL;
-  }
-  Runnable runnable=new UnmarkingRunnable(cfs,sstables){
-    protected void runMayThrow() throws IOException {
-      for (      final SSTableReader sstable : sstables) {
-        if (excludeCurrentVersion && sstable.descriptor.version.equals(Descriptor.Version.CURRENT))         continue;
-        AbstractCompactionTask task=cfs.getCompactionStrategy().getCompactionTask(Collections.singleton(sstable),NO_GC,Long.MAX_VALUE);
-        task.setUserDefined(true);
-        task.setCompactionType(OperationType.UPGRADE_SSTABLES);
-        task.execute(metrics);
+  return parallelAllSSTableOperation(cfs,new OneSSTableOperation(){
+    @Override public Iterable<SSTableReader> filterSSTables(    Iterable<SSTableReader> input){
+      return Iterables.filter(input,new Predicate<SSTableReader>(){
+        @Override public boolean apply(        SSTableReader sstable){
+          return !(excludeCurrentVersion && sstable.descriptor.version.equals(Descriptor.Version.CURRENT));
+        }
       }
+);
+    }
+    @Override public void execute(    SSTableReader input) throws IOException {
+      AbstractCompactionTask task=cfs.getCompactionStrategy().getCompactionTask(Collections.singleton(input),NO_GC,Long.MAX_VALUE);
+      task.setUserDefined(true);
+      task.setCompactionType(OperationType.UPGRADE_SSTABLES);
+      task.execute(metrics);
     }
   }
-;
-  executor.submit(runnable).get();
-  return AllSSTableOpStatus.SUCCESSFUL;
+);
 }
