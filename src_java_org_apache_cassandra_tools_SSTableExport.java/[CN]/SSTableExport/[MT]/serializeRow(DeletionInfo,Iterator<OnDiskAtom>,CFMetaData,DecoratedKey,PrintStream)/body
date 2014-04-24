@@ -2,11 +2,23 @@
   out.print("{");
   writeKey(out,"key");
   writeJSON(out,bytesToHex(key.key));
-  out.print(",");
-  writeMeta(out,deletionInfo);
-  writeKey(out,"columns");
+  out.print(",\n");
+  if (!deletionInfo.isLive()) {
+    out.print(" ");
+    writeKey(out,"metadata");
+    out.print("{");
+    writeKey(out,"deletionInfo");
+    writeJSON(out,deletionInfo.getTopLevelDeletion());
+    out.print("}");
+    out.print(",\n");
+  }
+  out.print(" ");
+  writeKey(out,"cells");
   out.print("[");
-  serializeAtoms(atoms,out,metadata);
+  while (atoms.hasNext()) {
+    writeJSON(out,serializeAtom(atoms.next(),metadata));
+    if (atoms.hasNext())     out.print(",\n           ");
+  }
   out.print("]");
   out.print("}");
 }
