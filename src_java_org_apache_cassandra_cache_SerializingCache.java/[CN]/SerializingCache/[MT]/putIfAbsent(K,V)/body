@@ -1,7 +1,14 @@
 {
   RefCountedMemory mem=serialize(value);
   if (mem == null)   return false;
-  RefCountedMemory old=map.putIfAbsent(key,mem);
+  RefCountedMemory old;
+  try {
+    old=map.putIfAbsent(key,mem);
+  }
+ catch (  Throwable t) {
+    mem.unreference();
+    throw t;
+  }
   if (old != null)   mem.unreference();
   return old == null;
 }
