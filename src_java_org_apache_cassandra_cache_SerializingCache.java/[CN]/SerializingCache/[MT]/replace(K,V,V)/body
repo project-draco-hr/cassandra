@@ -1,17 +1,21 @@
 {
   RefCountedMemory old=map.get(key);
   if (old == null)   return false;
-  RefCountedMemory mem=serialize(value);
-  if (mem == null)   return false;
   V oldValue;
   if (!old.reference())   return false;
+  oldValue=deserialize(old);
+  old.unreference();
+  if (!oldValue.equals(oldToReplace))   return false;
+  RefCountedMemory mem=serialize(value);
+  if (mem == null)   return false;
+  boolean success;
   try {
-    oldValue=deserialize(old);
+    success=map.replace(key,old,mem);
   }
-  finally {
-    old.unreference();
+ catch (  Throwable t) {
+    mem.unreference();
+    throw t;
   }
-  boolean success=oldValue.equals(oldToReplace) && map.replace(key,old,mem);
   if (success)   old.unreference();
  else   mem.unreference();
   return success;
