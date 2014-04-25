@@ -1,7 +1,10 @@
 {
-  for (  SSTableStreamingSections details : sstableDetails) {
+  Iterator<SSTableStreamingSections> iter=sstableDetails.iterator();
+  while (iter.hasNext()) {
+    SSTableStreamingSections details=iter.next();
     if (details.sections.isEmpty()) {
       details.sstable.releaseReference();
+      iter.remove();
       continue;
     }
     UUID cfId=details.sstable.metadata.cfId;
@@ -11,5 +14,6 @@
       transfers.put(cfId,task);
     }
     task.addTransferFile(details.sstable,details.estimatedKeys,details.sections);
+    iter.remove();
   }
 }

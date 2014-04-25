@@ -8,12 +8,11 @@
   }
   if (flushTables)   flushSSTables(stores);
   List<Range<Token>> normalizedRanges=Range.normalize(ranges);
-  List<SSTableReader> sstables=Lists.newLinkedList();
-  for (  ColumnFamilyStore cfStore : stores) {
-    List<AbstractBounds<RowPosition>> rowBoundsList=Lists.newLinkedList();
-    for (    Range<Token> range : normalizedRanges)     rowBoundsList.add(range.toRowBounds());
-    ColumnFamilyStore.ViewFragment view=cfStore.markReferenced(rowBoundsList);
-    sstables.addAll(view.sstables);
+  List<SSTableStreamingSections> sections=getSSTableSectionsForRanges(normalizedRanges,stores);
+  try {
+    addTransferFiles(sections);
   }
-  addTransferFiles(normalizedRanges,sstables);
+  finally {
+    for (    SSTableStreamingSections release : sections)     release.sstable.releaseReference();
+  }
 }

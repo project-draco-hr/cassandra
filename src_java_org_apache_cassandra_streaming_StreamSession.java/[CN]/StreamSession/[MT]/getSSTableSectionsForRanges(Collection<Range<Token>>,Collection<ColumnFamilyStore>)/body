@@ -1,0 +1,20 @@
+{
+  List<SSTableReader> sstables=new ArrayList<>();
+  try {
+    for (    ColumnFamilyStore cfStore : stores) {
+      List<AbstractBounds<RowPosition>> rowBoundsList=new ArrayList<>(ranges.size());
+      for (      Range<Token> range : ranges)       rowBoundsList.add(range.toRowBounds());
+      ColumnFamilyStore.ViewFragment view=cfStore.markReferenced(rowBoundsList);
+      sstables.addAll(view.sstables);
+    }
+    List<SSTableStreamingSections> sections=new ArrayList<>(sstables.size());
+    for (    SSTableReader sstable : sstables) {
+      sections.add(new SSTableStreamingSections(sstable,sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges)));
+    }
+    return sections;
+  }
+ catch (  Throwable t) {
+    SSTableReader.releaseReferences(sstables);
+    throw t;
+  }
+}

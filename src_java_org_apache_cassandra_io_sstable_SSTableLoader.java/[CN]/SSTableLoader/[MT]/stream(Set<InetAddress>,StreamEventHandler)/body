@@ -11,9 +11,17 @@
   for (  Map.Entry<InetAddress,Collection<Range<Token>>> entry : endpointToRanges.entrySet()) {
     InetAddress remote=entry.getKey();
     if (toIgnore.contains(remote))     continue;
-    Collection<StreamSession.SSTableStreamingSections> endpointDetails=streamingDetails.get(remote);
-    for (    StreamSession.SSTableStreamingSections details : endpointDetails)     details.sstable.acquireReference();
-    plan.transferFiles(remote,streamingDetails.get(remote));
+    List<StreamSession.SSTableStreamingSections> endpointDetails=new LinkedList<>();
+    try {
+      for (      StreamSession.SSTableStreamingSections details : streamingDetails.get(remote)) {
+        if (!details.sstable.acquireReference())         throw new IllegalStateException();
+        endpointDetails.add(details);
+      }
+      plan.transferFiles(remote,endpointDetails);
+    }
+  finally {
+      for (      StreamSession.SSTableStreamingSections details : endpointDetails)       details.sstable.releaseReference();
+    }
   }
   plan.listeners(this,listeners);
   return plan.execute();
