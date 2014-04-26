@@ -1,0 +1,22 @@
+{
+  List<SSTableReader> sstables=new ArrayList<>();
+  try {
+    for (    ColumnFamilyStore cfStore : stores) {
+      List<AbstractBounds<RowPosition>> rowBoundsList=new ArrayList<>(ranges.size());
+      for (      Range<Token> range : ranges)       rowBoundsList.add(range.toRowBounds());
+      ColumnFamilyStore.ViewFragment view=cfStore.selectAndReference(cfStore.viewFilter(rowBoundsList));
+      sstables.addAll(view.sstables);
+    }
+    List<SSTableStreamingSections> sections=new ArrayList<>(sstables.size());
+    for (    SSTableReader sstable : sstables) {
+      long repairedAt=overriddenRepairedAt;
+      if (overriddenRepairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)       repairedAt=sstable.getSSTableMetadata().repairedAt;
+      sections.add(new SSTableStreamingSections(sstable,sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges),repairedAt));
+    }
+    return sections;
+  }
+ catch (  Throwable t) {
+    SSTableReader.releaseReferences(sstables);
+    throw t;
+  }
+}

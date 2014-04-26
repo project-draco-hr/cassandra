@@ -2,6 +2,11 @@
   Collection<ColumnFamilyStore> stores=getColumnFamilyStores(keyspace,columnFamilies);
   if (flushTables)   flushSSTables(stores);
   List<Range<Token>> normalizedRanges=Range.normalize(ranges);
-  List<SSTableReader> sstables=getSSTablesForRanges(normalizedRanges,stores);
-  addTransferFiles(normalizedRanges,sstables,repairedAt);
+  List<SSTableStreamingSections> sections=getSSTableSectionsForRanges(normalizedRanges,stores,repairedAt);
+  try {
+    addTransferFiles(sections);
+  }
+  finally {
+    for (    SSTableStreamingSections release : sections)     release.sstable.releaseReference();
+  }
 }
