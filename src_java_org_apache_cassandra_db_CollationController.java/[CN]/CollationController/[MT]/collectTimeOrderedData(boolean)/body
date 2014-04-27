@@ -1,6 +1,7 @@
 {
   final ColumnFamily container=ArrayBackedSortedColumns.factory.create(cfs.metadata,filter.filter.isReversed());
   List<OnDiskAtomIterator> iterators=new ArrayList<>();
+  boolean isEmpty=true;
   Tracing.trace("Acquiring sstable references");
   ColumnFamilyStore.ViewFragment view=cfs.select(cfs.viewFilter(filter.key));
   try {
@@ -8,13 +9,13 @@
     for (    Memtable memtable : view.memtables) {
       ColumnFamily cf=memtable.getColumnFamily(filter.key);
       if (cf != null) {
-        OnDiskAtomIterator iter=filter.getColumnFamilyIterator(cf);
-        iterators.add(iter);
-        filter.delete(container.deletionInfo(),iter.getColumnFamily());
+        filter.delete(container.deletionInfo(),cf);
+        isEmpty=false;
+        Iterator<Cell> iter=filter.getIterator(cf);
         while (iter.hasNext()) {
-          OnDiskAtom atom=iter.next();
-          if (copyOnHeap)           atom=((Cell)atom).localCopy(cfs.metadata,HeapAllocator.instance);
-          container.addAtom(atom);
+          Cell cell=iter.next();
+          if (copyOnHeap)           cell=cell.localCopy(cfs.metadata,HeapAllocator.instance);
+          container.addColumn(cell);
         }
       }
     }
@@ -31,6 +32,7 @@
       Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
       OnDiskAtomIterator iter=reducedFilter.getSSTableColumnIterator(sstable);
       iterators.add(iter);
+      isEmpty=false;
       if (iter.getColumnFamily() != null) {
         ColumnFamily cf=iter.getColumnFamily();
         if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
@@ -39,7 +41,7 @@
         while (iter.hasNext())         container.addAtom(iter.next());
       }
     }
-    if (iterators.isEmpty())     return null;
+    if (isEmpty)     return null;
     ColumnFamily returnCF=container.cloneMeShallow();
     Tracing.trace("Collating all results");
     filter.collateOnDiskAtom(returnCF,container.iterator(),gcBefore);
