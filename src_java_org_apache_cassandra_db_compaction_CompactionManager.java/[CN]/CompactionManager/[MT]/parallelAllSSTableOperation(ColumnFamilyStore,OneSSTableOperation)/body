@@ -1,0 +1,29 @@
+{
+  Iterable<SSTableReader> compactingSSTables=cfs.markAllCompacting();
+  if (compactingSSTables == null) {
+    logger.info("Aborting operation on {}.{} after failing to interrupt other compaction operations",cfs.keyspace.getName(),cfs.name);
+    return AllSSTableOpStatus.ABORTED;
+  }
+  if (Iterables.isEmpty(compactingSSTables)) {
+    logger.info("No sstables for {}.{}",cfs.keyspace.getName(),cfs.name);
+    return AllSSTableOpStatus.SUCCESSFUL;
+  }
+  try {
+    Iterable<SSTableReader> sstables=operation.filterSSTables(compactingSSTables);
+    List<Future<Object>> futures=new ArrayList<>();
+    for (    final SSTableReader sstable : sstables) {
+      futures.add(executor.submit(new Callable<Object>(){
+        @Override public Object call() throws Exception {
+          operation.execute(sstable);
+          return this;
+        }
+      }
+));
+    }
+    for (    Future<Object> f : futures)     f.get();
+  }
+  finally {
+    cfs.getDataTracker().unmarkCompacting(compactingSSTables);
+  }
+  return AllSSTableOpStatus.SUCCESSFUL;
+}
