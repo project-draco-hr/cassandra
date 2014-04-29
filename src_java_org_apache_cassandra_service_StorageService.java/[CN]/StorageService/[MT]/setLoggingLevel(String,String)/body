@@ -1,6 +1,15 @@
 {
   ch.qos.logback.classic.Logger logBackLogger=(ch.qos.logback.classic.Logger)LoggerFactory.getLogger(classQualifier);
+  if (StringUtils.isBlank(classQualifier) && StringUtils.isBlank(rawLevel)) {
+    JMXConfiguratorMBean jmxConfiguratorMBean=JMX.newMBeanProxy(ManagementFactory.getPlatformMBeanServer(),new ObjectName("ch.qos.logback.classic:Name=default,Type=ch.qos.logback.classic.jmx.JMXConfigurator"),JMXConfiguratorMBean.class);
+    jmxConfiguratorMBean.reloadDefaultConfiguration();
+    return;
+  }
+ else   if (StringUtils.isNotBlank(classQualifier) && StringUtils.isBlank(rawLevel)) {
+    if (logBackLogger.getLevel() != null || hasAppenders(logBackLogger))     logBackLogger.setLevel(null);
+    return;
+  }
   ch.qos.logback.classic.Level level=ch.qos.logback.classic.Level.toLevel(rawLevel);
   logBackLogger.setLevel(level);
-  logger.info("set log level to {} for classes under '{}' (if the level doesn't look like '{}' then slf4j couldn't parse '{}')",level,classQualifier,rawLevel,rawLevel);
+  logger.info("set log level to {} for classes under '{}' (if the level doesn't look like '{}' then the logger couldn't parse '{}')",level,classQualifier,rawLevel,rawLevel);
 }
