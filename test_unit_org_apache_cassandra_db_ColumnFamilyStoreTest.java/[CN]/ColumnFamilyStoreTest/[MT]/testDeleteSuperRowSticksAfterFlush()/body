@@ -5,23 +5,23 @@
   Keyspace keyspace=Keyspace.open(keyspaceName);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
   DecoratedKey key=Util.dk("flush-resurrection");
-  putColsSuper(cfs,key,scfName,new Cell(cellname(1L),ByteBufferUtil.bytes("val1"),1),new Cell(cellname(2L),ByteBufferUtil.bytes("val2"),1),new Cell(cellname(3L),ByteBufferUtil.bytes("val3"),1));
+  putColsSuper(cfs,key,scfName,new BufferCell(cellname(1L),ByteBufferUtil.bytes("val1"),1),new BufferCell(cellname(2L),ByteBufferUtil.bytes("val2"),1),new BufferCell(cellname(3L),ByteBufferUtil.bytes("val3"),1));
   cfs.forceBlockingFlush();
-  putColsSuper(cfs,key,scfName,new Cell(cellname(4L),ByteBufferUtil.bytes("val4"),1),new Cell(cellname(5L),ByteBufferUtil.bytes("val5"),1),new Cell(cellname(6L),ByteBufferUtil.bytes("val6"),1));
+  putColsSuper(cfs,key,scfName,new BufferCell(cellname(4L),ByteBufferUtil.bytes("val4"),1),new BufferCell(cellname(5L),ByteBufferUtil.bytes("val5"),1),new BufferCell(cellname(6L),ByteBufferUtil.bytes("val6"),1));
   final SlicePredicate sp=new SlicePredicate();
   sp.setSlice_range(new SliceRange());
   sp.getSlice_range().setCount(100);
   sp.getSlice_range().setStart(ArrayUtils.EMPTY_BYTE_ARRAY);
   sp.getSlice_range().setFinish(ArrayUtils.EMPTY_BYTE_ARRAY);
   assertRowAndColCount(1,6,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
-  Mutation rm=new Mutation(keyspace.getName(),key.key);
+  Mutation rm=new Mutation(keyspace.getName(),key.getKey());
   rm.deleteRange(cfName,SuperColumns.startOf(scfName),SuperColumns.endOf(scfName),2);
   rm.apply();
   assertRowAndColCount(1,0,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
   cfs.forceBlockingFlush();
   assertRowAndColCount(1,0,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
-  putColsSuper(cfs,key,scfName,new Cell(cellname(4L),ByteBufferUtil.bytes("val4"),1L),new Cell(cellname(7L),ByteBufferUtil.bytes("val7"),1L));
+  putColsSuper(cfs,key,scfName,new BufferCell(cellname(4L),ByteBufferUtil.bytes("val4"),1L),new BufferCell(cellname(7L),ByteBufferUtil.bytes("val7"),1L));
   assertRowAndColCount(1,0,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
-  putColsSuper(cfs,key,scfName,new Cell(cellname(3L),ByteBufferUtil.bytes("val3"),3),new Cell(cellname(8L),ByteBufferUtil.bytes("val8"),3),new Cell(cellname(9L),ByteBufferUtil.bytes("val9"),3));
+  putColsSuper(cfs,key,scfName,new BufferCell(cellname(3L),ByteBufferUtil.bytes("val3"),3),new BufferCell(cellname(8L),ByteBufferUtil.bytes("val8"),3),new BufferCell(cellname(9L),ByteBufferUtil.bytes("val9"),3));
   assertRowAndColCount(1,3,false,cfs.getRangeSlice(Util.range("f","g"),null,ThriftValidation.asIFilter(sp,cfs.metadata,scfName),100));
 }

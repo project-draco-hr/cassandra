@@ -13,7 +13,7 @@
         filter.delete(container.deletionInfo(),iter.getColumnFamily());
         while (iter.hasNext()) {
           OnDiskAtom atom=iter.next();
-          if (copyOnHeap)           atom=((Cell)atom).localCopy(HeapAllocator.instance);
+          if (copyOnHeap)           atom=((Cell)atom).localCopy(cfs.metadata,HeapAllocator.instance);
           container.addAtom(atom);
         }
       }
@@ -45,7 +45,7 @@
     filter.collateOnDiskAtom(returnCF,container.iterator(),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategy() instanceof SizeTieredCompactionStrategy) {
       Tracing.trace("Defragmenting requested data");
-      Mutation mutation=new Mutation(cfs.keyspace.getName(),filter.key.key,returnCF.cloneMe());
+      Mutation mutation=new Mutation(cfs.keyspace.getName(),filter.key.getKey(),returnCF.cloneMe());
       Keyspace.open(mutation.getKeyspaceName()).apply(mutation,false,false);
     }
     return returnCF;

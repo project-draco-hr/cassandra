@@ -10,24 +10,17 @@
   AtomicBTreeColumns previous=rows.get(key);
   if (previous == null) {
     AtomicBTreeColumns empty=cf.cloneMeShallow(AtomicBTreeColumns.factory,false);
-    final DecoratedKey cloneKey=new DecoratedKey(key.token,allocator.clone(key.key,opGroup));
+    final DecoratedKey cloneKey=allocator.clone(key,opGroup);
     previous=rows.putIfAbsent(cloneKey,empty);
     if (previous == null) {
       previous=empty;
-      int overhead=(int)(cfs.partitioner.getHeapSizeOf(key.token) + ROW_OVERHEAD_HEAP_SIZE);
-      allocator.allocate(overhead,opGroup);
+      int overhead=(int)(cfs.partitioner.getHeapSizeOf(key.getToken()) + ROW_OVERHEAD_HEAP_SIZE);
+      allocator.onHeap().allocate(overhead,opGroup);
     }
  else {
-      allocator.free(cloneKey.key);
+      allocator.reclaimer().reclaimImmediately(cloneKey);
     }
   }
-  ContextAllocator contextAllocator=allocator.wrap(opGroup);
-  AtomicBTreeColumns.Delta delta=previous.addAllWithSizeDelta(cf,contextAllocator,indexer,new AtomicBTreeColumns.Delta());
-  liveDataSize.addAndGet(delta.dataSize());
+  liveDataSize.addAndGet(previous.addAllWithSizeDelta(cf,allocator,opGroup,indexer));
   currentOperations.addAndGet(cf.getColumnCount() + (cf.isMarkedForDelete() ? 1 : 0) + cf.deletionInfo().rangeCount());
-  for (  Cell cell : delta.reclaimed()) {
-    cell.name.free(allocator);
-    allocator.free(cell.value);
-  }
-  allocator.allocate((int)delta.excessHeapSize(),opGroup);
 }
