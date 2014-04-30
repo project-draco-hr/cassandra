@@ -1,2 +1,12 @@
 {
+  DecoratedKey k=StorageService.getPartitioner().decorateKey(ByteBufferUtil.bytes(cfm.ksName));
+  CFMetaData before=cfm;
+  CFMetaData after=CFMetaData.fromThriftForUpdate(before.toThrift(),before);
+  assertThat(after,is(before));
+  RowMutation rm=cfm.toSchema(System.currentTimeMillis());
+  ColumnFamily serializedCf=rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF));
+  ColumnFamily serializedCD=rm.getColumnFamily(Schema.instance.getId(Keyspace.SYSTEM_KS,SystemKeyspace.SCHEMA_COLUMNS_CF));
+  UntypedResultSet.Row result=QueryProcessor.resultify("SELECT * FROM system.schema_columnfamilies",new Row(k,serializedCf)).one();
+  CFMetaData newCfm=CFMetaData.addColumnDefinitionsFromSchema(CFMetaData.fromSchemaNoColumnsNoTriggers(result),new Row(k,serializedCD));
+  assertThat(newCfm,is(cfm));
 }
