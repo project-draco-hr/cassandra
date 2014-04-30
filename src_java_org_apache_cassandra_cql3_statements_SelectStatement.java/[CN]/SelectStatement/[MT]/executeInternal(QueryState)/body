@@ -1,16 +1,16 @@
 {
-  List<ByteBuffer> variables=Collections.emptyList();
-  int limit=getLimit(variables);
+  QueryOptions options=QueryOptions.DEFAULT;
+  int limit=getLimit(options);
   int limitForQuery=updateLimitForQuery(limit);
   long now=System.currentTimeMillis();
   List<Row> rows;
   if (isKeyRange || usesSecondaryIndexing) {
-    RangeSliceCommand command=getRangeCommand(variables,limitForQuery,now);
+    RangeSliceCommand command=getRangeCommand(options,limitForQuery,now);
     rows=command == null ? Collections.<Row>emptyList() : command.executeLocally();
   }
  else {
-    List<ReadCommand> commands=getSliceCommands(variables,limitForQuery,now);
+    List<ReadCommand> commands=getSliceCommands(options,limitForQuery,now);
     rows=commands == null ? Collections.<Row>emptyList() : readLocally(keyspace(),commands);
   }
-  return processResults(rows,variables,limit,now);
+  return processResults(rows,options,limit,now);
 }

@@ -1,0 +1,48 @@
+{
+  if (!usesSecondaryIndexing || restrictedColumns.isEmpty())   return Collections.emptyList();
+  List<IndexExpression> expressions=new ArrayList<IndexExpression>();
+  for (  ColumnDefinition def : restrictedColumns) {
+    Restriction restriction;
+switch (def.kind) {
+case PARTITION_KEY:
+      restriction=keyRestrictions[def.position()];
+    break;
+case CLUSTERING_COLUMN:
+  restriction=columnRestrictions[def.position()];
+break;
+case REGULAR:
+case STATIC:
+restriction=metadataRestrictions.get(def.name);
+break;
+default :
+throw new AssertionError();
+}
+if (restriction.isSlice()) {
+Restriction.Slice slice=(Restriction.Slice)restriction;
+for (Bound b : Bound.values()) {
+if (slice.hasBound(b)) {
+ByteBuffer value=validateIndexedValue(def,slice.bound(b,options));
+expressions.add(new IndexExpression(def.name.bytes,slice.getIndexOperator(b),value));
+}
+}
+}
+ else if (restriction.isContains()) {
+Restriction.Contains contains=(Restriction.Contains)restriction;
+for (ByteBuffer value : contains.values(options)) {
+validateIndexedValue(def,value);
+expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.CONTAINS,value));
+}
+for (ByteBuffer key : contains.keys(options)) {
+validateIndexedValue(def,key);
+expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.CONTAINS_KEY,key));
+}
+}
+ else {
+List<ByteBuffer> values=restriction.values(options);
+if (values.size() != 1) throw new InvalidRequestException("IN restrictions are not supported on indexed columns");
+ByteBuffer value=validateIndexedValue(def,values.get(0));
+expressions.add(new IndexExpression(def.name.bytes,IndexExpression.Operator.EQ,value));
+}
+}
+return expressions;
+}

@@ -1,0 +1,24 @@
+{
+  String ksName=statement.keyspace();
+  Map<ByteBuffer,IMutation> ksMap=mutations.get(ksName);
+  if (ksMap == null) {
+    ksMap=new HashMap<>();
+    mutations.put(ksName,ksMap);
+  }
+  List<ByteBuffer> keys=statement.buildPartitionKeyNames(options);
+  Composite clusteringPrefix=statement.createClusteringPrefix(options);
+  UpdateParameters params=statement.makeUpdateParameters(keys,clusteringPrefix,options,local,now);
+  for (  ByteBuffer key : keys) {
+    IMutation mutation=ksMap.get(key);
+    Mutation mut;
+    if (mutation == null) {
+      mut=new Mutation(ksName,key);
+      mutation=type == Type.COUNTER ? new CounterMutation(mut,options.getConsistency()) : mut;
+      ksMap.put(key,mutation);
+    }
+ else {
+      mut=type == Type.COUNTER ? ((CounterMutation)mutation).getMutation() : (Mutation)mutation;
+    }
+    statement.addUpdateForKey(mut.addOrGet(statement.cfm),key,clusteringPrefix,params);
+  }
+}

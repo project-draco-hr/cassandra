@@ -1,0 +1,24 @@
+{
+  List<Event> events=new ArrayList<>();
+  events.add(TopologyChange.newNode(FBUtilities.getBroadcastAddress(),42));
+  events.add(TopologyChange.removedNode(FBUtilities.getBroadcastAddress(),42));
+  events.add(TopologyChange.movedNode(FBUtilities.getBroadcastAddress(),42));
+  events.add(StatusChange.nodeUp(FBUtilities.getBroadcastAddress(),42));
+  events.add(StatusChange.nodeDown(FBUtilities.getBroadcastAddress(),42));
+  events.add(new SchemaChange(SchemaChange.Change.CREATED,"ks"));
+  events.add(new SchemaChange(SchemaChange.Change.UPDATED,"ks"));
+  events.add(new SchemaChange(SchemaChange.Change.DROPPED,"ks"));
+  events.add(new SchemaChange(SchemaChange.Change.CREATED,SchemaChange.Target.TABLE,"ks","table"));
+  events.add(new SchemaChange(SchemaChange.Change.UPDATED,SchemaChange.Target.TABLE,"ks","table"));
+  events.add(new SchemaChange(SchemaChange.Change.DROPPED,SchemaChange.Target.TABLE,"ks","table"));
+  if (version >= 3) {
+    events.add(new SchemaChange(SchemaChange.Change.CREATED,SchemaChange.Target.TYPE,"ks","type"));
+    events.add(new SchemaChange(SchemaChange.Change.UPDATED,SchemaChange.Target.TYPE,"ks","type"));
+    events.add(new SchemaChange(SchemaChange.Change.DROPPED,SchemaChange.Target.TYPE,"ks","type"));
+  }
+  for (  Event ev : events) {
+    ByteBuf buf=Unpooled.buffer(ev.serializedSize(version));
+    ev.serialize(buf,version);
+    assertEquals(ev,Event.deserialize(buf,version));
+  }
+}

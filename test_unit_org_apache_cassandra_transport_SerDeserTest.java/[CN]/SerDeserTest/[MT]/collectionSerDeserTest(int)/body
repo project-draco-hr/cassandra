@@ -1,0 +1,24 @@
+{
+  ListType<?> lt=ListType.getInstance(Int32Type.instance);
+  List<Integer> l=Arrays.asList(2,6,1,9);
+  List<ByteBuffer> lb=new ArrayList<>(l.size());
+  for (  Integer i : l)   lb.add(Int32Type.instance.decompose(i));
+  assertEquals(l,lt.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(lb,lb.size(),version),version));
+  SetType<?> st=SetType.getInstance(UTF8Type.instance);
+  Set<String> s=new LinkedHashSet<>();
+  s.addAll(Arrays.asList("bar","foo","zee"));
+  List<ByteBuffer> sb=new ArrayList<>(s.size());
+  for (  String t : s)   sb.add(UTF8Type.instance.decompose(t));
+  assertEquals(s,st.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(sb,sb.size(),version),version));
+  MapType<?,?> mt=MapType.getInstance(UTF8Type.instance,LongType.instance);
+  Map<String,Long> m=new LinkedHashMap<>();
+  m.put("bar",12L);
+  m.put("foo",42L);
+  m.put("zee",14L);
+  List<ByteBuffer> mb=new ArrayList<>(m.size() * 2);
+  for (  Map.Entry<String,Long> entry : m.entrySet()) {
+    mb.add(UTF8Type.instance.decompose(entry.getKey()));
+    mb.add(LongType.instance.decompose(entry.getValue()));
+  }
+  assertEquals(m,mt.getSerializer().deserializeForNativeProtocol(CollectionSerializer.pack(mb,m.size(),version),version));
+}
