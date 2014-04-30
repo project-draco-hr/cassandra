@@ -1,2 +1,17 @@
 {
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Super1");
+  Mutation rm;
+  DecoratedKey dk=Util.dk("key1");
+  rm=new Mutation("Keyspace1",dk.getKey());
+  Util.addMutation(rm,"Super1","SC1",1,"asdf",0);
+  rm.apply();
+  store.forceBlockingFlush();
+  CellName cname=CellNames.compositeDense(ByteBufferUtil.bytes("SC1"),getBytes(1L));
+  rm=new Mutation("Keyspace1",dk.getKey());
+  rm.delete("Super1",cname,1);
+  rm.apply();
+  ColumnFamily retrieved=store.getColumnFamily(QueryFilter.getIdentityFilter(dk,"Super1",System.currentTimeMillis()));
+  assertFalse(retrieved.getColumn(cname).isLive());
+  assertNull(Util.cloneAndRemoveDeleted(retrieved,Integer.MAX_VALUE));
 }
