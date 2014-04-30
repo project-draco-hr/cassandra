@@ -52,7 +52,7 @@ result.schema.value_types.put(keyName,TypeParser.getShortName(metadata.getKeyVal
 }
 if (row.cf != null) {
 for (org.apache.cassandra.db.Cell c : row.cf.getSortedColumns()) {
-if (c.isMarkedForDelete(now)) continue;
+if (!c.isLive(now)) continue;
 ColumnDefinition cd=metadata.getColumnDefinition(c.name());
 if (cd != null) result.schema.value_types.put(c.name().toByteBuffer(),TypeParser.getShortName(cd.type));
 thriftColumns.add(thriftify(c));
@@ -81,7 +81,7 @@ CellName name=metadata.comparator.cellFromByteBuffer(nameBytes);
 ColumnDefinition cd=metadata.getColumnDefinition(name);
 if (cd != null) result.schema.value_types.put(nameBytes,TypeParser.getShortName(cd.type));
 org.apache.cassandra.db.Cell c=row.cf.getColumn(name);
-if (c == null || c.isMarkedForDelete(System.currentTimeMillis())) thriftColumns.add(new Column().setName(nameBytes));
+if (c == null || !c.isLive()) thriftColumns.add(new Column().setName(nameBytes));
  else thriftColumns.add(thriftify(c));
 }
 }
