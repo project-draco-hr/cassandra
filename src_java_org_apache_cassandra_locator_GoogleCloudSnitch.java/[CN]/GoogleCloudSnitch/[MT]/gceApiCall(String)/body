@@ -1,0 +1,18 @@
+{
+  HttpURLConnection conn=(HttpURLConnection)new URL(url).openConnection();
+  DataInputStream d=null;
+  try {
+    conn.setRequestMethod("GET");
+    conn.setRequestProperty("Metadata-Flavor","Google");
+    if (conn.getResponseCode() != 200)     throw new ConfigurationException("GoogleCloudSnitch was unable to execute the API call. Not a gce node?");
+    int cl=conn.getContentLength();
+    byte[] b=new byte[cl];
+    d=new DataInputStream((FilterInputStream)conn.getContent());
+    d.readFully(b);
+    return new String(b,StandardCharsets.UTF_8);
+  }
+  finally {
+    FileUtils.close(d);
+    conn.disconnect();
+  }
+}
