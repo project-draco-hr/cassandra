@@ -1,30 +1,34 @@
 {
   LoaderOptions options=LoaderOptions.parseArgs(args);
-  OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
-  SSTableLoader loader=new SSTableLoader(options.directory,new ExternalClient(options.hosts,options.rpcPort,options.user,options.passwd,options.transportFactory),handler);
+  OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,true);
+  SSTableLoader loader=new SSTableLoader(options.directory,new ExternalClient(options.hosts,options.rpcPort,options.user,options.passwd,options.transportFactory),handler,options.connectionsPerHost);
   DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
   StreamResultFuture future=null;
+  ProgressIndicator indicator=new ProgressIndicator();
   try {
-    if (options.noProgress)     future=loader.stream(options.ignores);
- else     future=loader.stream(options.ignores,new ProgressIndicator());
+    if (options.noProgress) {
+      future=loader.stream(options.ignores);
+    }
+ else {
+      future=loader.stream(options.ignores,indicator);
+    }
   }
  catch (  Exception e) {
     System.err.println(e.getMessage());
     if (e.getCause() != null)     System.err.println(e.getCause());
-    if (options.debug)     e.printStackTrace(System.err);
- else     System.err.println("Run with --debug to get full stack trace or --help to get help.");
+    e.printStackTrace(System.err);
     System.exit(1);
   }
-  handler.output(String.format("Streaming session ID: %s",future.planId));
   try {
     future.get();
+    if (!options.noProgress)     indicator.printSummary(options.connectionsPerHost);
+    Thread.sleep(1000);
     System.exit(0);
   }
  catch (  Exception e) {
     System.err.println("Streaming to the following hosts failed:");
     System.err.println(loader.getFailedHosts());
-    System.err.println(e);
-    if (options.debug)     e.printStackTrace(System.err);
+    e.printStackTrace(System.err);
     System.exit(1);
   }
 }
