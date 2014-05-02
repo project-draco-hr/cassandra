@@ -47,22 +47,16 @@ for (Column c : cf) {
 if (c.isMarkedForDelete(now)) continue;
 builder.add(c);
 }
-Map<CFDefinition.Name,ByteBuffer> staticValues=Collections.emptyMap();
+ColumnGroupMap staticGroup=null;
 if (!builder.isEmpty() && builder.firstGroup().isStatic) {
-staticValues=new HashMap<>();
-ColumnGroupMap group=builder.firstGroup();
-for (CFDefinition.Name name : Iterables.filter(selection.getColumnsList(),isStaticFilter)) staticValues.put(name,getValue(name,group));
+staticGroup=builder.firstGroup();
 builder.discardFirst();
-if (!staticValues.isEmpty() && builder.isEmpty() && !usesSecondaryIndexing&& hasNoClusteringColumnsRestriction()) {
-result.newRow();
-for (CFDefinition.Name name : selection.getColumnsList()) {
-if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS) result.add(keyComponents[name.position]);
- else result.add(name.kind == CFDefinition.Name.Kind.STATIC ? staticValues.get(name) : null);
-}
+if (builder.isEmpty() && !usesSecondaryIndexing && hasNoClusteringColumnsRestriction()&& hasValueForQuery(staticGroup)) {
+handleGroup(result,keyComponents,ColumnGroupMap.EMPTY,staticGroup);
 return;
 }
 }
-for (ColumnGroupMap group : builder.groups()) handleGroup(selection,result,keyComponents,group,staticValues);
+for (ColumnGroupMap group : builder.groups()) handleGroup(result,keyComponents,group,staticGroup);
 }
  else {
 if (cf.hasOnlyTombstones(now)) return;
