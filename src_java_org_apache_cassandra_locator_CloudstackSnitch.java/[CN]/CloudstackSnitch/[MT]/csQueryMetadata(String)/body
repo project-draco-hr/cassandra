@@ -1,0 +1,25 @@
+{
+  HttpURLConnection conn=null;
+  BufferedInputStream is=null;
+  try {
+    conn=(HttpURLConnection)new URL(url).openConnection();
+  }
+ catch (  Exception e) {
+    throw new ConfigurationException("CloudstackSnitch cannot query wrong metadata URL: " + url);
+  }
+  try {
+    conn.setRequestMethod("GET");
+    if (conn.getResponseCode() != 200) {
+      throw new ConfigurationException("CloudstackSnitch was unable to query metadata.");
+    }
+    int cl=conn.getContentLength();
+    byte[] b=new byte[cl];
+    is=new BufferedInputStream(conn.getInputStream());
+    is.read(b,0,cl);
+    return new String(b,StandardCharsets.UTF_8);
+  }
+  finally {
+    FileUtils.close(is);
+    conn.disconnect();
+  }
+}
