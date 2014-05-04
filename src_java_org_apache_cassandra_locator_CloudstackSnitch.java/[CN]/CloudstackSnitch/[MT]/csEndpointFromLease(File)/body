@@ -5,15 +5,19 @@
   Pattern identifierPattern=Pattern.compile("^[ \t]*option dhcp-server-identifier (.*);$");
   try {
     reader=new BufferedReader(new FileReader(lease));
+    while ((line=reader.readLine()) != null) {
+      Matcher matcher=identifierPattern.matcher(line);
+      if (matcher.find()) {
+        endpoint=matcher.group(1);
+        break;
+      }
+    }
   }
  catch (  Exception e) {
     throw new ConfigurationException("CloudstackSnitch cannot access lease file.");
   }
-  while ((line=reader.readLine()) != null) {
-    Matcher matcher=identifierPattern.matcher(line);
-    if (matcher.find()) {
-      endpoint=matcher.group(1);
-    }
+ finally {
+    FileUtils.closeQuietly(reader);
   }
   if (endpoint == null) {
     throw new ConfigurationException("No metadata server could be found in lease file.");
