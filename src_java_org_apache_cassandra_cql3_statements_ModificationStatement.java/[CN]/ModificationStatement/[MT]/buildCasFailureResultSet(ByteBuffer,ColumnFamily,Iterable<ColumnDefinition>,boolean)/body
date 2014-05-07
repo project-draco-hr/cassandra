@@ -1,0 +1,20 @@
+{
+  CFMetaData cfm=cf.metadata();
+  Selection selection;
+  if (columnsWithConditions == null) {
+    selection=Selection.wildcard(cfm);
+  }
+ else {
+    List<ColumnDefinition> defs=new ArrayList<>();
+    if (isBatch) {
+      defs.addAll(cfm.partitionKeyColumns());
+      defs.addAll(cfm.clusteringColumns());
+    }
+    for (    ColumnDefinition def : columnsWithConditions)     defs.add(def);
+    selection=Selection.forColumns(defs);
+  }
+  long now=System.currentTimeMillis();
+  Selection.ResultSetBuilder builder=selection.resultSetBuilder(now);
+  SelectStatement.forSelection(cfm,selection).processColumnFamily(key,cf,QueryOptions.DEFAULT,now,builder);
+  return builder.build();
+}
