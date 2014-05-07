@@ -1,26 +1,27 @@
 {
+  CFDefinition cfDef=cfm.getCfDef();
   for (  Relation rel : whereClause) {
-    ColumnDefinition def=cfm.getColumnDefinition(rel.getEntity());
-    if (def == null)     throw new InvalidRequestException(String.format("Unknown key identifier %s",rel.getEntity()));
-switch (def.kind) {
-case PARTITION_KEY:
-case CLUSTERING_COLUMN:
+    CFDefinition.Name name=cfDef.get(rel.getEntity());
+    if (name == null)     throw new InvalidRequestException(String.format("Unknown key identifier %s",rel.getEntity()));
+switch (name.kind) {
+case KEY_ALIAS:
+case COLUMN_ALIAS:
       Restriction restriction;
     if (rel.operator() == Relation.Type.EQ) {
-      Term t=rel.getValue().prepare(keyspace(),def);
+      Term t=rel.getValue().prepare(name);
       t.collectMarkerSpecification(names);
       restriction=new Restriction.EQ(t,false);
     }
- else     if (def.kind == ColumnDefinition.Kind.PARTITION_KEY && rel.operator() == Relation.Type.IN) {
+ else     if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS && rel.operator() == Relation.Type.IN) {
       if (rel.getValue() != null) {
-        Term t=rel.getValue().prepare(keyspace(),def);
+        Term t=rel.getValue().prepare(name);
         t.collectMarkerSpecification(names);
         restriction=Restriction.IN.create(t);
       }
  else {
         List<Term> values=new ArrayList<Term>(rel.getInValues().size());
         for (        Term.Raw raw : rel.getInValues()) {
-          Term t=raw.prepare(keyspace(),def);
+          Term t=raw.prepare(name);
           t.collectMarkerSpecification(names);
           values.add(t);
         }
@@ -28,12 +29,14 @@ case CLUSTERING_COLUMN:
       }
     }
  else {
-      throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),def.name));
+      throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),name));
     }
-  addKeyValues(def,restriction);
+  addKeyValues(name,restriction);
 break;
-default :
-throw new InvalidRequestException(String.format("Non PRIMARY KEY %s found in where clause",def.name));
+case VALUE_ALIAS:
+case COLUMN_METADATA:
+case STATIC:
+throw new InvalidRequestException(String.format("Non PRIMARY KEY %s found in where clause",name));
 }
 }
 }
