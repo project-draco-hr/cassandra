@@ -2,12 +2,13 @@
   while (true) {
     Region region=currentRegion.get();
     if (region != null)     return region;
-    region=new Region(REGION_SIZE);
+    region=RACE_ALLOCATED.poll();
+    if (region == null)     region=new Region(REGION_SIZE);
     if (currentRegion.compareAndSet(null,region)) {
-      region.init();
       regionCount.incrementAndGet();
       logger.trace("{} regions now allocated in {}",regionCount,this);
       return region;
     }
+    RACE_ALLOCATED.add(region);
   }
 }
