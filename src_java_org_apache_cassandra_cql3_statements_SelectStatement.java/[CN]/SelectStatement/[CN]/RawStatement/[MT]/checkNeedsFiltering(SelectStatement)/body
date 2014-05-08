@@ -2,4 +2,8 @@
   if (!parameters.allowFiltering && (stmt.isKeyRange || stmt.usesSecondaryIndexing)) {
     if (stmt.restrictedNames.size() > 1 || (stmt.restrictedNames.isEmpty() && !stmt.columnFilterIsIdentity()))     throw new InvalidRequestException("Cannot execute this query as it might involve data filtering and " + "thus may have unpredictable performance. If you want to execute " + "this query despite the performance unpredictability, use ALLOW FILTERING");
   }
+  if (stmt.sliceRestriction != null && stmt.isKeyRange && limit != null) {
+    SingleColumnRelation rel=findInclusiveClusteringRelationForCompact(stmt.cfDef);
+    throw new InvalidRequestException(String.format("The query requests a restriction of rows with a strict bound (%s) over a range of partitions. " + "This is not supported by the underlying storage engine for COMPACT tables if a LIMIT is provided. " + "Please either make the condition non strict (%s) or remove the user LIMIT",rel,rel.withNonStrictOperator()));
+  }
 }
