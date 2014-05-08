@@ -1,15 +1,17 @@
 {
   if (offset > reader.length() - CommitLogSegment.SYNC_MARKER_SIZE) {
-    if (offset != reader.length() && offset != Integer.MAX_VALUE)     logger.warn("Encountered bad header at position {} of Commit log {}; not enough room for a header");
+    if (offset != reader.length() && offset != Integer.MAX_VALUE)     logger.warn("Encountered bad header at position {} of Commit log {}; not enough room for a header",offset,reader.getPath());
     return -1;
   }
   reader.seek(offset);
   PureJavaCrc32 crc=new PureJavaCrc32();
-  crc.update((int)(segmentId & 0xFFFFFFFFL));
-  crc.update((int)(segmentId >>> 32));
-  crc.update((int)reader.getPosition());
+  crc.updateInt((int)(descriptor.id & 0xFFFFFFFFL));
+  crc.updateInt((int)(descriptor.id >>> 32));
+  crc.updateInt((int)reader.getPosition());
   int end=reader.readInt();
-  long filecrc=reader.readLong();
+  long filecrc;
+  if (descriptor.version < CommitLogDescriptor.VERSION_21)   filecrc=reader.readLong();
+ else   filecrc=reader.readInt() & 0xffffffffL;
   if (crc.getValue() != filecrc) {
     if (end != 0 || filecrc != 0) {
       logger.warn("Encountered bad header at position {} of commit log {}, with invalid CRC. The end of segment marker should be zero.",offset,reader.getPath());
