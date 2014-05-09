@@ -22,7 +22,9 @@
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
   assertKeyCacheSize(4,KEYSPACE1,COLUMN_FAMILY1);
   for (  SSTableReader reader : readers)   reader.releaseReference();
-  while (StorageService.tasks.getActiveCount() > 0)   ;
+  Uninterruptibles.sleepUninterruptibly(10,TimeUnit.MILLISECONDS);
+  ;
+  while (StorageService.tasks.getActiveCount() + StorageService.tasks.getQueue().size() > 0)   ;
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
