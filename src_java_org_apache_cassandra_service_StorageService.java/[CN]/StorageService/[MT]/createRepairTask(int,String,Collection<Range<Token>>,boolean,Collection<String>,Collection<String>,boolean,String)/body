@@ -26,12 +26,18 @@
         }
  catch (        IllegalArgumentException e) {
           logger.error("Repair failed:",e);
-          sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+          sendNotification("repair",e.getMessage(),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
           return;
         }
       }
       List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>();
-      for (      ColumnFamilyStore cfs : getValidColumnFamilies(false,false,keyspace,columnFamilies))       columnFamilyStores.add(cfs);
+      try {
+        Iterables.addAll(columnFamilyStores,getValidColumnFamilies(false,false,keyspace,columnFamilies));
+      }
+ catch (      IllegalArgumentException e) {
+        sendNotification("repair",e.getMessage(),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+        return;
+      }
       UUID parentSession=null;
       if (!fullRepair) {
         try {
@@ -44,7 +50,7 @@
       }
       List<RepairFuture> futures=new ArrayList<>(ranges.size());
       for (      Range<Token> range : ranges) {
-        RepairFuture future=forceKeyspaceRepair(parentSession,range,keyspace,isSequential,rangeToNeighbors.get(range),columnFamilies);
+        RepairFuture future=ActiveRepairService.instance.submitRepairSession(parentSession,range,keyspace,isSequential,rangeToNeighbors.get(range),columnFamilies);
         if (future == null)         continue;
         futures.add(future);
         try {
