@@ -1,0 +1,30 @@
+{
+  boolean doneWork=false;
+  FlushItem flush;
+  while (null != (flush=queued.poll())) {
+    channels.add(flush.ctx);
+    flush.ctx.write(flush.response,flush.ctx.voidPromise());
+    flushed.add(flush);
+    doneWork=true;
+  }
+  runsSinceFlush++;
+  if (!doneWork || runsSinceFlush > 2 || flushed.size() > 50) {
+    for (    ChannelHandlerContext channel : channels)     channel.flush();
+    for (    FlushItem item : flushed) {
+      if (item.response.getSourceFrame().body.refCnt() > 0)       item.response.getSourceFrame().release();
+    }
+    channels.clear();
+    flushed.clear();
+    runsSinceFlush=0;
+  }
+  if (doneWork) {
+    runsWithNoWork=0;
+  }
+ else {
+    if (++runsWithNoWork > 5) {
+      running.set(false);
+      if (queued.isEmpty() || !running.compareAndSet(false,true))       return;
+    }
+  }
+  eventLoop.schedule(this,10000,TimeUnit.NANOSECONDS);
+}
