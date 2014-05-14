@@ -3,16 +3,8 @@
   if (cl == null)   throw new InvalidRequestException("Invalid empty consistency level");
   cl.validateForRead(keyspace());
   int limit=getLimit(options);
-  int limitForQuery=updateLimitForQuery(limit);
   long now=System.currentTimeMillis();
-  Pageable command;
-  if (isKeyRange || usesSecondaryIndexing) {
-    command=getRangeCommand(options,limitForQuery,now);
-  }
- else {
-    List<ReadCommand> commands=getSliceCommands(options,limitForQuery,now);
-    command=commands == null ? null : new Pageable.ReadCommands(commands);
-  }
+  Pageable command=getPageableCommand(options,limit,now);
   int pageSize=options.getPageSize();
   if (parameters.isCount && pageSize <= 0)   pageSize=DEFAULT_COUNT_PAGE_SIZE;
   if (pageSize <= 0 || command == null || !QueryPagers.mayNeedPaging(command,pageSize)) {

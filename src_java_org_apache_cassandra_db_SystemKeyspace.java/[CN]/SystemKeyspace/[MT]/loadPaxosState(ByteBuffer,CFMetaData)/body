@@ -1,6 +1,6 @@
 {
-  String req="SELECT * FROM system.%s WHERE row_key = 0x%s AND cf_id = %s";
-  UntypedResultSet results=processInternal(String.format(req,PAXOS_CF,ByteBufferUtil.bytesToHex(key),metadata.cfId));
+  String req="SELECT * FROM system.%s WHERE row_key = ? AND cf_id = ?";
+  UntypedResultSet results=executeInternal(String.format(req,PAXOS_CF),key,metadata.cfId);
   if (results.isEmpty())   return new PaxosState(key,metadata);
   UntypedResultSet.Row row=results.one();
   Commit promised=row.has("in_progress_ballot") ? new Commit(key,row.getUUID("in_progress_ballot"),ArrayBackedSortedColumns.factory.create(metadata)) : Commit.emptyCommit(key,metadata);

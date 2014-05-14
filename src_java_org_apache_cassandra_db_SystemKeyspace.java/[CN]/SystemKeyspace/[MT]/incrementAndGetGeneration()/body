@@ -1,6 +1,6 @@
 {
   String req="SELECT gossip_generation FROM system.%s WHERE key='%s'";
-  UntypedResultSet result=processInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+  UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
   int generation;
   if (result.isEmpty() || !result.one().has("gossip_generation")) {
     generation=(int)(System.currentTimeMillis() / 1000);
@@ -16,8 +16,8 @@
       generation=now;
     }
   }
-  req="INSERT INTO system.%s (key, gossip_generation) VALUES ('%s', %d)";
-  processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,generation));
+  req="INSERT INTO system.%s (key, gossip_generation) VALUES ('%s', ?)";
+  executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY),generation);
   forceBlockingFlush(LOCAL_CF);
   return generation;
 }
