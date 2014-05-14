@@ -1,0 +1,10 @@
+{
+  logger.debug("Replaying batch {}",id);
+  List<Mutation> mutations=replayingMutations();
+  if (mutations.isEmpty())   return 0;
+  int ttl=calculateHintTTL(mutations);
+  if (ttl <= 0)   return 0;
+  replayHandlers=sendReplays(mutations,writtenAt,ttl);
+  rateLimiter.acquire(data.remaining());
+  return replayHandlers.size();
+}
