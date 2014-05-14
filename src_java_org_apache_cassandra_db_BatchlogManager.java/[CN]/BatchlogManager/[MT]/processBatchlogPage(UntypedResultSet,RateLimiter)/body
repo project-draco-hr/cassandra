@@ -1,12 +1,31 @@
 {
   UUID id=null;
+  ArrayList<Batch> batches=new ArrayList<>(page.size());
   for (  UntypedResultSet.Row row : page) {
     id=row.getUUID("id");
     long writtenAt=row.getLong("written_at");
-    int version=row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
     long timeout=DatabaseDescriptor.getWriteRpcTimeout() * 2;
     if (System.currentTimeMillis() < writtenAt + timeout)     continue;
-    replayBatch(id,row.getBytes("data"),writtenAt,version,rateLimiter);
+    int version=row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
+    Batch batch=new Batch(id,writtenAt,row.getBytes("data"),version);
+    try {
+      if (batch.replay(rateLimiter) > 0) {
+        batches.add(batch);
+      }
+ else {
+        deleteBatch(id);
+        totalBatchesReplayed.incrementAndGet();
+      }
+    }
+ catch (    IOException e) {
+      logger.warn("Skipped batch replay of {} due to {}",id,e);
+      deleteBatch(id);
+    }
   }
+  for (  Batch batch : batches) {
+    batch.finish();
+    deleteBatch(batch.id);
+  }
+  totalBatchesReplayed.addAndGet(batches.size());
   return id;
 }
