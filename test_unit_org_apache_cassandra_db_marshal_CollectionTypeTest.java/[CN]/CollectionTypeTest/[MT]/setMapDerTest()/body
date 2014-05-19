@@ -1,0 +1,31 @@
+{
+  MapSerializer<String,String> sms=MapType.getInstance(UTF8Type.instance,UTF8Type.instance).getSerializer();
+  MapSerializer<Integer,Integer> ims=MapType.getInstance(Int32Type.instance,Int32Type.instance).getSerializer();
+  Map<String,String> sm=new HashMap(){
+{
+      put("Foo","xxx");
+      put("Bar","yyy");
+    }
+  }
+;
+  Map<Integer,Integer> im=new HashMap(){
+{
+      put(3,0);
+      put(1,8);
+      put(5,2);
+    }
+  }
+;
+  ByteBuffer sb=sms.serialize(sm);
+  ByteBuffer ib=ims.serialize(im);
+  assertEquals(sms.deserialize(sb),sm);
+  assertEquals(ims.deserialize(ib),im);
+  sms.validate(sb);
+  ims.validate(ib);
+  assertInvalid(ims,sb);
+  assertInvalid(sms,UTF8Type.instance.getSerializer().serialize("foo"));
+  MapSerializer<Integer,String> sims=MapType.getInstance(Int32Type.instance,UTF8Type.instance).getSerializer();
+  MapSerializer<String,Integer> isms=MapType.getInstance(UTF8Type.instance,Int32Type.instance).getSerializer();
+  assertInvalid(isms,sb);
+  assertInvalid(sims,sb);
+}
