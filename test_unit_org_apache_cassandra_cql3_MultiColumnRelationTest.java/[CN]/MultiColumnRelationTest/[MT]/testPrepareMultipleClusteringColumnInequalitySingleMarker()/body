@@ -1,0 +1,37 @@
+{
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 0, 0, 0)");
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 0, 1, 0)");
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 0, 1, 1)");
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 1, 0, 0)");
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 1, 1, 0)");
+  execute("INSERT INTO %s.multiple_clustering (a, b, c, d) VALUES (0, 1, 1, 1)");
+  UntypedResultSet results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b) > ?"),options(tuple(0)));
+  assertEquals(3,results.size());
+  checkRow(0,results,0,1,0,0);
+  checkRow(1,results,0,1,1,0);
+  checkRow(2,results,0,1,1,1);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c) > ?"),options(tuple(1,0)));
+  assertEquals(2,results.size());
+  checkRow(0,results,0,1,1,0);
+  checkRow(1,results,0,1,1,1);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c, d) > ?"),options(tuple(1,1,0)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,1,1,1);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c, d) > ? AND (b) < ?"),options(tuple(0,1,0),tuple(1)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,0,1,1);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c, d) > ? AND (b, c) < ?"),options(tuple(0,1,1),tuple(1,1)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,1,0,0);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c, d) > ? AND (b, c, d) < ?"),options(tuple(0,1,1),tuple(1,1,0)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,1,0,0);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b) > ? ORDER BY b DESC, c DESC, d DESC"),options(tuple(0)));
+  assertEquals(3,results.size());
+  checkRow(2,results,0,1,0,0);
+  checkRow(1,results,0,1,1,0);
+  checkRow(0,results,0,1,1,1);
+  results=executePrepared(prepare("SELECT * FROM %s.multiple_clustering WHERE a=0 AND (b, c, d) > ? AND (b, c) < ? ORDER BY b DESC, c DESC, d DESC"),options(tuple(0,1,1),tuple(1,1)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,1,0,0);
+}

@@ -1,0 +1,31 @@
+{
+  verifyOrderingIsAllowed(stmt);
+  if (stmt.keyIsInRelation) {
+    stmt.orderingIndexes=new HashMap<CFDefinition.Name,Integer>();
+    for (    ColumnIdentifier column : stmt.parameters.orderings.keySet()) {
+      final CFDefinition.Name name=cfDef.get(column);
+      if (name == null)       handleUnrecognizedOrderingColumn(column);
+      if (selectClause.isEmpty()) {
+        stmt.orderingIndexes.put(name,Iterables.indexOf(cfDef,new Predicate<CFDefinition.Name>(){
+          public boolean apply(          CFDefinition.Name n){
+            return name.equals(n);
+          }
+        }
+));
+      }
+ else {
+        boolean hasColumn=false;
+        for (int i=0; i < selectClause.size(); i++) {
+          RawSelector selector=selectClause.get(i);
+          if (name.name.equals(selector.selectable)) {
+            stmt.orderingIndexes.put(name,i);
+            hasColumn=true;
+            break;
+          }
+        }
+        if (!hasColumn)         throw new InvalidRequestException("ORDER BY could not be used on columns missing in select clause.");
+      }
+    }
+  }
+  stmt.isReversed=isReversed(stmt,cfDef);
+}

@@ -1,0 +1,16 @@
+{
+  Bound eocBound=isReversed ? Bound.reverse(bound) : bound;
+  Iterator<CFDefinition.Name> iter=names.iterator();
+  CFDefinition.Name firstName=iter.next();
+  Bound firstComponentBound=isReversed == isReversedType(firstName) ? bound : Bound.reverse(bound);
+  if (!slice.hasBound(firstComponentBound))   return Collections.singletonList(builder.componentCount() > 0 && eocBound == Bound.END ? builder.buildAsEndOfRange() : builder.build());
+  List<ByteBuffer> vals=slice.componentBounds(firstComponentBound,variables);
+  builder.add(vals.get(firstName.position));
+  while (iter.hasNext()) {
+    CFDefinition.Name name=iter.next();
+    if (name.position >= vals.size())     break;
+    builder.add(vals.get(name.position));
+  }
+  Relation.Type relType=slice.getRelation(eocBound,firstComponentBound);
+  return Collections.singletonList(builder.buildForRelation(relType));
+}

@@ -1,0 +1,70 @@
+{
+  List<CFDefinition.Name> restrictedColumns=new ArrayList<>();
+  Set<CFDefinition.Name> seen=new HashSet<>();
+  int previousPosition=-1;
+  for (  CFDefinition.Name name : names) {
+    if (name.kind != CFDefinition.Name.Kind.COLUMN_ALIAS)     throw new InvalidRequestException(String.format("Multi-column relations can only be applied to clustering columns: %s",name));
+    if (seen.contains(name))     throw new InvalidRequestException(String.format("Column \"%s\" appeared twice in a relation: %s",name,relation));
+    seen.add(name);
+    if (name.position != previousPosition + 1) {
+      if (previousPosition == -1)       throw new InvalidRequestException(String.format("Clustering columns may not be skipped in multi-column relations. " + "They should appear in the PRIMARY KEY order. Got %s",relation));
+ else       throw new InvalidRequestException(String.format("Clustering columns must appear in the PRIMARY KEY order in multi-column relations: %s",relation));
+    }
+    previousPosition++;
+    Restriction existing=getExistingRestriction(stmt,name);
+    Relation.Type operator=relation.operator();
+    if (existing != null) {
+      if (operator == Relation.Type.EQ || operator == Relation.Type.IN)       throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by more than one relation if it is in an %s relation",name,relation.operator()));
+ else       if (!existing.isSlice())       throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by an equality relation and an inequality relation",name));
+    }
+    restrictedColumns.add(name);
+  }
+  boolean onToken=false;
+switch (relation.operator()) {
+case EQ:
+{
+      Term t=relation.getValue().prepare(names);
+      t.collectMarkerSpecification(boundNames);
+      Restriction restriction=new MultiColumnRestriction.EQ(t,onToken);
+      for (      CFDefinition.Name name : restrictedColumns)       stmt.columnRestrictions[name.position]=restriction;
+      break;
+    }
+case IN:
+{
+    Restriction restriction;
+    List<? extends Term.MultiColumnRaw> inValues=relation.getInValues();
+    if (inValues != null) {
+      List<Term> terms=new ArrayList<>(inValues.size());
+      for (      Term.MultiColumnRaw tuple : inValues) {
+        Term t=tuple.prepare(names);
+        t.collectMarkerSpecification(boundNames);
+        terms.add(t);
+      }
+      restriction=new MultiColumnRestriction.InWithValues(terms);
+    }
+ else {
+      Tuples.INRaw rawMarker=relation.getInMarker();
+      AbstractMarker t=rawMarker.prepare(names);
+      t.collectMarkerSpecification(boundNames);
+      restriction=new MultiColumnRestriction.InWithMarker(t);
+    }
+    for (    CFDefinition.Name name : restrictedColumns)     stmt.columnRestrictions[name.position]=restriction;
+    break;
+  }
+case LT:
+case LTE:
+case GT:
+case GTE:
+{
+  Term t=relation.getValue().prepare(names);
+  t.collectMarkerSpecification(boundNames);
+  for (  CFDefinition.Name name : names) {
+    Restriction.Slice restriction=(Restriction.Slice)getExistingRestriction(stmt,name);
+    if (restriction == null)     restriction=new MultiColumnRestriction.Slice(onToken);
+ else     if (!restriction.isMultiColumn())     throw new InvalidRequestException(String.format("Column \"%s\" cannot have both tuple-notation inequalities and single-column inequalities",name,relation));
+    restriction.setBound(relation.operator(),t);
+    stmt.columnRestrictions[name.position]=restriction;
+  }
+}
+}
+}

@@ -1,2 +1,45 @@
 {
+  CFMetaData cfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
+  CFDefinition cfDef=cfm.getCfDef();
+  VariableSpecifications boundNames=getBoundVariables();
+  if (parameters.isCount && !selectClause.isEmpty())   throw new InvalidRequestException("Only COUNT(*) and COUNT(1) operations are currently supported.");
+  Selection selection=selectClause.isEmpty() ? Selection.wildcard(cfDef) : Selection.fromSelectors(cfDef,selectClause);
+  if (parameters.isDistinct)   validateDistinctSelection(selection.getColumns(),cfDef.partitionKeys());
+  SelectStatement stmt=new SelectStatement(cfDef,boundNames.size(),parameters,selection,prepareLimit(boundNames));
+  boolean hasQueriableIndex=false;
+  boolean hasQueriableClusteringColumnIndex=false;
+  for (  Relation relation : whereClause) {
+    if (relation.isMultiColumn()) {
+      MultiColumnRelation rel=(MultiColumnRelation)relation;
+      List<CFDefinition.Name> names=new ArrayList<>(rel.getEntities().size());
+      for (      ColumnIdentifier entity : rel.getEntities()) {
+        boolean[] queriable=processRelationEntity(stmt,relation,entity,cfDef);
+        hasQueriableIndex|=queriable[0];
+        hasQueriableClusteringColumnIndex|=queriable[1];
+        names.add(cfDef.get(entity));
+      }
+      updateRestrictionsForRelation(stmt,names,rel,boundNames);
+    }
+ else {
+      SingleColumnRelation rel=(SingleColumnRelation)relation;
+      boolean[] queriable=processRelationEntity(stmt,relation,rel.getEntity(),cfDef);
+      hasQueriableIndex|=queriable[0];
+      hasQueriableClusteringColumnIndex|=queriable[1];
+      updateRestrictionsForRelation(stmt,cfDef.get(rel.getEntity()),rel,boundNames);
+    }
+  }
+  processPartitionKeyRestrictions(stmt,cfDef,hasQueriableIndex);
+  if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.removeAll(cfDef.partitionKeys());
+  if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
+  processColumnRestrictions(stmt,cfDef,hasQueriableIndex);
+  if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
+  if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.removeAll(cfDef.clusteringColumns());
+  if (!stmt.metadataRestrictions.isEmpty()) {
+    if (!hasQueriableIndex)     throw new InvalidRequestException("No indexed columns present in by-columns clause with Equal operator");
+    stmt.usesSecondaryIndexing=true;
+  }
+  if (stmt.usesSecondaryIndexing)   validateSecondaryIndexSelections(stmt);
+  if (!stmt.parameters.orderings.isEmpty())   processOrderingClause(stmt,cfDef);
+  checkNeedsFiltering(stmt);
+  return new ParsedStatement.Prepared(stmt,boundNames);
 }

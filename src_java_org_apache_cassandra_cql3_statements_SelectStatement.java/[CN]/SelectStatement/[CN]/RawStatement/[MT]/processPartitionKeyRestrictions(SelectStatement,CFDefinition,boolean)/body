@@ -1,0 +1,47 @@
+{
+  boolean canRestrictFurtherComponents=true;
+  CFDefinition.Name previous=null;
+  stmt.keyIsInRelation=false;
+  Iterator<CFDefinition.Name> iter=cfDef.partitionKeys().iterator();
+  for (int i=0; i < stmt.keyRestrictions.length; i++) {
+    CFDefinition.Name cname=iter.next();
+    Restriction restriction=stmt.keyRestrictions[i];
+    if (restriction == null) {
+      if (stmt.onToken)       throw new InvalidRequestException("The token() function must be applied to all partition key components or none of them");
+      if (i > 0 && stmt.keyRestrictions[i - 1] != null) {
+        if (hasQueriableIndex) {
+          stmt.usesSecondaryIndexing=true;
+          stmt.isKeyRange=true;
+          break;
+        }
+        throw new InvalidRequestException(String.format("Partition key part %s must be restricted since preceding part is",cname));
+      }
+      stmt.isKeyRange=true;
+      canRestrictFurtherComponents=false;
+    }
+ else     if (!canRestrictFurtherComponents) {
+      if (hasQueriableIndex) {
+        stmt.usesSecondaryIndexing=true;
+        break;
+      }
+      throw new InvalidRequestException(String.format("Partitioning column \"%s\" cannot be restricted because the preceding column (\"%s\") is " + "either not restricted or is restricted by a non-EQ relation",cname,previous));
+    }
+ else     if (restriction.isOnToken()) {
+      stmt.isKeyRange=true;
+      stmt.onToken=true;
+    }
+ else     if (stmt.onToken) {
+      throw new InvalidRequestException(String.format("The token() function must be applied to all partition key components or none of them"));
+    }
+ else     if (!restriction.isSlice()) {
+      if (restriction.isIN()) {
+        if (i != stmt.keyRestrictions.length - 1)         throw new InvalidRequestException(String.format("Partition KEY part %s cannot be restricted by IN relation (only the last part of the partition key can)",cname));
+        stmt.keyIsInRelation=true;
+      }
+    }
+ else {
+      throw new InvalidRequestException("Only EQ and IN relation are supported on the partition key (unless you use the token() function)");
+    }
+    previous=cname;
+  }
+}

@@ -1,0 +1,34 @@
+{
+  boolean canRestrictFurtherComponents=true;
+  CFDefinition.Name previous=null;
+  boolean previousIsSlice=false;
+  Iterator<CFDefinition.Name> iter=cfDef.clusteringColumns().iterator();
+  for (int i=0; i < stmt.columnRestrictions.length; i++) {
+    CFDefinition.Name cname=iter.next();
+    Restriction restriction=stmt.columnRestrictions[i];
+    if (restriction == null) {
+      canRestrictFurtherComponents=false;
+      previousIsSlice=false;
+    }
+ else     if (!canRestrictFurtherComponents) {
+      if (!(previousIsSlice && restriction.isSlice() && restriction.isMultiColumn())) {
+        if (hasQueriableIndex) {
+          stmt.usesSecondaryIndexing=true;
+          break;
+        }
+        throw new InvalidRequestException(String.format("PRIMARY KEY column \"%s\" cannot be restricted (preceding column \"%s\" is either not restricted or by a non-EQ relation)",cname,previous));
+      }
+    }
+ else     if (restriction.isSlice()) {
+      previousIsSlice=true;
+      canRestrictFurtherComponents=false;
+      Restriction.Slice slice=(Restriction.Slice)restriction;
+      if (!cfDef.isComposite && (!slice.isInclusive(Bound.START) || !slice.isInclusive(Bound.END)))       stmt.sliceRestriction=slice;
+    }
+ else     if (restriction.isIN()) {
+      if (!restriction.isMultiColumn() && i != stmt.columnRestrictions.length - 1)       throw new InvalidRequestException(String.format("Clustering column \"%s\" cannot be restricted by an IN relation",cname));
+      if (stmt.selectACollection())       throw new InvalidRequestException(String.format("Cannot restrict column \"%s\" by IN relation as a collection is selected by the query",cname));
+    }
+    previous=cname;
+  }
+}

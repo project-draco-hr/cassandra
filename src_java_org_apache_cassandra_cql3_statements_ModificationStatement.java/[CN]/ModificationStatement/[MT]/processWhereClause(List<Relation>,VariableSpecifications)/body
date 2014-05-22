@@ -1,6 +1,10 @@
 {
   CFDefinition cfDef=cfm.getCfDef();
-  for (  Relation rel : whereClause) {
+  for (  Relation relation : whereClause) {
+    if (!(relation instanceof SingleColumnRelation)) {
+      throw new InvalidRequestException(String.format("Multi-column relations cannot be used in WHERE clauses for modification statements: %s",relation));
+    }
+    SingleColumnRelation rel=(SingleColumnRelation)relation;
     CFDefinition.Name name=cfDef.get(rel.getEntity());
     if (name == null)     throw new InvalidRequestException(String.format("Unknown key identifier %s",rel.getEntity()));
 switch (name.kind) {
@@ -10,13 +14,13 @@ case COLUMN_ALIAS:
     if (rel.operator() == Relation.Type.EQ) {
       Term t=rel.getValue().prepare(name);
       t.collectMarkerSpecification(names);
-      restriction=new Restriction.EQ(t,false);
+      restriction=new SingleColumnRestriction.EQ(t,false);
     }
  else     if (name.kind == CFDefinition.Name.Kind.KEY_ALIAS && rel.operator() == Relation.Type.IN) {
       if (rel.getValue() != null) {
         Term t=rel.getValue().prepare(name);
         t.collectMarkerSpecification(names);
-        restriction=Restriction.IN.create(t);
+        restriction=new SingleColumnRestriction.InWithMarker((Lists.Marker)t);
       }
  else {
         List<Term> values=new ArrayList<Term>(rel.getInValues().size());
@@ -25,7 +29,7 @@ case COLUMN_ALIAS:
           t.collectMarkerSpecification(names);
           values.add(t);
         }
-        restriction=Restriction.IN.create(values);
+        restriction=new SingleColumnRestriction.InWithValues(values);
       }
     }
  else {
