@@ -1,0 +1,18 @@
+{
+switch (def.kind) {
+case PARTITION_KEY:
+    stmt.keyRestrictions[def.position()]=updateSingleColumnRestriction(def,stmt.keyRestrictions[def.position()],relation,names);
+  break;
+case CLUSTERING_COLUMN:
+stmt.columnRestrictions[def.position()]=updateSingleColumnRestriction(def,stmt.columnRestrictions[def.position()],relation,names);
+break;
+case COMPACT_VALUE:
+throw new InvalidRequestException(String.format("Predicates on the non-primary-key column (%s) of a COMPACT table are not yet supported",def.name));
+case REGULAR:
+case STATIC:
+Restriction r=updateSingleColumnRestriction(def,stmt.metadataRestrictions.get(def.name),relation,names);
+if (r.isIN() && !((Restriction.IN)r).canHaveOnlyOneValue()) throw new InvalidRequestException(String.format("IN predicates on non-primary-key columns (%s) is not yet supported",def.name));
+stmt.metadataRestrictions.put(def.name,r);
+break;
+}
+}

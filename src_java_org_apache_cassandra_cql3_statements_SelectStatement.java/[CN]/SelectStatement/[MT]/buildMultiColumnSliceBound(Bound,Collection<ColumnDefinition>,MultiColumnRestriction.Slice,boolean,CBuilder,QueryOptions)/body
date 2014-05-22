@@ -1,0 +1,19 @@
+{
+  Bound eocBound=isReversed ? Bound.reverse(bound) : bound;
+  Iterator<ColumnDefinition> iter=defs.iterator();
+  ColumnDefinition firstName=iter.next();
+  Bound firstComponentBound=isReversed == isReversedType(firstName) ? bound : Bound.reverse(bound);
+  if (!slice.hasBound(firstComponentBound)) {
+    Composite prefix=builder.build();
+    return Collections.singletonList(builder.remainingCount() > 0 && eocBound == Bound.END ? prefix.end() : prefix);
+  }
+  List<ByteBuffer> vals=slice.componentBounds(firstComponentBound,options);
+  builder.add(vals.get(firstName.position()));
+  while (iter.hasNext()) {
+    ColumnDefinition def=iter.next();
+    if (def.position() >= vals.size())     break;
+    builder.add(vals.get(def.position()));
+  }
+  Relation.Type relType=slice.getRelation(eocBound,firstComponentBound);
+  return Collections.singletonList(builder.build().withEOC(eocForRelation(relType)));
+}

@@ -1,2 +1,47 @@
 {
+  CFMetaData cfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
+  VariableSpecifications boundNames=getBoundVariables();
+  if (parameters.isCount && !selectClause.isEmpty())   throw new InvalidRequestException("Only COUNT(*) and COUNT(1) operations are currently supported.");
+  Selection selection=selectClause.isEmpty() ? Selection.wildcard(cfm) : Selection.fromSelectors(cfm,selectClause);
+  if (parameters.isDistinct)   validateDistinctSelection(selection.getColumns(),cfm.partitionKeyColumns());
+  SelectStatement stmt=new SelectStatement(cfm,boundNames.size(),parameters,selection,prepareLimit(boundNames));
+  boolean hasQueriableIndex=false;
+  boolean hasQueriableClusteringColumnIndex=false;
+  for (  Relation relation : whereClause) {
+    if (relation.isMultiColumn()) {
+      MultiColumnRelation rel=(MultiColumnRelation)relation;
+      List<ColumnDefinition> names=new ArrayList<>(rel.getEntities().size());
+      for (      ColumnIdentifier entity : rel.getEntities()) {
+        ColumnDefinition def=cfm.getColumnDefinition(entity);
+        boolean[] queriable=processRelationEntity(stmt,relation,entity,def);
+        hasQueriableIndex|=queriable[0];
+        hasQueriableClusteringColumnIndex|=queriable[1];
+        names.add(def);
+      }
+      updateRestrictionsForRelation(stmt,names,rel,boundNames);
+    }
+ else {
+      SingleColumnRelation rel=(SingleColumnRelation)relation;
+      ColumnIdentifier entity=rel.getEntity();
+      ColumnDefinition def=cfm.getColumnDefinition(entity);
+      boolean[] queriable=processRelationEntity(stmt,relation,entity,def);
+      hasQueriableIndex|=queriable[0];
+      hasQueriableClusteringColumnIndex|=queriable[1];
+      updateRestrictionsForRelation(stmt,def,rel,boundNames);
+    }
+  }
+  processPartitionKeyRestrictions(stmt,hasQueriableIndex,cfm);
+  if (!stmt.usesSecondaryIndexing)   stmt.restrictedColumns.removeAll(cfm.partitionKeyColumns());
+  if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
+  processColumnRestrictions(stmt,hasQueriableIndex,cfm);
+  if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
+  if (!stmt.usesSecondaryIndexing)   stmt.restrictedColumns.removeAll(cfm.clusteringColumns());
+  if (!stmt.metadataRestrictions.isEmpty()) {
+    if (!hasQueriableIndex)     throw new InvalidRequestException("No indexed columns present in by-columns clause with Equal operator");
+    stmt.usesSecondaryIndexing=true;
+  }
+  if (stmt.usesSecondaryIndexing)   validateSecondaryIndexSelections(stmt);
+  if (!stmt.parameters.orderings.isEmpty())   processOrderingClause(stmt,cfm);
+  checkNeedsFiltering(stmt);
+  return new ParsedStatement.Prepared(stmt,boundNames);
 }

@@ -1,0 +1,15 @@
+{
+  List<AbstractType<?>> types=new ArrayList<>(receivers.size());
+  StringBuilder inName=new StringBuilder("in(");
+  for (int i=0; i < receivers.size(); i++) {
+    ColumnSpecification receiver=receivers.get(i);
+    inName.append(receiver.name);
+    if (i < receivers.size() - 1)     inName.append(",");
+    if (receiver.type instanceof CollectionType)     throw new InvalidRequestException("Collection columns do not support IN relations");
+    types.add(receiver.type);
+  }
+  inName.append(')');
+  ColumnIdentifier identifier=new ColumnIdentifier(inName.toString(),true);
+  TupleType type=new TupleType(types);
+  return new ColumnSpecification(receivers.get(0).ksName,receivers.get(0).cfName,identifier,ListType.getInstance(type));
+}
