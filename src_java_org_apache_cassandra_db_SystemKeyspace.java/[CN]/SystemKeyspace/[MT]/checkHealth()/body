@@ -10,11 +10,11 @@
   }
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(LOCAL_CF);
   String req="SELECT cluster_name FROM system.%s WHERE key='%s'";
-  UntypedResultSet result=processInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+  UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
   if (result.isEmpty() || !result.one().has("cluster_name")) {
     if (!cfs.getSSTables().isEmpty())     throw new ConfigurationException("Found system keyspace files, but they couldn't be loaded!");
-    req="INSERT INTO system.%s (key, cluster_name) VALUES ('%s', '%s')";
-    processInternal(String.format(req,LOCAL_CF,LOCAL_KEY,DatabaseDescriptor.getClusterName()));
+    req="INSERT INTO system.%s (key, cluster_name) VALUES ('%s', ?)";
+    executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY),DatabaseDescriptor.getClusterName());
     return;
   }
   String savedClusterName=result.one().getString("cluster_name");
