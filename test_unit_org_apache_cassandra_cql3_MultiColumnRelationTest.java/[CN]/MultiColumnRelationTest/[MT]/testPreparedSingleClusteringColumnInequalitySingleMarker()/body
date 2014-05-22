@@ -1,0 +1,25 @@
+{
+  execute("INSERT INTO %s.single_clustering (a, b, c) VALUES (0, 0, 0)");
+  execute("INSERT INTO %s.single_clustering (a, b, c) VALUES (0, 1, 0)");
+  execute("INSERT INTO %s.single_clustering (a, b, c) VALUES (0, 2, 0)");
+  MD5Digest id=prepare("SELECT * FROM %s.single_clustering WHERE a=0 AND (b) > ?");
+  UntypedResultSet results=executePrepared(id,options(tuple(0)));
+  assertEquals(2,results.size());
+  checkRow(0,results,0,1,0);
+  checkRow(1,results,0,2,0);
+  results=executePrepared(prepare("SELECT * FROM %s.single_clustering WHERE a=0 AND (b) >= ?"),options(tuple(1)));
+  assertEquals(2,results.size());
+  checkRow(0,results,0,1,0);
+  checkRow(1,results,0,2,0);
+  results=executePrepared(prepare("SELECT * FROM %s.single_clustering WHERE a=0 AND (b) < ?"),options(tuple(2)));
+  assertEquals(2,results.size());
+  checkRow(0,results,0,0,0);
+  checkRow(1,results,0,1,0);
+  results=executePrepared(prepare("SELECT * FROM %s.single_clustering WHERE a=0 AND (b) <= ?"),options(tuple(1)));
+  assertEquals(2,results.size());
+  checkRow(0,results,0,0,0);
+  checkRow(1,results,0,1,0);
+  results=executePrepared(prepare("SELECT * FROM %s.single_clustering WHERE a=0 AND (b) > ? AND (b) < ?"),options(tuple(0),tuple(2)));
+  assertEquals(1,results.size());
+  checkRow(0,results,0,1,0);
+}
