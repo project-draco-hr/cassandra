@@ -16,7 +16,6 @@
     if (needsPostQueryOrdering())     throw new InvalidRequestException("Cannot page queries with both ORDER BY and a IN restriction on the partition key; you must either remove the " + "ORDER BY or the IN and sort client side, or disable paging for this query");
     List<Row> page=pager.fetchPage(pageSize);
     ResultMessage.Rows msg=processResults(page,options,limit,now);
-    if (!pager.isExhausted())     msg.result.metadata.setHasMorePages(pager.state());
-    return msg;
+    return pager.isExhausted() ? msg : msg.withPagingState(pager.state());
   }
 }
