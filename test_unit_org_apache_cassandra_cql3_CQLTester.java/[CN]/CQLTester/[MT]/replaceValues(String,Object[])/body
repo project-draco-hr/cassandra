@@ -1,0 +1,26 @@
+{
+  StringBuilder sb=new StringBuilder();
+  int last=0;
+  int i=0;
+  int idx;
+  while ((idx=query.indexOf('?',last)) > 0) {
+    if (i >= values.length)     throw new IllegalArgumentException(String.format("Not enough values provided. The query has at least %d variables but only %d values provided",i,values.length));
+    sb.append(query.substring(last,idx));
+    Object value=values[i++];
+    if (idx >= 3 && value instanceof List && query.substring(idx - 3,idx).equalsIgnoreCase("IN ")) {
+      List l=(List)value;
+      sb.append("(");
+      for (int j=0; j < l.size(); j++) {
+        if (j > 0)         sb.append(", ");
+        sb.append(formatForCQL(l.get(j)));
+      }
+      sb.append(")");
+    }
+ else {
+      sb.append(formatForCQL(value));
+    }
+    last=idx + 1;
+  }
+  sb.append(query.substring(last));
+  return sb.toString();
+}
