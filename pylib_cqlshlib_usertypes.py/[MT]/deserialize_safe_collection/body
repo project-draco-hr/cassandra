@@ -1,0 +1,19 @@
+def deserialize_safe_collection(cls, byts):
+    '\n        Temporary work around for CASSANDRA-7267\n    '
+    (subtype,) = cls.subtypes
+    unpack = uint16_unpack
+    length = 2
+    numelements = unpack(byts[:length])
+    if ((numelements == 0) and (len(byts) > 2)):
+        unpack = int32_unpack
+        length = 4
+        numelements = unpack(byts[:length])
+    p = length
+    result = []
+    for n in xrange(numelements):
+        itemlen = unpack(byts[p:(p + length)])
+        p += length
+        item = byts[p:(p + itemlen)]
+        p += itemlen
+        result.append(subtype.from_binary(item))
+    return cls.adapter(result)
