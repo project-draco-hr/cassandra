@@ -1,0 +1,25 @@
+def deserialize_safe_map(cls, byts):
+    '\n        Temporary work around for CASSANDRA-7267\n    '
+    (subkeytype, subvaltype) = cls.subtypes
+    unpack = uint16_unpack
+    length = 2
+    numelements = unpack(byts[:length])
+    if ((numelements == 0) and (len(byts) > 2)):
+        unpack = int32_unpack
+        length = 4
+        numelements = unpack(byts[:length])
+    p = length
+    themap = OrderedDict()
+    for n in xrange(numelements):
+        key_len = unpack(byts[p:(p + length)])
+        p += length
+        keybytes = byts[p:(p + key_len)]
+        p += key_len
+        val_len = unpack(byts[p:(p + length)])
+        p += length
+        valbytes = byts[p:(p + val_len)]
+        p += val_len
+        key = subkeytype.from_binary(keybytes)
+        val = subvaltype.from_binary(valbytes)
+        themap[key] = val
+    return themap
