@@ -1,0 +1,18 @@
+{
+  String partitionerName;
+  try {
+    partitionerName=getThriftClient(thriftHost).describe_partitioner();
+  }
+ catch (  TException e) {
+    throw new ShuffleError(String.format("Thrift request to %s:%d failed: %s",thriftHost,port,e.getMessage()));
+  }
+  try {
+    return (IPartitioner<?>)Class.forName(partitionerName).newInstance();
+  }
+ catch (  ClassNotFoundException e) {
+    throw new ShuffleError("Unable to locate class for partitioner: " + partitionerName);
+  }
+catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+}

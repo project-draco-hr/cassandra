@@ -1,11 +1,9 @@
 {
-  CassandraClient seedClient=null;
-  Map<String,String> tokenMap=null;
-  IPartitioner<?> partitioner=null;
+  Map<String,String> tokenMap;
   Multimap<String,String> endpointMap=HashMultimap.create();
   EndpointSnitchInfoMBean epSnitchProxy=getEpSnitchProxy(jmxConn.getMbeanServerConn());
   try {
-    seedClient=getThriftClient(thriftHost,thriftPort,thriftFramed);
+    CassandraClient seedClient=getThriftClient(thriftHost);
     tokenMap=seedClient.describe_token_map();
     for (    Map.Entry<String,String> entry : tokenMap.entrySet()) {
       String endpoint=entry.getValue(), token=entry.getKey();
@@ -26,14 +24,13 @@
 catch (  TException e) {
     throw new ShuffleError(String.format("Thrift request to %s:%d failed: %s",thriftHost,thriftPort,e.getMessage()));
   }
-  partitioner=getPartitioner(thriftHost,thriftPort,thriftFramed);
   Multimap<String,String> relocations=calculateRelocations(endpointMap);
   writeln("%-42s %-15s %-15s","Token","From","To");
   writeln("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~+~~~~~~~~~~~~~~~");
+  IPartitioner<?> partitioner=getPartitioner();
   for (  String endpoint : relocations.keySet()) {
     for (    String tok : relocations.get(endpoint))     writeln("%-42s %-15s %-15s",tok,tokenMap.get(tok),endpoint);
-    String cqlQuery=createShuffleBatchInsert(relocations.get(endpoint),partitioner);
-    executeCqlQuery(endpoint,thriftPort,thriftFramed,cqlQuery);
+    executeCqlQuery(endpoint,createShuffleBatchInsert(relocations.get(endpoint),partitioner));
   }
   if (enable)   enableRelocations(relocations.keySet());
 }
