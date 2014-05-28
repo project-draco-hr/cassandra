@@ -26,7 +26,8 @@
  else       if (request.reversed && compare < 0)       throw new InvalidRequestException(String.format("Reversed column slice at index %d had start less than finish",i));
       slices[i]=new ColumnSlice(start,finish);
     }
-    SliceQueryFilter filter=new SliceQueryFilter(slices,request.reversed,request.count);
+    ColumnSlice[] deoverlapped=ColumnSlice.deoverlapSlices(slices,request.reversed ? metadata.comparator.reverseComparator() : metadata.comparator);
+    SliceQueryFilter filter=new SliceQueryFilter(deoverlapped,request.reversed,request.count);
     ThriftValidation.validateKey(metadata,request.key);
     commands.add(ReadCommand.create(keyspace,request.key,request.column_parent.getColumn_family(),System.currentTimeMillis(),filter));
     return getSlice(commands,request.column_parent.isSetSuper_column(),consistencyLevel).entrySet().iterator().next().getValue();
