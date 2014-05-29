@@ -1,0 +1,12 @@
+{
+  if (isSignaled())   return true;
+  long start=System.nanoTime();
+  long until=start + unit.toNanos(time);
+  if (waiting == null)   waitingUpdater.compareAndSet(this,null,new WaitQueue());
+  WaitQueue.Signal s=waiting.register();
+  if (isSignaled()) {
+    s.cancel();
+    return true;
+  }
+  return s.awaitUntil(until) || isSignaled();
+}

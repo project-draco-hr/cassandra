@@ -1,0 +1,17 @@
+{
+  long delta=now - stopCheck;
+  if (delta <= 0) {
+    if (pool.stopCheck.compareAndSet(stopCheck,now - stopCheckInterval)) {
+      if (!assign(Work.STOP_SIGNALLED,true))       pool.schedule(Work.STOP_SIGNALLED);
+    }
+  }
+ else   if (soleSpinnerSpinTime > stopCheckInterval && pool.spinningCount.get() == 1) {
+    assign(Work.STOP_SIGNALLED,true);
+  }
+ else {
+    while (delta > stopCheckInterval * 2 && !pool.stopCheck.compareAndSet(stopCheck,now - stopCheckInterval)) {
+      stopCheck=pool.stopCheck.get();
+      delta=now - stopCheck;
+    }
+  }
+}
