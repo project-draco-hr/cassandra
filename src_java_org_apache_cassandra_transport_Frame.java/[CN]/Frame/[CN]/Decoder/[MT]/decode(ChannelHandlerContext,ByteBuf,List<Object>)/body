@@ -4,21 +4,33 @@
     if (bytesToDiscard <= 0)     fail();
     return;
   }
-  if (buffer.readableBytes() < Header.LENGTH)   return;
+  if (buffer.readableBytes() < Header.LEGACY_LENGTH)   return;
   int idx=buffer.readerIndex();
-  int firstByte=buffer.getByte(idx);
+  int firstByte=buffer.getByte(idx++);
   Message.Direction direction=Message.Direction.extractFromVersion(firstByte);
   int version=firstByte & 0x7F;
   if (version > Server.CURRENT_VERSION)   throw new ProtocolException("Invalid or unsupported protocol version: " + version);
-  int flags=buffer.getByte(idx + 1);
-  int streamId=buffer.getByte(idx + 2);
-  Message.Type type=Message.Type.fromOpcode(buffer.getByte(idx + 3),direction);
-  long bodyLength=buffer.getUnsignedInt(idx + Header.BODY_LENGTH_OFFSET);
+  if (version >= Server.VERSION_3 && buffer.readableBytes() < Header.MODERN_LENGTH)   return;
+  int flags=buffer.getByte(idx++);
+  int streamId, headerLength;
+  if (version >= Server.VERSION_3) {
+    streamId=buffer.getShort(idx);
+    idx+=2;
+    headerLength=Header.MODERN_LENGTH;
+  }
+ else {
+    streamId=buffer.getByte(idx);
+    idx++;
+    headerLength=Header.LEGACY_LENGTH;
+  }
+  Message.Type type=Message.Type.fromOpcode(buffer.getByte(idx++),direction);
+  long bodyLength=buffer.getUnsignedInt(idx);
+  idx+=Header.BODY_LENGTH_SIZE;
   if (bodyLength < 0) {
-    buffer.skipBytes(Header.LENGTH);
+    buffer.skipBytes(headerLength);
     throw new ProtocolException("Invalid frame body length: " + bodyLength);
   }
-  long frameLength=bodyLength + Header.LENGTH;
+  long frameLength=bodyLength + headerLength;
   if (frameLength > MAX_FRAME_LENGTH) {
     discardingTooLongFrame=true;
     tooLongStreamId=streamId;
@@ -27,10 +39,10 @@
     if (bytesToDiscard <= 0)     fail();
     return;
   }
-  int frameLengthInt=(int)frameLength;
-  if (buffer.readableBytes() < frameLengthInt)   return;
-  ByteBuf body=CBUtil.allocator.buffer((int)bodyLength).writeBytes(buffer.duplicate().slice(idx + Header.LENGTH,(int)bodyLength));
-  buffer.readerIndex(idx + frameLengthInt);
+  if (buffer.readableBytes() < frameLength)   return;
+  ByteBuf body=CBUtil.allocator.buffer((int)bodyLength).writeBytes(buffer.duplicate().slice(idx,(int)bodyLength));
+  idx+=bodyLength;
+  buffer.readerIndex(idx);
   Connection connection=ctx.channel().attr(Connection.attributeKey).get();
   if (connection == null) {
     connection=factory.newConnection(ctx.channel(),version);
