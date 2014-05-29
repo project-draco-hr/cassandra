@@ -1,0 +1,23 @@
+{
+  tasks.add(task);
+  int taskPermits;
+  while (true) {
+    long current=permits.get();
+    taskPermits=taskPermits(current);
+    if (permits.compareAndSet(current,updateTaskPermits(current,taskPermits + 1)))     break;
+  }
+  if (taskPermits == 0) {
+    pool.maybeStartSpinningWorker();
+  }
+ else   if (taskPermits >= maxTasksQueued) {
+    WaitQueue.Signal s=hasRoom.register();
+    if (taskPermits(permits.get()) > maxTasksQueued) {
+      if (takeWorkPermit(true))       pool.schedule(new Work(this));
+      totalBlocked.incrementAndGet();
+      currentlyBlocked.incrementAndGet();
+      s.awaitUninterruptibly();
+      currentlyBlocked.decrementAndGet();
+    }
+ else     s.cancel();
+  }
+}

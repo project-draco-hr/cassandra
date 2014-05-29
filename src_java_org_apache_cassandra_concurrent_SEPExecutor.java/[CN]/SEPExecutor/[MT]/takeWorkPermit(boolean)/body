@@ -1,0 +1,13 @@
+{
+  int taskDelta=takeTaskPermit ? 1 : 0;
+  while (true) {
+    long current=permits.get();
+    int workPermits=workPermits(current);
+    int taskPermits=taskPermits(current);
+    if (workPermits == 0 || taskPermits == 0)     return false;
+    if (permits.compareAndSet(current,combine(taskPermits - taskDelta,workPermits - 1))) {
+      if (takeTaskPermit && taskPermits == maxTasksQueued && hasRoom.hasWaiters())       hasRoom.signalAll();
+      return true;
+    }
+  }
+}

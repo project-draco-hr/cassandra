@@ -1,0 +1,14 @@
+{
+  Work state=get();
+  while (state.canAssign(self)) {
+    if (!compareAndSet(state,work)) {
+      state=get();
+      continue;
+    }
+    if (state.isSpinning())     stopSpinning();
+    if (work.isStop())     pool.descheduled.put(workerId,this);
+    if (state.isStopped() && (!work.isStop() || !stop()))     LockSupport.unpark(thread);
+    return true;
+  }
+  return false;
+}

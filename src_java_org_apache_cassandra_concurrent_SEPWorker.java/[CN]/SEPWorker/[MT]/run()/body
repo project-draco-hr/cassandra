@@ -1,0 +1,41 @@
+{
+  SEPExecutor assigned=null;
+  Runnable task=null;
+  try {
+    while (true) {
+      if (isSpinning() && !selfAssign()) {
+        doWaitSpin();
+        continue;
+      }
+      if (stop())       while (isStopped())       LockSupport.park();
+      assigned=get().assigned;
+      if (assigned == null)       continue;
+      task=assigned.tasks.poll();
+      set(Work.WORKING);
+      boolean shutdown;
+      while (true) {
+        assigned.maybeSchedule();
+        task.run();
+        task=null;
+        if ((shutdown=assigned.shuttingDown) || !assigned.takeTaskPermit())         break;
+        task=assigned.tasks.poll();
+      }
+      assigned.returnWorkPermit();
+      if (shutdown && assigned.getActiveCount() == 0)       assigned.shutdown.signalAll();
+      assigned=null;
+      if (!selfAssign())       startSpinning();
+    }
+  }
+ catch (  Throwable t) {
+    while (true) {
+      if (get().assigned != null) {
+        assigned=get().assigned;
+        set(Work.WORKING);
+      }
+      if (assign(Work.STOPPED,true))       break;
+    }
+    if (assigned != null)     assigned.returnWorkPermit();
+    if (task != null)     logger.error("Failed to execute task, unexpected exception killed worker: {}",t);
+ else     logger.error("Unexpected exception killed worker: {}",t);
+  }
+}
