@@ -1,0 +1,25 @@
+{
+  if (currentTable == null)   return;
+  final String toDrop=currentTable;
+  currentTable=null;
+  StorageService.tasks.execute(new Runnable(){
+    public void run(){
+      try {
+        schemaChange(String.format("DROP TABLE %s.%s",KEYSPACE,toDrop));
+        final CountDownLatch latch=new CountDownLatch(1);
+        StorageService.tasks.execute(new Runnable(){
+          public void run(){
+            latch.countDown();
+          }
+        }
+);
+        latch.await(2,TimeUnit.SECONDS);
+        removeAllSSTables(KEYSPACE,toDrop);
+      }
+ catch (      Exception e) {
+        throw new RuntimeException(e);
+      }
+    }
+  }
+);
+}

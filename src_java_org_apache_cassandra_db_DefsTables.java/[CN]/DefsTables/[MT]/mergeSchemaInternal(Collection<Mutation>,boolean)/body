@@ -1,0 +1,14 @@
+{
+  Map<DecoratedKey,ColumnFamily> oldKeyspaces=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF);
+  Map<DecoratedKey,ColumnFamily> oldColumnFamilies=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
+  Map<DecoratedKey,ColumnFamily> oldTypes=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF);
+  for (  Mutation mutation : mutations)   mutation.apply();
+  if (doFlush && !StorageService.instance.isClientMode())   flushSchemaCFs();
+  Map<DecoratedKey,ColumnFamily> newKeyspaces=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_KEYSPACES_CF);
+  Map<DecoratedKey,ColumnFamily> newColumnFamilies=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_COLUMNFAMILIES_CF);
+  Map<DecoratedKey,ColumnFamily> newTypes=SystemKeyspace.getSchema(SystemKeyspace.SCHEMA_USER_TYPES_CF);
+  Set<String> keyspacesToDrop=mergeKeyspaces(oldKeyspaces,newKeyspaces);
+  mergeColumnFamilies(oldColumnFamilies,newColumnFamilies);
+  mergeTypes(oldTypes,newTypes);
+  for (  String keyspaceToDrop : keyspacesToDrop)   dropKeyspace(keyspaceToDrop);
+}
