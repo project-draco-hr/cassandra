@@ -1,0 +1,29 @@
+{
+  if (result == null) {
+    if (rows.length > 0)     Assert.fail(String.format("No rows returned by query but %d expected",rows.length));
+    return;
+  }
+  List<ColumnSpecification> meta=result.metadata();
+  Iterator<UntypedResultSet.Row> iter=result.iterator();
+  int i=0;
+  while (iter.hasNext() && i < rows.length) {
+    Object[] expected=rows[i++];
+    UntypedResultSet.Row actual=iter.next();
+    Assert.assertEquals(String.format("Invalid number of (expected) values provided for row %d",i),meta.size(),expected.length);
+    for (int j=0; j < meta.size(); j++) {
+      ColumnSpecification column=meta.get(j);
+      Object expectedValue=expected[j];
+      ByteBuffer expectedByteValue=makeByteBuffer(expected[j],(AbstractType)column.type);
+      ByteBuffer actualValue=actual.getBytes(column.name.toString());
+      if (!Objects.equal(expectedByteValue,actualValue))       Assert.fail(String.format("Invalid value for row %d column %d (%s), expected <%s> but got <%s>",i,j,column.name,formatValue(expectedByteValue,column.type),formatValue(actualValue,column.type)));
+    }
+  }
+  if (iter.hasNext()) {
+    while (iter.hasNext()) {
+      iter.next();
+      i++;
+    }
+    Assert.fail(String.format("Got less rows than expected. Expected %d but got %d.",rows.length,i));
+  }
+  Assert.assertTrue(String.format("Got more rows than expected. Expected %d but got %d",rows.length,i),i == rows.length);
+}

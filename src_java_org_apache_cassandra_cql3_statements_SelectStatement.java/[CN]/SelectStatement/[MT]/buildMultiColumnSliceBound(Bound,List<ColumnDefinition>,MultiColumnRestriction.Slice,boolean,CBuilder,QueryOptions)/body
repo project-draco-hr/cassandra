@@ -1,0 +1,23 @@
+{
+  Bound eocBound=isReversed ? Bound.reverse(bound) : bound;
+  Iterator<ColumnDefinition> iter=defs.iterator();
+  ColumnDefinition firstName=iter.next();
+  Bound firstComponentBound=isReversed == isReversedType(firstName) ? bound : Bound.reverse(bound);
+  if (!slice.hasBound(firstComponentBound)) {
+    Composite prefix=builder.build();
+    return Collections.singletonList(builder.remainingCount() > 0 && eocBound == Bound.END ? prefix.end() : prefix);
+  }
+  List<ByteBuffer> vals=slice.componentBounds(firstComponentBound,options);
+  ByteBuffer v=vals.get(firstName.position());
+  if (v == null)   throw new InvalidRequestException("Invalid null value in condition for column " + firstName.name);
+  builder.add(v);
+  while (iter.hasNext()) {
+    ColumnDefinition def=iter.next();
+    if (def.position() >= vals.size())     break;
+    v=vals.get(def.position());
+    if (v == null)     throw new InvalidRequestException("Invalid null value in condition for column " + def.name);
+    builder.add(v);
+  }
+  Relation.Type relType=slice.getRelation(eocBound,firstComponentBound);
+  return Collections.singletonList(builder.build().withEOC(eocForRelation(relType)));
+}

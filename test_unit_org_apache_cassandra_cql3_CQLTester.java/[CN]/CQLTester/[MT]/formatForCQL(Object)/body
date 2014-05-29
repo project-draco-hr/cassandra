@@ -1,0 +1,43 @@
+{
+  if (value == null)   return "null";
+  if (value instanceof TupleValue)   return ((TupleValue)value).toCQLString();
+  if (value instanceof Collection) {
+    StringBuilder sb=new StringBuilder();
+    if (value instanceof List) {
+      List l=(List)value;
+      sb.append("[");
+      for (int i=0; i < l.size(); i++) {
+        if (i > 0)         sb.append(", ");
+        sb.append(formatForCQL(l.get(i)));
+      }
+      sb.append("[");
+    }
+ else     if (value instanceof Set) {
+      Set s=(Set)value;
+      sb.append("{");
+      Iterator iter=s.iterator();
+      while (iter.hasNext()) {
+        sb.append(formatForCQL(iter.next()));
+        if (iter.hasNext())         sb.append(", ");
+      }
+      sb.append("}");
+    }
+ else {
+      Map m=(Map)value;
+      sb.append("{");
+      Iterator iter=m.entrySet().iterator();
+      while (iter.hasNext()) {
+        Map.Entry entry=(Map.Entry)iter.next();
+        sb.append(formatForCQL(entry.getKey())).append(": ").append(formatForCQL(entry.getValue()));
+        if (iter.hasNext())         sb.append(", ");
+      }
+      sb.append("}");
+    }
+    return sb.toString();
+  }
+  AbstractType type=typeFor(value);
+  String s=type.getString(type.decompose(value));
+  if (type instanceof UTF8Type)   return String.format("'%s'",s.replaceAll("'","''"));
+  if (type instanceof BytesType)   return "0x" + s;
+  return s;
+}

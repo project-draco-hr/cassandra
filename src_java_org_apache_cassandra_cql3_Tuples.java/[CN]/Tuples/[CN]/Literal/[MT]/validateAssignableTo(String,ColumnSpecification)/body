@@ -1,0 +1,10 @@
+{
+  if (!(receiver.type instanceof TupleType))   throw new InvalidRequestException(String.format("Invalid tuple type literal for %s of type %s",receiver.name,receiver.type.asCQL3Type()));
+  TupleType tt=(TupleType)receiver.type;
+  for (int i=0; i < elements.size(); i++) {
+    if (i >= tt.size())     throw new InvalidRequestException(String.format("Invalid tuple literal for %s: too many elements. Type %s expects %d but got %d",receiver.name,tt.asCQL3Type(),tt.size(),elements.size()));
+    Term.Raw value=elements.get(i);
+    ColumnSpecification spec=componentSpecOf(receiver,i);
+    if (!value.isAssignableTo(keyspace,spec))     throw new InvalidRequestException(String.format("Invalid tuple literal for %s: component %d is not of type %s",receiver.name,i,spec.type.asCQL3Type()));
+  }
+}
