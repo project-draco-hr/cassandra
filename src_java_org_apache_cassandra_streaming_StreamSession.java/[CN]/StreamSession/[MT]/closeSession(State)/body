@@ -1,10 +1,12 @@
 {
-  state(finalState);
-  if (finalState == State.FAILED) {
-    for (    StreamTask task : Iterables.concat(receivers.values(),transfers.values()))     task.abort();
+  if (isAborted.compareAndSet(false,true)) {
+    state(finalState);
+    if (finalState == State.FAILED) {
+      for (      StreamTask task : Iterables.concat(receivers.values(),transfers.values()))       task.abort();
+    }
+    handler.close();
+    Gossiper.instance.unregister(this);
+    FailureDetector.instance.unregisterFailureDetectionEventListener(this);
+    streamResult.handleSessionComplete(this);
   }
-  handler.close();
-  Gossiper.instance.unregister(this);
-  FailureDetector.instance.unregisterFailureDetectionEventListener(this);
-  streamResult.handleSessionComplete(this);
 }
