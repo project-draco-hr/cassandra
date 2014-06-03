@@ -16,7 +16,7 @@
   ActiveRepairService.instance.addToActiveSessions(this);
   try {
     for (    String cfname : cfnames) {
-      RepairJob job=new RepairJob(parentRepairSession,id,keyspace,cfname,range,isSequential,taskExecutor);
+      RepairJob job=new RepairJob(this,parentRepairSession,id,keyspace,cfname,range,isSequential,taskExecutor);
       jobs.offer(job);
     }
     logger.debug("Sending tree requests to endpoints {}",endpoints);
@@ -36,5 +36,6 @@
  finally {
     terminate();
     ActiveRepairService.instance.removeFromActiveSessions(this);
+    if (fdUnregistered.compareAndSet(false,true))     FailureDetector.instance.unregisterFailureDetectionEventListener(this);
   }
 }
