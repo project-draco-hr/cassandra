@@ -2,12 +2,13 @@
   List<ByteBuffer> keys=buildPartitionKeyNames(options);
   Composite clusteringPrefix=createClusteringPrefix(options);
   UpdateParameters params=makeUpdateParameters(keys,clusteringPrefix,options,local,now);
-  Collection<IMutation> mutations=new ArrayList<IMutation>();
+  Collection<IMutation> mutations=new ArrayList<IMutation>(keys.size());
   for (  ByteBuffer key : keys) {
     ThriftValidation.validateKey(cfm,key);
     ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cfm);
     addUpdateForKey(cf,key,clusteringPrefix,params);
     Mutation mut=new Mutation(cfm.ksName,key,cf);
+    mut.setSourceFrame(sourceFrame);
     mutations.add(isCounter() ? new CounterMutation(mut,options.getConsistency()) : mut);
   }
   return mutations;

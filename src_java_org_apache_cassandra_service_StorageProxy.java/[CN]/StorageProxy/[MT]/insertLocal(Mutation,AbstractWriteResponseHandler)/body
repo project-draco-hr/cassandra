@@ -1,10 +1,16 @@
 {
+  mutation.retain();
   StageManager.getStage(Stage.MUTATION).maybeExecuteImmediately(new LocalMutationRunnable(){
     public void runMayThrow(){
-      IMutation processed=SinkManager.processWriteRequest(mutation);
-      if (processed != null) {
-        ((Mutation)processed).apply();
-        responseHandler.response(null);
+      try {
+        IMutation processed=SinkManager.processWriteRequest(mutation);
+        if (processed != null) {
+          ((Mutation)processed).apply();
+          responseHandler.response(null);
+        }
+      }
+  finally {
+        mutation.release();
       }
     }
   }
