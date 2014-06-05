@@ -26,9 +26,14 @@
         }
 );
       }
-      if (expiredCallbackInfo.shouldHint()) {
-        Mutation mutation=(Mutation)((WriteCallbackInfo)expiredCallbackInfo).sentMessage.payload;
-        return StorageProxy.submitHint(mutation,expiredCallbackInfo.target,null);
+      Mutation mutation=(Mutation)((WriteCallbackInfo)expiredCallbackInfo).sentMessage.payload;
+      try {
+        if (expiredCallbackInfo.shouldHint()) {
+          return StorageProxy.submitHint(mutation,expiredCallbackInfo.target,null);
+        }
+      }
+  finally {
+        mutation.release();
       }
       return null;
     }

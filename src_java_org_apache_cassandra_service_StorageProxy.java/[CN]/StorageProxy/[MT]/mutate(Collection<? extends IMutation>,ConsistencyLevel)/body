@@ -2,9 +2,10 @@
   Tracing.trace("Determining replicas for mutation");
   final String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
   long startTime=System.nanoTime();
-  List<AbstractWriteResponseHandler> responseHandlers=new ArrayList<AbstractWriteResponseHandler>(mutations.size());
+  List<AbstractWriteResponseHandler> responseHandlers=new ArrayList<>(mutations.size());
   try {
     for (    IMutation mutation : mutations) {
+      mutation.retain();
       if (mutation instanceof CounterMutation) {
         responseHandlers.add(mutateCounter((CounterMutation)mutation,localDataCenter));
       }
@@ -47,6 +48,8 @@ catch (  OverloadedException e) {
     throw e;
   }
  finally {
+    Iterator<? extends IMutation> it=mutations.iterator();
+    for (int i=0; i < responseHandlers.size(); i++)     it.next().release();
     writeMetrics.addNano(System.nanoTime() - startTime);
   }
 }
