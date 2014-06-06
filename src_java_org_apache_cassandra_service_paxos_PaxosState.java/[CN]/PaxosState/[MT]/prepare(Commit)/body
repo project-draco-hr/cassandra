@@ -1,5 +1,7 @@
 {
-synchronized (lockFor(toPrepare.key)) {
+  Lock lock=LOCKS.get(toPrepare.key);
+  lock.lock();
+  try {
     PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.key,toPrepare.update.metadata());
     if (toPrepare.isAfter(state.promised)) {
       Tracing.trace("Promising ballot {}",toPrepare.ballot);
@@ -10,5 +12,8 @@ synchronized (lockFor(toPrepare.key)) {
       Tracing.trace("Promise rejected; {} is not sufficiently newer than {}",toPrepare,state.promised);
       return new PrepareResponse(false,state.promised,state.mostRecentCommit);
     }
+  }
+  finally {
+    lock.unlock();
   }
 }
