@@ -10,7 +10,7 @@
   while (!stopped) {
     while (activeClients.get() >= args.maxWorkerThreads) {
       try {
-        Thread.sleep(100);
+        Thread.sleep(10);
       }
  catch (      InterruptedException e) {
         throw new AssertionError(e);
@@ -27,6 +27,10 @@
       if (!stopped) {
         logger.warn("Transport error occurred during acceptance of message.",ttx);
       }
+    }
+catch (    RejectedExecutionException e) {
+      logger.debug("Dropping client connection because our limit of {} has been reached",args.maxWorkerThreads);
+      continue;
     }
     if (activeClients.get() >= args.maxWorkerThreads)     logger.warn("Maximum number of clients " + args.maxWorkerThreads + " reached");
   }
