@@ -1,0 +1,8 @@
+{
+  createTable("CREATE TABLE %s (account text, id int, categories map<text,text>, PRIMARY KEY (account, id));");
+  execute("CREATE INDEX cat_index_map_value ON  %s(categories);");
+  execute("INSERT INTO %s (account, id , categories) VALUES ('test', 5, {'lmn':'foo'});");
+  assertEmpty(execute("SELECT * FROM %s WHERE account = 'xyz' AND categories CONTAINS 'foo';"));
+  assertRows(execute("SELECT * FROM %s WHERE account = 'test' AND categories CONTAINS 'foo';"),row("test",5,ImmutableMap.of("lmn","foo")));
+  assertRows(execute("SELECT * FROM %s WHERE categories CONTAINS 'foo';"),row("test",5,ImmutableMap.of("lmn","foo")));
+}
