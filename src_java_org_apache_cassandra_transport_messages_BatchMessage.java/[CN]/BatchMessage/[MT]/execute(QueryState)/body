@@ -11,6 +11,7 @@
     }
     QueryHandler handler=state.getClientState().getCQLQueryHandler();
     List<ParsedStatement.Prepared> prepared=new ArrayList<>(queryOrIdList.size());
+    boolean hasConditions=false;
     for (int i=0; i < queryOrIdList.size(); i++) {
       Object query=queryOrIdList.get(i);
       ParsedStatement.Prepared p;
@@ -33,6 +34,7 @@
       CQLStatement statement=p.statement;
       if (!(statement instanceof ModificationStatement))       throw new InvalidRequestException("Invalid statement in batch: only UPDATE, INSERT and DELETE statements are allowed.");
       ModificationStatement mst=(ModificationStatement)statement;
+      hasConditions|=mst.hasConditions();
       if (mst.isCounter()) {
         if (type != BatchStatement.Type.COUNTER)         throw new InvalidRequestException("Cannot include counter statement in a non-counter batch");
       }
@@ -41,7 +43,7 @@
       }
       statements.add(mst);
     }
-    BatchStatement batch=new BatchStatement(-1,type,statements,Attributes.none());
+    BatchStatement batch=new BatchStatement(-1,type,statements,Attributes.none(),hasConditions);
     Message.Response response=handler.processBatch(batch,state,batchOptions);
     if (tracingId != null)     response.setTracingId(tracingId);
     return response;
