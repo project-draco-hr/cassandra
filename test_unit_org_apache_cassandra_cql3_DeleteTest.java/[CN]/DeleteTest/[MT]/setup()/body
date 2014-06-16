@@ -1,0 +1,28 @@
+{
+  Schema.instance.clear();
+  cassandra=new EmbeddedCassandraService();
+  cassandra.start();
+  cluster=Cluster.builder().addContactPoint("127.0.0.1").withPort(DatabaseDescriptor.getNativeTransportPort()).build();
+  session=cluster.connect();
+  session.execute("drop keyspace if exists junit;");
+  session.execute("create keyspace junit WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 2 };");
+  session.execute("CREATE TABLE junit.tpc_base (\n" + "  id int ,\n" + "  cid int ,\n"+ "  val text ,\n"+ "  PRIMARY KEY ( ( id ), cid )\n"+ ");");
+  session.execute("CREATE TABLE junit.tpc_inherit_a (\n" + "  id int ,\n" + "  cid int ,\n"+ "  inh_a text ,\n"+ "  val text ,\n"+ "  PRIMARY KEY ( ( id ), cid )\n"+ ");");
+  session.execute("CREATE TABLE junit.tpc_inherit_b (\n" + "  id int ,\n" + "  cid int ,\n"+ "  inh_b text ,\n"+ "  val text ,\n"+ "  PRIMARY KEY ( ( id ), cid )\n"+ ");");
+  session.execute("CREATE TABLE junit.tpc_inherit_b2 (\n" + "  id int ,\n" + "  cid int ,\n"+ "  inh_b text ,\n"+ "  inh_b2 text ,\n"+ "  val text ,\n"+ "  PRIMARY KEY ( ( id ), cid )\n"+ ");");
+  session.execute("CREATE TABLE junit.tpc_inherit_c (\n" + "  id int ,\n" + "  cid int ,\n"+ "  inh_c text ,\n"+ "  val text ,\n"+ "  PRIMARY KEY ( ( id ), cid )\n"+ ");");
+  try {
+    Thread.sleep(2000L);
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  pstmtI=session.prepare("insert into junit.tpc_inherit_b ( id, cid, inh_b, val) values (?, ?, ?, ?)");
+  pstmtU=session.prepare("update junit.tpc_inherit_b set inh_b=?, val=? where id=? and cid=?");
+  pstmtD=session.prepare("delete from junit.tpc_inherit_b where id=? and cid=?");
+  pstmt1=session.prepare("select id, cid, val from junit.tpc_base where id=? and cid=?");
+  pstmt2=session.prepare("select id, cid, inh_a, val from junit.tpc_inherit_a where id=? and cid=?");
+  pstmt3=session.prepare("select id, cid, inh_b, val from junit.tpc_inherit_b where id=? and cid=?");
+  pstmt4=session.prepare("select id, cid, inh_b, inh_b2, val from junit.tpc_inherit_b2 where id=? and cid=?");
+  pstmt5=session.prepare("select id, cid, inh_c, val from junit.tpc_inherit_c where id=? and cid=?");
+}
