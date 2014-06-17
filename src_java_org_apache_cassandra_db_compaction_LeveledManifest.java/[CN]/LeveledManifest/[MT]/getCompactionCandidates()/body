@@ -18,8 +18,15 @@
         }
       }
       Collection<SSTableReader> candidates=getCandidatesFor(i);
-      if (logger.isDebugEnabled())       logger.debug("Compaction candidates for L{} are {}",i,toString(candidates));
-      if (!candidates.isEmpty())       return new CompactionCandidate(candidates,getNextLevel(candidates),cfs.getCompactionStrategy().getMaxSSTableBytes());
+      if (!candidates.isEmpty()) {
+        int nextLevel=getNextLevel(candidates);
+        candidates=getOverlappingStarvedSSTables(nextLevel,candidates);
+        if (logger.isDebugEnabled())         logger.debug("Compaction candidates for L{} are {}",i,toString(candidates));
+        return new CompactionCandidate(candidates,nextLevel,cfs.getCompactionStrategy().getMaxSSTableBytes());
+      }
+ else {
+        logger.debug("No compaction candidates for L{}",i);
+      }
     }
   }
   if (generations[0].isEmpty())   return null;
