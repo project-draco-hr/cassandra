@@ -5,9 +5,8 @@
   for (int i=0; i < 1000; i++) {
     Mutation mutation=new Mutation("Keyspace1",bytes(i));
     mutation.add("Standard1",comparator.makeCellName(bytes(i)),bytes(i),System.currentTimeMillis());
-    long timestamp=System.currentTimeMillis();
-    if (i < 500)     timestamp-=DatabaseDescriptor.getWriteRpcTimeout() * 2;
-    BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp * 1000).apply();
+    long timestamp=i < 500 ? (System.currentTimeMillis() - DatabaseDescriptor.getWriteRpcTimeout() * 2) * 1000 : Long.MAX_VALUE;
+    BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp).apply();
   }
   Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.BATCHLOG_CF).forceBlockingFlush();
   assertEquals(1000,BatchlogManager.instance.countAllBatches() - initialAllBatches);
