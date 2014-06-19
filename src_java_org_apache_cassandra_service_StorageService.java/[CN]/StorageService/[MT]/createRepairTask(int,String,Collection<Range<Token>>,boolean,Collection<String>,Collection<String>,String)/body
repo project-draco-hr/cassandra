@@ -1,16 +1,13 @@
 {
-  return new FutureTask<Object>(new WrappedRunnable(){
+  if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.getLocalDataCenter())) {
+    throw new IllegalArgumentException("the local data center must be part of the repair");
+  }
+  return new FutureTask<>(new WrappedRunnable(){
     protected void runMayThrow() throws Exception {
       String message=String.format("Starting repair command #%d, repairing %d ranges for keyspace %s",cmd,ranges.size(),keyspace);
       logger.info(message);
       sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.STARTED.ordinal()});
-      if (dataCenters != null && !dataCenters.contains(DatabaseDescriptor.getLocalDataCenter())) {
-        message=String.format("Cancelling repair command #%d (the local data center must be part of the repair)",cmd);
-        logger.error(message);
-        sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
-        return;
-      }
-      List<RepairFuture> futures=new ArrayList<RepairFuture>(ranges.size());
+      List<RepairFuture> futures=new ArrayList<>(ranges.size());
       for (      Range<Token> range : ranges) {
         RepairFuture future;
         try {
