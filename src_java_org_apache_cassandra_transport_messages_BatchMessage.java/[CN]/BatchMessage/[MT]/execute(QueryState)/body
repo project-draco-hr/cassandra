@@ -9,9 +9,8 @@
       state.createTracingSession();
       Tracing.instance.begin("Execute batch of CQL3 queries",Collections.<String,String>emptyMap());
     }
-    QueryHandler handler=state.getClientState().getCQLQueryHandler();
+    QueryHandler handler=ClientState.getCQLQueryHandler();
     List<ParsedStatement.Prepared> prepared=new ArrayList<>(queryOrIdList.size());
-    boolean hasConditions=false;
     for (int i=0; i < queryOrIdList.size(); i++) {
       Object query=queryOrIdList.get(i);
       ParsedStatement.Prepared p;
@@ -31,13 +30,10 @@
     for (int i=0; i < prepared.size(); i++) {
       ParsedStatement.Prepared p=prepared.get(i);
       batchOptions.forStatement(i).prepare(p.boundNames);
-      CQLStatement statement=p.statement;
-      if (!(statement instanceof ModificationStatement))       throw new InvalidRequestException("Invalid statement in batch: only UPDATE, INSERT and DELETE statements are allowed.");
-      ModificationStatement mst=(ModificationStatement)statement;
-      hasConditions|=mst.hasConditions();
-      statements.add(mst);
+      if (!(p.statement instanceof ModificationStatement))       throw new InvalidRequestException("Invalid statement in batch: only UPDATE, INSERT and DELETE statements are allowed.");
+      statements.add((ModificationStatement)p.statement);
     }
-    BatchStatement batch=new BatchStatement(-1,type,statements,Attributes.none(),hasConditions);
+    BatchStatement batch=new BatchStatement(-1,type,statements,Attributes.none());
     Message.Response response=handler.processBatch(batch,state,batchOptions);
     if (tracingId != null)     response.setTracingId(tracingId);
     return response;
