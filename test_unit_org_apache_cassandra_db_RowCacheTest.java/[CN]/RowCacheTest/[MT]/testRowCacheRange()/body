@@ -1,6 +1,6 @@
 {
   CompactionManager.instance.disableAutoCompaction();
-  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  Keyspace keyspace=Keyspace.open(KEYSPACE_CACHED);
   String cf="CachedIntCF";
   ColumnFamilyStore cachedStore=keyspace.getColumnFamilyStore(cf);
   long startRowCacheHits=cachedStore.metric.rowCacheHit.count();
@@ -10,7 +10,7 @@
   ByteBuffer key=ByteBufferUtil.bytes("rowcachekey");
   DecoratedKey dk=cachedStore.partitioner.decorateKey(key);
   RowCacheKey rck=new RowCacheKey(cachedStore.metadata.cfId,dk);
-  Mutation mutation=new Mutation(KEYSPACE,key);
+  Mutation mutation=new Mutation(KEYSPACE_CACHED,key);
   for (int i=0; i < 200; i++)   mutation.add(cf,Util.cellname(i),ByteBufferUtil.bytes("val" + i),System.currentTimeMillis());
   mutation.applyUnsafe();
   cachedStore.getColumnFamily(QueryFilter.getSliceFilter(dk,cf,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));

@@ -1,13 +1,13 @@
 {
-  QueryProcessor.process("CREATE TABLE \"Keyspace1\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE",ConsistencyLevel.ONE);
-  Keyspace keyspace=Keyspace.open("Keyspace1");
+  QueryProcessor.process(String.format("CREATE TABLE \"%s\".test_compact_dynamic_columns (a int, b text, c text, PRIMARY KEY (a, b)) WITH COMPACT STORAGE",KEYSPACE),ConsistencyLevel.ONE);
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("test_compact_dynamic_columns");
-  QueryProcessor.executeInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')");
-  QueryProcessor.executeInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'b', 'bar')");
-  QueryProcessor.executeInternal("INSERT INTO \"Keyspace1\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'c', 'boo')");
+  QueryProcessor.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'a', 'foo')",KEYSPACE));
+  QueryProcessor.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'b', 'bar')",KEYSPACE));
+  QueryProcessor.executeInternal(String.format("INSERT INTO \"%s\".test_compact_dynamic_columns (a, b, c) VALUES (0, 'c', 'boo')",KEYSPACE));
   cfs.forceBlockingFlush();
   CompactionManager.instance.performScrub(cfs,true);
-  UntypedResultSet rs=QueryProcessor.executeInternal("SELECT * FROM \"Keyspace1\".test_compact_dynamic_columns");
+  UntypedResultSet rs=QueryProcessor.executeInternal(String.format("SELECT * FROM \"%s\".test_compact_dynamic_columns",KEYSPACE));
   assertEquals(3,rs.size());
   Iterator<UntypedResultSet.Row> iter=rs.iterator();
   assertEquals("foo",iter.next().getString("c"));
