@@ -1,0 +1,11 @@
+{
+  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.uuid_now_reversed (a int, b timeuuid, PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
+  String insert="INSERT INTO %s.uuid_now_reversed (a, b) VALUES (0, now())";
+  String select="SELECT * FROM %s.uuid_now_reversed WHERE a=0 AND b < now()";
+  execute(insert);
+  UntypedResultSet results=execute(select);
+  assertEquals(1,results.size());
+  executePrepared(prepare(insert),QueryOptions.DEFAULT);
+  results=executePrepared(prepare(select),QueryOptions.DEFAULT);
+  assertEquals(2,results.size());
+}

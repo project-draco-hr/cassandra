@@ -1,0 +1,11 @@
+{
+  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.date_compatibility (a int, b timestamp, c bigint, d varint, PRIMARY KEY (a, b, c, d))");
+  String insert="INSERT INTO %s.date_compatibility (a, b, c, d) VALUES (0, unixTimestampOf(now()), dateOf(now()), dateOf(now()))";
+  String select="SELECT * FROM %s.date_compatibility WHERE a=0 AND b < unixTimestampOf(now())";
+  execute(insert);
+  UntypedResultSet results=execute(select);
+  assertEquals(1,results.size());
+  executePrepared(prepare(insert),QueryOptions.DEFAULT);
+  results=executePrepared(prepare(select),QueryOptions.DEFAULT);
+  assertEquals(2,results.size());
+}
