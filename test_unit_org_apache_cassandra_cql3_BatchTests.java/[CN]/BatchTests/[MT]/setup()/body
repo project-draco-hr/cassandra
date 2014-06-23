@@ -1,0 +1,12 @@
+{
+  cassandra=new EmbeddedCassandraService();
+  cassandra.start();
+  cluster=Cluster.builder().addContactPoint("127.0.0.1").withPort(DatabaseDescriptor.getNativeTransportPort()).build();
+  session=cluster.connect();
+  session.execute("drop keyspace if exists junit;");
+  session.execute("create keyspace junit WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };");
+  session.execute("CREATE TABLE junit.noncounter (\n" + "  id int PRIMARY KEY,\n" + "  val text\n"+ ");");
+  session.execute("CREATE TABLE junit.counter (\n" + "  id int PRIMARY KEY,\n" + "  val counter,\n"+ ");");
+  noncounter=session.prepare("insert into junit.noncounter(id, val)values(?,?)");
+  counter=session.prepare("update junit.counter set val = val + ? where id = ?");
+}
