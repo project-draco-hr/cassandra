@@ -1,18 +1,18 @@
 {
   factory=new ColumnFamilyMetricNameFactory(cfs);
-  memtableColumnsCount=Metrics.newGauge(factory.createMetricName("MemtableColumnsCount"),new Gauge<Long>(){
+  memtableColumnsCount=createColumnFamilyGauge("MemtableColumnsCount",new Gauge<Long>(){
     public Long value(){
       return cfs.getDataTracker().getMemtable().getOperations();
     }
   }
 );
-  memtableDataSize=Metrics.newGauge(factory.createMetricName("MemtableDataSize"),new Gauge<Long>(){
+  memtableDataSize=createColumnFamilyGauge("MemtableDataSize",new Gauge<Long>(){
     public Long value(){
       return cfs.getDataTracker().getMemtable().getLiveSize();
     }
   }
 );
-  memtableSwitchCount=Metrics.newCounter(factory.createMetricName("MemtableSwitchCount"));
+  memtableSwitchCount=createColumnFamilyCounter("MemtableSwitchCount");
   estimatedRowSizeHistogram=Metrics.newGauge(factory.createMetricName("EstimatedRowSizeHistogram"),new Gauge<long[]>(){
     public long[] value(){
       long[] histogram=new long[90];
@@ -35,8 +35,8 @@
     }
   }
 );
-  sstablesPerReadHistogram=Metrics.newHistogram(factory.createMetricName("SSTablesPerReadHistogram"),true);
-  compressionRatio=Metrics.newGauge(factory.createMetricName("CompressionRatio"),new Gauge<Double>(){
+  sstablesPerReadHistogram=createColumnFamilyHistogram("SSTablesPerReadHistogram",cfs.table.metric.sstablesPerReadHistogram);
+  compressionRatio=createColumnFamilyGauge("CompressionRatio",new Gauge<Double>(){
     public Double value(){
       double sum=0;
       int total=0;
@@ -46,27 +46,42 @@
           total++;
         }
       }
-      return total != 0 ? (double)sum / total : 0;
+      return total != 0 ? sum / total : 0;
+    }
+  }
+,new Gauge<Double>(){
+    public Double value(){
+      double sum=0;
+      int total=0;
+      for (      Table keyspace : Table.all()) {
+        for (        SSTableReader sstable : keyspace.getAllSSTables()) {
+          if (sstable.getCompressionRatio() != SSTableMetadata.NO_COMPRESSION_RATIO) {
+            sum+=sstable.getCompressionRatio();
+            total++;
+          }
+        }
+      }
+      return total != 0 ? sum / total : 0;
     }
   }
 );
-  readLatency=new LatencyMetrics(factory,"Read");
-  writeLatency=new LatencyMetrics(factory,"Write");
+  readLatency=new LatencyMetrics(factory,"Read",cfs.table.metric.readLatency,globalReadLatency);
+  writeLatency=new LatencyMetrics(factory,"Write",cfs.table.metric.writeLatency,globalWriteLatency);
   pendingTasks=Metrics.newGauge(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
     public Integer value(){
       return Table.switchLock.getQueueLength();
     }
   }
 );
-  liveSSTableCount=Metrics.newGauge(factory.createMetricName("LiveSSTableCount"),new Gauge<Integer>(){
+  liveSSTableCount=createColumnFamilyGauge("LiveSSTableCount",new Gauge<Integer>(){
     public Integer value(){
       return cfs.getDataTracker().getSSTables().size();
     }
   }
 );
-  liveDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("LiveDiskSpaceUsed"));
-  totalDiskSpaceUsed=Metrics.newCounter(factory.createMetricName("TotalDiskSpaceUsed"));
-  minRowSize=Metrics.newGauge(factory.createMetricName("MinRowSize"),new Gauge<Long>(){
+  liveDiskSpaceUsed=createColumnFamilyCounter("LiveDiskSpaceUsed");
+  totalDiskSpaceUsed=createColumnFamilyCounter("TotalDiskSpaceUsed");
+  minRowSize=createColumnFamilyGauge("MinRowSize",new Gauge<Long>(){
     public Long value(){
       long min=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -75,8 +90,17 @@
       return min;
     }
   }
+,new Gauge<Long>(){
+    public Long value(){
+      long min=Long.MAX_VALUE;
+      for (      Metric cfGauge : allColumnFamilyMetrics.get("MinRowSize")) {
+        min=Math.min(min,((Gauge<? extends Number>)cfGauge).value().longValue());
+      }
+      return min;
+    }
+  }
 );
-  maxRowSize=Metrics.newGauge(factory.createMetricName("MaxRowSize"),new Gauge<Long>(){
+  maxRowSize=createColumnFamilyGauge("MaxRowSize",new Gauge<Long>(){
     public Long value(){
       long max=0;
       for (      SSTableReader sstable : cfs.getSSTables()) {
@@ -85,8 +109,17 @@
       return max;
     }
   }
+,new Gauge<Long>(){
+    public Long value(){
+      long max=0;
+      for (      Metric cfGauge : allColumnFamilyMetrics.get("MaxRowSize")) {
+        max=Math.max(max,((Gauge<? extends Number>)cfGauge).value().longValue());
+      }
+      return max;
+    }
+  }
 );
-  meanRowSize=Metrics.newGauge(factory.createMetricName("MeanRowSize"),new Gauge<Long>(){
+  meanRowSize=createColumnFamilyGauge("MeanRowSize",new Gauge<Long>(){
     public Long value(){
       long sum=0;
       long count=0;
@@ -98,8 +131,22 @@
       return count > 0 ? sum / count : 0;
     }
   }
+,new Gauge<Long>(){
+    public Long value(){
+      long sum=0;
+      long count=0;
+      for (      Table keyspace : Table.all()) {
+        for (        SSTableReader sstable : keyspace.getAllSSTables()) {
+          long n=sstable.getEstimatedRowSize().count();
+          sum+=sstable.getEstimatedRowSize().mean() * n;
+          count+=n;
+        }
+      }
+      return count > 0 ? sum / count : 0;
+    }
+  }
 );
-  bloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("BloomFilterFalsePositives"),new Gauge<Long>(){
+  bloomFilterFalsePositives=createColumnFamilyGauge("BloomFilterFalsePositives",new Gauge<Long>(){
     public Long value(){
       long count=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getBloomFilterFalsePositiveCount();
@@ -107,7 +154,7 @@
     }
   }
 );
-  recentBloomFilterFalsePositives=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalsePositives"),new Gauge<Long>(){
+  recentBloomFilterFalsePositives=createColumnFamilyGauge("RecentBloomFilterFalsePositives",new Gauge<Long>(){
     public Long value(){
       long count=0L;
       for (      SSTableReader sstable : cfs.getSSTables())       count+=sstable.getRecentBloomFilterFalsePositiveCount();
@@ -115,7 +162,7 @@
     }
   }
 );
-  bloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("BloomFilterFalseRatio"),new Gauge<Double>(){
+  bloomFilterFalseRatio=createColumnFamilyGauge("BloomFilterFalseRatio",new Gauge<Double>(){
     public Double value(){
       long falseCount=0L;
       long trueCount=0L;
@@ -127,8 +174,22 @@
       return (double)falseCount / (trueCount + falseCount);
     }
   }
+,new Gauge<Double>(){
+    public Double value(){
+      long falseCount=0L;
+      long trueCount=0L;
+      for (      Table keyspace : Table.all()) {
+        for (        SSTableReader sstable : keyspace.getAllSSTables()) {
+          falseCount+=sstable.getBloomFilterFalsePositiveCount();
+          trueCount+=sstable.getBloomFilterTruePositiveCount();
+        }
+      }
+      if (falseCount == 0L && trueCount == 0L)       return 0d;
+      return (double)falseCount / (trueCount + falseCount);
+    }
+  }
 );
-  recentBloomFilterFalseRatio=Metrics.newGauge(factory.createMetricName("RecentBloomFilterFalseRatio"),new Gauge<Double>(){
+  recentBloomFilterFalseRatio=createColumnFamilyGauge("RecentBloomFilterFalseRatio",new Gauge<Double>(){
     public Double value(){
       long falseCount=0L;
       long trueCount=0L;
@@ -140,8 +201,22 @@
       return (double)falseCount / (trueCount + falseCount);
     }
   }
+,new Gauge<Double>(){
+    public Double value(){
+      long falseCount=0L;
+      long trueCount=0L;
+      for (      Table keyspace : Table.all()) {
+        for (        SSTableReader sstable : keyspace.getAllSSTables()) {
+          falseCount+=sstable.getRecentBloomFilterFalsePositiveCount();
+          trueCount+=sstable.getRecentBloomFilterTruePositiveCount();
+        }
+      }
+      if (falseCount == 0L && trueCount == 0L)       return 0d;
+      return (double)falseCount / (trueCount + falseCount);
+    }
+  }
 );
-  bloomFilterDiskSpaceUsed=Metrics.newGauge(factory.createMetricName("BloomFilterDiskSpaceUsed"),new Gauge<Long>(){
+  bloomFilterDiskSpaceUsed=createColumnFamilyGauge("BloomFilterDiskSpaceUsed",new Gauge<Long>(){
     public Long value(){
       long total=0;
       for (      SSTableReader sst : cfs.getSSTables())       total+=sst.getBloomFilterSerializedSize();
@@ -162,6 +237,6 @@
     }
   }
 );
-  tombstoneScannedHistogram=Metrics.newHistogram(factory.createMetricName("TombstoneScannedHistogram"),true);
-  liveScannedHistogram=Metrics.newHistogram(factory.createMetricName("LiveScannedHistogram"),true);
+  tombstoneScannedHistogram=createColumnFamilyHistogram("TombstoneScannedHistogram",cfs.table.metric.tombstoneScannedHistogram);
+  liveScannedHistogram=createColumnFamilyHistogram("LiveScannedHistogram",cfs.table.metric.liveScannedHistogram);
 }
