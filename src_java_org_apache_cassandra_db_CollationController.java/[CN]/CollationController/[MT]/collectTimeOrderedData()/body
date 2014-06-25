@@ -6,6 +6,7 @@
   ColumnFamily temp=ArrayBackedSortedColumns.factory.create(cfs.metadata,filter.filter.isReversed());
   try {
     Tracing.trace("Merging memtable contents");
+    long mostRecentRowTombstone=Long.MIN_VALUE;
     for (    Memtable memtable : view.memtables) {
       OnDiskAtomIterator iter=filter.getMemtableColumnIterator(memtable);
       if (iter != null) {
@@ -14,13 +15,13 @@
         while (iter.hasNext())         temp.addAtom(iter.next());
       }
       container.addAll(temp,HeapAllocator.instance);
+      mostRecentRowTombstone=container.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
       temp.clear();
     }
     NamesQueryFilter namesFilter=(NamesQueryFilter)filter.filter;
     TreeSet<ByteBuffer> filterColumns=new TreeSet<ByteBuffer>(namesFilter.columns);
     QueryFilter reducedFilter=new QueryFilter(filter.key,filter.cfName,namesFilter.withUpdatedColumns(filterColumns),filter.timestamp);
     Collections.sort(view.sstables,SSTable.maxTimestampComparator);
-    long mostRecentRowTombstone=Long.MIN_VALUE;
     for (    SSTableReader sstable : view.sstables) {
       if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       break;
       long currentMaxTs=sstable.getMaxTimestamp();
@@ -31,12 +32,12 @@
       iterators.add(iter);
       if (iter.getColumnFamily() != null) {
         ColumnFamily cf=iter.getColumnFamily();
-        if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
         temp.delete(cf);
         sstablesIterated++;
         while (iter.hasNext())         temp.addAtom(iter.next());
       }
       container.addAll(temp,HeapAllocator.instance);
+      mostRecentRowTombstone=container.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
       temp.clear();
     }
     if (iterators.isEmpty())     return null;
