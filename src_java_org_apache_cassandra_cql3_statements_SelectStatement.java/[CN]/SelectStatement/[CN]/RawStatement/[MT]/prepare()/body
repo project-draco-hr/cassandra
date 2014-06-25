@@ -4,7 +4,6 @@
   VariableSpecifications boundNames=getBoundVariables();
   if (parameters.isCount && !selectClause.isEmpty())   throw new InvalidRequestException("Only COUNT(*) and COUNT(1) operations are currently supported.");
   Selection selection=selectClause.isEmpty() ? Selection.wildcard(cfDef) : Selection.fromSelectors(cfDef,selectClause);
-  if (parameters.isDistinct)   validateDistinctSelection(selection.getColumns(),cfDef.partitionKeys());
   SelectStatement stmt=new SelectStatement(cfDef,boundNames.size(),parameters,selection,prepareLimit(boundNames));
   boolean hasQueriableIndex=false;
   boolean hasQueriableClusteringColumnIndex=false;
@@ -41,5 +40,6 @@
   if (stmt.usesSecondaryIndexing)   validateSecondaryIndexSelections(stmt);
   if (!stmt.parameters.orderings.isEmpty())   processOrderingClause(stmt,cfDef);
   checkNeedsFiltering(stmt);
+  if (parameters.isDistinct)   stmt.validateDistinctSelection();
   return new ParsedStatement.Prepared(stmt,boundNames);
 }
