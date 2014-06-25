@@ -4,6 +4,7 @@
     if (DatabaseDescriptor.isReplacing() && !(Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))))     throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
     if (DatabaseDescriptor.getReplaceTokens().size() > 0 || DatabaseDescriptor.getReplaceNode() != null)     throw new RuntimeException("Replace method removed; use cassandra.replace_address instead");
     if (DatabaseDescriptor.isReplacing()) {
+      if (SystemKeyspace.bootstrapComplete())       throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
       if (!DatabaseDescriptor.isAutoBootstrap())       throw new RuntimeException("Trying to replace_address with auto_bootstrap disabled will not work, check your configuration");
       bootstrapTokens=prepareReplacementInfo();
       appStates.put(ApplicationState.STATUS,valueFactory.hibernate(true));
