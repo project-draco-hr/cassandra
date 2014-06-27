@@ -14,13 +14,14 @@
       Pair<List<InetAddress>,Integer> p=getPaxosParticipants(command.ksName,command.key,consistency_level);
       List<InetAddress> liveEndpoints=p.left;
       int requiredParticipants=p.right;
+      final ConsistencyLevel consistencyForCommitOrFetch=consistency_level == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
       try {
-        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants,consistency_level);
+        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants,consistency_level,consistencyForCommitOrFetch);
       }
  catch (      WriteTimeoutException e) {
         throw new ReadTimeoutException(consistency_level,0,consistency_level.blockFor(Keyspace.open(command.ksName)),false);
       }
-      rows=fetchRows(commands,consistency_level == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
+      rows=fetchRows(commands,consistencyForCommitOrFetch);
     }
  else {
       rows=fetchRows(commands,consistency_level);
