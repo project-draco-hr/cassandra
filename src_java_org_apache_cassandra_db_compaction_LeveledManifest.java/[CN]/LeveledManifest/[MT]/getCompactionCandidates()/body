@@ -7,7 +7,7 @@
     double score=(double)SSTableReader.getTotalBytes(remaining) / (double)maxBytesForLevel(i);
     logger.debug("Compaction score for level {} is {}",i,score);
     if (score > 1.001) {
-      if (generations[0].size() > MAX_COMPACTING_L0) {
+      if (!DatabaseDescriptor.getDisableSTCSInL0() && generations[0].size() > MAX_COMPACTING_L0) {
         Iterable<SSTableReader> candidates=cfs.getDataTracker().getUncompactingSSTables(generations[0]);
         List<Pair<SSTableReader,Long>> pairs=SizeTieredCompactionStrategy.createSSTableAndLengthPairs(AbstractCompactionStrategy.filterSuspectSSTables(candidates));
         List<List<SSTableReader>> buckets=SizeTieredCompactionStrategy.getBuckets(pairs,options.bucketHigh,options.bucketLow,options.minSSTableSize);
