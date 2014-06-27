@@ -15,11 +15,18 @@
     if (validator.gcBefore > 0)     gcBefore=validator.gcBefore;
  else     gcBefore=getDefaultGcBefore(cfs);
   }
+  long numPartitions=0;
+  for (  SSTableReader sstable : sstables) {
+    numPartitions+=sstable.estimatedKeysForRanges(Collections.singleton(validator.desc.range));
+  }
+  int depth=numPartitions > 0 ? (int)Math.min(Math.floor(Math.log(numPartitions)),20) : 0;
+  MerkleTree tree=new MerkleTree(cfs.partitioner,validator.desc.range,MerkleTree.RECOMMENDED_DEPTH,(int)Math.pow(2,depth));
   CompactionIterable ci=new ValidationCompactionIterable(cfs,sstables,validator.desc.range,gcBefore);
   CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
+  long start=System.nanoTime();
   metrics.beginCompaction(ci);
   try {
-    validator.prepare(cfs);
+    validator.prepare(cfs,tree);
     while (iter.hasNext()) {
       if (ci.isStopRequested())       throw new CompactionInterruptedException(ci.getCompactionInfo());
       AbstractCompactedRow row=iter.next();
@@ -34,5 +41,9 @@
       cfs.clearSnapshot(snapshotName);
     }
     metrics.finishCompaction(ci);
+  }
+  if (logger.isDebugEnabled()) {
+    long duration=TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+    logger.debug("Validation finished in {} msec, depth {} for {} keys, serialized size {} bytes for {}",duration,depth,numPartitions,MerkleTree.serializer.serializedSize(tree,0),validator.desc);
   }
 }
