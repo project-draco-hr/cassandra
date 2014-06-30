@@ -1,32 +1,18 @@
 {
-  if (buffer1 == buffer2 && memoryOffset1 == memoryOffset2 && length1 == length2)   return 0;
   int minLength=Math.min(length1,length2);
-  int minWords=minLength / Longs.BYTES;
-  int wordComparisons=minWords * Longs.BYTES;
+  int wordComparisons=minLength & ~7;
   for (int i=0; i < wordComparisons; i+=Longs.BYTES) {
     long lw=theUnsafe.getLong(buffer1,memoryOffset1 + (long)i);
     long rw=theUnsafe.getLong(buffer2,memoryOffset2 + (long)i);
-    long diff=lw ^ rw;
-    if (diff != 0) {
-      if (!littleEndian)       return lessThanUnsigned(lw,rw) ? -1 : 1;
-      int n=0;
-      int y;
-      int x=(int)diff;
-      if (x == 0) {
-        x=(int)(diff >>> 32);
-        n=32;
-      }
-      y=x << 16;
-      if (y == 0)       n+=16;
- else       x=y;
-      y=x << 8;
-      if (y == 0)       n+=8;
-      return (int)(((lw >>> n) & 0xFFL) - ((rw >>> n) & 0xFFL));
+    if (lw != rw) {
+      if (BIG_ENDIAN)       return UnsignedLongs.compare(lw,rw);
+      return UnsignedLongs.compare(Long.reverseBytes(lw),Long.reverseBytes(rw));
     }
   }
-  for (int i=minWords * Longs.BYTES; i < minLength; i++) {
-    int result=UnsignedBytes.compare(theUnsafe.getByte(buffer1,memoryOffset1 + i),theUnsafe.getByte(buffer2,memoryOffset2 + i));
-    if (result != 0)     return result;
+  for (int i=wordComparisons; i < minLength; i++) {
+    int b1=theUnsafe.getByte(buffer1,memoryOffset1 + i) & 0xFF;
+    int b2=theUnsafe.getByte(buffer2,memoryOffset2 + i) & 0xFF;
+    if (b1 != b2)     return b1 - b2;
   }
   return length1 - length2;
 }
