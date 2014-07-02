@@ -1,0 +1,17 @@
+{
+  List<CommitLogSegment> segmentsToRecycle=new ArrayList<>(activeSegments);
+  CommitLogSegment last=segmentsToRecycle.get(segmentsToRecycle.size() - 1);
+  advanceAllocatingFrom(last);
+  last.waitForModifications();
+  Future<?> future=flushDataFrom(segmentsToRecycle,true);
+  try {
+    future.get();
+    for (    CommitLogSegment segment : activeSegments)     for (    UUID cfId : droppedCfs)     segment.markClean(cfId,segment.getContext());
+    for (    CommitLogSegment segment : activeSegments)     if (segment.isUnused())     recycleSegment(segment);
+    CommitLogSegment first;
+    if ((first=activeSegments.peek()) != null && first.id <= last.id)     logger.error("Failed to force-recycle all segments; at least one segment is still in use with dirty CFs.");
+  }
+ catch (  Throwable t) {
+    logger.error("Failed waiting for a forced recycle of in-use commit log segments",t);
+  }
+}
