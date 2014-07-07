@@ -1,0 +1,17 @@
+{
+  final SlicePredicate predicate=select().predicate();
+  final ByteBuffer key=getKey();
+  timeWithRetry(new RunOp(){
+    @Override public boolean run() throws Exception {
+      List<?> r=client.get_slice(key,new ColumnParent(type.table),predicate,settings.command.consistencyLevel);
+      return r != null && r.size() > 0;
+    }
+    @Override public int partitionCount(){
+      return 1;
+    }
+    @Override public int rowCount(){
+      return 1;
+    }
+  }
+);
+}

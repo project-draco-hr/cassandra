@@ -1,0 +1,58 @@
+{
+  if (insertStatement == null) {
+synchronized (this) {
+      if (insertStatement == null) {
+        maybeLoadSchemaInfo(settings);
+        Set<ColumnMetadata> keyColumns=com.google.common.collect.Sets.newHashSet(tableMetaData.getPrimaryKey());
+        StringBuilder sb=new StringBuilder();
+        sb.append("UPDATE \"").append(tableName).append("\" SET ");
+        StringBuilder pred=new StringBuilder();
+        pred.append(" WHERE ");
+        boolean firstCol=true;
+        boolean firstPred=true;
+        for (        ColumnMetadata c : tableMetaData.getColumns()) {
+          if (keyColumns.contains(c)) {
+            if (firstPred)             firstPred=false;
+ else             pred.append(" AND ");
+            pred.append(c.getName()).append(" = ?");
+          }
+ else {
+            if (firstCol)             firstCol=false;
+ else             sb.append(",");
+            sb.append(c.getName()).append(" = ");
+switch (c.getType().getName()) {
+case SET:
+case LIST:
+case COUNTER:
+              sb.append(c.getName()).append(" + ?");
+            break;
+default :
+          sb.append("?");
+        break;
+    }
+  }
+}
+sb.append(pred);
+if (insert == null) insert=new HashMap<>();
+lowerCase(insert);
+partitions=OptionDistribution.get(!insert.containsKey("partitions") ? "fixed(1)" : insert.remove("partitions"));
+pervisit=OptionRatioDistribution.get(!insert.containsKey("pervisit") ? "fixed(1)/1" : insert.remove("pervisit"));
+perbatch=OptionRatioDistribution.get(!insert.containsKey("perbatch") ? "fixed(1)/1" : insert.remove("perbatch"));
+batchType=!insert.containsKey("batchtype") ? BatchStatement.Type.UNLOGGED : BatchStatement.Type.valueOf(insert.remove("batchtype"));
+if (!insert.isEmpty()) throw new IllegalArgumentException("Unrecognised insert option(s): " + insert);
+if (generator.maxRowCount > 100 * 1000 * 1000) System.err.printf("WARNING: You have defined a schema that permits very large partitions (%.0f max rows (>100M))\n",generator.maxRowCount);
+if (perbatch.get().max() * pervisit.get().max() * partitions.get().maxValue()* generator.maxRowCount > 100000) System.err.printf("WARNING: You have defined a schema that permits very large batches (%.0f max rows (>100K)). This may OOM this stress client, or the server.\n",perbatch.get().max() * pervisit.get().max() * partitions.get().maxValue()* generator.maxRowCount);
+JavaDriverClient client=settings.getJavaDriverClient();
+String query=sb.toString();
+try {
+  thriftInsertId=settings.getThriftClient().prepare_cql3_query(query,Compression.NONE);
+}
+ catch (TException e) {
+  throw new RuntimeException(e);
+}
+insertStatement=client.prepare(query);
+}
+}
+}
+return new SchemaInsert(timer,generator,settings,partitions.get(),pervisit.get(),perbatch.get(),thriftInsertId,insertStatement,ThriftConversion.fromThrift(settings.command.consistencyLevel),batchType);
+}
