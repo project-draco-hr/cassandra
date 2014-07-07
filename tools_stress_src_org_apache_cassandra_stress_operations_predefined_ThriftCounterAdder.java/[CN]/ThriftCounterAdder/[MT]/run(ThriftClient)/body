@@ -1,0 +1,25 @@
+{
+  List<CounterColumn> columns=new ArrayList<>();
+  for (  ByteBuffer name : select().select(settings.columns.names))   columns.add(new CounterColumn(name,counteradd.next()));
+  List<Mutation> mutations=new ArrayList<>(columns.size());
+  for (  CounterColumn c : columns) {
+    ColumnOrSuperColumn cosc=new ColumnOrSuperColumn().setCounter_column(c);
+    mutations.add(new Mutation().setColumn_or_supercolumn(cosc));
+  }
+  Map<String,List<Mutation>> row=Collections.singletonMap(type.table,mutations);
+  final ByteBuffer key=getKey();
+  final Map<ByteBuffer,Map<String,List<Mutation>>> record=Collections.singletonMap(key,row);
+  timeWithRetry(new RunOp(){
+    @Override public boolean run() throws Exception {
+      client.batch_mutate(record,settings.command.consistencyLevel);
+      return true;
+    }
+    @Override public int partitionCount(){
+      return 1;
+    }
+    @Override public int rowCount(){
+      return 1;
+    }
+  }
+);
+}

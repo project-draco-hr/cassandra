@@ -1,0 +1,15 @@
+{
+  this.partitionKey=partitionKey;
+  this.clusteringComponents=clusteringComponents;
+  this.valueComponents=valueComponents;
+  this.clusteringChildAverages=new int[clusteringComponents.size()];
+  for (int i=clusteringChildAverages.length - 1; i >= 0; i--)   clusteringChildAverages[i]=(int)(i < (clusteringChildAverages.length - 1) ? clusteringComponents.get(i + 1).clusteringDistribution.average() * clusteringChildAverages[i + 1] : 1);
+  double maxRowCount=1d;
+  for (  Generator component : clusteringComponents)   maxRowCount*=component.clusteringDistribution.maxValue();
+  this.maxRowCount=maxRowCount;
+  this.indexMap=new HashMap<>();
+  int i=0;
+  for (  Generator generator : partitionKey)   indexMap.put(generator.name,--i);
+  i=0;
+  for (  Generator generator : Iterables.concat(clusteringComponents,valueComponents))   indexMap.put(generator.name,i++);
+}

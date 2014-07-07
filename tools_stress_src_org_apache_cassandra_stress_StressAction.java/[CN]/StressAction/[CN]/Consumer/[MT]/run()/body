@@ -11,20 +11,41 @@ case SIMPLE_NATIVE:
   sclient=settings.getSimpleNativeClient();
 break;
 case THRIFT:
-tclient=settings.getThriftClient();
-break;
 case THRIFT_SMART:
-tclient=settings.getSmartThriftClient();
+tclient=settings.getThriftClient();
 break;
 default :
 throw new IllegalStateException();
 }
-Work work;
-while (null != (work=workQueue.poll())) {
+int maxBatchSize=operations.maxBatchSize();
+Work work=workQueue.poll();
+Partition[] partitions=new Partition[maxBatchSize];
+int workDone=0;
+while (work != null) {
+Operation op=operations.next();
+op.generator.reset();
+int batchSize=Math.max(1,(int)op.partitionCount.next());
+int partitionCount=0;
+while (partitionCount < batchSize) {
+int count=Math.min((work.count - workDone),batchSize - partitionCount);
+for (int i=0; i < count; i++) {
+long seed=seedGenerator.next(work.offset + workDone + i);
+partitions[partitionCount + i]=op.generator.generate(seed);
+}
+workDone+=count;
+partitionCount+=count;
+if (workDone == work.count) {
+workDone=0;
+work=workQueue.poll();
+if (work == null) {
+if (partitionCount == 0) return;
+break;
+}
 if (rateLimiter != null) rateLimiter.acquire(work.count);
-for (int i=0; i < work.count; i++) {
+}
+}
+op.setPartitions(Arrays.asList(partitions).subList(0,partitionCount));
 try {
-Operation op=createOperation(state,i + work.offset);
 switch (settings.mode.api) {
 case JAVA_DRIVER_NATIVE:
 op.run(jclient);
@@ -47,14 +68,13 @@ System.exit(-1);
 e.printStackTrace(output);
 success=false;
 workQueue.stop();
-state.metrics.cancel();
+metrics.cancel();
 return;
-}
 }
 }
 }
   finally {
 done.countDown();
-state.timer.close();
+timer.close();
 }
 }

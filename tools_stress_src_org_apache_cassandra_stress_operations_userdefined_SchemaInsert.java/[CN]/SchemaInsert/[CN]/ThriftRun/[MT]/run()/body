@@ -1,0 +1,19 @@
+{
+  Partition.RowIterator[] iterators=new Partition.RowIterator[partitions.size()];
+  for (int i=0; i < iterators.length; i++)   iterators[i]=partitions.get(i).iterator(perVisit.next());
+  partitionCount=partitions.size();
+  boolean done;
+  do {
+    done=true;
+    for (    Partition.RowIterator iterator : iterators) {
+      if (iterator.done())       continue;
+      for (      Row row : iterator.batch(perBatch.next())) {
+        validate(client.execute_prepared_cql3_query(thriftId,iterator.partition().getToken(),thriftRowArgs(row),settings.command.consistencyLevel));
+        rowCount+=1;
+      }
+      done&=iterator.done();
+    }
+  }
+ while (!done);
+  return true;
+}

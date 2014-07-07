@@ -1,11 +1,13 @@
 {
   Matcher m=FULL.matcher(spec);
   if (!m.matches())   throw new IllegalArgumentException("Illegal distribution specification: " + spec);
-  String name=m.group(1);
+  boolean inverse=m.group(1).equals("~");
+  String name=m.group(2);
   Impl impl=LOOKUP.get(name.toLowerCase());
   if (impl == null)   throw new IllegalArgumentException("Illegal distribution type: " + name);
   List<String> params=new ArrayList<>();
-  m=ARGS.matcher(m.group(2));
+  m=ARGS.matcher(m.group(3));
   while (m.find())   params.add(m.group());
-  return impl.getFactory(params);
+  DistributionFactory factory=impl.getFactory(params);
+  return inverse ? new InverseFactory(factory) : factory;
 }

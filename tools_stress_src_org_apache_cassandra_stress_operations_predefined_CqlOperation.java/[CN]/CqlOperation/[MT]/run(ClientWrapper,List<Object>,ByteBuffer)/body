@@ -1,0 +1,27 @@
+{
+  final CqlRunOp<V> op;
+  if (settings.mode.style == ConnectionStyle.CQL_PREPARED) {
+    final Object id;
+    Object idobj=getCqlCache();
+    if (idobj == null) {
+      try {
+        id=client.createPreparedStatement(buildQuery());
+      }
+ catch (      TException e) {
+        throw new RuntimeException(e);
+      }
+      storeCqlCache(id);
+    }
+ else     id=idobj;
+    op=buildRunOp(client,null,id,queryParams,key);
+  }
+ else {
+    final String query;
+    Object qobj=getCqlCache();
+    if (qobj == null)     storeCqlCache(query=buildQuery());
+ else     query=qobj.toString();
+    op=buildRunOp(client,query,null,queryParams,key);
+  }
+  timeWithRetry(op);
+  return op;
+}
