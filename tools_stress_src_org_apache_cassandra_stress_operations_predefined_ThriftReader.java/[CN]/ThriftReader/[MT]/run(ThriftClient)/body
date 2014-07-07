@@ -1,0 +1,22 @@
+{
+  final ColumnSelection select=select();
+  final ByteBuffer key=getKey();
+  final List<ByteBuffer> expect=getColumnValues(select);
+  timeWithRetry(new RunOp(){
+    @Override public boolean run() throws Exception {
+      List<ColumnOrSuperColumn> row=client.get_slice(key,new ColumnParent(type.table),select.predicate(),settings.command.consistencyLevel);
+      if (expect == null)       return !row.isEmpty();
+      if (row == null)       return false;
+      if (row.size() != expect.size())       return false;
+      for (int i=0; i < row.size(); i++)       if (!row.get(i).getColumn().bufferForValue().equals(expect.get(i)))       return false;
+      return true;
+    }
+    @Override public int partitionCount(){
+      return 1;
+    }
+    @Override public int rowCount(){
+      return 1;
+    }
+  }
+);
+}
