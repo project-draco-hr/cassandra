@@ -63,6 +63,7 @@
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }
       }
+      boolean successful=true;
       for (      RepairFuture future : futures) {
         try {
           future.get();
@@ -71,17 +72,19 @@
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_SUCCESS.ordinal()});
         }
  catch (        ExecutionException e) {
+          successful=false;
           message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getCause().getMessage());
           logger.error(message,e);
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }
 catch (        Exception e) {
+          successful=false;
           message=String.format("Repair session %s for range %s failed with error %s",future.session.getId(),future.session.getRange().toString(),e.getMessage());
           logger.error(message,e);
           sendNotification("repair",message,new int[]{cmd,ActiveRepairService.Status.SESSION_FAILED.ordinal()});
         }
       }
-      if (!fullRepair)       ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors);
+      if (!fullRepair)       ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors,successful);
       sendNotification("repair",String.format("Repair command #%d finished",cmd),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
     }
   }
