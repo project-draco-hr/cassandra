@@ -1,0 +1,47 @@
+{
+  lock.readLock().lock();
+  try {
+    Multimap<Range<Token>,InetAddress> newPendingRanges=HashMultimap.create();
+    if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && movingEndpoints.isEmpty()&& relocatingTokens.isEmpty()) {
+      if (logger.isDebugEnabled())       logger.debug("No bootstrapping, leaving or moving nodes, and no relocating tokens -> empty pending ranges for {}",keyspaceName);
+      pendingRanges.put(keyspaceName,newPendingRanges);
+      return;
+    }
+    Multimap<InetAddress,Range<Token>> addressRanges=strategy.getAddressRanges();
+    TokenMetadata allLeftMetadata=cloneAfterAllLeft();
+    Set<Range<Token>> affectedRanges=new HashSet<Range<Token>>();
+    for (    InetAddress endpoint : leavingEndpoints)     affectedRanges.addAll(addressRanges.get(endpoint));
+    for (    Range<Token> range : affectedRanges) {
+      Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,cloneOnlyTokenMap()));
+      Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,allLeftMetadata));
+      newPendingRanges.putAll(range,Sets.difference(newEndpoints,currentEndpoints));
+    }
+    Multimap<InetAddress,Token> bootstrapAddresses=bootstrapTokens.inverse();
+    for (    InetAddress endpoint : bootstrapAddresses.keySet()) {
+      Collection<Token> tokens=bootstrapAddresses.get(endpoint);
+      allLeftMetadata.updateNormalTokens(tokens,endpoint);
+      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       newPendingRanges.put(range,endpoint);
+      allLeftMetadata.removeEndpoint(endpoint);
+    }
+    for (    Pair<Token,InetAddress> moving : movingEndpoints) {
+      InetAddress endpoint=moving.right;
+      allLeftMetadata.updateNormalToken(moving.left,endpoint);
+      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
+        newPendingRanges.put(range,endpoint);
+      }
+      allLeftMetadata.removeEndpoint(endpoint);
+    }
+    for (    Map.Entry<Token,InetAddress> relocating : relocatingTokens.entrySet()) {
+      InetAddress endpoint=relocating.getValue();
+      Token token=relocating.getKey();
+      allLeftMetadata.updateNormalToken(token,endpoint);
+      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       newPendingRanges.put(range,endpoint);
+      allLeftMetadata.removeEndpoint(endpoint);
+    }
+    pendingRanges.put(keyspaceName,newPendingRanges);
+    if (logger.isDebugEnabled())     logger.debug("Pending ranges:\n{}",(pendingRanges.isEmpty() ? "<empty>" : printPendingRanges()));
+  }
+  finally {
+    lock.readLock().unlock();
+  }
+}
