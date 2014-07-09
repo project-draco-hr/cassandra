@@ -9,10 +9,10 @@
   QueryFilter filter=QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis());
   rm=new Mutation(keyspaceName,key.getKey());
   for (int i=0; i < 10; i++)   rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,i);
-  rm.apply();
+  rm.applyUnsafe();
   rm=new Mutation(keyspaceName,key.getKey());
   rm.delete(cfName,4);
-  rm.apply();
+  rm.applyUnsafe();
   ColumnFamily cf=cfs.getColumnFamily(filter);
   assertTrue(cf.isMarkedForDelete());
   cfs.forceBlockingFlush();
@@ -20,7 +20,7 @@
   assertFalse(cfs.getColumnFamily(filter).isMarkedForDelete());
   rm=new Mutation(keyspaceName,key.getKey());
   for (int i=0; i < 5; i++)   rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,i);
-  rm.apply();
+  rm.applyUnsafe();
   cf=cfs.getColumnFamily(filter);
   assertEquals(10,cf.getColumnCount());
   for (  Cell c : cf)   assertTrue(c.isLive());
