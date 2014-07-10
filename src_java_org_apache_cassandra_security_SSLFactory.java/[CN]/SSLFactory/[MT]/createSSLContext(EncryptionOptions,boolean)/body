@@ -17,6 +17,16 @@
     KeyManagerFactory kmf=KeyManagerFactory.getInstance(options.algorithm);
     KeyStore ks=KeyStore.getInstance(options.store_type);
     ks.load(ksf,options.keystore_password.toCharArray());
+    if (!checkedExpiry) {
+      for (Enumeration<String> aliases=ks.aliases(); aliases.hasMoreElements(); ) {
+        String alias=aliases.nextElement();
+        if (ks.getCertificate(alias).getType().equals("X.509")) {
+          Date expires=((X509Certificate)ks.getCertificate(alias)).getNotAfter();
+          if (expires.before(new Date()))           logger.warn("Certificate for {} expired on {}",alias,expires);
+        }
+      }
+      checkedExpiry=true;
+    }
     kmf.init(ks,options.keystore_password.toCharArray());
     ctx.init(kmf.getKeyManagers(),trustManagers,null);
   }
