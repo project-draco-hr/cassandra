@@ -1,0 +1,16 @@
+{
+  ByteArrayOutputStream out=new ByteArrayOutputStream();
+  DataOutputStream dout=new DataOutputStream(out);
+  ByteBuffer buffer=ByteBuffer.allocate(CommitLogDescriptor.HEADER_SIZE);
+  CommitLogDescriptor.writeHeader(buffer,CommitLogDescriptor.fromFileName(logFile.getName()));
+  out.write(buffer.array());
+  dout.writeInt(markerSize);
+  dout.writeLong(checksum);
+  dout.write(chunk);
+  dout.close();
+  try (OutputStream lout=new FileOutputStream(logFile)){
+    lout.write(out.toByteArray());
+    lout.close();
+  }
+   return logFile;
+}
