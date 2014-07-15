@@ -1,7 +1,11 @@
 {
   Map<String,String> tokensToEndpoints=probe.getTokenToEndpointMap();
   LinkedHashMultimap<String,String> endpointsToTokens=LinkedHashMultimap.create();
-  for (  Map.Entry<String,String> entry : tokensToEndpoints.entrySet())   endpointsToTokens.put(entry.getValue(),entry.getKey());
+  boolean haveVnodes=false;
+  for (  Map.Entry<String,String> entry : tokensToEndpoints.entrySet()) {
+    haveVnodes|=endpointsToTokens.containsKey(entry.getValue());
+    endpointsToTokens.put(entry.getValue(),entry.getKey());
+  }
   int maxAddressLength=Collections.max(endpointsToTokens.keys(),new Comparator<String>(){
     @Override public int compare(    String first,    String second){
       return ((Integer)first.length()).compareTo(second.length());
@@ -20,7 +24,7 @@
   }
   System.out.println();
   for (  Entry<String,SetHostStat> entry : getOwnershipByDc(probe,resolveIp,tokensToEndpoints,ownerships).entrySet())   printDc(probe,format,entry.getKey(),endpointsToTokens,entry.getValue());
-  if (DatabaseDescriptor.getNumTokens() > 1) {
+  if (haveVnodes) {
     System.out.println("  Warning: \"nodetool ring\" is used to output all the tokens of a node.");
     System.out.println("  To view status related info of a node use \"nodetool status\" instead.\n");
   }
