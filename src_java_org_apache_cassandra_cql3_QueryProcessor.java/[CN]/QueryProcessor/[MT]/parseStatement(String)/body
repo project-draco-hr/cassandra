@@ -1,12 +1,14 @@
 {
   try {
+    ErrorCollector errorCollector=new ErrorCollector(queryStr);
     CharStream stream=new ANTLRStringStream(queryStr);
     CqlLexer lexer=new CqlLexer(stream);
+    lexer.addErrorListener(errorCollector);
     TokenStream tokenStream=new CommonTokenStream(lexer);
     CqlParser parser=new CqlParser(tokenStream);
+    parser.addErrorListener(errorCollector);
     ParsedStatement statement=parser.query();
-    lexer.throwLastRecognitionError();
-    parser.throwLastRecognitionError();
+    errorCollector.throwLastSyntaxError();
     return statement;
   }
  catch (  RuntimeException re) {
