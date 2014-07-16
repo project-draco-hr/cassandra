@@ -1,6 +1,15 @@
 {
   List<SecondaryIndexSearcher> indexSearchers=getIndexSearchersForQuery(filter.getClause());
   if (indexSearchers.isEmpty())   return Collections.emptyList();
-  if (indexSearchers.size() > 1)   throw new RuntimeException("Unable to search across multiple secondary index types");
-  return indexSearchers.get(0).search(filter);
+  SecondaryIndexSearcher mostSelective=null;
+  long bestEstimate=Long.MAX_VALUE;
+  for (  SecondaryIndexSearcher searcher : indexSearchers) {
+    SecondaryIndex highestSelectivityIndex=searcher.highestSelectivityIndex(filter.getClause());
+    long estimate=highestSelectivityIndex.estimateResultRows();
+    if (estimate <= bestEstimate) {
+      bestEstimate=estimate;
+      mostSelective=searcher;
+    }
+  }
+  return mostSelective.search(filter);
 }
