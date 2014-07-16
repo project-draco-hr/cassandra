@@ -1,0 +1,19 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Table table=Table.open("Keyspace1");
+  ColumnFamilyStore cfs=table.getColumnFamilyStore("Standard1");
+  ByteBuffer key=ByteBufferUtil.bytes("k");
+  RowMutation rm=new RowMutation("Keyspace1",key);
+  ColumnFamily cf=rm.addOrGet(cfs.metadata);
+  cf.addColumn(new QueryPath("Standard1",null,ByteBufferUtil.bytes("a")),ByteBuffer.allocate(DatabaseDescriptor.getColumnIndexSize()),1);
+  cf.addColumn(new QueryPath("Standard1",null,ByteBufferUtil.bytes("c")),ByteBuffer.allocate(DatabaseDescriptor.getColumnIndexSize()),1);
+  cf.addColumn(new QueryPath("Standard1",null,ByteBufferUtil.bytes("d")),ByteBuffer.allocate(DatabaseDescriptor.getColumnIndexSize()),1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new RowMutation("Keyspace1",key);
+  cf=rm.addOrGet(cfs.metadata);
+  cf.addAtom(new RangeTombstone(ByteBufferUtil.bytes("b"),ByteBufferUtil.bytes("d"),0,(int)(System.currentTimeMillis() / 1000)));
+  rm.apply();
+  cfs.forceBlockingFlush();
+  assertBytes(cfs,0);
+}
