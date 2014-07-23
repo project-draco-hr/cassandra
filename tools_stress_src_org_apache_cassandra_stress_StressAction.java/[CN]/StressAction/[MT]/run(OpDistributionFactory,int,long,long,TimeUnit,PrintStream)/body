@@ -1,5 +1,5 @@
 {
-  output.println(String.format("Running %s with %d threads %s",operations.desc(),threadCount,opCount > 0 ? " for " + opCount + " iterations" : "until stderr of mean < " + settings.command.targetUncertainty));
+  output.println(String.format("Running %s with %d threads %s",operations.desc(),threadCount,durationUnits != null ? duration + " " + durationUnits.toString().toLowerCase() : opCount > 0 ? "for " + opCount + " iteration" : "until stderr of mean < " + settings.command.targetUncertainty));
   final WorkQueue workQueue;
   if (opCount < 0)   workQueue=new ContinuousWorkQueue(50);
  else   workQueue=FixedWorkQueue.build(opCount);
@@ -11,7 +11,11 @@
   for (int i=0; i < threadCount; i++)   consumers[i]=new Consumer(operations,done,workQueue,metrics,rateLimiter);
   for (int i=0; i < threadCount; i++)   consumers[i].start();
   metrics.start();
-  if (opCount <= 0) {
+  if (durationUnits != null) {
+    Uninterruptibles.sleepUninterruptibly(duration,durationUnits);
+    workQueue.stop();
+  }
+ else   if (opCount <= 0) {
     try {
       metrics.waitUntilConverges(settings.command.targetUncertainty,settings.command.minimumUncertaintyMeasurements,settings.command.maximumUncertaintyMeasurements);
     }
