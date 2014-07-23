@@ -1,0 +1,20 @@
+{
+  pig.setBatchOn();
+  pig.registerQuery(initialQuery);
+  pig.registerQuery("recs= FOREACH collectiontable GENERATE TOTUPLE(TOTUPLE('m', m) ), TOTUPLE(TOTUPLE('map', TOTUPLE('m', 'mm'), TOTUPLE('n', 'nn')));");
+  pig.registerQuery("STORE recs INTO 'cql://cql3ks/collectiontable?" + defaultParameters + "&output_query=update+cql3ks.collectiontable+set+n+%3D+%3F' USING CqlStorage();");
+  pig.executeBatch();
+  pig.registerQuery("result= LOAD 'cql://cql3ks/collectiontable?" + defaultParameters + "' USING CqlStorage();");
+  Iterator<Tuple> it=pig.openIterator("result");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Tuple t1=(Tuple)t.get(1);
+    Assert.assertEquals(t1.size(),2);
+    Tuple element1=(Tuple)t1.get(0);
+    Tuple element2=(Tuple)t1.get(1);
+    Assert.assertEquals(element1.get(0),"m");
+    Assert.assertEquals(element1.get(1),"mm");
+    Assert.assertEquals(element2.get(0),"n");
+    Assert.assertEquals(element2.get(1),"nn");
+  }
+}
