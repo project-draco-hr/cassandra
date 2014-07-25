@@ -11,22 +11,38 @@
     out.println("Usage: sstablelevelreset --really-reset <keyspace> <columnfamily>");
     System.exit(1);
   }
-  DatabaseDescriptor.loadSchemas();
-  String keyspaceName=args[1];
-  String columnfamily=args[2];
-  Keyspace keyspace=Keyspace.openWithoutSSTables(keyspaceName);
-  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(columnfamily);
-  boolean foundSSTable=false;
-  for (  Map.Entry<Descriptor,Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet()) {
-    if (sstable.getValue().contains(Component.STATS)) {
-      foundSSTable=true;
-      Descriptor descriptor=sstable.getKey();
-      StatsMetadata metadata=(StatsMetadata)descriptor.getMetadataSerializer().deserialize(descriptor,MetadataType.STATS);
-      out.println("Changing level from " + metadata.sstableLevel + " to 0 on "+ descriptor.filenameFor(Component.DATA));
-      descriptor.getMetadataSerializer().mutateLevel(descriptor,0);
+  try {
+    DatabaseDescriptor.loadSchemas();
+    String keyspaceName=args[1];
+    String columnfamily=args[2];
+    if (Schema.instance.getCFMetaData(keyspaceName,columnfamily) == null) {
+      System.err.println("ColumnFamily not found: " + keyspaceName + "/"+ columnfamily);
+      System.exit(1);
+    }
+    Keyspace keyspace=Keyspace.openWithoutSSTables(keyspaceName);
+    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(columnfamily);
+    boolean foundSSTable=false;
+    for (    Map.Entry<Descriptor,Set<Component>> sstable : cfs.directories.sstableLister().list().entrySet()) {
+      if (sstable.getValue().contains(Component.STATS)) {
+        foundSSTable=true;
+        Descriptor descriptor=sstable.getKey();
+        StatsMetadata metadata=(StatsMetadata)descriptor.getMetadataSerializer().deserialize(descriptor,MetadataType.STATS);
+        if (metadata.sstableLevel > 0) {
+          out.println("Changing level from " + metadata.sstableLevel + " to 0 on "+ descriptor.filenameFor(Component.DATA));
+          descriptor.getMetadataSerializer().mutateLevel(descriptor,0);
+        }
+ else {
+          out.println("Skipped " + descriptor.filenameFor(Component.DATA) + " since it is already on level 0");
+        }
+      }
+    }
+    if (!foundSSTable) {
+      out.println("Found no sstables, did you give the correct keyspace/columnfamily?");
     }
   }
-  if (!foundSSTable) {
-    out.println("Found no sstables, did you give the correct keyspace/columnfamily?");
+ catch (  Throwable e) {
+    e.printStackTrace();
+    System.exit(1);
   }
+  System.exit(0);
 }
