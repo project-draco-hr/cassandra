@@ -1,15 +1,9 @@
 def print_trace_session(shell, session, session_id):
+    '\n    Lookup a trace by session and trace session ID, then print it.\n    '
     trace = QueryTrace(session_id, session)
-    rows = fetch_trace_session(trace)
-    if (not rows):
+    try:
+        trace.populate()
+    except TraceUnavailable:
         shell.printerr(("Session %s wasn't found." % session_id))
-        return
-    names = ['activity', 'timestamp', 'source', 'source_elapsed']
-    formatted_names = map(shell.myformat_colname, names)
-    formatted_values = [map(shell.myformat_value, row) for row in rows]
-    shell.writeresult('')
-    shell.writeresult('Tracing session: ', color=MAGENTA, newline=False)
-    shell.writeresult(session_id)
-    shell.writeresult('')
-    shell.print_formatted_result(formatted_names, formatted_values)
-    shell.writeresult('')
+    else:
+        print_trace(shell, trace)
