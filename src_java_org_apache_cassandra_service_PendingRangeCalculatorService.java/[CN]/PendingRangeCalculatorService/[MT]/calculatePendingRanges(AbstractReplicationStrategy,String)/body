@@ -3,7 +3,7 @@
   Multimap<Range<Token>,InetAddress> pendingRanges=HashMultimap.create();
   BiMultiValMap<Token,InetAddress> bootstrapTokens=tm.getBootstrapTokens();
   Set<InetAddress> leavingEndpoints=tm.getLeavingEndpoints();
-  if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && tm.getMovingEndpoints().isEmpty()&& tm.getRelocatingRanges().isEmpty()) {
+  if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && tm.getMovingEndpoints().isEmpty()) {
     if (logger.isDebugEnabled())     logger.debug("No bootstrapping, leaving or moving nodes, and no relocating tokens -> empty pending ranges for {}",keyspaceName);
     tm.setPendingRanges(keyspaceName,pendingRanges);
     return;
@@ -30,13 +30,6 @@
     for (    Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
       pendingRanges.put(range,endpoint);
     }
-    allLeftMetadata.removeEndpoint(endpoint);
-  }
-  for (  Map.Entry<Token,InetAddress> relocating : tm.getRelocatingRanges().entrySet()) {
-    InetAddress endpoint=relocating.getValue();
-    Token token=relocating.getKey();
-    allLeftMetadata.updateNormalToken(token,endpoint);
-    for (    Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))     pendingRanges.put(range,endpoint);
     allLeftMetadata.removeEndpoint(endpoint);
   }
   tm.setPendingRanges(keyspaceName,pendingRanges);
