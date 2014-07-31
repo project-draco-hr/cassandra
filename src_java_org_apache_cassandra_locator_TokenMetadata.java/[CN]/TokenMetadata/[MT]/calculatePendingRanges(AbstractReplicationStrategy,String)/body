@@ -2,8 +2,8 @@
   lock.readLock().lock();
   try {
     Multimap<Range<Token>,InetAddress> newPendingRanges=HashMultimap.create();
-    if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && movingEndpoints.isEmpty()&& relocatingTokens.isEmpty()) {
-      if (logger.isDebugEnabled())       logger.debug("No bootstrapping, leaving or moving nodes, and no relocating tokens -> empty pending ranges for {}",keyspaceName);
+    if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && movingEndpoints.isEmpty()) {
+      if (logger.isDebugEnabled())       logger.debug("No bootstrapping, leaving or moving nodes -> empty pending ranges for {}",keyspaceName);
       pendingRanges.put(keyspaceName,newPendingRanges);
       return;
     }
@@ -29,13 +29,6 @@
       for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
         newPendingRanges.put(range,endpoint);
       }
-      allLeftMetadata.removeEndpoint(endpoint);
-    }
-    for (    Map.Entry<Token,InetAddress> relocating : relocatingTokens.entrySet()) {
-      InetAddress endpoint=relocating.getValue();
-      Token token=relocating.getKey();
-      allLeftMetadata.updateNormalToken(token,endpoint);
-      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       newPendingRanges.put(range,endpoint);
       allLeftMetadata.removeEndpoint(endpoint);
     }
     pendingRanges.put(keyspaceName,newPendingRanges);
