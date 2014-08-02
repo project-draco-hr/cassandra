@@ -1,0 +1,27 @@
+{
+  String type=notification.getType();
+  if (type.equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION)) {
+    CompositeData cd=(CompositeData)notification.getUserData();
+    GarbageCollectionNotificationInfo info=GarbageCollectionNotificationInfo.from(cd);
+    long duration=info.getGcInfo().getDuration();
+    StringBuilder sb=new StringBuilder();
+    sb.append(info.getGcName()).append(" GC in ").append(duration).append("ms.  ");
+    List<String> keys=new ArrayList<>(info.getGcInfo().getMemoryUsageBeforeGc().keySet());
+    Collections.sort(keys);
+    for (    String key : keys) {
+      MemoryUsage before=info.getGcInfo().getMemoryUsageBeforeGc().get(key);
+      MemoryUsage after=info.getGcInfo().getMemoryUsageAfterGc().get(key);
+      if (after != null && after.getUsed() != before.getUsed()) {
+        sb.append(key).append(": ").append(before.getUsed());
+        sb.append(" -> ");
+        sb.append(after.getUsed());
+        if (!key.equals(keys.get(keys.size() - 1)))         sb.append("; ");
+      }
+    }
+    String st=sb.toString();
+    if (duration > MIN_DURATION)     logger.info(st);
+ else     if (logger.isDebugEnabled())     logger.debug(st);
+    if (duration > MIN_DURATION_TPSTATS)     StatusLogger.log();
+    if (info.getGcName().equals("ConcurrentMarkSweep"))     SSTableDeletingTask.rescheduleFailedTasks();
+  }
+}
