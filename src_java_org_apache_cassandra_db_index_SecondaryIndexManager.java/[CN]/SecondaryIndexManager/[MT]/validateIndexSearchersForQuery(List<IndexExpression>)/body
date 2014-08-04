@@ -1,0 +1,27 @@
+{
+  Map<String,Set<IndexExpression>> expressionsByIndexType=new HashMap<>();
+  Map<String,Set<ByteBuffer>> columnsByIndexType=new HashMap<>();
+  for (  IndexExpression indexExpression : clause) {
+    SecondaryIndex index=getIndexForColumn(indexExpression.column);
+    if (index == null)     continue;
+    String canonicalIndexName=index.getClass().getCanonicalName();
+    Set<IndexExpression> expressions=expressionsByIndexType.get(canonicalIndexName);
+    Set<ByteBuffer> columns=columnsByIndexType.get(canonicalIndexName);
+    if (expressions == null) {
+      expressions=new HashSet<>();
+      columns=new HashSet<>();
+      expressionsByIndexType.put(canonicalIndexName,expressions);
+      columnsByIndexType.put(canonicalIndexName,columns);
+    }
+    expressions.add(indexExpression);
+    columns.add(indexExpression.column);
+  }
+  for (  Map.Entry<String,Set<IndexExpression>> expressions : expressionsByIndexType.entrySet()) {
+    Set<ByteBuffer> columns=columnsByIndexType.get(expressions.getKey());
+    SecondaryIndex secondaryIndex=getIndexForColumn(columns.iterator().next());
+    SecondaryIndexSearcher searcher=secondaryIndex.createSecondaryIndexSearcher(columns);
+    for (    IndexExpression expression : expressions.getValue()) {
+      searcher.validate(expression);
+    }
+  }
+}
