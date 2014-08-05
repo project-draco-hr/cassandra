@@ -29,8 +29,9 @@
     String[] parts=descriptor.cfname.split("\\.",2);
     baseName=parts[0];
   }
+  ColumnFamilyStore cfStore=null;
   try {
-    keyspace.getColumnFamilyStore(baseName);
+    cfStore=keyspace.getColumnFamilyStore(baseName);
   }
  catch (  IllegalArgumentException e) {
     System.err.println(String.format("The provided table is not part of this cassandra keyspace: keyspace = %s, table = %s",descriptor.ksname,descriptor.cfname));
@@ -38,11 +39,11 @@
   }
   try {
     if (cmd.hasOption(ENUMERATEKEYS_OPTION)) {
-      enumeratekeys(descriptor,System.out);
+      enumeratekeys(descriptor,System.out,cfStore.metadata);
     }
  else {
-      if ((keys != null) && (keys.length > 0))       export(descriptor,System.out,Arrays.asList(keys),excludes);
- else       export(descriptor,excludes);
+      if ((keys != null) && (keys.length > 0))       export(descriptor,System.out,Arrays.asList(keys),excludes,cfStore.metadata);
+ else       export(descriptor,excludes,cfStore.metadata);
     }
   }
  catch (  IOException e) {
