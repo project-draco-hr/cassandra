@@ -1,0 +1,13 @@
+{
+  pig.setBatchOn();
+  pig.registerQuery(initialQuery);
+  pig.registerQuery("insertformat= FOREACH moretestvalues GENERATE TOTUPLE(TOTUPLE('a',x)),TOTUPLE(y);");
+  pig.registerQuery("STORE insertformat INTO 'cql://cql3ks/test?" + defaultParameters + nativeParameters+ "&output_query=UPDATE+cql3ks.test+set+b+%3D+%3F' USING CqlNativeStorage();");
+  pig.executeBatch();
+  pig.registerQuery("result= LOAD 'cql://cql3ks/test?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20test%20where%20token(a)%20%3E%20%3F%20and%20token(a)%20%3C%3D%20%3F' USING CqlNativeStorage();");
+  Iterator<Tuple> it=pig.openIterator("result");
+  while (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),t.get(1));
+  }
+}
