@@ -1,0 +1,25 @@
+{
+  Schema.instance.clear();
+  cassandra=new EmbeddedCassandraService();
+  cassandra.start();
+  cluster=Cluster.builder().addContactPoint("127.0.0.1").withRetryPolicy(new LoggingRetryPolicy(Policies.defaultRetryPolicy())).withPort(DatabaseDescriptor.getNativeTransportPort()).build();
+  session=cluster.connect();
+  session.execute("CREATE KEYSPACE IF NOT EXISTS " + KEYSPACE + " WITH replication "+ "= {'class':'SimpleStrategy', 'replication_factor':1};");
+  session.execute("USE " + KEYSPACE);
+  session.execute("CREATE TABLE IF NOT EXISTS " + TABLE + " ("+ "key blob,"+ "value blob,"+ "PRIMARY KEY (key));");
+  getStatement=session.prepare("SELECT value FROM " + TABLE + " WHERE key = ?;");
+  getStatement.setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM);
+  putStatement=session.prepare("INSERT INTO " + TABLE + " (key, value) VALUES (?, ?);");
+  putStatement.setConsistencyLevel(ConsistencyLevel.LOCAL_QUORUM);
+  StringBuilder s=new StringBuilder();
+  char a='a';
+  char z='z';
+  for (int i=0; i < 500 * 1024; i++) {
+    char x=(char)((i % ((z - a) + 1)) + a);
+    if (x == 'a') {
+      x='\n';
+    }
+    s.append(x);
+  }
+  VALUE=s.toString();
+}
