@@ -1,26 +1,31 @@
 {
   SSTableReader sstable=SSTableReader.open(desc);
   RandomAccessReader dfile=sstable.openDataReader();
-  IPartitioner<?> partitioner=sstable.partitioner;
-  if (excludes != null)   toExport.removeAll(Arrays.asList(excludes));
-  outs.println("[");
-  int i=0;
-  DecoratedKey lastKey=null;
-  for (  String key : toExport) {
-    DecoratedKey decoratedKey=partitioner.decorateKey(hexToBytes(key));
-    if (lastKey != null && lastKey.compareTo(decoratedKey) > 0)     throw new IOException("Key out of order! " + lastKey + " > "+ decoratedKey);
-    lastKey=decoratedKey;
-    RowIndexEntry entry=sstable.getPosition(decoratedKey,SSTableReader.Operator.EQ);
-    if (entry == null)     continue;
-    dfile.seek(entry.position);
-    ByteBufferUtil.readWithShortLength(dfile);
-    DeletionInfo deletionInfo=new DeletionInfo(DeletionTime.serializer.deserialize(dfile));
-    Iterator<OnDiskAtom> atomIterator=sstable.metadata.getOnDiskIterator(dfile,sstable.descriptor.version);
-    checkStream(outs);
-    if (i != 0)     outs.println(",");
-    i++;
-    serializeRow(deletionInfo,atomIterator,sstable.metadata,decoratedKey,outs);
+  try {
+    IPartitioner<?> partitioner=sstable.partitioner;
+    if (excludes != null)     toExport.removeAll(Arrays.asList(excludes));
+    outs.println("[");
+    int i=0;
+    DecoratedKey lastKey=null;
+    for (    String key : toExport) {
+      DecoratedKey decoratedKey=partitioner.decorateKey(hexToBytes(key));
+      if (lastKey != null && lastKey.compareTo(decoratedKey) > 0)       throw new IOException("Key out of order! " + lastKey + " > "+ decoratedKey);
+      lastKey=decoratedKey;
+      RowIndexEntry entry=sstable.getPosition(decoratedKey,SSTableReader.Operator.EQ);
+      if (entry == null)       continue;
+      dfile.seek(entry.position);
+      ByteBufferUtil.readWithShortLength(dfile);
+      DeletionInfo deletionInfo=new DeletionInfo(DeletionTime.serializer.deserialize(dfile));
+      Iterator<OnDiskAtom> atomIterator=sstable.metadata.getOnDiskIterator(dfile,sstable.descriptor.version);
+      checkStream(outs);
+      if (i != 0)       outs.println(",");
+      i++;
+      serializeRow(deletionInfo,atomIterator,sstable.metadata,decoratedKey,outs);
+    }
+    outs.println("\n]");
+    outs.flush();
   }
-  outs.println("\n]");
-  outs.flush();
+  finally {
+    dfile.close();
+  }
 }
