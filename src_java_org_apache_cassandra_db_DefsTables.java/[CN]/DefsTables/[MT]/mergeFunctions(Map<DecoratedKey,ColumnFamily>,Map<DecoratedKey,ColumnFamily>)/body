@@ -1,0 +1,25 @@
+{
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
+    ColumnFamily cfFunctions=entry.getValue();
+    if (!cfFunctions.hasColumns())     continue;
+    for (    UFMetaData uf : UFMetaData.fromSchema(new Row(entry.getKey(),cfFunctions)).values())     addFunction(uf);
+  }
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntry : diff.entriesDiffering().entrySet()) {
+    DecoratedKey namespace=modifiedEntry.getKey();
+    ColumnFamily prevCFFunctions=modifiedEntry.getValue().leftValue();
+    ColumnFamily newCFFunctions=modifiedEntry.getValue().rightValue();
+    if (!prevCFFunctions.hasColumns()) {
+      for (      UFMetaData uf : UFMetaData.fromSchema(new Row(namespace,newCFFunctions)).values())       addFunction(uf);
+    }
+ else     if (!newCFFunctions.hasColumns()) {
+      for (      UFMetaData uf : UFMetaData.fromSchema(new Row(namespace,prevCFFunctions)).values())       dropFunction(uf);
+    }
+ else {
+      MapDifference<String,UFMetaData> functionsDiff=Maps.difference(UFMetaData.fromSchema(new Row(namespace,prevCFFunctions)),UFMetaData.fromSchema(new Row(namespace,newCFFunctions)));
+      for (      UFMetaData function : functionsDiff.entriesOnlyOnRight().values())       addFunction(function);
+      for (      UFMetaData function : functionsDiff.entriesOnlyOnLeft().values())       dropFunction(function);
+      for (      MapDifference.ValueDifference<UFMetaData> tdiff : functionsDiff.entriesDiffering().values())       updateFunction(tdiff.rightValue());
+    }
+  }
+}

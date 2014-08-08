@@ -1,0 +1,30 @@
+{
+  this.namespace=namespace != null ? namespace.toLowerCase() : "";
+  this.functionName=functionName.toLowerCase();
+  this.qualifiedName=qualifiedName(namespace,functionName);
+  this.returnType=returnType;
+  this.argumentNames=argumentNames;
+  this.argumentTypes=argumentTypes;
+  this.language=language == null ? "class" : language.toLowerCase();
+  this.body=body;
+  this.deterministic=deterministic;
+  this.cqlArgumentTypes=new ArrayList<>(argumentTypes.size());
+  InvalidRequestException inv=null;
+  CQL3Type rt=null;
+  try {
+    rt=parseCQLType(returnType);
+    for (    String argumentType : argumentTypes)     cqlArgumentTypes.add(parseCQLType(argumentType));
+  }
+ catch (  InvalidRequestException e) {
+    inv=e;
+  }
+  this.invalid=inv;
+  this.cqlReturnType=rt;
+  StringBuilder signature=new StringBuilder();
+  signature.append(qualifiedName);
+  for (  String argumentType : argumentTypes) {
+    signature.append(',');
+    signature.append(argumentType);
+  }
+  this.signature=signature.toString();
+}

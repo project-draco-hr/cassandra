@@ -1,5 +1,11 @@
 {
-  Function fun=Functions.get(keyspace,functionName,terms,receiver);
+  Function fun=null;
+  if (namespace.isEmpty())   fun=Functions.get(keyspace,functionName,terms,receiver);
+  if (fun == null) {
+    UDFunction udf=UDFRegistry.resolveFunction(namespace,functionName,receiver.ksName,receiver.cfName,terms);
+    if (udf != null)     fun=udf.create(terms);
+  }
+  if (fun == null)   throw new InvalidRequestException(String.format("Unknown function %s called",namespace.isEmpty() ? functionName : namespace + "::" + functionName));
   List<Term> parameters=new ArrayList<Term>(terms.size());
   boolean allTerminal=true;
   for (int i=0; i < terms.size(); i++) {
