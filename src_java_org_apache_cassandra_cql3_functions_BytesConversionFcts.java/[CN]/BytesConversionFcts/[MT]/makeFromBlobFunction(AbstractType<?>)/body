@@ -1,8 +1,15 @@
 {
-  String name="blobas" + toType.asCQL3Type();
+  final String name="blobas" + toType.asCQL3Type();
   return new AbstractFunction(name,toType,BytesType.instance){
-    public ByteBuffer execute(    List<ByteBuffer> parameters){
-      return parameters.get(0);
+    public ByteBuffer execute(    List<ByteBuffer> parameters) throws InvalidRequestException {
+      ByteBuffer val=parameters.get(0);
+      try {
+        if (val != null)         toType.validate(val);
+        return val;
+      }
+ catch (      MarshalException e) {
+        throw new InvalidRequestException(String.format("In call to function %s, value 0x%s is not a valid binary representation for type %s",name,ByteBufferUtil.bytesToHex(val),toType.asCQL3Type()));
+      }
     }
   }
 ;
