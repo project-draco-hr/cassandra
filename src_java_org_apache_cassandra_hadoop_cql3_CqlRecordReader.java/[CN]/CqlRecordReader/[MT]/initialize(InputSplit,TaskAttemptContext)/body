@@ -4,8 +4,16 @@
   totalRowCount=(this.split.getLength() < Long.MAX_VALUE) ? (int)this.split.getLength() : ConfigHelper.getInputSplitSize(conf);
   cfName=quote(ConfigHelper.getInputColumnFamily(conf));
   keyspace=quote(ConfigHelper.getInputKeyspace(conf));
-  cqlQuery=CqlConfigHelper.getInputCql(conf);
-  partitioner=ConfigHelper.getInputPartitioner(HadoopCompat.getConfiguration(context));
+  partitioner=ConfigHelper.getInputPartitioner(conf);
+  inputColumns=CqlConfigHelper.getInputcolumns(conf);
+  userDefinedWhereClauses=CqlConfigHelper.getInputWhereClauses(conf);
+  Optional<Integer> pageRowSizeOptional=CqlConfigHelper.getInputPageRowSize(conf);
+  try {
+    pageRowSize=pageRowSizeOptional.isPresent() ? pageRowSizeOptional.get() : DEFAULT_CQL_PAGE_LIMIT;
+  }
+ catch (  NumberFormatException e) {
+    pageRowSize=DEFAULT_CQL_PAGE_LIMIT;
+  }
   try {
     if (cluster != null)     return;
     String[] locations=split.getLocations();
@@ -26,6 +34,10 @@
     throw new RuntimeException(e);
   }
   if (cluster != null)   session=cluster.connect(keyspace);
+  if (session == null)   throw new RuntimeException("Can't create connection session");
+  cqlQuery=CqlConfigHelper.getInputCql(conf);
+  if (StringUtils.isEmpty(cqlQuery))   cqlQuery=buildQuery();
+  logger.debug("cqlQuery {}",cqlQuery);
   rowIterator=new RowIterator();
   logger.debug("created {}",rowIterator);
 }
