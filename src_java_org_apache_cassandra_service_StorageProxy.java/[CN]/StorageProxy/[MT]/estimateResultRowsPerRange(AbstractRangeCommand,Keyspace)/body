@@ -1,2 +1,23 @@
 {
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(command.columnFamily);
+  float resultRowsPerRange=Float.POSITIVE_INFINITY;
+  if (command.rowFilter != null && !command.rowFilter.isEmpty()) {
+    List<SecondaryIndexSearcher> searchers=cfs.indexManager.getIndexSearchersForQuery(command.rowFilter);
+    if (searchers.isEmpty()) {
+      resultRowsPerRange=calculateResultRowsUsingEstimatedKeys(cfs);
+    }
+ else {
+      for (      SecondaryIndexSearcher searcher : searchers) {
+        SecondaryIndex highestSelectivityIndex=searcher.highestSelectivityIndex(command.rowFilter);
+        resultRowsPerRange=Math.min(resultRowsPerRange,highestSelectivityIndex.estimateResultRows());
+      }
+    }
+  }
+ else   if (!command.countCQL3Rows()) {
+    resultRowsPerRange=cfs.estimateKeys();
+  }
+ else {
+    resultRowsPerRange=calculateResultRowsUsingEstimatedKeys(cfs);
+  }
+  return (resultRowsPerRange / DatabaseDescriptor.getNumTokens()) / keyspace.getReplicationStrategy().getReplicationFactor();
 }
