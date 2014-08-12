@@ -1,7 +1,21 @@
 {
   logger.debug("truncating {}",name);
-  forceBlockingFlush();
-  Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
+  if (keyspace.metadata.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
+    forceBlockingFlush();
+    Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
+  }
+ else {
+    Keyspace.switchLock.writeLock().lock();
+    try {
+      for (      ColumnFamilyStore cfs : concatWithIndexes()) {
+        Memtable mt=cfs.getMemtableThreadSafe();
+        if (!mt.isClean())         mt.cfs.data.renewMemtable();
+      }
+    }
+  finally {
+      Keyspace.switchLock.writeLock().unlock();
+    }
+  }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
       logger.debug("Discarding sstable data for truncated CF + indexes");
