@@ -2,45 +2,39 @@
   Map<String,Collection<InetAddress>> dcGroups=null;
   MessageOut<Mutation> message=null;
   boolean insertLocal=false;
-  mutation.retain();
-  try {
-    for (    InetAddress destination : targets) {
-      if (StorageMetrics.totalHintsInProgress.count() > maxHintsInProgress && (getHintsInProgressFor(destination).get() > 0 && shouldHint(destination))) {
-        throw new OverloadedException("Too many in flight hints: " + StorageMetrics.totalHintsInProgress.count());
-      }
-      if (FailureDetector.instance.isAlive(destination)) {
-        if (destination.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
-          insertLocal=true;
-        }
- else {
-          if (message == null)           message=mutation.createMessage();
-          String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
-          if (localDataCenter.equals(dc)) {
-            MessagingService.instance().sendRR(message,destination,responseHandler,true);
-          }
- else {
-            Collection<InetAddress> messages=(dcGroups != null) ? dcGroups.get(dc) : null;
-            if (messages == null) {
-              messages=new ArrayList<InetAddress>(3);
-              if (dcGroups == null)               dcGroups=new HashMap<String,Collection<InetAddress>>();
-              dcGroups.put(dc,messages);
-            }
-            messages.add(destination);
-          }
-        }
+  for (  InetAddress destination : targets) {
+    if (StorageMetrics.totalHintsInProgress.count() > maxHintsInProgress && (getHintsInProgressFor(destination).get() > 0 && shouldHint(destination))) {
+      throw new OverloadedException("Too many in flight hints: " + StorageMetrics.totalHintsInProgress.count());
+    }
+    if (FailureDetector.instance.isAlive(destination)) {
+      if (destination.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
+        insertLocal=true;
       }
  else {
-        if (!shouldHint(destination))         continue;
-        submitHint(mutation,destination,responseHandler);
+        if (message == null)         message=mutation.createMessage();
+        String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(destination);
+        if (localDataCenter.equals(dc)) {
+          MessagingService.instance().sendRR(message,destination,responseHandler,true);
+        }
+ else {
+          Collection<InetAddress> messages=(dcGroups != null) ? dcGroups.get(dc) : null;
+          if (messages == null) {
+            messages=new ArrayList<InetAddress>(3);
+            if (dcGroups == null)             dcGroups=new HashMap<String,Collection<InetAddress>>();
+            dcGroups.put(dc,messages);
+          }
+          messages.add(destination);
+        }
       }
     }
-    if (insertLocal)     insertLocal(mutation,responseHandler);
-    if (dcGroups != null) {
-      if (message == null)       message=mutation.createMessage();
-      for (      Collection<InetAddress> dcTargets : dcGroups.values())       sendMessagesToNonlocalDC(message,dcTargets,responseHandler);
+ else {
+      if (!shouldHint(destination))       continue;
+      submitHint(mutation,destination,responseHandler);
     }
   }
-  finally {
-    mutation.release();
+  if (insertLocal)   insertLocal(mutation,responseHandler);
+  if (dcGroups != null) {
+    if (message == null)     message=mutation.createMessage();
+    for (    Collection<InetAddress> dcTargets : dcGroups.values())     sendMessagesToNonlocalDC(message,dcTargets,responseHandler);
   }
 }
