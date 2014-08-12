@@ -1,7 +1,16 @@
 {
   logger.debug("truncating {}",name);
-  forceBlockingFlush();
-  Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
+  if (keyspace.metadata.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
+    forceBlockingFlush();
+    Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
+  }
+ else {
+synchronized (data) {
+      final Flush flush=new Flush(true);
+      flushExecutor.execute(flush);
+      postFlushExecutor.submit(flush.postFlush);
+    }
+  }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
       logger.debug("Discarding sstable data for truncated CF + indexes");
