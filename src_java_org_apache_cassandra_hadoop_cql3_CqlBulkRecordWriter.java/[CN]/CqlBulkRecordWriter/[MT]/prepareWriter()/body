@@ -1,0 +1,15 @@
+{
+  try {
+    if (writer == null) {
+      writer=CQLSSTableWriter.builder().forTable(schema).using(insertStatement).withPartitioner(ConfigHelper.getOutputPartitioner(conf)).inDirectory(outputDir).withBufferSizeInMB(Integer.parseInt(conf.get(BUFFER_SIZE_IN_MB,"64"))).build();
+    }
+    if (loader == null) {
+      ExternalClient externalClient=new ExternalClient(conf);
+      externalClient.addKnownCfs(keyspace,schema);
+      this.loader=new SSTableLoader(outputDir,externalClient,new BulkRecordWriter.NullOutputHandler());
+    }
+  }
+ catch (  Exception e) {
+    throw new IOException(e);
+  }
+}
