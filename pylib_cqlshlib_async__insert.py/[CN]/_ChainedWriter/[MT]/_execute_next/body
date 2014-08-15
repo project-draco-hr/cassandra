@@ -1,0 +1,27 @@
+def _execute_next(self, result, last_completed_record):
+    if self._cancellation_event.is_set():
+        self._task_counter.count_down()
+        return
+    if (result is not self._sentinel):
+        finished = next(self._num_finished)
+        if (not (finished % 1000)):
+            sys.stdout.write(('Imported %s rows\r' % finished))
+            sys.stdout.flush()
+    try:
+        (current_record, row) = next(self._enumerated_reader)
+    except StopIteration:
+        self._task_counter.count_down()
+        return
+    except Exception as exc:
+        self._abort(exc, last_completed_record)
+        return
+    if self._cancellation_event.is_set():
+        self._task_counter.count_down()
+        return
+    try:
+        statement = self._statement_func(row)
+        future = self._session.execute_async(statement)
+        future.add_callbacks(callback=self._execute_next, callback_args=(current_record,), errback=self._handle_error, errback_args=(current_record,))
+    except Exception as exc:
+        self._abort(exc, current_record)
+        return
