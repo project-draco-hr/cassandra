@@ -1,30 +1,3 @@
 {
-  InputStream input=null;
-  try {
-    URL url=getStorageConfigURL();
-    logger.info("Loading settings from {}",url);
-    try {
-      input=url.openStream();
-    }
- catch (    IOException e) {
-      throw new AssertionError(e);
-    }
-    org.yaml.snakeyaml.constructor.Constructor constructor=new org.yaml.snakeyaml.constructor.Constructor(Config.class);
-    TypeDescription seedDesc=new TypeDescription(SeedProviderDef.class);
-    seedDesc.putMapPropertyType("parameters",String.class,String.class);
-    constructor.addTypeDescription(seedDesc);
-    MissingPropertiesChecker propertiesChecker=new MissingPropertiesChecker();
-    constructor.setPropertyUtils(propertiesChecker);
-    Yaml yaml=new Yaml(constructor);
-    Config result=yaml.loadAs(input,Config.class);
-    result.configHintedHandoff();
-    propertiesChecker.check();
-    return result;
-  }
- catch (  YAMLException e) {
-    throw new ConfigurationException("Invalid yaml",e);
-  }
- finally {
-    FileUtils.closeQuietly(input);
-  }
+  return loadConfig(getStorageConfigURL());
 }

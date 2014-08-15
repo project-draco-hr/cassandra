@@ -26,7 +26,6 @@
     opts.debug=cmd.hasOption(DEBUG_OPTION);
     opts.verbose=cmd.hasOption(VERBOSE_OPTION);
     opts.noProgress=cmd.hasOption(NOPROGRESS_OPTION);
-    if (cmd.hasOption(THROTTLE_MBITS))     opts.throttle=Integer.parseInt(cmd.getOptionValue(THROTTLE_MBITS));
     if (cmd.hasOption(RPC_PORT_OPTION))     opts.rpcPort=Integer.parseInt(cmd.getOptionValue(RPC_PORT_OPTION));
     if (cmd.hasOption(USER_OPTION))     opts.user=cmd.getOptionValue(USER_OPTION);
     if (cmd.hasOption(PASSWD_OPTION))     opts.passwd=cmd.getOptionValue(PASSWD_OPTION);
@@ -56,6 +55,25 @@
  catch (      UnknownHostException e) {
         errorMsg("Unknown host: " + e.getMessage(),options);
       }
+    }
+    Config config;
+    if (cmd.hasOption(CONFIG_PATH)) {
+      File configFile=new File(cmd.getOptionValue(CONFIG_PATH));
+      if (!configFile.exists()) {
+        errorMsg("Config file not found",options);
+      }
+      config=new YamlConfigurationLoader().loadConfig(configFile.toURI().toURL());
+    }
+ else {
+      config=new Config();
+    }
+    opts.storagePort=config.storage_port;
+    opts.sslStoragePort=config.ssl_storage_port;
+    opts.throttle=config.stream_throughput_outbound_megabits_per_sec;
+    opts.encOptions=config.client_encryption_options;
+    opts.serverEncOptions=config.server_encryption_options;
+    if (cmd.hasOption(THROTTLE_MBITS)) {
+      opts.throttle=Integer.parseInt(cmd.getOptionValue(THROTTLE_MBITS));
     }
     if (cmd.hasOption(SSL_TRUSTSTORE)) {
       opts.encOptions.truststore=cmd.getOptionValue(SSL_TRUSTSTORE);
@@ -89,7 +107,7 @@
     }
     return opts;
   }
- catch (  ParseException e) {
+ catch (  ParseException|ConfigurationException|MalformedURLException e) {
     errorMsg(e.getMessage(),options);
     return null;
   }
