@@ -1,10 +1,11 @@
 {
-  OutgoingFileMessage file=files.remove(sequenceNumber);
-  if (file != null) {
-    file.sstable.releaseReference();
-    if (files.isEmpty()) {
-      timeoutExecutor.shutdownNow();
-      session.taskCompleted(this);
-    }
+  boolean signalComplete;
+synchronized (this) {
+    ScheduledFuture timeout=timeoutTasks.remove(sequenceNumber);
+    if (timeout != null)     timeout.cancel(false);
+    OutgoingFileMessage file=files.remove(sequenceNumber);
+    if (file != null)     file.sstable.releaseReference();
+    signalComplete=files.isEmpty();
   }
+  if (signalComplete)   session.taskCompleted(this);
 }
