@@ -1,7 +1,8 @@
 {
   try {
     Cassandra.Client client=ConfigHelper.getClientFromOutputAddressList(conf);
-    List<TokenRange> ring=client.describe_ring(ConfigHelper.getOutputKeyspace(conf));
+    String keyspace=ConfigHelper.getOutputKeyspace(conf);
+    List<TokenRange> ring=ConfigHelper.getOutputLocalDCOnly(conf) ? client.describe_local_ring(keyspace) : client.describe_ring(keyspace);
     rangeMap=ArrayListMultimap.create();
     for (    TokenRange range : ring) {
       Token<?> left=partitioner.getTokenFactory().fromString(range.start_token);
