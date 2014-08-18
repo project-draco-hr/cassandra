@@ -3,10 +3,10 @@
   if (keys.size() > 1)   throw new InvalidRequestException("IN on the partition key is not supported with conditional updates");
   ByteBuffer key=keys.get(0);
   long now=options.getTimestamp(queryState);
-  CQL3CasConditions conditions=new CQL3CasConditions(cfm,now);
   Composite prefix=createClusteringPrefix(options);
-  ColumnFamily updates=ArrayBackedSortedColumns.factory.create(cfm);
-  addUpdatesAndConditions(key,prefix,updates,conditions,options,getTimestamp(now,options));
-  ColumnFamily result=StorageProxy.cas(keyspace(),columnFamily(),key,conditions,updates,options.getSerialConsistency(),options.getConsistency());
+  CQL3CasRequest request=new CQL3CasRequest(cfm,key,false);
+  addConditions(prefix,request,options);
+  request.addRowUpdate(prefix,this,options,now);
+  ColumnFamily result=StorageProxy.cas(keyspace(),columnFamily(),key,request,options.getSerialConsistency(),options.getConsistency());
   return new ResultMessage.Rows(buildCasResultSet(key,result,options));
 }
