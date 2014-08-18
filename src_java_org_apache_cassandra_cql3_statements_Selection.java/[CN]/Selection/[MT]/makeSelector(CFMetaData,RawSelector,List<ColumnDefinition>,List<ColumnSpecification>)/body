@@ -31,20 +31,9 @@
     Selectable.WithFunction withFun=(Selectable.WithFunction)raw.selectable;
     List<Selector> args=new ArrayList<>(withFun.args.size());
     for (    Selectable rawArg : withFun.args)     args.add(makeSelector(cfm,new RawSelector(rawArg,null),defs,null));
-    AbstractType<?> returnType=Functions.getReturnType(withFun.functionName,cfm.ksName,cfm.cfName);
-    if (returnType == null) {
-      UDFunction userFun=UDFRegistry.resolveFunction(withFun.namespace,withFun.functionName,cfm.ksName,cfm.cfName,args);
-      if (userFun != null) {
-        Function fun=userFun.create(args);
-        ColumnSpecification spec=makeFunctionSpec(cfm,withFun,fun.returnType(),raw.alias);
-        if (metadata != null)         metadata.add(spec);
-        return new FunctionSelector(userFun.create(args),args);
-      }
-      throw new InvalidRequestException(String.format("Unknown function '%s'",withFun.namespace.isEmpty() ? withFun.functionName : withFun.namespace + "::" + withFun.functionName));
-    }
-    ColumnSpecification spec=makeFunctionSpec(cfm,withFun,returnType,raw.alias);
-    Function fun=Functions.get(cfm.ksName,withFun.functionName,args,spec);
-    if (metadata != null)     metadata.add(spec);
+    Function fun=Functions.get(cfm.ksName,withFun.functionName,args,cfm.ksName,cfm.cfName);
+    if (fun == null)     throw new InvalidRequestException(String.format("Unknown function '%s'",withFun.functionName));
+    if (metadata != null)     metadata.add(makeFunctionSpec(cfm,withFun,fun.returnType(),raw.alias));
     return new FunctionSelector(fun,args);
   }
 }

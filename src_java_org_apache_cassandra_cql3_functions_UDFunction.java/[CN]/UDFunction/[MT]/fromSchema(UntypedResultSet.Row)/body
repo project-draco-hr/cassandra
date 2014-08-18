@@ -1,0 +1,22 @@
+{
+  String namespace=row.getString("namespace");
+  String fname=row.getString("name");
+  FunctionName name=new FunctionName(namespace,fname);
+  List<String> names=row.getList("argument_names",UTF8Type.instance);
+  List<String> types=row.getList("argument_types",UTF8Type.instance);
+  List<ColumnIdentifier> argNames=new ArrayList<>(names.size());
+  for (  String arg : names)   argNames.add(new ColumnIdentifier(arg,true));
+  List<AbstractType<?>> argTypes=new ArrayList<>(types.size());
+  for (  String type : types)   argTypes.add(parseType(type));
+  AbstractType<?> returnType=parseType(row.getString("return_type"));
+  boolean deterministic=row.getBoolean("deterministic");
+  String language=row.getString("language");
+  String body=row.getString("body");
+  try {
+    return create(name,argNames,argTypes,returnType,language,body,deterministic);
+  }
+ catch (  InvalidRequestException e) {
+    logger.error(String.format("Cannot load function '%s' from schema: this function won't be available (on this node)",name),e);
+    return createBrokenFunction(name,argNames,argTypes,returnType,language,body,e);
+  }
+}

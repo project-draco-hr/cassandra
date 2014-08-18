@@ -1,0 +1,25 @@
+{
+  createTable("CREATE TABLE %s (key int PRIMARY KEY, d double)");
+  execute("INSERT INTO %s(key, d) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO %s(key, d) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO %s(key, d) VALUES (?, ?)",3,3d);
+  assertInvalid("CREATE FUNCTION foo::sin1 ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.DoesNotExist#doesnotexist'");
+  assertInvalid("CREATE FUNCTION foo::sin2 ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#doesnotexist'");
+  assertInvalid("CREATE FUNCTION foo::sin3 ( input float ) RETURNS float USING 'org.apache.cassandra.cql3.UFTest#nonStaticMethod'");
+  assertInvalid("CREATE FUNCTION foo::sin4 ( input float ) RETURNS float USING 'org.apache.cassandra.cql3.UFTest#privateMethod'");
+  assertInvalid("CREATE FUNCTION foo::sin5 ( input text ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  assertInvalid("CREATE FUNCTION foo::sin6 ( input double ) RETURNS text USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  execute("CREATE FUNCTION foo::sin ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  assertInvalid("CREATE FUNCTION foo::sin ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  execute("CREATE FUNCTION IF NOT EXISTS foo::sin ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  assertRows(execute("SELECT key, foo::sin(d) FROM %s"),row(1,Math.sin(1d)),row(2,Math.sin(2d)),row(3,Math.sin(3d)));
+  assertInvalid("CREATE OR REPLACE FUNCTION foo::sin ( input double ) RETURNS text USING 'org.apache.cassandra.cql3.UFTest#badSinBadReturn'");
+  execute("CREATE OR REPLACE FUNCTION foo::sin ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#badSin'");
+  assertRows(execute("SELECT key, foo::sin(d) FROM %s"),row(1,42.0),row(2,42.0),row(3,42.0));
+  execute("CREATE FUNCTION sin ( input double ) RETURNS double USING 'org.apache.cassandra.cql3.UFTest#sin'");
+  assertRows(execute("SELECT key, sin(d) FROM %s"),row(1,Math.sin(1d)),row(2,Math.sin(2d)),row(3,Math.sin(3d)));
+  execute("DROP FUNCTION foo::sin");
+  execute("DROP FUNCTION sin");
+  assertInvalid("DROP FUNCTION foo::sin");
+  execute("DROP FUNCTION IF EXISTS foo::sin");
+}

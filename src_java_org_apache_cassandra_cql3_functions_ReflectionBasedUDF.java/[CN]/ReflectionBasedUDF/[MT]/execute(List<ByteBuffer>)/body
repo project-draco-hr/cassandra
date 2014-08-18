@@ -1,0 +1,18 @@
+{
+  Object[] parms=new Object[argTypes.size()];
+  for (int i=0; i < parms.length; i++) {
+    ByteBuffer bb=parameters.get(i);
+    if (bb != null)     parms[i]=argTypes.get(i).compose(bb);
+  }
+  Object result;
+  try {
+    result=method.invoke(null,parms);
+    @SuppressWarnings("unchecked") ByteBuffer r=result != null ? ((AbstractType)returnType).decompose(result) : null;
+    return r;
+  }
+ catch (  InvocationTargetException|IllegalAccessException e) {
+    Throwable c=e.getCause();
+    logger.error("Invocation of function {} failed",name,c);
+    throw new InvalidRequestException("Invocation of function " + name + " failed: "+ c);
+  }
+}

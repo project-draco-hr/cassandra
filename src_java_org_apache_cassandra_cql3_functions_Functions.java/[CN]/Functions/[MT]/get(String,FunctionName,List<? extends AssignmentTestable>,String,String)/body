@@ -1,0 +1,25 @@
+{
+  if (name.equals(TOKEN_FUNCTION_NAME))   return new TokenFct(Schema.instance.getCFMetaData(receiverKs,receiverCf));
+  List<Function> candidates=declared.get(name);
+  if (candidates.isEmpty())   return null;
+  if (candidates.size() == 1) {
+    Function fun=candidates.get(0);
+    validateTypes(keyspace,fun,providedArgs,receiverKs,receiverCf);
+    return fun;
+  }
+  List<Function> compatibles=null;
+  for (  Function toTest : candidates) {
+    AssignmentTestable.TestResult r=matchAguments(keyspace,toTest,providedArgs,receiverKs,receiverCf);
+switch (r) {
+case EXACT_MATCH:
+      return toTest;
+case WEAKLY_ASSIGNABLE:
+    if (compatibles == null)     compatibles=new ArrayList<>();
+  compatibles.add(toTest);
+break;
+}
+}
+if (compatibles == null || compatibles.isEmpty()) throw new InvalidRequestException(String.format("Invalid call to function %s, none of its type signatures match (known type signatures: %s)",name,toString(candidates)));
+if (compatibles.size() > 1) throw new InvalidRequestException(String.format("Ambiguous call to function %s (can be matched by following signatures: %s): use type casts to disambiguate",name,toString(compatibles)));
+return compatibles.get(0);
+}
