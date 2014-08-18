@@ -7,9 +7,11 @@
     ColumnFamilyType cfType=ColumnFamilyType.valueOf(result.getString("type"));
     AbstractType<?> fullRawComparator=makeRawAbstractType(rawComparator,subComparator);
     List<ColumnDefinition> columnDefs=ColumnDefinition.fromSchema(serializedColumnDefinitions,ksName,cfName,fullRawComparator,cfType == ColumnFamilyType.Super);
-    CellNameType comparator=CellNames.fromAbstractType(fullRawComparator,isDense(fullRawComparator,columnDefs));
+    boolean isDense=result.has("is_dense") ? result.getBoolean("is_dense") : isDense(fullRawComparator,columnDefs);
+    CellNameType comparator=CellNames.fromAbstractType(fullRawComparator,isDense);
     UUID cfId=result.has("cf_id") ? result.getUUID("cf_id") : generateLegacyCfId(ksName,cfName);
     CFMetaData cfm=new CFMetaData(ksName,cfName,cfType,comparator,cfId);
+    cfm.setDense(isDense);
     cfm.readRepairChance(result.getDouble("read_repair_chance"));
     cfm.dcLocalReadRepairChance(result.getDouble("local_read_repair_chance"));
     cfm.gcGraceSeconds(result.getInt("gc_grace_seconds"));
