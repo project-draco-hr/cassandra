@@ -1,5 +1,8 @@
 {
-  if (hasConditions() && attrs.isTimestampSet())   throw new InvalidRequestException("Cannot provide custom timestamp for conditional update");
+  if (hasConditions()) {
+    if (attrs.isTimestampSet())     throw new InvalidRequestException("Cannot provide custom timestamp for conditional update");
+    if (requiresRead())     throw new InvalidRequestException("Operations using list indexes are not allowed with IF conditions");
+  }
   if (isCounter()) {
     if (attrs.isTimestampSet() && !loggedCounterTimestamp) {
       logger.warn("Detected use of 'USING TIMESTAMP' in a counter UPDATE. This is invalid " + "because counters do not use timestamps, and the timestamp has been ignored. " + "Such queries will be rejected in Cassandra 2.1+ - please fix your queries before then.");
