@@ -5,7 +5,14 @@
     int readLength=chunk.length + 4;
     compressedWithCRC=new byte[readLength];
     int bufferRead=0;
-    while (bufferRead < readLength)     bufferRead+=source.read(compressedWithCRC,bufferRead,readLength - bufferRead);
+    while (bufferRead < readLength) {
+      int r=source.read(compressedWithCRC,bufferRead,readLength - bufferRead);
+      if (r < 0) {
+        dataBuffer.put(POISON_PILL);
+        return;
+      }
+      bufferRead+=r;
+    }
     dataBuffer.put(compressedWithCRC);
   }
 }
