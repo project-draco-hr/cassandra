@@ -5,14 +5,12 @@
   DatabaseDescriptor.getAuthenticator().setup();
   DatabaseDescriptor.getAuthorizer().setup();
   MigrationManager.instance.register(new MigrationListener());
-  if (DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.isAutoBootstrap()) {
-    StorageService.tasks.schedule(new Runnable(){
-      public void run(){
-        setupDefaultSuperuser();
-      }
+  StorageService.tasks.schedule(new Runnable(){
+    public void run(){
+      setupDefaultSuperuser();
     }
-,SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
   }
+,SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
   try {
     String query=String.format("SELECT * FROM %s.%s WHERE name = ?",AUTH_KS,USERS_CF);
     selectUserStatement=(SelectStatement)QueryProcessor.parseStatement(query).prepare().statement;
