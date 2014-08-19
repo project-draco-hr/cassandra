@@ -1,13 +1,11 @@
 {
   Auth.setupTable(CREDENTIALS_CF,CREDENTIALS_CF_SCHEMA);
-  if (DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()) || !DatabaseDescriptor.isAutoBootstrap()) {
-    StorageService.tasks.schedule(new Runnable(){
-      public void run(){
-        setupDefaultUser();
-      }
+  StorageService.tasks.schedule(new Runnable(){
+    public void run(){
+      setupDefaultUser();
     }
-,Auth.SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
   }
+,Auth.SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
   try {
     String query=String.format("SELECT %s FROM %s.%s WHERE username = ?",SALTED_HASH,Auth.AUTH_KS,CREDENTIALS_CF);
     authenticateStatement=(SelectStatement)QueryProcessor.parseStatement(query).prepare().statement;
