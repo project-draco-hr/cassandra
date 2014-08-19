@@ -1,15 +1,14 @@
 {
   Set<Class<? extends SecondaryIndex>> cleanedRowLevelIndexes=null;
   for (  Column column : indexedColumnsInRow) {
-    ColumnDefinition cDef=baseCfs.metadata.getColumnDefinitionFromColumnName(column.name());
-    SecondaryIndex index=indexesByColumn.get(cDef.name);
-    if (index == null)     continue;
-    if (index instanceof PerRowSecondaryIndex) {
-      if (cleanedRowLevelIndexes == null)       cleanedRowLevelIndexes=new HashSet<>();
-      if (cleanedRowLevelIndexes.add(index.getClass()))       ((PerRowSecondaryIndex)index).delete(key);
-    }
+    for (    SecondaryIndex index : indexFor(column.name())) {
+      if (index instanceof PerRowSecondaryIndex) {
+        if (cleanedRowLevelIndexes == null)         cleanedRowLevelIndexes=new HashSet<>();
+        if (cleanedRowLevelIndexes.add(index.getClass()))         ((PerRowSecondaryIndex)index).delete(key);
+      }
  else {
-      ((PerColumnSecondaryIndex)index).delete(key.key,column);
+        ((PerColumnSecondaryIndex)index).delete(key.key,column);
+      }
     }
   }
 }
