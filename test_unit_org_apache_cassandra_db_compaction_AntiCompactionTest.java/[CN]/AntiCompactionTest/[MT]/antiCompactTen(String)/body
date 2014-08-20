@@ -1,0 +1,37 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF);
+  store.setCompactionStrategyClass(compactionStrategy);
+  store.disableAutoCompaction();
+  for (int table=0; table < 10; table++) {
+    generateSStable(store,Integer.toString(table));
+  }
+  Collection<SSTableReader> sstables=store.getUnrepairedSSTables();
+  assertEquals(store.getSSTables().size(),sstables.size());
+  Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("4".getBytes()));
+  List<Range<Token>> ranges=Arrays.asList(range);
+  SSTableReader.acquireReferences(sstables);
+  long repairedAt=1000;
+  CompactionManager.instance.performAnticompaction(store,ranges,sstables,repairedAt);
+  assertEquals(10,store.getSSTables().size());
+  int repairedKeys=0;
+  int nonRepairedKeys=0;
+  for (  SSTableReader sstable : store.getSSTables()) {
+    SSTableScanner scanner=sstable.getScanner();
+    while (scanner.hasNext()) {
+      SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+      if (sstable.isRepaired()) {
+        assertTrue(range.contains(row.getKey().getToken()));
+        assertEquals(repairedAt,sstable.getSSTableMetadata().repairedAt);
+        repairedKeys++;
+      }
+ else {
+        assertFalse(range.contains(row.getKey().getToken()));
+        assertEquals(ActiveRepairService.UNREPAIRED_SSTABLE,sstable.getSSTableMetadata().repairedAt);
+        nonRepairedKeys++;
+      }
+    }
+  }
+  assertEquals(repairedKeys,40);
+  assertEquals(nonRepairedKeys,60);
+}

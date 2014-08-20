@@ -1,0 +1,12 @@
+{
+  FileUtils.createDirectory(compactionFileLocation);
+  int minLevel=Integer.MAX_VALUE;
+  for (  SSTableReader sstable : sstables) {
+    if (minLevel == Integer.MAX_VALUE)     minLevel=sstable.getSSTableLevel();
+    if (minLevel != sstable.getSSTableLevel()) {
+      minLevel=0;
+      break;
+    }
+  }
+  return new SSTableWriter(cfs.getTempSSTablePath(compactionFileLocation),expectedBloomFilterSize,repairedAt,cfs.metadata,cfs.partitioner,new MetadataCollector(sstables,cfs.metadata.comparator,minLevel));
+}

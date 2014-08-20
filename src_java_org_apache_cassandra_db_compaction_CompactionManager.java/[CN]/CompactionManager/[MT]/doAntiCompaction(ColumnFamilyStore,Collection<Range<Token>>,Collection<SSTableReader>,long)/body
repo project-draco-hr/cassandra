@@ -1,53 +1,11 @@
 {
-  List<SSTableReader> anticompactedSSTables=new ArrayList<>();
-  int repairedKeyCount=0;
-  int unrepairedKeyCount=0;
-  int expectedBloomFilterSize=Math.max(cfs.metadata.getMinIndexInterval(),(int)(SSTableReader.getApproximateKeyCount(repairedSSTables)));
   logger.info("Performing anticompaction on {} sstables",repairedSSTables.size());
-  for (  SSTableReader sstable : repairedSSTables) {
-    if (!new File(sstable.getFilename()).exists()) {
-      logger.info("Skipping anticompaction for {}, required sstable was compacted and is no longer available.",sstable);
-      continue;
-    }
-    logger.info("Anticompacting {}",sstable);
-    Set<SSTableReader> sstableAsSet=new HashSet<>();
-    sstableAsSet.add(sstable);
-    File destination=cfs.directories.getDirectoryForNewSSTables();
-    SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
-    SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
-    AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-    List<ICompactionScanner> scanners=strategy.getScanners(Arrays.asList(sstable));
-    try (CompactionController controller=new CompactionController(cfs,new HashSet<>(Collections.singleton(sstable)),CFMetaData.DEFAULT_GC_GRACE_SECONDS)){
-      repairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,repairedAt,sstable));
-      unRepairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstable));
-      CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners,controller);
-      try (CloseableIterator<AbstractCompactedRow> iter=ci.iterator()){
-        while (iter.hasNext()) {
-          AbstractCompactedRow row=iter.next();
-          if (Range.isInRanges(row.key.getToken(),ranges)) {
-            repairedSSTableWriter.append(row);
-            repairedKeyCount++;
-          }
- else {
-            unRepairedSSTableWriter.append(row);
-            unrepairedKeyCount++;
-          }
-        }
-      }
-       repairedSSTableWriter.finish(false,repairedAt);
-      unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE);
-      anticompactedSSTables.addAll(repairedSSTableWriter.finished());
-      anticompactedSSTables.addAll(unRepairedSSTableWriter.finished());
-    }
- catch (    Throwable e) {
-      logger.error("Error anticompacting " + sstable,e);
-      repairedSSTableWriter.abort();
-      unRepairedSSTableWriter.abort();
-    }
+  Collection<Collection<SSTableReader>> groupedSSTables=cfs.getCompactionStrategy().groupSSTablesForAntiCompaction(repairedSSTables);
+  int antiCompactedSSTableCount=0;
+  for (  Collection<SSTableReader> sstableGroup : groupedSSTables) {
+    int antiCompacted=antiCompactGroup(cfs,ranges,sstableGroup,repairedAt);
+    antiCompactedSSTableCount+=antiCompacted;
   }
-  String format="Repaired {} keys of {} for {}/{}";
-  logger.debug(format,repairedKeyCount,(repairedKeyCount + unrepairedKeyCount),cfs.keyspace,cfs.getColumnFamilyName());
-  String format2="Anticompaction completed successfully, anticompacted from {} to {} sstable(s).";
-  logger.info(format2,repairedSSTables.size(),anticompactedSSTables.size());
-  return anticompactedSSTables;
+  String format="Anticompaction completed successfully, anticompacted from {} to {} sstable(s).";
+  logger.info(format,repairedSSTables.size(),antiCompactedSSTableCount);
 }

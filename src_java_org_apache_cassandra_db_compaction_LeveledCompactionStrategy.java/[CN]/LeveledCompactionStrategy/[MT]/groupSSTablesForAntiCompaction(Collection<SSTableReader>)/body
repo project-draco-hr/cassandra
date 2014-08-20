@@ -1,0 +1,24 @@
+{
+  int groupSize=2;
+  Map<Integer,Collection<SSTableReader>> sstablesByLevel=new HashMap<>();
+  for (  SSTableReader sstable : ssTablesToGroup) {
+    Integer level=sstable.getSSTableLevel();
+    if (!sstablesByLevel.containsKey(level)) {
+      sstablesByLevel.put(level,new ArrayList<SSTableReader>());
+    }
+    sstablesByLevel.get(level).add(sstable);
+  }
+  Collection<Collection<SSTableReader>> groupedSSTables=new ArrayList<>();
+  for (  Collection<SSTableReader> levelOfSSTables : sstablesByLevel.values()) {
+    Collection<SSTableReader> currGroup=new ArrayList<>();
+    for (    SSTableReader sstable : levelOfSSTables) {
+      currGroup.add(sstable);
+      if (currGroup.size() == groupSize) {
+        groupedSSTables.add(currGroup);
+        currGroup=new ArrayList<>();
+      }
+    }
+    if (currGroup.size() != 0)     groupedSSTables.add(currGroup);
+  }
+  return groupedSSTables;
+}
