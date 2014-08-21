@@ -2,11 +2,12 @@
   logger.debug("Updating column {} definition for index {}",columnName,indexName);
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).clone();
   ColumnDefinition cd=cfm.getColumnDefinition(columnName.key);
-  if (cd.getIndexType() != null && ifNotExists)   return;
+  if (cd.getIndexType() != null && ifNotExists)   return false;
   if (properties.isCustom)   cd.setIndexType(IndexType.CUSTOM,properties.getOptions());
  else   if (cfm.getCfDef().isComposite)   cd.setIndexType(IndexType.COMPOSITES,Collections.<String,String>emptyMap());
  else   cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
   cd.setIndexName(indexName);
   cfm.addDefaultIndexNames();
   MigrationManager.announceColumnFamilyUpdate(cfm,false);
+  return true;
 }
