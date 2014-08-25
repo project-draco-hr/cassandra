@@ -1,7 +1,10 @@
 {
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).copy();
-  if (!cfm.removeTrigger(triggerName))   throw new ConfigurationException(String.format("Trigger %s was not found",triggerName));
-  logger.info("Dropping trigger with name {}",triggerName);
-  MigrationManager.announceColumnFamilyUpdate(cfm,false,isLocalOnly);
-  return true;
+  if (cfm.removeTrigger(triggerName)) {
+    logger.info("Dropping trigger with name {}",triggerName);
+    MigrationManager.announceColumnFamilyUpdate(cfm,false,isLocalOnly);
+    return true;
+  }
+  if (!ifExists)   throw new InvalidRequestException(String.format("Trigger %s was not found",triggerName));
+  return false;
 }
