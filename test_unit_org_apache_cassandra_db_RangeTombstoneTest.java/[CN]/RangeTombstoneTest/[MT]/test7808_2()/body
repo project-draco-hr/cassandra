@@ -1,0 +1,22 @@
+{
+  Keyspace ks=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(CFNAME);
+  cfs.metadata.gcGraceSeconds(2);
+  String key="7808_2";
+  Mutation rm;
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  for (int i=10; i < 20; i++)   add(rm,i,0);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  ColumnFamily cf=rm.addOrGet(CFNAME);
+  cf.delete(new DeletionInfo(0,0));
+  rm.apply();
+  rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  add(rm,5,1);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  Thread.sleep(5);
+  cfs.forceMajorCompaction();
+  assertEquals(1,Util.getColumnFamily(ks,Util.dk(key),CFNAME).getColumnCount());
+}
