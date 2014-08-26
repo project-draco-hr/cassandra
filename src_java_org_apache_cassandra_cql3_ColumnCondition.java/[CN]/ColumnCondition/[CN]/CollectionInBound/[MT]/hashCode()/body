@@ -1,0 +1,21 @@
+{
+  List<Collection<ByteBuffer>> inValueBuffers=new ArrayList<>(inValues.size());
+switch (((CollectionType)column.type).kind) {
+case LIST:
+    for (    Term.Terminal term : inValues)     inValueBuffers.add(term == null ? null : ((Lists.Value)term).elements);
+  break;
+case SET:
+for (Term.Terminal term : inValues) inValueBuffers.add(term == null ? null : ((Sets.Value)term).elements);
+break;
+case MAP:
+for (Term.Terminal term : inValues) {
+if (term != null) {
+inValueBuffers.add(((Maps.Value)term).map.keySet());
+inValueBuffers.add(((Maps.Value)term).map.values());
+}
+ else inValueBuffers.add(null);
+}
+break;
+}
+return Objects.hashCode(column,inValueBuffers,operator);
+}
