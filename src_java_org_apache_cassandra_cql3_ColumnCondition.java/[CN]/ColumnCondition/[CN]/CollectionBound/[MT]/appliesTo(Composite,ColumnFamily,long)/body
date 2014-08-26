@@ -1,14 +1,10 @@
 {
   CollectionType type=(CollectionType)column.type;
   Iterator<Cell> iter=collectionColumns(current.metadata().comparator.create(rowPrefix,column),current,now);
-  if (value == null)   return !iter.hasNext();
-switch (type.kind) {
-case LIST:
-    return listAppliesTo((ListType)type,iter,((Lists.Value)value).elements);
-case SET:
-  return setAppliesTo((SetType)type,iter,((Sets.Value)value).elements);
-case MAP:
-return mapAppliesTo((MapType)type,iter,((Maps.Value)value).map);
-}
-throw new AssertionError();
+  if (value == null) {
+    if (operator.equals(Relation.Type.EQ))     return !iter.hasNext();
+ else     if (operator.equals(Relation.Type.NEQ))     return iter.hasNext();
+ else     throw new InvalidRequestException(String.format("Invalid comparison with null for operator \"%s\"",operator));
+  }
+  return valueAppliesTo(type,iter,value,operator);
 }

@@ -1,0 +1,17 @@
+{
+  CFMetaData cfm=CFMetaData.compile("create table foo(a int PRIMARY KEY, b int, c list<int>)","ks");
+  Map<ByteBuffer,CollectionType> typeMap=new HashMap<>();
+  typeMap.put(ByteBufferUtil.bytes("c"),ListType.getInstance(Int32Type.instance));
+  CompoundSparseCellNameType.WithCollection nameType=new CompoundSparseCellNameType.WithCollection(Collections.EMPTY_LIST,ColumnToCollectionType.getInstance(typeMap));
+  ColumnDefinition definition=new ColumnDefinition(cfm,ByteBufferUtil.bytes("c"),ListType.getInstance(Int32Type.instance),0,ColumnDefinition.Kind.REGULAR);
+  List<Cell> cells=new ArrayList<>(columnValues.size());
+  if (columnValues != null) {
+    for (int i=0; i < columnValues.size(); i++) {
+      ByteBuffer key=Int32Serializer.instance.serialize(i);
+      ByteBuffer value=columnValues.get(i);
+      cells.add(new BufferCell(nameType.create(Composites.EMPTY,definition,key),value));
+    }
+    ;
+  }
+  return bound.listAppliesTo(ListType.getInstance(Int32Type.instance),cells == null ? null : cells.iterator(),conditionValues,bound.operator);
+}
