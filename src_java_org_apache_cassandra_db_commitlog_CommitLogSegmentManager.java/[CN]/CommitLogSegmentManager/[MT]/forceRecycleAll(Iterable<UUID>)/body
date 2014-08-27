@@ -3,6 +3,12 @@
   CommitLogSegment last=segmentsToRecycle.get(segmentsToRecycle.size() - 1);
   advanceAllocatingFrom(last);
   last.waitForModifications();
+  Set<Keyspace> keyspaces=new HashSet<>();
+  for (  UUID cfId : last.getDirtyCFIDs()) {
+    ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreInstance(cfId);
+    if (cfs != null)     keyspaces.add(cfs.keyspace);
+  }
+  for (  Keyspace keyspace : keyspaces)   keyspace.writeOrder.awaitNewBarrier();
   Future<?> future=flushDataFrom(segmentsToRecycle,true);
   try {
     future.get();
