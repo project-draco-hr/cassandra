@@ -5,8 +5,10 @@
     if (sstable.isRepaired())     repairedSSTables.add(sstable);
  else     unrepairedSSTables.add(sstable);
   }
-  List<ISSTableScanner> scanners=new ArrayList<>();
-  if (!repairedSSTables.isEmpty())   scanners.addAll(repaired.getScanners(repairedSSTables,range).scanners);
-  if (!unrepairedSSTables.isEmpty())   scanners.addAll(unrepaired.getScanners(unrepairedSSTables,range).scanners);
+  AbstractCompactionStrategy.ScannerList repairedScanners=repaired.getScanners(repairedSSTables,range);
+  AbstractCompactionStrategy.ScannerList unrepairedScanners=unrepaired.getScanners(unrepairedSSTables,range);
+  List<ISSTableScanner> scanners=new ArrayList<>(repairedScanners.scanners.size() + unrepairedScanners.scanners.size());
+  scanners.addAll(repairedScanners.scanners);
+  scanners.addAll(unrepairedScanners.scanners);
   return new AbstractCompactionStrategy.ScannerList(scanners);
 }

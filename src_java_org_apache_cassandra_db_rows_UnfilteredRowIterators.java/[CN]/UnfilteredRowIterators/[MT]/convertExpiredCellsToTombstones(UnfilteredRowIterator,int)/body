@@ -1,0 +1,21 @@
+{
+  return new FilteringRowIterator(iterator){
+    protected FilteringRow makeRowFilter(){
+      return new FilteringRow(){
+        @Override protected Cell filterCell(        Cell cell){
+          Cell filtered=super.filterCell(cell);
+          if (filtered == null)           return null;
+          LivenessInfo info=filtered.livenessInfo();
+          if (info.hasTTL() && !filtered.isLive(nowInSec)) {
+            return Cells.create(filtered.column(),filtered.isCounterCell(),ByteBufferUtil.EMPTY_BYTE_BUFFER,SimpleLivenessInfo.forDeletion(info.timestamp(),info.localDeletionTime() - info.ttl()),filtered.path());
+          }
+ else {
+            return filtered;
+          }
+        }
+      }
+;
+    }
+  }
+;
+}

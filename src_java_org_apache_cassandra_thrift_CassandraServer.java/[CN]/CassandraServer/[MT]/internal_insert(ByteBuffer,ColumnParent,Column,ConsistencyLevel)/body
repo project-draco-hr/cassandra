@@ -5,19 +5,24 @@
   CFMetaData metadata=ThriftValidation.validateColumnFamily(keyspace,column_parent.column_family,false);
   ThriftValidation.validateKey(metadata,key);
   ThriftValidation.validateColumnParent(metadata,column_parent);
-  if (metadata.cfType == ColumnFamilyType.Super && column_parent.super_column == null) {
+  if (metadata.isSuper() && column_parent.super_column == null) {
     throw new org.apache.cassandra.exceptions.InvalidRequestException("missing mandatory super column name for super CF " + column_parent.column_family);
   }
   ThriftValidation.validateColumnNames(metadata,column_parent,Arrays.asList(column.name));
-  ThriftValidation.validateColumnData(metadata,key,column_parent.super_column,column);
+  ThriftValidation.validateColumnData(metadata,column_parent.super_column,column);
   org.apache.cassandra.db.Mutation mutation;
   try {
-    CellName name=metadata.isSuper() ? metadata.comparator.makeCellName(column_parent.super_column,column.name) : metadata.comparator.cellFromByteBuffer(column.name);
-    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cState.getKeyspace(),column_parent.column_family);
-    cf.addColumn(name,column.value,column.timestamp,column.ttl);
-    mutation=new org.apache.cassandra.db.Mutation(cState.getKeyspace(),key,cf);
+    LegacyLayout.LegacyCellName name=LegacyLayout.decodeCellName(metadata,column_parent.super_column,column.name);
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
+    PartitionUpdate update=new PartitionUpdate(metadata,dk,PartitionColumns.of(name.column),1);
+    Row.Writer writer=name.column.isStatic() ? update.staticWriter() : update.writer();
+    name.clustering.writeTo(writer);
+    CellPath path=name.collectionElement == null ? null : CellPath.create(name.collectionElement);
+    writer.writeCell(name.column,false,column.value,SimpleLivenessInfo.forUpdate(column.timestamp,column.ttl,FBUtilities.nowInSeconds(),metadata),path);
+    writer.endOfRow();
+    mutation=new org.apache.cassandra.db.Mutation(update);
   }
- catch (  MarshalException e) {
+ catch (  MarshalException|UnknownColumnException e) {
     throw new org.apache.cassandra.exceptions.InvalidRequestException(e.getMessage());
   }
   doInsert(consistency_level,Arrays.asList(mutation));

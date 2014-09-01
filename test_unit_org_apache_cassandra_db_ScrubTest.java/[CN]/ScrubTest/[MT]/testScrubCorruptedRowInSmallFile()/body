@@ -5,8 +5,7 @@
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(COUNTER_CF);
   cfs.clearUnsafe();
   fillCounterCF(cfs,2);
-  List<Row> rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(2,rows.size());
+  assertOrderedAll(cfs,2);
   SSTableReader sstable=cfs.getSSTables().iterator().next();
   overrideWithGarbage(sstable,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
   try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,false,false,true)){
@@ -20,6 +19,5 @@
     scrubber.close();
   }
    assertEquals(1,cfs.getSSTables().size());
-  rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(1,rows.size());
+  assertOrderedAll(cfs,1);
 }

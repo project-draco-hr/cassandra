@@ -1,0 +1,18 @@
+{
+  Map<String,ByteBuffer> data=new HashMap<>();
+  ByteBuffer[] keyComponents=SelectStatement.getComponents(metadata,key);
+  for (  ColumnDefinition def : metadata.partitionKeyColumns())   data.put(def.name.toString(),keyComponents[def.position()]);
+  Clustering clustering=row.clustering();
+  for (  ColumnDefinition def : metadata.clusteringColumns())   data.put(def.name.toString(),clustering.get(def.position()));
+  for (  ColumnDefinition def : metadata.partitionColumns()) {
+    if (def.isComplex()) {
+      Iterator<Cell> cells=row.getCells(def);
+      if (cells != null)       data.put(def.name.toString(),((CollectionType)def.type).serializeForNativeProtocol(def,cells,Server.VERSION_3));
+    }
+ else {
+      Cell cell=row.getCell(def);
+      if (cell != null)       data.put(def.name.toString(),cell.value());
+    }
+  }
+  return new Row(data);
+}

@@ -1,0 +1,23 @@
+{
+  if (tombstone.isRowDeletion(metadata)) {
+    if (clustering != null)     return false;
+    clustering=tombstone.start.getAsClustering(metadata).takeAlias();
+    clustering.writeTo(writer);
+    writer.writeRowDeletion(tombstone.deletionTime);
+    rowDeletion=tombstone;
+    return true;
+  }
+  if (tombstone.isCollectionTombstone()) {
+    if (clustering == null) {
+      clustering=tombstone.start.getAsClustering(metadata).takeAlias();
+      clustering.writeTo(writer);
+    }
+ else     if (!clustering.equals(tombstone.start.getAsClustering(metadata))) {
+      return false;
+    }
+    writer.writeComplexDeletion(tombstone.start.collectionName,tombstone.deletionTime);
+    if (rowDeletion == null || tombstone.deletionTime.supersedes(rowDeletion.deletionTime))     collectionDeletion=tombstone;
+    return true;
+  }
+  return false;
+}

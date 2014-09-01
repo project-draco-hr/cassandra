@@ -1,0 +1,17 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(WITH_COMPOSITE_INDEX);
+  ByteBuffer bBB=ByteBufferUtil.bytes("birthdate");
+  ByteBuffer nbBB=ByteBufferUtil.bytes("notbirthdate");
+  for (int i=0; i < 100; i++) {
+    new RowUpdateBuilder(cfs.metadata,FBUtilities.timestampMicros(),"key" + i).clustering("c").add("birthdate",34L).add("notbirthdate",ByteBufferUtil.bytes((long)(i % 2))).build().applyUnsafe();
+  }
+  List<FilteredPartition> partitions=Util.getAll(Util.cmd(cfs).filterOn("birthdate",Operator.EQ,34L).filterOn("notbirthdate",Operator.EQ,1L).build());
+  Set<DecoratedKey> keys=new HashSet<>();
+  int rowCount=0;
+  for (  FilteredPartition partition : partitions) {
+    keys.add(partition.partitionKey());
+    rowCount+=partition.rowCount();
+  }
+  assertEquals(rowCount,keys.size());
+  assertEquals(50,rowCount);
+}

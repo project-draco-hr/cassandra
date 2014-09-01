@@ -7,10 +7,7 @@
   CompactionManager.instance.performScrub(cfs,false,true);
   QueryProcessor.process("CREATE TABLE \"Keyspace1\".test_scrub_validation (a text primary key, b int)",ConsistencyLevel.ONE);
   ColumnFamilyStore cfs2=keyspace.getColumnFamilyStore("test_scrub_validation");
-  Mutation mutation=new Mutation("Keyspace1",UTF8Type.instance.decompose("key"));
-  CellNameType ct=cfs2.getComparator();
-  mutation.add("test_scrub_validation",ct.makeCellName("b"),LongType.instance.decompose(1L),System.currentTimeMillis());
-  mutation.apply();
+  new Mutation(UpdateBuilder.create(cfs2.metadata,"key").newRow().add("b",LongType.instance.decompose(1L)).build()).apply();
   cfs2.forceBlockingFlush();
   CompactionManager.instance.performScrub(cfs2,false,false);
 }

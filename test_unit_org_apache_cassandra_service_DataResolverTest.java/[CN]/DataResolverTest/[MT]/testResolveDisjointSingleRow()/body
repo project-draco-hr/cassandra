@@ -1,0 +1,20 @@
+{
+  DataResolver resolver=new DataResolver(ks,command,ConsistencyLevel.ALL,2);
+  InetAddress peer1=peer();
+  resolver.preprocess(readResponseMessage(peer1,iter(new RowUpdateBuilder(cfm,nowInSec,0L,dk).clustering("1").add("c1","v1").buildUpdate())));
+  InetAddress peer2=peer();
+  resolver.preprocess(readResponseMessage(peer2,iter(new RowUpdateBuilder(cfm,nowInSec,1L,dk).clustering("1").add("c2","v2").buildUpdate())));
+  try (PartitionIterator data=resolver.resolve();RowIterator rows=Iterators.getOnlyElement(data)){
+    Row row=Iterators.getOnlyElement(rows);
+    assertColumns(row,"c1","c2");
+    assertColumn(cfm,row,"c1","v1",0);
+    assertColumn(cfm,row,"c2","v2",1);
+  }
+   assertEquals(2,messageRecorder.sent.size());
+  MessageOut msg=getSentMessage(peer1);
+  assertRepairMetadata(msg);
+  assertRepairContainsColumn(msg,"1","c2","v2",1);
+  msg=getSentMessage(peer2);
+  assertRepairMetadata(msg);
+  assertRepairContainsColumn(msg,"1","c1","v1",0);
+}

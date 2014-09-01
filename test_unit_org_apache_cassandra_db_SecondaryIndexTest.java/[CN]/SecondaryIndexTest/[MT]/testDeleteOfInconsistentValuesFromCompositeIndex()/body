@@ -1,0 +1,15 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  String cfName=WITH_COMPOSITE_INDEX;
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  ByteBuffer col=ByteBufferUtil.bytes("birthdate");
+  new RowUpdateBuilder(cfs.metadata,0,"k1").clustering("c").add("birthdate",10l).build().applyUnsafe();
+  assertIndexedOne(cfs,col,10l);
+  keyspace.getColumnFamilyStore(cfName).forceBlockingFlush();
+  assertIndexedOne(cfs,col,10l);
+  keyspace.apply(new RowUpdateBuilder(cfs.metadata,1,"k1").clustering("c").add("birthdate",20l).build(),true,false);
+  assertIndexedNone(cfs,col,10l);
+  assertIndexedNone(cfs,col,20l);
+  keyspace.apply(new RowUpdateBuilder(cfs.metadata,2,"k1").clustering("c1").add("birthdate",10l).build(),true,false);
+  assertIndexedNone(cfs,col,20l);
+}

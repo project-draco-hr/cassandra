@@ -1,0 +1,15 @@
+{
+  if (!nextIsRow()) {
+    LegacyLayout.LegacyRangeTombstone tombstone=nextAtom.asRangeTombstone();
+    if (closingMarker == null)     throw new UnsupportedOperationException();
+    closingMarker=new RangeTombstoneBoundMarker(tombstone.stop.bound,tombstone.deletionTime);
+    return new RangeTombstoneBoundMarker(tombstone.start.bound,tombstone.deletionTime);
+  }
+  LegacyLayout.CellGrouper grouper=nextAtom.isStatic() ? LegacyLayout.CellGrouper.staticGrouper(metadata,helper) : this.grouper;
+  grouper.reset();
+  grouper.addAtom(nextAtom);
+  while (deserializeNextAtom() && grouper.addAtom(nextAtom)) {
+  }
+  staticFinished=true;
+  return grouper.getRow();
+}

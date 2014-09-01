@@ -1,15 +1,12 @@
 {
   Mutation result=new Mutation(getKeyspaceName(),key());
   Keyspace keyspace=Keyspace.open(getKeyspaceName());
-  int count=0;
-  for (  ColumnFamily cf : getColumnFamilies())   count+=cf.getColumnCount();
-  List<Lock> locks=new ArrayList<>(count);
-  Tracing.trace("Acquiring {} counter locks",count);
+  List<Lock> locks=new ArrayList<>();
+  Tracing.trace("Acquiring counter locks");
   try {
     grabCounterLocks(keyspace,locks);
-    for (    ColumnFamily cf : getColumnFamilies())     result.add(processModifications(cf));
+    for (    PartitionUpdate upd : getPartitionUpdates())     result.add(processModifications(upd));
     result.apply();
-    updateCounterCache(result,keyspace);
     return result;
   }
   finally {

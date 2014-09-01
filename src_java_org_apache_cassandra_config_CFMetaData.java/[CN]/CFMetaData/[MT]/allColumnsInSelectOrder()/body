@@ -1,20 +1,14 @@
 {
+  final boolean isStaticCompactTable=isStaticCompactTable();
+  final boolean noNonPkColumns=isCompactTable() && CompactTables.hasEmptyCompactValue(this);
   return new AbstractIterator<ColumnDefinition>(){
     private final Iterator<ColumnDefinition> partitionKeyIter=partitionKeyColumns.iterator();
-    private final Iterator<ColumnDefinition> clusteringIter=clusteringColumns.iterator();
-    private boolean valueDone;
-    private final Iterator<ColumnDefinition> staticIter=staticColumns.iterator();
-    private final Iterator<ColumnDefinition> regularIter=regularColumns.iterator();
+    private final Iterator<ColumnDefinition> clusteringIter=isStaticCompactTable ? Collections.<ColumnDefinition>emptyIterator() : clusteringColumns.iterator();
+    private final Iterator<ColumnDefinition> otherColumns=noNonPkColumns ? Collections.<ColumnDefinition>emptyIterator() : (isStaticCompactTable ? partitionColumns.statics.selectOrderIterator() : partitionColumns.selectOrderIterator());
     protected ColumnDefinition computeNext(){
       if (partitionKeyIter.hasNext())       return partitionKeyIter.next();
       if (clusteringIter.hasNext())       return clusteringIter.next();
-      if (staticIter.hasNext())       return staticIter.next();
-      if (compactValueColumn != null && !valueDone) {
-        valueDone=true;
-        if (compactValueColumn.name.bytes.hasRemaining())         return compactValueColumn;
-      }
-      if (regularIter.hasNext())       return regularIter.next();
-      return endOfData();
+      return otherColumns.hasNext() ? otherColumns.next() : endOfData();
     }
   }
 ;

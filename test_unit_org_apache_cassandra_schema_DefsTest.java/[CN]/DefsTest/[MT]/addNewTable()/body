@@ -1,0 +1,16 @@
+{
+  final String ksName=KEYSPACE1;
+  final String tableName="anewtable";
+  KSMetaData original=Schema.instance.getKSMetaData(ksName);
+  CFMetaData cfm=addTestTable(original.name,tableName,"A New Table");
+  assertFalse(Schema.instance.getKSMetaData(ksName).cfMetaData().containsKey(cfm.cfName));
+  MigrationManager.announceNewColumnFamily(cfm);
+  assertTrue(Schema.instance.getKSMetaData(ksName).cfMetaData().containsKey(cfm.cfName));
+  assertEquals(cfm,Schema.instance.getKSMetaData(ksName).cfMetaData().get(cfm.cfName));
+  QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, col, val) VALUES (?, ?, ?)",ksName,tableName),"key0","col0","val0");
+  ColumnFamilyStore cfs=Keyspace.open(ksName).getColumnFamilyStore(tableName);
+  assertNotNull(cfs);
+  cfs.forceBlockingFlush();
+  UntypedResultSet rows=QueryProcessor.executeInternal(String.format("SELECT * FROM %s.%s",ksName,tableName));
+  assertRows(rows,row("key0","col0","val0"));
+}

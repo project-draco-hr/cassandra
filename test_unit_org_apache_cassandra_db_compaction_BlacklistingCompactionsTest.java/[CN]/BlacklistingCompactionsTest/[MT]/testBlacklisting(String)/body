@@ -6,20 +6,18 @@
   cfs.setCompactionStrategyClass(compactionStrategy);
   cfs.disableAutoCompaction();
   long maxTimestampExpected=Long.MIN_VALUE;
-  Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
+  Set<DecoratedKey> inserted=new HashSet<>();
   for (int j=0; j < SSTABLES; j++) {
     for (int i=0; i < ROWS_PER_SSTABLE; i++) {
-      DecoratedKey key=Util.dk(String.valueOf(i % 2));
-      Mutation rm=new Mutation(KEYSPACE1,key.getKey());
+      DecoratedKey key=Util.dk(String.valueOf(i));
       long timestamp=j * ROWS_PER_SSTABLE + i;
-      rm.add("Standard1",cellname(i / 2),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp);
+      new RowUpdateBuilder(cfs.metadata,timestamp,key.getKey()).clustering("cols" + "i").add("val","val" + i).build().applyUnsafe();
       maxTimestampExpected=Math.max(timestamp,maxTimestampExpected);
-      rm.applyUnsafe();
       inserted.add(key);
     }
     cfs.forceBlockingFlush();
     CompactionsTest.assertMaxTimestamp(cfs,maxTimestampExpected);
-    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(cfs).size());
+    assertEquals(inserted.toString(),inserted.size(),Util.getAll(Util.cmd(cfs).build()).size());
   }
   Collection<SSTableReader> sstables=cfs.getSSTables();
   int currentSSTable=0;
@@ -28,11 +26,12 @@
     if (currentSSTable + 1 > sstablesToCorrupt)     break;
     RandomAccessFile raf=null;
     try {
+      int corruptionSize=50;
       raf=new RandomAccessFile(sstable.getFilename(),"rw");
       assertNotNull(raf);
-      assertTrue(raf.length() > 20);
-      raf.seek(new Random().nextInt((int)(raf.length() - 20)));
-      byte[] corruption=new byte[20];
+      assertTrue(raf.length() > corruptionSize);
+      raf.seek(new Random().nextInt((int)(raf.length() - corruptionSize)));
+      byte[] corruption=new byte[corruptionSize];
       Arrays.fill(corruption,(byte)0xFF);
       raf.write(corruption);
     }
@@ -50,7 +49,6 @@
       failures++;
       continue;
     }
-    assertEquals(sstablesToCorrupt + 1,cfs.getSSTables().size());
     break;
   }
   cfs.truncateBlocking();

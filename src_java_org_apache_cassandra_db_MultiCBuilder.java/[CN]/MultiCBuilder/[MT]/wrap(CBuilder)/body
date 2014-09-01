@@ -1,0 +1,48 @@
+{
+  return new MultiCBuilder(){
+    private boolean containsNull;
+    private boolean containsUnset;
+    private boolean hasMissingElements;
+    public MultiCBuilder addElementToAll(    ByteBuffer value){
+      builder.add(value);
+      if (value == null)       containsNull=true;
+      if (value == ByteBufferUtil.UNSET_BYTE_BUFFER)       containsUnset=true;
+      return this;
+    }
+    public MultiCBuilder addEachElementToAll(    List<ByteBuffer> values){
+      if (values.isEmpty()) {
+        hasMissingElements=true;
+        return this;
+      }
+      if (values.size() > 1)       throw new IllegalArgumentException();
+      return addElementToAll(values.get(0));
+    }
+    public MultiCBuilder addAllElementsToAll(    List<List<ByteBuffer>> values){
+      if (values.isEmpty()) {
+        hasMissingElements=true;
+        return this;
+      }
+      if (values.size() > 1)       throw new IllegalArgumentException();
+      return addEachElementToAll(values.get(0));
+    }
+    public int remainingCount(){
+      return builder.remainingCount();
+    }
+    public boolean containsNull(){
+      return containsNull;
+    }
+    public boolean containsUnset(){
+      return containsUnset;
+    }
+    public boolean hasMissingElements(){
+      return hasMissingElements;
+    }
+    public NavigableSet<Clustering> build(){
+      return FBUtilities.singleton(builder.build(),builder.comparator());
+    }
+    public SortedSet<Slice.Bound> buildBound(    boolean isStart,    boolean isInclusive){
+      return FBUtilities.singleton(builder.buildBound(isStart,isInclusive),builder.comparator());
+    }
+  }
+;
+}

@@ -5,8 +5,7 @@
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(COUNTER_CF);
   cfs.clearUnsafe();
   fillCounterCF(cfs,numPartitions);
-  List<Row> rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),numPartitions * 10);
-  assertEquals(numPartitions,rows.size());
+  assertOrderedAll(cfs,numPartitions);
   assertEquals(1,cfs.getSSTables().size());
   SSTableReader sstable=cfs.getSSTables().iterator().next();
   overrideWithGarbage(sstable,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
@@ -33,6 +32,5 @@
     assertEquals(numPartitions - 1,scrubResult.goodRows);
   }
   assertEquals(1,cfs.getSSTables().size());
-  rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(scrubResult.goodRows,rows.size());
+  assertOrderedAll(cfs,scrubResult.goodRows);
 }

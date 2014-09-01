@@ -1,0 +1,32 @@
+{
+  final Holder current=ref;
+  return new SearchIterator<Clustering,Row>(){
+    private final SearchIterator<Clustering,MemtableRowData> rawIter=new BTreeSearchIterator<>(current.tree,metadata.comparator,!reversed);
+    private final MemtableRowData.ReusableRow row=allocator.newReusableRow();
+    private final ReusableFilteringRow filter=new ReusableFilteringRow(columns.fetchedColumns().regulars,columns);
+    private final long partitionDeletion=current.deletionInfo.getPartitionDeletion().markedForDeleteAt();
+    public boolean hasNext(){
+      return rawIter.hasNext();
+    }
+    public Row next(    Clustering key){
+      if (key == Clustering.STATIC_CLUSTERING)       return makeStatic(columns,current,allocator);
+      MemtableRowData data=rawIter.next(key);
+      RangeTombstone rt=current.deletionInfo.rangeCovering(key);
+      if (data == null) {
+        if (rt != null && rt.deletionTime().markedForDeleteAt() > partitionDeletion)         return filter.setRowDeletion(rt.deletionTime()).setTo(emptyDeletedRow(key,rt.deletionTime()));
+        return null;
+      }
+      row.setTo(data);
+      filter.setRowDeletion(null);
+      if (rt == null || rt.deletionTime().markedForDeleteAt() < partitionDeletion) {
+        filter.setDeletionTimestamp(partitionDeletion);
+      }
+ else {
+        filter.setDeletionTimestamp(rt.deletionTime().markedForDeleteAt());
+        if (rt.deletionTime().supersedes(row.deletion()))         filter.setRowDeletion(rt.deletionTime());
+      }
+      return filter.setTo(row);
+    }
+  }
+;
+}

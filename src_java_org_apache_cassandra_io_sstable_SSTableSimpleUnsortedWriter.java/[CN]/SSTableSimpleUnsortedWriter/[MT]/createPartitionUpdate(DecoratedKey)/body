@@ -1,0 +1,35 @@
+{
+  return new PartitionUpdate(metadata,key,columns,4){
+    @Override protected StaticWriter createStaticWriter(){
+      return new StaticWriter(){
+        @Override public void writeCell(        ColumnDefinition column,        boolean isCounter,        ByteBuffer value,        LivenessInfo info,        CellPath path){
+          super.writeCell(column,isCounter,value,info,path);
+          countCell(column,value,info,path);
+        }
+        @Override public void endOfRow(){
+          super.endOfRow();
+          maybeSync();
+        }
+      }
+;
+    }
+    @Override protected Writer createWriter(){
+      return new RegularWriter(){
+        @Override public void writeClusteringValue(        ByteBuffer value){
+          super.writeClusteringValue(value);
+          count(2 + value.remaining());
+        }
+        @Override public void writeCell(        ColumnDefinition column,        boolean isCounter,        ByteBuffer value,        LivenessInfo info,        CellPath path){
+          super.writeCell(column,isCounter,value,info,path);
+          countCell(column,value,info,path);
+        }
+        @Override public void endOfRow(){
+          super.endOfRow();
+          maybeSync();
+        }
+      }
+;
+    }
+  }
+;
+}

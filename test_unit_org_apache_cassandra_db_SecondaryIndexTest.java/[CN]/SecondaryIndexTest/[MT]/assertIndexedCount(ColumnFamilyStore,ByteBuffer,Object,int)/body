@@ -1,0 +1,9 @@
+{
+  ColumnDefinition cdef=cfs.metadata.getColumnDefinition(col);
+  ReadCommand rc=Util.cmd(cfs).filterOn(cdef.name.toString(),Operator.EQ,((AbstractType)cdef.cellValueType()).decompose(val)).build();
+  List<SecondaryIndexSearcher> searchers=cfs.indexManager.getIndexSearchersFor(rc);
+  if (count != 0)   assertTrue(searchers.size() > 0);
+  try (ReadOrderGroup orderGroup=rc.startOrderGroup();PartitionIterator iter=UnfilteredPartitionIterators.filter(searchers.get(0).search(rc,orderGroup),FBUtilities.nowInSeconds())){
+    assertEquals(count,Util.size(iter));
+  }
+ }

@@ -1,2 +1,14 @@
 {
+  String tableName=createTable("CREATE TABLE %s (a int PRIMARY KEY, b int)");
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  execute("INSERT INTO %s (a, b) VALUES (?, ?) USING TIMESTAMP ?",0,0,0L);
+  execute("DELETE FROM %s USING TIMESTAMP ? WHERE a = ?",0L,0);
+  cfs.forceBlockingFlush();
+  execute("INSERT INTO %s (a, b) VALUES (?, ?) USING TIMESTAMP ?",0,0,1L);
+  execute("DELETE FROM %s USING TIMESTAMP ? WHERE a = ?",1L,0);
+  int localDeletionTime=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs).build()).partitionLevelDeletion().localDeletionTime();
+  cfs.forceBlockingFlush();
+  DeletionTime dt=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs).build()).partitionLevelDeletion();
+  assertEquals(1L,dt.markedForDeleteAt());
+  assertEquals(localDeletionTime,dt.localDeletionTime());
 }

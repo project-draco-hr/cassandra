@@ -1,15 +1,15 @@
 {
   logger.debug("Started scheduleAllDeliveries");
   compact();
-  IPartitioner p=StorageService.getPartitioner();
-  RowPosition minPos=p.getMinimumToken().minKeyBound();
-  Range<RowPosition> range=new Range<>(minPos,minPos);
-  IDiskAtomFilter filter=new NamesQueryFilter(ImmutableSortedSet.<CellName>of());
-  List<Row> rows=hintStore.getRangeSlice(range,null,filter,Integer.MAX_VALUE,System.currentTimeMillis());
-  for (  Row row : rows) {
-    UUID hostId=UUIDGen.getUUID(row.key.getKey());
-    InetAddress target=StorageService.instance.getTokenMetadata().getEndpointForHostId(hostId);
-    if (target != null)     scheduleHintDelivery(target,false);
+  ReadCommand cmd=new PartitionRangeReadCommand(hintStore.metadata,FBUtilities.nowInSeconds(),ColumnFilter.all(hintStore.metadata),RowFilter.NONE,DataLimits.cqlLimits(Integer.MAX_VALUE,1),DataRange.allData(StorageService.getPartitioner()));
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iter=cmd.executeLocally(orderGroup)){
+    while (iter.hasNext()) {
+      try (UnfilteredRowIterator partition=iter.next()){
+        UUID hostId=UUIDGen.getUUID(partition.partitionKey().getKey());
+        InetAddress target=StorageService.instance.getTokenMetadata().getEndpointForHostId(hostId);
+        if (target != null)         scheduleHintDelivery(target,false);
+      }
+     }
   }
-  logger.debug("Finished scheduleAllDeliveries");
+   logger.debug("Finished scheduleAllDeliveries");
 }

@@ -1,2 +1,12 @@
 {
+  int ttl=1;
+  ColumnDefinition def=cfm.getColumnDefinition(new ColumnIdentifier("a",true));
+  PartitionUpdate update=new PartitionUpdate(cfm,dk,cfm.partitionColumns(),1);
+  Rows.writeClustering(update.metadata().comparator.make("c1"),update.writer());
+  update.writer().writeCell(def,false,((AbstractType)def.cellValueType()).decompose("a1"),SimpleLivenessInfo.forUpdate(0,ttl,nowInSeconds,cfm),null);
+  update.writer().endOfRow();
+  new Mutation(update).applyUnsafe();
+  Row row=Util.getOnlyRow(Util.cmd(cfs,dk).includeRow("c1").withNowInSeconds(nowInSeconds).build());
+  assertEquals("a1",ByteBufferUtil.string(row.getCell(def).value()));
+  Util.assertEmpty(Util.cmd(cfs,dk).includeRow("c1").withNowInSeconds(nowInSeconds + ttl + 1).build());
 }

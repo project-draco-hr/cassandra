@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (k text, t int, v text, PRIMARY KEY (k, t));");
+  execute("CREATE INDEX ON %s(v)");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key1",1,"foo");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key1",2,"bar");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key2",1,"foo");
+  flush();
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key2",2,"foo");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key2",3,"bar");
+  assertRows(execute("SELECT * FROM %s WHERE v = ?","foo"),row("key1",1,"foo"),row("key2",1,"foo"),row("key2",2,"foo"));
+  assertRows(execute("SELECT * FROM %s WHERE v = ?","bar"),row("key1",2,"bar"),row("key2",3,"bar"));
+}

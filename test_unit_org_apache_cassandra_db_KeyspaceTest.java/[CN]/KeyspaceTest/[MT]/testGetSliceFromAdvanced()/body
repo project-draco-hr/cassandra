@@ -1,36 +1,12 @@
 {
-  final Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  final ColumnFamilyStore cfStore=keyspace.getColumnFamilyStore("Standard1");
-  final DecoratedKey ROW=Util.dk("row2");
-  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"Standard1");
-  cf.addColumn(column("col1","val1",1L));
-  cf.addColumn(column("col2","val2",1L));
-  cf.addColumn(column("col3","val3",1L));
-  cf.addColumn(column("col4","val4",1L));
-  cf.addColumn(column("col5","val5",1L));
-  cf.addColumn(column("col6","val6",1L));
-  Mutation rm=new Mutation(KEYSPACE1,ROW.getKey(),cf);
-  rm.applyUnsafe();
-  cfStore.forceBlockingFlush();
-  cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"Standard1");
-  cf.addColumn(column("col1","valx",2L));
-  cf.addColumn(column("col2","valx",2L));
-  cf.addColumn(column("col3","valx",2L));
-  rm=new Mutation(KEYSPACE1,ROW.getKey(),cf);
-  rm.applyUnsafe();
-  Runnable verify=new WrappedRunnable(){
-    public void runMayThrow() throws Exception {
-      ColumnFamily cf;
-      cf=cfStore.getColumnFamily(ROW,cellname("col2"),Composites.EMPTY,false,3,System.currentTimeMillis());
-      assertColumns(cf,"col2","col3","col4");
-      ByteBuffer col=cf.getColumn(cellname("col2")).value();
-      assertEquals(ByteBufferUtil.string(col),"valx");
-      col=cf.getColumn(cellname("col3")).value();
-      assertEquals(ByteBufferUtil.string(col),"valx");
-      col=cf.getColumn(cellname("col4")).value();
-      assertEquals(ByteBufferUtil.string(col),"val4");
-    }
+  String tableName=createTable("CREATE TABLE %s (a text, b int, c int, PRIMARY KEY (a, b))");
+  final ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  for (int i=1; i < 7; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",i,i);
+  cfs.forceBlockingFlush();
+  for (int i=1; i < 4; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",i,-1);
+  for (int round=0; round < 2; round++) {
+    SinglePartitionSliceCommand command=singlePartitionSlice(cfs,"0",slices(cfs,2,null,false),3);
+    assertRowsInResult(cfs,command,-1,-1,4);
+    if (round == 0)     cfs.forceBlockingFlush();
   }
-;
-  reTest(keyspace.getColumnFamilyStore("Standard1"),verify);
 }

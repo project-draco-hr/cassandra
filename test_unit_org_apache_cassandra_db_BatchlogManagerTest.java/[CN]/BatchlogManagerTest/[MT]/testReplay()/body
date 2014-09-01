@@ -1,12 +1,12 @@
 {
   long initialAllBatches=BatchlogManager.instance.countAllBatches();
   long initialReplayedBatches=BatchlogManager.instance.getTotalBatchesReplayed();
-  CellNameType comparator=Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard1").metadata.comparator;
+  CFMetaData cfm=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1).metadata;
   for (int i=0; i < 1000; i++) {
-    Mutation mutation=new Mutation(KEYSPACE1,bytes(i));
-    mutation.add("Standard1",comparator.makeCellName(bytes(i)),bytes(i),System.currentTimeMillis());
+    Mutation m=new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),bytes(i)).clustering("name" + i).add("val","val" + i).build();
     long timestamp=i < 500 ? (System.currentTimeMillis() - DatabaseDescriptor.getWriteRpcTimeout() * 2) * 1000 : Long.MAX_VALUE;
-    BatchlogManager.getBatchlogMutationFor(Collections.singleton(mutation),UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp).applyUnsafe();
+    Mutation m2=BatchlogManager.getBatchlogMutationFor(Collections.singleton(m),UUIDGen.getTimeUUID(),MessagingService.current_version,timestamp);
+    m2.applyUnsafe();
   }
   Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.BATCHLOG).forceBlockingFlush();
   assertEquals(1000,BatchlogManager.instance.countAllBatches() - initialAllBatches);
@@ -18,8 +18,8 @@
     UntypedResultSet result=QueryProcessor.executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)",KEYSPACE1,CF_STANDARD1,i));
     if (i < 500) {
       assertEquals(bytes(i),result.one().getBytes("key"));
-      assertEquals(bytes(i),result.one().getBytes("column1"));
-      assertEquals(bytes(i),result.one().getBytes("value"));
+      assertEquals("name" + i,result.one().getString("name"));
+      assertEquals("val" + i,result.one().getString("val"));
     }
  else {
       assertTrue(result.isEmpty());

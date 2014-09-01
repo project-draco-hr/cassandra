@@ -3,19 +3,15 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE2);
   String cfName="Standard1";
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
-  Mutation rm;
   for (int k=1; k <= 2; ++k) {
-    DecoratedKey key=Util.dk("key" + k);
-    rm=new Mutation(KEYSPACE2,key.getKey());
+    String key="key" + k;
     for (int i=0; i < 10; i++) {
-      rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+      RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,0,key);
+      builder.clustering(String.valueOf(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
     }
-    rm.applyUnsafe();
     cfs.forceBlockingFlush();
     for (int i=0; i < 10; i++) {
-      rm=new Mutation(KEYSPACE2,key.getKey());
-      rm.delete(cfName,cellname(String.valueOf(i)),1);
-      rm.applyUnsafe();
+      RowUpdateBuilder.deleteRow(cfs.metadata,1,key,String.valueOf(i)).applyUnsafe();
     }
     cfs.forceBlockingFlush();
   }
@@ -23,13 +19,11 @@
   DecoratedKey key2=Util.dk("key2");
   cfs.forceBlockingFlush();
   Collection<SSTableReader> sstablesIncomplete=cfs.getSSTables();
-  rm=new Mutation(KEYSPACE2,key1.getKey());
-  rm.add(cfName,cellname(String.valueOf(5)),ByteBufferUtil.EMPTY_BYTE_BUFFER,2);
-  rm.applyUnsafe();
+  RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,2,"key1");
+  builder.clustering(String.valueOf(5)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   cfs.forceBlockingFlush();
   cfs.getCompactionStrategyManager().getUserDefinedTask(sstablesIncomplete,Integer.MAX_VALUE).execute(null);
-  ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key2,cfName,System.currentTimeMillis()));
-  assertNull(cf);
-  cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key1,cfName,System.currentTimeMillis()));
-  assertEquals(1,cf.getColumnCount());
+  Util.assertEmpty(Util.cmd(cfs,key2).build());
+  ArrayBackedPartition partition=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs,key1).build());
+  assertEquals(1,partition.rowCount());
 }

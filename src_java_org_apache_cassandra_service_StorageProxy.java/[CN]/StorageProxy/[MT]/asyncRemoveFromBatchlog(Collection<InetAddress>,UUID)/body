@@ -1,10 +1,10 @@
 {
   AbstractWriteResponseHandler<IMutation> handler=new WriteResponseHandler<>(endpoints,Collections.<InetAddress>emptyList(),ConsistencyLevel.ANY,Keyspace.open(SystemKeyspace.NAME),null,WriteType.SIMPLE);
-  Mutation mutation=new Mutation(SystemKeyspace.NAME,UUIDType.instance.decompose(uuid));
-  mutation.delete(SystemKeyspace.BATCHLOG,FBUtilities.timestampMicros());
+  Mutation mutation=new Mutation(SystemKeyspace.NAME,StorageService.getPartitioner().decorateKey(UUIDType.instance.decompose(uuid)));
+  mutation.add(PartitionUpdate.fullPartitionDelete(SystemKeyspace.Batchlog,mutation.key(),FBUtilities.timestampMicros(),FBUtilities.nowInSeconds()));
   MessageOut<Mutation> message=mutation.createMessage();
   for (  InetAddress target : endpoints) {
-    if (target.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS)     insertLocal(message.payload,handler);
+    if (canDoLocalRequest(target))     insertLocal(message.payload,handler);
  else     MessagingService.instance().sendRR(message,target,handler,false);
   }
 }

@@ -1,0 +1,15 @@
+{
+  ArrayList<ColumnOrSuperColumn> thriftSuperColumns=new ArrayList<ColumnOrSuperColumn>();
+  CounterSuperColumn current=null;
+  while (cells.hasNext()) {
+    LegacyLayout.LegacyCell cell=cells.next();
+    ByteBuffer scName=cell.name.superColumnName();
+    if (current == null || !scName.equals(current.bufferForName())) {
+      if (current != null && reversed)       Collections.reverse(current.columns);
+      current=new CounterSuperColumn(scName,new ArrayList<CounterColumn>());
+      thriftSuperColumns.add(new ColumnOrSuperColumn().setCounter_super_column(current));
+    }
+    current.getColumns().add(thriftifySubCounter(metadata,cell).setName(cell.name.superColumnSubName()));
+  }
+  return thriftSuperColumns;
+}

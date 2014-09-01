@@ -1,0 +1,35 @@
+{
+  return new WrappingUnfilteredRowIterator(iter){
+    private int nextSlice=iter.isReverseOrder() ? slices.length - 1 : 0;
+    private Iterator<Unfiltered> currentSliceIterator=Collections.emptyIterator();
+    private Unfiltered next;
+    @Override public boolean hasNext(){
+      prepareNext();
+      return next != null;
+    }
+    @Override public Unfiltered next(){
+      prepareNext();
+      Unfiltered toReturn=next;
+      next=null;
+      return toReturn;
+    }
+    private boolean hasMoreSlice(){
+      return isReverseOrder() ? nextSlice >= 0 : nextSlice < slices.length;
+    }
+    private Slice popNextSlice(){
+      return slices[isReverseOrder() ? nextSlice-- : nextSlice++];
+    }
+    private void prepareNext(){
+      if (next != null)       return;
+      while (true) {
+        if (currentSliceIterator.hasNext()) {
+          next=currentSliceIterator.next();
+          return;
+        }
+        if (!hasMoreSlice())         return;
+        currentSliceIterator=iter.slice(popNextSlice());
+      }
+    }
+  }
+;
+}

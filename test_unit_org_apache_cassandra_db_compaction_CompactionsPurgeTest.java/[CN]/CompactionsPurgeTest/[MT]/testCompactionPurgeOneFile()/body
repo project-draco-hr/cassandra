@@ -3,22 +3,17 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   String cfName="Standard2";
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
-  DecoratedKey key=Util.dk("key1");
-  Mutation rm;
-  rm=new Mutation(KEYSPACE1,key.getKey());
+  String key="key1";
   for (int i=0; i < 5; i++) {
-    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+    RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,0,key);
+    builder.clustering(String.valueOf(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
-  rm.applyUnsafe();
   for (int i=0; i < 5; i++) {
-    rm=new Mutation(KEYSPACE1,key.getKey());
-    rm.delete(cfName,cellname(String.valueOf(i)),1);
-    rm.applyUnsafe();
+    RowUpdateBuilder.deleteRow(cfs.metadata,1,key,String.valueOf(i)).applyUnsafe();
   }
   cfs.forceBlockingFlush();
   assertEquals(String.valueOf(cfs.getSSTables()),1,cfs.getSSTables().size());
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
   assertTrue(cfs.getSSTables().isEmpty());
-  ColumnFamily cf=keyspace.getColumnFamilyStore(cfName).getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
-  assertNull(String.valueOf(cf),cf);
+  Util.assertEmpty(Util.cmd(cfs,key).build());
 }

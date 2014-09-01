@@ -4,31 +4,25 @@
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(COLUMN_FAMILY1);
   CacheService.instance.invalidateKeyCache();
   assertKeyCacheSize(0,KEYSPACE1,COLUMN_FAMILY1);
-  DecoratedKey key1=Util.dk("key1");
-  DecoratedKey key2=Util.dk("key2");
   Mutation rm;
-  rm=new Mutation(KEYSPACE1,key1.getKey());
-  rm.add(COLUMN_FAMILY1,Util.cellname("1"),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-  rm.applyUnsafe();
-  rm=new Mutation(KEYSPACE1,key2.getKey());
-  rm.add(COLUMN_FAMILY1,Util.cellname("2"),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,"key1").clustering("1").build().applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,"key2").clustering("2").build().applyUnsafe();
   cfs.forceBlockingFlush();
-  cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
-  cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
+  Util.getAll(Util.cmd(cfs,"key1").build());
+  Util.getAll(Util.cmd(cfs,"key2").build());
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
   Set<SSTableReader> readers=cfs.getTracker().getSSTables();
   Refs<SSTableReader> refs=Refs.tryRef(readers);
   if (refs == null)   throw new IllegalStateException();
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
-  boolean noEarlyOpen=DatabaseDescriptor.getSSTablePreempiveOpenIntervalInMB() < 0;
-  assertKeyCacheSize(noEarlyOpen ? 2 : 4,KEYSPACE1,COLUMN_FAMILY1);
+  assertKeyCacheSize(4,KEYSPACE1,COLUMN_FAMILY1);
   refs.release();
-  Uninterruptibles.sleepUninterruptibly(10,TimeUnit.MILLISECONDS);
-  ;
-  while (ScheduledExecutors.nonPeriodicTasks.getActiveCount() + ScheduledExecutors.nonPeriodicTasks.getQueue().size() > 0)   ;
+  while (ScheduledExecutors.nonPeriodicTasks.getActiveCount() + ScheduledExecutors.nonPeriodicTasks.getQueue().size() > 0) {
+    Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
+    ;
+  }
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
-  cfs.getColumnFamily(QueryFilter.getSliceFilter(key1,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
-  cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
-  assertKeyCacheSize(noEarlyOpen ? 4 : 2,KEYSPACE1,COLUMN_FAMILY1);
+  Util.getAll(Util.cmd(cfs,"key1").build());
+  Util.getAll(Util.cmd(cfs,"key2").build());
+  assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
 }

@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (k text, t1 int, t2 int, v text, PRIMARY KEY (k, t1, t2));");
+  for (int t1=0; t1 < 20; t1++)   for (int t2=0; t2 < 10; t2++)   execute("INSERT INTO %s (k, t1, t2, v) values (?, ?, ?, ?)","key",t1,t2,"someSemiLargeTextForValue_" + t1 + "_"+ t2);
+  flush();
+  Object[][] expected=new Object[10][];
+  for (int t2=0; t2 < 10; t2++)   expected[t2]=row("key",15,t2);
+  assertRows(execute("SELECT k, t1, t2 FROM %s WHERE k=? AND t1=?","key",15),expected);
+  Object[][] expectedReverse=new Object[10][];
+  for (int t2=9; t2 >= 0; t2--)   expectedReverse[9 - t2]=row("key",15,t2);
+  assertRows(execute("SELECT k, t1, t2 FROM %s WHERE k=? AND t1=? ORDER BY t1 DESC, t2 DESC","key",15),expectedReverse);
+}

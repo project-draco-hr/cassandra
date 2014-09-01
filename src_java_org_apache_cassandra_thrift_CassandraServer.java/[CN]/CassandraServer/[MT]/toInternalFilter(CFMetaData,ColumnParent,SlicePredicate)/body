@@ -1,20 +1,30 @@
 {
-  IDiskAtomFilter filter;
-  if (predicate.column_names != null) {
-    if (metadata.isSuper()) {
-      CellNameType columnType=new SimpleDenseCellNameType(metadata.comparator.subtype(parent.isSetSuper_column() ? 1 : 0));
-      SortedSet<CellName> s=new TreeSet<>(columnType);
-      for (      ByteBuffer bb : predicate.column_names)       s.add(columnType.cellFromByteBuffer(bb));
-      filter=SuperColumns.fromSCNamesFilter(metadata.comparator,parent.bufferForSuper_column(),new NamesQueryFilter(s));
+  try {
+    if (predicate.column_names != null) {
+      if (metadata.isSuper()) {
+        if (parent.isSetSuper_column()) {
+          return new ClusteringIndexNamesFilter(FBUtilities.<Clustering>singleton(new SimpleClustering(parent.bufferForSuper_column()),metadata.comparator),false);
+        }
+ else {
+          NavigableSet<Clustering> clusterings=new TreeSet<>(metadata.comparator);
+          for (          ByteBuffer bb : predicate.column_names)           clusterings.add(new SimpleClustering(bb));
+          return new ClusteringIndexNamesFilter(clusterings,false);
+        }
+      }
+ else {
+        NavigableSet<Clustering> clusterings=new TreeSet<>(metadata.comparator);
+        for (        ByteBuffer bb : predicate.column_names) {
+          LegacyLayout.LegacyCellName name=LegacyLayout.decodeCellName(metadata,parent.bufferForSuper_column(),bb);
+          clusterings.add(name.clustering);
+        }
+        return new ClusteringIndexNamesFilter(clusterings,false);
+      }
     }
  else {
-      SortedSet<CellName> s=new TreeSet<CellName>(metadata.comparator);
-      for (      ByteBuffer bb : predicate.column_names)       s.add(metadata.comparator.cellFromByteBuffer(bb));
-      filter=new NamesQueryFilter(s);
+      return toInternalFilter(metadata,parent,predicate.slice_range);
     }
   }
- else {
-    filter=toInternalFilter(metadata,parent,predicate.slice_range);
+ catch (  UnknownColumnException e) {
+    throw new org.apache.cassandra.exceptions.InvalidRequestException(e.getMessage());
   }
-  return filter;
 }

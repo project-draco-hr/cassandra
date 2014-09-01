@@ -1,8 +1,11 @@
 {
   out.writeBoolean(response.promised);
-  ByteBufferUtil.writeWithShortLength(response.inProgressCommit.key,out);
-  UUIDSerializer.serializer.serialize(response.inProgressCommit.ballot,out,version);
-  ColumnFamily.serializer.serialize(response.inProgressCommit.update,out,version);
-  UUIDSerializer.serializer.serialize(response.mostRecentCommit.ballot,out,version);
-  ColumnFamily.serializer.serialize(response.mostRecentCommit.update,out,version);
+  Commit.serializer.serialize(response.inProgressCommit,out,version);
+  if (version < MessagingService.VERSION_30) {
+    UUIDSerializer.serializer.serialize(response.mostRecentCommit.ballot,out,version);
+    PartitionUpdate.serializer.serialize(response.mostRecentCommit.update,out,version);
+  }
+ else {
+    Commit.serializer.serialize(response.mostRecentCommit,out,version);
+  }
 }

@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (k text, t int, s text static, v text, PRIMARY KEY (k, t));");
+  execute("INSERT INTO %s (k, t, v, s) values (?, ?, ?, ?)","key1",1,"foo1","st1");
+  execute("INSERT INTO %s (k, t, v, s) values (?, ?, ?, ?)","key1",2,"foo2","st2");
+  flush();
+  execute("INSERT INTO %s (k, t, v, s) values (?, ?, ?, ?)","key1",3,"foo3","st3");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key1",4,"foo4");
+  assertRows(execute("SELECT * FROM %s"),row("key1",1,"st3","foo1"),row("key1",2,"st3","foo2"),row("key1",3,"st3","foo3"),row("key1",4,"st3","foo4"));
+  assertRows(execute("SELECT s FROM %s WHERE k = ?","key1"),row("st3"),row("st3"),row("st3"),row("st3"));
+  assertRows(execute("SELECT DISTINCT s FROM %s WHERE k = ?","key1"),row("st3"));
+}

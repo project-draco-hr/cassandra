@@ -1,19 +1,19 @@
 {
   ColumnFamilyStore cfs=Keyspace.open("PaxosStateTestKeyspace1").getColumnFamilyStore("Standard1");
-  DecoratedKey key=Util.dk("key" + System.nanoTime());
-  CellName name=Util.cellname("col");
+  String key="key" + System.nanoTime();
   ByteBuffer value=ByteBufferUtil.bytes(0);
-  ColumnFamily update=ArrayBackedSortedColumns.factory.create(cfs.metadata);
-  update.addColumn(name,value,FBUtilities.timestampMicros());
-  assertNoDataPresent(cfs,key);
-  Commit beforeTruncate=newProposal(0,key.getKey(),update);
+  RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,FBUtilities.timestampMicros(),key);
+  builder.clustering("a").add("val",value);
+  PartitionUpdate update=Iterables.getOnlyElement(builder.build().getPartitionUpdates());
+  assertNoDataPresent(cfs,Util.dk(key));
+  Commit beforeTruncate=newProposal(0,update);
   PaxosState.commit(beforeTruncate);
-  assertDataPresent(cfs,key,name,value);
+  assertDataPresent(cfs,Util.dk(key),"val",value);
   cfs.truncateBlocking();
   PaxosState.commit(beforeTruncate);
-  assertNoDataPresent(cfs,key);
+  assertNoDataPresent(cfs,Util.dk(key));
   long timestamp=SystemKeyspace.getTruncatedAt(update.metadata().cfId) + 1;
-  Commit afterTruncate=newProposal(timestamp,key.getKey(),update);
+  Commit afterTruncate=newProposal(timestamp,update);
   PaxosState.commit(afterTruncate);
-  assertDataPresent(cfs,key,name,value);
+  assertDataPresent(cfs,Util.dk(key),"val",value);
 }

@@ -1,0 +1,25 @@
+{
+  long start=System.nanoTime();
+  try {
+    PartitionIterator result=fetchRows(group.commands,consistencyLevel);
+    if (group.commands.size() > 1)     result=group.limits().filter(result,group.nowInSec());
+    return result;
+  }
+ catch (  UnavailableException e) {
+    readMetrics.unavailables.mark();
+    throw e;
+  }
+catch (  ReadTimeoutException e) {
+    readMetrics.timeouts.mark();
+    throw e;
+  }
+catch (  ReadFailureException e) {
+    readMetrics.failures.mark();
+    throw e;
+  }
+ finally {
+    long latency=System.nanoTime() - start;
+    readMetrics.addNano(latency);
+    for (    ReadCommand command : group.commands)     Keyspace.openAndGetStore(command.metadata()).metric.coordinatorReadLatency.update(latency,TimeUnit.NANOSECONDS);
+  }
+}

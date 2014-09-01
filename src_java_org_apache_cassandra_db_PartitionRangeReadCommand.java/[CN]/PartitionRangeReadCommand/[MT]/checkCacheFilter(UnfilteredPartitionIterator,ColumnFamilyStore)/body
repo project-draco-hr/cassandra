@@ -1,0 +1,15 @@
+{
+  return new WrappingUnfilteredPartitionIterator(iter){
+    @Override public UnfilteredRowIterator computeNext(    UnfilteredRowIterator iter){
+      DecoratedKey dk=iter.partitionKey();
+      CachedPartition cached=cfs.getRawCachedPartition(dk);
+      ClusteringIndexFilter filter=dataRange().clusteringIndexFilter(dk);
+      if (cached != null && cfs.isFilterFullyCoveredBy(filter,limits(),cached,nowInSec())) {
+        iter.close();
+        return filter.getUnfilteredRowIterator(columnFilter(),cached);
+      }
+      return iter;
+    }
+  }
+;
+}

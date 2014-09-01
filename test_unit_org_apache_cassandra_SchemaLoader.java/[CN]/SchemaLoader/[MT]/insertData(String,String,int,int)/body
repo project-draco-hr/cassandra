@@ -1,8 +1,8 @@
 {
+  CFMetaData cfm=Schema.instance.getCFMetaData(keyspace,columnFamily);
   for (int i=offset; i < offset + numberOfRows; i++) {
-    ByteBuffer key=ByteBufferUtil.bytes("key" + i);
-    Mutation mutation=new Mutation(keyspace,key);
-    mutation.add(columnFamily,Util.cellname("col" + i),ByteBufferUtil.bytes("val" + i),System.currentTimeMillis());
-    mutation.applyUnsafe();
+    RowUpdateBuilder builder=new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),ByteBufferUtil.bytes("key" + i));
+    builder.clustering(ByteBufferUtil.bytes("col" + i)).add("val",ByteBufferUtil.bytes("val" + i));
+    builder.build().apply();
   }
 }

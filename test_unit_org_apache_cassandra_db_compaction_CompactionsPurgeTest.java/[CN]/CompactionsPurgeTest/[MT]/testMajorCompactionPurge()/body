@@ -3,27 +3,21 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   String cfName="Standard1";
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
-  DecoratedKey key=Util.dk("key1");
-  Mutation rm;
-  rm=new Mutation(KEYSPACE1,key.getKey());
+  String key="key1";
   for (int i=0; i < 10; i++) {
-    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-  }
-  rm.applyUnsafe();
-  cfs.forceBlockingFlush();
-  for (int i=0; i < 10; i++) {
-    rm=new Mutation(KEYSPACE1,key.getKey());
-    rm.delete(cfName,cellname(String.valueOf(i)),1);
-    rm.applyUnsafe();
+    RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,0,key);
+    builder.clustering(String.valueOf(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
   cfs.forceBlockingFlush();
-  rm=new Mutation(KEYSPACE1,key.getKey());
-  rm.add(cfName,cellname(String.valueOf(5)),ByteBufferUtil.EMPTY_BYTE_BUFFER,2);
-  rm.applyUnsafe();
+  for (int i=0; i < 10; i++) {
+    RowUpdateBuilder.deleteRow(cfs.metadata,1,key,String.valueOf(i)).applyUnsafe();
+  }
+  cfs.forceBlockingFlush();
+  RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,2,key);
+  builder.clustering(String.valueOf(5)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   cfs.forceBlockingFlush();
   FBUtilities.waitOnFutures(CompactionManager.instance.submitMaximal(cfs,Integer.MAX_VALUE,false));
-  cfs.invalidateCachedRow(key);
-  ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
-  assertColumns(cf,"5");
-  assertNotNull(cf.getColumn(cellname(String.valueOf(5))));
+  cfs.invalidateCachedPartition(dk(key));
+  ArrayBackedPartition partition=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs,key).build());
+  assertEquals(1,partition.rowCount());
 }

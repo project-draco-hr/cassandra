@@ -1,0 +1,23 @@
+{
+  CFMetaData.serializer.serialize(iterator.metadata(),out,version);
+  ByteBufferUtil.writeWithLength(iterator.partitionKey().getKey(),out);
+  int flags=0;
+  if (iterator.isReverseOrder())   flags|=IS_REVERSED;
+  if (iterator.isEmpty()) {
+    out.writeByte((byte)(flags | IS_EMPTY));
+    return;
+  }
+  DeletionTime partitionDeletion=iterator.partitionLevelDeletion();
+  if (!partitionDeletion.isLive())   flags|=HAS_PARTITION_DELETION;
+  Row staticRow=iterator.staticRow();
+  boolean hasStatic=staticRow != Rows.EMPTY_STATIC_ROW;
+  if (hasStatic)   flags|=HAS_STATIC_ROW;
+  if (rowEstimate >= 0)   flags|=HAS_ROW_ESTIMATE;
+  out.writeByte((byte)flags);
+  SerializationHeader.serializer.serializeForMessaging(header,out,hasStatic);
+  if (!partitionDeletion.isLive())   writeDelTime(partitionDeletion,header,out);
+  if (hasStatic)   UnfilteredSerializer.serializer.serialize(staticRow,header,out,version);
+  if (rowEstimate >= 0)   out.writeInt(rowEstimate);
+  while (iterator.hasNext())   UnfilteredSerializer.serializer.serialize(iterator.next(),header,out,version);
+  UnfilteredSerializer.serializer.writeEndOfPartition(out);
+}

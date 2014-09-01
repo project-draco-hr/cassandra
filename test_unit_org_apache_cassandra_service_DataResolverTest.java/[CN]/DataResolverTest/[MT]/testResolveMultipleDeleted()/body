@@ -1,0 +1,33 @@
+{
+  DataResolver resolver=new DataResolver(ks,command,ConsistencyLevel.ALL,4);
+  InetAddress peer1=peer();
+  resolver.preprocess(readResponseMessage(peer1,fullPartitionDelete(cfm,dk,0,nowInSec)));
+  InetAddress peer2=peer();
+  resolver.preprocess(readResponseMessage(peer2,iter(new RowUpdateBuilder(cfm,nowInSec,1L,dk).clustering("1").add("one","A").add("two","A").buildUpdate())));
+  InetAddress peer3=peer();
+  resolver.preprocess(readResponseMessage(peer3,iter(new RowUpdateBuilder(cfm,nowInSec,3L,dk).clustering("1").add("two","B").buildUpdate())));
+  InetAddress peer4=peer();
+  resolver.preprocess(readResponseMessage(peer4,fullPartitionDelete(cfm,dk,2,nowInSec)));
+  try (PartitionIterator data=resolver.resolve();RowIterator rows=Iterators.getOnlyElement(data)){
+    Row row=Iterators.getOnlyElement(rows);
+    assertColumns(row,"two");
+    assertColumn(cfm,row,"two","B",3);
+  }
+   assertEquals(4,messageRecorder.sent.size());
+  MessageOut msg=getSentMessage(peer1);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,new SimpleDeletionTime(2,nowInSec));
+  assertRepairContainsColumn(msg,"1","two","B",3);
+  msg=getSentMessage(peer2);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,new SimpleDeletionTime(2,nowInSec));
+  assertRepairContainsColumn(msg,"1","two","B",3);
+  msg=getSentMessage(peer3);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,new SimpleDeletionTime(2,nowInSec));
+  assertRepairContainsNoColumns(msg);
+  msg=getSentMessage(peer4);
+  assertRepairMetadata(msg);
+  assertRepairContainsNoDeletions(msg);
+  assertRepairContainsColumn(msg,"1","two","B",3);
+}

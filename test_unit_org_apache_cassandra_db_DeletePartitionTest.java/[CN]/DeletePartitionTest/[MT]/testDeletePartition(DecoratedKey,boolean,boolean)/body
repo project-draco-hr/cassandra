@@ -1,0 +1,15 @@
+{
+  ColumnFamilyStore store=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
+  ColumnDefinition column=store.metadata.getColumnDefinition(ByteBufferUtil.bytes("val"));
+  new RowUpdateBuilder(store.metadata,0,key.getKey()).clustering("Column1").add("val","asdf").build().applyUnsafe();
+  FilteredPartition partition=Util.getOnlyPartition(Util.cmd(store,key).build());
+  assertTrue(partition.rowCount() > 0);
+  Row r=partition.iterator().next();
+  assertTrue(r.getCell(column).value().equals(ByteBufferUtil.bytes("asdf")));
+  if (flushBeforeRemove)   store.forceBlockingFlush();
+  new Mutation(KEYSPACE1,key).add(PartitionUpdate.fullPartitionDelete(store.metadata,key,0,FBUtilities.nowInSeconds())).applyUnsafe();
+  if (flushAfterRemove)   store.forceBlockingFlush();
+  ArrayBackedPartition partitionUnfiltered=Util.getOnlyPartitionUnfiltered(Util.cmd(store,key).build());
+  assertFalse(partitionUnfiltered.partitionLevelDeletion().isLive());
+  assertFalse(partitionUnfiltered.iterator().hasNext());
+}

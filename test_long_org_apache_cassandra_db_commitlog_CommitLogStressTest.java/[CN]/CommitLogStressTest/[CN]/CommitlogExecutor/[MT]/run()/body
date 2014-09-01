@@ -3,18 +3,17 @@
   final Random rand=random != null ? random : ThreadLocalRandom.current();
   while (!stop) {
     if (rl != null)     rl.acquire();
-    String ks="Keyspace1";
     ByteBuffer key=randomBytes(16,rand);
-    Mutation mutation=new Mutation(ks,key);
+    UpdateBuilder builder=UpdateBuilder.create(Schema.instance.getCFMetaData("Keyspace1","Standard1"),Util.dk(key));
     for (int ii=0; ii < numCells; ii++) {
       int sz=randomSize ? rand.nextInt(cellSize) : cellSize;
       ByteBuffer bytes=randomBytes(sz,rand);
-      mutation.add("Standard1",Util.cellname("name" + ii),bytes,System.currentTimeMillis());
+      builder.newRow("name" + ii).add("val",bytes);
       hash=hash(hash,bytes);
       ++cells;
       dataSize+=sz;
     }
-    rp=commitLog.add(mutation);
+    rp=commitLog.add(new Mutation(builder.build()));
     counter.incrementAndGet();
   }
 }

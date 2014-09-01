@@ -1,0 +1,28 @@
+{
+  if (!requiresRead())   return null;
+  try {
+    cl.validateForRead(keyspace());
+  }
+ catch (  InvalidRequestException e) {
+    throw new InvalidRequestException(String.format("Write operation require a read but consistency %s is not supported on reads",cl));
+  }
+  PartitionColumns.Builder builder=PartitionColumns.builder();
+  for (  Operation op : allOperations())   if (op.requiresRead())   builder.add(op.column);
+  PartitionColumns toRead=builder.build();
+  NavigableSet<Clustering> clusterings=FBUtilities.singleton(cbuilder.build(),cfm.comparator);
+  List<SinglePartitionReadCommand<?>> commands=new ArrayList<>(partitionKeys.size());
+  int nowInSec=FBUtilities.nowInSeconds();
+  for (  ByteBuffer key : partitionKeys)   commands.add(new SinglePartitionNamesCommand(cfm,nowInSec,ColumnFilter.selection(toRead),RowFilter.NONE,DataLimits.NONE,StorageService.getPartitioner().decorateKey(key),new ClusteringIndexNamesFilter(clusterings,false)));
+  Map<DecoratedKey,Partition> map=new HashMap();
+  SinglePartitionReadCommand.Group group=new SinglePartitionReadCommand.Group(commands,DataLimits.NONE);
+  if (local) {
+    try (ReadOrderGroup orderGroup=group.startOrderGroup();PartitionIterator iter=group.executeInternal(orderGroup)){
+      return asMaterializedMap(iter);
+    }
+   }
+ else {
+    try (PartitionIterator iter=group.execute(cl,null)){
+      return asMaterializedMap(iter);
+    }
+   }
+}

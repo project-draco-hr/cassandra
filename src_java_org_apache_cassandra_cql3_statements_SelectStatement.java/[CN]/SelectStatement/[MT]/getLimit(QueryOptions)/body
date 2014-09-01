@@ -1,16 +1,18 @@
 {
-  if (limit != null) {
+  int userLimit=-1;
+  if (limit != null && !selection.isAggregate()) {
     ByteBuffer b=checkNotNull(limit.bindAndGet(options),"Invalid null value of limit");
-    if (b == UNSET_BYTE_BUFFER)     return Integer.MAX_VALUE;
-    try {
-      Int32Type.instance.validate(b);
-      int l=Int32Type.instance.compose(b);
-      checkTrue(l > 0,"LIMIT must be strictly positive");
-      return l;
-    }
- catch (    MarshalException e) {
-      throw new InvalidRequestException("Invalid limit value");
+    if (b != UNSET_BYTE_BUFFER) {
+      try {
+        Int32Type.instance.validate(b);
+        userLimit=Int32Type.instance.compose(b);
+        checkTrue(userLimit > 0,"LIMIT must be strictly positive");
+      }
+ catch (      MarshalException e) {
+        throw new InvalidRequestException("Invalid limit value");
+      }
     }
   }
-  return Integer.MAX_VALUE;
+  if (parameters.isDistinct)   return userLimit < 0 ? DataLimits.DISTINCT_NONE : DataLimits.distinctLimits(userLimit);
+  return userLimit < 0 ? DataLimits.NONE : DataLimits.cqlLimits(userLimit);
 }

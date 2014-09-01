@@ -1,0 +1,32 @@
+{
+  String keyspaceName=KEYSPACE1;
+  String cfName=CF_STANDARD1;
+  Keyspace keyspace=Keyspace.open(keyspaceName);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  cfs.clearUnsafe();
+  for (int i=0; i < 10; ++i) {
+    RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,10,String.valueOf(i));
+    builder.clustering("c");
+    builder.add("val",String.valueOf(i));
+    builder.build().applyUnsafe();
+  }
+  cfs.forceBlockingFlush();
+  ColumnDefinition cDef=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("val"));
+  List<FilteredPartition> partitions;
+  partitions=Util.getAll(Util.cmd(cfs).fromKeyIncl("2").toKeyIncl("7").build());
+  assertEquals(6,partitions.size());
+  assertTrue(partitions.get(0).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("2")));
+  assertTrue(partitions.get(partitions.size() - 1).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("7")));
+  partitions=Util.getAll(Util.cmd(cfs).fromKeyExcl("2").toKeyExcl("7").build());
+  assertEquals(4,partitions.size());
+  assertTrue(partitions.get(0).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("3")));
+  assertTrue(partitions.get(partitions.size() - 1).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("6")));
+  partitions=Util.getAll(Util.cmd(cfs).fromKeyExcl("2").toKeyIncl("7").build());
+  assertEquals(5,partitions.size());
+  assertTrue(partitions.get(0).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("3")));
+  assertTrue(partitions.get(partitions.size() - 1).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("7")));
+  partitions=Util.getAll(Util.cmd(cfs).fromKeyIncl("2").toKeyExcl("7").build());
+  assertEquals(5,partitions.size());
+  assertTrue(partitions.get(0).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("2")));
+  assertTrue(partitions.get(partitions.size() - 1).iterator().next().getCell(cDef).value().equals(ByteBufferUtil.bytes("6")));
+}

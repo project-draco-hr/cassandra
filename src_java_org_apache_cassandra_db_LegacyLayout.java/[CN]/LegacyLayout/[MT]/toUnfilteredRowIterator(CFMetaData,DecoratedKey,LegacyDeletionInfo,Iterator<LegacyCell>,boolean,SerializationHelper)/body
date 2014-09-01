@@ -1,0 +1,13 @@
+{
+  PeekingIterator<LegacyCell> iter=Iterators.peekingIterator(cells);
+  Row staticRow=iter.hasNext() && iter.peek().name.clustering == Clustering.STATIC_CLUSTERING ? getNextRow(CellGrouper.staticGrouper(metadata,helper),iter) : Rows.EMPTY_STATIC_ROW;
+  Iterator<Row> rows=convertToRows(new CellGrouper(metadata,helper),iter,delInfo);
+  Iterator<RangeTombstone> ranges=delInfo.deletionInfo.rangeIterator(reversed);
+  final Iterator<Unfiltered> atoms=new RowAndTombstoneMergeIterator(metadata.comparator,reversed).setTo(rows,ranges);
+  return new AbstractUnfilteredRowIterator(metadata,key,delInfo.deletionInfo.getPartitionDeletion(),metadata.partitionColumns(),staticRow,reversed,RowStats.NO_STATS){
+    protected Unfiltered computeNext(){
+      return atoms.hasNext() ? atoms.next() : endOfData();
+    }
+  }
+;
+}

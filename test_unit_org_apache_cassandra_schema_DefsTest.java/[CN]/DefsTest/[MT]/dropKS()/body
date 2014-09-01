@@ -1,28 +1,23 @@
 {
-  DecoratedKey dk=Util.dk("dropKs");
   final KSMetaData ks=Schema.instance.getKSMetaData(KEYSPACE1);
-  Assert.assertNotNull(ks);
-  final CFMetaData cfm=ks.cfMetaData().get("Standard2");
-  Assert.assertNotNull(cfm);
-  Mutation rm=new Mutation(ks.name,dk.getKey());
-  for (int i=0; i < 100; i++)   rm.add(cfm.cfName,cellname("col" + i),ByteBufferUtil.bytes("anyvalue"),1L);
-  rm.applyUnsafe();
-  ColumnFamilyStore store=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
-  Assert.assertNotNull(store);
-  store.forceBlockingFlush();
-  Assert.assertTrue(store.directories.sstableLister().list().size() > 0);
+  assertNotNull(ks);
+  final CFMetaData cfm=ks.cfMetaData().get(TABLE2);
+  assertNotNull(cfm);
+  for (int i=0; i < 100; i++)   QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, name, val) VALUES (?, ?, ?)",KEYSPACE1,TABLE2),"dropKs","col" + i,"anyvalue");
+  ColumnFamilyStore cfs=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+  assertNotNull(cfs);
+  cfs.forceBlockingFlush();
+  assertTrue(!cfs.directories.sstableLister().list().isEmpty());
   MigrationManager.announceKeyspaceDrop(ks.name);
-  Assert.assertNull(Schema.instance.getKSMetaData(ks.name));
-  rm=new Mutation(ks.name,dk.getKey());
+  assertNull(Schema.instance.getKSMetaData(ks.name));
   boolean success=true;
   try {
-    rm.add("Standard1",cellname("col0"),ByteBufferUtil.bytes("value0"),1L);
-    rm.applyUnsafe();
+    QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, name, val) VALUES (?, ?, ?)",KEYSPACE1,TABLE2),"dropKs","col0","anyvalue");
   }
  catch (  Throwable th) {
     success=false;
   }
-  Assert.assertFalse("This mutation should have failed since the CF no longer exists.",success);
+  assertFalse("This mutation should have failed since the KS no longer exists.",success);
   boolean threw=false;
   try {
     Keyspace.open(ks.name);
@@ -30,5 +25,5 @@
  catch (  Throwable th) {
     threw=true;
   }
-  Assert.assertTrue(threw);
+  assertTrue(threw);
 }

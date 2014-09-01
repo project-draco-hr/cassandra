@@ -1,0 +1,18 @@
+{
+  if (metadata.isSuper() && parent.isSetSuper_column()) {
+    ColumnFilter.Builder builder=ColumnFilter.selectionBuilder();
+    ColumnDefinition def=metadata.compactValueColumn();
+    ByteBuffer start=range.reversed ? range.finish : range.start;
+    ByteBuffer finish=range.reversed ? range.start : range.finish;
+    builder.slice(def,start.hasRemaining() ? CellPath.create(start) : CellPath.BOTTOM,finish.hasRemaining() ? CellPath.create(finish) : CellPath.TOP);
+    AbstractType<?> cmp=metadata.thriftColumnNameType();
+    for (    ColumnDefinition column : metadata.partitionColumns()) {
+      if (CompactTables.isSuperColumnMapColumn(column))       continue;
+      ByteBuffer name=column.name.bytes;
+      if (cmp.compare(name,start) < 0 || cmp.compare(finish,name) > 0)       continue;
+      builder.add(column);
+    }
+    return builder.build();
+  }
+  return makeColumnFilter(metadata,makeSlices(metadata,range));
+}

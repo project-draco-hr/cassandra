@@ -5,28 +5,24 @@
   cfs.truncateBlocking();
   cfs.disableAutoCompaction();
   cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
-  Mutation rm=new Mutation(KSNAME,key);
-  for (int i=0; i < 10; i+=2)   add(rm,i,0);
-  rm.applyUnsafe();
+  UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,key).withTimestamp(0);
+  for (int i=0; i < 10; i+=2)   builder.newRow(i).add("val",i);
+  builder.applyUnsafe();
   cfs.forceBlockingFlush();
-  rm=new Mutation(KSNAME,key);
-  ColumnFamily cf=rm.addOrGet(CFNAME);
-  for (int i=0; i < 10; i+=2)   delete(cf,0,7,0);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,key).addRangeTombstone(0,7).build().applyUnsafe();
   cfs.forceBlockingFlush();
   assertEquals(2,cfs.getSSTables().size());
   CompactionManager.instance.performMaximal(cfs,false);
   assertEquals(1,cfs.getSSTables().size());
   SSTableReader sstable=cfs.getSSTables().iterator().next();
-  try (ISSTableScanner scanner=sstable.getScanner()){
-    OnDiskAtomIterator iter=scanner.next();
-    int cnt=0;
-    while (iter.hasNext()) {
-      OnDiskAtom atom=iter.next();
-      if (cnt == 0)       assertTrue(atom instanceof RangeTombstone);
-      if (cnt > 0)       assertTrue(atom instanceof Cell);
-      cnt++;
+  try (UnfilteredPartitionIterator scanner=sstable.getScanner()){
+    try (UnfilteredRowIterator iter=scanner.next()){
+      Unfiltered u1=iter.next();
+      assertTrue("Expecting open marker, got " + u1.toString(cfs.metadata),u1 instanceof RangeTombstoneMarker);
+      Unfiltered u2=iter.next();
+      assertTrue("Expecting close marker, got " + u2.toString(cfs.metadata),u2 instanceof RangeTombstoneMarker);
+      Unfiltered u3=iter.next();
+      assertTrue("Expecting row, got " + u3.toString(cfs.metadata),u3 instanceof Row);
     }
-    assertEquals(2,cnt);
-  }
+   }
  }

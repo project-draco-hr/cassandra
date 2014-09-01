@@ -1,0 +1,15 @@
+{
+  this.controller=controller;
+  this.type=type;
+  this.scanners=scanners;
+  this.nowInSec=nowInSec;
+  this.compactionId=compactionId;
+  this.bytesRead=0;
+  long bytes=0;
+  for (  ISSTableScanner scanner : scanners)   bytes+=scanner.getLengthInBytes();
+  this.totalBytes=bytes;
+  this.mergeCounters=new long[scanners.size()];
+  this.metrics=metrics;
+  if (metrics != null)   metrics.beginCompaction(this);
+  this.mergedIterator=scanners.isEmpty() ? UnfilteredPartitionIterators.EMPTY : UnfilteredPartitionIterators.convertExpiredCellsToTombstones(new PurgingPartitionIterator(UnfilteredPartitionIterators.merge(scanners,nowInSec,listener()),controller),nowInSec);
+}

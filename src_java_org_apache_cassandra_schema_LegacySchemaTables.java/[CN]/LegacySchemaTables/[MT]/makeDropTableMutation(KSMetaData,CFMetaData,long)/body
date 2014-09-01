@@ -1,12 +1,8 @@
 {
   Mutation mutation=makeCreateKeyspaceMutation(keyspace,timestamp,false);
-  ColumnFamily cells=mutation.addOrGet(Columnfamilies);
-  int ldt=(int)(System.currentTimeMillis() / 1000);
-  Composite prefix=Columnfamilies.comparator.make(table.cfName);
-  cells.addAtom(new RangeTombstone(prefix,prefix.end(),timestamp,ldt));
+  RowUpdateBuilder.deleteRow(Columnfamilies,timestamp,mutation,table.cfName);
   for (  ColumnDefinition column : table.allColumns())   dropColumnFromSchemaMutation(table,column,timestamp,mutation);
   for (  TriggerDefinition trigger : table.getTriggers().values())   dropTriggerFromSchemaMutation(table,trigger,timestamp,mutation);
-  ColumnFamily indexCells=mutation.addOrGet(SystemKeyspace.BuiltIndexes);
-  for (  String indexName : Keyspace.open(keyspace.name).getColumnFamilyStore(table.cfName).getBuiltIndexes())   indexCells.addTombstone(indexCells.getComparator().makeCellName(indexName),ldt,timestamp);
+  for (  String indexName : Keyspace.open(keyspace.name).getColumnFamilyStore(table.cfName).getBuiltIndexes())   RowUpdateBuilder.deleteRow(SystemKeyspace.BuiltIndexes,timestamp,mutation,indexName);
   return mutation;
 }

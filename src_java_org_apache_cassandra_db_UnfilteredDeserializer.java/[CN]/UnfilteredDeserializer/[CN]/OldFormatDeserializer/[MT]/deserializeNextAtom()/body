@@ -1,0 +1,46 @@
+{
+  if (staticFinished && savedAtom != null) {
+    nextAtom=savedAtom;
+    savedAtom=null;
+    return true;
+  }
+  while (true) {
+    nextAtom=LegacyLayout.readLegacyAtom(metadata,in,readAllAsDynamic);
+    if (nextAtom == null) {
+      isDone=true;
+      return false;
+    }
+ else     if (tombstoneTracker.isShadowed(nextAtom)) {
+      nextAtom=null;
+      continue;
+    }
+    tombstoneTracker.update(nextAtom);
+    if (skipStatic && metadata.isStaticCompactTable() && nextAtom.isCell()) {
+      LegacyLayout.LegacyCell cell=nextAtom.asCell();
+      if (cell.name.column.isStatic()) {
+        nextAtom=null;
+        continue;
+      }
+    }
+    if (isStart) {
+      isStart=false;
+      if (!nextAtom.isCell()) {
+        LegacyLayout.LegacyRangeTombstone tombstone=nextAtom.asRangeTombstone();
+        if (tombstone.start.bound.size() == 0) {
+          savedAtom=tombstone;
+          nextAtom=LegacyLayout.readLegacyAtom(metadata,in,readAllAsDynamic);
+          if (nextAtom == null) {
+            nextAtom=savedAtom;
+            savedAtom=null;
+          }
+ else           if (!nextAtom.isStatic()) {
+            LegacyLayout.LegacyAtom atom=nextAtom;
+            nextAtom=savedAtom;
+            savedAtom=atom;
+          }
+        }
+      }
+    }
+    return true;
+  }
+}

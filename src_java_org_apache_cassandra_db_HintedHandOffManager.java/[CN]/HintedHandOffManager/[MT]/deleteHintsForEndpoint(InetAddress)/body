@@ -1,9 +1,8 @@
 {
   if (!StorageService.instance.getTokenMetadata().isMember(endpoint))   return;
   UUID hostId=StorageService.instance.getTokenMetadata().getHostId(endpoint);
-  ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
-  final Mutation mutation=new Mutation(SystemKeyspace.NAME,hostIdBytes);
-  mutation.delete(SystemKeyspace.HINTS,System.currentTimeMillis());
+  DecoratedKey dk=StorageService.getPartitioner().decorateKey(ByteBuffer.wrap(UUIDGen.decompose(hostId)));
+  final Mutation mutation=new Mutation(PartitionUpdate.fullPartitionDelete(SystemKeyspace.Hints,dk,System.currentTimeMillis(),FBUtilities.nowInSeconds()));
   Runnable runnable=new Runnable(){
     public void run(){
       try {

@@ -1,0 +1,46 @@
+{
+  if (collectionElement == null)   throw new InvalidRequestException("Invalid null value for " + (column.type instanceof MapType ? "map" : "list") + " element access");
+  if (column.type instanceof MapType) {
+    MapType mapType=(MapType)column.type;
+    AbstractType<?> valueType=mapType.getValuesType();
+    if (column.type.isMultiCell()) {
+      Cell item=getCell(row,column,CellPath.create(collectionElement));
+      for (      ByteBuffer value : inValues) {
+        if (isSatisfiedByValue(value,item,valueType,Operator.EQ))         return true;
+      }
+      return false;
+    }
+ else {
+      Cell cell=getCell(row,column);
+      ByteBuffer mapElementValue=cell == null ? null : mapType.getSerializer().getSerializedValue(cell.value(),collectionElement,mapType.getKeysType());
+      for (      ByteBuffer value : inValues) {
+        if (value == null) {
+          if (mapElementValue == null)           return true;
+          continue;
+        }
+        if (valueType.compare(value,mapElementValue) == 0)         return true;
+      }
+      return false;
+    }
+  }
+  ListType listType=(ListType)column.type;
+  AbstractType<?> elementsType=listType.getElementsType();
+  if (column.type.isMultiCell()) {
+    ByteBuffer columnValue=ElementAccessBound.getListItem(getCells(row,column),ElementAccessBound.getListIndex(collectionElement));
+    for (    ByteBuffer value : inValues) {
+      if (compareWithOperator(Operator.EQ,elementsType,value,columnValue))       return true;
+    }
+  }
+ else {
+    Cell cell=getCell(row,column);
+    ByteBuffer listElementValue=cell == null ? null : listType.getSerializer().getElement(cell.value(),ElementAccessBound.getListIndex(collectionElement));
+    for (    ByteBuffer value : inValues) {
+      if (value == null) {
+        if (listElementValue == null)         return true;
+        continue;
+      }
+      if (elementsType.compare(value,listElementValue) == 0)       return true;
+    }
+  }
+  return false;
+}

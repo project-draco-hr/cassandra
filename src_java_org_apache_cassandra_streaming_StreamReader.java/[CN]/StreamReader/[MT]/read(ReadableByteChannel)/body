@@ -9,9 +9,10 @@
   SSTableWriter writer=createWriter(cfs,totalSize,repairedAt,format);
   DataInputStream dis=new DataInputStream(new LZFInputStream(Channels.newInputStream(channel)));
   BytesReadTracker in=new BytesReadTracker(dis);
+  StreamDeserializer deserializer=new StreamDeserializer(cfs.metadata,in,inputVersion,header.toHeader(cfs.metadata));
   try {
     while (in.getBytesRead() < totalSize) {
-      writeRow(writer,in,cfs);
+      writePartition(deserializer,writer,cfs);
       session.progress(desc,ProgressInfo.Direction.IN,in.getBytesRead(),totalSize);
     }
     return writer;

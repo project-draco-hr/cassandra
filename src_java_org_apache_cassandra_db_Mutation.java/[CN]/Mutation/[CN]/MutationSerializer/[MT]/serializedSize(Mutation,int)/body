@@ -2,9 +2,11 @@
   TypeSizes sizes=TypeSizes.NATIVE;
   int size=0;
   if (version < MessagingService.VERSION_20)   size+=sizes.sizeof(mutation.getKeyspaceName());
-  int keySize=mutation.key().remaining();
-  size+=sizes.sizeof((short)keySize) + keySize;
+  if (version < MessagingService.VERSION_30) {
+    int keySize=mutation.key().getKey().remaining();
+    size+=sizes.sizeof((short)keySize) + keySize;
+  }
   size+=sizes.sizeof(mutation.modifications.size());
-  for (  Map.Entry<UUID,ColumnFamily> entry : mutation.modifications.entrySet())   size+=ColumnFamily.serializer.serializedSize(entry.getValue(),TypeSizes.NATIVE,version);
+  for (  Map.Entry<UUID,PartitionUpdate> entry : mutation.modifications.entrySet())   size+=PartitionUpdate.serializer.serializedSize(entry.getValue(),version,sizes);
   return size;
 }

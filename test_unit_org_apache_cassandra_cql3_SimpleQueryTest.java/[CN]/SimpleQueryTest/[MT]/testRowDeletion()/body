@@ -1,0 +1,13 @@
+{
+  int N=4;
+  createTable("CREATE TABLE %s (k text, t int, v1 text, v2 int, PRIMARY KEY (k, t));");
+  for (int t=0; t < N; t++)   execute("INSERT INTO %s (k, t, v1, v2) values (?, ?, ?, ?)","key",t,"v" + t,t + 10);
+  flush();
+  for (int i=0; i < N / 2; i++)   execute("DELETE FROM %s WHERE k=? AND t=?","key",i * 2);
+  Object[][] expected=new Object[N / 2][];
+  for (int i=0; i < N / 2; i++) {
+    int t=i * 2 + 1;
+    expected[i]=row("key",t,"v" + t,t + 10);
+  }
+  assertRows(execute("SELECT * FROM %s"),expected);
+}

@@ -1,0 +1,16 @@
+{
+  Keyspace ks=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(CFNAME);
+  cfs.truncateBlocking();
+  String key="rt_times";
+  UpdateBuilder.create(cfs.metadata,key).withTimestamp(999).newRow(5).add("val",5).apply();
+  key="rt_times2";
+  int nowInSec=FBUtilities.nowInSeconds();
+  new Mutation(PartitionUpdate.fullPartitionDelete(cfs.metadata,Util.dk(key),1000,nowInSec)).apply();
+  cfs.forceBlockingFlush();
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  assertTimes(sstable.getSSTableMetadata(),999,1000,Integer.MAX_VALUE);
+  cfs.forceMajorCompaction();
+  sstable=cfs.getSSTables().iterator().next();
+  assertTimes(sstable.getSSTableMetadata(),999,1000,Integer.MAX_VALUE);
+}

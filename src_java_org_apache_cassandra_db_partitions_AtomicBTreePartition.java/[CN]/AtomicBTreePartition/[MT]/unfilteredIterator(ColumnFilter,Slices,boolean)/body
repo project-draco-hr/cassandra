@@ -1,0 +1,14 @@
+{
+  if (slices.size() == 0) {
+    Holder current=ref;
+    DeletionTime partitionDeletion=current.deletionInfo.getPartitionDeletion();
+    if (selection.fetchedColumns().statics.isEmpty() && partitionDeletion.isLive())     return UnfilteredRowIterators.emptyIterator(metadata,partitionKey,reversed);
+    return new AbstractUnfilteredRowIterator(metadata,partitionKey,partitionDeletion,selection.fetchedColumns(),makeStatic(selection,current,allocator),reversed,current.stats){
+      protected Unfiltered computeNext(){
+        return endOfData();
+      }
+    }
+;
+  }
+  return slices.size() == 1 ? new SingleSliceIterator(metadata,partitionKey,ref,selection,slices.get(0),reversed,allocator) : new SlicesIterator(metadata,partitionKey,ref,selection,slices,reversed,allocator);
+}

@@ -1,0 +1,14 @@
+{
+  if (responses.size() == 1)   return getData();
+  if (logger.isDebugEnabled())   logger.debug("resolving {} responses",responses.size());
+  long start=System.nanoTime();
+  ByteBuffer digest=null;
+  for (  MessageIn<ReadResponse> message : responses) {
+    ReadResponse response=message.payload;
+    ByteBuffer newDigest=response.digest();
+    if (digest == null)     digest=newDigest;
+ else     if (!digest.equals(newDigest))     throw new DigestMismatchException(((SinglePartitionReadCommand)command).partitionKey(),digest,newDigest);
+  }
+  if (logger.isDebugEnabled())   logger.debug("resolve: {} ms.",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+  return UnfilteredPartitionIterators.filter(dataResponse.makeIterator(),command.nowInSec());
+}

@@ -5,12 +5,9 @@
   int rows=20;
   int columns=10;
   for (int r=0; r < rows; r++) {
-    DecoratedKey key=Util.dk(String.valueOf(r));
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-    for (int c=0; c < columns; c++) {
-      rm.add(CF_STANDARDDLEVELED,Util.cellname("column" + c),value,0);
-    }
-    rm.applyUnsafe();
+    UpdateBuilder update=UpdateBuilder.create(cfs.metadata,String.valueOf(r));
+    for (int c=0; c < columns; c++)     update.newRow("column" + c).add("val",value);
+    update.applyUnsafe();
     cfs.forceBlockingFlush();
   }
   waitForLeveling(cfs);
@@ -18,7 +15,7 @@
   assertTrue(strategy.getSSTableCountPerLevel()[1] > 0);
   assertTrue(strategy.getSSTableCountPerLevel()[2] > 0);
   Range<Token> range=new Range<>(Util.token(""),Util.token(""));
-  int gcBefore=keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(System.currentTimeMillis());
+  int gcBefore=keyspace.getColumnFamilyStore(CF_STANDARDDLEVELED).gcBefore(FBUtilities.nowInSeconds());
   UUID parentRepSession=UUID.randomUUID();
   ActiveRepairService.instance.registerParentRepairSession(parentRepSession,Arrays.asList(cfs),Arrays.asList(range),false);
   RepairJobDesc desc=new RepairJobDesc(parentRepSession,UUID.randomUUID(),KEYSPACE1,CF_STANDARDDLEVELED,range);

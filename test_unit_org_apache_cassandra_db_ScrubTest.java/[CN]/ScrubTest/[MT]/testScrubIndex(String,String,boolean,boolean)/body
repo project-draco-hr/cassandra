@@ -10,10 +10,7 @@
     colValues[i + 1]=3L;
   }
   fillIndexCF(cfs,composite,colValues);
-  IndexExpression expr=new IndexExpression(ByteBufferUtil.bytes(colName),Operator.EQ,ByteBufferUtil.bytes(1L));
-  List<Row> rows=cfs.search(Util.range("",""),Arrays.asList(expr),new IdentityQueryFilter(),numRows);
-  assertNotNull(rows);
-  assertEquals(numRows / 2,rows.size());
+  assertOrdered(Util.cmd(cfs).filterOn(colName,Operator.EQ,1L).build(),numRows / 2);
   Set<ColumnFamilyStore> indexCfss=cfs.indexManager.getIndexesBackedByCfs();
   assertTrue(indexCfss.size() == 1);
   for (  ColumnFamilyStore indexCfs : indexCfss) {
@@ -26,7 +23,5 @@
       assertEquals(failure ? CompactionManager.AllSSTableOpStatus.ABORTED : CompactionManager.AllSSTableOpStatus.SUCCESSFUL,result);
     }
   }
-  rows=cfs.search(Util.range("",""),Arrays.asList(expr),new IdentityQueryFilter(),numRows);
-  assertNotNull(rows);
-  assertEquals(numRows / 2,rows.size());
+  assertOrdered(Util.cmd(cfs).filterOn(colName,Operator.EQ,1L).build(),numRows / 2);
 }

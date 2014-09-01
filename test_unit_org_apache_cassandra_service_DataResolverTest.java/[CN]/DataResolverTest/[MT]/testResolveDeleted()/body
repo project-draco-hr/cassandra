@@ -1,0 +1,15 @@
+{
+  DataResolver resolver=new DataResolver(ks,command,ConsistencyLevel.ALL,2);
+  InetAddress peer1=peer();
+  resolver.preprocess(readResponseMessage(peer1,iter(new RowUpdateBuilder(cfm,nowInSec,0L,dk).clustering("1").add("one","A").buildUpdate())));
+  InetAddress peer2=peer();
+  resolver.preprocess(readResponseMessage(peer2,fullPartitionDelete(cfm,dk,1,nowInSec)));
+  try (PartitionIterator data=resolver.resolve()){
+    assertFalse(data.hasNext());
+  }
+   assertEquals(1,messageRecorder.sent.size());
+  MessageOut msg=getSentMessage(peer1);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,new SimpleDeletionTime(1,nowInSec));
+  assertRepairContainsNoColumns(msg);
+}

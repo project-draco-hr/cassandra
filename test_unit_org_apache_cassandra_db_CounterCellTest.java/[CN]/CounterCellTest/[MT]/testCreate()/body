@@ -1,10 +1,11 @@
 {
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
   long delta=3L;
-  CounterCell cell=new BufferCounterCell(Util.cellname("x"),CounterContext.instance().createLocal(delta),1L,Long.MIN_VALUE);
-  Assert.assertEquals(delta,cell.total());
-  Assert.assertEquals(1,cell.value().getShort(0));
-  Assert.assertEquals(0,cell.value().getShort(2));
+  TestCounterCell cell=createLegacyCounterCell(cfs,ByteBufferUtil.bytes("c1"),delta,1,0,0);
+  assertEquals(delta,CounterContext.instance().total(cell.value()));
+  assertEquals(1,cell.value().getShort(0));
+  assertEquals(0,cell.value().getShort(2));
   Assert.assertTrue(CounterId.wrap(cell.value(),4).isLocalId());
-  Assert.assertEquals(1L,cell.value().getLong(4 + idLength));
-  Assert.assertEquals(delta,cell.value().getLong(4 + idLength + clockLength));
+  assertEquals(1L,cell.value().getLong(4 + idLength));
+  assertEquals(delta,cell.value().getLong(4 + idLength + clockLength));
 }

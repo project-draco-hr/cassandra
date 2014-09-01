@@ -1,8 +1,13 @@
 {
   Token.TokenFactory tokenFactory=StorageService.getPartitioner().getTokenFactory();
   LinkedList<String> result=new LinkedList<>();
-  for (  Row row : getHintsSlice(1)) {
-    if (row.cf != null)     result.addFirst(tokenFactory.toString(row.key.getToken()));
+  ReadCommand cmd=PartitionRangeReadCommand.allDataRead(SystemKeyspace.Hints,FBUtilities.nowInSeconds());
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iter=cmd.executeLocally(orderGroup)){
+    while (iter.hasNext()) {
+      try (UnfilteredRowIterator partition=iter.next()){
+        if (partition.hasNext())         result.addFirst(tokenFactory.toString(partition.partitionKey().getToken()));
+      }
+     }
   }
-  return result;
+   return result;
 }

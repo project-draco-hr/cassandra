@@ -1,9 +1,25 @@
 {
-  boolean hasConditions=false;
-  for (  ModificationStatement statement : statements)   hasConditions|=statement.hasConditions();
   this.boundTerms=boundTerms;
   this.type=type;
   this.statements=statements;
   this.attrs=attrs;
+  boolean hasConditions=false;
+  PartitionColumns.Builder regularBuilder=PartitionColumns.builder();
+  PartitionColumns.Builder conditionBuilder=PartitionColumns.builder();
+  boolean updateRegular=false;
+  boolean updateStatic=false;
+  for (  ModificationStatement stmt : statements) {
+    regularBuilder.addAll(stmt.updatedColumns());
+    updateRegular|=stmt.updatesRegularRows();
+    if (stmt.hasConditions()) {
+      hasConditions=true;
+      conditionBuilder.addAll(stmt.conditionColumns());
+      updateStatic|=stmt.updatesStaticRow();
+    }
+  }
+  this.updatedColumns=regularBuilder.build();
+  this.conditionColumns=conditionBuilder.build();
+  this.updatesRegularRows=updateRegular;
+  this.updatesStaticRow=updateStatic;
   this.hasConditions=hasConditions;
 }

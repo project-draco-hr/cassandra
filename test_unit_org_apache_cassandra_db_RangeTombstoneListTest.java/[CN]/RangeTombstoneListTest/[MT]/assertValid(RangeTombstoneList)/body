@@ -1,13 +1,11 @@
 {
-  int prevStart=-2;
-  int prevEnd=-1;
-  for (  RangeTombstone rt : l) {
-    int curStart=i(rt.min);
-    int curEnd=i(rt.max);
-    assertTrue("Invalid " + toString(l),prevEnd <= curStart);
-    assertTrue("Invalid " + toString(l),curStart <= curEnd);
-    if (curStart == curEnd && prevEnd == curStart)     assertTrue("Invalid " + toString(l),prevStart != prevEnd);
-    prevStart=curStart;
-    prevEnd=curEnd;
+  if (l.isEmpty())   return;
+  Iterator<RangeTombstone> iter=l.iterator();
+  Slice prev=iter.next().deletedSlice();
+  assertFalse("Invalid empty slice " + prev.toString(cmp),prev.isEmpty(cmp));
+  while (iter.hasNext()) {
+    Slice curr=iter.next().deletedSlice();
+    assertFalse("Invalid empty slice " + curr.toString(cmp),curr.isEmpty(cmp));
+    assertTrue("Slice not in order or overlapping : " + prev.toString(cmp) + curr.toString(cmp),cmp.compare(prev.end(),curr.start()) < 0);
   }
 }

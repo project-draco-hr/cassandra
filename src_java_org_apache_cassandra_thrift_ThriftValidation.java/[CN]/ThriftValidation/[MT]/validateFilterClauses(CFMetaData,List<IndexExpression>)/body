@@ -1,7 +1,7 @@
 {
   if (isEmpty(index_clause))   return false;
   SecondaryIndexManager idxManager=Keyspace.open(metadata.ksName).getColumnFamilyStore(metadata.cfName).indexManager;
-  AbstractType<?> nameValidator=SuperColumns.getComparatorFor(metadata,null);
+  AbstractType<?> nameValidator=getThriftColumnNameComparator(metadata,null);
   boolean isIndexed=false;
   for (  IndexExpression expression : index_clause) {
     try {
@@ -11,15 +11,18 @@
       throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("[%s]=[%s] failed name validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
     }
     if (expression.value.remaining() > 0xFFFF)     throw new org.apache.cassandra.exceptions.InvalidRequestException("Index expression values may not be larger than 64K");
-    CellName name=metadata.comparator.cellFromByteBuffer(expression.column_name);
-    AbstractType<?> valueValidator=metadata.getValueValidator(name);
+    ColumnDefinition def=metadata.getColumnDefinition(expression.column_name);
+    if (def == null) {
+      if (!metadata.isCompactTable())       throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("Unknown column %s",nameValidator.getString(expression.column_name)));
+      def=metadata.compactValueColumn();
+    }
     try {
-      valueValidator.validate(expression.value);
+      def.type.validate(expression.value);
     }
  catch (    MarshalException me) {
       throw new org.apache.cassandra.exceptions.InvalidRequestException(String.format("[%s]=[%s] failed value validation (%s)",ByteBufferUtil.bytesToHex(expression.column_name),ByteBufferUtil.bytesToHex(expression.value),me.getMessage()));
     }
-    isIndexed|=(expression.op == IndexOperator.EQ) && idxManager.indexes(name);
+    isIndexed|=(expression.op == IndexOperator.EQ) && idxManager.indexes(def);
   }
   return isIndexed;
 }

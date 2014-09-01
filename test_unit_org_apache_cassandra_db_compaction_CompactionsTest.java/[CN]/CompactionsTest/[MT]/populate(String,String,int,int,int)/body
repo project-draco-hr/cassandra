@@ -1,10 +1,11 @@
 {
   long timestamp=System.currentTimeMillis();
+  CFMetaData cfm=Keyspace.open(ks).getColumnFamilyStore(cf).metadata;
   for (int i=startRowKey; i <= endRowKey; i++) {
     DecoratedKey key=Util.dk(Integer.toString(i));
-    Mutation rm=new Mutation(ks,key.getKey());
-    for (int j=0; j < 10; j++)     rm.add(cf,Util.cellname(Integer.toString(j)),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,j > 0 ? ttl : 0);
-    rm.applyUnsafe();
+    for (int j=0; j < 10; j++) {
+      new RowUpdateBuilder(cfm,timestamp,j > 0 ? ttl : 0,key.getKey()).clustering(Integer.toString(j)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+    }
   }
   return timestamp;
 }

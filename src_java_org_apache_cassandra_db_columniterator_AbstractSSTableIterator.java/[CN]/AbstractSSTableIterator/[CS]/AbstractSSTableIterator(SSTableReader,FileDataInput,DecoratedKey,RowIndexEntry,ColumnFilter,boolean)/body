@@ -1,0 +1,46 @@
+{
+  this.sstable=sstable;
+  this.key=key;
+  this.columns=columnFilter;
+  this.helper=new SerializationHelper(sstable.descriptor.version.correspondingMessagingVersion(),SerializationHelper.Flag.LOCAL,columnFilter);
+  this.isForThrift=isForThrift;
+  if (indexEntry == null) {
+    this.partitionLevelDeletion=DeletionTime.LIVE;
+    this.reader=null;
+    this.staticRow=Rows.EMPTY_STATIC_ROW;
+  }
+ else {
+    boolean shouldCloseFile=file == null;
+    try {
+      boolean needSeekAtPartitionStart=!indexEntry.isIndexed() || !columns.fetchedColumns().statics.isEmpty();
+      boolean needsReader=sstable.descriptor.version.storeRows() || isForThrift || !sstable.metadata.isStaticCompactTable();
+      if (needSeekAtPartitionStart) {
+        if (file == null)         file=sstable.getFileDataInput(indexEntry.position);
+ else         file.seek(indexEntry.position);
+        ByteBufferUtil.skipShortLength(file);
+        this.partitionLevelDeletion=DeletionTime.serializer.deserialize(file);
+        this.reader=needsReader ? createReader(indexEntry,file,needSeekAtPartitionStart,shouldCloseFile) : null;
+        this.staticRow=readStaticRow(sstable,file,helper,columns.fetchedColumns().statics,isForThrift,reader == null ? null : reader.deserializer);
+      }
+ else {
+        this.partitionLevelDeletion=indexEntry.deletionTime();
+        this.staticRow=Rows.EMPTY_STATIC_ROW;
+        this.reader=needsReader ? createReader(indexEntry,file,needSeekAtPartitionStart,shouldCloseFile) : null;
+      }
+      if (reader == null && shouldCloseFile)       file.close();
+    }
+ catch (    IOException e) {
+      sstable.markSuspect();
+      String filePath=file.getPath();
+      if (shouldCloseFile && file != null) {
+        try {
+          file.close();
+        }
+ catch (        IOException suppressed) {
+          e.addSuppressed(suppressed);
+        }
+      }
+      throw new CorruptSSTableException(e,filePath);
+    }
+  }
+}

@@ -1,9 +1,10 @@
 {
-  AbstractType<?> comparator=cfm.comparator.asAbstractType();
-  if (cfm.getIsDense() || comparator instanceof CompositeType || comparator instanceof UTF8Type)   return new ColumnIdentifier(text,true);
+  if (!cfm.isStaticCompactTable())   return getInterned(text,true);
+  AbstractType<?> thriftColumnNameType=cfm.thriftColumnNameType();
+  if (thriftColumnNameType instanceof UTF8Type)   return getInterned(text,true);
   ByteBuffer bufferName=ByteBufferUtil.bytes(text);
-  for (  ColumnDefinition def : cfm.partitionKeyColumns()) {
-    if (def.name.bytes.equals(bufferName))     return new ColumnIdentifier(text,true);
+  for (  ColumnDefinition def : cfm.allColumns()) {
+    if (def.name.bytes.equals(bufferName))     return def.name;
   }
-  return new ColumnIdentifier(comparator.fromString(rawText),text);
+  return getInterned(thriftColumnNameType.fromString(rawText),text);
 }

@@ -1,10 +1,9 @@
 {
-  Mutation rm;
-  rm=new Mutation(KEYSPACE1,ByteBufferUtil.bytes("k3"));
-  rm.delete("Indexed1",1);
-  rm.applyUnsafe();
-  ColumnFamily indexedRow=PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_ROW;
+  CFMetaData cfm=Schema.instance.getCFMetaData(KEYSPACE1,CF_INDEXED);
+  RowUpdateBuilder.deleteRow(cfm,FBUtilities.timestampMicros(),"k3").apply();
+  UnfilteredRowIterator indexedRow=PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_PARTITION;
   assertNotNull(indexedRow);
-  for (  Cell cell : indexedRow.getSortedColumns())   assertFalse(cell.isLive());
+  assertNotNull(indexedRow.partitionLevelDeletion());
+  Assert.assertFalse(UnfilteredRowIterators.filter(indexedRow,FBUtilities.nowInSeconds()).hasNext());
   assertTrue(Arrays.equals("k3".getBytes(),PerRowSecondaryIndexTest.TestIndex.LAST_INDEXED_KEY.array()));
 }

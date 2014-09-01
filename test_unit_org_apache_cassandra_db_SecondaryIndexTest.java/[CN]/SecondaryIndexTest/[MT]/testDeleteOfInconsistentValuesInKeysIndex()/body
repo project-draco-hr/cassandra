@@ -1,0 +1,12 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(WITH_KEYS_INDEX);
+  ByteBuffer col=ByteBufferUtil.bytes("birthdate");
+  new RowUpdateBuilder(cfs.metadata,1,"k1").noRowMarker().add("birthdate",1L).build().applyUnsafe();
+  keyspace.getColumnFamilyStore(WITH_KEYS_INDEX).forceBlockingFlush();
+  keyspace.apply(new RowUpdateBuilder(cfs.metadata,2,"k1").noRowMarker().add("birthdate",2L).build(),true,false);
+  assertIndexedNone(cfs,col,1L);
+  assertIndexedNone(cfs,col,2L);
+  keyspace.apply(new RowUpdateBuilder(cfs.metadata,3,"k1").noRowMarker().add("birthdate",1L).build(),true,false);
+  assertIndexedNone(cfs,col,1L);
+}

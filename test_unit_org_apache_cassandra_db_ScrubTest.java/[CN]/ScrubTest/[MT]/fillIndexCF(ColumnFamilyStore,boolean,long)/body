@@ -1,19 +1,14 @@
 {
   assertTrue(values.length % 2 == 0);
   for (int i=0; i < values.length; i+=2) {
-    String key=String.valueOf(i);
-    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE,cfs.name);
+    UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,String.valueOf(i));
     if (composite) {
-      String clusterKey="c" + key;
-      cf.addColumn(column(clusterKey,COL_COMPOSITES_INDEX,values[i],1L));
-      cf.addColumn(column(clusterKey,COL_NON_INDEX,values[i + 1],1L));
+      builder.newRow("c" + i).add(COL_INDEX,values[i]).add(COL_NON_INDEX,values[i + 1]);
     }
  else {
-      cf.addColumn(column(COL_KEYS_INDEX,values[i],1L));
-      cf.addColumn(column(COL_NON_INDEX,values[i + 1],1L));
+      builder.newRow().add(COL_INDEX,values[i]).add(COL_NON_INDEX,values[i + 1]);
     }
-    Mutation rm=new Mutation(KEYSPACE,ByteBufferUtil.bytes(key),cf);
-    rm.applyUnsafe();
+    new Mutation(builder.build()).applyUnsafe();
   }
   cfs.forceBlockingFlush();
 }

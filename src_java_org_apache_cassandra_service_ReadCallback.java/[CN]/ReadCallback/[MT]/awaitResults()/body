@@ -1,0 +1,14 @@
+{
+  boolean signaled=await(command.getTimeout(),TimeUnit.MILLISECONDS);
+  boolean failed=blockfor + failures > endpoints.size();
+  if (signaled && !failed)   return;
+  if (Tracing.isTracing()) {
+    String gotData=received > 0 ? (resolver.isDataPresent() ? " (including data)" : " (only digests)") : "";
+    Tracing.trace("{}; received {} of {} responses{}",new Object[]{(failed ? "Failed" : "Timed out"),received,blockfor,gotData});
+  }
+ else   if (logger.isDebugEnabled()) {
+    String gotData=received > 0 ? (resolver.isDataPresent() ? " (including data)" : " (only digests)") : "";
+    logger.debug("{}; received {} of {} responses{}",new Object[]{(failed ? "Failed" : "Timed out"),received,blockfor,gotData});
+  }
+  throw failed ? new ReadFailureException(consistencyLevel,received,failures,blockfor,resolver.isDataPresent()) : new ReadTimeoutException(consistencyLevel,received,blockfor,resolver.isDataPresent());
+}

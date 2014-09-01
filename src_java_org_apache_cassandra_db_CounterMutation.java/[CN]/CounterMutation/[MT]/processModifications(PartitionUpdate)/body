@@ -1,0 +1,13 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(getKeyspaceName()).getColumnFamilyStore(changes.metadata().cfId);
+  List<PartitionUpdate.CounterMark> marks=changes.collectCounterMarks();
+  if (CacheService.instance.counterCache.getCapacity() != 0) {
+    Tracing.trace("Fetching {} counter values from cache",marks.size());
+    updateWithCurrentValuesFromCache(marks,cfs);
+    if (marks.isEmpty())     return changes;
+  }
+  Tracing.trace("Reading {} counter values from the CF",marks.size());
+  updateWithCurrentValuesFromCFS(marks,cfs);
+  for (  PartitionUpdate.CounterMark mark : marks)   updateWithCurrentValue(mark,ClockAndCount.BLANK,cfs);
+  return changes;
+}

@@ -10,19 +10,17 @@
   for (int j=0; j < SSTABLES; j++) {
     for (int i=0; i < ROWS_PER_SSTABLE; i++) {
       DecoratedKey key=Util.dk(String.valueOf(i % 2));
-      Mutation rm=new Mutation(KEYSPACE1,key.getKey());
       long timestamp=j * ROWS_PER_SSTABLE + i;
-      rm.add("Standard1",Util.cellname(String.valueOf(i / 2)),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp);
       maxTimestampExpected=Math.max(timestamp,maxTimestampExpected);
-      rm.apply();
+      UpdateBuilder.create(cfs.metadata,key).withTimestamp(timestamp).newRow(String.valueOf(i / 2)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).apply();
       inserted.add(key);
     }
     cfs.forceBlockingFlush();
     CompactionsTest.assertMaxTimestamp(cfs,maxTimestampExpected);
-    assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(cfs).size());
+    assertEquals(inserted.toString(),inserted.size(),Util.getAll(Util.cmd(cfs).build()).size());
   }
   forceCompactions(cfs);
-  assertEquals(inserted.size(),Util.getRangeSlice(cfs).size());
+  assertEquals(inserted.toString(),inserted.size(),Util.getAll(Util.cmd(cfs).build()).size());
   CompactionsTest.assertMaxTimestamp(cfs,maxTimestampExpected);
   cfs.truncateBlocking();
 }

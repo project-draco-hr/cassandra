@@ -1,0 +1,19 @@
+{
+  StringBuilder sb=new StringBuilder();
+  if (clustering.size() > 0)   sb.append("(");
+  AbstractType<?> pkType=metadata.getKeyValidator();
+  if (pkType instanceof CompositeType) {
+    CompositeType ct=(CompositeType)pkType;
+    ByteBuffer[] values=ct.split(partitionKey);
+    for (int i=0; i < values.length; i++) {
+      if (i > 0)       sb.append(", ");
+      sb.append(ct.types.get(i).getString(values[i]));
+    }
+  }
+ else {
+    sb.append(pkType.getString(partitionKey));
+  }
+  if (clustering.size() > 0)   sb.append(")");
+  for (int i=0; i < clustering.size(); i++)   sb.append(", ").append(metadata.comparator.subtype(i).getString(clustering.get(i)));
+  return sb.toString();
+}

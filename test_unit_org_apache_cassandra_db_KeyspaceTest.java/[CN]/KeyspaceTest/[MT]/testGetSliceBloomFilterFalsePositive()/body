@@ -1,0 +1,12 @@
+{
+  String tableName=createTable("CREATE TABLE %s (a text, b int, c int, PRIMARY KEY (a, b))");
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","1",1,1);
+  final ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  for (  String key : new String[]{"0","2"})   Util.assertEmpty(Util.cmd(cfs,key).build());
+  cfs.forceBlockingFlush();
+  for (  String key : new String[]{"0","2"})   Util.assertEmpty(Util.cmd(cfs,key).build());
+  Collection<SSTableReader> sstables=cfs.getSSTables();
+  assertEquals(1,sstables.size());
+  sstables.iterator().next().forceFilterFailures();
+  for (  String key : new String[]{"0","2"})   Util.assertEmpty(Util.cmd(cfs,key).build());
+}

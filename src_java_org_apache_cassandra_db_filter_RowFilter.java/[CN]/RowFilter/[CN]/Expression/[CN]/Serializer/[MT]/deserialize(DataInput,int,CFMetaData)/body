@@ -1,0 +1,34 @@
+{
+  ByteBuffer name=ByteBufferUtil.readWithShortLength(in);
+  Operator operator=Operator.readFrom(in);
+  ColumnDefinition column=metadata.getColumnDefinition(name);
+  if (!metadata.isCompactTable() && column == null)   throw new RuntimeException("Unknown (or dropped) column " + UTF8Type.instance.getString(name) + " during deserialization");
+  Kind kind;
+  if (version >= MessagingService.VERSION_30) {
+    kind=Kind.values()[in.readByte()];
+  }
+ else {
+    if (column == null)     kind=Kind.THRIFT_DYN_EXPR;
+ else     if (column.type instanceof MapType && operator == Operator.EQ)     kind=Kind.MAP_EQUALITY;
+ else     kind=Kind.SIMPLE;
+  }
+switch (kind) {
+case SIMPLE:
+    return new SimpleExpression(column,operator,ByteBufferUtil.readWithShortLength(in));
+case MAP_EQUALITY:
+  ByteBuffer key, value;
+if (version < MessagingService.VERSION_30) {
+  ByteBuffer composite=ByteBufferUtil.readWithShortLength(in);
+  key=CompositeType.extractComponent(composite,0);
+  value=CompositeType.extractComponent(composite,0);
+}
+ else {
+  key=ByteBufferUtil.readWithShortLength(in);
+  value=ByteBufferUtil.readWithShortLength(in);
+}
+return new MapEqualityExpression(column,key,operator,value);
+case THRIFT_DYN_EXPR:
+return new ThriftExpression(metadata,name,operator,ByteBufferUtil.readWithShortLength(in));
+}
+throw new AssertionError();
+}

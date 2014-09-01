@@ -2,15 +2,13 @@
   CompactionManager.instance.disableAutoCompaction();
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore store=keyspace.getColumnFamilyStore(columnFamilyName);
-  Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
+  Set<String> inserted=new HashSet<>();
   for (int j=0; j < insertsPerTable; j++) {
-    DecoratedKey key=Util.dk(String.valueOf(j));
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-    rm.add(columnFamilyName,Util.cellname("0"),ByteBufferUtil.EMPTY_BYTE_BUFFER,j);
-    rm.applyUnsafe();
+    String key=String.valueOf(j);
+    new RowUpdateBuilder(store.metadata,j,key).clustering("0").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
     inserted.add(key);
     store.forceBlockingFlush();
-    assertEquals(inserted.size(),Util.getRangeSlice(store).size());
+    assertEquals(inserted.size(),Util.getAll(Util.cmd(store).build()).size());
   }
   CompactionManager.instance.performMaximal(store,false);
   assertEquals(1,store.getSSTables().size());

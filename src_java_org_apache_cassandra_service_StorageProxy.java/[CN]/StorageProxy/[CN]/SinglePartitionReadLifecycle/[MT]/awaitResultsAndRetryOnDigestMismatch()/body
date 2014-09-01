@@ -1,0 +1,17 @@
+{
+  try {
+    result=executor.get();
+  }
+ catch (  DigestMismatchException ex) {
+    Tracing.trace("Digest mismatch: {}",ex);
+    ReadRepairMetrics.repairedBlocking.mark();
+    Keyspace keyspace=Keyspace.open(command.metadata().ksName);
+    DataResolver resolver=new DataResolver(keyspace,command,ConsistencyLevel.ALL,executor.handler.endpoints.size());
+    repairHandler=new ReadCallback(resolver,ConsistencyLevel.ALL,executor.getContactedReplicas().size(),command,keyspace,executor.handler.endpoints);
+    MessageOut<ReadCommand> message=command.createMessage();
+    for (    InetAddress endpoint : executor.getContactedReplicas()) {
+      Tracing.trace("Enqueuing full data read to {}",endpoint);
+      MessagingService.instance().sendRRWithFailure(message,endpoint,repairHandler);
+    }
+  }
+}

@@ -11,28 +11,28 @@
     String keyspace=cState.getKeyspace();
     state().hasColumnFamilyAccess(keyspace,request.getColumn_parent().column_family,Permission.SELECT);
     CFMetaData metadata=ThriftValidation.validateColumnFamily(keyspace,request.getColumn_parent().column_family);
-    if (metadata.cfType == ColumnFamilyType.Super)     throw new org.apache.cassandra.exceptions.InvalidRequestException("get_multi_slice does not support super columns");
+    if (metadata.isSuper())     throw new org.apache.cassandra.exceptions.InvalidRequestException("get_multi_slice does not support super columns");
     ThriftValidation.validateColumnParent(metadata,request.getColumn_parent());
     org.apache.cassandra.db.ConsistencyLevel consistencyLevel=ThriftConversion.fromThrift(request.getConsistency_level());
     consistencyLevel.validateForRead(keyspace);
-    List<ReadCommand> commands=new ArrayList<>(1);
-    ColumnSlice[] slices=new ColumnSlice[request.getColumn_slices().size()];
+    Slices.Builder builder=new Slices.Builder(metadata.comparator,request.getColumn_slices().size());
     for (int i=0; i < request.getColumn_slices().size(); i++) {
       fixOptionalSliceParameters(request.getColumn_slices().get(i));
-      Composite start=metadata.comparator.fromByteBuffer(request.getColumn_slices().get(i).start);
-      Composite finish=metadata.comparator.fromByteBuffer(request.getColumn_slices().get(i).finish);
-      if (!start.isEmpty() && !finish.isEmpty()) {
-        int compare=metadata.comparator.compare(start,finish);
-        if (!request.reversed && compare > 0)         throw new InvalidRequestException(String.format("Column slice at index %d had start greater than finish",i));
- else         if (request.reversed && compare < 0)         throw new InvalidRequestException(String.format("Reversed column slice at index %d had start less than finish",i));
-      }
-      slices[i]=new ColumnSlice(start,finish);
+      Slice.Bound start=LegacyLayout.decodeBound(metadata,request.getColumn_slices().get(i).start,true).bound;
+      Slice.Bound finish=LegacyLayout.decodeBound(metadata,request.getColumn_slices().get(i).finish,false).bound;
+      int compare=metadata.comparator.compare(start,finish);
+      if (!request.reversed && compare > 0)       throw new InvalidRequestException(String.format("Column slice at index %d had start greater than finish",i));
+ else       if (request.reversed && compare < 0)       throw new InvalidRequestException(String.format("Reversed column slice at index %d had start less than finish",i));
+      builder.add(request.reversed ? Slice.make(finish,start) : Slice.make(start,finish));
     }
-    ColumnSlice[] deoverlapped=ColumnSlice.deoverlapSlices(slices,request.reversed ? metadata.comparator.reverseComparator() : metadata.comparator);
-    SliceQueryFilter filter=new SliceQueryFilter(deoverlapped,request.reversed,request.count);
+    Slices slices=builder.build();
+    ColumnFilter columns=makeColumnFilter(metadata,slices);
+    ClusteringIndexSliceFilter filter=new ClusteringIndexSliceFilter(slices,request.reversed);
+    DataLimits limits=getLimits(1,false,request.count);
     ThriftValidation.validateKey(metadata,request.key);
-    commands.add(ReadCommand.create(keyspace,request.key,request.column_parent.getColumn_family(),System.currentTimeMillis(),filter));
-    return getSlice(commands,request.column_parent.isSetSuper_column(),consistencyLevel,cState).entrySet().iterator().next().getValue();
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(request.key);
+    SinglePartitionReadCommand<?> cmd=SinglePartitionReadCommand.create(true,metadata,FBUtilities.nowInSeconds(),columns,RowFilter.NONE,limits,dk,filter);
+    return getSlice(Collections.<SinglePartitionReadCommand<?>>singletonList(cmd),false,limits.perPartitionCount(),consistencyLevel,cState).entrySet().iterator().next().getValue();
   }
  catch (  RequestValidationException e) {
     throw ThriftConversion.toThrift(e);

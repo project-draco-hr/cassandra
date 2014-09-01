@@ -1,0 +1,15 @@
+{
+  if (repairHandler == null)   return;
+  try {
+    result=repairHandler.get();
+  }
+ catch (  DigestMismatchException e) {
+    throw new AssertionError(e);
+  }
+catch (  ReadTimeoutException e) {
+    if (Tracing.isTracing())     Tracing.trace("Timed out waiting on digest mismatch repair requests");
+ else     logger.debug("Timed out waiting on digest mismatch repair requests");
+    int blockFor=consistency.blockFor(Keyspace.open(command.metadata().ksName));
+    throw new ReadTimeoutException(consistency,blockFor - 1,blockFor,true);
+  }
+}

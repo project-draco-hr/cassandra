@@ -8,17 +8,17 @@
   for (int i=generations.length - 1; i > 0; i--) {
     if (getLevelSize(i) > 0) {
       if (compactionCounter[i] > NO_COMPACTION_LIMIT) {
-        RowPosition max=null;
-        RowPosition min=null;
+        PartitionPosition max=null;
+        PartitionPosition min=null;
         for (        SSTableReader candidate : candidates) {
           if (min == null || candidate.first.compareTo(min) < 0)           min=candidate.first;
           if (max == null || candidate.last.compareTo(max) > 0)           max=candidate.last;
         }
         if (min == null || max == null || min.equals(max))         return candidates;
         Set<SSTableReader> compacting=cfs.getTracker().getCompacting();
-        Range<RowPosition> boundaries=new Range<>(min,max);
+        Range<PartitionPosition> boundaries=new Range<>(min,max);
         for (        SSTableReader sstable : getLevel(i)) {
-          Range<RowPosition> r=new Range<RowPosition>(sstable.first,sstable.last);
+          Range<PartitionPosition> r=new Range<PartitionPosition>(sstable.first,sstable.last);
           if (boundaries.contains(r) && !compacting.contains(sstable)) {
             logger.info("Adding high-level (L{}) {} to candidates",sstable.getSSTableLevel(),sstable);
             withStarvedCandidate.add(sstable);

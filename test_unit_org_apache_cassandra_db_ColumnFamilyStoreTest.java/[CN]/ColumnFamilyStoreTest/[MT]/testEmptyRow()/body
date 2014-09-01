@@ -1,22 +1,14 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  final ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF_STANDARD2);
-  Mutation rm;
-  rm=new Mutation(KEYSPACE1,ByteBufferUtil.bytes("key1"));
-  rm.delete(CF_STANDARD2,System.currentTimeMillis());
-  rm.applyUnsafe();
+  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF_STANDARD2);
+  RowUpdateBuilder.deleteRow(cfs.metadata,FBUtilities.timestampMicros(),"key1","Column1").applyUnsafe();
   Runnable r=new WrappedRunnable(){
     public void runMayThrow() throws IOException {
-      QueryFilter sliceFilter=QueryFilter.getSliceFilter(Util.dk("key1"),CF_STANDARD2,Composites.EMPTY,Composites.EMPTY,false,1,System.currentTimeMillis());
-      ColumnFamily cf=store.getColumnFamily(sliceFilter);
-      assertTrue(cf.isMarkedForDelete());
-      assertFalse(cf.hasColumns());
-      QueryFilter namesFilter=Util.namesQueryFilter(store,Util.dk("key1"),"a");
-      cf=store.getColumnFamily(namesFilter);
-      assertTrue(cf.isMarkedForDelete());
-      assertFalse(cf.hasColumns());
+      Row toCheck=Util.getOnlyRowUnfiltered(Util.cmd(cfs,"key1").build());
+      Iterator<Cell> iter=toCheck.iterator();
+      assert(Iterators.size(iter) == 0);
     }
   }
 ;
-  KeyspaceTest.reTest(store,r);
+  reTest(cfs,r);
 }

@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (k text, t int, v text, PRIMARY KEY (k, t));");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key",1,"v11");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key",2,"v12");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key",3,"v13");
+  flush();
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key",4,"v14");
+  execute("INSERT INTO %s (k, t, v) values (?, ?, ?)","key",5,"v15");
+  assertRows(execute("SELECT * FROM %s"),row("key",1,"v11"),row("key",2,"v12"),row("key",3,"v13"),row("key",4,"v14"),row("key",5,"v15"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND t > ?","key",3),row("key",4,"v14"),row("key",5,"v15"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND t >= ? AND t < ?","key",2,4),row("key",2,"v12"),row("key",3,"v13"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? ORDER BY t DESC","key"),row("key",5,"v15"),row("key",4,"v14"),row("key",3,"v13"),row("key",2,"v12"),row("key",1,"v11"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND t > ? ORDER BY t DESC","key",3),row("key",5,"v15"),row("key",4,"v14"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND t >= ? AND t < ? ORDER BY t DESC","key",2,4),row("key",3,"v13"),row("key",2,"v12"));
+}

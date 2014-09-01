@@ -1,0 +1,16 @@
+{
+  DecoratedKey key=partition.partitionKey();
+  maybeReopenEarly(key);
+  RowIndexEntry index=writer.append(partition);
+  if (!isOffline && index != null) {
+    boolean save=false;
+    for (    SSTableReader reader : transaction.originals()) {
+      if (reader.getCachedPosition(key,false) != null) {
+        save=true;
+        break;
+      }
+    }
+    if (save)     cachedKeys.put(key,index);
+  }
+  return index;
+}

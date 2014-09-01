@@ -1,0 +1,37 @@
+{
+  Unfiltered next=super.next();
+  if (next.kind() != Unfiltered.Kind.ROW)   return next;
+  Row row=(Row)next;
+  Row.Writer writer=reusableRow.writer();
+  row.clustering().writeTo(writer);
+  PeekingIterator<Cell> staticCells=Iterators.peekingIterator(makeStaticCellIterator(row));
+  if (!staticCells.hasNext())   return row;
+  Iterator<Cell> cells=row.getCells(superColumnMapColumn);
+  PeekingIterator<Cell> dynamicCells=Iterators.peekingIterator(cells.hasNext() ? cells : Collections.<Cell>emptyIterator());
+  while (staticCells.hasNext() && dynamicCells.hasNext()) {
+    Cell staticCell=staticCells.peek();
+    Cell dynamicCell=dynamicCells.peek();
+    int cmp=columnComparator.compare(staticCell.column().name.bytes,dynamicCell.path().get(0));
+    if (cmp < 0) {
+      staticCell=staticCells.next();
+      writer.writeCell(superColumnMapColumn,staticCell.isCounterCell(),staticCell.value(),staticCell.livenessInfo(),CellPath.create(staticCell.column().name.bytes));
+    }
+ else     if (cmp > 0) {
+      dynamicCells.next().writeTo(writer);
+    }
+ else {
+      staticCell=staticCells.next();
+      Cell toMerge=Cells.create(superColumnMapColumn,staticCell.isCounterCell(),staticCell.value(),staticCell.livenessInfo(),CellPath.create(staticCell.column().name.bytes));
+      Cells.reconcile(toMerge,dynamicCells.next(),nowInSec).writeTo(writer);
+    }
+  }
+  while (staticCells.hasNext()) {
+    Cell staticCell=staticCells.next();
+    writer.writeCell(superColumnMapColumn,staticCell.isCounterCell(),staticCell.value(),staticCell.livenessInfo(),CellPath.create(staticCell.column().name.bytes));
+  }
+  while (dynamicCells.hasNext()) {
+    dynamicCells.next().writeTo(writer);
+  }
+  writer.endOfRow();
+  return reusableRow;
+}

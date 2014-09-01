@@ -1,0 +1,22 @@
+{
+  DataLimits limits;
+  DataRange fullRange=((PartitionRangeReadCommand)command).dataRange();
+  DataRange pageRange;
+  if (lastReturnedKey == null) {
+    pageRange=fullRange;
+    limits=command.limits().forPaging(pageSize);
+  }
+ else {
+    boolean includeLastKey=remainingInPartition() > 0;
+    AbstractBounds<PartitionPosition> bounds=makeKeyBounds(lastReturnedKey,includeLastKey);
+    if (includeLastKey) {
+      pageRange=fullRange.forPaging(bounds,command.metadata().comparator,lastReturnedClustering,false);
+      limits=command.limits().forPaging(pageSize,lastReturnedKey.getKey(),remainingInPartition());
+    }
+ else {
+      pageRange=fullRange.forSubRange(bounds);
+      limits=command.limits().forPaging(pageSize);
+    }
+  }
+  return new PartitionRangeReadCommand(command.metadata(),command.nowInSec(),command.columnFilter(),command.rowFilter(),limits,pageRange);
+}

@@ -1,0 +1,36 @@
+{
+  StringBuilder sb=new StringBuilder();
+  sb.append("Row");
+  if (fullDetails) {
+    sb.append("[info=").append(primaryKeyLivenessInfo());
+    if (!deletion().isLive())     sb.append(" del=").append(deletion());
+    sb.append(" ]");
+  }
+  sb.append(": ").append(clustering().toString(metadata)).append(" | ");
+  boolean isFirst=true;
+  ColumnDefinition prevColumn=null;
+  for (  Cell cell : this) {
+    if (isFirst)     isFirst=false;
+ else     sb.append(", ");
+    if (fullDetails) {
+      if (cell.column().isComplex() && !cell.column().equals(prevColumn)) {
+        DeletionTime complexDel=getDeletion(cell.column());
+        if (!complexDel.isLive())         sb.append("del(").append(cell.column().name).append(")=").append(complexDel).append(", ");
+      }
+      sb.append(cell);
+      prevColumn=cell.column();
+    }
+ else {
+      sb.append(cell.column().name);
+      if (cell.column().type instanceof CollectionType) {
+        CollectionType ct=(CollectionType)cell.column().type;
+        sb.append("[").append(ct.nameComparator().getString(cell.path().get(0))).append("]");
+        sb.append("=").append(ct.valueComparator().getString(cell.value()));
+      }
+ else {
+        sb.append("=").append(cell.column().type.getString(cell.value()));
+      }
+    }
+  }
+  return sb.toString();
+}

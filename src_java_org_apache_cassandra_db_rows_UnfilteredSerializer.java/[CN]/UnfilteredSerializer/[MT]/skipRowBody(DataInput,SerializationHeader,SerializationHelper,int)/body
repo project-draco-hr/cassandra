@@ -1,0 +1,28 @@
+{
+  boolean isStatic=isStatic(flags);
+  boolean hasTimestamp=(flags & HAS_TIMESTAMP) != 0;
+  boolean hasTTL=(flags & HAS_TTL) != 0;
+  boolean hasDeletion=(flags & HAS_DELETION) != 0;
+  boolean hasComplexDeletion=(flags & HAS_COMPLEX_DELETION) != 0;
+  if (hasTimestamp)   in.readLong();
+  if (hasTTL) {
+    in.readInt();
+    in.readInt();
+  }
+  if (hasDeletion)   UnfilteredRowIteratorSerializer.skipDelTime(in,header);
+  Columns columns=header.columns(isStatic);
+  if (header.useSparseColumnLayout(isStatic)) {
+    int count=columns.columnCount();
+    int simpleCount=columns.simpleColumnCount();
+    int i;
+    while ((i=in.readShort()) >= 0) {
+      if (i > count)       throw new IOException(String.format("Impossible column index %d, the header has only %d columns defined",i,count));
+      if (i < simpleCount)       skipCell(columns.getSimple(i),in,header);
+ else       skipComplexColumn(columns.getComplex(i - simpleCount),in,header,helper,hasComplexDeletion);
+    }
+  }
+ else {
+    for (int i=0; i < columns.simpleColumnCount(); i++)     skipCell(columns.getSimple(i),in,header);
+    for (int i=0; i < columns.complexColumnCount(); i++)     skipComplexColumn(columns.getComplex(i),in,header,helper,hasComplexDeletion);
+  }
+}

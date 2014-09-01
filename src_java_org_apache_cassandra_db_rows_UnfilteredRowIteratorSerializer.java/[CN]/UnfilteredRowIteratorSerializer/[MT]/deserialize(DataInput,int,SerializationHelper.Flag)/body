@@ -1,0 +1,21 @@
+{
+  final Header h=deserializeHeader(in,version,flag);
+  if (h.isEmpty)   return UnfilteredRowIterators.emptyIterator(h.metadata,h.key,h.isReversed);
+  final int clusteringSize=h.metadata.clusteringColumns().size();
+  final SerializationHelper helper=new SerializationHelper(version,flag);
+  return new AbstractUnfilteredRowIterator(h.metadata,h.key,h.partitionDeletion,h.sHeader.columns(),h.staticRow,h.isReversed,h.sHeader.stats()){
+    private final ReusableRow row=new ReusableRow(clusteringSize,h.sHeader.columns().regulars,true,h.metadata.isCounter());
+    private final RangeTombstoneMarker.Builder markerBuilder=new RangeTombstoneMarker.Builder(clusteringSize);
+    protected Unfiltered computeNext(){
+      try {
+        Unfiltered.Kind kind=UnfilteredSerializer.serializer.deserialize(in,h.sHeader,helper,row.writer(),markerBuilder.reset());
+        if (kind == null)         return endOfData();
+        return kind == Unfiltered.Kind.ROW ? row : markerBuilder.build();
+      }
+ catch (      IOException e) {
+        throw new IOError(e);
+      }
+    }
+  }
+;
+}

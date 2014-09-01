@@ -1,0 +1,15 @@
+{
+  Map<ByteBuffer,AbstractType<?>> typeMap=new HashMap<>(staticColumns.size() + regularColumns.size());
+  typeMap.putAll(staticColumns);
+  typeMap.putAll(regularColumns);
+  PartitionColumns.Builder builder=PartitionColumns.builder();
+  for (  ByteBuffer name : typeMap.keySet()) {
+    ColumnDefinition column=metadata.getColumnDefinition(name);
+    if (column == null) {
+      column=metadata.getDroppedColumnDefinition(name);
+      if (column == null)       throw new RuntimeException("Unknown column " + UTF8Type.instance.getString(name) + " during deserialization");
+    }
+    builder.add(column);
+  }
+  return new SerializationHeader(keyType,clusteringTypes,builder.build(),stats,typeMap);
+}

@@ -1,0 +1,11 @@
+{
+  try {
+    FBUtilities.waitOnFutures(repairResults,DatabaseDescriptor.getWriteRpcTimeout());
+  }
+ catch (  TimeoutException ex) {
+    int blockFor=consistency.blockFor(keyspace);
+    if (Tracing.isTracing())     Tracing.trace("Timed out while read-repairing after receiving all {} data and digest responses",blockFor);
+ else     logger.debug("Timeout while read-repairing after receiving all {} data and digest responses",blockFor);
+    throw new ReadTimeoutException(consistency,blockFor - 1,blockFor,true);
+  }
+}

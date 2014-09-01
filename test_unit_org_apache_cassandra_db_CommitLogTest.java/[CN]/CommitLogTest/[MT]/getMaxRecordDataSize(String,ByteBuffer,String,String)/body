@@ -1,0 +1,8 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(cfName);
+  int allocSize=1;
+  Mutation rm=new RowUpdateBuilder(cfs.metadata,0,key).clustering(colName).add("val",ByteBuffer.allocate(allocSize)).build();
+  int max=(DatabaseDescriptor.getCommitLogSegmentSize() / 2);
+  max-=CommitLogSegment.ENTRY_OVERHEAD_SIZE;
+  return max - (int)Mutation.serializer.serializedSize(rm,MessagingService.current_version) + allocSize;
+}

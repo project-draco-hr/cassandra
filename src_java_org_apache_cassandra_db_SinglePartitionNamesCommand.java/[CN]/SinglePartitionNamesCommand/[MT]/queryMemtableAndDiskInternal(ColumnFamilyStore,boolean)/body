@@ -1,0 +1,48 @@
+{
+  Tracing.trace("Acquiring sstable references");
+  ColumnFamilyStore.ViewFragment view=cfs.select(cfs.viewFilter(partitionKey()));
+  ArrayBackedPartition result=null;
+  ClusteringIndexNamesFilter filter=clusteringIndexFilter();
+  Tracing.trace("Merging memtable contents");
+  for (  Memtable memtable : view.memtables) {
+    Partition partition=memtable.getPartition(partitionKey());
+    if (partition == null)     continue;
+    try (UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition)){
+      if (iter.isEmpty())       continue;
+      UnfilteredRowIterator clonedFilter=copyOnHeap ? UnfilteredRowIterators.cloningIterator(iter,HeapAllocator.instance) : iter;
+      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(clonedFilter,nowInSec()) : clonedFilter,result);
+    }
+   }
+  Collections.sort(view.sstables,SSTableReader.maxTimestampComparator);
+  int sstablesIterated=0;
+  for (  SSTableReader sstable : view.sstables) {
+    if (result != null && sstable.getMaxTimestamp() < result.partitionLevelDeletion().markedForDeleteAt())     break;
+    long currentMaxTs=sstable.getMaxTimestamp();
+    filter=reduceFilter(filter,result,currentMaxTs);
+    if (filter == null)     break;
+    Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
+    sstable.incrementReadCount();
+    try (UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()))){
+      if (iter.isEmpty())       continue;
+      sstablesIterated++;
+      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter,result);
+    }
+   }
+  cfs.metric.updateSSTableIterated(sstablesIterated);
+  if (result == null || result.isEmpty())   return UnfilteredRowIterators.emptyIterator(metadata(),partitionKey(),false);
+  DecoratedKey key=result.partitionKey();
+  cfs.metric.samplers.get(Sampler.READS).addSample(key.getKey(),key.hashCode(),1);
+  if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategyManager().shouldDefragment()) {
+    Tracing.trace("Defragmenting requested data");
+    try (UnfilteredRowIterator iter=result.unfilteredIterator(columnFilter(),Slices.ALL,false)){
+      final Mutation mutation=new Mutation(UnfilteredRowIterators.toUpdate(iter));
+      StageManager.getStage(Stage.MUTATION).execute(new Runnable(){
+        public void run(){
+          Keyspace.open(mutation.getKeyspaceName()).apply(mutation,false,false);
+        }
+      }
+);
+    }
+   }
+  return result.unfilteredIterator(columnFilter(),Slices.ALL,clusteringIndexFilter().isReversed());
+}

@@ -2,6 +2,9 @@
   Pair<CQL3CasRequest,Set<ColumnDefinition>> p=makeCasRequest(options,state);
   CQL3CasRequest casRequest=p.left;
   Set<ColumnDefinition> columnsWithConditions=p.right;
-  ColumnFamily result=StorageProxy.cas(casRequest.cfm.ksName,casRequest.cfm.cfName,casRequest.key,casRequest,options.getSerialConsistency(),options.getConsistency(),state.getClientState());
-  return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(casRequest.cfm.ksName,casRequest.key,casRequest.cfm.cfName,result,columnsWithConditions,true,options.forStatement(0)));
-}
+  String ksName=casRequest.cfm.ksName;
+  String tableName=casRequest.cfm.cfName;
+  try (RowIterator result=StorageProxy.cas(ksName,tableName,casRequest.key,casRequest,options.getSerialConsistency(),options.getConsistency(),state.getClientState())){
+    return new ResultMessage.Rows(ModificationStatement.buildCasResultSet(ksName,tableName,result,columnsWithConditions,true,options.forStatement(0)));
+  }
+ }

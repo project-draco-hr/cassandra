@@ -1,0 +1,15 @@
+{
+  if (!ranges.hasNext())   return endOfData();
+  RangeForQuery current=ranges.next();
+  while (ranges.hasNext()) {
+    if (current.range.right.isMinimum())     break;
+    RangeForQuery next=ranges.peek();
+    List<InetAddress> merged=intersection(current.liveEndpoints,next.liveEndpoints);
+    if (!consistency.isSufficientLiveNodes(keyspace,merged))     break;
+    List<InetAddress> filteredMerged=consistency.filterForQuery(keyspace,merged);
+    if (!DatabaseDescriptor.getEndpointSnitch().isWorthMergingForRangeQuery(filteredMerged,current.filteredEndpoints,next.filteredEndpoints))     break;
+    current=new RangeForQuery(current.range.withNewRight(next.range.right),merged,filteredMerged);
+    ranges.next();
+  }
+  return current;
+}

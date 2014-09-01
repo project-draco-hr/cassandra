@@ -1,0 +1,28 @@
+{
+  PartitionUpdate update1=new PartitionUpdate(cfm,dk,cfm.partitionColumns(),1);
+  writeRangeTombstone(update1,"1","11",123,123);
+  writeRangeTombstone(update1,"2","22",123,123);
+  writeRangeTombstone(update1,"3","31",123,123);
+  writeRangeTombstone(update1,"4","41",123,123);
+  PartitionUpdate update2=new PartitionUpdate(cfm,dk,cfm.partitionColumns(),1);
+  writeRangeTombstone(update2,"1","11",123,123);
+  writeRangeTombstone(update2,"111","112",1230,123);
+  writeRangeTombstone(update2,"2","24",123,123);
+  writeRangeTombstone(update2,"3","31",1230,123);
+  writeRangeTombstone(update2,"4","41",123,1230);
+  writeRangeTombstone(update2,"5","51",123,1230);
+  try (UnfilteredRowIterator merged=UnfilteredRowIterators.merge(ImmutableList.of(update1.unfilteredIterator(),update2.unfilteredIterator()),nowInSeconds)){
+    Object[][] expected=new Object[][]{{"1","11",123l,123},{"111","112",1230l,123},{"2","24",123l,123},{"3","31",1230l,123},{"4","41",123l,1230},{"5","51",123l,1230}};
+    int i=0;
+    while (merged.hasNext()) {
+      RangeTombstoneBoundMarker openMarker=(RangeTombstoneBoundMarker)merged.next();
+      Slice.Bound openBound=openMarker.clustering();
+      DeletionTime openDeletion=new SimpleDeletionTime(openMarker.deletionTime().markedForDeleteAt(),openMarker.deletionTime().localDeletionTime());
+      RangeTombstoneBoundMarker closeMarker=(RangeTombstoneBoundMarker)merged.next();
+      Slice.Bound closeBound=closeMarker.clustering();
+      DeletionTime closeDeletion=new SimpleDeletionTime(closeMarker.deletionTime().markedForDeleteAt(),closeMarker.deletionTime().localDeletionTime());
+      assertEquals(openDeletion,closeDeletion);
+      assertRangeTombstoneMarkers(openBound,closeBound,openDeletion,expected[i++]);
+    }
+  }
+ }

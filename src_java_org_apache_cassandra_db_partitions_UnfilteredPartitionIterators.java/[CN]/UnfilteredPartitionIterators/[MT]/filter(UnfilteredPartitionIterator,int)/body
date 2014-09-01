@@ -1,0 +1,34 @@
+{
+  return new PartitionIterator(){
+    private RowIterator next;
+    public boolean hasNext(){
+      while (next == null && iterator.hasNext()) {
+        @SuppressWarnings("resource") UnfilteredRowIterator rowIterator=iterator.next();
+        next=UnfilteredRowIterators.filter(rowIterator,nowInSec);
+        if (!iterator.isForThrift() && next.isEmpty()) {
+          rowIterator.close();
+          next=null;
+        }
+      }
+      return next != null;
+    }
+    public RowIterator next(){
+      if (next == null && !hasNext())       throw new NoSuchElementException();
+      RowIterator toReturn=next;
+      next=null;
+      return toReturn;
+    }
+    public void remove(){
+      throw new UnsupportedOperationException();
+    }
+    public void close(){
+      try {
+        iterator.close();
+      }
+  finally {
+        if (next != null)         next.close();
+      }
+    }
+  }
+;
+}

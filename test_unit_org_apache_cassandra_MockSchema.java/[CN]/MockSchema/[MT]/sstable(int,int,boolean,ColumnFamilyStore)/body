@@ -20,8 +20,9 @@
       throw new RuntimeException(e);
     }
   }
-  StatsMetadata metadata=(StatsMetadata)new MetadataCollector(cfs.metadata.comparator).finalizeMetadata(Murmur3Partitioner.instance.getClass().getCanonicalName(),0.01f,-1).get(MetadataType.STATS);
-  SSTableReader reader=SSTableReader.internalOpen(descriptor,components,cfs.metadata,Murmur3Partitioner.instance,segmentedFile.sharedCopy(),segmentedFile.sharedCopy(),indexSummary.sharedCopy(),new AlwaysPresentFilter(),1L,metadata,SSTableReader.OpenReason.NORMAL);
+  SerializationHeader header=SerializationHeader.make(cfs.metadata,Collections.EMPTY_LIST);
+  StatsMetadata metadata=(StatsMetadata)new MetadataCollector(cfs.metadata.comparator).finalizeMetadata(Murmur3Partitioner.instance.getClass().getCanonicalName(),0.01f,-1,header).get(MetadataType.STATS);
+  SSTableReader reader=SSTableReader.internalOpen(descriptor,components,cfs.metadata,Murmur3Partitioner.instance,segmentedFile.sharedCopy(),segmentedFile.sharedCopy(),indexSummary.sharedCopy(),new AlwaysPresentFilter(),1L,metadata,SSTableReader.OpenReason.NORMAL,header);
   reader.first=reader.last=readerBounds(generation);
   if (!keepRef)   reader.selfRef().release();
   return reader;

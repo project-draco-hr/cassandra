@@ -1,29 +1,20 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("StandardComposite2");
-  CellNameType type=cfs.getComparator();
-  ByteBuffer key=ByteBufferUtil.bytes("k");
   for (int i=0; i < 10; i++) {
-    Mutation rm=new Mutation(KEYSPACE1,key);
-    CellName colName=type.makeCellName(ByteBufferUtil.bytes("a" + (9 - i)),ByteBufferUtil.bytes(i));
-    rm.add("StandardComposite2",colName,ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-    rm.applyUnsafe();
+    new RowUpdateBuilder(cfs.metadata,0,"k").clustering("a" + (9 - i),getBytes(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
   cfs.forceBlockingFlush();
-  key=ByteBufferUtil.bytes("k2");
   for (int i=0; i < 10; i++) {
-    Mutation rm=new Mutation(KEYSPACE1,key);
-    CellName colName=type.makeCellName(ByteBufferUtil.bytes("b" + (9 - i)),ByteBufferUtil.bytes(i));
-    rm.add("StandardComposite2",colName,ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-    rm.applyUnsafe();
+    new RowUpdateBuilder(cfs.metadata,0,"k2").clustering("b" + (9 - i),getBytes(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
   cfs.forceBlockingFlush();
   cfs.forceMajorCompaction();
   assertEquals(cfs.getSSTables().size(),1);
   for (  SSTableReader sstable : cfs.getSSTables()) {
-    assertEquals("b9",ByteBufferUtil.string(sstable.getSSTableMetadata().maxColumnNames.get(0)));
-    assertEquals(9,ByteBufferUtil.toInt(sstable.getSSTableMetadata().maxColumnNames.get(1)));
-    assertEquals("a0",ByteBufferUtil.string(sstable.getSSTableMetadata().minColumnNames.get(0)));
-    assertEquals(0,ByteBufferUtil.toInt(sstable.getSSTableMetadata().minColumnNames.get(1)));
+    assertEquals("b9",ByteBufferUtil.string(sstable.getSSTableMetadata().maxClusteringValues.get(0)));
+    assertEquals(9,ByteBufferUtil.toInt(sstable.getSSTableMetadata().maxClusteringValues.get(1)));
+    assertEquals("a0",ByteBufferUtil.string(sstable.getSSTableMetadata().minClusteringValues.get(0)));
+    assertEquals(0,ByteBufferUtil.toInt(sstable.getSSTableMetadata().minClusteringValues.get(1)));
   }
 }

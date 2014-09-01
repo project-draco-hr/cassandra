@@ -1,24 +1,14 @@
 {
-  final Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  final ColumnFamilyStore cfStore=keyspace.getColumnFamilyStore("Standard1");
-  final DecoratedKey ROW=Util.dk("row5");
-  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"Standard1");
-  cf.addColumn(column("col1","val1",1L));
-  cf.addColumn(expiringColumn("col2","val2",1L,60));
-  cf.addColumn(column("col3","val3",1L));
-  Mutation rm=new Mutation(KEYSPACE1,ROW.getKey(),cf);
-  rm.applyUnsafe();
-  Runnable verify=new WrappedRunnable(){
-    public void runMayThrow() throws Exception {
-      ColumnFamily cf;
-      cf=cfStore.getColumnFamily(ROW,Composites.EMPTY,Composites.EMPTY,false,2,System.currentTimeMillis());
-      assertColumns(cf,"col1","col2");
-      assertColumns(ColumnFamilyStore.removeDeleted(cf,Integer.MAX_VALUE),"col1");
-      cf=cfStore.getColumnFamily(ROW,cellname("col2"),Composites.EMPTY,false,1,System.currentTimeMillis());
-      assertColumns(cf,"col2");
-      assertColumns(ColumnFamilyStore.removeDeleted(cf,Integer.MAX_VALUE));
-    }
+  String tableName=createTable("CREATE TABLE %s (a text, b int, c int, PRIMARY KEY (a, b))");
+  final ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",0,0);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?) USING TTL 60","0",1,1);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",2,2);
+  for (int round=0; round < 2; round++) {
+    SinglePartitionSliceCommand command=singlePartitionSlice(cfs,"0",slices(cfs,null,null,false),2);
+    assertRowsInResult(cfs,command,0,1);
+    command=singlePartitionSlice(cfs,"0",slices(cfs,1,null,false),1);
+    assertRowsInResult(cfs,command,1);
+    if (round == 0)     cfs.forceBlockingFlush();
   }
-;
-  reTest(keyspace.getColumnFamilyStore("Standard1"),verify);
 }

@@ -1,6 +1,6 @@
 {
   long now=state.getTimestamp();
-  ByteBuffer key=null;
+  DecoratedKey key=null;
   CQL3CasRequest casRequest=null;
   Set<ColumnDefinition> columnsWithConditions=new LinkedHashSet<>();
   for (int i=0; i < statements.size(); i++) {
@@ -10,19 +10,19 @@
     List<ByteBuffer> pks=statement.buildPartitionKeyNames(statementOptions);
     if (pks.size() > 1)     throw new IllegalArgumentException("Batch with conditions cannot span multiple partitions (you cannot use IN on the partition key)");
     if (key == null) {
-      key=pks.get(0);
-      casRequest=new CQL3CasRequest(statement.cfm,key,true);
+      key=StorageService.getPartitioner().decorateKey(pks.get(0));
+      casRequest=new CQL3CasRequest(statement.cfm,key,true,conditionColumns,updatesRegularRows,updatesStaticRow);
     }
- else     if (!key.equals(pks.get(0))) {
+ else     if (!key.getKey().equals(pks.get(0))) {
       throw new InvalidRequestException("Batch with conditions cannot span multiple partitions");
     }
-    Composite clusteringPrefix=statement.createClusteringPrefix(statementOptions);
+    CBuilder cbuilder=statement.createClustering(statementOptions);
     if (statement.hasConditions()) {
-      statement.addConditions(clusteringPrefix,casRequest,statementOptions);
+      statement.addConditions(cbuilder.build(),casRequest,statementOptions);
       if (statement.hasIfNotExistCondition() || statement.hasIfExistCondition())       columnsWithConditions=null;
  else       if (columnsWithConditions != null)       Iterables.addAll(columnsWithConditions,statement.getColumnsWithConditions());
     }
-    casRequest.addRowUpdate(clusteringPrefix,statement,statementOptions,timestamp);
+    casRequest.addRowUpdate(cbuilder,statement,statementOptions,timestamp);
   }
   return Pair.create(casRequest,columnsWithConditions);
 }

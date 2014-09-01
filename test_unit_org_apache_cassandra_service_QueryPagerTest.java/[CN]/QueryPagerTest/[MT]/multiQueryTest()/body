@@ -1,24 +1,20 @@
 {
-  QueryPager pager=QueryPagers.localPager(new Pageable.ReadCommands(new ArrayList<ReadCommand>(){
+  QueryPager pager=new SinglePartitionReadCommand.Group(new ArrayList<SinglePartitionReadCommand<?>>(){
 {
       add(sliceQuery("k1","c2","c6",10));
       add(sliceQuery("k4","c3","c5",10));
     }
   }
-,10));
-  List<Row> page;
+,DataLimits.NONE).getPager(null);
   assertFalse(pager.isExhausted());
-  page=pager.fetchPage(3);
-  assertEquals(toString(page),1,page.size());
-  assertRow(page.get(0),"k1","c2","c3","c4");
+  List<FilteredPartition> partition=query(pager,3);
+  assertRow(partition.get(0),"k1","c2","c3","c4");
   assertFalse(pager.isExhausted());
-  page=pager.fetchPage(4);
-  assertEquals(toString(page),2,page.size());
-  assertRow(page.get(0),"k1","c5","c6");
-  assertRow(page.get(1),"k4","c3","c4");
+  partition=query(pager,4);
+  assertRow(partition.get(0),"k1","c5","c6");
+  assertRow(partition.get(1),"k4","c3","c4");
   assertFalse(pager.isExhausted());
-  page=pager.fetchPage(3);
-  assertEquals(toString(page),1,page.size());
-  assertRow(page.get(0),"k4","c5");
+  partition=query(pager,3,1);
+  assertRow(partition.get(0),"k4","c5");
   assertTrue(pager.isExhausted());
 }

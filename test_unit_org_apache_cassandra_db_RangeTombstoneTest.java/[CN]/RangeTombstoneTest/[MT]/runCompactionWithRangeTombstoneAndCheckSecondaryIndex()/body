@@ -2,29 +2,24 @@
   Keyspace table=Keyspace.open(KSNAME);
   ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
   ByteBuffer key=ByteBufferUtil.bytes("k5");
-  ByteBuffer indexedColumnName=ByteBufferUtil.bytes(1);
+  ByteBuffer indexedColumnName=ByteBufferUtil.bytes("val");
   cfs.truncateBlocking();
   cfs.disableAutoCompaction();
   cfs.setCompactionStrategyClass(SizeTieredCompactionStrategy.class.getCanonicalName());
-  if (cfs.indexManager.getIndexForColumn(indexedColumnName) == null) {
-    ColumnDefinition cd=ColumnDefinition.regularDef(cfs.metadata,indexedColumnName,cfs.getComparator().asAbstractType(),0).setIndex("test_index",IndexType.CUSTOM,ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,TestIndex.class.getName()));
-    Future<?> rebuild=cfs.indexManager.addIndexedColumn(cd);
-    if (rebuild != null)     rebuild.get();
-  }
-  TestIndex index=((TestIndex)cfs.indexManager.getIndexForColumn(indexedColumnName));
+  ColumnDefinition cd=cfs.metadata.getColumnDefinition(indexedColumnName).copy();
+  cd.setIndex("test_index",IndexType.CUSTOM,ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,TestIndex.class.getName()));
+  Future<?> rebuild=cfs.indexManager.addIndexedColumn(cd);
+  if (rebuild != null)   rebuild.get();
+  TestIndex index=((TestIndex)cfs.indexManager.getIndexForColumn(cd));
   index.resetCounts();
-  Mutation rm=new Mutation(KSNAME,key);
-  for (int i=0; i < 10; i++)   add(rm,i,0);
-  rm.applyUnsafe();
+  UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,key).withTimestamp(0);
+  for (int i=0; i < 10; i++)   builder.newRow(i).add("val",i);
+  builder.applyUnsafe();
   cfs.forceBlockingFlush();
-  rm=new Mutation(KSNAME,key);
-  ColumnFamily cf=rm.addOrGet(CFNAME);
-  for (int i=0; i < 10; i+=2)   delete(cf,0,7,0);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,key).addRangeTombstone(0,7).build().applyUnsafe();
   cfs.forceBlockingFlush();
-  assertEquals(1,index.inserts.size());
+  assertEquals(10,index.inserts.size());
   CompactionManager.instance.performMaximal(cfs,false);
   assertEquals(1,cfs.getSSTables().size());
-  assertEquals(1,index.deletes.size());
-  assertEquals(index.deletes.get(0),index.inserts.get(0));
+  assertEquals(10,index.deletes.size());
 }

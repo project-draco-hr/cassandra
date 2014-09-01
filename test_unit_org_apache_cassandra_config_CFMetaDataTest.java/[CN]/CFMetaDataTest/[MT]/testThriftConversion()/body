@@ -1,0 +1,24 @@
+{
+  CfDef cfDef=new CfDef().setDefault_validation_class(AsciiType.class.getCanonicalName()).setComment("Test comment").setColumn_metadata(columnDefs).setKeyspace(KEYSPACE1).setName(CF_STANDARD1);
+  CFMetaData cfMetaData=ThriftConversion.fromThrift(cfDef);
+  CfDef thriftCfDef=new CfDef();
+  thriftCfDef.keyspace=KEYSPACE1;
+  thriftCfDef.name=CF_STANDARD1;
+  thriftCfDef.default_validation_class=cfDef.default_validation_class;
+  thriftCfDef.comment=cfDef.comment;
+  thriftCfDef.column_metadata=new ArrayList<>();
+  for (  ColumnDef columnDef : columnDefs) {
+    ColumnDef c=new ColumnDef();
+    c.name=ByteBufferUtil.clone(columnDef.name);
+    c.validation_class=columnDef.getValidation_class();
+    c.index_name=columnDef.getIndex_name();
+    c.index_type=IndexType.KEYS;
+    thriftCfDef.column_metadata.add(c);
+  }
+  CfDef converted=ThriftConversion.toThrift(cfMetaData);
+  assertEquals(thriftCfDef.keyspace,converted.keyspace);
+  assertEquals(thriftCfDef.name,converted.name);
+  assertEquals(thriftCfDef.default_validation_class,converted.default_validation_class);
+  assertEquals(thriftCfDef.comment,converted.comment);
+  assertEquals(new HashSet<>(thriftCfDef.column_metadata),new HashSet<>(converted.column_metadata));
+}

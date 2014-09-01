@@ -1,0 +1,20 @@
+{
+  PartitionRangeReadCommand rangeCommand=command.forSubRange(toQuery.range);
+  DataResolver resolver=new DataResolver(keyspace,rangeCommand,consistency,toQuery.filteredEndpoints.size());
+  int blockFor=consistency.blockFor(keyspace);
+  int minResponses=Math.min(toQuery.filteredEndpoints.size(),blockFor);
+  List<InetAddress> minimalEndpoints=toQuery.filteredEndpoints.subList(0,minResponses);
+  ReadCallback handler=new ReadCallback(resolver,consistency,rangeCommand,minimalEndpoints);
+  handler.assureSufficientLiveNodes();
+  if (toQuery.filteredEndpoints.size() == 1 && canDoLocalRequest(toQuery.filteredEndpoints.get(0))) {
+    StageManager.getStage(Stage.READ).execute(new LocalReadRunnable(rangeCommand,handler),Tracing.instance.get());
+  }
+ else {
+    MessageOut<ReadCommand> message=rangeCommand.createMessage();
+    for (    InetAddress endpoint : toQuery.filteredEndpoints) {
+      Tracing.trace("Enqueuing request to {}",endpoint);
+      MessagingService.instance().sendRRWithFailure(message,endpoint,handler);
+    }
+  }
+  return new SingleRangeResponse(handler);
+}

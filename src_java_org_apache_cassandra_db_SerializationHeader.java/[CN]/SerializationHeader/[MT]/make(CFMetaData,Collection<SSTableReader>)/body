@@ -1,0 +1,13 @@
+{
+  RowStats.Collector stats=new RowStats.Collector();
+  PartitionColumns.Builder columns=PartitionColumns.builder();
+  for (  SSTableReader sstable : sstables) {
+    stats.updateTimestamp(sstable.getMinTimestamp());
+    stats.updateLocalDeletionTime(sstable.getMinLocalDeletionTime());
+    stats.updateTTL(sstable.getMinTTL());
+    stats.updateColumnSetPerRow(sstable.getTotalColumnsSet(),sstable.getTotalRows());
+    if (sstable.header == null)     columns.addAll(metadata.partitionColumns());
+ else     columns.addAll(sstable.header.columns());
+  }
+  return new SerializationHeader(metadata,columns.build(),stats.get());
+}

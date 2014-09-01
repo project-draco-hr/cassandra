@@ -1,0 +1,33 @@
+{
+  while (reader.deserializer.hasNext() && start != null && reader.deserializer.compareNextTo(start) <= 0 && !tester.isDone()) {
+    if (reader.deserializer.nextIsRow())     reader.deserializer.skipNext();
+ else     reader.updateOpenMarker((RangeTombstoneMarker)reader.deserializer.readNext());
+  }
+  if (reader.openMarker != null) {
+    Slice.Bound markerStart=start;
+    if (start == null) {
+      ClusteringPrefix c=((IndexedReader)reader).previousIndex().lastName;
+      markerStart=Slice.Bound.exclusiveStartOf(c);
+    }
+    writeMarker(markerStart,reader.openMarker);
+  }
+  while (reader.deserializer.hasNext() && (end == null || reader.deserializer.compareNextTo(end) <= 0) && !tester.isDone()) {
+    Unfiltered unfiltered=reader.deserializer.readNext();
+    if (unfiltered.kind() == Unfiltered.Kind.ROW) {
+      ((Row)unfiltered).copyTo(rowWriter);
+    }
+ else {
+      RangeTombstoneMarker marker=(RangeTombstoneMarker)unfiltered;
+      reader.updateOpenMarker(marker);
+      marker.copyTo(markerWriter);
+    }
+  }
+  if (reader.openMarker != null) {
+    Slice.Bound markerEnd=end;
+    if (end == null) {
+      ClusteringPrefix c=((IndexedReader)reader).currentIndex().lastName;
+      markerEnd=Slice.Bound.inclusiveEndOf(c);
+    }
+    writeMarker(markerEnd,reader.getAndClearOpenMarker());
+  }
+}

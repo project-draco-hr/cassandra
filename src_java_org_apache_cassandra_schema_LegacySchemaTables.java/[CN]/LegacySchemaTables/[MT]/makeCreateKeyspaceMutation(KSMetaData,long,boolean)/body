@@ -1,10 +1,9 @@
 {
-  Mutation mutation=new Mutation(SystemKeyspace.NAME,getSchemaKSKey(keyspace.name));
-  ColumnFamily cells=mutation.addOrGet(Keyspaces);
-  CFRowAdder adder=new CFRowAdder(cells,Keyspaces.comparator.builder().build(),timestamp);
+  RowUpdateBuilder adder=new RowUpdateBuilder(Keyspaces,timestamp,keyspace.name);
   adder.add("durable_writes",keyspace.durableWrites);
   adder.add("strategy_class",keyspace.strategyClass.getName());
   adder.add("strategy_options",json(keyspace.strategyOptions));
+  Mutation mutation=adder.build();
   if (withTablesAndTypesAndFunctions) {
     for (    UserType type : keyspace.userTypes.getAllTypes().values())     addTypeToSchemaMutation(type,timestamp,mutation);
     for (    CFMetaData table : keyspace.cfMetaData().values())     addTableToSchemaMutation(table,timestamp,true,mutation);

@@ -2,30 +2,26 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard3");
   for (int j=0; j < 8; j++) {
-    DecoratedKey key=Util.dk("row" + j);
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
+    String key="row" + j;
     for (int i=100; i < 150; i++) {
-      rm.add("Standard3",cellname(j + "col" + i),ByteBufferUtil.EMPTY_BYTE_BUFFER,System.currentTimeMillis());
+      new RowUpdateBuilder(store.metadata,System.currentTimeMillis(),key).clustering(j + "col" + i).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
     }
-    rm.applyUnsafe();
   }
   store.forceBlockingFlush();
   assertEquals(1,store.getSSTables().size());
   for (  SSTableReader sstable : store.getSSTables()) {
-    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minColumnNames.get(0)),"0col100");
-    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxColumnNames.get(0)),"7col149");
+    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minClusteringValues.get(0)),"0col100");
+    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxClusteringValues.get(0)),"7col149");
   }
-  DecoratedKey key=Util.dk("row2");
-  Mutation rm=new Mutation(KEYSPACE1,key.getKey());
+  String key="row2";
   for (int i=101; i < 299; i++) {
-    rm.add("Standard3",cellname(9 + "col" + i),ByteBufferUtil.EMPTY_BYTE_BUFFER,System.currentTimeMillis());
+    new RowUpdateBuilder(store.metadata,System.currentTimeMillis(),key).clustering(9 + "col" + i).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
-  rm.applyUnsafe();
   store.forceBlockingFlush();
   store.forceMajorCompaction();
   assertEquals(1,store.getSSTables().size());
   for (  SSTableReader sstable : store.getSSTables()) {
-    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minColumnNames.get(0)),"0col100");
-    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxColumnNames.get(0)),"9col298");
+    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().minClusteringValues.get(0)),"0col100");
+    assertEquals(ByteBufferUtil.string(sstable.getSSTableMetadata().maxClusteringValues.get(0)),"9col298");
   }
 }

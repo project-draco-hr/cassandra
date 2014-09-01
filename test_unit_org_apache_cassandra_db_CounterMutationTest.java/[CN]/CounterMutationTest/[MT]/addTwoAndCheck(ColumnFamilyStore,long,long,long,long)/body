@@ -1,0 +1,9 @@
+{
+  ColumnDefinition cDefOne=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("val"));
+  ColumnDefinition cDefTwo=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("val2"));
+  Mutation m=new RowUpdateBuilder(cfs.metadata,5,"key1").clustering("cc").add("val",addOne).add("val2",addTwo).build();
+  new CounterMutation(m,ConsistencyLevel.ONE).apply();
+  Row row=Util.getOnlyRow(Util.cmd(cfs).includeRow("cc").columns("val","val2").build());
+  assertEquals(expectedOne,CounterContext.instance().total(row.getCell(cDefOne).value()));
+  assertEquals(expectedTwo,CounterContext.instance().total(row.getCell(cDefTwo).value()));
+}

@@ -1,0 +1,20 @@
+{
+  Kind kind=Kind.values()[in.readUnsignedByte()];
+switch (kind) {
+case CQL_LIMIT:
+case CQL_PAGING_LIMIT:
+    int rowLimit=in.readInt();
+  int perPartitionLimit=in.readInt();
+boolean isDistinct=in.readBoolean();
+if (kind == Kind.CQL_LIMIT) return new CQLLimits(rowLimit,perPartitionLimit,isDistinct);
+ByteBuffer lastKey=ByteBufferUtil.readWithShortLength(in);
+int lastRemaining=in.readInt();
+return new CQLPagingLimits(rowLimit,perPartitionLimit,isDistinct,lastKey,lastRemaining);
+case THRIFT_LIMIT:
+case SUPER_COLUMN_COUNTING_LIMIT:
+int partitionLimit=in.readInt();
+int cellPerPartitionLimit=in.readInt();
+return kind == Kind.THRIFT_LIMIT ? new ThriftLimits(partitionLimit,cellPerPartitionLimit) : new SuperColumnCountingLimits(partitionLimit,cellPerPartitionLimit);
+}
+throw new AssertionError();
+}

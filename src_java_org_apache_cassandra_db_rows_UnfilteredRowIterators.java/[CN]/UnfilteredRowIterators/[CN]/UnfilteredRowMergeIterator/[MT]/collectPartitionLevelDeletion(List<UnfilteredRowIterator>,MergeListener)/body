@@ -1,0 +1,12 @@
+{
+  DeletionTime[] versions=listener == null ? null : new DeletionTime[iterators.size()];
+  DeletionTime delTime=DeletionTime.LIVE;
+  for (int i=0; i < iterators.size(); i++) {
+    UnfilteredRowIterator iter=iterators.get(i);
+    DeletionTime iterDeletion=iter.partitionLevelDeletion();
+    if (listener != null)     versions[i]=iterDeletion;
+    if (!delTime.supersedes(iterDeletion))     delTime=iterDeletion;
+  }
+  if (listener != null && !delTime.isLive())   listener.onMergePartitionLevelDeletion(delTime,versions);
+  return delTime;
+}

@@ -2,19 +2,14 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard1");
   for (int j=0; j < 10; j++) {
-    ByteBuffer key=ByteBufferUtil.bytes(String.valueOf(j));
-    Mutation rm=new Mutation(KEYSPACE1,key);
-    rm.add("Standard1",cellname("0"),ByteBufferUtil.EMPTY_BYTE_BUFFER,j);
-    rm.apply();
+    new RowUpdateBuilder(store.metadata,j,String.valueOf(j)).clustering("0").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
   store.forceBlockingFlush();
   SSTableReader sstable=store.getSSTables().iterator().next();
   assertEquals(0,sstable.getReadMeter().count());
   DecoratedKey key=sstable.partitioner.decorateKey(ByteBufferUtil.bytes("4"));
-  store.getColumnFamily(key,Composites.EMPTY,Composites.EMPTY,false,100,100);
+  Util.getAll(Util.cmd(store,key).build());
   assertEquals(1,sstable.getReadMeter().count());
-  store.getColumnFamily(key,cellname("0"),cellname("0"),false,100,100);
+  Util.getAll(Util.cmd(store,key).includeRow("0").build());
   assertEquals(2,sstable.getReadMeter().count());
-  store.getColumnFamily(Util.namesQueryFilter(store,key,cellname("0")));
-  assertEquals(3,sstable.getReadMeter().count());
 }

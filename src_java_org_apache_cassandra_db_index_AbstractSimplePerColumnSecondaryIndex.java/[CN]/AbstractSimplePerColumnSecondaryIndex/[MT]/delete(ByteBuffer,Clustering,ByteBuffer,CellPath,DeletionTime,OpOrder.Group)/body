@@ -1,0 +1,10 @@
+{
+  DecoratedKey valueKey=getIndexKeyFor(getIndexedValue(rowKey,clustering,cellValue,path));
+  PartitionUpdate upd=new PartitionUpdate(indexCfs.metadata,valueKey,PartitionColumns.NONE,1);
+  Row.Writer writer=upd.writer();
+  Rows.writeClustering(makeIndexClustering(rowKey,clustering,path),writer);
+  writer.writeRowDeletion(deletion);
+  writer.endOfRow();
+  indexCfs.apply(upd,SecondaryIndexManager.nullUpdater,opGroup,null);
+  if (logger.isDebugEnabled())   logger.debug("removed index entry for cleaned-up value {}:{}",valueKey,upd);
+}

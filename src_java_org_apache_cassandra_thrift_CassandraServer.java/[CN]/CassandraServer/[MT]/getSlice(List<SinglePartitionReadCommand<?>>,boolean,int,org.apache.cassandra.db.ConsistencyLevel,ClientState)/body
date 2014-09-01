@@ -1,0 +1,12 @@
+{
+  try (PartitionIterator results=read(commands,consistency_level,cState)){
+    Map<ByteBuffer,List<ColumnOrSuperColumn>> columnFamiliesMap=new HashMap<ByteBuffer,List<ColumnOrSuperColumn>>();
+    while (results.hasNext()) {
+      try (RowIterator iter=results.next()){
+        List<ColumnOrSuperColumn> thriftifiedColumns=thriftifyPartition(iter,subColumnsOnly,iter.isReverseOrder(),cellLimit);
+        columnFamiliesMap.put(iter.partitionKey().getKey(),thriftifiedColumns);
+      }
+     }
+    return columnFamiliesMap;
+  }
+ }

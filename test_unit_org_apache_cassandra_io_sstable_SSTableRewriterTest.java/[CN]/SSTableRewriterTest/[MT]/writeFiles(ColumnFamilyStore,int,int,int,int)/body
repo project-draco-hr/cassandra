@@ -4,14 +4,15 @@
   for (int f=0; f < fileCount; f++) {
     File dir=cfs.directories.getDirectoryForNewSSTables();
     String filename=cfs.getTempSSTablePath(dir);
-    SSTableWriter writer=SSTableWriter.create(filename,0,0);
-    int end=f == fileCount - 1 ? partitionCount : ((f + 1) * partitionCount) / fileCount;
-    for (; i < end; i++) {
-      ArrayBackedSortedColumns cf=ArrayBackedSortedColumns.factory.create(cfs.metadata);
-      for (int j=0; j < cellCount; j++)       cf.addColumn(Util.cellname(j),random(0,cellSize),1);
-      writer.append(StorageService.getPartitioner().decorateKey(ByteBufferUtil.bytes(i)),cf);
+    try (SSTableWriter writer=SSTableWriter.create(filename,0,0,new SerializationHeader(cfs.metadata,cfs.metadata.partitionColumns(),RowStats.NO_STATS))){
+      int end=f == fileCount - 1 ? partitionCount : ((f + 1) * partitionCount) / fileCount;
+      for (; i < end; i++) {
+        UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,ByteBufferUtil.bytes(i));
+        for (int j=0; j < cellCount; j++)         builder.newRow(Integer.toString(i)).add("val",random(0,1000));
+        writer.append(builder.build().unfilteredIterator());
+      }
+      result.add(writer.finish(true));
     }
-    result.add(writer.finish(true));
-  }
+   }
   return result;
 }

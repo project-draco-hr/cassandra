@@ -1,0 +1,29 @@
+{
+  boolean isStatic=isStatic(flags);
+  boolean hasTimestamp=(flags & HAS_TIMESTAMP) != 0;
+  boolean hasTTL=(flags & HAS_TTL) != 0;
+  boolean hasDeletion=(flags & HAS_DELETION) != 0;
+  boolean hasComplexDeletion=(flags & HAS_COMPLEX_DELETION) != 0;
+  long timestamp=hasTimestamp ? header.decodeTimestamp(in.readLong()) : LivenessInfo.NO_TIMESTAMP;
+  int ttl=hasTTL ? header.decodeTTL(in.readInt()) : LivenessInfo.NO_TTL;
+  int localDeletionTime=hasTTL ? header.decodeDeletionTime(in.readInt()) : LivenessInfo.NO_DELETION_TIME;
+  DeletionTime deletion=hasDeletion ? UnfilteredRowIteratorSerializer.readDelTime(in,header) : DeletionTime.LIVE;
+  helper.writePartitionKeyLivenessInfo(writer,timestamp,ttl,localDeletionTime);
+  writer.writeRowDeletion(deletion);
+  Columns columns=header.columns(isStatic);
+  if (header.useSparseColumnLayout(isStatic)) {
+    int count=columns.columnCount();
+    int simpleCount=columns.simpleColumnCount();
+    int i;
+    while ((i=in.readShort()) >= 0) {
+      if (i > count)       throw new IOException(String.format("Impossible column index %d, the header has only %d columns defined",i,count));
+      if (i < simpleCount)       readSimpleColumn(columns.getSimple(i),in,header,helper,writer);
+ else       readComplexColumn(columns.getComplex(i - simpleCount),in,header,helper,hasComplexDeletion,writer);
+    }
+  }
+ else {
+    for (int i=0; i < columns.simpleColumnCount(); i++)     readSimpleColumn(columns.getSimple(i),in,header,helper,writer);
+    for (int i=0; i < columns.complexColumnCount(); i++)     readComplexColumn(columns.getComplex(i),in,header,helper,hasComplexDeletion,writer);
+  }
+  writer.endOfRow();
+}

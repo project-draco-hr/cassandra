@@ -1,21 +1,11 @@
 {
-  final Keyspace keyspace=Keyspace.open(KEYSPACE2);
-  final ColumnFamilyStore cfStore=keyspace.getColumnFamilyStore("Standard3");
-  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE2,"Standard3");
-  cf.addColumn(column("col1","val1",1L));
-  Mutation rm=new Mutation(KEYSPACE2,TEST_KEY.getKey(),cf);
-  rm.applyUnsafe();
-  Runnable verify=new WrappedRunnable(){
-    public void runMayThrow() throws Exception {
-      ColumnFamily cf;
-      cf=cfStore.getColumnFamily(Util.namesQueryFilter(cfStore,TEST_KEY));
-      assertColumns(cf);
-      cf=cfStore.getColumnFamily(QueryFilter.getSliceFilter(TEST_KEY,"Standard3",Composites.EMPTY,Composites.EMPTY,false,0,System.currentTimeMillis()));
-      assertColumns(cf);
-      cf=cfStore.getColumnFamily(Util.namesQueryFilter(cfStore,TEST_KEY,"col99"));
-      assertColumns(cf);
-    }
+  String tableName=createTable("CREATE TABLE %s (a text, b int, c int, PRIMARY KEY (a, b))");
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",0,0);
+  final ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  for (int round=0; round < 2; round++) {
+    Util.assertEmpty(Util.cmd(cfs,"0").columns("c").withLimit(0).build());
+    Util.assertEmpty(Util.cmd(cfs,"0").columns("c").fromIncl(1).toIncl(1).build());
+    Util.assertEmpty(Util.cmd(cfs,"0").columns("c").includeRow(1).build());
+    if (round == 0)     cfs.forceBlockingFlush();
   }
-;
-  reTest(keyspace.getColumnFamilyStore("Standard3"),verify);
 }

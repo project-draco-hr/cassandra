@@ -5,16 +5,12 @@
   cfs.disableAutoCompaction();
   ByteBuffer value=ByteBuffer.wrap(new byte[100]);
   DecoratedKey key=Util.dk(String.valueOf("expired"));
-  Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-  rm.add(CF_STANDARD1,Util.cellname("column"),value,System.currentTimeMillis(),1);
-  rm.apply();
+  new RowUpdateBuilder(cfs.metadata,System.currentTimeMillis(),1,key.getKey()).clustering("column").add("val",value).build().applyUnsafe();
   cfs.forceBlockingFlush();
   SSTableReader expiredSSTable=cfs.getSSTables().iterator().next();
   Thread.sleep(10);
   key=Util.dk(String.valueOf("nonexpired"));
-  rm=new Mutation(KEYSPACE1,key.getKey());
-  rm.add(CF_STANDARD1,Util.cellname("column"),value,System.currentTimeMillis());
-  rm.apply();
+  new RowUpdateBuilder(cfs.metadata,System.currentTimeMillis(),key.getKey()).clustering("column").add("val",value).build().applyUnsafe();
   cfs.forceBlockingFlush();
   assertEquals(cfs.getSSTables().size(),2);
   Map<String,String> options=new HashMap<>();

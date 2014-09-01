@@ -1,0 +1,12 @@
+{
+  int count=responses.size();
+  List<UnfilteredPartitionIterator> iters=new ArrayList<>(count);
+  InetAddress[] sources=new InetAddress[count];
+  for (int i=0; i < count; i++) {
+    MessageIn<ReadResponse> msg=responses.get(i);
+    iters.add(msg.payload.makeIterator());
+    sources[i]=msg.from;
+  }
+  DataLimits.Counter counter=command.limits().newCounter(command.nowInSec(),true);
+  return new CountingPartitionIterator(mergeWithShortReadProtection(iters,sources,counter),counter);
+}

@@ -18,30 +18,24 @@
   File destination=cfs.directories.getWriteableLocationAsFile(cfs.getExpectedCompactedFileSize(sstableAsSet,OperationType.ANTICOMPACTION));
   long repairedKeyCount=0;
   long unrepairedKeyCount=0;
+  int nowInSec=FBUtilities.nowInSeconds();
   CompactionStrategyManager strategy=cfs.getCompactionStrategyManager();
-  try (SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(anticompactionGroup.originals());CompactionController controller=new CompactionController(cfs,sstableAsSet,getDefaultGcBefore(cfs))){
+  try (SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(anticompactionGroup.originals());CompactionController controller=new CompactionController(cfs,sstableAsSet,getDefaultGcBefore(cfs,nowInSec));CompactionIterator ci=new CompactionIterator(OperationType.ANTICOMPACTION,scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID(),metrics)){
     int expectedBloomFilterSize=Math.max(cfs.metadata.getMinIndexInterval(),(int)(SSTableReader.getApproximateKeyCount(sstableAsSet)));
     repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,repairedAt,sstableAsSet));
     unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstableAsSet));
-    CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners.scanners,controller,DatabaseDescriptor.getSSTableFormat(),UUIDGen.getTimeUUID());
-    metrics.beginCompaction(ci);
-    try {
-      @SuppressWarnings("resource") CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
-      while (iter.hasNext()) {
-        @SuppressWarnings("resource") AbstractCompactedRow row=iter.next();
-        if (Range.isInRanges(row.key.getToken(),ranges)) {
-          repairedSSTableWriter.append(row);
+    while (ci.hasNext()) {
+      try (UnfilteredRowIterator partition=ci.next()){
+        if (Range.isInRanges(partition.partitionKey().getToken(),ranges)) {
+          repairedSSTableWriter.append(partition);
           repairedKeyCount++;
         }
  else {
-          unRepairedSSTableWriter.append(row);
+          unRepairedSSTableWriter.append(partition);
           unrepairedKeyCount++;
         }
       }
-    }
-  finally {
-      metrics.finishCompaction(ci);
-    }
+     }
     List<SSTableReader> anticompactedSSTables=new ArrayList<>();
     anticompactionGroup.permitRedundantTransitions();
     repairedSSTableWriter.setRepairedAt(repairedAt).prepareToCommit();

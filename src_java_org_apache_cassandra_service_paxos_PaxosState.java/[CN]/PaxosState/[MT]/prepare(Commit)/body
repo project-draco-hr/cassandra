@@ -1,10 +1,10 @@
 {
   long start=System.nanoTime();
   try {
-    Lock lock=LOCKS.get(toPrepare.key);
+    Lock lock=LOCKS.get(toPrepare.update.partitionKey());
     lock.lock();
     try {
-      PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.key,toPrepare.update.metadata());
+      PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.update.partitionKey(),toPrepare.update.metadata());
       if (toPrepare.isAfter(state.promised)) {
         Tracing.trace("Promising ballot {}",toPrepare.ballot);
         SystemKeyspace.savePaxosPromise(toPrepare);

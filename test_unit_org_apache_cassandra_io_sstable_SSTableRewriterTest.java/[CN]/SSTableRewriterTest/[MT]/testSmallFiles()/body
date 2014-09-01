@@ -8,10 +8,10 @@
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   List<SSTableReader> sstables;
   int files=1;
-  try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,false,1000000)){
+  try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,false,1000000);CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,Collections.singletonList(scanner),controller,FBUtilities.nowInSeconds(),UUIDGen.getTimeUUID())){
     rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
-    while (scanner.hasNext()) {
-      rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
+    while (ci.hasNext()) {
+      rewriter.append(ci.next());
       if (rewriter.currentWriter().getOnDiskFilePointer() > 2500000) {
         assertEquals(files,cfs.getSSTables().size());
         rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));

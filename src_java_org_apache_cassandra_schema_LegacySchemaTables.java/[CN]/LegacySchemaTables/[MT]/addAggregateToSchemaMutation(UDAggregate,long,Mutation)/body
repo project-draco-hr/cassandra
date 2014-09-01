@@ -1,7 +1,5 @@
 {
-  ColumnFamily cells=mutation.addOrGet(Aggregates);
-  Composite prefix=Aggregates.comparator.make(aggregate.name().name,functionSignatureWithTypes(aggregate));
-  CFRowAdder adder=new CFRowAdder(cells,prefix,timestamp);
+  RowUpdateBuilder adder=new RowUpdateBuilder(Aggregates,timestamp,mutation).clustering(aggregate.name().name,functionSignatureWithTypes(aggregate));
   adder.resetCollection("argument_types");
   adder.add("return_type",aggregate.returnType().toString());
   adder.add("state_func",aggregate.stateFunction().name().toString());
@@ -9,4 +7,5 @@
   if (aggregate.finalFunction() != null)   adder.add("final_func",aggregate.finalFunction().name().toString());
   if (aggregate.initialCondition() != null)   adder.add("initcond",aggregate.initialCondition());
   for (  AbstractType<?> argType : aggregate.argTypes())   adder.addListEntry("argument_types",argType.toString());
+  adder.build();
 }

@@ -1,0 +1,26 @@
+{
+  Clustering startClustering=new SimpleClustering(ByteBufferUtil.bytes(sliceStart));
+  Clustering endClustering=new SimpleClustering(ByteBufferUtil.bytes(sliceEnd));
+  Slices slices=Slices.with(cfs.getComparator(),Slice.make(startClustering,endClustering));
+  ClusteringIndexSliceFilter filter=new ClusteringIndexSliceFilter(slices,reversed);
+  SinglePartitionSliceCommand command=singlePartitionSlice(cfs,key,filter,limit);
+  try (ReadOrderGroup orderGroup=command.startOrderGroup();PartitionIterator iterator=command.executeInternal(orderGroup)){
+    try (RowIterator rowIterator=iterator.next()){
+      if (reversed) {
+        for (int i=sliceEnd; i >= sliceStart; i--) {
+          Row row=rowIterator.next();
+          Cell cell=row.getCell(cfs.metadata.getColumnDefinition(new ColumnIdentifier("c",false)));
+          assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i),cell.value());
+        }
+      }
+ else {
+        for (int i=sliceStart; i <= sliceEnd; i++) {
+          Row row=rowIterator.next();
+          Cell cell=row.getCell(cfs.metadata.getColumnDefinition(new ColumnIdentifier("c",false)));
+          assertEquals(ByteBufferUtil.bytes(columnValuePrefix + i),cell.value());
+        }
+      }
+      assertFalse(rowIterator.hasNext());
+    }
+   }
+ }

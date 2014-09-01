@@ -1,0 +1,12 @@
+{
+  String req="SELECT * FROM system.%s WHERE row_key = ? AND cf_id = ?";
+  UntypedResultSet results=executeInternal(String.format(req,PAXOS),key.getKey(),metadata.cfId);
+  if (results.isEmpty())   return new PaxosState(key,metadata);
+  UntypedResultSet.Row row=results.one();
+  Commit promised=row.has("in_progress_ballot") ? new Commit(row.getUUID("in_progress_ballot"),new PartitionUpdate(metadata,key,metadata.partitionColumns(),1)) : Commit.emptyCommit(key,metadata);
+  int proposalVersion=row.has("proposal_version") ? row.getInt("proposal_version") : MessagingService.VERSION_21;
+  Commit accepted=row.has("proposal") ? new Commit(row.getUUID("proposal_ballot"),PartitionUpdate.fromBytes(row.getBytes("proposal"),proposalVersion,key)) : Commit.emptyCommit(key,metadata);
+  int mostRecentVersion=row.has("most_recent_commit_version") ? row.getInt("most_recent_commit_version") : MessagingService.VERSION_21;
+  Commit mostRecent=row.has("most_recent_commit") ? new Commit(row.getUUID("most_recent_commit_at"),PartitionUpdate.fromBytes(row.getBytes("most_recent_commit"),mostRecentVersion,key)) : Commit.emptyCommit(key,metadata);
+  return new PaxosState(promised,accepted,mostRecent);
+}

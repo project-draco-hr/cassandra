@@ -1,0 +1,19 @@
+{
+  CBuilder builder=CBuilder.create(cfm.comparator);
+  MultiCBuilder multiBuilder=MultiCBuilder.wrap(builder);
+  ColumnDefinition firstEmptyKey=null;
+  for (  ColumnDefinition def : cfm.clusteringColumns()) {
+    Restriction r=processedKeys.get(def.name);
+    if (r == null) {
+      firstEmptyKey=def;
+      checkFalse(requireFullClusteringKey() && !cfm.isDense() && cfm.isCompound(),"Missing mandatory PRIMARY KEY part %s",def.name);
+    }
+ else     if (firstEmptyKey != null) {
+      throw invalidRequest("Missing PRIMARY KEY part %s since %s is set",firstEmptyKey.name,def.name);
+    }
+ else {
+      r.appendTo(multiBuilder,options);
+    }
+  }
+  return builder;
+}

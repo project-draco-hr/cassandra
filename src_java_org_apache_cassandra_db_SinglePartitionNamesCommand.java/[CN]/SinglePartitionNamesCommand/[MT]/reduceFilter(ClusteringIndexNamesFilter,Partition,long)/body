@@ -1,0 +1,29 @@
+{
+  if (result == null)   return filter;
+  SearchIterator<Clustering,Row> searchIter=result.searchIterator(columnFilter(),false);
+  PartitionColumns columns=columnFilter().fetchedColumns();
+  NavigableSet<Clustering> clusterings=filter.requestedRows();
+  boolean removeStatic=false;
+  if (!columns.statics.isEmpty()) {
+    Row staticRow=searchIter.next(Clustering.STATIC_CLUSTERING);
+    removeStatic=staticRow != null && canRemoveRow(staticRow,columns.statics,sstableTimestamp);
+  }
+  NavigableSet<Clustering> toRemove=null;
+  for (  Clustering clustering : clusterings) {
+    if (!searchIter.hasNext())     break;
+    Row row=searchIter.next(clustering);
+    if (row == null || !canRemoveRow(row,columns.regulars,sstableTimestamp))     continue;
+    if (toRemove == null)     toRemove=new TreeSet<>(result.metadata().comparator);
+    toRemove.add(clustering);
+  }
+  if (!removeStatic && toRemove == null)   return filter;
+  boolean hasNoMoreStatic=columns.statics.isEmpty() || removeStatic;
+  boolean hasNoMoreClusterings=clusterings.isEmpty() || (toRemove != null && toRemove.size() == clusterings.size());
+  if (hasNoMoreStatic && hasNoMoreClusterings)   return null;
+  NavigableSet<Clustering> newClusterings=clusterings;
+  if (toRemove != null) {
+    newClusterings=new TreeSet<>(result.metadata().comparator);
+    newClusterings.addAll(Sets.difference(clusterings,toRemove));
+  }
+  return new ClusteringIndexNamesFilter(newClusterings,filter.isReversed());
+}

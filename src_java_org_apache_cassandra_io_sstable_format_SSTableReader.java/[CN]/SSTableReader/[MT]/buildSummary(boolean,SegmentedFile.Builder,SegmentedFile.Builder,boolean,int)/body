@@ -6,10 +6,10 @@
     if (recreateBloomFilter)     bf=FilterFactory.getFilter(estimatedKeys,metadata.getBloomFilterFpChance(),true);
     try (IndexSummaryBuilder summaryBuilder=summaryLoaded ? null : new IndexSummaryBuilder(estimatedKeys,metadata.getMinIndexInterval(),samplingLevel)){
       long indexPosition;
-      RowIndexEntry.IndexSerializer rowIndexSerializer=descriptor.getFormat().getIndexSerializer(metadata);
+      RowIndexEntry.IndexSerializer rowIndexSerializer=descriptor.getFormat().getIndexSerializer(metadata,descriptor.version,header);
       while ((indexPosition=primaryIndex.getFilePointer()) != indexSize) {
         ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
-        RowIndexEntry indexEntry=rowIndexSerializer.deserialize(primaryIndex,descriptor.version);
+        RowIndexEntry indexEntry=rowIndexSerializer.deserialize(primaryIndex);
         DecoratedKey decoratedKey=partitioner.decorateKey(key);
         if (first == null)         first=decoratedKey;
         last=decoratedKey;

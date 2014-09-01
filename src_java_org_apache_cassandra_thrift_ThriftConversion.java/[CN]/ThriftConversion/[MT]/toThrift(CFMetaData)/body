@@ -1,23 +1,23 @@
 {
   CfDef def=new CfDef(cfm.ksName,cfm.cfName);
-  def.setColumn_type(cfm.cfType.name());
+  def.setColumn_type(cfm.isSuper() ? "Super" : "Standard");
   if (cfm.isSuper()) {
     def.setComparator_type(cfm.comparator.subtype(0).toString());
-    def.setSubcomparator_type(cfm.comparator.subtype(1).toString());
+    def.setSubcomparator_type(cfm.thriftColumnNameType().toString());
   }
  else {
-    def.setComparator_type(cfm.comparator.toString());
+    def.setComparator_type(LegacyLayout.makeLegacyComparator(cfm).toString());
   }
   def.setComment(Strings.nullToEmpty(cfm.getComment()));
   def.setRead_repair_chance(cfm.getReadRepairChance());
   def.setDclocal_read_repair_chance(cfm.getDcLocalReadRepairChance());
   def.setGc_grace_seconds(cfm.getGcGraceSeconds());
-  def.setDefault_validation_class(cfm.getDefaultValidator().toString());
+  def.setDefault_validation_class(cfm.makeLegacyDefaultValidator().toString());
   def.setKey_validation_class(cfm.getKeyValidator().toString());
   def.setMin_compaction_threshold(cfm.getMinCompactionThreshold());
   def.setMax_compaction_threshold(cfm.getMaxCompactionThreshold());
   if (cfm.partitionKeyColumns().size() == 1)   def.setKey_alias(cfm.partitionKeyColumns().get(0).name.bytes);
-  def.setColumn_metadata(columnDefinitionsToThrift(cfm.allColumns()));
+  def.setColumn_metadata(columnDefinitionsToThrift(cfm,cfm.allColumns()));
   def.setCompaction_strategy(cfm.compactionStrategyClass.getName());
   def.setCompaction_strategy_options(new HashMap<>(cfm.compactionStrategyOptions));
   def.setCompression_options(cfm.compressionParameters.asThriftOptions());

@@ -17,13 +17,16 @@
     org.apache.cassandra.db.ConsistencyLevel consistencyLevel=ThriftConversion.fromThrift(consistency_level);
     consistencyLevel.validateForRead(keyspace);
     IPartitioner p=StorageService.getPartitioner();
-    AbstractBounds<RowPosition> bounds=new Bounds<RowPosition>(RowPosition.ForKey.get(index_clause.start_key,p),p.getMinimumToken().minKeyBound());
-    IDiskAtomFilter filter=ThriftValidation.asIFilter(column_predicate,metadata,column_parent.super_column);
-    long now=System.currentTimeMillis();
-    RangeSliceCommand command=new RangeSliceCommand(keyspace,column_parent.column_family,now,filter,bounds,ThriftConversion.indexExpressionsFromThrift(index_clause.expressions),index_clause.count);
-    List<Row> rows=StorageProxy.getRangeSlice(command,consistencyLevel);
-    return thriftifyKeySlices(rows,column_parent,column_predicate,now);
-  }
+    AbstractBounds<PartitionPosition> bounds=new Bounds<PartitionPosition>(PartitionPosition.ForKey.get(index_clause.start_key,p),p.getMinimumToken().minKeyBound());
+    int nowInSec=FBUtilities.nowInSeconds();
+    ColumnFilter columns=makeColumnFilter(metadata,column_parent,column_predicate);
+    ClusteringIndexFilter filter=toInternalFilter(metadata,column_parent,column_predicate);
+    DataLimits limits=getLimits(index_clause.count,metadata.isSuper() && !column_parent.isSetSuper_column(),column_predicate);
+    PartitionRangeReadCommand cmd=new PartitionRangeReadCommand(false,true,metadata,nowInSec,columns,ThriftConversion.rowFilterFromThrift(metadata,index_clause.expressions),limits,new DataRange(bounds,filter));
+    try (PartitionIterator results=StorageProxy.getRangeSlice(cmd,consistencyLevel)){
+      return thriftifyKeySlices(results,column_parent,limits.perPartitionCount());
+    }
+   }
  catch (  RequestValidationException e) {
     throw ThriftConversion.toThrift(e);
   }

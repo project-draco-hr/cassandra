@@ -1,18 +1,15 @@
 {
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
   CommitLog.instance.resetUnsafe(true);
   Date date=CommitLogArchiver.format.parse("2112:12:12 12:12:12");
   long timeMS=date.getTime() - 5000;
   Keyspace keyspace1=Keyspace.open(KEYSPACE1);
-  DecoratedKey dk=Util.dk("dkey");
   for (int i=0; i < 10; ++i) {
     long ts=TimeUnit.MILLISECONDS.toMicros(timeMS + (i * 1000));
-    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"Standard1");
-    cf.addColumn(column("name-" + i,"value",ts));
-    Mutation rm=new Mutation(KEYSPACE1,dk.getKey(),cf);
-    rm.apply();
+    new RowUpdateBuilder(cfs.metadata,ts,"name-" + i).clustering("cc").add("val",Integer.toString(i)).build().apply();
   }
+  assertEquals(10,Util.getAll(Util.cmd(cfs).build()).size());
   keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
   CommitLog.instance.resetUnsafe(false);
-  ColumnFamily cf=Util.getColumnFamily(keyspace1,dk,"Standard1");
-  Assert.assertEquals(6,cf.getColumnCount());
+  assertEquals(6,Util.getAll(Util.cmd(cfs).build()).size());
 }

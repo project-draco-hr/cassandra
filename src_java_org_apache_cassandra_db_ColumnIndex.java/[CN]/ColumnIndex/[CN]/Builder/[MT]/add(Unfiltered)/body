@@ -1,0 +1,15 @@
+{
+  lastClustering.copy(unfiltered.clustering());
+  boolean isMarker=unfiltered.kind() == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER;
+  if (firstClustering == null) {
+    firstClustering=lastClustering.get().takeAlias();
+    startPosition=currentPosition();
+  }
+  UnfilteredSerializer.serializer.serialize(unfiltered,header,writer.stream,version);
+  ++written;
+  if (isMarker) {
+    RangeTombstoneMarker marker=(RangeTombstoneMarker)unfiltered;
+    openMarker=marker.isOpen(false) ? marker.openDeletionTime(false) : null;
+  }
+  if (currentPosition() - startPosition >= DatabaseDescriptor.getColumnIndexSize())   addIndexBlock();
+}

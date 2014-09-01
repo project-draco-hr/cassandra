@@ -1,0 +1,35 @@
+{
+  try {
+    if (predicate.column_names != null) {
+      if (metadata.isSuper()) {
+        if (parent.isSetSuper_column()) {
+          ColumnFilter.Builder builder=ColumnFilter.selectionBuilder();
+          ColumnDefinition dynamicDef=metadata.compactValueColumn();
+          for (          ByteBuffer bb : predicate.column_names) {
+            ColumnDefinition staticDef=metadata.getColumnDefinition(bb);
+            if (staticDef == null)             builder.select(dynamicDef,CellPath.create(bb));
+ else             builder.add(staticDef);
+          }
+          return builder.build();
+        }
+ else {
+          return ColumnFilter.all(metadata);
+        }
+      }
+ else {
+        PartitionColumns.Builder builder=new PartitionColumns.Builder();
+        for (        ByteBuffer bb : predicate.column_names) {
+          LegacyLayout.LegacyCellName name=LegacyLayout.decodeCellName(metadata,parent.bufferForSuper_column(),bb);
+          builder.add(name.column);
+        }
+        return ColumnFilter.selection(builder.build());
+      }
+    }
+ else {
+      return makeColumnFilter(metadata,parent,predicate.slice_range);
+    }
+  }
+ catch (  UnknownColumnException e) {
+    throw new org.apache.cassandra.exceptions.InvalidRequestException(e.getMessage());
+  }
+}

@@ -6,19 +6,25 @@
     mutations.put(ksName,ksMap);
   }
   List<ByteBuffer> keys=statement.buildPartitionKeyNames(options);
-  Composite clusteringPrefix=statement.createClusteringPrefix(options);
-  UpdateParameters params=statement.makeUpdateParameters(keys,clusteringPrefix,options,local,now);
+  CBuilder clustering=statement.createClustering(options);
+  UpdateParameters params=statement.makeUpdateParameters(keys,clustering,options,local,now);
   for (  ByteBuffer key : keys) {
-    IMutation mutation=ksMap.get(key);
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
+    IMutation mutation=ksMap.get(dk.getKey());
     Mutation mut;
     if (mutation == null) {
-      mut=new Mutation(ksName,key);
+      mut=new Mutation(ksName,dk);
       mutation=statement.cfm.isCounter() ? new CounterMutation(mut,options.getConsistency()) : mut;
-      ksMap.put(key,mutation);
+      ksMap.put(dk.getKey(),mutation);
     }
  else {
       mut=statement.cfm.isCounter() ? ((CounterMutation)mutation).getMutation() : (Mutation)mutation;
     }
-    statement.addUpdateForKey(mut.addOrGet(statement.cfm),key,clusteringPrefix,params);
+    PartitionUpdate upd=mut.get(statement.cfm);
+    if (upd == null) {
+      upd=new PartitionUpdate(statement.cfm,dk,updatedColumns(),updatedRows());
+      mut.add(upd);
+    }
+    statement.addUpdateForKey(upd,clustering,params);
   }
 }

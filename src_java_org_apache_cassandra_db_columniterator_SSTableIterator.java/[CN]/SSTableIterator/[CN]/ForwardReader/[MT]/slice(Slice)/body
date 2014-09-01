@@ -1,0 +1,35 @@
+{
+  return new AbstractIterator<Unfiltered>(){
+    private boolean beforeStart=true;
+    protected Unfiltered computeNext(){
+      try {
+        if (beforeStart) {
+          while (deserializer.hasNext() && deserializer.compareNextTo(slice.start()) <= 0) {
+            if (deserializer.nextIsRow())             deserializer.skipNext();
+ else             updateOpenMarker((RangeTombstoneMarker)deserializer.readNext());
+          }
+          beforeStart=false;
+          if (openMarker != null)           return new RangeTombstoneBoundMarker(slice.start(),openMarker);
+        }
+        if (deserializer.hasNext() && deserializer.compareNextTo(slice.end()) <= 0) {
+          Unfiltered next=deserializer.readNext();
+          if (next.kind() == Unfiltered.Kind.RANGE_TOMBSTONE_MARKER)           updateOpenMarker((RangeTombstoneMarker)next);
+          return next;
+        }
+        if (openMarker != null)         return new RangeTombstoneBoundMarker(slice.end(),getAndClearOpenMarker());
+        return endOfData();
+      }
+ catch (      IOException e) {
+        try {
+          close();
+        }
+ catch (        IOException suppressed) {
+          e.addSuppressed(suppressed);
+        }
+        sstable.markSuspect();
+        throw new CorruptSSTableException(e,file.getPath());
+      }
+    }
+  }
+;
+}

@@ -1,0 +1,16 @@
+{
+  return new SecondaryIndexSearcher(baseCfs.indexManager,columns){
+    @Override public UnfilteredPartitionIterator search(    ReadCommand filter,    ReadOrderGroup orderGroup){
+      return new SingletonUnfilteredPartitionIterator(LAST_INDEXED_PARTITION,false);
+    }
+    @Override public RowFilter.Expression primaryClause(    ReadCommand command){
+      RowFilter.Expression expression=command.rowFilter().iterator().next();
+      if (expression.getIndexValue().equals(ByteBufferUtil.bytes("invalid")))       throw new InvalidRequestException("Invalid search!");
+      return expression;
+    }
+    protected UnfilteredPartitionIterator queryDataFromIndex(    AbstractSimplePerColumnSecondaryIndex index,    DecoratedKey indexKey,    RowIterator indexHits,    ReadCommand command,    ReadOrderGroup orderGroup){
+      throw new UnsupportedOperationException();
+    }
+  }
+;
+}

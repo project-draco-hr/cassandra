@@ -1,17 +1,12 @@
 {
-  String createKsCQL="CREATE KEYSPACE non_native_ts_test" + " WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };";
-  String createTableCQL="CREATE TABLE non_native_ts_test.table_0 (k int PRIMARY KEY, v int)";
-  String insertCQL="INSERT INTO non_native_ts_test.table_0 (k, v) values (1, ?)";
-  String selectCQL="SELECT v, writetime(v) AS wt FROM non_native_ts_test.table_0 WHERE k = 1";
-  QueryProcessor.instance.process(createKsCQL,QueryState.forInternalCalls(),QueryOptions.forInternalCalls(Collections.<ByteBuffer>emptyList()));
-  QueryProcessor.instance.process(createTableCQL,QueryState.forInternalCalls(),QueryOptions.forInternalCalls(Collections.<ByteBuffer>emptyList()));
-  QueryProcessor.instance.process(insertCQL,QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Arrays.asList(ByteBufferUtil.bytes(2))));
-  UntypedResultSet.Row row=QueryProcessor.instance.executeInternal(selectCQL).one();
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v int)");
+  execute("INSERT INTO %s (k, v) values (1, ?)",2);
+  UntypedResultSet.Row row=execute("SELECT v, writetime(v) AS wt FROM %s WHERE k = 1").one();
   assertEquals(2,row.getInt("v"));
   long timestamp1=row.getLong("wt");
   assertFalse(timestamp1 == -1l);
-  QueryProcessor.instance.process(insertCQL,QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Arrays.asList(ByteBufferUtil.bytes(1))));
-  row=QueryProcessor.executeInternal(selectCQL).one();
+  execute("INSERT INTO %s (k, v) values (1, ?)",1);
+  row=execute("SELECT v, writetime(v) AS wt FROM %s WHERE k = 1").one();
   assertEquals(1,row.getInt("v"));
   assertTrue(row.getLong("wt") > timestamp1);
 }

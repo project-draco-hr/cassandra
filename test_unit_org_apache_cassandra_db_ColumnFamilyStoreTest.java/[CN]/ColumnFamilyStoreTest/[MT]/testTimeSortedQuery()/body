@@ -1,17 +1,11 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF_STANDARD1);
-  cfs.truncateBlocking();
-  Mutation rm;
-  rm=new Mutation(KEYSPACE1,ByteBufferUtil.bytes("key1"));
-  rm.add(CF_STANDARD1,cellname("Column1"),ByteBufferUtil.bytes("asdf"),0);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,"key1").clustering("Column1").add("val","asdf").build().applyUnsafe();
   cfs.forceBlockingFlush();
-  rm=new Mutation(KEYSPACE1,ByteBufferUtil.bytes("key1"));
-  rm.add(CF_STANDARD1,cellname("Column1"),ByteBufferUtil.bytes("asdf"),1);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,1,"key1").clustering("Column1").add("val","asdf").build().applyUnsafe();
   cfs.forceBlockingFlush();
   ((ClearableHistogram)cfs.metric.sstablesPerReadHistogram.cf).clear();
-  cfs.getColumnFamily(Util.namesQueryFilter(cfs,Util.dk("key1"),"Column1"));
+  Util.getAll(Util.cmd(cfs,"key1").includeRow("c1").build());
   assertEquals(1,cfs.metric.sstablesPerReadHistogram.cf.getCount());
 }

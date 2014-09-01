@@ -4,90 +4,55 @@
   for (  Multiset.Entry<ColumnIdentifier> entry : definedNames.entrySet())   if (entry.getCount() > 1)   throw new InvalidRequestException(String.format("Multiple definition of identifier %s",entry.getElement()));
   properties.validate();
   CreateTableStatement stmt=new CreateTableStatement(cfName,properties,ifNotExists,staticColumns);
-  boolean hasCounters=false;
-  Map<ByteBuffer,CollectionType> definedMultiCellCollections=null;
   for (  Map.Entry<ColumnIdentifier,CQL3Type.Raw> entry : definitions.entrySet()) {
     ColumnIdentifier id=entry.getKey();
     CQL3Type pt=entry.getValue().prepare(keyspace());
-    if (pt.isCollection() && ((CollectionType)pt.getType()).isMultiCell()) {
-      if (definedMultiCellCollections == null)       definedMultiCellCollections=new HashMap<>();
-      definedMultiCellCollections.put(id.bytes,(CollectionType)pt.getType());
-    }
- else     if (entry.getValue().isCounter())     hasCounters=true;
+    if (pt.isCollection() && ((CollectionType)pt.getType()).isMultiCell())     stmt.collections.put(id.bytes,(CollectionType)pt.getType());
+    if (entry.getValue().isCounter())     stmt.hasCounters=true;
     stmt.columns.put(id,pt.getType());
   }
   if (keyAliases.isEmpty())   throw new InvalidRequestException("No PRIMARY KEY specifed (exactly one required)");
- else   if (keyAliases.size() > 1)   throw new InvalidRequestException("Multiple PRIMARY KEYs specifed (exactly one required)");
- else   if (hasCounters && properties.getDefaultTimeToLive() > 0)   throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
+  if (keyAliases.size() > 1)   throw new InvalidRequestException("Multiple PRIMARY KEYs specifed (exactly one required)");
+  if (stmt.hasCounters && properties.getDefaultTimeToLive() > 0)   throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
   List<ColumnIdentifier> kAliases=keyAliases.get(0);
-  List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
+  stmt.keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
   for (  ColumnIdentifier alias : kAliases) {
-    stmt.keyAliases.add(alias.bytes);
+    stmt.keyAliases.add(alias);
     AbstractType<?> t=getTypeAndRemove(stmt.columns,alias);
     if (t instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",alias));
     if (staticColumns.contains(alias))     throw new InvalidRequestException(String.format("Static column %s cannot be part of the PRIMARY KEY",alias));
-    keyTypes.add(t);
+    stmt.keyTypes.add(t);
   }
-  stmt.keyValidator=keyTypes.size() == 1 ? keyTypes.get(0) : CompositeType.getInstance(keyTypes);
-  stmt.isDense=useCompactStorage && !columnAliases.isEmpty();
-  if (columnAliases.isEmpty()) {
-    if (useCompactStorage) {
+  stmt.clusteringTypes=new ArrayList<>(columnAliases.size());
+  for (  ColumnIdentifier t : columnAliases) {
+    stmt.columnAliases.add(t);
+    AbstractType<?> type=getTypeAndRemove(stmt.columns,t);
+    if (type instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t));
+    if (staticColumns.contains(t))     throw new InvalidRequestException(String.format("Static column %s cannot be part of the PRIMARY KEY",t));
+    stmt.clusteringTypes.add(type);
+  }
+  if (stmt.hasCounters) {
+    for (    AbstractType<?> type : stmt.columns.values())     if (!type.isCounter())     throw new InvalidRequestException("Cannot mix counter and non counter columns in the same table");
+  }
+  stmt.isDense=useCompactStorage && !stmt.clusteringTypes.isEmpty();
+  stmt.isCompound=!(useCompactStorage && stmt.clusteringTypes.size() <= 1);
+  if (useCompactStorage) {
+    if (!stmt.collections.isEmpty())     throw new InvalidRequestException("Non-frozen collection types are not supported with COMPACT STORAGE");
+    if (!staticColumns.isEmpty())     throw new InvalidRequestException("Static columns are not supported in COMPACT STORAGE tables");
+    if (stmt.clusteringTypes.isEmpty()) {
       if (stmt.columns.isEmpty())       throw new InvalidRequestException("No definition found that is not part of the PRIMARY KEY");
-      if (definedMultiCellCollections != null)       throw new InvalidRequestException("Non-frozen collection types are not supported with COMPACT STORAGE");
-      stmt.comparator=new SimpleSparseCellNameType(UTF8Type.instance);
     }
- else {
-      stmt.comparator=definedMultiCellCollections == null ? new CompoundSparseCellNameType(Collections.<AbstractType<?>>emptyList()) : new CompoundSparseCellNameType.WithCollection(Collections.<AbstractType<?>>emptyList(),ColumnToCollectionType.getInstance(definedMultiCellCollections));
-    }
-  }
- else {
-    if (useCompactStorage && columnAliases.size() == 1) {
-      if (definedMultiCellCollections != null)       throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-      ColumnIdentifier alias=columnAliases.get(0);
-      if (staticColumns.contains(alias))       throw new InvalidRequestException(String.format("Static column %s cannot be part of the PRIMARY KEY",alias));
-      stmt.columnAliases.add(alias.bytes);
-      AbstractType<?> at=getTypeAndRemove(stmt.columns,alias);
-      if (at instanceof CounterColumnType)       throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",stmt.columnAliases.get(0)));
-      stmt.comparator=new SimpleDenseCellNameType(at);
-    }
- else {
-      List<AbstractType<?>> types=new ArrayList<AbstractType<?>>(columnAliases.size() + 1);
-      for (      ColumnIdentifier t : columnAliases) {
-        stmt.columnAliases.add(t.bytes);
-        AbstractType<?> type=getTypeAndRemove(stmt.columns,t);
-        if (type instanceof CounterColumnType)         throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",t));
-        if (staticColumns.contains(t))         throw new InvalidRequestException(String.format("Static column %s cannot be part of the PRIMARY KEY",t));
-        types.add(type);
-      }
-      if (useCompactStorage) {
-        if (definedMultiCellCollections != null)         throw new InvalidRequestException("Collection types are not supported with COMPACT STORAGE");
-        stmt.comparator=new CompoundDenseCellNameType(types);
-      }
- else {
-        stmt.comparator=definedMultiCellCollections == null ? new CompoundSparseCellNameType(types) : new CompoundSparseCellNameType.WithCollection(types,ColumnToCollectionType.getInstance(definedMultiCellCollections));
-      }
-    }
-  }
-  if (!staticColumns.isEmpty()) {
-    if (useCompactStorage)     throw new InvalidRequestException("Static columns are not supported in COMPACT STORAGE tables");
-    if (columnAliases.isEmpty())     throw new InvalidRequestException("Static columns are only useful (and thus allowed) if the table has at least one clustering column");
-  }
-  if (useCompactStorage && !stmt.columnAliases.isEmpty()) {
-    if (stmt.columns.isEmpty()) {
-      stmt.defaultValidator=BytesType.instance;
-      stmt.valueAlias=ByteBufferUtil.EMPTY_BYTE_BUFFER;
-    }
- else {
+    if (stmt.isDense) {
       if (stmt.columns.size() > 1)       throw new InvalidRequestException(String.format("COMPACT STORAGE with composite PRIMARY KEY allows no more than one column not part of the PRIMARY KEY (got: %s)",StringUtils.join(stmt.columns.keySet(),", ")));
-      Map.Entry<ColumnIdentifier,AbstractType> lastEntry=stmt.columns.entrySet().iterator().next();
-      stmt.defaultValidator=lastEntry.getValue();
-      stmt.valueAlias=lastEntry.getKey().bytes;
-      stmt.columns.remove(lastEntry.getKey());
+    }
+ else {
+      if (stmt.columns.isEmpty())       throw new InvalidRequestException("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY, none given");
     }
   }
  else {
-    if (useCompactStorage && stmt.columns.isEmpty())     throw new InvalidRequestException("COMPACT STORAGE with non-composite PRIMARY KEY require one column not part of the PRIMARY KEY, none given");
-    stmt.defaultValidator=!stmt.columns.isEmpty() && (stmt.columns.values().iterator().next() instanceof CounterColumnType) ? CounterColumnType.instance : BytesType.instance;
+    if (stmt.clusteringTypes.isEmpty() && !staticColumns.isEmpty()) {
+      if (columnAliases.isEmpty())       throw new InvalidRequestException("Static columns are only useful (and thus allowed) if the table has at least one clustering column");
+    }
   }
   if (!definedOrdering.isEmpty()) {
     if (definedOrdering.size() > columnAliases.size())     throw new InvalidRequestException("Only clustering key columns can be defined in CLUSTERING ORDER directive");

@@ -1,0 +1,49 @@
+{
+  StringBuilder sb=new StringBuilder();
+  int clusteringSize=metadata.clusteringColumns().size();
+  List<List<ComponentOfSlice>> columnComponents=new ArrayList<>(clusteringSize);
+  for (int i=0; i < clusteringSize; i++) {
+    List<ComponentOfSlice> perSlice=new ArrayList<>();
+    columnComponents.add(perSlice);
+    for (int j=0; j < slices.length; j++) {
+      ComponentOfSlice c=ComponentOfSlice.fromSlice(i,slices[j]);
+      if (c != null)       perSlice.add(c);
+    }
+  }
+  boolean needAnd=false;
+  for (int i=0; i < clusteringSize; i++) {
+    ColumnDefinition column=metadata.clusteringColumns().get(i);
+    List<ComponentOfSlice> componentInfo=columnComponents.get(i);
+    if (componentInfo.isEmpty())     break;
+    ComponentOfSlice first=componentInfo.get(0);
+    if (first.isEQ()) {
+      if (needAnd)       sb.append(" AND ");
+      needAnd=true;
+      sb.append(column.name);
+      Set<ByteBuffer> values=new LinkedHashSet<>();
+      for (int j=0; j < componentInfo.size(); j++)       values.add(componentInfo.get(j).startValue);
+      if (values.size() == 1) {
+        sb.append(" = ").append(column.type.getString(first.startValue));
+      }
+ else {
+        sb.append(" IN (");
+        int j=0;
+        for (        ByteBuffer value : values)         sb.append(j++ == 0 ? "" : ", ").append(column.type.getString(value));
+        sb.append(")");
+      }
+    }
+ else {
+      if (first.startValue != null) {
+        if (needAnd)         sb.append(" AND ");
+        needAnd=true;
+        sb.append(column.name).append(first.startInclusive ? " >= " : " > ").append(column.type.getString(first.startValue));
+      }
+      if (first.endValue != null) {
+        if (needAnd)         sb.append(" AND ");
+        needAnd=true;
+        sb.append(column.name).append(first.endInclusive ? " <= " : " < ").append(column.type.getString(first.endValue));
+      }
+    }
+  }
+  return sb.toString();
+}

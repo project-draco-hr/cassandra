@@ -12,8 +12,8 @@
     cState.hasColumnFamilyAccess(keyspace,column_parent.column_family,Permission.SELECT);
     Keyspace keyspaceName=Keyspace.open(keyspace);
     ColumnFamilyStore cfs=keyspaceName.getColumnFamilyStore(column_parent.column_family);
-    long timestamp=System.currentTimeMillis();
-    if (predicate.column_names != null)     return getSliceInternal(keyspace,key,column_parent,timestamp,predicate,consistency_level,cState).size();
+    int nowInSec=FBUtilities.nowInSeconds();
+    if (predicate.column_names != null)     return getSliceInternal(keyspace,key,column_parent,nowInSec,predicate,consistency_level,cState).size();
     int pageSize;
     if (cfs.getMeanColumns() > 0) {
       int averageColumnSize=(int)(cfs.metric.meanRowSize.getValue() / cfs.getMeanColumns());
@@ -25,8 +25,19 @@
       pageSize=COUNT_PAGE_SIZE;
     }
     SliceRange sliceRange=predicate.slice_range == null ? new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE) : predicate.slice_range;
-    SliceQueryFilter filter=toInternalFilter(cfs.metadata,column_parent,sliceRange);
-    return QueryPagers.countPaged(keyspace,column_parent.column_family,key,filter,ThriftConversion.fromThrift(consistency_level),cState,pageSize,timestamp);
+    ColumnFilter columnFilter;
+    ClusteringIndexFilter filter;
+    if (cfs.metadata.isSuper() && !column_parent.isSetSuper_column()) {
+      columnFilter=ColumnFilter.all(cfs.metadata);
+      filter=new ClusteringIndexSliceFilter(makeSlices(cfs.metadata,sliceRange),sliceRange.reversed);
+    }
+ else {
+      columnFilter=makeColumnFilter(cfs.metadata,column_parent,sliceRange);
+      filter=toInternalFilter(cfs.metadata,column_parent,sliceRange);
+    }
+    DataLimits limits=getLimits(1,cfs.metadata.isSuper() && !column_parent.isSetSuper_column(),predicate);
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
+    return QueryPagers.countPaged(cfs.metadata,dk,columnFilter,filter,limits,ThriftConversion.fromThrift(consistency_level),cState,pageSize,nowInSec,true);
   }
  catch (  IllegalArgumentException e) {
     throw new InvalidRequestException(e.getMessage());

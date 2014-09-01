@@ -1,21 +1,19 @@
 {
-  final Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("StandardLong1");
-  final DecoratedKey ROW=Util.dk("row4");
-  for (int i=0; i < 10; i++) {
-    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"StandardLong1");
-    cf.addColumn(new BufferCell(cellname((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
-    Mutation rm=new Mutation(KEYSPACE1,ROW.getKey(),cf);
-    rm.applyUnsafe();
-  }
+  String tableName=createTable("CREATE TABLE %s (a text, b int, c int, PRIMARY KEY (a, b)) WITH CLUSTERING ORDER BY (b DESC)");
+  final ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",i,i);
   cfs.forceBlockingFlush();
   for (int i=10; i < 20; i++) {
-    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"StandardLong1");
-    cf.addColumn(new BufferCell(cellname((long)i),ByteBufferUtil.EMPTY_BYTE_BUFFER,0));
-    Mutation rm=new Mutation(KEYSPACE1,ROW.getKey(),cf);
-    rm.applyUnsafe();
-    cf=cfs.getColumnFamily(ROW,Composites.EMPTY,Composites.EMPTY,true,1,System.currentTimeMillis());
-    assertEquals(1,Iterables.size(cf.getColumnNames()));
-    assertEquals(i,cf.getColumnNames().iterator().next().toByteBuffer().getLong());
-  }
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)","0",i,i);
+    PartitionColumns columns=PartitionColumns.of(cfs.metadata.getColumnDefinition(new ColumnIdentifier("c",false)));
+    ClusteringIndexSliceFilter filter=new ClusteringIndexSliceFilter(Slices.ALL,false);
+    SinglePartitionSliceCommand command=singlePartitionSlice(cfs,"0",filter,null);
+    try (ReadOrderGroup orderGroup=command.startOrderGroup();PartitionIterator iterator=command.executeInternal(orderGroup)){
+      try (RowIterator rowIterator=iterator.next()){
+        Row row=rowIterator.next();
+        Cell cell=row.getCell(cfs.metadata.getColumnDefinition(new ColumnIdentifier("c",false)));
+        assertEquals(ByteBufferUtil.bytes(i),cell.value());
+      }
+     }
+   }
 }

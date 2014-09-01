@@ -1,10 +1,9 @@
 {
   try {
-    Keyspace keyspace=Keyspace.open(command.ksName);
-    Row r=command.getRow(keyspace);
-    ReadResponse result=ReadVerbHandler.getResponse(command,r);
-    MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-    handler.response(result);
+    try (ReadOrderGroup orderGroup=command.startOrderGroup();UnfilteredPartitionIterator iterator=command.executeLocally(orderGroup)){
+      handler.response(command.createResponse(iterator));
+    }
+     MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
   }
  catch (  Throwable t) {
     handler.onFailure(FBUtilities.getBroadcastAddress());

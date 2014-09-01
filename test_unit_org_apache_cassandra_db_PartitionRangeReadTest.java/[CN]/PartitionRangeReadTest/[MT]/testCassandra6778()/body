@@ -1,0 +1,16 @@
+{
+  String cfname=CF_STANDARDINT;
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  cfs.truncateBlocking();
+  ByteBuffer col=ByteBufferUtil.bytes("val");
+  ColumnDefinition cDef=cfs.metadata.getColumnDefinition(col);
+  new RowUpdateBuilder(cfs.metadata,0,"k1").clustering(new BigInteger(new byte[]{1})).add("val","val1").build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,1,"k1").clustering(new BigInteger(new byte[]{0,0,1})).add("val","val2").build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  Row row=Util.getOnlyRow(Util.cmd(cfs,"k1").includeRow(new BigInteger(new byte[]{1})).build());
+  assertTrue(row.getCell(cDef).value().equals(ByteBufferUtil.bytes("val2")));
+  row=Util.getOnlyRow(Util.cmd(cfs,"k1").includeRow(new BigInteger(new byte[]{0,0,1})).build());
+  assertTrue(row.getCell(cDef).value().equals(ByteBufferUtil.bytes("val2")));
+}

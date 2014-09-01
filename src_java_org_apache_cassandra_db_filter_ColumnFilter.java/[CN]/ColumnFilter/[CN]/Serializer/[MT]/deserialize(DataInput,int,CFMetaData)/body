@@ -1,0 +1,22 @@
+{
+  int header=in.readUnsignedByte();
+  boolean isFetchAll=(header & IS_FETCH_ALL_MASK) != 0;
+  boolean hasSelection=(header & HAS_SELECTION_MASK) != 0;
+  boolean hasSubSelections=(header & HAS_SUB_SELECTIONS_MASK) != 0;
+  PartitionColumns selection=null;
+  if (hasSelection) {
+    Columns statics=Columns.serializer.deserialize(in,metadata);
+    Columns regulars=Columns.serializer.deserialize(in,metadata);
+    selection=new PartitionColumns(statics,regulars);
+  }
+  SortedSetMultimap<ColumnIdentifier,ColumnSubselection> subSelections=null;
+  if (hasSubSelections) {
+    subSelections=TreeMultimap.create(keyComparator,valueComparator);
+    int size=in.readUnsignedShort();
+    for (int i=0; i < size; i++) {
+      ColumnSubselection subSel=ColumnSubselection.serializer.deserialize(in,version,metadata);
+      subSelections.put(subSel.column().name,subSel);
+    }
+  }
+  return new ColumnFilter(isFetchAll,isFetchAll ? metadata : null,selection,subSelections);
+}

@@ -1,21 +1,16 @@
 {
-{
-    while (true) {
-      try {
-        Buffer b=writeQueue.take();
-        if (b == SENTINEL)         return;
-        try (SSTableWriter writer=getWriter()){
-          for (          Map.Entry<DecoratedKey,ColumnFamily> entry : b.entrySet()) {
-            if (entry.getValue().getColumnCount() > 0)             writer.append(entry.getKey(),entry.getValue());
- else             if (!entry.getKey().equals(b.getFirstInsertedKey()))             throw new AssertionError("Empty partition");
-          }
-          writer.finish(false);
-        }
-       }
- catch (      Throwable e) {
-        JVMStabilityInspector.inspectThrowable(e);
-        if (exception == null)         exception=e;
+  while (true) {
+    try {
+      Buffer b=writeQueue.take();
+      if (b == SENTINEL)       return;
+      try (SSTableWriter writer=createWriter()){
+        for (        Map.Entry<DecoratedKey,PartitionUpdate> entry : b.entrySet())         writer.append(entry.getValue().unfilteredIterator());
+        writer.finish(false);
       }
+     }
+ catch (    Throwable e) {
+      JVMStabilityInspector.inspectThrowable(e);
+      if (exception == null)       exception=e;
     }
   }
 }

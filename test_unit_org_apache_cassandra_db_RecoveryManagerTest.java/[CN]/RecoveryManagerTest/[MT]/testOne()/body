@@ -2,20 +2,12 @@
   CommitLog.instance.resetUnsafe(true);
   Keyspace keyspace1=Keyspace.open(KEYSPACE1);
   Keyspace keyspace2=Keyspace.open(KEYSPACE2);
-  Mutation rm;
-  DecoratedKey dk=Util.dk("keymulti");
-  ColumnFamily cf;
-  cf=ArrayBackedSortedColumns.factory.create(KEYSPACE1,"Standard1");
-  cf.addColumn(column("col1","val1",1L));
-  rm=new Mutation(KEYSPACE1,dk.getKey(),cf);
-  rm.apply();
-  cf=ArrayBackedSortedColumns.factory.create(KEYSPACE2,"Standard3");
-  cf.addColumn(column("col2","val2",1L));
-  rm=new Mutation(KEYSPACE2,dk.getKey(),cf);
-  rm.apply();
+  UnfilteredRowIterator upd1=Util.apply(new RowUpdateBuilder(keyspace1.getColumnFamilyStore(CF_STANDARD1).metadata,1L,0,"keymulti").clustering("col1").add("val","1").build());
+  UnfilteredRowIterator upd2=Util.apply(new RowUpdateBuilder(keyspace2.getColumnFamilyStore(CF_STANDARD3).metadata,1L,0,"keymulti").clustering("col2").add("val","1").build());
   keyspace1.getColumnFamilyStore("Standard1").clearUnsafe();
   keyspace2.getColumnFamilyStore("Standard3").clearUnsafe();
   CommitLog.instance.resetUnsafe(false);
-  assertColumns(Util.getColumnFamily(keyspace1,dk,"Standard1"),"col1");
-  assertColumns(Util.getColumnFamily(keyspace2,dk,"Standard3"),"col2");
+  DecoratedKey dk=Util.dk("keymulti");
+  Assert.assertTrue(AbstractUnfilteredRowIterator.equal(upd1,Util.getOnlyPartitionUnfiltered(Util.cmd(keyspace1.getColumnFamilyStore(CF_STANDARD1),dk).build()).unfilteredIterator()));
+  Assert.assertTrue(AbstractUnfilteredRowIterator.equal(upd2,Util.getOnlyPartitionUnfiltered(Util.cmd(keyspace2.getColumnFamilyStore(CF_STANDARD3),dk).build()).unfilteredIterator()));
 }

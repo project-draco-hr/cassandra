@@ -1,0 +1,25 @@
+{
+  ColumnFamilyStore.ViewFragment view=cfs.select(cfs.viewFilter(dataRange().keyRange()));
+  Tracing.trace("Executing seq scan across {} sstables for {}",view.sstables.size(),dataRange().keyRange().getString(metadata().getKeyValidator()));
+  final List<UnfilteredPartitionIterator> iterators=new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
+  try {
+    for (    Memtable memtable : view.memtables) {
+      @SuppressWarnings("resource") UnfilteredPartitionIterator iter=memtable.makePartitionIterator(columnFilter(),dataRange(),isForThrift());
+      iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,metadata(),nowInSec()) : iter);
+    }
+    for (    SSTableReader sstable : view.sstables) {
+      @SuppressWarnings("resource") UnfilteredPartitionIterator iter=sstable.getScanner(columnFilter(),dataRange(),isForThrift());
+      iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,metadata(),nowInSec()) : iter);
+    }
+    return checkCacheFilter(UnfilteredPartitionIterators.mergeLazily(iterators,nowInSec()),cfs);
+  }
+ catch (  RuntimeException|Error e) {
+    try {
+      FBUtilities.closeAll(iterators);
+    }
+ catch (    Exception suppressed) {
+      e.addSuppressed(suppressed);
+    }
+    throw e;
+  }
+}

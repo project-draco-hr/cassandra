@@ -1,0 +1,20 @@
+{
+  ColumnFilter.Builder builder=ColumnFilter.selectionBuilder();
+  NavigableSet<Clustering> names=new TreeSet<>(cfs.metadata.comparator);
+  for (  PartitionUpdate.CounterMark mark : marks) {
+    names.add(mark.clustering().takeAlias());
+    if (mark.path() == null)     builder.add(mark.column());
+ else     builder.select(mark.column(),mark.path());
+  }
+  int nowInSec=FBUtilities.nowInSeconds();
+  ClusteringIndexNamesFilter filter=new ClusteringIndexNamesFilter(names,false);
+  SinglePartitionReadCommand cmd=SinglePartitionReadCommand.create(cfs.metadata,nowInSec,key(),builder.build(),filter);
+  PeekingIterator<PartitionUpdate.CounterMark> markIter=Iterators.peekingIterator(marks.iterator());
+  try (OpOrder.Group op=cfs.readOrdering.start();RowIterator partition=UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs,op),nowInSec)){
+    updateForRow(markIter,partition.staticRow(),cfs);
+    while (partition.hasNext()) {
+      if (!markIter.hasNext())       return;
+      updateForRow(markIter,partition.next(),cfs);
+    }
+  }
+ }

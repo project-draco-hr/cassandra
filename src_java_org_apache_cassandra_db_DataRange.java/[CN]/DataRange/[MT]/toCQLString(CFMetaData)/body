@@ -1,0 +1,17 @@
+{
+  if (isUnrestricted())   return "UNRESTRICTED";
+  StringBuilder sb=new StringBuilder();
+  boolean needAnd=false;
+  if (!startKey().isMinimum()) {
+    appendClause(startKey(),sb,metadata,true,keyRange.isStartInclusive());
+    needAnd=true;
+  }
+  if (!stopKey().isMinimum()) {
+    if (needAnd)     sb.append(" AND ");
+    appendClause(stopKey(),sb,metadata,false,keyRange.isEndInclusive());
+    needAnd=true;
+  }
+  String filterString=clusteringIndexFilter.toCQLString(metadata);
+  if (!filterString.isEmpty())   sb.append(needAnd ? " AND " : "").append(filterString);
+  return sb.toString();
+}

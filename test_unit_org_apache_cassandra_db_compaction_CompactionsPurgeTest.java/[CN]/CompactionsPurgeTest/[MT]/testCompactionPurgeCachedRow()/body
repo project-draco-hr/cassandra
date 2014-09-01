@@ -4,25 +4,17 @@
   String cfName=CF_CACHED;
   Keyspace keyspace=Keyspace.open(keyspaceName);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
-  DecoratedKey key=Util.dk("key3");
-  Mutation rm;
-  rm=new Mutation(keyspaceName,key.getKey());
+  String key="key3";
   for (int i=0; i < 10; i++) {
-    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
+    RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,0,key);
+    builder.clustering(String.valueOf(i)).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
+  Mutation rm=new Mutation(KEYSPACE_CACHED,dk(key));
+  rm.add(PartitionUpdate.fullPartitionDelete(cfs.metadata,dk(key),1,FBUtilities.nowInSeconds()));
   rm.applyUnsafe();
-  cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
-  rm=new Mutation(keyspaceName,key.getKey());
-  rm.delete(cfName,1);
-  rm.applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,"key4").clustering("c").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+  assertFalse(Util.getOnlyPartitionUnfiltered(Util.cmd(cfs,key).build()).isEmpty());
   cfs.forceBlockingFlush();
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
-  rm=new Mutation(keyspaceName,key.getKey());
-  for (int i=0; i < 10; i++) {
-    rm.add(cfName,cellname(String.valueOf(i)),ByteBufferUtil.EMPTY_BYTE_BUFFER,0);
-  }
-  rm.applyUnsafe();
-  ColumnFamily cf=cfs.getColumnFamily(QueryFilter.getIdentityFilter(key,cfName,System.currentTimeMillis()));
-  assertEquals(10,cf.getColumnCount());
-  for (  Cell c : cf)   assertTrue(c.isLive());
+  Util.assertEmpty(Util.cmd(cfs,key).build());
 }

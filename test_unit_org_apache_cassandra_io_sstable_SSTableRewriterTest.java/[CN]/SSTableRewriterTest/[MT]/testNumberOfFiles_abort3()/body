@@ -1,17 +1,19 @@
 {
   testNumberOfFiles_abort(new RewriterTest(){
     public void run(    ISSTableScanner scanner,    CompactionController controller,    SSTableReader sstable,    ColumnFamilyStore cfs,    SSTableRewriter rewriter){
-      int files=1;
-      while (scanner.hasNext()) {
-        rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
-        if (files == 1 && rewriter.currentWriter().getFilePointer() > 10000000) {
-          rewriter.switchWriter(getWriter(cfs,sstable.descriptor.directory));
-          files++;
-          assertEquals(cfs.getSSTables().size(),files);
+      try (CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,Collections.singletonList(scanner),controller,FBUtilities.nowInSeconds(),UUIDGen.getTimeUUID())){
+        int files=1;
+        while (ci.hasNext()) {
+          rewriter.append(ci.next());
+          if (files == 1 && rewriter.currentWriter().getFilePointer() > 10000000) {
+            rewriter.switchWriter(getWriter(cfs,sstable.descriptor.directory));
+            files++;
+            assertEquals(cfs.getSSTables().size(),files);
+          }
         }
+        rewriter.abort();
       }
-      rewriter.abort();
-    }
+     }
   }
 );
 }

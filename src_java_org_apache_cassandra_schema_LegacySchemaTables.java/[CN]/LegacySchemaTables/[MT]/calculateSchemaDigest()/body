@@ -7,12 +7,14 @@
     throw new RuntimeException(e);
   }
   for (  String table : ALL) {
-    for (    Row partition : getSchemaPartitionsForTable(table)) {
-      if (isEmptySchemaPartition(partition) || isSystemKeyspaceSchemaPartition(partition))       continue;
-      ColumnFamilyStore.removeDeletedColumnsOnly(partition.cf,Integer.MAX_VALUE,SecondaryIndexManager.nullUpdater);
-      partition.cf.purgeTombstones(Integer.MAX_VALUE);
-      partition.cf.updateDigest(digest);
+    ReadCommand cmd=getReadCommandForTableSchema(table);
+    try (ReadOrderGroup orderGroup=cmd.startOrderGroup();PartitionIterator schema=cmd.executeInternal(orderGroup)){
+      while (schema.hasNext()) {
+        try (RowIterator partition=schema.next()){
+          if (!isSystemKeyspaceSchemaPartition(partition.partitionKey()))           RowIterators.digest(partition,digest);
+        }
+       }
     }
-  }
+   }
   return UUID.nameUUIDFromBytes(digest.digest());
 }

@@ -1,0 +1,25 @@
+{
+  if (collectionElement == null)   throw new InvalidRequestException("Invalid null value for " + (column.type instanceof MapType ? "map" : "list") + " element access");
+  if (column.type instanceof MapType) {
+    MapType mapType=(MapType)column.type;
+    if (column.type.isMultiCell()) {
+      Cell cell=getCell(row,column,CellPath.create(collectionElement));
+      return isSatisfiedByValue(value,cell,((MapType)column.type).getValuesType(),operator);
+    }
+ else {
+      Cell cell=getCell(row,column);
+      ByteBuffer mapElementValue=mapType.getSerializer().getSerializedValue(cell.value(),collectionElement,mapType.getKeysType());
+      return compareWithOperator(operator,mapType.getValuesType(),value,mapElementValue);
+    }
+  }
+  ListType listType=(ListType)column.type;
+  if (column.type.isMultiCell()) {
+    ByteBuffer columnValue=getListItem(getCells(row,column),getListIndex(collectionElement));
+    return compareWithOperator(operator,((ListType)column.type).getElementsType(),value,columnValue);
+  }
+ else {
+    Cell cell=getCell(row,column);
+    ByteBuffer listElementValue=listType.getSerializer().getElement(cell.value(),getListIndex(collectionElement));
+    return compareWithOperator(operator,listType.getElementsType(),value,listElementValue);
+  }
+}

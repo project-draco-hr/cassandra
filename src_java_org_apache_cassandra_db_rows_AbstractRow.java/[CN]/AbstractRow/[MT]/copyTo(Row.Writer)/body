@@ -1,0 +1,12 @@
+{
+  Rows.writeClustering(clustering(),writer);
+  writer.writePartitionKeyLivenessInfo(primaryKeyLivenessInfo());
+  writer.writeRowDeletion(deletion());
+  for (  Cell cell : this)   cell.writeTo(writer);
+  for (int i=0; i < columns().complexColumnCount(); i++) {
+    ColumnDefinition c=columns().getComplex(i);
+    DeletionTime dt=getDeletion(c);
+    if (!dt.isLive())     writer.writeComplexDeletion(c,dt);
+  }
+  writer.endOfRow();
+}

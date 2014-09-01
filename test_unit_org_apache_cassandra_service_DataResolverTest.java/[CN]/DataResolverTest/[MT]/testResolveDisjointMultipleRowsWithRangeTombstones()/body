@@ -1,0 +1,50 @@
+{
+  DataResolver resolver=new DataResolver(ks,command,ConsistencyLevel.ALL,4);
+  RangeTombstone tombstone1=tombstone("1","11",1,nowInSec);
+  RangeTombstone tombstone2=tombstone("3","31",1,nowInSec);
+  PartitionUpdate update=new RowUpdateBuilder(cfm,nowInSec,1L,dk).addRangeTombstone(tombstone1).addRangeTombstone(tombstone2).buildUpdate();
+  InetAddress peer1=peer();
+  UnfilteredPartitionIterator iter1=iter(new RowUpdateBuilder(cfm,nowInSec,1L,dk).addRangeTombstone(tombstone1).addRangeTombstone(tombstone2).buildUpdate());
+  resolver.preprocess(readResponseMessage(peer1,iter1));
+  InetAddress peer2=peer();
+  UnfilteredPartitionIterator iter2=iter(new RowUpdateBuilder(cfm,nowInSec,0L,dk).clustering("0").add("c1","v0").buildUpdate());
+  resolver.preprocess(readResponseMessage(peer2,iter2));
+  InetAddress peer3=peer();
+  UnfilteredPartitionIterator iter3=iter(new RowUpdateBuilder(cfm,nowInSec,0L,dk).clustering("10").add("c2","v1").buildUpdate());
+  resolver.preprocess(readResponseMessage(peer3,iter3));
+  InetAddress peer4=peer();
+  UnfilteredPartitionIterator iter4=iter(new RowUpdateBuilder(cfm,nowInSec,2L,dk).clustering("3").add("one","A").buildUpdate());
+  resolver.preprocess(readResponseMessage(peer4,iter4));
+  try (PartitionIterator data=resolver.resolve()){
+    try (RowIterator rows=data.next()){
+      Row row=rows.next();
+      assertClustering(cfm,row,"0");
+      assertColumns(row,"c1");
+      assertColumn(cfm,row,"c1","v0",0);
+      row=rows.next();
+      assertClustering(cfm,row,"3");
+      assertColumns(row,"one");
+      assertColumn(cfm,row,"one","A",2);
+      assertFalse(rows.hasNext());
+    }
+   }
+   assertEquals(4,messageRecorder.sent.size());
+  MessageOut msg=getSentMessage(peer1);
+  assertRepairMetadata(msg);
+  assertRepairContainsNoDeletions(msg);
+  assertRepairContainsColumn(msg,"0","c1","v0",0);
+  assertRepairContainsColumn(msg,"3","one","A",2);
+  msg=getSentMessage(peer2);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,null,tombstone1,tombstone2);
+  assertRepairContainsColumn(msg,"3","one","A",2);
+  msg=getSentMessage(peer3);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,null,tombstone1,tombstone2);
+  assertRepairContainsColumn(msg,"0","c1","v0",0);
+  assertRepairContainsColumn(msg,"3","one","A",2);
+  msg=getSentMessage(peer4);
+  assertRepairMetadata(msg);
+  assertRepairContainsDeletions(msg,null,tombstone1,tombstone2);
+  assertRepairContainsColumn(msg,"0","c1","v0",0);
+}

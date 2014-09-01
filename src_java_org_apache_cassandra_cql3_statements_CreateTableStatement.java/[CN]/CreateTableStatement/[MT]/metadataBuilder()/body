@@ -1,0 +1,23 @@
+{
+  CFMetaData.Builder builder=CFMetaData.Builder.create(keyspace(),columnFamily(),isDense,isCompound,hasCounters);
+  for (int i=0; i < keyAliases.size(); i++)   builder.addPartitionKey(keyAliases.get(i),keyTypes.get(i));
+  for (int i=0; i < columnAliases.size(); i++)   builder.addClusteringColumn(columnAliases.get(i),clusteringTypes.get(i));
+  boolean isStaticCompact=!isDense && !isCompound;
+  for (  Map.Entry<ColumnIdentifier,AbstractType> entry : columns.entrySet()) {
+    ColumnIdentifier name=entry.getKey();
+    if (staticColumns.contains(name) || isStaticCompact)     builder.addStaticColumn(name,entry.getValue());
+ else     builder.addRegularColumn(name,entry.getValue());
+  }
+  boolean isCompactTable=isDense || !isCompound;
+  if (isCompactTable) {
+    CompactTables.DefaultNames names=CompactTables.defaultNameGenerator(builder.usedColumnNames());
+    if (isStaticCompact) {
+      builder.addClusteringColumn(names.defaultClusteringName(),UTF8Type.instance);
+      builder.addRegularColumn(names.defaultCompactValueName(),hasCounters ? CounterColumnType.instance : BytesType.instance);
+    }
+ else     if (isDense && !builder.hasRegulars()) {
+      builder.addRegularColumn(names.defaultCompactValueName(),EmptyType.instance);
+    }
+  }
+  return builder;
+}

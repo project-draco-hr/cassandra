@@ -1,11 +1,17 @@
 {
-  for (  Row partition : getSchemaPartitionsForTable(schemaTableName)) {
-    if (isSystemKeyspaceSchemaPartition(partition))     continue;
-    Mutation mutation=mutationMap.get(partition.key);
-    if (mutation == null) {
-      mutation=new Mutation(SystemKeyspace.NAME,partition.key.getKey());
-      mutationMap.put(partition.key,mutation);
-    }
-    mutation.add(partition.cf);
+  ReadCommand cmd=getReadCommandForTableSchema(schemaTableName);
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iter=cmd.executeLocally(orderGroup)){
+    while (iter.hasNext()) {
+      try (UnfilteredRowIterator partition=iter.next()){
+        if (isSystemKeyspaceSchemaPartition(partition.partitionKey()))         continue;
+        DecoratedKey key=partition.partitionKey();
+        Mutation mutation=mutationMap.get(key);
+        if (mutation == null) {
+          mutation=new Mutation(SystemKeyspace.NAME,key);
+          mutationMap.put(key,mutation);
+        }
+        mutation.add(UnfilteredRowIterators.toUpdate(partition));
+      }
+     }
   }
-}
+ }

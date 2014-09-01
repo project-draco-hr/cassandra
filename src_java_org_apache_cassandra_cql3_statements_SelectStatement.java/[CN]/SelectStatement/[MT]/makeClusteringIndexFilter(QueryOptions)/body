@@ -1,0 +1,15 @@
+{
+  if (parameters.isDistinct) {
+    return new ClusteringIndexSliceFilter(Slices.ALL,false);
+  }
+  if (restrictions.isColumnRange()) {
+    Slices slices=makeSlices(options);
+    if (slices == Slices.NONE && !selection.containsStaticColumns())     return null;
+    return new ClusteringIndexSliceFilter(slices,isReversed);
+  }
+ else {
+    NavigableSet<Clustering> clusterings=getRequestedRows(options);
+    if (clusterings.isEmpty() && !selection.containsStaticColumns())     return null;
+    return new ClusteringIndexNamesFilter(clusterings,isReversed);
+  }
+}

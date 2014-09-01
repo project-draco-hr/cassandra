@@ -1,0 +1,21 @@
+{
+  if (next != null)   return true;
+  while (super.hasNext()) {
+    Unfiltered unfiltered=super.next();
+    if (unfiltered.kind() == Unfiltered.Kind.ROW) {
+      Row row=filter == null ? (Row)unfiltered : filter.setTo((Row)unfiltered);
+      if (!row.isEmpty() && includeRow(row)) {
+        next=row;
+        return true;
+      }
+    }
+ else {
+      RangeTombstoneMarker marker=(RangeTombstoneMarker)unfiltered;
+      if (includeRangeTombstoneMarker(marker)) {
+        next=filterRangeTombstoneMarker(marker,isReverseOrder());
+        return true;
+      }
+    }
+  }
+  return false;
+}

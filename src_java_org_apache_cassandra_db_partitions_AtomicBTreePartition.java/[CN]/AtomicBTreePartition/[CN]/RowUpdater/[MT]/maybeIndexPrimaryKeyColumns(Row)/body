@@ -1,0 +1,14 @@
+{
+  long timestamp=row.primaryKeyLivenessInfo().timestamp();
+  int ttl=row.primaryKeyLivenessInfo().ttl();
+  for (  Cell cell : row) {
+    long cellTimestamp=cell.livenessInfo().timestamp();
+    if (cell.isLive(nowInSec)) {
+      if (cellTimestamp > timestamp) {
+        timestamp=cellTimestamp;
+        ttl=cell.livenessInfo().ttl();
+      }
+    }
+  }
+  indexer.maybeIndex(row.clustering(),timestamp,ttl,row.deletion());
+}

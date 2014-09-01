@@ -13,15 +13,15 @@
   }
    assertEquals(2,store.getSSTables().size());
   for (  SSTableReader sstable : store.getSSTables()) {
-    try (ISSTableScanner scanner=sstable.getScanner()){
+    try (ISSTableScanner scanner=sstable.getScanner((RateLimiter)null)){
       while (scanner.hasNext()) {
-        SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+        UnfilteredRowIterator row=scanner.next();
         if (sstable.isRepaired()) {
-          assertTrue(range.contains(row.getKey().getToken()));
+          assertTrue(range.contains(row.partitionKey().getToken()));
           repairedKeys++;
         }
  else {
-          assertFalse(range.contains(row.getKey().getToken()));
+          assertFalse(range.contains(row.partitionKey().getToken()));
           nonRepairedKeys++;
         }
       }

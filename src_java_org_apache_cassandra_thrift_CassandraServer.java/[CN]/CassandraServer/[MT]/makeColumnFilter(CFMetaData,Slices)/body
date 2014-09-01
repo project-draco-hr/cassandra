@@ -1,0 +1,12 @@
+{
+  PartitionColumns columns=metadata.partitionColumns();
+  if (metadata.isStaticCompactTable() && !columns.statics.isEmpty()) {
+    PartitionColumns.Builder builder=PartitionColumns.builder();
+    builder.addAll(columns.regulars);
+    for (    ColumnDefinition def : columns.statics) {
+      if (slices.selects(new SimpleClustering(def.name.bytes)))       builder.add(def);
+    }
+    columns=builder.build();
+  }
+  return ColumnFilter.selection(columns);
+}

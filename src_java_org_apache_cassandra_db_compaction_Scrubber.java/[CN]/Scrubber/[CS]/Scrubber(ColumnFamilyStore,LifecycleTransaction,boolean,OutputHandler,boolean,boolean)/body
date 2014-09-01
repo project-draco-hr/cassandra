@@ -5,11 +5,10 @@
   this.outputHandler=outputHandler;
   this.skipCorrupted=skipCorrupted;
   this.isOffline=isOffline;
-  this.rowIndexEntrySerializer=sstable.descriptor.version.getSSTableFormat().getIndexSerializer(sstable.metadata);
+  this.rowIndexEntrySerializer=sstable.descriptor.version.getSSTableFormat().getIndexSerializer(sstable.metadata,sstable.descriptor.version,sstable.header);
   List<SSTableReader> toScrub=Collections.singletonList(sstable);
   this.destination=cfs.directories.getWriteableLocationAsFile(cfs.getExpectedCompactedFileSize(toScrub,OperationType.SCRUB));
   if (destination == null)   throw new IOException("disk full");
-  this.controller=isOffline ? new ScrubController(cfs) : new CompactionController(cfs,Collections.singleton(sstable),CompactionManager.getDefaultGcBefore(cfs));
   this.isCommutative=cfs.metadata.isCounter();
   this.isIndex=cfs.isIndex();
   this.checkData=checkData && !this.isIndex;

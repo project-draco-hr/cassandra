@@ -1,12 +1,16 @@
 {
-  int limit=getLimit(options);
-  long now=System.currentTimeMillis();
-  Pageable command=getPageableCommand(options,limit,now);
+  int nowInSec=FBUtilities.nowInSeconds();
+  ReadQuery query=getQuery(options,nowInSec);
   int pageSize=getPageSize(options);
-  if (pageSize <= 0 || command == null || !QueryPagers.mayNeedPaging(command,pageSize)) {
-    List<Row> rows=command == null ? Collections.<Row>emptyList() : (command instanceof Pageable.ReadCommands ? readLocally(keyspace(),((Pageable.ReadCommands)command).commands) : ((RangeSliceCommand)command).executeLocally());
-    return processResults(rows,options,limit,now);
+  try (ReadOrderGroup orderGroup=query.startOrderGroup()){
+    if (pageSize <= 0 || query.limits().count() <= pageSize) {
+      try (PartitionIterator data=query.executeInternal(orderGroup)){
+        return processResults(data,options,nowInSec);
+      }
+     }
+ else {
+      QueryPager pager=query.getPager(options.getPagingState());
+      return execute(Pager.forInternalQuery(pager,orderGroup),options,pageSize,nowInSec);
+    }
   }
-  QueryPager pager=QueryPagers.localPager(command);
-  return execute(pager,options,limit,now,pageSize);
-}
+ }

@@ -3,15 +3,12 @@
   ColumnFamilyStore cfs=ks.getColumnFamilyStore(CFNAME);
   cfs.truncateBlocking();
   String key="rt_times";
-  Mutation rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
-  ColumnFamily cf=rm.addOrGet(CFNAME);
-  long timestamp=System.currentTimeMillis();
-  cf.delete(new DeletionInfo(b(1),b(2),cfs.getComparator(),1000,(int)(timestamp / 1000)));
-  rm.apply();
+  int nowInSec=FBUtilities.nowInSeconds();
+  new RowUpdateBuilder(cfs.metadata,nowInSec,1000L,key).addRangeTombstone(1,2).build().apply();
   cfs.forceBlockingFlush();
   SSTableReader sstable=cfs.getSSTables().iterator().next();
-  assertTimes(sstable.getSSTableMetadata(),1000,1000,(int)(timestamp / 1000));
+  assertTimes(sstable.getSSTableMetadata(),1000,1000,nowInSec);
   cfs.forceMajorCompaction();
   sstable=cfs.getSSTables().iterator().next();
-  assertTimes(sstable.getSSTableMetadata(),1000,1000,(int)(timestamp / 1000));
+  assertTimes(sstable.getSSTableMetadata(),1000,1000,nowInSec);
 }

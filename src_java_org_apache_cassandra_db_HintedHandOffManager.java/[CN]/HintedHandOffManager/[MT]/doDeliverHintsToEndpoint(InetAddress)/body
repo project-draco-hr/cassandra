@@ -4,53 +4,46 @@
   final ByteBuffer hostIdBytes=ByteBuffer.wrap(UUIDGen.decompose(hostId));
   DecoratedKey epkey=StorageService.getPartitioner().decorateKey(hostIdBytes);
   final AtomicInteger rowsReplayed=new AtomicInteger(0);
-  Composite startColumn=Composites.EMPTY;
-  int pageSize=calculatePageSize();
-  logger.debug("Using pageSize of {}",pageSize);
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB() / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
-  delivery:   while (true) {
-    long now=System.currentTimeMillis();
-    QueryFilter filter=QueryFilter.getSliceFilter(epkey,SystemKeyspace.HINTS,startColumn,Composites.EMPTY,false,pageSize,now);
-    ColumnFamily hintsPage=ColumnFamilyStore.removeDeleted(hintStore.getColumnFamily(filter),(int)(now / 1000));
-    if (pagingFinished(hintsPage,startColumn)) {
-      logger.info("Finished hinted handoff of {} rows to endpoint {}",rowsReplayed,endpoint);
-      break;
-    }
-    if (!FailureDetector.instance.isAlive(endpoint)) {
-      logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)",endpoint,rowsReplayed);
-      break;
-    }
+  int nowInSec=FBUtilities.nowInSeconds();
+  try (OpOrder.Group op=hintStore.readOrdering.start();RowIterator iter=UnfilteredRowIterators.filter(SinglePartitionReadCommand.fullPartitionRead(SystemKeyspace.Hints,nowInSec,epkey).queryMemtableAndDisk(hintStore,op),nowInSec)){
     List<WriteResponseHandler<Mutation>> responseHandlers=Lists.newArrayList();
-    for (    final Cell hint : hintsPage) {
+    while (iter.hasNext()) {
+      if (!FailureDetector.instance.isAlive(endpoint)) {
+        logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)",endpoint,rowsReplayed);
+        return;
+      }
       if (hintedHandOffPaused) {
         logger.debug("Hints delivery process is paused, aborting");
-        break delivery;
+        return;
       }
-      if (!hint.isLive())       continue;
-      startColumn=hint.name();
-      int version=Int32Type.instance.compose(hint.name().get(1));
-      DataInputStream in=new DataInputStream(ByteBufferUtil.inputStream(hint.value()));
+      if (responseHandlers.size() > MAX_SIMULTANEOUSLY_REPLAYED_HINTS && !checkDelivered(endpoint,responseHandlers,rowsReplayed))       return;
+      final Row hint=iter.next();
+      int version=Int32Type.instance.compose(hint.clustering().get(1));
+      Cell cell=hint.getCell(hintColumn);
+      final long timestamp=cell.livenessInfo().timestamp();
+      DataInputStream in=new DataInputStream(ByteBufferUtil.inputStream(cell.value()));
       Mutation mutation;
       try {
         mutation=Mutation.serializer.deserialize(in,version);
       }
  catch (      UnknownColumnFamilyException e) {
         logger.debug("Skipping delivery of hint for deleted table",e);
-        deleteHint(hostIdBytes,hint.name(),hint.timestamp());
+        deleteHint(hostIdBytes,hint.clustering(),timestamp);
         continue;
       }
 catch (      IOException e) {
         throw new AssertionError(e);
       }
       for (      UUID cfId : mutation.getColumnFamilyIds()) {
-        if (hint.timestamp() <= SystemKeyspace.getTruncatedAt(cfId)) {
+        if (timestamp <= SystemKeyspace.getTruncatedAt(cfId)) {
           logger.debug("Skipping delivery of hint for truncated table {}",cfId);
           mutation=mutation.without(cfId);
         }
       }
       if (mutation.isEmpty()) {
-        deleteHint(hostIdBytes,hint.name(),hint.timestamp());
+        deleteHint(hostIdBytes,hint.clustering(),timestamp);
         continue;
       }
       MessageOut<Mutation> message=mutation.createMessage();
@@ -58,7 +51,7 @@ catch (      IOException e) {
       Runnable callback=new Runnable(){
         public void run(){
           rowsReplayed.incrementAndGet();
-          deleteHint(hostIdBytes,hint.name(),hint.timestamp());
+          deleteHint(hostIdBytes,hint.clustering(),timestamp);
         }
       }
 ;
@@ -66,15 +59,6 @@ catch (      IOException e) {
       MessagingService.instance().sendRR(message,endpoint,responseHandler,false);
       responseHandlers.add(responseHandler);
     }
-    for (    WriteResponseHandler<Mutation> handler : responseHandlers) {
-      try {
-        handler.get();
-      }
- catch (      WriteTimeoutException|WriteFailureException e) {
-        logger.info("Failed replaying hints to {}; aborting ({} delivered), error : {}",endpoint,rowsReplayed,e.getMessage());
-        break delivery;
-      }
-    }
+    if (checkDelivered(endpoint,responseHandlers,rowsReplayed))     logger.info("Finished hinted handoff of {} rows to endpoint {}",rowsReplayed,endpoint);
   }
-  hintStore.forceBlockingFlush();
-}
+ }

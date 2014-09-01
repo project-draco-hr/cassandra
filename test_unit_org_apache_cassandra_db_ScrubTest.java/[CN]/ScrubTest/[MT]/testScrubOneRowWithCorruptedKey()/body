@@ -4,13 +4,10 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
   cfs.clearUnsafe();
-  List<Row> rows;
   fillCF(cfs,4);
-  rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(4,rows.size());
+  assertOrderedAll(cfs,4);
   SSTableReader sstable=cfs.getSSTables().iterator().next();
   overrideWithGarbage(sstable,0,2);
   CompactionManager.instance.performScrub(cfs,false,true);
-  rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(4,rows.size());
+  assertOrderedAll(cfs,4);
 }

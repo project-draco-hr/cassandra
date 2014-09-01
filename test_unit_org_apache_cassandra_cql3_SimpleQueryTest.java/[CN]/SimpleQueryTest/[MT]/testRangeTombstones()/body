@@ -1,0 +1,14 @@
+{
+  int N=100;
+  createTable("CREATE TABLE %s (k text, t1 int, t2 int, v text, PRIMARY KEY (k, t1, t2));");
+  for (int t1=0; t1 < 3; t1++)   for (int t2=0; t2 < N; t2++)   execute("INSERT INTO %s (k, t1, t2, v) values (?, ?, ?, ?)","key",t1,t2,"someSemiLargeTextForValue_" + t1 + "_"+ t2);
+  flush();
+  execute("DELETE FROM %s WHERE k=? AND t1=?","key",1);
+  flush();
+  Object[][] expected=new Object[2 * N][];
+  for (int t2=0; t2 < N; t2++) {
+    expected[t2]=row("key",0,t2,"someSemiLargeTextForValue_0_" + t2);
+    expected[N + t2]=row("key",2,t2,"someSemiLargeTextForValue_2_" + t2);
+  }
+  assertRows(execute("SELECT * FROM %s"),expected);
+}

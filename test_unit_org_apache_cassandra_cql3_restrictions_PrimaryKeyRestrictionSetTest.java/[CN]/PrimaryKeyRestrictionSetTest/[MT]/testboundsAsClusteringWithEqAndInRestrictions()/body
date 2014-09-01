@@ -1,0 +1,20 @@
+{
+  CFMetaData cfMetaData=newCFMetaData(2);
+  ByteBuffer value1=ByteBufferUtil.bytes(1);
+  ByteBuffer value2=ByteBufferUtil.bytes(2);
+  ByteBuffer value3=ByteBufferUtil.bytes(3);
+  Restriction eq=newSingleEq(cfMetaData,0,value1);
+  Restriction in=newSingleIN(cfMetaData,1,value1,value2,value3);
+  PrimaryKeyRestrictions restrictions=new PrimaryKeyRestrictionSet(cfMetaData.comparator,false);
+  restrictions=restrictions.mergeWith(eq).mergeWith(in);
+  SortedSet<Slice.Bound> bounds=restrictions.boundsAsClustering(Bound.START,QueryOptions.DEFAULT);
+  assertEquals(3,bounds.size());
+  assertStartBound(get(bounds,0),true,value1,value1);
+  assertStartBound(get(bounds,1),true,value1,value2);
+  assertStartBound(get(bounds,2),true,value1,value3);
+  bounds=restrictions.boundsAsClustering(Bound.END,QueryOptions.DEFAULT);
+  assertEquals(3,bounds.size());
+  assertEndBound(get(bounds,0),true,value1,value1);
+  assertEndBound(get(bounds,1),true,value1,value2);
+  assertEndBound(get(bounds,2),true,value1,value3);
+}

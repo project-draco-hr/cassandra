@@ -1,0 +1,15 @@
+{
+  try {
+    if (!deserializer.hasNext())     return endOfData();
+    Unfiltered unfiltered=deserializer.readNext();
+    if (metadata.isStaticCompactTable() && unfiltered.kind() == Unfiltered.Kind.ROW) {
+      Row row=(Row)unfiltered;
+      ColumnDefinition def=metadata.getColumnDefinition(LegacyLayout.encodeClustering(metadata,row.clustering()));
+      if (def != null && def.isStatic())       return computeNext();
+    }
+    return unfiltered;
+  }
+ catch (  IOException e) {
+    throw new IOError(e);
+  }
+}

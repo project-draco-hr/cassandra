@@ -1,0 +1,22 @@
+{
+  Set<PerRowSecondaryIndex> perRowIndexes=perRowIndexes();
+  Set<PerColumnSecondaryIndex> perColumnIndexes=perColumnIndexes();
+  if (!perRowIndexes.isEmpty()) {
+    Set<Class<? extends SecondaryIndex>> appliedRowLevelIndexes=new HashSet<>();
+    for (    PerRowSecondaryIndex index : perRowIndexes) {
+      if (appliedRowLevelIndexes.add(index.getClass()))       ((PerRowSecondaryIndex)index).index(partition.partitionKey().getKey(),partition);
+    }
+  }
+  if (!perColumnIndexes.isEmpty()) {
+    DecoratedKey key=partition.partitionKey();
+    if (!partition.staticRow().isEmpty()) {
+      for (      PerColumnSecondaryIndex index : perColumnIndexes)       index.indexRow(key,partition.staticRow(),opGroup,nowInSec);
+    }
+    try (RowIterator filtered=UnfilteredRowIterators.filter(partition,nowInSec)){
+      while (filtered.hasNext()) {
+        Row row=filtered.next();
+        for (        PerColumnSecondaryIndex index : perColumnIndexes)         index.indexRow(key,row,opGroup,nowInSec);
+      }
+    }
+   }
+}

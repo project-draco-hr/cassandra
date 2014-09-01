@@ -4,10 +4,11 @@
   try {
     String snapshotName=validator.desc.sessionId.toString();
     int gcBefore;
+    int nowInSec=FBUtilities.nowInSeconds();
     boolean isSnapshotValidation=cfs.snapshotExists(snapshotName);
     if (isSnapshotValidation) {
       sstables=cfs.getSnapshotSSTableReader(snapshotName);
-      gcBefore=cfs.gcBefore(cfs.getSnapshotCreationTime(snapshotName));
+      gcBefore=cfs.gcBefore((int)(cfs.getSnapshotCreationTime(snapshotName) / 1000));
     }
  else {
       StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(),cfs.name);
@@ -32,7 +33,7 @@
       sstableCandidates.release();
       prs.addSSTables(cfs.metadata.cfId,sstablesToValidate);
       if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;
- else       gcBefore=getDefaultGcBefore(cfs);
+ else       gcBefore=getDefaultGcBefore(cfs,nowInSec);
     }
     long numPartitions=0;
     for (    SSTableReader sstable : sstables) {
@@ -41,27 +42,22 @@
     int depth=numPartitions > 0 ? (int)Math.min(Math.floor(Math.log(numPartitions)),20) : 0;
     MerkleTree tree=new MerkleTree(cfs.partitioner,validator.desc.range,MerkleTree.RECOMMENDED_DEPTH,(int)Math.pow(2,depth));
     long start=System.nanoTime();
-    try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables,validator.desc.range)){
-      CompactionIterable ci=new ValidationCompactionIterable(cfs,scanners.scanners,gcBefore);
-      Iterator<AbstractCompactedRow> iter=ci.iterator();
-      metrics.beginCompaction(ci);
-      try {
-        validator.prepare(cfs,tree);
-        while (iter.hasNext()) {
-          if (ci.isStopRequested())           throw new CompactionInterruptedException(ci.getCompactionInfo());
-          AbstractCompactedRow row=iter.next();
-          validator.add(row);
+    try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables,validator.desc.range);ValidationCompactionController controller=new ValidationCompactionController(cfs,gcBefore);CompactionIterator ci=new ValidationCompactionIterator(scanners.scanners,controller,nowInSec,metrics)){
+      validator.prepare(cfs,tree);
+      while (ci.hasNext()) {
+        if (ci.isStopRequested())         throw new CompactionInterruptedException(ci.getCompactionInfo());
+        try (UnfilteredRowIterator partition=ci.next()){
+          validator.add(partition);
         }
-        validator.complete();
-      }
+       }
+      validator.complete();
+    }
   finally {
-        if (isSnapshotValidation) {
-          cfs.clearSnapshot(snapshotName);
-        }
-        metrics.finishCompaction(ci);
+      if (isSnapshotValidation) {
+        cfs.clearSnapshot(snapshotName);
       }
     }
-     if (logger.isDebugEnabled()) {
+    if (logger.isDebugEnabled()) {
       long duration=TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
       logger.debug("Validation finished in {} msec, depth {} for {} keys, serialized size {} bytes for {}",duration,depth,numPartitions,MerkleTree.serializer.serializedSize(tree,0),validator.desc);
     }

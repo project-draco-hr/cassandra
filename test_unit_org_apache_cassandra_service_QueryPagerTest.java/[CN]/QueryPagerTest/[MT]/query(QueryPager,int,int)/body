@@ -1,0 +1,17 @@
+{
+  StringBuilder sb=new StringBuilder();
+  List<FilteredPartition> partitionList=new ArrayList<>();
+  int rows=0;
+  try (ReadOrderGroup orderGroup=pager.startOrderGroup();PartitionIterator iterator=pager.fetchPageInternal(toQuery,orderGroup)){
+    while (iterator.hasNext()) {
+      try (RowIterator rowIter=iterator.next()){
+        FilteredPartition partition=FilteredPartition.create(rowIter);
+        sb.append(partition);
+        partitionList.add(partition);
+        rows+=partition.rowCount();
+      }
+     }
+  }
+   assertEquals(sb.toString(),expectedSize,rows);
+  return partitionList;
+}

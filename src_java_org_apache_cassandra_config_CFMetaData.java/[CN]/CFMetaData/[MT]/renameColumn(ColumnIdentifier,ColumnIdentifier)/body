@@ -2,7 +2,7 @@
   ColumnDefinition def=getColumnDefinition(from);
   if (def == null)   throw new InvalidRequestException(String.format("Cannot rename unknown column %s in keyspace %s",from,cfName));
   if (getColumnDefinition(to) != null)   throw new InvalidRequestException(String.format("Cannot rename column %s to %s in keyspace %s; another column of that name already exist",from,to,cfName));
-  if (def.isPartOfCellName()) {
+  if (def.isPartOfCellName(isCQLTable(),isSuper())) {
     throw new InvalidRequestException(String.format("Cannot rename non PRIMARY KEY part %s",from));
   }
  else   if (def.isIndexed()) {
@@ -10,5 +10,6 @@
   }
   ColumnDefinition newDef=def.withNewName(to);
   addOrReplaceColumnDefinition(newDef);
-  removeColumnDefinition(def);
+  if (def.isPartitionKey())   columnMetadata.remove(def.name.bytes);
+ else   removeColumnDefinition(def);
 }

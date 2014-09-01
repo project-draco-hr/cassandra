@@ -1,15 +1,7 @@
 {
-  Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Super3");
-  final int ROWS_PER_SSTABLE=10;
-  Set<DecoratedKey> inserted=new HashSet<DecoratedKey>();
-  for (int i=0; i < ROWS_PER_SSTABLE; i++) {
-    DecoratedKey key=Util.dk(String.valueOf(i));
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-    rm.add("Super3",CellNames.compositeDense(ByteBufferUtil.bytes("sc"),ByteBufferUtil.bytes(String.valueOf(i))),ByteBuffer.wrap(new byte[ROWS_PER_SSTABLE * 10 - i * 2]),i);
-    rm.applyUnsafe();
-    inserted.add(key);
-  }
-  store.forceBlockingFlush();
-  assertEquals(inserted.toString(),inserted.size(),Util.getRangeSlice(store).size());
+  String tableName=createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b, c))");
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?) USING TIMESTAMP ?",i,0,i,i,(long)i);
+  cfs.forceBlockingFlush();
+  assertEquals(10,execute("SELECT * FROM %s").size());
 }

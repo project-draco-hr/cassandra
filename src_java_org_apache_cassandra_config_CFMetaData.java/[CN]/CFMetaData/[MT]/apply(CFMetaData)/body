@@ -1,12 +1,15 @@
 {
   logger.debug("applying {} to {}",cfm,this);
   validateCompatility(cfm);
-  comparator=cfm.comparator;
+  partitionKeyColumns=cfm.partitionKeyColumns;
+  clusteringColumns=cfm.clusteringColumns;
+  boolean hasColumnChange=!partitionColumns.equals(cfm.partitionColumns);
+  partitionColumns=cfm.partitionColumns;
+  rebuild();
   comment=Strings.nullToEmpty(cfm.comment);
   readRepairChance=cfm.readRepairChance;
   dcLocalReadRepairChance=cfm.dcLocalReadRepairChance;
   gcGraceSeconds=cfm.gcGraceSeconds;
-  defaultValidator=cfm.defaultValidator;
   keyValidator=cfm.keyValidator;
   minCompactionThreshold=cfm.minCompactionThreshold;
   maxCompactionThreshold=cfm.maxCompactionThreshold;
@@ -18,20 +21,10 @@
   defaultTimeToLive=cfm.defaultTimeToLive;
   speculativeRetry=cfm.speculativeRetry;
   if (!cfm.droppedColumns.isEmpty())   droppedColumns=cfm.droppedColumns;
-  MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(columnMetadata,cfm.columnMetadata);
-  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnLeft().values())   removeColumnDefinition(cd);
-  for (  ColumnDefinition cd : columnDiff.entriesOnlyOnRight().values())   addColumnDefinition(cd);
-  for (  ByteBuffer name : columnDiff.entriesDiffering().keySet()) {
-    ColumnDefinition oldDef=columnMetadata.get(name);
-    ColumnDefinition def=cfm.columnMetadata.get(name);
-    addOrReplaceColumnDefinition(oldDef.apply(def));
-  }
   compactionStrategyClass=cfm.compactionStrategyClass;
   compactionStrategyOptions=cfm.compactionStrategyOptions;
   compressionParameters=cfm.compressionParameters;
   triggers=cfm.triggers;
-  isDense(cfm.isDense);
-  rebuild();
   logger.debug("application result is {}",this);
-  return !columnDiff.entriesOnlyOnLeft().isEmpty() || !columnDiff.entriesOnlyOnRight().isEmpty() || !columnDiff.entriesDiffering().isEmpty();
+  return hasColumnChange;
 }

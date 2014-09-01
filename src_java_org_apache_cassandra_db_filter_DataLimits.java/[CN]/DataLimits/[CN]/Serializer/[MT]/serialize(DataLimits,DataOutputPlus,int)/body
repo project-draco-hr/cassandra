@@ -1,0 +1,23 @@
+{
+  out.writeByte(limits.kind().ordinal());
+switch (limits.kind()) {
+case CQL_LIMIT:
+case CQL_PAGING_LIMIT:
+    CQLLimits cqlLimits=(CQLLimits)limits;
+  out.writeInt(cqlLimits.rowLimit);
+out.writeInt(cqlLimits.perPartitionLimit);
+out.writeBoolean(cqlLimits.isDistinct);
+if (limits.kind() == Kind.CQL_PAGING_LIMIT) {
+CQLPagingLimits pagingLimits=(CQLPagingLimits)cqlLimits;
+ByteBufferUtil.writeWithShortLength(pagingLimits.lastReturnedKey,out);
+out.writeInt(pagingLimits.lastReturnedKeyRemaining);
+}
+break;
+case THRIFT_LIMIT:
+case SUPER_COLUMN_COUNTING_LIMIT:
+ThriftLimits thriftLimits=(ThriftLimits)limits;
+out.writeInt(thriftLimits.partitionLimit);
+out.writeInt(thriftLimits.cellPerPartitionLimit);
+break;
+}
+}

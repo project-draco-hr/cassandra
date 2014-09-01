@@ -1,0 +1,43 @@
+{
+  int protocolVersion=options.getProtocolVersion();
+  ByteBuffer[] keyComponents=getComponents(cfm,partition.partitionKey());
+  Row staticRow=partition.staticRow().takeAlias();
+  if (!partition.hasNext()) {
+    if (!staticRow.isEmpty() && (!restrictions.usesSecondaryIndexing() || cfm.isStaticCompactTable()) && !restrictions.hasClusteringColumnsRestriction()) {
+      result.newRow(protocolVersion);
+      for (      ColumnDefinition def : selection.getColumns()) {
+switch (def.kind) {
+case PARTITION_KEY:
+          result.add(keyComponents[def.position()]);
+        break;
+case STATIC:
+      addValue(result,def,staticRow,nowInSec,protocolVersion);
+    break;
+default :
+  result.add((ByteBuffer)null);
+}
+}
+}
+return;
+}
+while (partition.hasNext()) {
+Row row=partition.next();
+result.newRow(protocolVersion);
+for (ColumnDefinition def : selection.getColumns()) {
+switch (def.kind) {
+case PARTITION_KEY:
+result.add(keyComponents[def.position()]);
+break;
+case CLUSTERING_COLUMN:
+result.add(row.clustering().get(def.position()));
+break;
+case REGULAR:
+addValue(result,def,row,nowInSec,protocolVersion);
+break;
+case STATIC:
+addValue(result,def,staticRow,nowInSec,protocolVersion);
+break;
+}
+}
+}
+}

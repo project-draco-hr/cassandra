@@ -1,0 +1,24 @@
+{
+  AtomicBTreePartition previous=partitions.get(update.partitionKey());
+  long initialSize=0;
+  if (previous == null) {
+    final DecoratedKey cloneKey=allocator.clone(update.partitionKey(),opGroup);
+    AtomicBTreePartition empty=new AtomicBTreePartition(cfs.metadata,cloneKey,allocator);
+    previous=partitions.putIfAbsent(cloneKey,empty);
+    if (previous == null) {
+      previous=empty;
+      int overhead=(int)(cloneKey.getToken().getHeapSize() + ROW_OVERHEAD_HEAP_SIZE);
+      allocator.onHeap().allocate(overhead,opGroup);
+      initialSize=8;
+    }
+ else {
+      allocator.reclaimer().reclaimImmediately(cloneKey);
+    }
+  }
+  long[] pair=previous.addAllWithSizeDelta(update,opGroup,indexer);
+  liveDataSize.addAndGet(initialSize + pair[0]);
+  columnsCollector.update(update.columns());
+  statsCollector.update(update.stats());
+  currentOperations.addAndGet(update.operationCount());
+  return pair[1];
+}

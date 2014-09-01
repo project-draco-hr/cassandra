@@ -1,11 +1,10 @@
 {
-  ColumnFamily counterCF=createCounterCF();
   ByteArrayOutputStream byteArrayOStream1=new ByteArrayOutputStream();
   EncodedDataOutputStream odos=new EncodedDataOutputStream(byteArrayOStream1);
-  ColumnFamily.serializer.serialize(counterCF,odos,version);
+  UnfilteredRowIteratorSerializer.serializer.serialize(createCounterTable(),odos,version,1);
   ByteArrayInputStream byteArrayIStream1=new ByteArrayInputStream(byteArrayOStream1.toByteArray());
   EncodedDataInputStream odis=new EncodedDataInputStream(new DataInputStream(byteArrayIStream1));
-  ColumnFamily cf=ColumnFamily.serializer.deserialize(odis,version);
-  Assert.assertEquals(cf,counterCF);
-  Assert.assertEquals(byteArrayOStream1.size(),(int)ColumnFamily.serializer.serializedSize(cf,TypeSizes.VINT,version));
+  UnfilteredRowIterator partition=UnfilteredRowIteratorSerializer.serializer.deserialize(odis,version,SerializationHelper.Flag.LOCAL);
+  Assert.assertTrue(Iterators.elementsEqual(partition,createCounterTable()));
+  Assert.assertEquals(byteArrayOStream1.size(),(int)UnfilteredRowIteratorSerializer.serializer.serializedSize(createCounterTable(),version,1,TypeSizes.VINT));
 }

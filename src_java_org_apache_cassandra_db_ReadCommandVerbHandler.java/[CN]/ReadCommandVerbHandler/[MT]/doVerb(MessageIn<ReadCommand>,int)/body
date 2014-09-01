@@ -1,0 +1,13 @@
+{
+  if (StorageService.instance.isBootstrapMode()) {
+    throw new RuntimeException("Cannot service reads while bootstrapping!");
+  }
+  ReadCommand command=message.payload;
+  ReadResponse response;
+  try (ReadOrderGroup opGroup=command.startOrderGroup();UnfilteredPartitionIterator iterator=command.executeLocally(opGroup)){
+    response=command.createResponse(iterator);
+  }
+   MessageOut<ReadResponse> reply=new MessageOut<>(MessagingService.Verb.REQUEST_RESPONSE,response,ReadResponse.serializer);
+  Tracing.trace("Enqueuing response to {}",message.from);
+  MessagingService.instance().sendReply(reply,id,message.from);
+}

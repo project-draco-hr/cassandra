@@ -1,14 +1,6 @@
 {
-  if (!await(command.getTimeout(),TimeUnit.MILLISECONDS)) {
-    ReadTimeoutException ex=new ReadTimeoutException(consistencyLevel,received,blockfor,resolver.isDataPresent());
-    Tracing.trace("Read timeout: {}",ex.toString());
-    if (logger.isDebugEnabled())     logger.debug("Read timeout: {}",ex.toString());
-    throw ex;
-  }
-  if (blockfor + failures > endpoints.size()) {
-    ReadFailureException ex=new ReadFailureException(consistencyLevel,received,failures,blockfor,resolver.isDataPresent());
-    if (logger.isDebugEnabled())     logger.debug("Read failure: {}",ex.toString());
-    throw ex;
-  }
-  return blockfor == 1 ? resolver.getData() : resolver.resolve();
+  awaitResults();
+  PartitionIterator result=blockfor == 1 ? resolver.getData() : resolver.resolve();
+  if (logger.isDebugEnabled())   logger.debug("Read: {} ms.",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+  return result;
 }

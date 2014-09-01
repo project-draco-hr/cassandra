@@ -1,0 +1,17 @@
+{
+  while (iterator.hasNext()) {
+    Unfiltered next=iterator.next();
+    if (next.kind() == Unfiltered.Kind.ROW) {
+      row.setTo((Row)next);
+      if (!row.isEmpty())       return row;
+    }
+ else {
+      RangeTombstoneMarker marker=(RangeTombstoneMarker)next;
+      long deletion=partitionLevelDeletion().markedForDeleteAt();
+      if (marker.isOpen(isReverseOrder()))       deletion=Math.max(deletion,marker.openDeletionTime(isReverseOrder()).markedForDeleteAt());
+      row.setDeletionTimestamp(deletion);
+      return marker;
+    }
+  }
+  return endOfData();
+}
