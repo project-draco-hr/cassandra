@@ -7,6 +7,8 @@
   SelectStatement stmt=new SelectStatement(cfDef,boundNames.size(),parameters,selection,prepareLimit(boundNames));
   boolean hasQueriableIndex=false;
   boolean hasQueriableClusteringColumnIndex=false;
+  boolean hasSingleColumnRelations=false;
+  boolean hasMultiColumnRelations=false;
   for (  Relation relation : whereClause) {
     if (relation.isMultiColumn()) {
       MultiColumnRelation rel=(MultiColumnRelation)relation;
@@ -15,7 +17,9 @@
         boolean[] queriable=processRelationEntity(stmt,relation,entity,cfDef);
         hasQueriableIndex|=queriable[0];
         hasQueriableClusteringColumnIndex|=queriable[1];
-        names.add(cfDef.get(entity));
+        Name name=cfDef.get(entity);
+        names.add(name);
+        hasMultiColumnRelations|=Kind.COLUMN_ALIAS.equals(name.kind);
       }
       updateRestrictionsForRelation(stmt,names,rel,boundNames);
     }
@@ -24,9 +28,12 @@
       boolean[] queriable=processRelationEntity(stmt,relation,rel.getEntity(),cfDef);
       hasQueriableIndex|=queriable[0];
       hasQueriableClusteringColumnIndex|=queriable[1];
-      updateRestrictionsForRelation(stmt,cfDef.get(rel.getEntity()),rel,boundNames);
+      Name name=cfDef.get(rel.getEntity());
+      hasSingleColumnRelations|=Kind.COLUMN_ALIAS.equals(name.kind);
+      updateRestrictionsForRelation(stmt,name,rel,boundNames);
     }
   }
+  if (hasSingleColumnRelations && hasMultiColumnRelations)   throw new InvalidRequestException("Mixing single column relations and multi column relations on clustering columns is not allowed");
   processPartitionKeyRestrictions(stmt,cfDef,hasQueriableIndex);
   if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.removeAll(cfDef.partitionKeys());
   if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
