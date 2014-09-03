@@ -1,0 +1,29 @@
+{
+  Class<?> jReturnType=javaReturnType();
+  Class<?>[] paramTypes=javaParamTypes();
+  StringBuilder code=new StringBuilder();
+  code.append("public static ").append(jReturnType.getName()).append(' ').append(name.name).append('(');
+  for (int i=0; i < paramTypes.length; i++) {
+    if (i > 0)     code.append(", ");
+    code.append(paramTypes[i].getName()).append(' ').append(argNames.get(i));
+  }
+  code.append(") { ");
+  code.append(body);
+  code.append('}');
+  ClassPool classPool=ClassPool.getDefault();
+  CtClass cc=classPool.makeClass("org.apache.cassandra.cql3.udf.gen.C" + javaIdentifierPart(name.toString()) + '_'+ clsIdgen.incrementAndGet());
+  try {
+    cc.addMethod(CtNewMethod.make(code.toString(),cc));
+    Class<?> clazz=cc.toClass();
+    return clazz.getMethod(name.name,paramTypes);
+  }
+ catch (  LinkageError e) {
+    throw new InvalidRequestException("Could not compile function '" + name + "' from Java source: "+ e.getMessage());
+  }
+catch (  CannotCompileException e) {
+    throw new InvalidRequestException("Could not compile function '" + name + "' from Java source: "+ e.getReason());
+  }
+catch (  NoSuchMethodException e) {
+    throw new InvalidRequestException("Could not build function '" + name + "' from Java source");
+  }
+}

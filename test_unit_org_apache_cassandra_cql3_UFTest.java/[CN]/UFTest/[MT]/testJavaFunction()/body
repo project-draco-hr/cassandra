@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, val double)");
+  String functionBody="\n" + "  // parameter val is of type java.lang.Double\n" + "  /* return type is of type java.lang.Double */\n"+ "  if (val == null) {\n"+ "    return null;\n"+ "  }\n"+ "  double v = Math.sin( val.doubleValue() );\n"+ "  return Double.valueOf(v);\n";
+  String cql="CREATE OR REPLACE FUNCTION jft(val double) RETURNS double LANGUAGE JAVA\n" + "AS '" + functionBody + "';";
+  execute(cql);
+  assertRows(execute("SELECT language, body FROM system.schema_functions WHERE namespace='' AND name='jft'"),row("java",functionBody));
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",3,3d);
+  assertRows(execute("SELECT key, val, jft(val) FROM %s"),row(1,1d,Math.sin(1d)),row(2,2d,Math.sin(2d)),row(3,3d,Math.sin(3d)));
+}

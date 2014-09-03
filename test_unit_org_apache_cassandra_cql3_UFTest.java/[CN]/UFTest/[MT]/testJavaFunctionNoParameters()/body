@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, val double)");
+  String functionBody="\n  return Long.valueOf(1L);\n";
+  String cql="CREATE OR REPLACE FUNCTION jfnpt() RETURNS bigint LANGUAGE JAVA\n" + "AS '" + functionBody + "';";
+  execute(cql);
+  assertRows(execute("SELECT language, body FROM system.schema_functions WHERE namespace='' AND name='jfnpt'"),row("java",functionBody));
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",3,3d);
+  assertRows(execute("SELECT key, val, jfnpt() FROM %s"),row(1,1d,1L),row(2,2d,1L),row(3,3d,1L));
+}

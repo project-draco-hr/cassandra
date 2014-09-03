@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, val double)");
+  String functionBody="\n" + "  throw new RuntimeException(\"oh no!\");\n";
+  String cql="CREATE OR REPLACE FUNCTION foo::jrtef(val double) RETURNS double LANGUAGE JAVA\n" + "AS '" + functionBody + "';";
+  execute(cql);
+  assertRows(execute("SELECT language, body FROM system.schema_functions WHERE namespace='foo' AND name='jrtef'"),row("java",functionBody));
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",3,3d);
+  assertInvalid("SELECT key, val, foo::jrtef(val) FROM %s");
+}
