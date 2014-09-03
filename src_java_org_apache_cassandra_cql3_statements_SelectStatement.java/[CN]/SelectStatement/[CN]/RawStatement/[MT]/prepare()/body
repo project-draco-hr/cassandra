@@ -6,6 +6,8 @@
   SelectStatement stmt=new SelectStatement(cfm,boundNames.size(),parameters,selection,prepareLimit(boundNames));
   boolean hasQueriableIndex=false;
   boolean hasQueriableClusteringColumnIndex=false;
+  boolean hasSingleColumnRelations=false;
+  boolean hasMultiColumnRelations=false;
   for (  Relation relation : whereClause) {
     if (relation.isMultiColumn()) {
       MultiColumnRelation rel=(MultiColumnRelation)relation;
@@ -16,6 +18,7 @@
         hasQueriableIndex|=queriable[0];
         hasQueriableClusteringColumnIndex|=queriable[1];
         names.add(def);
+        hasMultiColumnRelations|=ColumnDefinition.Kind.CLUSTERING_COLUMN.equals(def.kind);
       }
       updateRestrictionsForRelation(stmt,names,rel,boundNames);
     }
@@ -26,9 +29,11 @@
       boolean[] queriable=processRelationEntity(stmt,relation,entity,def);
       hasQueriableIndex|=queriable[0];
       hasQueriableClusteringColumnIndex|=queriable[1];
+      hasSingleColumnRelations|=ColumnDefinition.Kind.CLUSTERING_COLUMN.equals(def.kind);
       updateRestrictionsForRelation(stmt,def,rel,boundNames);
     }
   }
+  if (hasSingleColumnRelations && hasMultiColumnRelations)   throw new InvalidRequestException("Mixing single column relations and multi column relations on clustering columns is not allowed");
   processPartitionKeyRestrictions(stmt,hasQueriableIndex,cfm);
   if (!stmt.usesSecondaryIndexing)   stmt.restrictedColumns.removeAll(cfm.partitionKeyColumns());
   if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
