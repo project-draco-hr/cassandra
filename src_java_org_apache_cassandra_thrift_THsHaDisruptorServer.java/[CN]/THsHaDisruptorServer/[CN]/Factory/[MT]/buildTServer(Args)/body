@@ -8,7 +8,8 @@
  catch (  TTransportException e) {
     throw new RuntimeException(String.format("Unable to create thrift socket to %s:%s",addr.getAddress(),addr.getPort()),e);
   }
+  ThreadPoolExecutor invoker=new JMXEnabledThreadPoolExecutor(DatabaseDescriptor.getRpcMinThreads(),DatabaseDescriptor.getRpcMaxThreads(),60L,TimeUnit.SECONDS,new SynchronousQueue<Runnable>(),new NamedThreadFactory("RPC-Thread"),"RPC-THREAD-POOL");
   com.thinkaurelius.thrift.util.TBinaryProtocol.Factory protocolFactory=new com.thinkaurelius.thrift.util.TBinaryProtocol.Factory(true,true);
-  TDisruptorServer.Args serverArgs=new TDisruptorServer.Args(serverTransport).useHeapBasedAllocation(true).inputTransportFactory(args.inTransportFactory).outputTransportFactory(args.outTransportFactory).inputProtocolFactory(protocolFactory).outputProtocolFactory(protocolFactory).processor(args.processor).maxFrameSizeInBytes(DatabaseDescriptor.getThriftFramedTransportSize()).alwaysReallocateBuffers(true);
+  TDisruptorServer.Args serverArgs=new TDisruptorServer.Args(serverTransport).useHeapBasedAllocation(true).inputTransportFactory(args.inTransportFactory).outputTransportFactory(args.outTransportFactory).inputProtocolFactory(protocolFactory).outputProtocolFactory(protocolFactory).processor(args.processor).maxFrameSizeInBytes(DatabaseDescriptor.getThriftFramedTransportSize()).invocationExecutor(invoker).alwaysReallocateBuffers(true);
   return new THsHaDisruptorServer(serverArgs);
 }
