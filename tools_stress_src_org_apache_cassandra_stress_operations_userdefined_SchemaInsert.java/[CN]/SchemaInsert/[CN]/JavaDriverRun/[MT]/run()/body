@@ -1,30 +1,27 @@
 {
   Partition.RowIterator[] iterators=new Partition.RowIterator[partitions.size()];
-  for (int i=0; i < iterators.length; i++)   iterators[i]=partitions.get(i).iterator(perVisit.next());
+  for (int i=0; i < iterators.length; i++)   iterators[i]=partitions.get(i).iterator(selectChance.next(),true);
   List<BoundStatement> stmts=new ArrayList<>();
   partitionCount=partitions.size();
-  boolean done;
-  do {
-    done=true;
-    stmts.clear();
-    for (    Partition.RowIterator iterator : iterators) {
-      if (iterator.done())       continue;
-      for (      Row row : iterator.batch(perBatch.next()))       stmts.add(bindRow(row));
-      done&=iterator.done();
-    }
-    rowCount+=stmts.size();
+  for (  Partition.RowIterator iterator : iterators) {
+    if (iterator.done())     continue;
+    for (    Row row : iterator.next())     stmts.add(bindRow(row));
+  }
+  rowCount+=stmts.size();
+  for (int j=0; j < stmts.size(); j+=65535) {
+    List<BoundStatement> substmts=stmts.subList(j,Math.min(stmts.size(),j + 65535));
     Statement stmt;
     if (stmts.size() == 1) {
-      stmt=stmts.get(0);
+      stmt=substmts.get(0);
     }
  else {
       BatchStatement batch=new BatchStatement(batchType);
       batch.setConsistencyLevel(JavaDriverClient.from(cl));
-      batch.addAll(stmts);
+      batch.addAll(substmts);
       stmt=batch;
     }
     validate(client.getSession().execute(stmt));
   }
- while (!done);
+  for (  Partition.RowIterator iterator : iterators)   iterator.markWriteFinished();
   return true;
 }

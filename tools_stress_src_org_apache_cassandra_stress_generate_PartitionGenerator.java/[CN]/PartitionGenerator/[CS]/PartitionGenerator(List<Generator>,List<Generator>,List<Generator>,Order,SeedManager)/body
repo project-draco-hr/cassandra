@@ -1,0 +1,22 @@
+{
+  this.partitionKey=partitionKey;
+  this.clusteringComponents=clusteringComponents;
+  this.valueComponents=valueComponents;
+  this.order=order;
+  this.seeds=seeds;
+  this.clusteringChildAverages=new int[clusteringComponents.size()];
+  for (int i=clusteringChildAverages.length - 1; i >= 0; i--)   clusteringChildAverages[i]=(int)(i < (clusteringChildAverages.length - 1) ? clusteringComponents.get(i + 1).clusteringDistribution.average() * clusteringChildAverages[i + 1] : 1);
+  double maxRowCount=1d;
+  double minRowCount=1d;
+  for (  Generator component : clusteringComponents) {
+    maxRowCount*=component.clusteringDistribution.maxValue();
+    minRowCount*=component.clusteringDistribution.minValue();
+  }
+  this.maxRowCount=maxRowCount;
+  this.minRowCount=minRowCount;
+  this.indexMap=new HashMap<>();
+  int i=0;
+  for (  Generator generator : partitionKey)   indexMap.put(generator.name,--i);
+  i=0;
+  for (  Generator generator : Iterables.concat(clusteringComponents,valueComponents))   indexMap.put(generator.name,i++);
+}

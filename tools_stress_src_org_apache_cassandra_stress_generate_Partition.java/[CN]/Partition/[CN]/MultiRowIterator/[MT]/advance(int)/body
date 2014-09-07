@@ -1,0 +1,29 @@
+{
+  clusteringComponents[depth].poll();
+  position[depth]++;
+  while (true) {
+    if (clusteringComponents[depth].isEmpty()) {
+      if (depth == 0)       return;
+      depth--;
+      clusteringComponents[depth].poll();
+      position[depth]++;
+      continue;
+    }
+    if (depth == 0 && !returnedOne && clusteringComponents[0].size() == 1)     forceReturnOne=true;
+    double thischance=useChance * chancemodifier[depth];
+    if (forceReturnOne || thischance > 0.999f || thischance >= random.nextDouble()) {
+      row.row[depth]=clusteringComponents[depth].peek();
+      depth++;
+      if (depth == clusteringComponents.length)       break;
+      if (useChance < 1d) {
+        rollmodifier[depth]=rollmodifier[depth - 1] / Math.min(1d,thischance);
+        chancemodifier[depth]=generator.clusteringChildAverages[depth] * rollmodifier[depth];
+      }
+      position[depth]=0;
+      fill(depth);
+      continue;
+    }
+    clusteringComponents[depth].poll();
+    position[depth]++;
+  }
+}

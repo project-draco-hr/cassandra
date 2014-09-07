@@ -1,0 +1,23 @@
+{
+  Generator writes, reads;
+  if (settings.generate.sequence != null) {
+    long[] seq=settings.generate.sequence;
+    if (settings.generate.readlookback != null) {
+      LookbackableWriteGenerator series=new LookbackableWriteGenerator(seq[0],seq[1],settings.generate.wrap,settings.generate.readlookback.get());
+      writes=series;
+      reads=series.reads;
+    }
+ else {
+      writes=reads=new SeriesGenerator(seq[0],seq[1],settings.generate.wrap);
+    }
+  }
+ else {
+    writes=reads=new RandomGenerator(settings.generate.distribution.get());
+  }
+  this.visits=settings.insert.visits.get();
+  this.writes=writes;
+  this.reads=reads;
+  this.sample=DistributionInverted.invert(settings.insert.revisit.get());
+  if (sample.maxValue() > Integer.MAX_VALUE || sample.minValue() < 0)   throw new IllegalArgumentException();
+  this.sampleFrom=new DynamicList<>((int)sample.maxValue());
+}
