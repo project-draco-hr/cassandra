@@ -1,0 +1,20 @@
+{
+  String defaultLimit=command.count <= 0 ? "1000000" : Long.toString(command.count);
+  String[] params=clArgs.remove("-pop");
+  if (params == null) {
+switch (command.type) {
+case WRITE:
+case COUNTER_WRITE:
+      return new SettingsPopulation(new SequentialOptions(defaultLimit));
+default :
+    return new SettingsPopulation(new DistributionOptions(defaultLimit));
+}
+}
+GroupedOptions options=GroupedOptions.select(params,new SequentialOptions(defaultLimit),new DistributionOptions(defaultLimit));
+if (options == null) {
+printHelp();
+System.out.println("Invalid -pop options provided, see output for valid options");
+System.exit(1);
+}
+return options instanceof SequentialOptions ? new SettingsPopulation((SequentialOptions)options) : new SettingsPopulation((DistributionOptions)options);
+}

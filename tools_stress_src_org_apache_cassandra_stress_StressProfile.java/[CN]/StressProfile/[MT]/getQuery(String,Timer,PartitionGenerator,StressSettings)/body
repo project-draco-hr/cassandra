@@ -7,12 +7,15 @@ synchronized (this) {
           ThriftClient tclient=settings.getThriftClient();
           Map<String,PreparedStatement> stmts=new HashMap<>();
           Map<String,Integer> tids=new HashMap<>();
-          for (          Map.Entry<String,String> e : queries.entrySet()) {
-            stmts.put(e.getKey().toLowerCase(),jclient.prepare(e.getValue()));
-            tids.put(e.getKey().toLowerCase(),tclient.prepare_cql3_query(e.getValue(),Compression.NONE));
+          Map<String,SchemaQuery.ArgSelect> args=new HashMap<>();
+          for (          Map.Entry<String,StressYaml.QueryDef> e : queries.entrySet()) {
+            stmts.put(e.getKey().toLowerCase(),jclient.prepare(e.getValue().cql));
+            tids.put(e.getKey().toLowerCase(),tclient.prepare_cql3_query(e.getValue().cql,Compression.NONE));
+            args.put(e.getKey().toLowerCase(),e.getValue().fields == null ? SchemaQuery.ArgSelect.MULTIROW : SchemaQuery.ArgSelect.valueOf(e.getValue().fields.toUpperCase()));
           }
           thriftQueryIds=tids;
           queryStatements=stmts;
+          argSelects=args;
         }
  catch (        TException e) {
           throw new RuntimeException(e);
@@ -21,5 +24,6 @@ synchronized (this) {
     }
   }
   name=name.toLowerCase();
-  return new SchemaQuery(timer,generator,settings,thriftQueryIds.get(name),queryStatements.get(name),ThriftConversion.fromThrift(settings.command.consistencyLevel),ValidationType.NOT_FAIL);
+  if (!queryStatements.containsKey(name))   throw new IllegalArgumentException("No query defined with name " + name);
+  return new SchemaQuery(timer,generator,settings,thriftQueryIds.get(name),queryStatements.get(name),ThriftConversion.fromThrift(settings.command.consistencyLevel),ValidationType.NOT_FAIL,argSelects.get(name));
 }
