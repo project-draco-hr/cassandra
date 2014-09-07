@@ -18,32 +18,20 @@ default :
 throw new IllegalStateException();
 }
 int maxBatchSize=operations.maxBatchSize();
-Work work=workQueue.poll();
 Partition[] partitions=new Partition[maxBatchSize];
-int workDone=0;
-while (work != null) {
+while (true) {
 Operation op=operations.next();
 op.generator.reset();
-int batchSize=Math.max(1,(int)op.partitionCount.next());
+int batchSize=workManager.takePermits(Math.max(1,(int)op.partitionCount.next()));
+if (batchSize < 0) break;
+if (rateLimiter != null) rateLimiter.acquire(batchSize);
 int partitionCount=0;
 while (partitionCount < batchSize) {
-int count=Math.min((work.count - workDone),batchSize - partitionCount);
-for (int i=0; i < count; i++) {
-long seed=seedGenerator.next(work.offset + workDone + i);
-partitions[partitionCount + i]=op.generator.generate(seed);
+Partition p=op.generator.generate(op);
+if (p == null) break;
+partitions[partitionCount++]=p;
 }
-workDone+=count;
-partitionCount+=count;
-if (workDone == work.count) {
-workDone=0;
-work=workQueue.poll();
-if (work == null) {
-if (partitionCount == 0) return;
-break;
-}
-if (rateLimiter != null) rateLimiter.acquire(work.count);
-}
-}
+if (partitionCount == 0) break;
 op.setPartitions(Arrays.asList(partitions).subList(0,partitionCount));
 try {
 switch (settings.mode.api) {
@@ -67,7 +55,7 @@ System.exit(-1);
 }
 e.printStackTrace(output);
 success=false;
-workQueue.stop();
+workManager.stop();
 metrics.cancel();
 return;
 }

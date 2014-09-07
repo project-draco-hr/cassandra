@@ -1,0 +1,30 @@
+{
+  if (this.useChance < 1d) {
+    Arrays.fill(rollmodifier,1d);
+    Arrays.fill(chancemodifier,1d);
+  }
+  generator.clusteringComponents.get(0).setSeed(idseed);
+  int[] position=seed.position;
+  int firstComponentCount=(int)generator.clusteringComponents.get(0).clusteringDistribution.next();
+  int expectedRowCount;
+  if (!isWrite && position != null) {
+    expectedRowCount=0;
+    for (int i=0; i < position.length; i++) {
+      expectedRowCount+=position[i] * generator.clusteringChildAverages[i];
+      limit[i]=position[i];
+    }
+  }
+ else {
+    expectedRowCount=firstComponentCount * generator.clusteringChildAverages[0];
+    if (isWrite)     batches*=seed.visits;
+    Arrays.fill(limit,Integer.MAX_VALUE);
+  }
+  batchSize=Math.max(1,expectedRowCount / batches);
+  if (Double.isNaN(useChance))   useChance=Math.max(0d,Math.min(1d,targetCount / (double)expectedRowCount));
+  this.useChance=useChance;
+  this.returnedOne=false;
+  for (  Queue<?> q : clusteringComponents)   q.clear();
+  clusteringSeeds[0]=idseed;
+  fill(clusteringComponents[0],firstComponentCount,generator.clusteringComponents.get(0));
+  seek(isWrite ? position : null);
+}

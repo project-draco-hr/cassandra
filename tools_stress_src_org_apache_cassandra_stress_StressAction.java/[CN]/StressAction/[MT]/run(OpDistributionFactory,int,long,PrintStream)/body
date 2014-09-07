@@ -1,14 +1,14 @@
 {
   output.println(String.format("Running %s with %d threads %s",operations.desc(),threadCount,opCount > 0 ? " for " + opCount + " iterations" : "until stderr of mean < " + settings.command.targetUncertainty));
-  final WorkQueue workQueue;
-  if (opCount < 0)   workQueue=new ContinuousWorkQueue(50);
- else   workQueue=FixedWorkQueue.build(opCount);
+  final WorkManager workManager;
+  if (opCount < 0)   workManager=new ContinuousWorkManager();
+ else   workManager=new FixedWorkManager(opCount);
   RateLimiter rateLimiter=null;
   if (settings.rate.opRateTargetPerSecond > 0)   rateLimiter=RateLimiter.create(settings.rate.opRateTargetPerSecond);
   final StressMetrics metrics=new StressMetrics(output,settings.log.intervalMillis);
   final CountDownLatch done=new CountDownLatch(threadCount);
   final Consumer[] consumers=new Consumer[threadCount];
-  for (int i=0; i < threadCount; i++)   consumers[i]=new Consumer(operations,done,workQueue,metrics,rateLimiter);
+  for (int i=0; i < threadCount; i++)   consumers[i]=new Consumer(operations,done,workManager,metrics,rateLimiter);
   for (int i=0; i < threadCount; i++)   consumers[i].start();
   metrics.start();
   if (opCount <= 0) {
@@ -17,7 +17,7 @@
     }
  catch (    InterruptedException e) {
     }
-    workQueue.stop();
+    workManager.stop();
   }
   try {
     done.await();
