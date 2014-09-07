@@ -1,0 +1,11 @@
+{
+  ColumnFamilyStore store=prepareColumnFamilyStore();
+  Collection<SSTableReader> sstables=store.getUnrepairedSSTables();
+  assertEquals(store.getSSTables().size(),sstables.size());
+  Range<Token> range=new Range<Token>(new BytesToken("-10".getBytes()),new BytesToken("-1".getBytes()));
+  List<Range<Token>> ranges=Arrays.asList(range);
+  SSTableReader.acquireReferences(sstables);
+  CompactionManager.instance.performAnticompaction(store,ranges,sstables,0);
+  assertThat(store.getSSTables().size(),is(1));
+  assertThat(Iterables.get(store.getSSTables(),0).isRepaired(),is(false));
+}

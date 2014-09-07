@@ -1,15 +1,5 @@
 {
-  Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF);
-  store.disableAutoCompaction();
-  long timestamp=System.currentTimeMillis();
-  for (int i=0; i < 10; i++) {
-    DecoratedKey key=Util.dk(Integer.toString(i));
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-    for (int j=0; j < 10; j++)     rm.add("Standard1",Util.cellname(Integer.toString(j)),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,0);
-    rm.apply();
-  }
-  store.forceBlockingFlush();
+  ColumnFamilyStore store=prepareColumnFamilyStore();
   Collection<SSTableReader> sstables=store.getUnrepairedSSTables();
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("4".getBytes()));
