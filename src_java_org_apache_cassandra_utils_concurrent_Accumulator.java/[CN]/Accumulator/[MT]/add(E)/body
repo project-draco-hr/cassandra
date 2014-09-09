@@ -1,0 +1,22 @@
+{
+  int insertPos;
+  while (true) {
+    insertPos=nextIndex;
+    if (insertPos >= values.length)     throw new IllegalStateException();
+    if (nextIndexUpdater.compareAndSet(this,insertPos,insertPos + 1))     break;
+  }
+  values[insertPos]=item;
+  boolean volatileWrite=false;
+  while (true) {
+    int cur=presentCount;
+    if (cur != insertPos && (cur == values.length || values[cur] == null)) {
+      if (!volatileWrite && cur < insertPos && !presentCountUpdater.compareAndSet(this,cur,cur)) {
+        volatileWrite=true;
+        continue;
+      }
+      return;
+    }
+    presentCountUpdater.compareAndSet(this,cur,cur + 1);
+    volatileWrite=true;
+  }
+}
