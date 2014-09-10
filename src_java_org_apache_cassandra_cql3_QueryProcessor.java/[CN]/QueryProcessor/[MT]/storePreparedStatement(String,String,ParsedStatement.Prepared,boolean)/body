@@ -2,16 +2,21 @@
   String toHash=keyspace == null ? queryString : keyspace + queryString;
   long statementSize=measure(prepared.statement);
   if (statementSize > MAX_CACHE_PREPARED_MEMORY)   throw new InvalidRequestException(String.format("Prepared statement of size %d bytes is larger than allowed maximum of %d bytes.",statementSize,MAX_CACHE_PREPARED_MEMORY));
-  if (forThrift) {
-    int statementId=toHash.hashCode();
-    thriftPreparedStatements.put(statementId,prepared.statement);
-    logger.trace(String.format("Stored prepared statement #%d with %d bind markers",statementId,prepared.statement.getBoundTerms()));
-    return ResultMessage.Prepared.forThrift(statementId,prepared.boundNames);
-  }
+  try {
+    if (forThrift) {
+      int statementId=toHash.hashCode();
+      thriftPreparedStatements.put(statementId,prepared.statement);
+      logger.trace("Stored prepared statement #{} with {} bind markers",statementId,prepared.statement.getBoundTerms());
+      return ResultMessage.Prepared.forThrift(statementId,prepared.boundNames);
+    }
  else {
-    MD5Digest statementId=MD5Digest.compute(toHash);
-    preparedStatements.put(statementId,prepared);
-    logger.trace(String.format("Stored prepared statement %s with %d bind markers",statementId,prepared.statement.getBoundTerms()));
-    return new ResultMessage.Prepared(statementId,prepared);
+      MD5Digest statementId=MD5Digest.compute(toHash);
+      preparedStatements.put(statementId,prepared);
+      logger.trace("Stored prepared statement #{} with {} bind markers",statementId,prepared.statement.getBoundTerms());
+      return new ResultMessage.Prepared(statementId,prepared);
+    }
+  }
+  finally {
+    metrics.activePreparedStatements.inc();
   }
 }
