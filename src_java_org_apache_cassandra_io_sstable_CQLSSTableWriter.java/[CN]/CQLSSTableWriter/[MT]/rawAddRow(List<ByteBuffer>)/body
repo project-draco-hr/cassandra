@@ -4,9 +4,14 @@
   ColumnNameBuilder clusteringPrefix=insert.createClusteringPrefixBuilder(values);
   long now=System.currentTimeMillis() * 1000;
   UpdateParameters params=new UpdateParameters(insert.cfm,values,insert.getTimestamp(now,values),insert.getTimeToLive(values),Collections.<ByteBuffer,ColumnGroupMap>emptyMap());
-  for (  ByteBuffer key : keys) {
-    if (writer.currentKey() == null || !key.equals(writer.currentKey().key))     writer.newRow(key);
-    insert.addUpdateForKey(writer.currentColumnFamily(),key,clusteringPrefix,params);
+  try {
+    for (    ByteBuffer key : keys) {
+      if (writer.currentKey() == null || !key.equals(writer.currentKey().key))       writer.newRow(key);
+      insert.addUpdateForKey(writer.currentColumnFamily(),key,clusteringPrefix,params);
+    }
+    return this;
   }
-  return this;
+ catch (  BufferedWriter.SyncException e) {
+    throw (IOException)e.getCause();
+  }
 }
