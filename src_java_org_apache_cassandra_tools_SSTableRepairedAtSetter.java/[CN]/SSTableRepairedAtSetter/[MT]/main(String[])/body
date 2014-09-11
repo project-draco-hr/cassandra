@@ -15,11 +15,16 @@
   boolean setIsRepaired=args[1].equals("--is-repaired");
   String fname=args[2];
   Descriptor descriptor=Descriptor.fromFilename(fname);
-  if (setIsRepaired) {
-    FileTime f=Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
-    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,f.toMillis());
+  if (descriptor.version.hasRepairedAt) {
+    if (setIsRepaired) {
+      FileTime f=Files.getLastModifiedTime(new File(descriptor.filenameFor(Component.DATA)).toPath());
+      descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,f.toMillis());
+    }
+ else {
+      descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,ActiveRepairService.UNREPAIRED_SSTABLE);
+    }
   }
  else {
-    descriptor.getMetadataSerializer().mutateRepairedAt(descriptor,ActiveRepairService.UNREPAIRED_SSTABLE);
+    out.println("SSTable " + fname + " does not have repaired property, run upgradesstables");
   }
 }
