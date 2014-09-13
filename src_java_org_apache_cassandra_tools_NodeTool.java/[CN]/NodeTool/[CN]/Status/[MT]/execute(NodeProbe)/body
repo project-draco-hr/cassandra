@@ -8,6 +8,7 @@
   unreachableNodes=probe.getUnreachableNodes();
   hostIDMap=probe.getHostIdMap();
   epSnitchInfo=probe.getEndpointSnitchInfoProxy();
+  StringBuffer errors=new StringBuffer();
   Map<InetAddress,Float> ownerships;
   try {
     ownerships=probe.effectiveOwnership(keyspace);
@@ -15,7 +16,11 @@
   }
  catch (  IllegalStateException e) {
     ownerships=probe.getOwnership();
-    System.out.printf("Note: Ownership information does not include topology; for complete information, specify a keyspace%n");
+    errors.append("Note: " + e.getMessage() + "%n");
+  }
+catch (  IllegalArgumentException ex) {
+    System.out.printf("%nError: " + ex.getMessage() + "%n");
+    return;
   }
   Map<String,SetHostStat> dcs=getOwnershipByDc(probe,resolveIp,tokensToEndpoints,ownerships);
   if (dcs.values().size() < tokensToEndpoints.keySet().size())   isTokenPerNode=false;
@@ -36,4 +41,5 @@
       printNode(endpoint.getHostAddress(),owns,tokens,hasEffectiveOwns,isTokenPerNode);
     }
   }
+  System.out.printf("%n" + errors.toString());
 }
