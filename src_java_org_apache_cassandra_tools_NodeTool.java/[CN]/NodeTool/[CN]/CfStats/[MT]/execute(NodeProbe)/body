@@ -43,9 +43,9 @@
     double keyspaceReadLatency=keyspaceReadCount > 0 ? keyspaceTotalReadTime / keyspaceReadCount / 1000 : Double.NaN;
     double keyspaceWriteLatency=keyspaceWriteCount > 0 ? keyspaceTotalWriteTime / keyspaceWriteCount / 1000 : Double.NaN;
     System.out.println("\tRead Count: " + keyspaceReadCount);
-    System.out.println("\tRead Latency: " + format("%s",keyspaceReadLatency) + " ms.");
+    System.out.println("\tRead Latency: " + String.format("%s",keyspaceReadLatency) + " ms.");
     System.out.println("\tWrite Count: " + keyspaceWriteCount);
-    System.out.println("\tWrite Latency: " + format("%s",keyspaceWriteLatency) + " ms.");
+    System.out.println("\tWrite Latency: " + String.format("%s",keyspaceWriteLatency) + " ms.");
     System.out.println("\tPending Flushes: " + keyspacePendingFlushes);
     for (    ColumnFamilyStoreMBean cfstore : columnFamilies) {
       String cfName=cfstore.getColumnFamilyName();
@@ -65,12 +65,12 @@
  else           System.out.println("]");
         }
       }
-      System.out.println("\t\tSpace used (live), bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveDiskSpaceUsed"));
-      System.out.println("\t\tSpace used (total), bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"TotalDiskSpaceUsed"));
-      System.out.println("\t\tSpace used by snapshots (total), bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"SnapshotsSize"));
+      System.out.println("\t\tSpace used (live): " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveDiskSpaceUsed"),humanReadable));
+      System.out.println("\t\tSpace used (total): " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"TotalDiskSpaceUsed"),humanReadable));
+      System.out.println("\t\tSpace used by snapshots (total): " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"SnapshotsSize"),humanReadable));
       System.out.println("\t\tSSTable Compression Ratio: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"CompressionRatio"));
       System.out.println("\t\tMemtable cell count: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableColumnsCount"));
-      System.out.println("\t\tMemtable data size, bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableLiveDataSize"));
+      System.out.println("\t\tMemtable data size: " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableLiveDataSize"),humanReadable));
       System.out.println("\t\tMemtable switch count: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableSwitchCount"));
       System.out.println("\t\tLocal read count: " + ((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadLatency")).getCount());
       double localReadLatency=((JmxReporter.TimerMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"ReadLatency")).getMean() / 1000;
@@ -82,11 +82,11 @@
       System.out.printf("\t\tLocal write latency: %01.3f ms%n",localWLatency);
       System.out.println("\t\tPending flushes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"PendingFlushes"));
       System.out.println("\t\tBloom filter false positives: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterFalsePositives"));
-      System.out.println("\t\tBloom filter false ratio: " + format("%01.5f",probe.getColumnFamilyMetric(keyspaceName,cfName,"RecentBloomFilterFalseRatio")));
-      System.out.println("\t\tBloom filter space used, bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterDiskSpaceUsed"));
-      System.out.println("\t\tCompacted partition minimum bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MinRowSize"));
-      System.out.println("\t\tCompacted partition maximum bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MaxRowSize"));
-      System.out.println("\t\tCompacted partition mean bytes: " + probe.getColumnFamilyMetric(keyspaceName,cfName,"MeanRowSize"));
+      System.out.printf("\t\tBloom filter false ratio: %s%n",String.format("%01.5f",probe.getColumnFamilyMetric(keyspaceName,cfName,"RecentBloomFilterFalseRatio")));
+      System.out.println("\t\tBloom filter space used: " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterDiskSpaceUsed"),humanReadable));
+      System.out.println("\t\tCompacted partition minimum bytes: " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"MinRowSize"),humanReadable));
+      System.out.println("\t\tCompacted partition maximum bytes: " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"MaxRowSize"),humanReadable));
+      System.out.println("\t\tCompacted partition mean bytes: " + format((Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"MeanRowSize"),humanReadable));
       JmxReporter.HistogramMBean histogram=(JmxReporter.HistogramMBean)probe.getColumnFamilyMetric(keyspaceName,cfName,"LiveScannedHistogram");
       System.out.println("\t\tAverage live cells per slice (last five minutes): " + histogram.getMean());
       System.out.println("\t\tMaximum live cells per slice (last five minutes): " + histogram.getMax());
