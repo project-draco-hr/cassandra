@@ -1,6 +1,18 @@
 {
-  if (Schema.instance.getNonSystemKeyspaces().size() <= 0)   throw new IllegalStateException("Couldn't find any Non System Keyspaces to infer replication topology");
-  if (keyspace == null && !hasSameReplication(Schema.instance.getNonSystemKeyspaces()))   throw new IllegalStateException("Non System keyspaces doesnt have the same topology");
+  if (keyspace != null) {
+    Keyspace keyspaceInstance=Schema.instance.getKeyspaceInstance(keyspace);
+    if (keyspaceInstance == null)     throw new IllegalArgumentException("The keyspace " + keyspace + ", does not exist");
+    if (keyspaceInstance.getReplicationStrategy() instanceof LocalStrategy)     throw new IllegalStateException("Ownership values for keyspaces with LocalStrategy are meaningless");
+  }
+ else {
+    List<String> nonSystemKeyspaces=Schema.instance.getNonSystemKeyspaces();
+    int specialTableCount=0;
+    if (nonSystemKeyspaces.contains("system_traces")) {
+      specialTableCount+=1;
+    }
+    if (nonSystemKeyspaces.size() > specialTableCount)     throw new IllegalStateException("Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless");
+    keyspace="system_traces";
+  }
   TokenMetadata metadata=tokenMetadata.cloneOnlyTokenMap();
   if (keyspace == null)   keyspace=Schema.instance.getNonSystemKeyspaces().get(0);
   Collection<Collection<InetAddress>> endpointsGroupedByDc=new ArrayList<>();
