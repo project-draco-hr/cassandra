@@ -1,0 +1,15 @@
+{
+  final List<Future<GcStats>> futures=new ArrayList<>();
+  for (  final NodeProbe probe : probes) {
+    futures.add(TPE.submit(new Callable<GcStats>(){
+      public GcStats call() throws Exception {
+        final double[] stats=probe.getAndResetGCStats();
+        return new GcStats(stats[5],stats[4],stats[1],stats[2],stats[3]);
+      }
+    }
+));
+  }
+  List<GcStats> results=new ArrayList<>();
+  for (  Future<GcStats> future : futures)   results.add(future.get());
+  return GcStats.aggregate(results);
+}
