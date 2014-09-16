@@ -1,0 +1,24 @@
+{
+  final RowIndexEntry simple=new RowIndexEntry(123);
+  DataOutputBuffer buffer=new DataOutputBuffer();
+  RowIndexEntry.serializer.serialize(simple,buffer);
+  Assert.assertEquals(buffer.size(),simple.serializedSize());
+  buffer=new DataOutputBuffer();
+  ColumnFamily cf=ArrayBackedSortedColumns.factory.create("Keyspace1","Standard1");
+  ColumnIndex columnIndex=new ColumnIndex.Builder(cf,ByteBufferUtil.bytes("a"),new DataOutputBuffer()){
+{
+      int idx=0, size=0;
+      Column column;
+      do {
+        column=new Column(ByteBufferUtil.bytes("c" + idx++),ByteBufferUtil.bytes("v"),FBUtilities.timestampMicros());
+        size+=column.serializedSize(TypeSizes.NATIVE);
+        add(column);
+      }
+ while (size < DatabaseDescriptor.getColumnIndexSize() * 3);
+    }
+  }
+.build();
+  RowIndexEntry withIndex=RowIndexEntry.create(0xdeadbeef,DeletionTime.LIVE,columnIndex);
+  RowIndexEntry.serializer.serialize(withIndex,buffer);
+  Assert.assertEquals(buffer.size(),withIndex.serializedSize());
+}
