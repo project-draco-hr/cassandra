@@ -3,48 +3,51 @@
   Callable<JmxCollector.GcStats> gcStatsCollector;
   totalGcStats=new JmxCollector.GcStats(0);
   try {
-    gcStatsCollector=new JmxCollector(settings.node.nodes,settings.port.jmxPort);
+    gcStatsCollector=new JmxCollector(settings.node.resolveAllPermitted(settings),settings.port.jmxPort);
   }
  catch (  Throwable t) {
-    t.printStackTrace();
-    System.err.println("Failed to connect over JMX; not collecting these stats");
-    gcStatsCollector=new Callable<JmxCollector.GcStats>(){
-      public JmxCollector.GcStats call() throws Exception {
-        return totalGcStats;
-      }
+switch (settings.log.level) {
+case VERBOSE:
+      t.printStackTrace();
+  }
+  System.err.println("Failed to connect over JMX; not collecting these stats");
+  gcStatsCollector=new Callable<JmxCollector.GcStats>(){
+    public JmxCollector.GcStats call() throws Exception {
+      return totalGcStats;
     }
+  }
 ;
-  }
-  this.gcStatsCollector=gcStatsCollector;
-  printHeader("",output);
-  thread=tf.newThread(new Runnable(){
-    @Override public void run(){
-      timing.start();
-      try {
-        while (!stop) {
-          try {
-            long sleep=timing.getHistory().endMillis() + logIntervalMillis - System.currentTimeMillis();
-            if (sleep < logIntervalMillis >>> 3)             Thread.sleep(logIntervalMillis);
- else             Thread.sleep(sleep);
-            update();
-          }
- catch (          InterruptedException e) {
-            break;
-          }
+}
+this.gcStatsCollector=gcStatsCollector;
+printHeader("",output);
+thread=tf.newThread(new Runnable(){
+  @Override public void run(){
+    timing.start();
+    try {
+      while (!stop) {
+        try {
+          long sleep=timing.getHistory().endMillis() + logIntervalMillis - System.currentTimeMillis();
+          if (sleep < logIntervalMillis >>> 3)           Thread.sleep(logIntervalMillis);
+ else           Thread.sleep(sleep);
+          update();
         }
-        update();
+ catch (        InterruptedException e) {
+          break;
+        }
       }
- catch (      InterruptedException e) {
-      }
-catch (      Exception e) {
-        cancel();
-        e.printStackTrace(StressMetrics.this.output);
-      }
+      update();
+    }
+ catch (    InterruptedException e) {
+    }
+catch (    Exception e) {
+      cancel();
+      e.printStackTrace(StressMetrics.this.output);
+    }
  finally {
-        rowRateUncertainty.wakeAll();
-        stopped.countDown();
-      }
+      rowRateUncertainty.wakeAll();
+      stopped.countDown();
     }
   }
+}
 );
 }
