@@ -6,14 +6,15 @@
     return;
   }
   long start=System.nanoTime();
-  HashMap<CacheKey.PathInfo,SequentialWriter> writers=new HashMap<>();
+  HashMap<UUID,SequentialWriter> writers=new HashMap<>();
   try {
     for (    K key : keys) {
-      CacheKey.PathInfo path=key.getPathInfo();
-      SequentialWriter writer=writers.get(path);
+      UUID cfId=key.getCFId();
+      if (!Schema.instance.hasCF(key.getCFId()))       continue;
+      SequentialWriter writer=writers.get(cfId);
       if (writer == null) {
-        writer=tempCacheFile(path);
-        writers.put(path,writer);
+        writer=tempCacheFile(cfId);
+        writers.put(cfId,writer);
       }
       try {
         cacheLoader.serialize(key,writer.stream);
@@ -27,11 +28,11 @@
   finally {
     for (    SequentialWriter writer : writers.values())     FileUtils.closeQuietly(writer);
   }
-  for (  Map.Entry<CacheKey.PathInfo,SequentialWriter> info : writers.entrySet()) {
-    CacheKey.PathInfo path=info.getKey();
-    SequentialWriter writer=info.getValue();
+  for (  Map.Entry<UUID,SequentialWriter> entry : writers.entrySet()) {
+    UUID cfId=entry.getKey();
+    SequentialWriter writer=entry.getValue();
     File tmpFile=new File(writer.getPath());
-    File cacheFile=getCachePath(path.keyspace,path.columnFamily,path.cfId,CURRENT_VERSION);
+    File cacheFile=getCachePath(cfId,CURRENT_VERSION);
     cacheFile.delete();
     if (!tmpFile.renameTo(cacheFile))     logger.error("Unable to rename {} to {}",tmpFile,cacheFile);
   }
