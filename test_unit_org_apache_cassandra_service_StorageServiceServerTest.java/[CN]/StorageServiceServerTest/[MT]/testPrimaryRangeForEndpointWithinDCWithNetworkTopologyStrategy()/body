@@ -1,0 +1,30 @@
+{
+  TokenMetadata metadata=StorageService.instance.getTokenMetadata();
+  metadata.clearUnsafe();
+  metadata.updateNormalToken(new StringToken("A"),InetAddress.getByName("127.0.0.1"));
+  metadata.updateNormalToken(new StringToken("C"),InetAddress.getByName("127.0.0.2"));
+  metadata.updateNormalToken(new StringToken("B"),InetAddress.getByName("127.0.0.4"));
+  metadata.updateNormalToken(new StringToken("D"),InetAddress.getByName("127.0.0.5"));
+  Map<String,String> configOptions=new HashMap<>();
+  configOptions.put("DC1","1");
+  configOptions.put("DC2","1");
+  Keyspace.clear("Keyspace1");
+  KSMetaData meta=KSMetaData.newKeyspace("Keyspace1","NetworkTopologyStrategy",configOptions,false);
+  Schema.instance.setKeyspaceDefinition(meta);
+  Collection<Range<Token>> primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.1"));
+  assertEquals(2,primaryRanges.size());
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("D"),new StringToken("A"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("C"),new StringToken("D"))));
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.2"));
+  assertEquals(2,primaryRanges.size());
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("A"),new StringToken("B"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("B"),new StringToken("C"))));
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.4"));
+  assertEquals(2,primaryRanges.size());
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("D"),new StringToken("A"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("A"),new StringToken("B"))));
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.5"));
+  assertEquals(2,primaryRanges.size());
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("B"),new StringToken("C"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("C"),new StringToken("D"))));
+}
