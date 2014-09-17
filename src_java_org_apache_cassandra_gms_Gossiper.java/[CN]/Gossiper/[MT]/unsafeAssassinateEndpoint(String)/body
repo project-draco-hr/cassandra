@@ -1,30 +1,4 @@
 {
-  InetAddress endpoint=InetAddress.getByName(address);
-  EndpointState epState=endpointStateMap.get(endpoint);
-  Collection<Token> tokens=null;
-  logger.warn("Assassinating {} via gossip",endpoint);
-  if (epState == null) {
-    epState=new EndpointState(new HeartBeatState((int)((System.currentTimeMillis() + 60000) / 1000),9999));
-  }
- else {
-    try {
-      tokens=StorageService.instance.getTokenMetadata().getTokens(endpoint);
-    }
- catch (    Throwable th) {
-      logger.warn("Unable to calculate tokens for {}.  Will use a random one",address);
-      tokens=Collections.singletonList(StorageService.getPartitioner().getRandomToken());
-    }
-    int generation=epState.getHeartBeatState().getGeneration();
-    logger.info("Sleeping for {}ms to ensure {} does not change",StorageService.RING_DELAY,endpoint);
-    Uninterruptibles.sleepUninterruptibly(StorageService.RING_DELAY,TimeUnit.MILLISECONDS);
-    EndpointState newState=endpointStateMap.get(endpoint);
-    if (newState == null)     logger.warn("Endpoint {} disappeared while trying to assassinate, continuing anyway",endpoint);
- else     if (newState.getHeartBeatState().getGeneration() != generation)     throw new RuntimeException("Endpoint " + endpoint + " generation changed while trying to remove it");
-    epState.updateTimestamp();
-    epState.getHeartBeatState().forceNewerGenerationUnsafe();
-  }
-  epState.addApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.left(tokens,computeExpireTime()));
-  handleMajorStateChange(endpoint,epState);
-  Uninterruptibles.sleepUninterruptibly(intervalInMillis * 4,TimeUnit.MILLISECONDS);
-  logger.warn("Finished assassinating {}",endpoint);
+  logger.warn("Gossiper.unsafeAssassinateEndpoint is deprecated and will be removed in the next release; use assassinateEndpoint instead");
+  assassinateEndpoint(address);
 }
