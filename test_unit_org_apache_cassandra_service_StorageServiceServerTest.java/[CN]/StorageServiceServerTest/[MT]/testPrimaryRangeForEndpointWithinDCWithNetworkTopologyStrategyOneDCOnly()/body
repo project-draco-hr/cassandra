@@ -1,0 +1,25 @@
+{
+  TokenMetadata metadata=StorageService.instance.getTokenMetadata();
+  metadata.clearUnsafe();
+  metadata.updateNormalToken(new StringToken("A"),InetAddress.getByName("127.0.0.1"));
+  metadata.updateNormalToken(new StringToken("C"),InetAddress.getByName("127.0.0.2"));
+  metadata.updateNormalToken(new StringToken("B"),InetAddress.getByName("127.0.0.4"));
+  metadata.updateNormalToken(new StringToken("D"),InetAddress.getByName("127.0.0.5"));
+  Map<String,String> configOptions=new HashMap<>();
+  configOptions.put("DC2","2");
+  Keyspace.clear("Keyspace1");
+  KSMetaData meta=KSMetaData.newKeyspace("Keyspace1","NetworkTopologyStrategy",configOptions,false);
+  Schema.instance.setKeyspaceDefinition(meta);
+  Collection<Range<Token>> primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.1"));
+  assertTrue(primaryRanges.isEmpty());
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.2"));
+  assertTrue(primaryRanges.isEmpty());
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.4"));
+  assertTrue(primaryRanges.size() == 2);
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("D"),new StringToken("A"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("A"),new StringToken("B"))));
+  primaryRanges=StorageService.instance.getPrimaryRangeForEndpointWithinDC(meta.name,InetAddress.getByName("127.0.0.5"));
+  assertTrue(primaryRanges.size() == 2);
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("C"),new StringToken("D"))));
+  assertTrue(primaryRanges.contains(new Range<Token>(new StringToken("B"),new StringToken("C"))));
+}

@@ -1,7 +1,12 @@
 {
-  if (primaryRange && (dataCenters != null || hosts != null)) {
-    throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
+  Collection<Range<Token>> ranges;
+  if (primaryRange) {
+    if (dataCenters == null && hosts == null)     ranges=getPrimaryRanges(keyspace);
+ else     if (dataCenters != null && dataCenters.size() == 1 && dataCenters.contains(DatabaseDescriptor.getLocalDataCenter()))     ranges=getPrimaryRangesWithinDC(keyspace);
+ else     throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
   }
-  Collection<Range<Token>> ranges=primaryRange ? getLocalPrimaryRanges(keyspace) : getLocalRanges(keyspace);
+ else {
+    ranges=getLocalRanges(keyspace);
+  }
   return forceRepairAsync(keyspace,isSequential,dataCenters,hosts,ranges,fullRepair,columnFamilies);
 }
