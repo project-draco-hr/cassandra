@@ -1,2 +1,31 @@
 {
+  CBuilder builder=type.builder();
+  if (!defs.isEmpty()) {
+    Restriction firstRestriction=restrictions[0];
+    if (firstRestriction != null && firstRestriction.isMultiColumn()) {
+      if (firstRestriction.isSlice())       return buildMultiColumnSliceBound(bound,defs,(MultiColumnRestriction.Slice)firstRestriction,isReversed,builder,options);
+ else       if (firstRestriction.isIN())       return buildMultiColumnInBound(bound,defs,(MultiColumnRestriction.IN)firstRestriction,isReversed,builder,type,options);
+ else       return buildMultiColumnEQBound(bound,defs,(MultiColumnRestriction.EQ)firstRestriction,isReversed,builder,options);
+    }
+  }
+  CompositesBuilder compositeBuilder=new CompositesBuilder(builder,isReversed ? type.reverseComparator() : type);
+  Bound eocBound=isReversed ? Bound.reverse(bound) : bound;
+  for (Iterator<ColumnDefinition> iter=defs.iterator(); iter.hasNext(); ) {
+    ColumnDefinition def=iter.next();
+    Bound b=isReversed == isReversedType(def) ? bound : Bound.reverse(bound);
+    Restriction r=restrictions[def.position()];
+    if (isNullRestriction(r,b)) {
+      EOC eoc=!compositeBuilder.isEmpty() && eocBound == Bound.END ? EOC.END : EOC.NONE;
+      return compositeBuilder.buildWithEOC(eoc);
+    }
+    if (r.isSlice()) {
+      compositeBuilder.addElementToAll(getSliceValue(r,b,options));
+      Relation.Type relType=((Restriction.Slice)r).getRelation(eocBound,b);
+      return compositeBuilder.buildWithEOC(eocForRelation(relType));
+    }
+    compositeBuilder.addEachElementToAll(r.values(options));
+    if (compositeBuilder.containsNull())     throw new InvalidRequestException(String.format("Invalid null clustering key part %s",def.name));
+  }
+  EOC eoc=eocBound == Bound.END && compositeBuilder.hasRemaining() ? EOC.END : EOC.NONE;
+  return compositeBuilder.buildWithEOC(eoc);
 }
