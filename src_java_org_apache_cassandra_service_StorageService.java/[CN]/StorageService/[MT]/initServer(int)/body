@@ -72,8 +72,10 @@
     Collection<Token> tokens=SystemKeyspace.getSavedTokens();
     if (!tokens.isEmpty()) {
       tokenMetadata.updateNormalTokens(tokens,FBUtilities.getBroadcastAddress());
-      Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS,valueFactory.tokens(tokens));
-      Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.hibernate(true));
+      List<Pair<ApplicationState,VersionedValue>> states=new ArrayList<Pair<ApplicationState,VersionedValue>>();
+      states.add(Pair.create(ApplicationState.TOKENS,valueFactory.tokens(tokens)));
+      states.add(Pair.create(ApplicationState.STATUS,valueFactory.hibernate(true)));
+      Gossiper.instance.addLocalApplicationStates(states);
     }
     logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
   }

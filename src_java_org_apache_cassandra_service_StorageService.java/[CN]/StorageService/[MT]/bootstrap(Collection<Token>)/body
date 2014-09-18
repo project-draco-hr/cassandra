@@ -2,8 +2,10 @@
   isBootstrapMode=true;
   SystemKeyspace.updateTokens(tokens);
   if (!DatabaseDescriptor.isReplacing()) {
-    Gossiper.instance.addLocalApplicationState(ApplicationState.TOKENS,valueFactory.tokens(tokens));
-    Gossiper.instance.addLocalApplicationState(ApplicationState.STATUS,valueFactory.bootstrapping(tokens));
+    List<Pair<ApplicationState,VersionedValue>> states=new ArrayList<Pair<ApplicationState,VersionedValue>>();
+    states.add(Pair.create(ApplicationState.TOKENS,valueFactory.tokens(tokens)));
+    states.add(Pair.create(ApplicationState.STATUS,valueFactory.bootstrapping(tokens)));
+    Gossiper.instance.addLocalApplicationStates(states);
     setMode(Mode.JOINING,"sleeping " + RING_DELAY + " ms for pending range setup",true);
     Uninterruptibles.sleepUninterruptibly(RING_DELAY,TimeUnit.MILLISECONDS);
   }
