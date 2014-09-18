@@ -2,10 +2,12 @@
   if (DatabaseDescriptor.getAuthorizer() instanceof AllowAllAuthorizer)   return null;
   int validityPeriod=DatabaseDescriptor.getPermissionsValidity();
   if (validityPeriod <= 0)   return null;
-  return CacheBuilder.newBuilder().expireAfterWrite(validityPeriod,TimeUnit.MILLISECONDS).build(new CacheLoader<Pair<AuthenticatedUser,IResource>,Set<Permission>>(){
+  LoadingCache<Pair<AuthenticatedUser,IResource>,Set<Permission>> newCache=CacheBuilder.newBuilder().expireAfterWrite(validityPeriod,TimeUnit.MILLISECONDS).build(new CacheLoader<Pair<AuthenticatedUser,IResource>,Set<Permission>>(){
     public Set<Permission> load(    Pair<AuthenticatedUser,IResource> userResource){
       return DatabaseDescriptor.getAuthorizer().authorize(userResource.left,userResource.right);
     }
   }
 );
+  if (oldCache != null)   newCache.putAll(oldCache.asMap());
+  return newCache;
 }
