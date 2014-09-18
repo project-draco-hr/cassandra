@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s.minmaxtsrow (a int, b int, c text, PRIMARY KEY (a, b))");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore("minmaxtsrow");
+  execute("INSERT INTO %s.minmaxtsrow (a,b,c) VALUES (1,1,'1') using timestamp 10000");
+  execute("DELETE FROM %s.minmaxtsrow USING TIMESTAMP 9999 WHERE a = 1");
+  cfs.forceBlockingFlush();
+  SSTableMetadata metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(10000,metadata.maxTimestamp);
+  assertEquals(Integer.MAX_VALUE,metadata.maxLocalDeletionTime,5);
+  cfs.forceMajorCompaction();
+  metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(10000,metadata.maxTimestamp);
+  assertEquals(Integer.MAX_VALUE,metadata.maxLocalDeletionTime,5);
+}

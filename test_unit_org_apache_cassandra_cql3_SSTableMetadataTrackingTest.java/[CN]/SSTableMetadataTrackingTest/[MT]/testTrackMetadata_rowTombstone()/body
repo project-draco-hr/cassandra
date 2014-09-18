@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s.rowtombstone (a int, b int, c text, PRIMARY KEY (a, b))");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore("rowtombstone");
+  execute("DELETE FROM %s.rowtombstone USING TIMESTAMP 9999 WHERE a = 1");
+  cfs.forceBlockingFlush();
+  assertEquals(1,cfs.getSSTables().size());
+  SSTableMetadata metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(9999,metadata.maxTimestamp);
+  assertEquals(System.currentTimeMillis() / 1000,metadata.maxLocalDeletionTime,5);
+  cfs.forceMajorCompaction();
+  SSTableMetadata metadata2=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(metadata.maxLocalDeletionTime,metadata2.maxLocalDeletionTime);
+  assertEquals(metadata.minTimestamp,metadata2.minTimestamp);
+  assertEquals(metadata.maxTimestamp,metadata2.maxTimestamp);
+}

@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s.basecheck (a int, b int, c text, PRIMARY KEY (a, b))");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore("basecheck");
+  execute("INSERT INTO %s.basecheck (a,b,c) VALUES (1,1,'1') using timestamp 9999");
+  cfs.forceBlockingFlush();
+  SSTableMetadata metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(Integer.MAX_VALUE,metadata.maxLocalDeletionTime);
+  cfs.forceMajorCompaction();
+  metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(Integer.MAX_VALUE,metadata.maxLocalDeletionTime);
+}

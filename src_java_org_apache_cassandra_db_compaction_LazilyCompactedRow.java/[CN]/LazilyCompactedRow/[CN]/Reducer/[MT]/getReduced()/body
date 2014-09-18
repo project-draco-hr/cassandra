@@ -8,8 +8,9 @@
     }
  else {
       tombstones.update(t.getLocalDeletionTime());
-      minTimestampSeen=Math.min(minTimestampSeen,t.minTimestamp());
-      maxTimestampSeen=Math.max(maxTimestampSeen,t.maxTimestamp());
+      minTimestampTracker.update(t.minTimestamp());
+      maxTimestampTracker.update(t.maxTimestamp());
+      maxDeletionTimeTracker.update(t.getLocalDeletionTime());
       minColumnNameSeen=ColumnNameHelper.minComponents(minColumnNameSeen,t.min,controller.cfs.metadata.comparator);
       maxColumnNameSeen=ColumnNameHelper.maxComponents(maxColumnNameSeen,t.max,controller.cfs.metadata.comparator);
       return t;
@@ -32,9 +33,9 @@
     int localDeletionTime=purged.deletionInfo().getTopLevelDeletion().localDeletionTime;
     if (localDeletionTime < Integer.MAX_VALUE)     tombstones.update(localDeletionTime);
     columns++;
-    minTimestampSeen=Math.min(minTimestampSeen,reduced.minTimestamp());
-    maxTimestampSeen=Math.max(maxTimestampSeen,reduced.maxTimestamp());
-    maxLocalDeletionTimeSeen=Math.max(maxLocalDeletionTimeSeen,reduced.getLocalDeletionTime());
+    minTimestampTracker.update(reduced.minTimestamp());
+    maxTimestampTracker.update(reduced.maxTimestamp());
+    maxDeletionTimeTracker.update(reduced.getLocalDeletionTime());
     minColumnNameSeen=ColumnNameHelper.minComponents(minColumnNameSeen,reduced.name(),controller.cfs.metadata.comparator);
     maxColumnNameSeen=ColumnNameHelper.maxComponents(maxColumnNameSeen,reduced.name(),controller.cfs.metadata.comparator);
     int deletionTime=reduced.getLocalDeletionTime();
