@@ -5,14 +5,25 @@
  else     byLevel.get(sstable.getSSTableLevel()).add(sstable);
   }
   List<ICompactionScanner> scanners=new ArrayList<ICompactionScanner>(sstables.size());
-  for (  Integer level : byLevel.keySet()) {
-    if (level <= 0) {
-      for (      SSTableReader sstable : byLevel.get(level))       scanners.add(sstable.getScanner(range,CompactionManager.instance.getRateLimiter()));
-    }
+  try {
+    for (    Integer level : byLevel.keySet()) {
+      if (level <= 0) {
+        for (        SSTableReader sstable : byLevel.get(level))         scanners.add(sstable.getScanner(range,CompactionManager.instance.getRateLimiter()));
+      }
  else {
-      List<SSTableReader> intersecting=LeveledScanner.intersecting(byLevel.get(level),range);
-      if (!intersecting.isEmpty())       scanners.add(new LeveledScanner(intersecting,range));
+        List<SSTableReader> intersecting=LeveledScanner.intersecting(byLevel.get(level),range);
+        if (!intersecting.isEmpty())         scanners.add(new LeveledScanner(intersecting,range));
+      }
     }
   }
-  return scanners;
+ catch (  Throwable t) {
+    try {
+      new ScannerList(scanners).close();
+    }
+ catch (    Throwable t2) {
+      t.addSuppressed(t2);
+    }
+    throw t;
+  }
+  return new ScannerList(scanners);
 }

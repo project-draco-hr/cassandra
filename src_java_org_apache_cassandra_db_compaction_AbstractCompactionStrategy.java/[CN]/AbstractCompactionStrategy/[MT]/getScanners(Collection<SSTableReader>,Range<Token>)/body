@@ -1,6 +1,17 @@
 {
   RateLimiter limiter=CompactionManager.instance.getRateLimiter();
   ArrayList<ICompactionScanner> scanners=new ArrayList<ICompactionScanner>();
-  for (  SSTableReader sstable : sstables)   scanners.add(sstable.getScanner(range,limiter));
-  return scanners;
+  try {
+    for (    SSTableReader sstable : sstables)     scanners.add(sstable.getScanner(range,limiter));
+  }
+ catch (  Throwable t) {
+    try {
+      new ScannerList(scanners).close();
+    }
+ catch (    Throwable t2) {
+      t.addSuppressed(t2);
+    }
+    throw t;
+  }
+  return new ScannerList(scanners);
 }
