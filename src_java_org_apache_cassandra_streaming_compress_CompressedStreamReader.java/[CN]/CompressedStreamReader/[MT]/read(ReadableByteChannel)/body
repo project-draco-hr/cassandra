@@ -1,6 +1,9 @@
 {
   long totalSize=totalSize();
   Pair<String,String> kscf=Schema.instance.getCF(cfId);
+  if (kscf == null) {
+    throw new IOException("CF " + cfId + " was dropped during streaming");
+  }
   ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
   SSTableWriter writer=createWriter(cfs,totalSize);
   CompressedInputStream cis=new CompressedInputStream(Channels.newInputStream(channel),compressionInfo,inputVersion.hasPostCompressionAdlerChecksums);
