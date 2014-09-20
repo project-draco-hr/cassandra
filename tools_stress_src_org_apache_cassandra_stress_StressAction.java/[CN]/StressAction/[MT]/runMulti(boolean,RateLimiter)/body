@@ -1,11 +1,12 @@
 {
+  if (settings.command.targetUncertainty >= 0)   output.println("WARNING: uncertainty mode (err<) results in uneven workload between thread runs, so should be used for high level analysis only");
   int prevThreadCount=-1;
-  int threadCount=settings.rate.minAutoThreads;
+  int threadCount=settings.rate.minThreads;
   List<StressMetrics> results=new ArrayList<>();
   List<String> runIds=new ArrayList<>();
   do {
     output.println(String.format("Running with %d threadCount",threadCount));
-    StressMetrics result=run(settings.command.getFactory(settings),threadCount,settings.command.count,settings.command.duration,settings.command.durationUnits,output);
+    StressMetrics result=run(settings.command.getFactory(settings),threadCount,settings.command.count,settings.command.duration,rateLimiter,settings.command.durationUnits,output);
     if (result == null)     return false;
     results.add(result);
     if (prevThreadCount > 0)     System.out.println(String.format("Improvement over %d threadCount: %.0f%%",prevThreadCount,100 * averageImprovement(results,1)));
@@ -13,7 +14,7 @@
     prevThreadCount=threadCount;
     if (threadCount < 16)     threadCount*=2;
  else     threadCount*=1.5;
-    if (!results.isEmpty() && threadCount > settings.rate.maxAutoThreads)     break;
+    if (!results.isEmpty() && threadCount > settings.rate.maxThreads)     break;
     if (settings.command.type.updates) {
       output.println("Sleeping for 15s");
       try {
@@ -24,7 +25,7 @@
       }
     }
   }
- while (hasAverageImprovement(results,3,0) && hasAverageImprovement(results,5,settings.command.targetUncertainty));
+ while (!auto || (hasAverageImprovement(results,3,0) && hasAverageImprovement(results,5,settings.command.targetUncertainty)));
   StressMetrics.summarise(runIds,results,output);
   return true;
 }
