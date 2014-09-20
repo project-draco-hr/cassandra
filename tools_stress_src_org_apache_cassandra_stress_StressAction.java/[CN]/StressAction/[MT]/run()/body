@@ -3,9 +3,11 @@
   if (!settings.command.noWarmup)   warmup(settings.command.getFactory(settings));
   output.println("Sleeping 2s...");
   Uninterruptibles.sleepUninterruptibly(2,TimeUnit.SECONDS);
+  RateLimiter rateLimiter=null;
+  if (settings.rate.opRateTargetPerSecond > 0)   rateLimiter=RateLimiter.create(settings.rate.opRateTargetPerSecond);
   boolean success;
-  if (settings.rate.auto)   success=runAuto();
- else   success=null != run(settings.command.getFactory(settings),settings.rate.threadCount,settings.command.count,settings.command.duration,settings.command.durationUnits,output);
+  if (settings.rate.minThreads > 0)   success=runMulti(settings.rate.auto,rateLimiter);
+ else   success=null != run(settings.command.getFactory(settings),settings.rate.threadCount,settings.command.count,settings.command.duration,rateLimiter,settings.command.durationUnits,output);
   if (success)   output.println("END");
  else   output.println("FAILURE");
   settings.disconnect();
