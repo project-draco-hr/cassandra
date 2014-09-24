@@ -1,6 +1,6 @@
 {
-  Class<?> jReturnType=javaReturnType();
-  Class<?>[] paramTypes=javaParamTypes();
+  Class<?> jReturnType=javaType(returnType);
+  Class<?>[] paramTypes=javaParamTypes(argTypes);
   String className;
   String methodName;
   int i=body.indexOf('#');
@@ -14,17 +14,18 @@
   }
   try {
     Class<?> cls=Class.forName(className,false,Thread.currentThread().getContextClassLoader());
-    Method method=cls.getMethod(methodName,paramTypes);
-    if (!Modifier.isStatic(method.getModifiers()))     throw new InvalidRequestException("Method " + className + '.'+ methodName+ '('+ Arrays.toString(paramTypes)+ ") is not static");
-    if (!jReturnType.isAssignableFrom(method.getReturnType())) {
-      throw new InvalidRequestException("Method " + className + '.'+ methodName+ '('+ Arrays.toString(paramTypes)+ ") "+ "has incompatible return type "+ method.getReturnType()+ " (not assignable to "+ jReturnType+ ')');
-    }
-    return method;
+    MethodHandles.Lookup handles=MethodHandles.lookup();
+    MethodType methodType=MethodType.methodType(jReturnType,paramTypes);
+    MethodHandle handle=handles.findStatic(cls,methodName,methodType);
+    return handle;
   }
  catch (  ClassNotFoundException e) {
     throw new InvalidRequestException("Class " + className + " does not exist");
   }
 catch (  NoSuchMethodException e) {
-    throw new InvalidRequestException("Method " + className + '.'+ methodName+ '('+ Arrays.toString(paramTypes)+ ") does not exist");
+    throw new InvalidRequestException("Method 'public static " + jReturnType.getName() + ' '+ className+ '.'+ methodName+ '('+ Arrays.toString(paramTypes)+ ")' does not exist - check for static, argument types and return type");
+  }
+catch (  IllegalAccessException e) {
+    throw new InvalidRequestException("Method " + className + '.'+ methodName+ '('+ Arrays.toString(paramTypes)+ ") is not accessible");
   }
 }

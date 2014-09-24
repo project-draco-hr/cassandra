@@ -1,0 +1,26 @@
+{
+  Class<?> javaReturnType=UDFunction.javaType(returnType);
+  Class<?>[] javaParamTypes=UDFunction.javaParamTypes(argTypes);
+  String clsName=generateClassName(name);
+  String codeCtor=generateConstructor(clsName);
+  String codeExec=generateExecuteMethod(argNames,javaParamTypes);
+  String codeExecInt=generateExecuteInternalMethod(argNames,body,javaReturnType,javaParamTypes);
+  if (logger.isDebugEnabled())   logger.debug("Generating java source UDF for {} with following c'tor and functions:\n{}\n{}\n{}",name,codeCtor,codeExecInt,codeExec);
+  try {
+    ClassPool classPool=ClassPool.getDefault();
+    CtClass base=classPool.get(UDFunction.class.getName());
+    CtClass cc=classPool.makeClass(GENERATED_CODE_PACKAGE + clsName,base);
+    cc.setModifiers(cc.getModifiers() | Modifier.FINAL);
+    cc.addConstructor(CtNewConstructor.make(codeCtor,cc));
+    cc.addMethod(CtNewMethod.make(codeExecInt,cc));
+    cc.addMethod(CtNewMethod.make(codeExec,cc));
+    Constructor ctor=cc.toClass().getDeclaredConstructor(FunctionName.class,List.class,List.class,AbstractType.class,String.class,boolean.class);
+    return (UDFunction)ctor.newInstance(name,argNames,argTypes,returnType,body,deterministic);
+  }
+ catch (  NotFoundException|CannotCompileException|NoSuchMethodException|LinkageError|InstantiationException|IllegalAccessException e) {
+    throw new InvalidRequestException(String.format("Could not compile function '%s' from Java source: %s",name,e));
+  }
+catch (  InvocationTargetException e) {
+    throw new InvalidRequestException(String.format("Could not compile function '%s' from Java source: %s",name,e.getCause()));
+  }
+}
