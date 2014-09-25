@@ -1,5 +1,5 @@
 {
-  pig.registerQuery("compo = load 'cassandra://thriftKs/Compo?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("compo = load 'cassandra://thrift_ks/compo?" + defaultParameters + "' using CassandraStorage();");
   pig.registerQuery("compo = foreach compo generate key as method, flatten(columns);");
   pig.registerQuery("lee = filter compo by columns::name == ('bruce','lee');");
   Iterator<Tuple> it=pig.openIterator("lee");
@@ -14,7 +14,7 @@
  else     if ("kick".equals(t.get(0)))     Assert.assertEquals(t.get(2),"ouch");
   }
   Assert.assertEquals(count,2);
-  pig.registerQuery("night = load 'cassandra://thriftKs/CompoInt?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("night = load 'cassandra://thrift_ks/compo_int?" + defaultParameters + "' using CassandraStorage();");
   pig.registerQuery("night = foreach night generate flatten(columns);");
   pig.registerQuery("night = foreach night generate (int)columns::name.$0+(double)columns::name.$1/60 as hour, columns::value as noise;");
   pig.registerQuery("darkest = filter night by hour > 2 and hour < 5;");
@@ -25,20 +25,18 @@
     Assert.assertEquals(t.get(1),"daddy?");
   }
   pig.setBatchOn();
-  pig.registerQuery("compo_int_rows = LOAD 'cassandra://thriftKs/CompoInt?" + defaultParameters + "' using CassandraStorage();");
-  pig.registerQuery("STORE compo_int_rows INTO 'cassandra://thriftKs/CompoIntCopy?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("compo_int_rows = LOAD 'cassandra://thrift_ks/compo_int?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("STORE compo_int_rows INTO 'cassandra://thrift_ks/compo_int_copy?" + defaultParameters + "' using CassandraStorage();");
   pig.executeBatch();
-  pig.registerQuery("compocopy_int_rows = LOAD 'cassandra://thriftKs/CompoIntCopy?" + defaultParameters + "' using CassandraStorage();");
+  pig.registerQuery("compocopy_int_rows = LOAD 'cassandra://thrift_ks/compo_int_copy?" + defaultParameters + "' using CassandraStorage();");
   it=pig.openIterator("compocopy_int_rows");
   count=0;
   if (it.hasNext()) {
     Tuple t=it.next();
     Assert.assertEquals(t.get(0),"clock");
     DataBag columns=(DataBag)t.get(1);
-    Iterator<Tuple> iter=columns.iterator();
-    while (iter.hasNext()) {
+    for (    Tuple t1 : columns) {
       count++;
-      Tuple t1=iter.next();
       Tuple inner=(Tuple)t1.get(0);
       if ((Long)inner.get(0) == 1L && (Long)inner.get(1) == 0L)       Assert.assertEquals(t1.get(1),"z");
  else       if ((Long)inner.get(0) == 1L && (Long)inner.get(1) == 30L)       Assert.assertEquals(t1.get(1),"zzzz");

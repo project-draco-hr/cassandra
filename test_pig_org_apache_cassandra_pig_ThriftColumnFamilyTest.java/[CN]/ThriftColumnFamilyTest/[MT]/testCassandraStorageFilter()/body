@@ -1,46 +1,45 @@
 {
-  executeCliStatements(deleteCopyOfSomeAppTableData);
+  executeCQLStatements(deleteCopyOfSomeAppTableData);
   pig.setBatchOn();
-  pig.registerQuery("rows = LOAD 'cassandra://thriftKs/SomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("rows = LOAD 'cassandra://thrift_ks/some_app?" + defaultParameters + "' USING CassandraStorage();");
   pig.registerQuery("likes = FILTER rows by vote_type.value eq 'like' and rating.value > 5;");
-  pig.registerQuery("STORE likes INTO 'cassandra://thriftKs/CopyOfSomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("STORE likes INTO 'cassandra://thrift_ks/copy_of_some_app?" + defaultParameters + "' USING CassandraStorage();");
   pig.executeBatch();
-  Assert.assertEquals("like",getColumnValue("thriftKs","CopyOfSomeApp","vote_type","bar","UTF8Type"));
-  Assert.assertEquals("like",getColumnValue("thriftKs","CopyOfSomeApp","vote_type","foo","UTF8Type"));
+  Assert.assertEquals("like",getColumnValue("thrift_ks","copy_of_some_app","vote_type","bar","UTF8Type"));
+  Assert.assertEquals("like",getColumnValue("thrift_ks","copy_of_some_app","vote_type","foo","UTF8Type"));
   String value=null;
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","qux","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","qux","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","baz","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","baz","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
-  executeCliStatements(deleteCopyOfSomeAppTableData);
+  executeCQLStatements(deleteCopyOfSomeAppTableData);
   pig.setBatchOn();
-  pig.registerQuery("rows = LOAD 'cassandra://thriftKs/SomeApp?" + defaultParameters + "' USING CassandraStorage();");
-  pig.registerQuery("dislikes_extras = FILTER rows by vote_type.value eq 'dislike' AND COUNT(columns) > 0;");
-  pig.registerQuery("STORE dislikes_extras INTO 'cassandra://thriftKs/CopyOfSomeApp?" + defaultParameters + "' USING CassandraStorage();");
-  pig.registerQuery("visible = FILTER rows BY COUNT(columns) == 0;");
+  pig.registerQuery("rows = LOAD 'cassandra://thrift_ks/some_app?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("dislikes_extras = FILTER rows by vote_type.value eq 'dislike';");
+  pig.registerQuery("STORE dislikes_extras INTO 'cassandra://thrift_ks/copy_of_some_app?" + defaultParameters + "' USING CassandraStorage();");
   pig.executeBatch();
-  Assert.assertEquals("dislike",getColumnValue("thriftKs","CopyOfSomeApp","vote_type","baz","UTF8Type"));
-  Assert.assertEquals("dislike",getColumnValue("thriftKs","CopyOfSomeApp","vote_type","qux","UTF8Type"));
+  Assert.assertEquals("dislike",getColumnValue("thrift_ks","copy_of_some_app","vote_type","baz","UTF8Type"));
+  Assert.assertEquals("dislike",getColumnValue("thrift_ks","copy_of_some_app","vote_type","qux","UTF8Type"));
   value=null;
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","bar","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","bar","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","foo","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","foo","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);

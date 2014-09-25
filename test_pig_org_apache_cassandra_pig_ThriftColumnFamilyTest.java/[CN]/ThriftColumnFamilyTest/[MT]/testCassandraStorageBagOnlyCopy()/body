@@ -1,31 +1,30 @@
 {
-  executeCliStatements(deleteCopyOfSomeAppTableData);
+  executeCQLStatements(deleteCopyOfSomeAppTableData);
   pig.setBatchOn();
-  pig.registerQuery("rows = LOAD 'cassandra://thriftKs/SomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("rows = LOAD 'cassandra://thrift_ks/some_app?" + defaultParameters + "' USING CassandraStorage();");
   pig.registerQuery("other = FOREACH rows GENERATE key, columns;");
-  pig.registerQuery("STORE other INTO 'cassandra://thriftKs/CopyOfSomeApp?" + defaultParameters + "' USING CassandraStorage();");
+  pig.registerQuery("STORE other INTO 'cassandra://thrift_ks/copy_of_some_app?" + defaultParameters + "' USING CassandraStorage();");
   pig.executeBatch();
   String value=null;
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","name","qux","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","name","qux","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","vote_type","qux","UTF8Type");
+    value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","qux","UTF8Type");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
   try {
-    value=getColumnValue("thriftKs","CopyOfSomeApp","percent","qux","FloatType");
+    value=getColumnValue("thrift_ks","copy_of_some_app","percent","qux","FloatType");
   }
  catch (  NotFoundException e) {
     Assert.assertTrue(true);
   }
   if (value != null)   Assert.fail();
-  Assert.assertEquals("extra1",getColumnValue("thriftKs","CopyOfSomeApp","extra1","qux","UTF8Type"));
 }
