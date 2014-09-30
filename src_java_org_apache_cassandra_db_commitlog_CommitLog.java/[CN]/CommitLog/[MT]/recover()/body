@@ -1,22 +1,2 @@
 {
-  archiver.maybeRestoreArchive();
-  File[] files=new File(DatabaseDescriptor.getCommitLogLocation()).listFiles(new FilenameFilter(){
-    public boolean accept(    File dir,    String name){
-      return CommitLogDescriptor.isValid(name) && !instance.allocator.manages(name);
-    }
-  }
-);
-  int replayed=0;
-  if (files.length == 0) {
-    logger.info("No commitlog files found; skipping replay");
-  }
- else {
-    Arrays.sort(files,new CommitLogSegment.CommitLogSegmentFileComparator());
-    logger.info("Replaying " + StringUtils.join(files,", "));
-    replayed=recover(files);
-    logger.info("Log replay complete, " + replayed + " replayed mutations");
-    for (    File f : files)     CommitLog.instance.allocator.recycleSegment(f);
-  }
-  allocator.enableReserveSegmentCreation();
-  return replayed;
 }
