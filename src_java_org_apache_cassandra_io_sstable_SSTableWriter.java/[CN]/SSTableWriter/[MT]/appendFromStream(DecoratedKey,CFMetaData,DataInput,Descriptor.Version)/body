@@ -1,8 +1,8 @@
 {
   long currentPosition=beforeAppend(key);
-  long minTimestamp=Long.MAX_VALUE;
-  long maxTimestamp=Long.MIN_VALUE;
-  int maxLocalDeletionTime=Integer.MIN_VALUE;
+  ColumnStats.MaxTracker<Long> maxTimestampTracker=new ColumnStats.MaxTracker<>(Long.MAX_VALUE);
+  ColumnStats.MinTracker<Long> minTimestampTracker=new ColumnStats.MinTracker<>(Long.MIN_VALUE);
+  ColumnStats.MaxTracker<Integer> maxDeletionTimeTracker=new ColumnStats.MaxTracker<>(Integer.MAX_VALUE);
   List<ByteBuffer> minColumnNames=Collections.emptyList();
   List<ByteBuffer> maxColumnNames=Collections.emptyList();
   StreamingHistogram tombstones=new StreamingHistogram(TOMBSTONE_HISTOGRAM_BIN_SIZE);
@@ -10,13 +10,19 @@
   ColumnFamily cf=ArrayBackedSortedColumns.factory.create(metadata);
   cf.delete(DeletionTime.serializer.deserialize(in));
   ColumnIndex.Builder columnIndexer=new ColumnIndex.Builder(cf,key.getKey(),dataFile.stream);
-  if (cf.deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE)   tombstones.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+  if (cf.deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE) {
+    tombstones.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+    maxDeletionTimeTracker.update(cf.deletionInfo().getTopLevelDeletion().localDeletionTime);
+    minTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+    maxTimestampTracker.update(cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt);
+  }
   Iterator<RangeTombstone> rangeTombstoneIterator=cf.deletionInfo().rangeIterator();
   while (rangeTombstoneIterator.hasNext()) {
     RangeTombstone rangeTombstone=rangeTombstoneIterator.next();
     tombstones.update(rangeTombstone.getLocalDeletionTime());
-    minTimestamp=Math.min(minTimestamp,rangeTombstone.timestamp());
-    maxTimestamp=Math.max(maxTimestamp,rangeTombstone.timestamp());
+    minTimestampTracker.update(rangeTombstone.timestamp());
+    maxTimestampTracker.update(rangeTombstone.timestamp());
+    maxDeletionTimeTracker.update(rangeTombstone.getLocalDeletionTime());
     minColumnNames=ColumnNameHelper.minComponents(minColumnNames,rangeTombstone.min,metadata.comparator);
     maxColumnNames=ColumnNameHelper.maxComponents(maxColumnNames,rangeTombstone.max,metadata.comparator);
   }
@@ -31,11 +37,11 @@
       }
       int deletionTime=atom.getLocalDeletionTime();
       if (deletionTime < Integer.MAX_VALUE)       tombstones.update(deletionTime);
-      minTimestamp=Math.min(minTimestamp,atom.timestamp());
-      maxTimestamp=Math.max(maxTimestamp,atom.timestamp());
+      minTimestampTracker.update(atom.timestamp());
+      maxTimestampTracker.update(atom.timestamp());
       minColumnNames=ColumnNameHelper.minComponents(minColumnNames,atom.name(),metadata.comparator);
       maxColumnNames=ColumnNameHelper.maxComponents(maxColumnNames,atom.name(),metadata.comparator);
-      maxLocalDeletionTime=Math.max(maxLocalDeletionTime,atom.getLocalDeletionTime());
+      maxDeletionTimeTracker.update(atom.getLocalDeletionTime());
       columnIndexer.add(atom);
     }
     columnIndexer.maybeWriteEmptyRowHeader();
@@ -44,7 +50,7 @@
  catch (  IOException e) {
     throw new FSWriteError(e,dataFile.getPath());
   }
-  sstableMetadataCollector.updateMinTimestamp(minTimestamp).updateMaxTimestamp(maxTimestamp).updateMaxLocalDeletionTime(maxLocalDeletionTime).addRowSize(dataFile.getFilePointer() - currentPosition).addColumnCount(columnIndexer.writtenAtomCount()).mergeTombstoneHistogram(tombstones).updateMinColumnNames(minColumnNames).updateMaxColumnNames(maxColumnNames).updateHasLegacyCounterShards(hasLegacyCounterShards);
+  sstableMetadataCollector.updateMinTimestamp(minTimestampTracker.get()).updateMaxTimestamp(maxTimestampTracker.get()).updateMaxLocalDeletionTime(maxDeletionTimeTracker.get()).addRowSize(dataFile.getFilePointer() - currentPosition).addColumnCount(columnIndexer.writtenAtomCount()).mergeTombstoneHistogram(tombstones).updateMinColumnNames(minColumnNames).updateMaxColumnNames(maxColumnNames).updateHasLegacyCounterShards(hasLegacyCounterShards);
   afterAppend(key,currentPosition,RowIndexEntry.create(currentPosition,cf.deletionInfo().getTopLevelDeletion(),columnIndexer.build()));
   return currentPosition;
 }

@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s (a int, PRIMARY KEY (a))");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace()).getColumnFamilyStore(currentTable());
+  execute("INSERT INTO %s (a) VALUES (1) USING TIMESTAMP 9999");
+  cfs.forceBlockingFlush();
+  assertEquals(1,cfs.getSSTables().size());
+  StatsMetadata metadata=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(9999,metadata.minTimestamp);
+  assertEquals(9999,metadata.maxTimestamp);
+  assertEquals(Integer.MAX_VALUE,metadata.maxLocalDeletionTime);
+  cfs.forceMajorCompaction();
+  StatsMetadata metadata2=cfs.getSSTables().iterator().next().getSSTableMetadata();
+  assertEquals(metadata.maxLocalDeletionTime,metadata2.maxLocalDeletionTime);
+  assertEquals(metadata.minTimestamp,metadata2.minTimestamp);
+  assertEquals(metadata.maxTimestamp,metadata2.maxTimestamp);
+}
