@@ -1,0 +1,17 @@
+{
+  Keyspace ks=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(CFNAME);
+  cfs.truncateBlocking();
+  String key="rt_times";
+  Mutation rm=new Mutation(KSNAME,ByteBufferUtil.bytes(key));
+  ColumnFamily cf=rm.addOrGet(CFNAME);
+  long timestamp=System.currentTimeMillis();
+  cf.delete(new DeletionInfo(1000,(int)(timestamp / 1000)));
+  rm.apply();
+  cfs.forceBlockingFlush();
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  assertTimes(sstable.getSSTableMetadata(),1000,1000,(int)(timestamp / 1000));
+  cfs.forceMajorCompaction();
+  sstable=cfs.getSSTables().iterator().next();
+  assertTimes(sstable.getSSTableMetadata(),1000,1000,(int)(timestamp / 1000));
+}
