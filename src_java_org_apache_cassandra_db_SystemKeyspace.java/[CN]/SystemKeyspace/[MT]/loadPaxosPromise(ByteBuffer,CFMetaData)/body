@@ -1,0 +1,8 @@
+{
+  String req="SELECT in_progress_ballot FROM system.%s WHERE row_key = ? AND cf_id = ?";
+  UntypedResultSet results=executeInternal(String.format(req,PAXOS_CF),key,metadata.cfId);
+  if (results.isEmpty())   return Commit.emptyCommit(key,metadata);
+  UntypedResultSet.Row row=results.one();
+  Commit promised=row.has("in_progress_ballot") ? new Commit(key,row.getUUID("in_progress_ballot"),ArrayBackedSortedColumns.factory.create(metadata)) : Commit.emptyCommit(key,metadata);
+  return promised;
+}
