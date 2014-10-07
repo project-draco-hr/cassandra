@@ -6,16 +6,14 @@
   long now=System.currentTimeMillis();
   Pageable command=getPageableCommand(options,limit,now);
   int pageSize=options.getPageSize();
-  if (parameters.isCount && pageSize <= 0)   pageSize=DEFAULT_COUNT_PAGE_SIZE;
+  if (selection.isAggregate() && pageSize <= 0)   pageSize=DEFAULT_COUNT_PAGE_SIZE;
   if (pageSize <= 0 || command == null || !QueryPagers.mayNeedPaging(command,pageSize)) {
     return execute(command,options,limit,now);
   }
- else {
-    QueryPager pager=QueryPagers.pager(command,cl,options.getPagingState());
-    if (parameters.isCount)     return pageCountQuery(pager,options,pageSize,now,limit);
-    if (needsPostQueryOrdering())     throw new InvalidRequestException("Cannot page queries with both ORDER BY and a IN restriction on the partition key; you must either remove the " + "ORDER BY or the IN and sort client side, or disable paging for this query");
-    List<Row> page=pager.fetchPage(pageSize);
-    ResultMessage.Rows msg=processResults(page,options,limit,now);
-    return pager.isExhausted() ? msg : msg.withPagingState(pager.state());
-  }
+  QueryPager pager=QueryPagers.pager(command,cl,options.getPagingState());
+  if (selection.isAggregate())   return pageAggregateQuery(pager,options,pageSize,now);
+  if (needsPostQueryOrdering())   throw new InvalidRequestException("Cannot page queries with both ORDER BY and a IN restriction on the partition key; you must either remove the " + "ORDER BY or the IN and sort client side, or disable paging for this query");
+  List<Row> page=pager.fetchPage(pageSize);
+  ResultMessage.Rows msg=processResults(page,options,limit,now);
+  return pager.isExhausted() ? msg : msg.withPagingState(pager.state());
 }
