@@ -5,6 +5,8 @@
   DataInputStream in=new DataInputStream(socket.getInputStream());
   int maxVersion=in.readInt();
   from=CompactEndpointSerializationHelper.deserialize(in);
+  MessagingService.instance().setVersion(from,maxVersion);
+  logger.debug("Set version for {} to {} (will use {})",from,maxVersion,MessagingService.instance().getVersion(from));
   if (compressed) {
     logger.debug("Upgrading incoming connection to be compressed");
     in=new DataInputStream(new SnappyInputStream(socket.getInputStream()));
@@ -12,14 +14,11 @@
  else {
     in=new DataInputStream(new BufferedInputStream(socket.getInputStream(),4096));
   }
-  logger.debug("Max version for {} is {}",from,maxVersion);
   if (version > MessagingService.current_version) {
     Gossiper.instance.addSavedEndpoint(from);
     logger.info("Received messages from newer protocol version {}. Ignoring",version);
     return;
   }
-  MessagingService.instance().setVersion(from,maxVersion);
-  logger.debug("Set version for {} to {} (will use {})",from,maxVersion,Math.min(MessagingService.current_version,maxVersion));
   while (true) {
     MessagingService.validateMagic(in.readInt());
     receiveMessage(in,version);
