@@ -1,14 +1,13 @@
 {
-  String toHash=keyspace == null ? queryString : keyspace + queryString;
   long statementSize=measure(prepared.statement);
   if (statementSize > MAX_CACHE_PREPARED_MEMORY)   throw new InvalidRequestException(String.format("Prepared statement of size %d bytes is larger than allowed maximum of %d bytes.",statementSize,MAX_CACHE_PREPARED_MEMORY));
   if (forThrift) {
-    int statementId=toHash.hashCode();
-    thriftPreparedStatements.put(statementId,prepared.statement);
+    Integer statementId=computeThriftId(queryString,keyspace);
+    thriftPreparedStatements.put(statementId,prepared);
     return ResultMessage.Prepared.forThrift(statementId,prepared.boundNames);
   }
  else {
-    MD5Digest statementId=MD5Digest.compute(toHash);
+    MD5Digest statementId=computeId(queryString,keyspace);
     preparedStatements.put(statementId,prepared);
     return new ResultMessage.Prepared(statementId,prepared);
   }
