@@ -1,0 +1,22 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, ival int, lval bigint, fval float, dval double, vval varint, ddval decimal)");
+  execute("INSERT INTO %s (key, ival, lval, fval, dval, vval, ddval) VALUES (?, ?, ?, ?, ?, ?, ?)",1,1,1L,1f,1d,BigInteger.valueOf(1L),BigDecimal.valueOf(1d));
+  execute("CREATE OR REPLACE FUNCTION jsint(val int) RETURNS int LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, ival, jsint(ival) FROM %s"),row(1,1,2));
+  execute("DROP FUNCTION jsint(int)");
+  execute("CREATE OR REPLACE FUNCTION jsbigint(val bigint) RETURNS bigint LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, lval, jsbigint(lval) FROM %s"),row(1,1L,2L));
+  execute("DROP FUNCTION jsbigint(bigint)");
+  execute("CREATE OR REPLACE FUNCTION jsfloat(val float) RETURNS float LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, fval, jsfloat(fval) FROM %s"),row(1,1f,2f));
+  execute("DROP FUNCTION jsfloat(float)");
+  execute("CREATE OR REPLACE FUNCTION jsdouble(val double) RETURNS double LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, dval, jsdouble(dval) FROM %s"),row(1,1d,2d));
+  execute("DROP FUNCTION jsdouble(double)");
+  execute("CREATE OR REPLACE FUNCTION jsvarint(val varint) RETURNS varint LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, vval, jsvarint(vval) FROM %s"),row(1,BigInteger.valueOf(1L),BigInteger.valueOf(2L)));
+  execute("DROP FUNCTION jsvarint(varint)");
+  execute("CREATE OR REPLACE FUNCTION jsdecimal(val decimal) RETURNS decimal LANGUAGE javascript\n" + "AS 'val+1;';");
+  assertRows(execute("SELECT key, ddval, jsdecimal(ddval) FROM %s"),row(1,BigDecimal.valueOf(1d),BigDecimal.valueOf(2d)));
+  execute("DROP FUNCTION jsdecimal(decimal)");
+}
