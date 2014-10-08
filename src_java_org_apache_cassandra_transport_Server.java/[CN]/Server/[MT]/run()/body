@@ -6,8 +6,16 @@
     return;
   }
   eventExecutorGroup=new RequestThreadPoolExecutor();
-  workerGroup=new NioEventLoopGroup();
-  ServerBootstrap bootstrap=new ServerBootstrap().group(workerGroup).channel(NioServerSocketChannel.class).childOption(ChannelOption.TCP_NODELAY,true).childOption(ChannelOption.SO_KEEPALIVE,DatabaseDescriptor.getRpcKeepAlive()).childOption(ChannelOption.ALLOCATOR,CBUtil.allocator).childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK,32 * 1024).childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK,8 * 1024);
+  boolean hasEpoll=enableEpoll ? Epoll.isAvailable() : false;
+  if (hasEpoll) {
+    workerGroup=new EpollEventLoopGroup();
+    logger.info("Netty using native Epoll event loop");
+  }
+ else {
+    workerGroup=new NioEventLoopGroup();
+    logger.info("Netty using Java NIO event loop");
+  }
+  ServerBootstrap bootstrap=new ServerBootstrap().group(workerGroup).channel(hasEpoll ? EpollServerSocketChannel.class : NioServerSocketChannel.class).childOption(ChannelOption.TCP_NODELAY,true).childOption(ChannelOption.SO_KEEPALIVE,DatabaseDescriptor.getRpcKeepAlive()).childOption(ChannelOption.ALLOCATOR,CBUtil.allocator).childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK,32 * 1024).childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK,8 * 1024);
   final EncryptionOptions.ClientEncryptionOptions clientEnc=DatabaseDescriptor.getClientEncryptionOptions();
   if (clientEnc.enabled) {
     logger.info("Enabling encrypted CQL connections between client and server");
