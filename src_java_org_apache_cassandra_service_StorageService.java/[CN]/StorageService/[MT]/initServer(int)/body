@@ -30,7 +30,7 @@
       }
     }
   }
-  Thread drainOnShutdown=new Thread(new WrappedRunnable(){
+  drainOnShutdown=new Thread(new WrappedRunnable(){
     @Override public void runMayThrow() throws InterruptedException {
       ExecutorService counterMutationStage=StageManager.getStage(Stage.COUNTER_MUTATION);
       ExecutorService mutationStage=StageManager.getStage(Stage.MUTATION);
@@ -54,8 +54,9 @@
       try {
         FBUtilities.waitOnFutures(flushes);
       }
- catch (      Throwable e) {
-        logger.warn("Caught exception while waiting for memtable flushes during shutdown hook",e);
+ catch (      Throwable t) {
+        JVMStabilityInspector.inspectThrowable(t);
+        logger.warn("Caught exception while waiting for memtable flushes during shutdown hook",t);
       }
       CommitLog.instance.shutdownBlocking();
       tasks.shutdown();
