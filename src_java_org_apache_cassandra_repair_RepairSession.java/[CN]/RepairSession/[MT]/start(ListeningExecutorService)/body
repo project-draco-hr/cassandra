@@ -1,0 +1,36 @@
+{
+  if (terminated)   return;
+  logger.info(String.format("[repair #%s] new session: will sync %s on range %s for %s.%s",getId(),repairedNodes(),range,keyspace,Arrays.toString(cfnames)));
+  if (endpoints.isEmpty()) {
+    logger.info(String.format("[repair #%s] No neighbors to repair with on range %s: session completed",getId(),range));
+    set(Lists.<RepairResult>newArrayList());
+    return;
+  }
+  for (  InetAddress endpoint : endpoints) {
+    if (!FailureDetector.instance.isAlive(endpoint)) {
+      String message=String.format("Cannot proceed on repair because a neighbor (%s) is dead: session failed",endpoint);
+      logger.error("[repair #{}] {}",getId(),message);
+      setException(new IOException(message));
+      return;
+    }
+  }
+  List<ListenableFuture<RepairResult>> jobs=new ArrayList<>(cfnames.length);
+  for (  String cfname : cfnames) {
+    RepairJob job=new RepairJob(this,cfname,isSequential,repairedAt,taskExecutor);
+    executor.execute(job);
+    jobs.add(job);
+  }
+  Futures.addCallback(Futures.allAsList(jobs),new FutureCallback<List<RepairResult>>(){
+    public void onSuccess(    List<RepairResult> results){
+      logger.info(String.format("[repair #%s] session completed successfully",getId()));
+      set(results);
+      taskExecutor.shutdown();
+      terminate();
+    }
+    public void onFailure(    Throwable t){
+      logger.error("Repair job failed",t);
+      setException(t);
+    }
+  }
+);
+}

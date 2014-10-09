@@ -1,0 +1,13 @@
+{
+  final InetAddress ep1=InetAddress.getByName("127.0.0.1");
+  final InetAddress ep2=InetAddress.getByName("127.0.0.1");
+  Range<Token> range=new Range<>(partirioner.getMinimumToken(),partirioner.getRandomToken());
+  RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),KEYSPACE1,"Standard1",range);
+  MerkleTree tree1=createInitialTree(desc);
+  MerkleTree tree2=createInitialTree(desc);
+  TreeResponse r1=new TreeResponse(ep1,tree1);
+  TreeResponse r2=new TreeResponse(ep2,tree2);
+  LocalSyncTask task=new LocalSyncTask(desc,r1,r2,ActiveRepairService.UNREPAIRED_SSTABLE);
+  task.run();
+  assertEquals(0,task.get().numberOfDifferences);
+}

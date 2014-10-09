@@ -1,23 +1,9 @@
 {
-  RepairJob job=syncingJobs.get(desc.columnFamily);
-  if (job == null) {
+  RemoteSyncTask task=syncingTasks.get(Pair.create(desc,nodes));
+  if (task == null) {
     assert terminated;
     return;
   }
-  if (!success) {
-    exception=new RepairException(desc,String.format("Sync failed between %s and %s",nodes.endpoint1,nodes.endpoint2));
-    forceShutdown();
-    return;
-  }
   logger.debug(String.format("[repair #%s] Repair completed between %s and %s on %s",getId(),nodes.endpoint1,nodes.endpoint2,desc.columnFamily));
-  if (job.completedSynchronization()) {
-    RepairJob completedJob=syncingJobs.remove(job.desc.columnFamily);
-    String remaining=syncingJobs.size() == 0 ? "" : String.format(" (%d remaining table to sync for this session)",syncingJobs.size());
-    if (completedJob != null && completedJob.isFailed())     logger.warn(String.format("[repair #%s] %s sync failed%s",getId(),desc.columnFamily,remaining));
- else     logger.info(String.format("[repair #%s] %s is fully synced%s",getId(),desc.columnFamily,remaining));
-    if (jobs.isEmpty() && syncingJobs.isEmpty()) {
-      taskExecutor.shutdown();
-      completed.signalAll();
-    }
-  }
+  task.syncComplete(success);
 }

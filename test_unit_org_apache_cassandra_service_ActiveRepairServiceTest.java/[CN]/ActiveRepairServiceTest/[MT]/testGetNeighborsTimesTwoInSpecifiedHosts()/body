@@ -1,0 +1,12 @@
+{
+  TokenMetadata tmd=StorageService.instance.getTokenMetadata();
+  addTokens(2 * Keyspace.open(KEYSPACE5).getReplicationStrategy().getReplicationFactor());
+  AbstractReplicationStrategy ars=Keyspace.open(KEYSPACE5).getReplicationStrategy();
+  List<InetAddress> expected=new ArrayList<>();
+  for (  Range<Token> replicaRange : ars.getAddressRanges().get(FBUtilities.getBroadcastAddress())) {
+    expected.addAll(ars.getRangeAddresses(tmd.cloneOnlyTokenMap()).get(replicaRange));
+  }
+  expected.remove(FBUtilities.getBroadcastAddress());
+  Collection<String> hosts=Arrays.asList(FBUtilities.getBroadcastAddress().getCanonicalHostName(),expected.get(0).getCanonicalHostName());
+  assertEquals(expected.get(0),ActiveRepairService.getNeighbors(KEYSPACE5,StorageService.instance.getLocalRanges(KEYSPACE5).iterator().next(),null,hosts).iterator().next());
+}

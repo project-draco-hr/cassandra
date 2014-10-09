@@ -1,12 +1,19 @@
 {
-  Collection<Range<Token>> ranges;
-  if (primaryRange) {
-    if (dataCenters == null && hosts == null)     ranges=getPrimaryRanges(keyspace);
- else     if (dataCenters != null && dataCenters.size() == 1 && dataCenters.contains(DatabaseDescriptor.getLocalDataCenter()))     ranges=getPrimaryRangesWithinDC(keyspace);
- else     throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
+  if (!FBUtilities.isUnix() && isSequential) {
+    logger.warn("Snapshot-based repair is not yet supported on Windows.  Reverting to parallel repair.");
+    isSequential=false;
   }
- else {
-    ranges=getLocalRanges(keyspace);
+  RepairOption options=new RepairOption(isSequential,primaryRange,!fullRepair,1,Collections.<Range<Token>>emptyList());
+  if (dataCenters != null) {
+    options.getDataCenters().addAll(dataCenters);
   }
-  return forceRepairAsync(keyspace,isSequential,dataCenters,hosts,ranges,fullRepair,columnFamilies);
+  if (hosts != null) {
+    options.getHosts().addAll(hosts);
+  }
+  if (columnFamilies != null) {
+    for (    String columnFamily : columnFamilies) {
+      options.getColumnFamilies().add(columnFamily);
+    }
+  }
+  return forceRepairAsync(keyspace,options);
 }

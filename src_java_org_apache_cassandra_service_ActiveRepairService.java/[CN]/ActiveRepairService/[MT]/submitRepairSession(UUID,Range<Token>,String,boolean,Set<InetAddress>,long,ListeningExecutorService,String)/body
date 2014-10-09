@@ -1,0 +1,20 @@
+{
+  if (endpoints.isEmpty())   return null;
+  final RepairSession session=new RepairSession(parentRepairSession,UUIDGen.getTimeUUID(),range,keyspace,isSequential,endpoints,repairedAt,cfnames);
+  sessions.put(session.getId(),session);
+  gossiper.register(session);
+  failureDetector.registerFailureDetectionEventListener(session);
+  session.addListener(new Runnable(){
+    /** 
+ * When repair finished, do clean up
+ */
+    public void run(){
+      failureDetector.unregisterFailureDetectionEventListener(session);
+      gossiper.unregister(session);
+      sessions.remove(session.getId());
+    }
+  }
+,MoreExecutors.sameThreadExecutor());
+  session.start(executor);
+  return session;
+}

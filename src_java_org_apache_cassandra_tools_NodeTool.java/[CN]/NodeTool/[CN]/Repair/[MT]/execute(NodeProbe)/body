@@ -3,14 +3,24 @@
   String[] cfnames=parseOptionalColumnFamilies(args);
   if (primaryRange && (!specificDataCenters.isEmpty() || !specificHosts.isEmpty()))   throw new RuntimeException("Primary range repair should be performed on all nodes in the cluster.");
   for (  String keyspace : keyspaces) {
+    Map<String,String> options=new HashMap<>();
+    options.put(RepairOption.SEQUENTIAL_KEY,Boolean.toString(sequential));
+    options.put(RepairOption.PRIMARY_RANGE_KEY,Boolean.toString(primaryRange));
+    options.put(RepairOption.INCREMENTAL_KEY,Boolean.toString(!fullRepair));
+    options.put(RepairOption.JOB_THREADS_KEY,Integer.toString(numJobThreads));
+    options.put(RepairOption.COLUMNFAMILIES_KEY,StringUtils.join(cfnames,","));
+    if (!startToken.isEmpty() || !endToken.isEmpty()) {
+      options.put(RepairOption.RANGES_KEY,startToken + ":" + endToken);
+    }
+    if (localDC) {
+      options.put(RepairOption.DATACENTERS_KEY,StringUtils.join(newArrayList(probe.getDataCenter()),","));
+    }
+ else {
+      options.put(RepairOption.DATACENTERS_KEY,StringUtils.join(specificDataCenters,","));
+    }
+    options.put(RepairOption.HOSTS_KEY,StringUtils.join(specificHosts,","));
     try {
-      Collection<String> dataCenters=null;
-      Collection<String> hosts=null;
-      if (!specificDataCenters.isEmpty())       dataCenters=newArrayList(specificDataCenters);
- else       if (localDC)       dataCenters=newArrayList(probe.getDataCenter());
- else       if (!specificHosts.isEmpty())       hosts=newArrayList(specificHosts);
-      if (!startToken.isEmpty() || !endToken.isEmpty())       probe.forceRepairRangeAsync(System.out,keyspace,sequential,dataCenters,hosts,startToken,endToken,fullRepair);
- else       probe.forceRepairAsync(System.out,keyspace,sequential,dataCenters,hosts,primaryRange,fullRepair,cfnames);
+      probe.repairAsync(System.out,keyspace,options);
     }
  catch (    Exception e) {
       throw new RuntimeException("Error occurred during repair",e);
