@@ -1,0 +1,28 @@
+{
+  final List<Pair<T,Long>> sortedFiles=Lists.newArrayList(files);
+  Collections.sort(sortedFiles,Collections.reverseOrder(new Comparator<Pair<T,Long>>(){
+    public int compare(    Pair<T,Long> p1,    Pair<T,Long> p2){
+      return p1.right.compareTo(p2.right);
+    }
+  }
+));
+  List<List<T>> buckets=Lists.newArrayList();
+  Target target=getInitialTarget(now,timeUnit);
+  PeekingIterator<Pair<T,Long>> it=Iterators.peekingIterator(sortedFiles.iterator());
+  outerLoop:   while (it.hasNext()) {
+    while (!target.onTarget(it.peek().right)) {
+      if (target.compareToTimestamp(it.peek().right) < 0) {
+        it.next();
+        if (!it.hasNext())         break outerLoop;
+      }
+ else       target=target.nextTarget(base);
+    }
+    List<T> bucket=Lists.newArrayList();
+    while (target.onTarget(it.peek().right)) {
+      bucket.add(it.next().left);
+      if (!it.hasNext())       break;
+    }
+    buckets.add(bucket);
+  }
+  return buckets;
+}
