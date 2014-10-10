@@ -1,33 +1,32 @@
 {
-  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
-  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
-    ColumnFamily cfAttrs=entry.getValue();
-    if (!(cfAttrs.getColumnCount() == 0)) {
-      Map<String,CFMetaData> cfDefs=KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(),cfAttrs));
-      for (      CFMetaData cfDef : cfDefs.values())       addColumnFamily(cfDef);
+  List<CFMetaData> created=new ArrayList<>();
+  List<CFMetaData> altered=new ArrayList<>();
+  List<CFMetaData> dropped=new ArrayList<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().getColumnCount() > 0)   created.addAll(KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(),entry.getValue())).values());
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    String keyspaceName=AsciiType.instance.compose(entry.getKey().key);
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.getColumnCount() > 0 && post.getColumnCount() > 0) {
+      MapDifference<String,CFMetaData> delta=Maps.difference(Schema.instance.getKSMetaData(keyspaceName).cfMetaData(),KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(),post)));
+      dropped.addAll(delta.entriesOnlyOnLeft().values());
+      created.addAll(delta.entriesOnlyOnRight().values());
+      Iterables.addAll(altered,Iterables.transform(delta.entriesDiffering().values(),new Function<MapDifference.ValueDifference<CFMetaData>,CFMetaData>(){
+        public CFMetaData apply(        MapDifference.ValueDifference<CFMetaData> pair){
+          return pair.rightValue();
+        }
+      }
+));
+    }
+ else     if (pre.getColumnCount() > 0) {
+      dropped.addAll(Schema.instance.getKSMetaData(keyspaceName).cfMetaData().values());
+    }
+ else     if (post.getColumnCount() > 0) {
+      created.addAll(KSMetaData.deserializeColumnFamilies(new Row(entry.getKey(),post)).values());
     }
   }
-  Map<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntries=diff.entriesDiffering();
-  for (  DecoratedKey keyspace : modifiedEntries.keySet()) {
-    MapDifference.ValueDifference<ColumnFamily> valueDiff=modifiedEntries.get(keyspace);
-    ColumnFamily prevValue=valueDiff.leftValue();
-    ColumnFamily newValue=valueDiff.rightValue();
-    Row newRow=new Row(keyspace,newValue);
-    if (prevValue.getColumnCount() == 0) {
-      for (      CFMetaData cfm : KSMetaData.deserializeColumnFamilies(newRow).values())       addColumnFamily(cfm);
-    }
- else     if (newValue.getColumnCount() == 0) {
-      for (      CFMetaData cfm : KSMetaData.deserializeColumnFamilies(new Row(keyspace,prevValue)).values())       dropColumnFamily(cfm.ksName,cfm.cfName);
-    }
- else {
-      String ksName=AsciiType.instance.getString(keyspace.key);
-      Map<String,CFMetaData> oldCfDefs=new HashMap<String,CFMetaData>();
-      for (      CFMetaData cfm : Schema.instance.getKSMetaData(ksName).cfMetaData().values())       oldCfDefs.put(cfm.cfName,cfm);
-      Map<String,CFMetaData> newCfDefs=KSMetaData.deserializeColumnFamilies(newRow);
-      MapDifference<String,CFMetaData> cfDefDiff=Maps.difference(oldCfDefs,newCfDefs);
-      for (      CFMetaData cfDef : cfDefDiff.entriesOnlyOnRight().values())       addColumnFamily(cfDef);
-      for (      CFMetaData cfDef : cfDefDiff.entriesOnlyOnLeft().values())       dropColumnFamily(cfDef.ksName,cfDef.cfName);
-      for (      MapDifference.ValueDifference<CFMetaData> cfDef : cfDefDiff.entriesDiffering().values())       updateColumnFamily(cfDef.rightValue());
-    }
-  }
+  for (  CFMetaData cfm : created)   addColumnFamily(cfm);
+  for (  CFMetaData cfm : altered)   updateColumnFamily(cfm.ksName,cfm.cfName);
+  for (  CFMetaData cfm : dropped)   dropColumnFamily(cfm.ksName,cfm.cfName);
 }

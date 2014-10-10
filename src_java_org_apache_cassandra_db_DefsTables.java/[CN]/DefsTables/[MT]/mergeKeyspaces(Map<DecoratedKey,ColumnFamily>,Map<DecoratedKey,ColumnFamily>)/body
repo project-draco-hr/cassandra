@@ -1,27 +1,18 @@
 {
-  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
-  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
-    ColumnFamily ksAttrs=entry.getValue();
-    if (!(ksAttrs.getColumnCount() == 0))     addKeyspace(KSMetaData.fromSchema(new Row(entry.getKey(),entry.getValue()),Collections.<CFMetaData>emptyList()));
+  List<Row> created=new ArrayList<>();
+  List<String> altered=new ArrayList<>();
+  Set<String> dropped=new HashSet<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().getColumnCount() > 0)   created.add(new Row(entry.getKey(),entry.getValue()));
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    String keyspaceName=AsciiType.instance.compose(entry.getKey().key);
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.getColumnCount() > 0 && post.getColumnCount() > 0)     altered.add(keyspaceName);
+ else     if (pre.getColumnCount() > 0)     dropped.add(keyspaceName);
+ else     if (post.getColumnCount() > 0)     created.add(new Row(entry.getKey(),post));
   }
-  Map<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntries=diff.entriesDiffering();
-  List<DecoratedKey> leftToProcess=new ArrayList<DecoratedKey>(modifiedEntries.size());
-  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : modifiedEntries.entrySet()) {
-    ColumnFamily prevValue=entry.getValue().leftValue();
-    ColumnFamily newValue=entry.getValue().rightValue();
-    if (prevValue.getColumnCount() == 0) {
-      addKeyspace(KSMetaData.fromSchema(new Row(entry.getKey(),newValue),Collections.<CFMetaData>emptyList()));
-      continue;
-    }
-    leftToProcess.add(entry.getKey());
-  }
-  if (leftToProcess.size() == 0)   return Collections.emptySet();
-  Set<String> keyspacesToDrop=new HashSet<String>();
-  for (  DecoratedKey key : leftToProcess) {
-    MapDifference.ValueDifference<ColumnFamily> valueDiff=modifiedEntries.get(key);
-    ColumnFamily newState=valueDiff.rightValue();
-    if (newState.getColumnCount() == 0)     keyspacesToDrop.add(AsciiType.instance.getString(key.key));
- else     updateKeyspace(KSMetaData.fromSchema(new Row(key,newState),Collections.<CFMetaData>emptyList()));
-  }
-  return keyspacesToDrop;
+  for (  Row row : created)   addKeyspace(KSMetaData.fromSchema(row,Collections.<CFMetaData>emptyList()));
+  for (  String name : altered)   updateKeyspace(name);
+  return dropped;
 }
