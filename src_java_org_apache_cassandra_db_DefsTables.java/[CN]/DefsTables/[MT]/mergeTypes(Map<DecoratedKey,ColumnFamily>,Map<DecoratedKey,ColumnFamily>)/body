@@ -1,25 +1,32 @@
 {
-  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
-  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
-    ColumnFamily cfTypes=entry.getValue();
-    if (!cfTypes.hasColumns())     continue;
-    for (    UserType ut : UTMetaData.fromSchema(new Row(entry.getKey(),cfTypes)).values())     addType(ut);
+  List<UserType> created=new ArrayList<>();
+  List<UserType> altered=new ArrayList<>();
+  List<UserType> dropped=new ArrayList<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().hasColumns())   created.addAll(UTMetaData.fromSchema(new Row(entry.getKey(),entry.getValue())).values());
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    String keyspaceName=AsciiType.instance.compose(entry.getKey().getKey());
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.hasColumns() && post.hasColumns()) {
+      MapDifference<ByteBuffer,UserType> delta=Maps.difference(Schema.instance.getKSMetaData(keyspaceName).userTypes.getAllTypes(),UTMetaData.fromSchema(new Row(entry.getKey(),post)));
+      dropped.addAll(delta.entriesOnlyOnLeft().values());
+      created.addAll(delta.entriesOnlyOnRight().values());
+      Iterables.addAll(altered,Iterables.transform(delta.entriesDiffering().values(),new Function<MapDifference.ValueDifference<UserType>,UserType>(){
+        public UserType apply(        MapDifference.ValueDifference<UserType> pair){
+          return pair.rightValue();
+        }
+      }
+));
+    }
+ else     if (pre.hasColumns()) {
+      dropped.addAll(Schema.instance.getKSMetaData(keyspaceName).userTypes.getAllTypes().values());
+    }
+ else     if (post.hasColumns()) {
+      created.addAll(UTMetaData.fromSchema(new Row(entry.getKey(),post)).values());
+    }
   }
-  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntry : diff.entriesDiffering().entrySet()) {
-    DecoratedKey keyspace=modifiedEntry.getKey();
-    ColumnFamily prevCFTypes=modifiedEntry.getValue().leftValue();
-    ColumnFamily newCFTypes=modifiedEntry.getValue().rightValue();
-    if (!prevCFTypes.hasColumns()) {
-      for (      UserType ut : UTMetaData.fromSchema(new Row(keyspace,newCFTypes)).values())       addType(ut);
-    }
- else     if (!newCFTypes.hasColumns()) {
-      for (      UserType ut : UTMetaData.fromSchema(new Row(keyspace,prevCFTypes)).values())       dropType(ut);
-    }
- else {
-      MapDifference<ByteBuffer,UserType> typesDiff=Maps.difference(UTMetaData.fromSchema(new Row(keyspace,prevCFTypes)),UTMetaData.fromSchema(new Row(keyspace,newCFTypes)));
-      for (      UserType type : typesDiff.entriesOnlyOnRight().values())       addType(type);
-      for (      UserType type : typesDiff.entriesOnlyOnLeft().values())       dropType(type);
-      for (      MapDifference.ValueDifference<UserType> tdiff : typesDiff.entriesDiffering().values())       updateType(tdiff.rightValue());
-    }
-  }
+  for (  UserType type : created)   addType(type);
+  for (  UserType type : altered)   updateType(type);
+  for (  UserType type : dropped)   dropType(type);
 }

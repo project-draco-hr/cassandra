@@ -1,25 +1,31 @@
 {
-  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(old,updated);
-  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet()) {
-    ColumnFamily cfFunctions=entry.getValue();
-    if (!cfFunctions.hasColumns())     continue;
-    for (    UDFunction udf : UDFunction.fromSchema(new Row(entry.getKey(),cfFunctions)).values())     addFunction(udf);
+  List<UDFunction> created=new ArrayList<>();
+  List<UDFunction> altered=new ArrayList<>();
+  List<UDFunction> dropped=new ArrayList<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().hasColumns())   created.addAll(UDFunction.fromSchema(new Row(entry.getKey(),entry.getValue())).values());
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.hasColumns() && post.hasColumns()) {
+      MapDifference<ByteBuffer,UDFunction> delta=Maps.difference(UDFunction.fromSchema(new Row(entry.getKey(),pre)),UDFunction.fromSchema(new Row(entry.getKey(),post)));
+      dropped.addAll(delta.entriesOnlyOnLeft().values());
+      created.addAll(delta.entriesOnlyOnRight().values());
+      Iterables.addAll(altered,Iterables.transform(delta.entriesDiffering().values(),new Function<MapDifference.ValueDifference<UDFunction>,UDFunction>(){
+        public UDFunction apply(        MapDifference.ValueDifference<UDFunction> pair){
+          return pair.rightValue();
+        }
+      }
+));
+    }
+ else     if (pre.hasColumns()) {
+      dropped.addAll(UDFunction.fromSchema(new Row(entry.getKey(),pre)).values());
+    }
+ else     if (post.hasColumns()) {
+      created.addAll(UDFunction.fromSchema(new Row(entry.getKey(),post)).values());
+    }
   }
-  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> modifiedEntry : diff.entriesDiffering().entrySet()) {
-    DecoratedKey namespace=modifiedEntry.getKey();
-    ColumnFamily prevCFFunctions=modifiedEntry.getValue().leftValue();
-    ColumnFamily newCFFunctions=modifiedEntry.getValue().rightValue();
-    if (!prevCFFunctions.hasColumns()) {
-      for (      UDFunction udf : UDFunction.fromSchema(new Row(namespace,newCFFunctions)).values())       addFunction(udf);
-    }
- else     if (!newCFFunctions.hasColumns()) {
-      for (      UDFunction udf : UDFunction.fromSchema(new Row(namespace,prevCFFunctions)).values())       dropFunction(udf);
-    }
- else {
-      MapDifference<ByteBuffer,UDFunction> functionsDiff=Maps.difference(UDFunction.fromSchema(new Row(namespace,prevCFFunctions)),UDFunction.fromSchema(new Row(namespace,newCFFunctions)));
-      for (      UDFunction udf : functionsDiff.entriesOnlyOnRight().values())       addFunction(udf);
-      for (      UDFunction udf : functionsDiff.entriesOnlyOnLeft().values())       dropFunction(udf);
-      for (      MapDifference.ValueDifference<UDFunction> tdiff : functionsDiff.entriesDiffering().values())       updateFunction(tdiff.rightValue());
-    }
-  }
+  for (  UDFunction udf : created)   addFunction(udf);
+  for (  UDFunction udf : altered)   updateFunction(udf);
+  for (  UDFunction udf : dropped)   dropFunction(udf);
 }
