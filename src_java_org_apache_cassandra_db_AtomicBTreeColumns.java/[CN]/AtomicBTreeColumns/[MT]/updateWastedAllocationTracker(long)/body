@@ -1,0 +1,16 @@
+{
+  if (wastedBytes < EXCESS_WASTE_BYTES) {
+    int wastedAllocation=((int)(wastedBytes + ALLOCATION_GRANULARITY_BYTES - 1)) / ALLOCATION_GRANULARITY_BYTES;
+    int oldTrackerValue;
+    while (TRACKER_PESSIMISTIC_LOCKING != (oldTrackerValue=wasteTracker)) {
+      int time=(int)(System.nanoTime() >>> CLOCK_SHIFT);
+      int delta=oldTrackerValue - time;
+      if (oldTrackerValue == TRACKER_NEVER_WASTED || delta >= 0 || delta < -EXCESS_WASTE_OFFSET)       delta=-EXCESS_WASTE_OFFSET;
+      delta+=wastedAllocation;
+      if (delta >= 0)       break;
+      if (wasteTrackerUpdater.compareAndSet(this,oldTrackerValue,avoidReservedValues(time + delta)))       return false;
+    }
+  }
+  wasteTrackerUpdater.set(this,TRACKER_PESSIMISTIC_LOCKING);
+  return true;
+}
