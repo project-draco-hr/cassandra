@@ -6,7 +6,12 @@
     if (loader == null) {
       ExternalClient externalClient=new ExternalClient(conf);
       externalClient.addKnownCfs(keyspace,schema);
-      this.loader=new SSTableLoader(outputDir,externalClient,new BulkRecordWriter.NullOutputHandler());
+      this.loader=new SSTableLoader(outputDir,externalClient,new BulkRecordWriter.NullOutputHandler()){
+        @Override public void onSuccess(        StreamState finalState){
+          if (deleteSrc)           FileUtils.deleteRecursive(outputDir);
+        }
+      }
+;
     }
   }
  catch (  Exception e) {
