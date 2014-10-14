@@ -1,11 +1,12 @@
 {
+  if (length == 0)   return "";
+  ByteBuffer buffer=cb.nioBuffer(cb.readerIndex(),length);
   try {
-    String str=cb.toString(cb.readerIndex(),length,CharsetUtil.UTF_8);
+    String str=decodeString(buffer);
     cb.readerIndex(cb.readerIndex() + length);
     return str;
   }
- catch (  IllegalStateException e) {
-    if (e.getCause() instanceof CharacterCodingException)     throw new ProtocolException("Cannot decode string as UTF8");
- else     throw e;
+ catch (  IllegalStateException|CharacterCodingException e) {
+    throw new ProtocolException("Cannot decode string as UTF8: '" + ByteBufferUtil.bytesToHex(buffer) + "'; "+ e);
   }
 }
