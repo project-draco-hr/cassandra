@@ -7,17 +7,13 @@
   for (  CFMetaData cfm : ksm.cfMetaData().values()) {
     ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfm.cfName);
     Schema.instance.purge(cfm);
-    if (!StorageService.instance.isClientMode()) {
-      if (DatabaseDescriptor.isAutoSnapshot())       cfs.snapshot(snapshotName);
-      Keyspace.open(ksm.name).dropCf(cfm.cfId);
-    }
+    if (DatabaseDescriptor.isAutoSnapshot())     cfs.snapshot(snapshotName);
+    Keyspace.open(ksm.name).dropCf(cfm.cfId);
     droppedCfs.add(cfm.cfId);
   }
   Keyspace.clear(ksm.name);
   Schema.instance.clearKeyspaceDefinition(ksm);
   keyspace.writeOrder.awaitNewBarrier();
   CommitLog.instance.forceRecycleAllSegments(droppedCfs);
-  if (!StorageService.instance.isClientMode()) {
-    MigrationManager.instance.notifyDropKeyspace(ksm);
-  }
+  MigrationManager.instance.notifyDropKeyspace(ksm);
 }

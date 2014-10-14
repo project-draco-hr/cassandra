@@ -39,15 +39,15 @@
     if (currentOwner == null) {
       logger.debug("New node {} at token {}",endpoint,token);
       tokensToUpdateInMetadata.add(token);
-      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+      tokensToUpdateInSystemKeyspace.add(token);
     }
  else     if (endpoint.equals(currentOwner)) {
       tokensToUpdateInMetadata.add(token);
-      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+      tokensToUpdateInSystemKeyspace.add(token);
     }
  else     if (Gossiper.instance.compareEndpointStartup(endpoint,currentOwner) > 0) {
       tokensToUpdateInMetadata.add(token);
-      if (!isClientMode)       tokensToUpdateInSystemKeyspace.add(token);
+      tokensToUpdateInSystemKeyspace.add(token);
       Multimap<InetAddress,Token> epToTokenCopy=getTokenMetadata().getEndpointToTokenMapForReading();
       epToTokenCopy.get(currentOwner).remove(token);
       if (epToTokenCopy.get(currentOwner).size() < 1)       endpointsToRemove.add(currentOwner);
@@ -63,9 +63,7 @@
   if (!localTokensToRemove.isEmpty())   SystemKeyspace.updateLocalTokens(Collections.<Token>emptyList(),localTokensToRemove);
   if (tokenMetadata.isMoving(endpoint)) {
     tokenMetadata.removeFromMoving(endpoint);
-    if (!isClientMode) {
-      for (      IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)       subscriber.onMove(endpoint);
-    }
+    for (    IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)     subscriber.onMove(endpoint);
   }
   PendingRangeCalculatorService.instance.update();
 }
