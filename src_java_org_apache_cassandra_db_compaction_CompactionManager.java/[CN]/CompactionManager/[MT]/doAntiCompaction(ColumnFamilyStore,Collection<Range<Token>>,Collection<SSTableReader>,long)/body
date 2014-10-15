@@ -15,8 +15,7 @@
     File destination=cfs.directories.getDirectoryForNewSSTables();
     SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,false);
     SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,false);
-    AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
-    try (AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(new HashSet<>(Collections.singleton(sstable)));CompactionController controller=new CompactionController(cfs,sstableAsSet,CFMetaData.DEFAULT_GC_GRACE_SECONDS)){
+    try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(new HashSet<>(Collections.singleton(sstable)));CompactionController controller=new CompactionController(cfs,sstableAsSet,CFMetaData.DEFAULT_GC_GRACE_SECONDS)){
       repairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,repairedAt,sstable));
       unRepairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstable));
       CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners.scanners,controller);
