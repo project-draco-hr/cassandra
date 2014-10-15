@@ -21,8 +21,7 @@
   if (!CLibrary.jnaAvailable()) {
     boolean jnaRequired=!Boolean.getBoolean("cassandra.boot_without_jna");
     if (jnaRequired) {
-      logger.error("JNA failing to initialize properly. Use -Dcassandra.boot_without_jna=true to bootstrap even so.");
-      System.exit(3);
+      exitOrFail(3,"JNA failing to initialize properly. Use -Dcassandra.boot_without_jna=true to bootstrap even so.");
     }
   }
   CLibrary.tryMlockall();
@@ -55,12 +54,11 @@
     if (!dir.exists()) {
       logger.error("Directory {} doesn't exist",dataDir);
       if (!dir.mkdirs()) {
-        logger.error("Has no permission to create {} directory",dataDir);
-        System.exit(3);
+        exitOrFail(3,"Has no permission to create directory " + dataDir);
       }
     }
     if (!Directories.verifyFullPermissions(dir,dataDir)) {
-      System.exit(3);
+      exitOrFail(3,"Insufficient permissions on directory " + dataDir);
     }
   }
   if (CacheService.instance == null)   throw new RuntimeException("Failed to initialize Cache Service.");
@@ -69,8 +67,7 @@
     SystemKeyspace.checkHealth();
   }
  catch (  ConfigurationException e) {
-    logger.error("Fatal exception during initialization",e);
-    System.exit(100);
+    exitOrFail(100,"Fatal exception during initialization",e);
   }
   DatabaseDescriptor.loadSchemas();
   Functions.loadUDFFromSchema();
@@ -132,9 +129,8 @@
     StorageService.instance.initServer();
   }
  catch (  ConfigurationException e) {
-    logger.error("Fatal configuration error",e);
     System.err.println(e.getMessage() + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
-    System.exit(1);
+    exitOrFail(1,"Fatal configuration error",e);
   }
   Mx4jTool.maybeLoad();
   String metricsReporterConfigFile=System.getProperty("cassandra.metricsReporterConfigFile");
