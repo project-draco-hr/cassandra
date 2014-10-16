@@ -1,6 +1,7 @@
 {
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
   PrepareCallback summary=null;
+  int contentions=0;
   while (System.nanoTime() - start < timeout) {
     long ballotMillis=summary == null ? System.currentTimeMillis() : Math.max(System.currentTimeMillis(),1 + UUIDGen.unixTimestamp(summary.mostRecentInProgressCommit.ballot));
     UUID ballot=UUIDGen.getTimeUUID(ballotMillis);
@@ -9,6 +10,7 @@
     summary=preparePaxos(toPrepare,liveEndpoints,requiredParticipants,consistencyForPaxos);
     if (!summary.promised) {
       Tracing.trace("Some replicas have already promised a higher ballot than ours; aborting");
+      contentions++;
       Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);
       continue;
     }
@@ -16,12 +18,15 @@
     Commit mostRecent=summary.mostRecentCommit;
     if (!inProgress.update.isEmpty() && inProgress.isAfter(mostRecent)) {
       Tracing.trace("Finishing incomplete paxos round {}",inProgress);
+      if (isWrite)       casWriteMetrics.unfinishedCommit.inc();
+ else       casReadMetrics.unfinishedCommit.inc();
       Commit refreshedInProgress=Commit.newProposal(inProgress.key,ballot,inProgress.update);
       if (proposePaxos(refreshedInProgress,liveEndpoints,requiredParticipants,false,consistencyForPaxos)) {
         commitPaxos(refreshedInProgress,consistencyForCommit);
       }
  else {
         Tracing.trace("Some replicas have already promised a higher ballot than ours; aborting");
+        contentions++;
         Uninterruptibles.sleepUninterruptibly(FBUtilities.threadLocalRandom().nextInt(100),TimeUnit.MILLISECONDS);
       }
       continue;
@@ -32,7 +37,7 @@
       sendCommit(mostRecent,missingMRC);
       continue;
     }
-    return ballot;
+    return Pair.create(ballot,contentions);
   }
   throw new WriteTimeoutException(WriteType.CAS,consistencyForPaxos,0,consistencyForPaxos.blockFor(Keyspace.open(metadata.ksName)));
 }

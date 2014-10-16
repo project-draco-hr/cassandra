@@ -16,7 +16,8 @@
       int requiredParticipants=p.right;
       final ConsistencyLevel consistencyForCommitOrFetch=consistency_level == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM;
       try {
-        beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants,consistency_level,consistencyForCommitOrFetch);
+        final Pair<UUID,Integer> pair=beginAndRepairPaxos(start,command.key,metadata,liveEndpoints,requiredParticipants,consistency_level,consistencyForCommitOrFetch,false);
+        if (pair.right > 0)         casReadMetrics.contention.update(pair.right);
       }
  catch (      WriteTimeoutException e) {
         throw new ReadTimeoutException(consistency_level,0,consistency_level.blockFor(Keyspace.open(command.ksName)),false);
@@ -30,16 +31,19 @@
  catch (  UnavailableException e) {
     readMetrics.unavailables.mark();
     ClientRequestMetrics.readUnavailables.inc();
+    if (consistency_level.isSerialConsistency())     casReadMetrics.unavailables.mark();
     throw e;
   }
 catch (  ReadTimeoutException e) {
     readMetrics.timeouts.mark();
     ClientRequestMetrics.readTimeouts.inc();
+    if (consistency_level.isSerialConsistency())     casReadMetrics.timeouts.mark();
     throw e;
   }
  finally {
     long latency=System.nanoTime() - start;
     readMetrics.addNano(latency);
+    if (consistency_level.isSerialConsistency())     casReadMetrics.addNano(latency);
     for (    ReadCommand command : commands)     Keyspace.open(command.ksName).getColumnFamilyStore(command.cfName).metric.coordinatorReadLatency.update(latency,TimeUnit.NANOSECONDS);
   }
   return rows;
