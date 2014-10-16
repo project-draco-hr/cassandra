@@ -1,34 +1,53 @@
 {
-  consistencyForPaxos.validateForCas();
-  consistencyForCommit.validateForCasCommit(keyspaceName);
-  CFMetaData metadata=Schema.instance.getCFMetaData(keyspaceName,cfName);
-  long start=System.nanoTime();
-  long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
-  while (System.nanoTime() - start < timeout) {
-    Pair<List<InetAddress>,Integer> p=getPaxosParticipants(keyspaceName,key,consistencyForPaxos);
-    List<InetAddress> liveEndpoints=p.left;
-    int requiredParticipants=p.right;
-    UUID ballot=beginAndRepairPaxos(start,key,metadata,liveEndpoints,requiredParticipants,consistencyForPaxos,consistencyForCommit);
-    Tracing.trace("Reading existing values for CAS precondition");
-    long timestamp=System.currentTimeMillis();
-    ReadCommand readCommand=ReadCommand.create(keyspaceName,key,cfName,timestamp,request.readFilter());
-    List<Row> rows=read(Arrays.asList(readCommand),consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
-    ColumnFamily current=rows.get(0).cf;
-    if (!request.appliesTo(current)) {
-      Tracing.trace("CAS precondition does not match current values {}",current);
-      return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+  final long start=System.nanoTime();
+  int contentions=0;
+  try {
+    consistencyForPaxos.validateForCas();
+    consistencyForCommit.validateForCasCommit(keyspaceName);
+    CFMetaData metadata=Schema.instance.getCFMetaData(keyspaceName,cfName);
+    long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getCasContentionTimeout());
+    while (System.nanoTime() - start < timeout) {
+      Pair<List<InetAddress>,Integer> p=getPaxosParticipants(keyspaceName,key,consistencyForPaxos);
+      List<InetAddress> liveEndpoints=p.left;
+      int requiredParticipants=p.right;
+      final Pair<UUID,Integer> pair=beginAndRepairPaxos(start,key,metadata,liveEndpoints,requiredParticipants,consistencyForPaxos,consistencyForCommit,true);
+      final UUID ballot=pair.left;
+      contentions+=pair.right;
+      Tracing.trace("Reading existing values for CAS precondition");
+      long timestamp=System.currentTimeMillis();
+      ReadCommand readCommand=ReadCommand.create(keyspaceName,key,cfName,timestamp,request.readFilter());
+      List<Row> rows=read(Arrays.asList(readCommand),consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
+      ColumnFamily current=rows.get(0).cf;
+      if (!request.appliesTo(current)) {
+        Tracing.trace("CAS precondition does not match current values {}",current);
+        casWriteMetrics.conditionNotMet.inc();
+        return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+      }
+      ColumnFamily updates=request.makeUpdates(current);
+      updates=TriggerExecutor.instance.execute(key,updates);
+      Commit proposal=Commit.newProposal(key,ballot,updates);
+      Tracing.trace("CAS precondition is met; proposing client-requested updates for {}",ballot);
+      if (proposePaxos(proposal,liveEndpoints,requiredParticipants,true,consistencyForPaxos)) {
+        commitPaxos(proposal,consistencyForCommit);
+        Tracing.trace("CAS successful");
+        return null;
+      }
+      Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
+      contentions++;
+      Uninterruptibles.sleepUninterruptibly(ThreadLocalRandom.current().nextInt(100),TimeUnit.MILLISECONDS);
     }
-    ColumnFamily updates=request.makeUpdates(current);
-    updates=TriggerExecutor.instance.execute(key,updates);
-    Commit proposal=Commit.newProposal(key,ballot,updates);
-    Tracing.trace("CAS precondition is met; proposing client-requested updates for {}",ballot);
-    if (proposePaxos(proposal,liveEndpoints,requiredParticipants,true,consistencyForPaxos)) {
-      commitPaxos(proposal,consistencyForCommit);
-      Tracing.trace("CAS successful");
-      return null;
-    }
-    Tracing.trace("Paxos proposal not accepted (pre-empted by a higher ballot)");
-    Uninterruptibles.sleepUninterruptibly(ThreadLocalRandom.current().nextInt(100),TimeUnit.MILLISECONDS);
+    throw new WriteTimeoutException(WriteType.CAS,consistencyForPaxos,0,consistencyForPaxos.blockFor(Keyspace.open(keyspaceName)));
   }
-  throw new WriteTimeoutException(WriteType.CAS,consistencyForPaxos,0,consistencyForPaxos.blockFor(Keyspace.open(keyspaceName)));
+ catch (  WriteTimeoutException|ReadTimeoutException e) {
+    casWriteMetrics.timeouts.mark();
+    throw e;
+  }
+catch (  UnavailableException e) {
+    casWriteMetrics.unavailables.mark();
+    throw e;
+  }
+ finally {
+    if (contentions > 0)     casWriteMetrics.contention.update(contentions);
+    casWriteMetrics.addNano(System.nanoTime() - start);
+  }
 }
