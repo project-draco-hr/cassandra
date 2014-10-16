@@ -1,0 +1,26 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF_STANDARD1);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  int numSSTables=3;
+  for (int r=0; r < numSSTables; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
+    rm.add(CF_STANDARD1,Util.cellname("column"),value,r);
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  cfs.forceBlockingFlush();
+  Iterable<SSTableReader> filtered;
+  List<SSTableReader> sstrs=new ArrayList<>(cfs.getSSTables());
+  filtered=filterOldSSTables(sstrs,0,2);
+  assertEquals("when maxSSTableAge is zero, no sstables should be filtered",sstrs.size(),Iterables.size(filtered));
+  filtered=filterOldSSTables(sstrs,1,2);
+  assertEquals("only the newest 2 sstables should remain",2,Iterables.size(filtered));
+  filtered=filterOldSSTables(sstrs,1,3);
+  assertEquals("only the newest sstable should remain",1,Iterables.size(filtered));
+  filtered=filterOldSSTables(sstrs,1,4);
+  assertEquals("no sstables should remain when all are too old",0,Iterables.size(filtered));
+}

@@ -1,0 +1,33 @@
+{
+  String optionValue=options.get(TIMESTAMP_RESOLUTION_KEY);
+  try {
+    if (optionValue != null)     TimeUnit.valueOf(optionValue);
+  }
+ catch (  IllegalArgumentException e) {
+    throw new ConfigurationException(String.format("timestamp_resolution %s is not valid",optionValue));
+  }
+  optionValue=options.get(MAX_SSTABLE_AGE_KEY);
+  try {
+    long maxSStableAge=optionValue == null ? DEFAULT_MAX_SSTABLE_AGE_DAYS : Long.parseLong(optionValue);
+    if (maxSStableAge < 0) {
+      throw new ConfigurationException(String.format("%s must be non-negative: %d",MAX_SSTABLE_AGE_KEY,maxSStableAge));
+    }
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException(String.format("%s is not a parsable int (base10) for %s",optionValue,MAX_SSTABLE_AGE_KEY),e);
+  }
+  optionValue=options.get(BASE_TIME_KEY);
+  try {
+    long baseTime=optionValue == null ? DEFAULT_BASE_TIME_SECONDS : Long.parseLong(optionValue);
+    if (baseTime <= 0) {
+      throw new ConfigurationException(String.format("%s must be greater than 0, but was %d",BASE_TIME_KEY,baseTime));
+    }
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException(String.format("%s is not a parsable int (base10) for %s",optionValue,BASE_TIME_KEY),e);
+  }
+  uncheckedOptions.remove(MAX_SSTABLE_AGE_KEY);
+  uncheckedOptions.remove(BASE_TIME_KEY);
+  uncheckedOptions.remove(TIMESTAMP_RESOLUTION_KEY);
+  return uncheckedOptions;
+}

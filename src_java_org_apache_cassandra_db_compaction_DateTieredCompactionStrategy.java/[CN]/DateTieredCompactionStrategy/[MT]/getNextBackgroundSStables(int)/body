@@ -1,0 +1,33 @@
+{
+  if (!isEnabled() || cfs.getSSTables().isEmpty())   return Collections.emptyList();
+  int base=cfs.getMinimumCompactionThreshold();
+  long now=getNow();
+  Iterable<SSTableReader> candidates=filterSuspectSSTables(cfs.getUncompactingSSTables());
+  Set<SSTableReader> repairedCandidates=new HashSet<>();
+  Set<SSTableReader> unRepairedCandidates=new HashSet<>();
+  for (  SSTableReader sstable : candidates) {
+    if (sstable.isRepaired()) {
+      repairedCandidates.add(sstable);
+    }
+ else {
+      unRepairedCandidates.add(sstable);
+    }
+  }
+  List<SSTableReader> mostInterestingRepaired=getCompactionCandidates(repairedCandidates,now,base);
+  List<SSTableReader> mostInterestingUnrepaired=getCompactionCandidates(unRepairedCandidates,now,base);
+  if (mostInterestingRepaired != null && mostInterestingUnrepaired != null) {
+    return mostInterestingRepaired.size() > mostInterestingUnrepaired.size() ? mostInterestingRepaired : mostInterestingUnrepaired;
+  }
+ else   if (mostInterestingRepaired != null) {
+    return mostInterestingRepaired;
+  }
+ else   if (mostInterestingUnrepaired != null) {
+    return mostInterestingUnrepaired;
+  }
+  List<SSTableReader> sstablesWithTombstones=Lists.newArrayList();
+  for (  SSTableReader sstable : candidates) {
+    if (worthDroppingTombstones(sstable,gcBefore))     sstablesWithTombstones.add(sstable);
+  }
+  if (sstablesWithTombstones.isEmpty())   return Collections.emptyList();
+  return Collections.singletonList(Collections.min(sstablesWithTombstones,new SSTableReader.SizeComparator()));
+}
