@@ -1,6 +1,12 @@
 {
-  Tracing.trace("Committing proposal {}",proposal);
-  Mutation mutation=proposal.makeMutation();
-  Keyspace.open(mutation.getKeyspaceName()).apply(mutation,true);
-  SystemKeyspace.savePaxosCommit(proposal);
+  long start=System.nanoTime();
+  try {
+    Tracing.trace("Committing proposal {}",proposal);
+    Mutation mutation=proposal.makeMutation();
+    Keyspace.open(mutation.getKeyspaceName()).apply(mutation,true);
+    SystemKeyspace.savePaxosCommit(proposal);
+  }
+  finally {
+    Keyspace.open(proposal.update.metadata().ksName).getColumnFamilyStore(proposal.update.metadata().cfId).metric.casCommit.addNano(System.nanoTime() - start);
+  }
 }
