@@ -1,14 +1,20 @@
 {
+  long start=System.nanoTime();
+  try {
 synchronized (lockFor(toPrepare.key)) {
-    PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.key,toPrepare.update.metadata());
-    if (toPrepare.isAfter(state.promised)) {
-      Tracing.trace("Promising ballot {}",toPrepare.ballot);
-      SystemKeyspace.savePaxosPromise(toPrepare);
-      return new PrepareResponse(true,state.accepted,state.mostRecentCommit);
-    }
+      PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.key,toPrepare.update.metadata());
+      if (toPrepare.isAfter(state.promised)) {
+        Tracing.trace("Promising ballot {}",toPrepare.ballot);
+        SystemKeyspace.savePaxosPromise(toPrepare);
+        return new PrepareResponse(true,state.accepted,state.mostRecentCommit);
+      }
  else {
-      Tracing.trace("Promise rejected; {} is not sufficiently newer than {}",toPrepare,state.promised);
-      return new PrepareResponse(false,state.promised,state.mostRecentCommit);
+        Tracing.trace("Promise rejected; {} is not sufficiently newer than {}",toPrepare,state.promised);
+        return new PrepareResponse(false,state.promised,state.mostRecentCommit);
+      }
     }
+  }
+  finally {
+    Keyspace.open(toPrepare.update.metadata().ksName).getColumnFamilyStore(toPrepare.update.metadata().cfId).metric.casPrepare.addNano(System.nanoTime() - start);
   }
 }

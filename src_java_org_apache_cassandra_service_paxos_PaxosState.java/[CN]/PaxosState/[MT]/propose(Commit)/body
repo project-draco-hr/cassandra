@@ -1,14 +1,20 @@
 {
+  long start=System.nanoTime();
+  try {
 synchronized (lockFor(proposal.key)) {
-    PaxosState state=SystemKeyspace.loadPaxosState(proposal.key,proposal.update.metadata());
-    if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised)) {
-      Tracing.trace("Accepting proposal {}",proposal);
-      SystemKeyspace.savePaxosProposal(proposal);
-      return true;
-    }
+      PaxosState state=SystemKeyspace.loadPaxosState(proposal.key,proposal.update.metadata());
+      if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised)) {
+        Tracing.trace("Accepting proposal {}",proposal);
+        SystemKeyspace.savePaxosProposal(proposal);
+        return true;
+      }
  else {
-      Tracing.trace("Rejecting proposal for {} because inProgress is now {}",proposal,state.promised);
-      return false;
+        Tracing.trace("Rejecting proposal for {} because inProgress is now {}",proposal,state.promised);
+        return false;
+      }
     }
+  }
+  finally {
+    Keyspace.open(proposal.update.metadata().ksName).getColumnFamilyStore(proposal.update.metadata().cfId).metric.casPropose.addNano(System.nanoTime() - start);
   }
 }
