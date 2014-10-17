@@ -5,10 +5,19 @@
     if (logger.isDebugEnabled())     logger.debug("Ranges needing transfer are [" + StringUtils.join(rangesMM.keySet(),",") + "]");
     rangesToStream.put(keyspaceName,rangesMM);
   }
-  setMode(Mode.LEAVING,"streaming data to other nodes",true);
+  setMode(Mode.LEAVING,"replaying batch log and streaming data to other nodes",true);
+  Future<?> batchlogReplay=BatchlogManager.instance.startBatchlogReplay();
   Future<StreamState> streamSuccess=streamRanges(rangesToStream);
+  logger.debug("waiting for batch log processing.");
+  try {
+    batchlogReplay.get();
+  }
+ catch (  ExecutionException|InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  setMode(Mode.LEAVING,"streaming hints to other nodes",true);
   Future<StreamState> hintsSuccess=streamHints();
-  logger.debug("waiting for stream aks.");
+  logger.debug("waiting for stream acks.");
   try {
     streamSuccess.get();
     hintsSuccess.get();
