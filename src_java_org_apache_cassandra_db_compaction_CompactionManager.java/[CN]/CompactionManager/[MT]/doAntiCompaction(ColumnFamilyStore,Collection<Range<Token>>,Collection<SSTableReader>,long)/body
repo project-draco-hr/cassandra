@@ -13,8 +13,8 @@
     Set<SSTableReader> sstableAsSet=new HashSet<>();
     sstableAsSet.add(sstable);
     File destination=cfs.directories.getDirectoryForNewSSTables();
-    SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
-    SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,OperationType.ANTICOMPACTION,false);
+    SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,false);
+    SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,sstable.maxDataAge,false);
     AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
     try (AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(new HashSet<>(Collections.singleton(sstable)));CompactionController controller=new CompactionController(cfs,sstableAsSet,CFMetaData.DEFAULT_GC_GRACE_SECONDS)){
       repairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,repairedAt,sstable));
@@ -32,10 +32,9 @@
           unrepairedKeyCount++;
         }
       }
-      repairedSSTableWriter.finish(false,repairedAt);
-      unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE);
-      anticompactedSSTables.addAll(repairedSSTableWriter.finished());
-      anticompactedSSTables.addAll(unRepairedSSTableWriter.finished());
+      anticompactedSSTables.addAll(repairedSSTableWriter.finish(repairedAt));
+      anticompactedSSTables.addAll(unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE));
+      cfs.getDataTracker().markCompactedSSTablesReplaced(sstableAsSet,anticompactedSSTables,OperationType.ANTICOMPACTION);
     }
  catch (    Throwable e) {
       JVMStabilityInspector.inspectThrowable(e);
