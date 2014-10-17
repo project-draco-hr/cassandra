@@ -3,10 +3,13 @@
     writer=newWriter;
     return;
   }
-  SSTableReader reader=writer.closeAndOpenReader(maxAge);
-  finished.add(reader);
-  replaceReader(currentlyOpenedEarly,reader,false);
-  moveStarts(reader,Functions.constant(reader.last),false);
+  SSTableReader reader=writer.openEarly(maxAge);
+  if (reader != null) {
+    finishedOpenedEarly.add(reader);
+    replaceReader(currentlyOpenedEarly,reader,false);
+    moveStarts(reader,Functions.constant(reader.last),false);
+  }
+  finishedWriters.add(Pair.create(writer,reader));
   currentlyOpenedEarly=null;
   currentlyOpenedEarlyAt=0;
   writer=newWriter;

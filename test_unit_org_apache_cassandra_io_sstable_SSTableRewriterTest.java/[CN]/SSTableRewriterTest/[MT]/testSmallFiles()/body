@@ -1,0 +1,31 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  SSTableReader s=writeFile(cfs,400);
+  DecoratedKey origFirst=s.first;
+  cfs.addSSTable(s);
+  Set<SSTableReader> compacting=Sets.newHashSet(s);
+  SSTableRewriter.overrideOpenInterval(1000000);
+  SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,OperationType.COMPACTION,false);
+  rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+  ICompactionScanner scanner=s.getScanner();
+  CompactionController controller=new CompactionController(cfs,compacting,0);
+  int files=1;
+  while (scanner.hasNext()) {
+    rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
+    if (rewriter.currentWriter().getOnDiskFilePointer() > 2500000) {
+      assertEquals(1,cfs.getSSTables().size());
+      assertEquals(origFirst,cfs.getSSTables().iterator().next().first);
+      rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+      files++;
+    }
+  }
+  rewriter.finish();
+  assertEquals(files,rewriter.finished().size());
+  assertEquals(files,cfs.getSSTables().size());
+  Thread.sleep(1000);
+  assertFileCounts(s.descriptor.directory.list(),0,0);
+  validateCFS(cfs);
+}
