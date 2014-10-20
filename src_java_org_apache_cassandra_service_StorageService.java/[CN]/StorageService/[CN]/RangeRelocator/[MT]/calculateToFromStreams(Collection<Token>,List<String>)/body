@@ -26,10 +26,16 @@
         logger.debug("Range:" + toStream + "Current endpoints: "+ currentEndpoints+ " New endpoints: "+ newEndpoints);
         for (        InetAddress address : Sets.difference(newEndpoints,currentEndpoints))         endpointRanges.put(address,toStream);
       }
-      for (      InetAddress address : endpointRanges.keySet())       streamPlan.transferRanges(address,keyspace,endpointRanges.get(address));
+      for (      InetAddress address : endpointRanges.keySet()) {
+        InetAddress preferred=SystemKeyspace.getPreferredIP(address);
+        streamPlan.transferRanges(address,preferred,keyspace,endpointRanges.get(address));
+      }
       Multimap<InetAddress,Range<Token>> workMap=RangeStreamer.getWorkMap(rangesToFetchWithPreferredEndpoints);
-      for (      InetAddress address : workMap.keySet())       streamPlan.requestRanges(address,keyspace,workMap.get(address));
-      if (logger.isDebugEnabled())       logger.debug("Keyspace {}: work map {}.",keyspace,workMap);
+      for (      InetAddress address : workMap.keySet()) {
+        InetAddress preferred=SystemKeyspace.getPreferredIP(address);
+        streamPlan.requestRanges(address,preferred,keyspace,workMap.get(address));
+      }
+      logger.debug("Keyspace {}: work map {}.",keyspace,workMap);
     }
   }
 }

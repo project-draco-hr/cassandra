@@ -15,10 +15,11 @@
   StreamPlan stream=new StreamPlan("Restore replica count");
   for (  final String keyspaceName : rangesToFetch.keySet()) {
     for (    Map.Entry<InetAddress,Collection<Range<Token>>> entry : rangesToFetch.get(keyspaceName)) {
-      final InetAddress source=entry.getKey();
+      InetAddress source=entry.getKey();
+      InetAddress preferred=SystemKeyspace.getPreferredIP(source);
       Collection<Range<Token>> ranges=entry.getValue();
       if (logger.isDebugEnabled())       logger.debug("Requesting from " + source + " ranges "+ StringUtils.join(ranges,", "));
-      stream.requestRanges(source,keyspaceName,ranges);
+      stream.requestRanges(source,preferred,keyspaceName,ranges);
     }
   }
   StreamResultFuture future=stream.execute();
