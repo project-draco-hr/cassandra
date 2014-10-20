@@ -14,8 +14,9 @@
  else {
     DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),candidates);
     InetAddress hintsDestinationHost=candidates.get(0);
+    InetAddress preferred=SystemKeyspace.getPreferredIP(hintsDestinationHost);
     Token token=StorageService.getPartitioner().getMinimumToken();
     List<Range<Token>> ranges=Collections.singletonList(new Range<>(token,token));
-    return new StreamPlan("Hints").transferRanges(hintsDestinationHost,Keyspace.SYSTEM_KS,ranges,SystemKeyspace.HINTS_CF).execute();
+    return new StreamPlan("Hints").transferRanges(hintsDestinationHost,preferred,Keyspace.SYSTEM_KS,ranges,SystemKeyspace.HINTS_CF).execute();
   }
 }
