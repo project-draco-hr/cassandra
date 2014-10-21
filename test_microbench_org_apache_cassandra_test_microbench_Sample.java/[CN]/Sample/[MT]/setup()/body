@@ -1,0 +1,31 @@
+{
+  ThreadLocalRandom random=ThreadLocalRandom.current();
+  int[] randomRunLength=range(this.randomRunLength);
+  int[] duplicateLookback=range(this.duplicateLookback);
+  rawBytes=new byte[uniquePages][pageSize];
+  lz4Bytes=new byte[uniquePages][];
+  snappyBytes=new byte[uniquePages][];
+  byte[][] runs=new byte[duplicateLookback[1] - duplicateLookback[0]][];
+  for (int i=0; i < rawBytes.length; i++) {
+    byte[] trg=rawBytes[0];
+    int runCount=0;
+    int byteCount=0;
+    while (byteCount < trg.length) {
+      byte[] nextRun;
+      if (runCount == 0 || random.nextDouble() < this.randomRatio) {
+        nextRun=new byte[random.nextInt(randomRunLength[0],randomRunLength[1])];
+        random.nextBytes(nextRun);
+        runs[runCount % runs.length]=nextRun;
+        runCount++;
+      }
+ else {
+        int index=runCount < duplicateLookback[1] ? random.nextInt(runCount) : (runCount - random.nextInt(duplicateLookback[0],duplicateLookback[1]));
+        nextRun=runs[index % runs.length];
+      }
+      System.arraycopy(nextRun,0,trg,byteCount,Math.min(nextRun.length,trg.length - byteCount));
+      byteCount+=nextRun.length;
+    }
+    lz4Bytes[i]=lz4Compressor.compress(trg);
+    snappyBytes[i]=Snappy.compress(trg);
+  }
+}
