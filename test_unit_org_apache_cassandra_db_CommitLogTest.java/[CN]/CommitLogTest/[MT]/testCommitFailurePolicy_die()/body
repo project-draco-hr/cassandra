@@ -1,0 +1,14 @@
+{
+  KillerForTests killerForTests=new KillerForTests();
+  JVMStabilityInspector.Killer originalKiller=JVMStabilityInspector.replaceKiller(killerForTests);
+  Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
+  try {
+    DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.die);
+    CommitLog.handleCommitError("Testing die policy",new Throwable());
+    Assert.assertTrue(killerForTests.wasKilled());
+  }
+  finally {
+    DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
+    JVMStabilityInspector.replaceKiller(originalKiller);
+  }
+}
