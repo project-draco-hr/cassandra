@@ -1,10 +1,6 @@
 {
   boolean isUnstable=false;
   if (t instanceof OutOfMemoryError)   isUnstable=true;
-  if (isUnstable) {
-    t.printStackTrace(System.err);
-    logger.error("JVM state determined to be unstable.  Exiting forcefully due to:",t);
-    StorageService.instance.removeShutdownHook();
-    System.exit(100);
-  }
+  if (DatabaseDescriptor.getDiskFailurePolicy() == Config.DiskFailurePolicy.die)   if (t instanceof FSError || t instanceof CorruptSSTableException)   isUnstable=true;
+  if (isUnstable)   killer.killCurrentJVM(t);
 }

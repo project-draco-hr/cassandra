@@ -1,17 +1,13 @@
 {
-  File commitDir=new File(DatabaseDescriptor.getCommitLogLocation());
+  StorageService.instance.initServer();
+  Assert.assertTrue(Gossiper.instance.isEnabled());
+  Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
   try {
     DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
-    commitDir.setWritable(false);
-    Mutation rm=new Mutation("Keyspace1",bytes("k"));
-    rm.add("Standard1",Util.cellname("c1"),ByteBuffer.allocate(100),0);
-    CommitLog.instance.add(rm);
-    Uninterruptibles.sleepUninterruptibly((int)DatabaseDescriptor.getCommitLogSyncBatchWindow(),TimeUnit.MILLISECONDS);
-    Assert.assertFalse(StorageService.instance.isRPCServerRunning());
-    Assert.assertFalse(StorageService.instance.isNativeTransportRunning());
-    Assert.assertFalse(StorageService.instance.isInitialized());
+    CommitLog.handleCommitError("Test stop error",new Throwable());
+    Assert.assertFalse(Gossiper.instance.isEnabled());
   }
   finally {
-    commitDir.setWritable(true);
+    DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
   }
 }
