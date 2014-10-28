@@ -3,43 +3,48 @@
 switch (message.payload.messageType) {
 case PREPARE_MESSAGE:
     PrepareMessage prepareMessage=(PrepareMessage)message.payload;
-  List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
+  logger.debug("Preparing, {}",prepareMessage);
+List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
 for (UUID cfId : prepareMessage.cfIds) {
-  Pair<String,String> kscf=Schema.instance.getCF(cfId);
-  ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-  columnFamilyStores.add(columnFamilyStore);
+Pair<String,String> kscf=Schema.instance.getCF(cfId);
+ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+columnFamilyStores.add(columnFamilyStore);
 }
-ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges);
+ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges,prepareMessage.isIncremental);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
 case SNAPSHOT:
+logger.debug("Snapshotting {}",desc);
 ColumnFamilyStore cfs=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 final Range<Token> repairingRange=desc.range;
-cfs.snapshot(desc.sessionId.toString(),new Predicate<SSTableReader>(){
+Set<SSTableReader> snapshottedSSSTables=cfs.snapshot(desc.sessionId.toString(),new Predicate<SSTableReader>(){
 public boolean apply(SSTableReader sstable){
 return sstable != null && !(sstable.partitioner instanceof LocalPartitioner) && new Bounds<>(sstable.first.getToken(),sstable.last.getToken()).intersects(Collections.singleton(repairingRange));
 }
 }
 );
+ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).addSSTables(cfs.metadata.cfId,snapshottedSSSTables);
 logger.debug("Enqueuing response to snapshot request {} to {}",desc.sessionId,message.from);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
 case VALIDATION_REQUEST:
 ValidationRequest validationRequest=(ValidationRequest)message.payload;
+logger.debug("Validating {}",validationRequest);
 ColumnFamilyStore store=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
 Validator validator=new Validator(desc,message.from,validationRequest.gcBefore);
 CompactionManager.instance.submitValidation(store,validator);
 break;
 case SYNC_REQUEST:
 SyncRequest request=(SyncRequest)message.payload;
+logger.debug("Syncing {}",request);
 long repairedAt=ActiveRepairService.UNREPAIRED_SSTABLE;
 if (desc.parentSessionId != null && ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId) != null) repairedAt=ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).repairedAt;
 StreamingRepairTask task=new StreamingRepairTask(desc,request,repairedAt);
 task.run();
 break;
 case ANTICOMPACTION_REQUEST:
-logger.debug("Got anticompaction request");
 AnticompactionRequest anticompactionRequest=(AnticompactionRequest)message.payload;
+logger.debug("Got anticompaction request {}",anticompactionRequest);
 try {
 List<Future<?>> futures=ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
 FBUtilities.waitOnFutures(futures);

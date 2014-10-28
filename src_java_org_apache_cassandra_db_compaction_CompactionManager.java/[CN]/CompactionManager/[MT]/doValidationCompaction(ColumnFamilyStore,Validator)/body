@@ -11,8 +11,17 @@
     }
  else {
       StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(),cfs.name);
-      if (validator.desc.parentSessionId == null || ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId) == null)       sstables=cfs.markCurrentSSTablesReferenced();
- else       sstables=ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
+      ActiveRepairService.ParentRepairSession prs=ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId);
+      Set<SSTableReader> sstablesToValidate=new HashSet<>();
+      for (      SSTableReader sstable : cfs.getSSTables()) {
+        if (new Bounds<>(sstable.first.getToken(),sstable.last.getToken()).intersects(Arrays.asList(validator.desc.range))) {
+          if (!prs.isIncremental || !sstable.isRepaired()) {
+            sstablesToValidate.add(sstable);
+          }
+        }
+      }
+      prs.addSSTables(cfs.metadata.cfId,sstablesToValidate);
+      sstables=prs.getAndReferenceSSTablesInRange(cfs.metadata.cfId,validator.desc.range);
       if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;
  else       gcBefore=getDefaultGcBefore(cfs);
     }
