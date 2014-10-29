@@ -10,7 +10,11 @@
     }
   }
 );
-  int maxGen=0;
-  for (  Descriptor desc : existing)   maxGen=Math.max(maxGen,desc.generation);
+  int maxGen=generation.getAndIncrement();
+  for (  Descriptor desc : existing) {
+    while (desc.generation > maxGen) {
+      maxGen=generation.getAndIncrement();
+    }
+  }
   return new Descriptor(directory,keyspace,columnFamily,maxGen + 1,true).filenameFor(Component.DATA);
 }
