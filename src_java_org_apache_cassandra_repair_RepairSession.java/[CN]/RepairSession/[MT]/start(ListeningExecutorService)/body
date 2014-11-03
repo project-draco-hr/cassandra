@@ -3,7 +3,7 @@
   logger.info(String.format("[repair #%s] new session: will sync %s on range %s for %s.%s",getId(),repairedNodes(),range,keyspace,Arrays.toString(cfnames)));
   if (endpoints.isEmpty()) {
     logger.info(String.format("[repair #%s] No neighbors to repair with on range %s: session completed",getId(),range));
-    set(Lists.<RepairResult>newArrayList());
+    set(new RepairSessionResult(id,keyspace,range,Lists.<RepairResult>newArrayList()));
     return;
   }
   for (  InetAddress endpoint : endpoints) {
@@ -23,7 +23,7 @@
   Futures.addCallback(Futures.allAsList(jobs),new FutureCallback<List<RepairResult>>(){
     public void onSuccess(    List<RepairResult> results){
       logger.info(String.format("[repair #%s] session completed successfully",getId()));
-      set(results);
+      set(new RepairSessionResult(id,keyspace,range,results));
       taskExecutor.shutdown();
       terminate();
     }
