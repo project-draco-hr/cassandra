@@ -16,8 +16,8 @@
   logger.info("Anticompacting {}",anticompactionGroup);
   Set<SSTableReader> sstableAsSet=new HashSet<>(anticompactionGroup);
   File destination=cfs.directories.getDirectoryForNewSSTables();
-  SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,groupMaxDataAge,OperationType.ANTICOMPACTION,false);
-  SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,groupMaxDataAge,OperationType.ANTICOMPACTION,false);
+  SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,groupMaxDataAge,false);
+  SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,sstableAsSet,groupMaxDataAge,false);
   long repairedKeyCount=0;
   long unrepairedKeyCount=0;
   AbstractCompactionStrategy strategy=cfs.getCompactionStrategy();
@@ -38,10 +38,12 @@
         unrepairedKeyCount++;
       }
     }
-    repairedSSTableWriter.finish(false,repairedAt);
-    unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE);
+    List<SSTableReader> anticompactedSSTables=new ArrayList<>();
+    anticompactedSSTables.addAll(repairedSSTableWriter.finish(repairedAt));
+    anticompactedSSTables.addAll(unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE));
+    cfs.getDataTracker().markCompactedSSTablesReplaced(sstableAsSet,anticompactedSSTables,OperationType.ANTICOMPACTION);
     logger.debug("Repaired {} keys out of {} for {}/{} in {}",repairedKeyCount,repairedKeyCount + unrepairedKeyCount,cfs.keyspace.getName(),cfs.getColumnFamilyName(),anticompactionGroup);
-    return repairedSSTableWriter.finished().size() + unRepairedSSTableWriter.finished().size();
+    return anticompactedSSTables.size();
   }
  catch (  Throwable e) {
     JVMStabilityInspector.inspectThrowable(e);
