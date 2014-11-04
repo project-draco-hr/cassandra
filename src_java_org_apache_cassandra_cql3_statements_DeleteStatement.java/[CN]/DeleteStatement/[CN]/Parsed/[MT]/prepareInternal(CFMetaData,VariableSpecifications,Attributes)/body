@@ -1,8 +1,9 @@
 {
   DeleteStatement stmt=new DeleteStatement(ModificationStatement.StatementType.DELETE,boundNames.size(),cfm,attrs);
   for (  Operation.RawDeletion deletion : deletions) {
-    ColumnDefinition def=cfm.getColumnDefinition(deletion.affectedColumn());
-    if (def == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",deletion.affectedColumn()));
+    ColumnIdentifier id=deletion.affectedColumn().prepare(cfm);
+    ColumnDefinition def=cfm.getColumnDefinition(id);
+    if (def == null)     throw new InvalidRequestException(String.format("Unknown identifier %s",id));
     if (def.isPrimaryKeyColumn())     throw new InvalidRequestException(String.format("Invalid identifier %s for deletion (should not be a PRIMARY KEY part)",def.name));
     Operation op=deletion.prepare(cfm.ksName,def);
     op.collectMarkerSpecification(boundNames);
