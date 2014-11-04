@@ -7,13 +7,15 @@
   boolean hasQueriableClusteringColumnIndex=false;
   boolean hasSingleColumnRelations=false;
   boolean hasMultiColumnRelations=false;
+  ColumnFamilyStore cfs=Keyspace.open(keyspace()).getColumnFamilyStore(columnFamily());
+  SecondaryIndexManager indexManager=cfs.indexManager;
   for (  Relation relation : whereClause) {
     if (relation.isMultiColumn()) {
       MultiColumnRelation rel=(MultiColumnRelation)relation;
       List<ColumnDefinition> names=new ArrayList<>(rel.getEntities().size());
       for (      ColumnIdentifier entity : rel.getEntities()) {
         ColumnDefinition def=cfm.getColumnDefinition(entity);
-        boolean[] queriable=processRelationEntity(stmt,relation,entity,def);
+        boolean[] queriable=processRelationEntity(stmt,indexManager,relation,entity,def);
         hasQueriableIndex|=queriable[0];
         hasQueriableClusteringColumnIndex|=queriable[1];
         names.add(def);
@@ -25,7 +27,7 @@
       SingleColumnRelation rel=(SingleColumnRelation)relation;
       ColumnIdentifier entity=rel.getEntity();
       ColumnDefinition def=cfm.getColumnDefinition(entity);
-      boolean[] queriable=processRelationEntity(stmt,relation,entity,def);
+      boolean[] queriable=processRelationEntity(stmt,indexManager,relation,entity,def);
       hasQueriableIndex|=queriable[0];
       hasQueriableClusteringColumnIndex|=queriable[1];
       hasSingleColumnRelations|=ColumnDefinition.Kind.CLUSTERING_COLUMN.equals(def.kind);
