@@ -13,7 +13,8 @@
     if (relation.isMultiColumn()) {
       MultiColumnRelation rel=(MultiColumnRelation)relation;
       List<CFDefinition.Name> names=new ArrayList<>(rel.getEntities().size());
-      for (      ColumnIdentifier entity : rel.getEntities()) {
+      for (      ColumnIdentifier.Raw rawEntity : rel.getEntities()) {
+        ColumnIdentifier entity=rawEntity.prepare(cfm);
         boolean[] queriable=processRelationEntity(stmt,relation,entity,cfDef);
         hasQueriableIndex|=queriable[0];
         hasQueriableClusteringColumnIndex|=queriable[1];
@@ -25,10 +26,11 @@
     }
  else {
       SingleColumnRelation rel=(SingleColumnRelation)relation;
-      boolean[] queriable=processRelationEntity(stmt,relation,rel.getEntity(),cfDef);
+      ColumnIdentifier entity=rel.getEntity().prepare(cfm);
+      boolean[] queriable=processRelationEntity(stmt,relation,entity,cfDef);
       hasQueriableIndex|=queriable[0];
       hasQueriableClusteringColumnIndex|=queriable[1];
-      Name name=cfDef.get(rel.getEntity());
+      Name name=cfDef.get(entity);
       hasSingleColumnRelations|=Kind.COLUMN_ALIAS.equals(name.kind);
       updateRestrictionsForRelation(stmt,name,rel,boundNames);
     }

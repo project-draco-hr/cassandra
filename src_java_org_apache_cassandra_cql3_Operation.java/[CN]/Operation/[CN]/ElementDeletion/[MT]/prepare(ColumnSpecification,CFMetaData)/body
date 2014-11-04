@@ -1,0 +1,16 @@
+{
+  if (!(receiver.type instanceof CollectionType))   throw new InvalidRequestException(String.format("Invalid deletion operation for non collection column %s",receiver));
+  ColumnIdentifier preparedId=id.prepare(cfm);
+switch (((CollectionType)receiver.type).kind) {
+case LIST:
+    Term idx=element.prepare(Lists.indexSpecOf(receiver));
+  return new Lists.DiscarderByIndex(preparedId,idx);
+case SET:
+Term elt=element.prepare(Sets.valueSpecOf(receiver));
+return new Sets.Discarder(preparedId,elt);
+case MAP:
+Term key=element.prepare(Maps.keySpecOf(receiver));
+return new Maps.DiscarderByKey(preparedId,key);
+}
+throw new AssertionError();
+}
