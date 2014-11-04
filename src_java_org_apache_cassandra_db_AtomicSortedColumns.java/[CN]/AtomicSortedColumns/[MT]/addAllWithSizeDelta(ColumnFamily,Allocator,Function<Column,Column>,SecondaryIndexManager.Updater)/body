@@ -1,8 +1,10 @@
 {
   Holder current, modified;
   long sizeDelta;
+  long timeDelta;
   main_loop:   do {
     sizeDelta=0;
+    timeDelta=Long.MAX_VALUE;
     current=ref.get();
     DeletionInfo newDelInfo=current.deletionInfo;
     if (cm.deletionInfo().mayModify(newDelInfo)) {
@@ -11,11 +13,13 @@
     }
     modified=new Holder(current.map.clone(),newDelInfo);
     for (    Column column : cm) {
-      sizeDelta+=modified.addColumn(transformation.apply(column),allocator,indexer);
+      final Pair<Integer,Long> pair=modified.addColumn(transformation.apply(column),allocator,indexer);
+      sizeDelta+=pair.left;
+      if (enableColUpdateTimeDelta)       timeDelta=Math.min(pair.right,timeDelta);
       if (ref.get() != current)       continue main_loop;
     }
   }
  while (!ref.compareAndSet(current,modified));
   indexer.updateRowLevelIndexes();
-  return sizeDelta;
+  return Pair.create(sizeDelta,timeDelta);
 }
