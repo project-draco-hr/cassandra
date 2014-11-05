@@ -8,6 +8,9 @@
     for (    Map.Entry<RowPosition,AtomicSortedColumns> entry : memtable.rows.entrySet()) {
       deepSize+=memtable.meter.measureDeep(entry.getKey()) + memtable.meter.measureDeep(entry.getValue());
       objects+=entry.getValue().getColumnCount();
+      if (memtable != cfs.getMemtableThreadSafe()) {
+        return;
+      }
     }
     double newRatio=(double)deepSize / memtable.currentSize.get();
     if (newRatio < MIN_SANE_LIVE_RATIO) {
