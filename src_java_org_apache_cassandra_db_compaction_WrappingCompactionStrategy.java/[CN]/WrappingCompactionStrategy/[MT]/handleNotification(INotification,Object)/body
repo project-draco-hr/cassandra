@@ -1,0 +1,35 @@
+{
+  if (notification instanceof SSTableAddedNotification) {
+    SSTableAddedNotification flushedNotification=(SSTableAddedNotification)notification;
+    if (flushedNotification.added.isRepaired())     repaired.addSSTable(flushedNotification.added);
+ else     unrepaired.addSSTable(flushedNotification.added);
+  }
+ else   if (notification instanceof SSTableListChangedNotification) {
+    SSTableListChangedNotification listChangedNotification=(SSTableListChangedNotification)notification;
+    for (    SSTableReader sstable : listChangedNotification.removed) {
+      if (sstable.isRepaired())       repaired.removeSSTable(sstable);
+ else       unrepaired.removeSSTable(sstable);
+    }
+    for (    SSTableReader sstable : listChangedNotification.added) {
+      if (sstable.isRepaired())       repaired.addSSTable(sstable);
+ else       unrepaired.addSSTable(sstable);
+    }
+  }
+ else   if (notification instanceof SSTableRepairStatusChanged) {
+    for (    SSTableReader sstable : ((SSTableRepairStatusChanged)notification).sstable) {
+      if (sstable.isRepaired()) {
+        unrepaired.removeSSTable(sstable);
+        repaired.addSSTable(sstable);
+      }
+ else {
+        repaired.removeSSTable(sstable);
+        unrepaired.addSSTable(sstable);
+      }
+    }
+  }
+ else   if (notification instanceof SSTableDeletingNotification) {
+    SSTableReader sstable=((SSTableDeletingNotification)notification).deleting;
+    if (sstable.isRepaired())     repaired.removeSSTable(sstable);
+ else     unrepaired.removeSSTable(sstable);
+  }
+}

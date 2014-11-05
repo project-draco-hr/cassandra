@@ -1,2 +1,41 @@
 {
+  if (StorageService.instance.isBootstrapMode()) {
+    List<SSTableReader> mostInteresting=getSSTablesForSTCS(getLevel(0));
+    if (!mostInteresting.isEmpty()) {
+      logger.info("Bootstrapping - doing STCS in L0");
+      return new CompactionCandidate(mostInteresting,0,Long.MAX_VALUE);
+    }
+    return null;
+  }
+  for (int i=generations.length - 1; i > 0; i--) {
+    List<SSTableReader> sstables=getLevel(i);
+    if (sstables.isEmpty())     continue;
+    Set<SSTableReader> sstablesInLevel=Sets.newHashSet(sstables);
+    Set<SSTableReader> remaining=Sets.difference(sstablesInLevel,cfs.getDataTracker().getCompacting());
+    double score=(double)SSTableReader.getTotalBytes(remaining) / (double)maxBytesForLevel(i);
+    logger.debug("Compaction score for level {} is {}",i,score);
+    if (score > 1.001) {
+      if (!DatabaseDescriptor.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0) {
+        List<SSTableReader> mostInteresting=getSSTablesForSTCS(getLevel(0));
+        if (!mostInteresting.isEmpty()) {
+          logger.debug("L0 is too far behind, performing size-tiering there first");
+          return new CompactionCandidate(mostInteresting,0,Long.MAX_VALUE);
+        }
+      }
+      Collection<SSTableReader> candidates=getCandidatesFor(i);
+      if (!candidates.isEmpty()) {
+        int nextLevel=getNextLevel(candidates);
+        candidates=getOverlappingStarvedSSTables(nextLevel,candidates);
+        if (logger.isDebugEnabled())         logger.debug("Compaction candidates for L{} are {}",i,toString(candidates));
+        return new CompactionCandidate(candidates,nextLevel,cfs.getCompactionStrategy().getMaxSSTableBytes());
+      }
+ else {
+        logger.debug("No compaction candidates for L{}",i);
+      }
+    }
+  }
+  if (getLevel(0).isEmpty())   return null;
+  Collection<SSTableReader> candidates=getCandidatesFor(0);
+  if (candidates.isEmpty())   return null;
+  return new CompactionCandidate(candidates,getNextLevel(candidates),cfs.getCompactionStrategy().getMaxSSTableBytes());
 }
