@@ -36,7 +36,11 @@
     }
   }
   if (defaultDCRack == null && !reloadedMap.containsKey(FBUtilities.getBroadcastAddress()))   throw new ConfigurationException(String.format("Snitch definitions at %s do not define a location for this node's broadcast address %s, nor does it provides a default",SNITCH_PROPERTIES_FILENAME,FBUtilities.getBroadcastAddress()));
-  logger.debug("loaded network topology {}",FBUtilities.toString(reloadedMap));
+  if (logger.isDebugEnabled()) {
+    StringBuilder sb=new StringBuilder();
+    for (    Map.Entry<InetAddress,String[]> entry : reloadedMap.entrySet())     sb.append(entry.getKey()).append(":").append(Arrays.toString(entry.getValue())).append(", ");
+    logger.debug("Loaded network topology from property file: {}",StringUtils.removeEnd(sb.toString(),", "));
+  }
   endpointMap=reloadedMap;
   if (StorageService.instance != null)   StorageService.instance.getTokenMetadata().invalidateCachedRings();
   if (gossipStarted)   StorageService.instance.gossipSnitchInfo();
