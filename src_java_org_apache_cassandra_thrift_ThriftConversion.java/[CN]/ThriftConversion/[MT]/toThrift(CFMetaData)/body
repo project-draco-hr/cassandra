@@ -1,0 +1,34 @@
+{
+  CfDef def=new CfDef(cfm.ksName,cfm.cfName);
+  def.setColumn_type(cfm.cfType.name());
+  if (cfm.isSuper()) {
+    def.setComparator_type(cfm.comparator.subtype(0).toString());
+    def.setSubcomparator_type(cfm.comparator.subtype(1).toString());
+  }
+ else {
+    def.setComparator_type(cfm.comparator.toString());
+  }
+  def.setComment(Strings.nullToEmpty(cfm.getComment()));
+  def.setRead_repair_chance(cfm.getReadRepairChance());
+  def.setDclocal_read_repair_chance(cfm.getDcLocalReadRepairChance());
+  def.setGc_grace_seconds(cfm.getGcGraceSeconds());
+  def.setDefault_validation_class(cfm.getDefaultValidator().toString());
+  def.setKey_validation_class(cfm.getKeyValidator().toString());
+  def.setMin_compaction_threshold(cfm.getMinCompactionThreshold());
+  def.setMax_compaction_threshold(cfm.getMaxCompactionThreshold());
+  if (cfm.partitionKeyColumns().size() == 1)   def.setKey_alias(cfm.partitionKeyColumns().get(0).name.bytes);
+  def.setColumn_metadata(columnDefinitionsToThrift(cfm.allColumns()));
+  def.setCompaction_strategy(cfm.compactionStrategyClass.getName());
+  def.setCompaction_strategy_options(new HashMap<>(cfm.compactionStrategyOptions));
+  def.setCompression_options(cfm.compressionParameters.asThriftOptions());
+  def.setBloom_filter_fp_chance(cfm.getBloomFilterFpChance());
+  def.setMin_index_interval(cfm.getMinIndexInterval());
+  def.setMax_index_interval(cfm.getMaxIndexInterval());
+  def.setMemtable_flush_period_in_ms(cfm.getMemtableFlushPeriod());
+  def.setCaching(cfm.getCaching().toThriftCaching());
+  def.setCells_per_row_to_cache(cfm.getCaching().toThriftCellsPerRow());
+  def.setDefault_time_to_live(cfm.getDefaultTimeToLive());
+  def.setSpeculative_retry(cfm.getSpeculativeRetry().toString());
+  def.setTriggers(triggerDefinitionsToThrift(cfm.getTriggers().values()));
+  return def;
+}
