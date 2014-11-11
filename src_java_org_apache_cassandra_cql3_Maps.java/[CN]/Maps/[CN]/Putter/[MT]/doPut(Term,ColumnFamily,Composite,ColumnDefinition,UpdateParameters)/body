@@ -1,2 +1,16 @@
 {
+  Term.Terminal value=t.bind(params.options);
+  Maps.Value mapValue=(Maps.Value)value;
+  if (column.type.isMultiCell()) {
+    if (value == null)     return;
+    for (    Map.Entry<ByteBuffer,ByteBuffer> entry : mapValue.map.entrySet()) {
+      CellName cellName=cf.getComparator().create(prefix,column,entry.getKey());
+      cf.addColumn(params.makeColumn(cellName,entry.getValue()));
+    }
+  }
+ else {
+    CellName cellName=cf.getComparator().create(prefix,column);
+    if (value == null)     cf.addAtom(params.makeTombstone(cellName));
+ else     cf.addColumn(params.makeColumn(cellName,mapValue.getWithProtocolVersion(Server.CURRENT_VERSION)));
+  }
 }

@@ -1,0 +1,19 @@
+{
+  if (!o1.hasRemaining() || !o2.hasRemaining())   return o1.hasRemaining() ? 1 : o2.hasRemaining() ? -1 : 0;
+  ByteBuffer bb1=o1.duplicate();
+  ByteBuffer bb2=o2.duplicate();
+  int protocolVersion=Server.VERSION_3;
+  int size1=CollectionSerializer.readCollectionSize(bb1,protocolVersion);
+  int size2=CollectionSerializer.readCollectionSize(bb2,protocolVersion);
+  for (int i=0; i < Math.min(size1,size2); i++) {
+    ByteBuffer k1=CollectionSerializer.readValue(bb1,protocolVersion);
+    ByteBuffer k2=CollectionSerializer.readValue(bb2,protocolVersion);
+    int cmp=keysComparator.compare(k1,k2);
+    if (cmp != 0)     return cmp;
+    ByteBuffer v1=CollectionSerializer.readValue(bb1,protocolVersion);
+    ByteBuffer v2=CollectionSerializer.readValue(bb2,protocolVersion);
+    cmp=valuesComparator.compare(v1,v2);
+    if (cmp != 0)     return cmp;
+  }
+  return size1 == size2 ? 0 : (size1 < size2 ? -1 : 1);
+}

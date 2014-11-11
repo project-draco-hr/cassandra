@@ -16,12 +16,33 @@
     expressions.add(indexExpression);
     columns.add(indexExpression.column);
   }
+  boolean haveSupportedIndexLookup=false;
   for (  Map.Entry<String,Set<IndexExpression>> expressions : expressionsByIndexType.entrySet()) {
     Set<ByteBuffer> columns=columnsByIndexType.get(expressions.getKey());
     SecondaryIndex secondaryIndex=getIndexForColumn(columns.iterator().next());
     SecondaryIndexSearcher searcher=secondaryIndex.createSecondaryIndexSearcher(columns);
     for (    IndexExpression expression : expressions.getValue()) {
       searcher.validate(expression);
+      haveSupportedIndexLookup|=secondaryIndex.supportsOperator(expression.operator);
     }
+  }
+  if (!haveSupportedIndexLookup) {
+    int i=0;
+    StringBuilder sb=new StringBuilder("No secondary indexes on the restricted columns support the provided operators: ");
+    for (    Map.Entry<String,Set<IndexExpression>> expressions : expressionsByIndexType.entrySet()) {
+      for (      IndexExpression expression : expressions.getValue()) {
+        if (i++ > 0)         sb.append(", ");
+        sb.append("'");
+        String columnName;
+        try {
+          columnName=ByteBufferUtil.string(expression.column);
+        }
+ catch (        CharacterCodingException ex) {
+          columnName="<unprintable>";
+        }
+        sb.append(columnName).append(" ").append(expression.operator).append(" <value>").append("'");
+      }
+    }
+    throw new InvalidRequestException(sb.toString());
   }
 }

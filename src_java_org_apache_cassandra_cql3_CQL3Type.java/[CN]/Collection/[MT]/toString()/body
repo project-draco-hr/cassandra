@@ -1,12 +1,24 @@
 {
+  boolean isFrozen=!this.type.isMultiCell();
+  StringBuilder sb=new StringBuilder(isFrozen ? "frozen<" : "");
 switch (type.kind) {
 case LIST:
-    return "list<" + ((ListType)type).elements.asCQL3Type() + ">";
+    AbstractType<?> listType=((ListType)type).getElementsType();
+  sb.append("list<").append(listType.asCQL3Type());
+break;
 case SET:
-  return "set<" + ((SetType)type).elements.asCQL3Type() + ">";
+AbstractType<?> setType=((SetType)type).getElementsType();
+sb.append("set<").append(setType.asCQL3Type());
+break;
 case MAP:
-MapType mt=(MapType)type;
-return "map<" + mt.keys.asCQL3Type() + ", "+ mt.values.asCQL3Type()+ ">";
-}
+AbstractType<?> keysType=((MapType)type).getKeysType();
+AbstractType<?> valuesType=((MapType)type).getValuesType();
+sb.append("map<").append(keysType.asCQL3Type()).append(", ").append(valuesType.asCQL3Type());
+break;
+default :
 throw new AssertionError();
+}
+sb.append(">");
+if (isFrozen) sb.append(">");
+return sb.toString();
 }
