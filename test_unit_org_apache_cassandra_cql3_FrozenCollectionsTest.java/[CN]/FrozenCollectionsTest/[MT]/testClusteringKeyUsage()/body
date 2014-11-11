@@ -1,0 +1,25 @@
+{
+  for (  String option : Arrays.asList(""," WITH COMPACT STORAGE")) {
+    createTable("CREATE TABLE %s (a int, b frozen<set<int>>, c int, PRIMARY KEY (a, b))" + option);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,set(),1);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,set(1,2,3),1);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,set(4,5,6),0);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,set(7,8,9),0);
+    execute("UPDATE %s SET c=? WHERE a=? AND b=?",0,0,set());
+    execute("UPDATE %s SET c=? WHERE a=? AND b=?",0,0,set(1,2,3));
+    assertRows(execute("SELECT * FROM %s"),row(0,set(),0),row(0,set(1,2,3),0),row(0,set(4,5,6),0),row(0,set(7,8,9),0));
+    assertRows(execute("SELECT b FROM %s"),row(set()),row(set(1,2,3)),row(set(4,5,6)),row(set(7,8,9)));
+    assertRows(execute("SELECT * FROM %s LIMIT 2"),row(0,set(),0),row(0,set(1,2,3),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b=?",0,set(4,5,6)),row(0,set(4,5,6),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b=?",0,set()),row(0,set(),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b IN ?",0,list(set(4,5,6),set())),row(0,set(),0),row(0,set(4,5,6),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b > ?",0,set(4,5,6)),row(0,set(7,8,9),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b >= ?",0,set(4,5,6)),row(0,set(4,5,6),0),row(0,set(7,8,9),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b < ?",0,set(4,5,6)),row(0,set(),0),row(0,set(1,2,3),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b <= ?",0,set(4,5,6)),row(0,set(),0),row(0,set(1,2,3),0),row(0,set(4,5,6),0));
+    assertRows(execute("SELECT * FROM %s WHERE a=? AND b > ? AND b <= ?",0,set(1,2,3),set(4,5,6)),row(0,set(4,5,6),0));
+    execute("DELETE FROM %s WHERE a=? AND b=?",0,set());
+    execute("DELETE FROM %s WHERE a=? AND b=?",0,set(4,5,6));
+    assertRows(execute("SELECT * FROM %s"),row(0,set(1,2,3),0),row(0,set(7,8,9),0));
+  }
+}

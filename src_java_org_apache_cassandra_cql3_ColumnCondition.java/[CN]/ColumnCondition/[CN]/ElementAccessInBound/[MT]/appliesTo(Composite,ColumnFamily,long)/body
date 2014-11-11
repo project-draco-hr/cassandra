@@ -1,2 +1,50 @@
 {
+  if (collectionElement == null)   throw new InvalidRequestException("Invalid null value for " + (column.type instanceof MapType ? "map" : "list") + " element access");
+  CellNameType nameType=current.metadata().comparator;
+  if (column.type instanceof MapType) {
+    MapType mapType=(MapType)column.type;
+    AbstractType<?> valueType=mapType.getValuesType();
+    if (column.type.isMultiCell()) {
+      CellName name=nameType.create(rowPrefix,column,collectionElement);
+      Cell item=current.getColumn(name);
+      for (      ByteBuffer value : inValues) {
+        if (isSatisfiedByValue(value,item,valueType,Operator.EQ,now))         return true;
+      }
+      return false;
+    }
+ else {
+      Cell cell=current.getColumn(nameType.create(rowPrefix,column));
+      ByteBuffer mapElementValue=null;
+      if (cell != null && cell.isLive(now))       mapElementValue=mapType.getSerializer().getSerializedValue(cell.value(),collectionElement,mapType.getKeysType());
+      for (      ByteBuffer value : inValues) {
+        if (value == null) {
+          if (mapElementValue == null)           return true;
+          continue;
+        }
+        if (valueType.compare(value,mapElementValue) == 0)         return true;
+      }
+      return false;
+    }
+  }
+  ListType listType=(ListType)column.type;
+  AbstractType<?> elementsType=listType.getElementsType();
+  if (column.type.isMultiCell()) {
+    ByteBuffer columnValue=ElementAccessBound.getListItem(collectionColumns(nameType.create(rowPrefix,column),current,now),ElementAccessBound.getListIndex(collectionElement));
+    for (    ByteBuffer value : inValues) {
+      if (compareWithOperator(Operator.EQ,elementsType,value,columnValue))       return true;
+    }
+  }
+ else {
+    Cell cell=current.getColumn(nameType.create(rowPrefix,column));
+    ByteBuffer listElementValue=null;
+    if (cell != null && cell.isLive(now))     listElementValue=listType.getSerializer().getElement(cell.value(),ElementAccessBound.getListIndex(collectionElement));
+    for (    ByteBuffer value : inValues) {
+      if (value == null) {
+        if (listElementValue == null)         return true;
+        continue;
+      }
+      if (elementsType.compare(value,listElementValue) == 0)       return true;
+    }
+  }
+  return false;
 }

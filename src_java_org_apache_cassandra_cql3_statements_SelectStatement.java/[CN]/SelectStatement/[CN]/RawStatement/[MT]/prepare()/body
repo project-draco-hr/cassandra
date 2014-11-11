@@ -42,11 +42,16 @@
   if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
   processColumnRestrictions(stmt,hasQueriableIndex,cfm);
   if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
-  if (!stmt.usesSecondaryIndexing)   stmt.restrictedColumns.removeAll(cfm.clusteringColumns());
-  if (!stmt.metadataRestrictions.isEmpty()) {
-    if (!hasQueriableIndex)     throw new InvalidRequestException("No indexed columns present in by-columns clause with Equal operator");
-    stmt.usesSecondaryIndexing=true;
+  if (!stmt.usesSecondaryIndexing) {
+    for (    ColumnDefinition def : cfm.clusteringColumns()) {
+      Restriction restriction=stmt.columnRestrictions[def.position()];
+      if (restriction != null) {
+        if (restriction.canEvaluateWithSlices())         stmt.restrictedColumns.remove(def);
+ else         stmt.usesSecondaryIndexing=true;
+      }
+    }
   }
+  if (!stmt.metadataRestrictions.isEmpty())   stmt.usesSecondaryIndexing=true;
   if (stmt.usesSecondaryIndexing)   validateSecondaryIndexSelections(stmt);
   if (!stmt.parameters.orderings.isEmpty())   processOrderingClause(stmt,cfm);
   checkNeedsFiltering(stmt);

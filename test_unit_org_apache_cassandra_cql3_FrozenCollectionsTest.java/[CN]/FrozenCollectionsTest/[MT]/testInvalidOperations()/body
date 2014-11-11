@@ -1,0 +1,18 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, l frozen<list<int>>)");
+  assertInvalid("UPDATE %s SET l[?]=? WHERE k=?",0,0,0);
+  assertInvalid("UPDATE %s SET l = ? + l WHERE k=?",list(0),0);
+  assertInvalid("UPDATE %s SET l = l + ? WHERE k=?",list(4),0);
+  assertInvalid("UPDATE %s SET l = l - ? WHERE k=?",list(3),0);
+  assertInvalid("DELETE l[?] FROM %s WHERE k=?",0,0);
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, s frozen<set<int>>)");
+  assertInvalid("UPDATE %s SET s = s + ? WHERE k=?",set(0),0);
+  assertInvalid("UPDATE %s SET s = s - ? WHERE k=?",set(3),0);
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, m frozen<map<int, int>>)");
+  assertInvalid("UPDATE %s SET m[?]=? WHERE k=?",0,0,0);
+  assertInvalid("UPDATE %s SET m = m + ? WHERE k=?",map(4,4),0);
+  assertInvalid("DELETE m[?] FROM %s WHERE k=?",0,0);
+  assertInvalidCreateWithMessage("CREATE TABLE %s (k int PRIMARY KEY, t set<set<int>>)","Non-frozen collections are not allowed inside collections");
+  assertInvalidCreateWithMessage("CREATE TABLE %s (k int PRIMARY KEY, t frozen<set<counter>>)","Counters are not allowed inside collections");
+  assertInvalidCreateWithMessage("CREATE TABLE %s (k int PRIMARY KEY, t frozen<text>)","frozen<> is only allowed on collections, tuples, and user-defined types");
+}
