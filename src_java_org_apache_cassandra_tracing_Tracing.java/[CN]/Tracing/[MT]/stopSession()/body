@@ -5,13 +5,10 @@
   }
  else {
     final int elapsed=state.elapsed();
-    final ByteBuffer sessionIdBytes=state.sessionIdBytes;
+    final ByteBuffer sessionId=state.sessionIdBytes;
     StageManager.getStage(Stage.TRACING).execute(new Runnable(){
       public void run(){
-        CFMetaData cfMeta=TraceKeyspace.SessionsTable;
-        ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cfMeta);
-        addColumn(cf,buildName(cfMeta,"duration"),elapsed);
-        mutateWithCatch(new Mutation(TraceKeyspace.NAME,sessionIdBytes,cf));
+        mutateWithCatch(TraceKeyspace.toStopSessionMutation(sessionId,elapsed));
       }
     }
 );
