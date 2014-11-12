@@ -8,10 +8,11 @@
     final ByteBuffer sessionIdBytes=state.sessionIdBytes;
     StageManager.getStage(Stage.TRACING).execute(new Runnable(){
       public void run(){
-        CFMetaData cfMeta=CFMetaData.TraceSessionsCf;
-        ColumnFamily cf=ArrayBackedSortedColumns.factory.create(cfMeta);
-        addColumn(cf,buildName(cfMeta,"duration"),elapsed);
-        mutateWithCatch(new Mutation(TRACE_KS,sessionIdBytes,cf));
+        Mutation mutation=new Mutation(TRACE_KS,sessionIdBytes);
+        ColumnFamily cells=mutation.addOrGet(CFMetaData.TraceSessionsCf);
+        CFRowAdder adder=new CFRowAdder(cells,cells.metadata().comparator.builder().build(),FBUtilities.timestampMicros());
+        adder.add("duration",elapsed);
+        mutateWithCatch(mutation);
       }
     }
 );
