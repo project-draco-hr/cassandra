@@ -1,5 +1,5 @@
 {
-  ColumnFamilyStore hintsCF=Keyspace.open(Keyspace.SYSTEM_KS).getColumnFamilyStore(SystemKeyspace.HINTS_CF);
+  ColumnFamilyStore hintsCF=Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.HINTS_TABLE);
   FBUtilities.waitOnFuture(hintsCF.forceFlush());
   List<InetAddress> candidates=new ArrayList<>(StorageService.instance.getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
   candidates.remove(FBUtilities.getBroadcastAddress());
@@ -17,6 +17,6 @@
     InetAddress preferred=SystemKeyspace.getPreferredIP(hintsDestinationHost);
     Token token=StorageService.getPartitioner().getMinimumToken();
     List<Range<Token>> ranges=Collections.singletonList(new Range<>(token,token));
-    return new StreamPlan("Hints").transferRanges(hintsDestinationHost,preferred,Keyspace.SYSTEM_KS,ranges,SystemKeyspace.HINTS_CF).execute();
+    return new StreamPlan("Hints").transferRanges(hintsDestinationHost,preferred,SystemKeyspace.NAME,ranges,SystemKeyspace.HINTS_TABLE).execute();
   }
 }
