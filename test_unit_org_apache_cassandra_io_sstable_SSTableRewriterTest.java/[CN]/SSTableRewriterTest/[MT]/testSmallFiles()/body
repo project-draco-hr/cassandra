@@ -10,19 +10,19 @@
   SSTableRewriter.overrideOpenInterval(1000000);
   SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,false);
   rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
-  ICompactionScanner scanner=s.getScanner();
-  CompactionController controller=new CompactionController(cfs,compacting,0);
   int files=1;
-  while (scanner.hasNext()) {
-    rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
-    if (rewriter.currentWriter().getOnDiskFilePointer() > 2500000) {
-      assertEquals(1,cfs.getSSTables().size());
-      assertEquals(origFirst,cfs.getSSTables().iterator().next().first);
-      rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
-      files++;
+  try (ICompactionScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
+    while (scanner.hasNext()) {
+      rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
+      if (rewriter.currentWriter().getOnDiskFilePointer() > 2500000) {
+        assertEquals(1,cfs.getSSTables().size());
+        assertEquals(origFirst,cfs.getSSTables().iterator().next().first);
+        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+        files++;
+      }
     }
   }
-  List<SSTableReader> sstables=rewriter.finish();
+   List<SSTableReader> sstables=rewriter.finish();
   cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,sstables,OperationType.COMPACTION);
   assertEquals(files,sstables.size());
   assertEquals(files,cfs.getSSTables().size());

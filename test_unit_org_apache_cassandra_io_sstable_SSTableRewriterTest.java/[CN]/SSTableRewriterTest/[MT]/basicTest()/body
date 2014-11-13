@@ -12,14 +12,15 @@
   Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
   assertEquals(1,sstables.size());
   SSTableRewriter writer=new SSTableRewriter(cfs,sstables,1000,false);
-  AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables);
-  ICompactionScanner scanner=scanners.scanners.get(0);
-  CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(System.currentTimeMillis()));
-  writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory));
-  while (scanner.hasNext()) {
-    AbstractCompactedRow row=new LazilyCompactedRow(controller,Arrays.asList(scanner.next()));
-    writer.append(row);
+  try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables)){
+    ICompactionScanner scanner=scanners.scanners.get(0);
+    CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(System.currentTimeMillis()));
+    writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory));
+    while (scanner.hasNext()) {
+      AbstractCompactedRow row=new LazilyCompactedRow(controller,Arrays.asList(scanner.next()));
+      writer.append(row);
+    }
   }
-  cfs.getDataTracker().markCompactedSSTablesReplaced(sstables,writer.finish(),OperationType.COMPACTION);
+   cfs.getDataTracker().markCompactedSSTablesReplaced(sstables,writer.finish(),OperationType.COMPACTION);
   validateCFS(cfs);
 }
