@@ -6,8 +6,11 @@
     if (factories.doesAggregation() && !factories.containsOnlyAggregateFunctions())     throw new InvalidRequestException(String.format("the %s function arguments must be either all aggregates or all none aggregates",fun.name().name));
   }
   return new Factory(){
-    public ColumnSpecification getColumnSpecification(    CFMetaData cfm){
-      return new ColumnSpecification(cfm.ksName,cfm.cfName,new ColumnIdentifier(fun.toString(),true),fun.returnType());
+    protected String getColumnName(){
+      return new StrBuilder(fun.name().toString()).append('(').appendWithSeparators(factories.getColumnNames(),", ").append(')').toString();
+    }
+    protected AbstractType<?> getReturnType(){
+      return fun.returnType();
     }
     public Selector newInstance(){
       return fun.isAggregate() ? new AggregateFunctionSelector(fun,factories.newInstances()) : new ScalarFunctionSelector(fun,factories.newInstances());
