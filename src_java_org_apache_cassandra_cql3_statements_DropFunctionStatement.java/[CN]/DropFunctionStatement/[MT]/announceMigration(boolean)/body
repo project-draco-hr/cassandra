@@ -2,9 +2,7 @@
   List<Function> olds=Functions.find(functionName);
   if (!argsPresent && olds != null && olds.size() > 1)   throw new InvalidRequestException(String.format("'DROP FUNCTION %s' matches multiple function definitions; " + "specify the argument types by issuing a statement like " + "'DROP FUNCTION %s (type, type, ...)'. Hint: use cqlsh "+ "'DESCRIBE FUNCTION %s' command to find all overloads",functionName,functionName,functionName));
   List<AbstractType<?>> argTypes=new ArrayList<>(argRawTypes.size());
-  for (  CQL3Type.Raw rawType : argRawTypes) {
-    argTypes.add(rawType.prepare(null).getType());
-  }
+  for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(rawType.prepare(functionName.keyspace).getType());
   Function old;
   if (argsPresent) {
     old=Functions.find(functionName,argTypes);
@@ -25,7 +23,6 @@
     }
     old=olds.get(0);
   }
-  if (old.isNative())   throw new InvalidRequestException(String.format("Cannot drop function '%s' because it is a " + "native (built-in) function",functionName));
   MigrationManager.announceFunctionDrop((UDFunction)old,isLocalOnly);
   return true;
 }

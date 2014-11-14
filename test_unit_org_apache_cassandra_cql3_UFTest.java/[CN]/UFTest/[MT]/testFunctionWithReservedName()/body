@@ -1,0 +1,17 @@
+{
+  execute("CREATE TABLE " + KS_FOO + ".second_tab (key int primary key, val double)");
+  String cql="CREATE OR REPLACE FUNCTION " + KS_FOO + ".now() RETURNS timestamp LANGUAGE JAVA\n"+ "AS 'return null;';";
+  execute(cql);
+  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",3,3d);
+  UntypedResultSet rows=execute("SELECT key, val, now() FROM " + KS_FOO + ".second_tab");
+  Assert.assertEquals(3,rows.size());
+  UntypedResultSet.Row row=rows.iterator().next();
+  Date ts=row.getTimestamp(row.getColumns().get(2).name.toString());
+  Assert.assertNotNull(ts);
+  rows=execute("SELECT key, val, " + KS_FOO + ".now() FROM "+ KS_FOO+ ".second_tab");
+  Assert.assertEquals(3,rows.size());
+  row=rows.iterator().next();
+  Assert.assertFalse(row.has(row.getColumns().get(2).name.toString()));
+}

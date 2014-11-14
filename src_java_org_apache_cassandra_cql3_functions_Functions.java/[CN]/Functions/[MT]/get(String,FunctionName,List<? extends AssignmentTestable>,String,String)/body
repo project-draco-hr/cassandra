@@ -1,6 +1,12 @@
 {
-  if (name.equals(TOKEN_FUNCTION_NAME))   return new TokenFct(Schema.instance.getCFMetaData(receiverKs,receiverCf));
-  List<Function> candidates=declared.get(name);
+  if (name.hasKeyspace() ? name.equals(TOKEN_FUNCTION_NAME) : name.name.equals(TOKEN_FUNCTION_NAME.name))   return new TokenFct(Schema.instance.getCFMetaData(receiverKs,receiverCf));
+  List<Function> candidates;
+  if (!name.hasKeyspace()) {
+    candidates=new ArrayList<>();
+    candidates.addAll(declared.get(name.asNativeFunction()));
+    candidates.addAll(declared.get(new FunctionName(keyspace,name.name)));
+  }
+ else   candidates=declared.get(name);
   if (candidates.isEmpty())   return null;
   if (candidates.size() == 1) {
     Function fun=candidates.get(0);

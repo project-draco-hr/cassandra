@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (key int PRIMARY KEY, d double)");
+  execute("CREATE FUNCTION " + KS_FOO + ".sin ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
+  Assert.assertEquals(1,Functions.find(new FunctionName(KS_FOO,"sin")).size());
+  ResultMessage.Prepared prepared=QueryProcessor.prepare("SELECT key, " + KS_FOO + ".sin(d) FROM "+ KEYSPACE+ '.'+ currentTable(),ClientState.forInternalCalls(),false);
+  Assert.assertNotNull(QueryProcessor.instance.getPrepared(prepared.statementId));
+  execute("DROP FUNCTION " + KS_FOO + ".sin(double);");
+  Assert.assertNull(QueryProcessor.instance.getPrepared(prepared.statementId));
+  execute("CREATE FUNCTION " + KS_FOO + ".sin ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
+  Assert.assertEquals(1,Functions.find(new FunctionName(KS_FOO,"sin")).size());
+  prepared=QueryProcessor.prepare("SELECT key, " + KS_FOO + ".sin(d) FROM "+ KEYSPACE+ '.'+ currentTable(),ClientState.forInternalCalls(),false);
+  Assert.assertNotNull(QueryProcessor.instance.getPrepared(prepared.statementId));
+  execute("DROP KEYSPACE " + KS_FOO + ";");
+  Assert.assertNull(QueryProcessor.instance.getPrepared(prepared.statementId));
+}

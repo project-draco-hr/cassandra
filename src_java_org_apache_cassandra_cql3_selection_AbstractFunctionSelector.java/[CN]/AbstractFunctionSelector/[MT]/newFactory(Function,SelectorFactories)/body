@@ -3,7 +3,7 @@
     if (factories.doesAggregation())     throw new InvalidRequestException("aggregate functions cannot be used as arguments of aggregate functions");
   }
  else {
-    if (factories.doesAggregation() && !factories.containsOnlyAggregateFunctions())     throw new InvalidRequestException(String.format("the %s function arguments must be either all aggregates or all none aggregates",fun.name().name));
+    if (factories.doesAggregation() && !factories.containsOnlyAggregateFunctions())     throw new InvalidRequestException(String.format("the %s function arguments must be either all aggregates or all none aggregates",fun.name()));
   }
   return new Factory(){
     protected String getColumnName(){
@@ -11,6 +11,9 @@
     }
     protected AbstractType<?> getReturnType(){
       return fun.returnType();
+    }
+    public boolean usesFunction(    String ksName,    String functionName){
+      return fun.name().keyspace.equals(ksName) && fun.name().name.equals(functionName);
     }
     public Selector newInstance(){
       return fun.isAggregate() ? new AggregateFunctionSelector(fun,factories.newInstances()) : new ScalarFunctionSelector(fun,factories.newInstances());
