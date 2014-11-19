@@ -1,10 +1,15 @@
 {
   SchemaLoader.loadSchema();
   executeSchemaChange("CREATE KEYSPACE IF NOT EXISTS %s WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}");
-  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.single_partition (a int PRIMARY KEY, b int)");
-  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.compound_partition (a int, b int, c int, PRIMARY KEY ((a, b)))");
-  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.single_clustering (a int, b int, c int, PRIMARY KEY (a, b))");
-  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.multiple_clustering (a int, b int, c int, d int, PRIMARY KEY (a, b, c, d))");
-  executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.multiple_clustering_reversed (a int, b int, c int, d int, PRIMARY KEY (a, b, c, d)) WITH CLUSTERING ORDER BY (b DESC, c ASC, d DESC)");
+  for (  boolean isCompact : new boolean[]{false,true}) {
+    String tableSuffix=isCompact ? "_compact" : "";
+    String compactOption=isCompact ? " WITH COMPACT STORAGE" : "";
+    executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.single_partition" + tableSuffix + "(a int PRIMARY KEY, b int)"+ compactOption);
+    executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.compound_partition" + tableSuffix + "(a int, b int, c int, PRIMARY KEY ((a, b)))"+ compactOption);
+    executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.single_clustering" + tableSuffix + "(a int, b int, c int, PRIMARY KEY (a, b))"+ compactOption);
+    executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.multiple_clustering" + tableSuffix + "(a int, b int, c int, d int, PRIMARY KEY (a, b, c, d))"+ compactOption);
+    compactOption=isCompact ? " COMPACT STORAGE AND " : "";
+    executeSchemaChange("CREATE TABLE IF NOT EXISTS %s.multiple_clustering_reversed" + tableSuffix + "(a int, b int, c int, d int, PRIMARY KEY (a, b, c, d)) WITH "+ compactOption+ " CLUSTERING ORDER BY (b DESC, c ASC, d DESC)");
+  }
   clientState=ClientState.forInternalCalls();
 }

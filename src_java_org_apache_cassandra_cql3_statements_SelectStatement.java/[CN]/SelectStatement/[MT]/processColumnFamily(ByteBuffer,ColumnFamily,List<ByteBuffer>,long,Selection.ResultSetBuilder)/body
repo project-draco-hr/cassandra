@@ -15,8 +15,14 @@
       }
  else       if (sliceRestriction != null) {
         Comparator<ByteBuffer> comp=cfDef.cfm.comparator;
-        if (!sliceRestriction.isInclusive(Bound.START) && comp.compare(c.name(),sliceRestriction.bound(Bound.START,variables)) == 0)         continue;
-        if (!sliceRestriction.isInclusive(Bound.END) && comp.compare(c.name(),sliceRestriction.bound(Bound.END,variables)) == 0)         continue;
+        if (!sliceRestriction.isInclusive(Bound.START)) {
+          ByteBuffer bounds=sliceRestriction.isMultiColumn() ? ((MultiColumnRestriction.Slice)sliceRestriction).componentBounds(Bound.START,variables).get(0) : sliceRestriction.bound(Bound.START,variables);
+          if (comp.compare(c.name(),bounds) == 0)           continue;
+        }
+        if (!sliceRestriction.isInclusive(Bound.END)) {
+          ByteBuffer bounds=sliceRestriction.isMultiColumn() ? ((MultiColumnRestriction.Slice)sliceRestriction).componentBounds(Bound.END,variables).get(0) : sliceRestriction.bound(Bound.END,variables);
+          if (comp.compare(c.name(),bounds) == 0)           continue;
+        }
       }
       result.newRow();
       for (      CFDefinition.Name name : selection.getColumns()) {
