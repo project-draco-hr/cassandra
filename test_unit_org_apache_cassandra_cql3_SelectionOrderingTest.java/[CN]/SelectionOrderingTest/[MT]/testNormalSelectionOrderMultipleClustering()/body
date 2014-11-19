@@ -1,0 +1,25 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b, c))");
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,1,1);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,2,2);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,0,3);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,1,4);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,2,5);
+  assertRows(execute("SELECT * FROM %s WHERE a=? ORDER BY b ASC",0),row(0,0,0,0),row(0,0,1,1),row(0,0,2,2),row(0,1,0,3),row(0,1,1,4),row(0,1,2,5));
+  assertRows(execute("SELECT * FROM %s WHERE a=? ORDER BY b DESC",0),row(0,1,2,5),row(0,1,1,4),row(0,1,0,3),row(0,0,2,2),row(0,0,1,1),row(0,0,0,0));
+  assertRows(execute("SELECT * FROM %s WHERE a=? ORDER BY b DESC, c DESC",0),row(0,1,2,5),row(0,1,1,4),row(0,1,0,3),row(0,0,2,2),row(0,0,1,1),row(0,0,0,0));
+  assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY c ASC",0);
+  assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY c DESC",0);
+  assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY b ASC, c DESC",0);
+  assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY b DESC, c ASC",0);
+  assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY d ASC",0);
+  assertRows(execute("SELECT b FROM %s WHERE a=? ORDER BY b ASC",0),row(0),row(0),row(0),row(1),row(1),row(1));
+  assertRows(execute("SELECT b FROM %s WHERE a=? ORDER BY b DESC",0),row(1),row(1),row(1),row(0),row(0),row(0));
+  assertRows(execute("SELECT c FROM %s WHERE a=? ORDER BY b ASC",0),row(0),row(1),row(2),row(0),row(1),row(2));
+  assertRows(execute("SELECT c FROM %s WHERE a=? ORDER BY b DESC",0),row(2),row(1),row(0),row(2),row(1),row(0));
+  assertRows(execute("SELECT c FROM %s WHERE a=? ORDER BY b ASC, c ASC",0),row(0),row(1),row(2),row(0),row(1),row(2));
+  assertRows(execute("SELECT c FROM %s WHERE a=? ORDER BY b DESC, c DESC",0),row(2),row(1),row(0),row(2),row(1),row(0));
+  assertRows(execute("SELECT d FROM %s WHERE a=? ORDER BY b ASC, c ASC",0),row(0),row(1),row(2),row(3),row(4),row(5));
+  assertRows(execute("SELECT d FROM %s WHERE a=? ORDER BY b DESC, c DESC",0),row(5),row(4),row(3),row(2),row(1),row(0));
+}
