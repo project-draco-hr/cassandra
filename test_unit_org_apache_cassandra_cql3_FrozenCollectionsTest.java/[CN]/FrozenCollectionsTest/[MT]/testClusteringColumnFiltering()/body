@@ -1,0 +1,18 @@
+{
+  createTable("CREATE TABLE %s (a int, b frozen<map<int, int>>, c int, d int, PRIMARY KEY (a, b, c))");
+  createIndex("CREATE INDEX c_index ON %s (c)");
+  createIndex("CREATE INDEX d_index ON %s (d)");
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,map(0,0,1,1),0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,map(1,1,2,2),0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,map(0,0,1,1),0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,map(1,1,2,2),0,0);
+  assertRows(execute("SELECT * FROM %s WHERE d=? AND b CONTAINS ? ALLOW FILTERING",0,0),row(0,map(0,0,1,1),0,0),row(1,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE d=? AND b CONTAINS KEY ? ALLOW FILTERING",0,0),row(0,map(0,0,1,1),0,0),row(1,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE a=? AND d=? AND b CONTAINS ? ALLOW FILTERING",0,0,0),row(0,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE a=? AND d=? AND b CONTAINS KEY ? ALLOW FILTERING",0,0,0),row(0,map(0,0,1,1),0,0));
+  dropIndex("DROP INDEX %s.d_index");
+  assertRows(execute("SELECT * FROM %s WHERE c=? AND b CONTAINS ? ALLOW FILTERING",0,0),row(0,map(0,0,1,1),0,0),row(1,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE c=? AND b CONTAINS KEY ? ALLOW FILTERING",0,0),row(0,map(0,0,1,1),0,0),row(1,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE a=? AND c=? AND b CONTAINS ? ALLOW FILTERING",0,0,0),row(0,map(0,0,1,1),0,0));
+  assertRows(execute("SELECT * FROM %s WHERE a=? AND c=? AND b CONTAINS KEY ? ALLOW FILTERING",0,0,0),row(0,map(0,0,1,1),0,0));
+}
