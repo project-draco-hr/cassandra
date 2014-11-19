@@ -1,0 +1,58 @@
+{
+  DataDirectory[] dataDirectories=new DataDirectory[]{new DataDirectory(new File("/nearlyFullDir1")){
+    public long getAvailableSpace(){
+      return 11L;
+    }
+  }
+,new DataDirectory(new File("/nearlyFullDir2")){
+    public long getAvailableSpace(){
+      return 10L;
+    }
+  }
+,new DataDirectory(new File("/uniformDir1")){
+    public long getAvailableSpace(){
+      return 1000L;
+    }
+  }
+,new DataDirectory(new File("/uniformDir2")){
+    public long getAvailableSpace(){
+      return 999L;
+    }
+  }
+,new DataDirectory(new File("/veryFullDir")){
+    public long getAvailableSpace(){
+      return 4L;
+    }
+  }
+};
+  List<Directories.DataDirectoryCandidate> candidates=getWriteableDirectories(dataDirectories,0L);
+  assertSame(dataDirectories[2],candidates.get(0).dataDirectory);
+  assertSame(dataDirectories[3],candidates.get(1).dataDirectory);
+  assertSame(dataDirectories[0],candidates.get(2).dataDirectory);
+  assertSame(dataDirectories[1],candidates.get(3).dataDirectory);
+  Map<DataDirectory,DataDirectory> testMap=new IdentityHashMap<>();
+  for (int i=0; ; i++) {
+    candidates=getWriteableDirectories(dataDirectories,5L);
+    assertEquals(4,candidates.size());
+    DataDirectory dir=Directories.pickWriteableDirectory(candidates);
+    testMap.put(dir,dir);
+    assertFalse(testMap.size() > 4);
+    if (testMap.size() == 4) {
+      if (i >= 100)       break;
+    }
+    if (i >= 10000000)     fail();
+  }
+  testMap.clear();
+  for (int i=0; ; i++) {
+    candidates=getWriteableDirectories(dataDirectories,11L);
+    assertEquals(3,candidates.size());
+    for (    Directories.DataDirectoryCandidate candidate : candidates)     assertTrue(candidate.dataDirectory.getAvailableSpace() >= 11L);
+    DataDirectory dir=Directories.pickWriteableDirectory(candidates);
+    testMap.put(dir,dir);
+    assertFalse(testMap.size() > 3);
+    if (testMap.size() == 3) {
+      if (i >= 100)       break;
+    }
+    if (i >= 10000000)     fail();
+  }
+}
