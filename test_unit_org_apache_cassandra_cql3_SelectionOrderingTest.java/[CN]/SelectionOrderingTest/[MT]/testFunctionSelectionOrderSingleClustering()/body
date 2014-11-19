@@ -1,0 +1,14 @@
+{
+  for (  String descOption : new String[]{""," WITH CLUSTERING ORDER BY (b DESC)"}) {
+    createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY (a, b))" + descOption);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,0,0);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,1,1);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,2,2);
+    assertRows(execute("SELECT blobAsInt(intAsBlob(b)) FROM %s WHERE a=? ORDER BY b ASC",0),row(0),row(1),row(2));
+    assertRows(execute("SELECT blobAsInt(intAsBlob(b)) FROM %s WHERE a=? ORDER BY b DESC",0),row(2),row(1),row(0));
+    assertRows(execute("SELECT blobAsInt(intAsBlob(c)) FROM %s WHERE a=? ORDER BY b ASC",0),row(0),row(1),row(2));
+    assertRows(execute("SELECT blobAsInt(intAsBlob(c)) FROM %s WHERE a=? ORDER BY b DESC",0),row(2),row(1),row(0));
+    assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY c ASC",0);
+    assertInvalid("SELECT * FROM %s WHERE a=? ORDER BY c DESC",0);
+  }
+}

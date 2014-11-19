@@ -1,0 +1,13 @@
+{
+  String type=createType("CREATE TYPE %s (a int)");
+  for (  String descOption : new String[]{""," WITH CLUSTERING ORDER BY (b DESC)"}) {
+    createTable("CREATE TABLE %s (a int, b int, c frozen<" + type + "   >, PRIMARY KEY (a, b))"+ descOption);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, {a: ?})",0,0,0);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, {a: ?})",0,1,1);
+    execute("INSERT INTO %s (a, b, c) VALUES (?, ?, {a: ?})",0,2,2);
+    assertRows(execute("SELECT c.a FROM %s WHERE a=? ORDER BY b ASC",0),row(0),row(1),row(2));
+    assertRows(execute("SELECT c.a FROM %s WHERE a=? ORDER BY b DESC",0),row(2),row(1),row(0));
+    assertRows(execute("SELECT blobAsInt(intAsBlob(c.a)) FROM %s WHERE a=? ORDER BY b DESC",0),row(2),row(1),row(0));
+    dropTable("DROP TABLE %s");
+  }
+}
