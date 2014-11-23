@@ -1,0 +1,17 @@
+{
+  ByteBuffer buffer=(ByteBuffer)slab.duplicate().position(offset).limit(offset + totalSize);
+  DataOutputPlus dop=new DataOutputBufferFixed(buffer);
+  CRC32 crc=new CRC32();
+  int hintSize=totalSize - ENTRY_OVERHEAD_SIZE;
+  try {
+    dop.writeInt(hintSize);
+    updateChecksumInt(crc,hintSize);
+    dop.writeInt((int)crc.getValue());
+    Hint.serializer.serialize(hint,dop,MessagingService.current_version);
+    updateChecksum(crc,buffer,buffer.position() - hintSize,hintSize);
+    dop.writeInt((int)crc.getValue());
+  }
+ catch (  IOException e) {
+    throw new AssertionError();
+  }
+}

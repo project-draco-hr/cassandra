@@ -1,0 +1,20 @@
+{
+  CRC32 crc=new CRC32();
+  int version=in.readInt();
+  updateChecksumInt(crc,version);
+  long timestamp=in.readLong();
+  updateChecksumLong(crc,timestamp);
+  long msb=in.readLong();
+  updateChecksumLong(crc,msb);
+  long lsb=in.readLong();
+  updateChecksumLong(crc,lsb);
+  UUID hostId=new UUID(msb,lsb);
+  int paramsLength=in.readInt();
+  updateChecksumInt(crc,paramsLength);
+  validateCRC(in.readInt(),(int)crc.getValue());
+  byte[] paramsBytes=new byte[paramsLength];
+  in.readFully(paramsBytes,0,paramsLength);
+  crc.update(paramsBytes,0,paramsLength);
+  validateCRC(in.readInt(),(int)crc.getValue());
+  return new HintsDescriptor(hostId,version,timestamp,decodeJSONBytes(paramsBytes));
+}

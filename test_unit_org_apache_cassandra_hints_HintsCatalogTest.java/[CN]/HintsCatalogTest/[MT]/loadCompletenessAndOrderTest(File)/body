@@ -1,0 +1,28 @@
+{
+  UUID hostId1=UUID.randomUUID();
+  UUID hostId2=UUID.randomUUID();
+  long timestamp1=System.currentTimeMillis();
+  long timestamp2=System.currentTimeMillis() + 1;
+  long timestamp3=System.currentTimeMillis() + 2;
+  long timestamp4=System.currentTimeMillis() + 3;
+  HintsDescriptor descriptor1=new HintsDescriptor(hostId1,timestamp1);
+  HintsDescriptor descriptor2=new HintsDescriptor(hostId2,timestamp3);
+  HintsDescriptor descriptor3=new HintsDescriptor(hostId2,timestamp2);
+  HintsDescriptor descriptor4=new HintsDescriptor(hostId1,timestamp4);
+  writeDescriptor(directory,descriptor1);
+  writeDescriptor(directory,descriptor2);
+  writeDescriptor(directory,descriptor3);
+  writeDescriptor(directory,descriptor4);
+  HintsCatalog catalog=HintsCatalog.load(directory);
+  assertEquals(2,catalog.stores().count());
+  HintsStore store1=catalog.get(hostId1);
+  assertNotNull(store1);
+  assertEquals(descriptor1,store1.poll());
+  assertEquals(descriptor4,store1.poll());
+  assertNull(store1.poll());
+  HintsStore store2=catalog.get(hostId2);
+  assertNotNull(store2);
+  assertEquals(descriptor3,store2.poll());
+  assertEquals(descriptor2,store2.poll());
+  assertNull(store2.poll());
+}

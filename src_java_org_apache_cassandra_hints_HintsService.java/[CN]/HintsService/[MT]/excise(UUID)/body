@@ -1,0 +1,15 @@
+{
+  HintsStore store=catalog.get(hostId);
+  if (store == null)   return;
+  Future flushFuture=writeExecutor.flushBufferPool(bufferPool,Collections.singleton(store));
+  Future closeFuture=writeExecutor.closeWriter(store);
+  try {
+    flushFuture.get();
+    closeFuture.get();
+  }
+ catch (  InterruptedException|ExecutionException e) {
+    throw new RuntimeException(e);
+  }
+  dispatchExecutor.completeDispatchBlockingly(store);
+  catalog.exciseStore(hostId);
+}

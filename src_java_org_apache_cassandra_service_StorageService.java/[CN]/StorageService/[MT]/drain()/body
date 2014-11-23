@@ -1,5 +1,7 @@
 {
   inShutdownHook=true;
+  BatchlogManager.shutdown();
+  HintsService.instance.pauseDispatch();
   ExecutorService counterMutationStage=StageManager.getStage(Stage.COUNTER_MUTATION);
   ExecutorService batchlogMutationStage=StageManager.getStage(Stage.BATCHLOG_MUTATION);
   ExecutorService materializedViewMutationStage=StageManager.getStage(Stage.MATERIALIZED_VIEW_MUTATION);
@@ -41,7 +43,7 @@
     for (    ColumnFamilyStore cfs : keyspace.getColumnFamilyStores())     flushes.add(cfs.forceFlush());
   }
   FBUtilities.waitOnFutures(flushes);
-  BatchlogManager.shutdown();
+  HintsService.instance.shutdownBlocking();
   CommitLog.instance.forceRecycleAllSegments();
   ColumnFamilyStore.shutdownPostFlushExecutor();
   CommitLog.instance.shutdownBlocking();

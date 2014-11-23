@@ -1,0 +1,12 @@
+{
+  long now=FBUtilities.timestampMicros();
+  Mutation mutation=createMutation("testSerializer",now);
+  Hint hint=Hint.create(mutation,now / 1000);
+  int serializedSize=(int)Hint.serializer.serializedSize(hint,MessagingService.current_version);
+  DataOutputBuffer dob=new DataOutputBuffer();
+  Hint.serializer.serialize(hint,dob,MessagingService.current_version);
+  assertEquals(serializedSize,dob.getLength());
+  DataInputPlus di=new DataInputBuffer(dob.buffer(),true);
+  Hint deserializedHint=Hint.serializer.deserialize(di,MessagingService.current_version);
+  assertHintsEqual(hint,deserializedHint);
+}

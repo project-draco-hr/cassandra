@@ -1,0 +1,20 @@
+{
+  CRC32 crc=new CRC32();
+  DataInputPlus di=new DataInputBuffer(buffer,true);
+  int hintSize=di.readInt();
+  assertEquals(hintSize + HintsBuffer.ENTRY_OVERHEAD_SIZE,buffer.remaining());
+  updateChecksum(crc,buffer,buffer.position(),4);
+  assertEquals((int)crc.getValue(),di.readInt());
+  Hint hint=Hint.serializer.deserialize(di,MessagingService.current_version);
+  updateChecksum(crc,buffer,buffer.position() + 8,hintSize);
+  assertEquals((int)crc.getValue(),di.readInt());
+  int idx=(int)(hint.creationTime - baseTimestamp);
+  assertEquals(hostId,load[idx]);
+  Row row=hint.mutation.getPartitionUpdates().iterator().next().iterator().next();
+  assertEquals(1,Iterables.size(row.cells()));
+  assertEquals(bytes(idx),row.clustering().get(0));
+  Cell cell=row.cells().iterator().next();
+  assertEquals(TimeUnit.MILLISECONDS.toMicros(baseTimestamp + idx),cell.timestamp());
+  assertEquals(bytes(idx),cell.value());
+  return idx;
+}

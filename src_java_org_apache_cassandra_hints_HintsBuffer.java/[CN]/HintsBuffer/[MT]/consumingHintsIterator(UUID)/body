@@ -1,0 +1,14 @@
+{
+  final Queue<Integer> bufferOffsets=offsets.get(hostId);
+  if (bufferOffsets == null)   return Collections.emptyIterator();
+  return new AbstractIterator<ByteBuffer>(){
+    private final ByteBuffer flyweight=slab.duplicate();
+    protected ByteBuffer computeNext(){
+      Integer offset=bufferOffsets.poll();
+      if (offset == null)       return endOfData();
+      int totalSize=slab.getInt(offset) + ENTRY_OVERHEAD_SIZE;
+      return (ByteBuffer)flyweight.clear().position(offset).limit(offset + totalSize);
+    }
+  }
+;
+}
