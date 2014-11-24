@@ -1,0 +1,41 @@
+{
+  int gcBefore=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily).gcBefore(System.currentTimeMillis());
+  List<ListenableFuture<TreeResponse>> tasks=new ArrayList<>(endpoints.size());
+  Map<String,Queue<InetAddress>> requestsByDatacenter=new HashMap<>();
+  for (  InetAddress endpoint : endpoints) {
+    String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(endpoint);
+    Queue<InetAddress> queue=requestsByDatacenter.get(dc);
+    if (queue == null) {
+      queue=new LinkedList<>();
+      requestsByDatacenter.put(dc,queue);
+    }
+    queue.add(endpoint);
+  }
+  for (  Map.Entry<String,Queue<InetAddress>> entry : requestsByDatacenter.entrySet()) {
+    Queue<InetAddress> requests=entry.getValue();
+    InetAddress address=requests.poll();
+    ValidationTask firstTask=new ValidationTask(desc,address,gcBefore);
+    logger.info("Validating " + address);
+    session.waitForValidation(Pair.create(desc,address),firstTask);
+    tasks.add(firstTask);
+    ValidationTask currentTask=firstTask;
+    while (requests.size() > 0) {
+      final InetAddress nextAddress=requests.poll();
+      final ValidationTask nextTask=new ValidationTask(desc,nextAddress,gcBefore);
+      tasks.add(nextTask);
+      Futures.addCallback(currentTask,new FutureCallback<TreeResponse>(){
+        public void onSuccess(        TreeResponse result){
+          logger.info("Validating " + nextAddress);
+          session.waitForValidation(Pair.create(desc,nextAddress),nextTask);
+          taskExecutor.execute(nextTask);
+        }
+        public void onFailure(        Throwable t){
+        }
+      }
+);
+      currentTask=nextTask;
+    }
+    taskExecutor.execute(firstTask);
+  }
+  return Futures.allAsList(tasks);
+}

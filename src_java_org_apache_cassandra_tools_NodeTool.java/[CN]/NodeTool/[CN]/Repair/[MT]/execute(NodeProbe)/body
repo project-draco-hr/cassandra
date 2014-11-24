@@ -4,7 +4,10 @@
   if (primaryRange && (!specificDataCenters.isEmpty() || !specificHosts.isEmpty()))   throw new RuntimeException("Primary range repair should be performed on all nodes in the cluster.");
   for (  String keyspace : keyspaces) {
     Map<String,String> options=new HashMap<>();
-    options.put(RepairOption.SEQUENTIAL_KEY,Boolean.toString(sequential));
+    RepairParallelism parallelismDegree=RepairParallelism.PARALLEL;
+    if (sequential)     parallelismDegree=RepairParallelism.SEQUENTIAL;
+ else     if (dcParallel)     parallelismDegree=RepairParallelism.DATACENTER_AWARE;
+    options.put(RepairOption.PARALLELISM_KEY,parallelismDegree.getName());
     options.put(RepairOption.PRIMARY_RANGE_KEY,Boolean.toString(primaryRange));
     options.put(RepairOption.INCREMENTAL_KEY,Boolean.toString(!fullRepair));
     options.put(RepairOption.JOB_THREADS_KEY,Integer.toString(numJobThreads));
