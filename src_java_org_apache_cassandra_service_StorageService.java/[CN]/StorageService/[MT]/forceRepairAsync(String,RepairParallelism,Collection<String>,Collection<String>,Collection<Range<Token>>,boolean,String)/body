@@ -1,0 +1,12 @@
+{
+  if (ranges.isEmpty() || Keyspace.open(keyspace).getReplicationStrategy().getReplicationFactor() < 2)   return 0;
+  int cmd=nextRepairCommand.incrementAndGet();
+  if (ranges.size() > 0) {
+    if (!FBUtilities.isUnix() && parallelismDegree != RepairParallelism.PARALLEL) {
+      logger.warn("Snapshot-based repair is not yet supported on Windows.  Reverting to parallel repair.");
+      parallelismDegree=RepairParallelism.PARALLEL;
+    }
+    new Thread(createRepairTask(cmd,keyspace,ranges,parallelismDegree,dataCenters,hosts,fullRepair,columnFamilies)).start();
+  }
+  return cmd;
+}

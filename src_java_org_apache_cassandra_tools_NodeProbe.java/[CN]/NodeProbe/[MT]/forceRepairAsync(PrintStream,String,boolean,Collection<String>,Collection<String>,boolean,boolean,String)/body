@@ -1,21 +1,3 @@
 {
-  RepairRunner runner=new RepairRunner(out,keyspaceName,columnFamilies);
-  try {
-    jmxc.addConnectionNotificationListener(runner,null,null);
-    ssProxy.addNotificationListener(runner,null,null);
-    if (!runner.repairAndWait(ssProxy,isSequential,dataCenters,hosts,primaryRange,fullRepair))     failed=true;
-  }
- catch (  Exception e) {
-    throw new IOException(e);
-  }
- finally {
-    try {
-      ssProxy.removeNotificationListener(runner);
-      jmxc.removeConnectionNotificationListener(runner);
-    }
- catch (    Throwable t) {
-      JVMStabilityInspector.inspectThrowable(t);
-      out.println("Exception occurred during clean-up. " + t);
-    }
-  }
+  forceRepairAsync(out,keyspaceName,isSequential ? RepairParallelism.SEQUENTIAL : RepairParallelism.PARALLEL,dataCenters,hosts,primaryRange,fullRepair,columnFamilies);
 }

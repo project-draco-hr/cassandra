@@ -4,13 +4,16 @@
   if (primaryRange && (!specificDataCenters.isEmpty() || !specificHosts.isEmpty()))   throw new RuntimeException("Primary range repair should be performed on all nodes in the cluster.");
   for (  String keyspace : keyspaces) {
     try {
+      RepairParallelism parallelismDegree=RepairParallelism.SEQUENTIAL;
+      if (parallel)       parallelismDegree=RepairParallelism.PARALLEL;
+ else       if (dcParallel)       parallelismDegree=RepairParallelism.DATACENTER_AWARE;
       Collection<String> dataCenters=null;
       Collection<String> hosts=null;
       if (!specificDataCenters.isEmpty())       dataCenters=newArrayList(specificDataCenters);
  else       if (localDC)       dataCenters=newArrayList(probe.getDataCenter());
  else       if (!specificHosts.isEmpty())       hosts=newArrayList(specificHosts);
-      if (!startToken.isEmpty() || !endToken.isEmpty())       probe.forceRepairRangeAsync(System.out,keyspace,!parallel,dataCenters,hosts,startToken,endToken,!incrementalRepair);
- else       probe.forceRepairAsync(System.out,keyspace,!parallel,dataCenters,hosts,primaryRange,!incrementalRepair,cfnames);
+      if (!startToken.isEmpty() || !endToken.isEmpty())       probe.forceRepairRangeAsync(System.out,keyspace,parallelismDegree,dataCenters,hosts,startToken,endToken,!incrementalRepair);
+ else       probe.forceRepairAsync(System.out,keyspace,parallelismDegree,dataCenters,hosts,primaryRange,!incrementalRepair,cfnames);
     }
  catch (    Exception e) {
       throw new RuntimeException("Error occurred during repair",e);
