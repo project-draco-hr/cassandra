@@ -1,0 +1,19 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open("Keyspace1").getColumnFamilyStore("Standard1");
+  DecoratedKey key=Util.dk("key" + System.nanoTime());
+  ByteBuffer name=ByteBufferUtil.bytes("col");
+  ByteBuffer value=ByteBufferUtil.bytes(0);
+  ColumnFamily update=ArrayBackedSortedColumns.factory.create(cfs.metadata);
+  update.addColumn(name,value,FBUtilities.timestampMicros());
+  assertNoDataPresent(cfs,key);
+  Commit beforeTruncate=newProposal(0,key.key,update);
+  PaxosState.commit(beforeTruncate);
+  assertDataPresent(cfs,key,name,value);
+  cfs.truncateBlocking();
+  PaxosState.commit(beforeTruncate);
+  assertNoDataPresent(cfs,key);
+  long timestamp=SystemKeyspace.getTruncatedAt(update.metadata().cfId) + 1;
+  Commit afterTruncate=newProposal(timestamp,key.key,update);
+  PaxosState.commit(afterTruncate);
+  assertDataPresent(cfs,key,name,value);
+}

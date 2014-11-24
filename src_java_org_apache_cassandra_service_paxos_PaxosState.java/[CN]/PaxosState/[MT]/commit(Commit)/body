@@ -1,9 +1,14 @@
 {
   long start=System.nanoTime();
   try {
-    Tracing.trace("Committing proposal {}",proposal);
-    RowMutation rm=proposal.makeMutation();
-    Keyspace.open(rm.getKeyspaceName()).apply(rm,true);
+    if (UUIDGen.unixTimestamp(proposal.ballot) >= SystemKeyspace.getTruncatedAt(proposal.update.metadata().cfId)) {
+      Tracing.trace("Committing proposal {}",proposal);
+      RowMutation rm=proposal.makeMutation();
+      Keyspace.open(rm.getKeyspaceName()).apply(rm,true);
+    }
+ else {
+      Tracing.trace("Not committing proposal {} as ballot timestamp predates last truncation time",proposal);
+    }
     SystemKeyspace.savePaxosCommit(proposal);
   }
   finally {
