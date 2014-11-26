@@ -1,0 +1,19 @@
+{
+  String type=createType("CREATE TYPE %s (txt text, i int)");
+  createTable("CREATE TABLE %s (key int primary key, udt frozen<" + KEYSPACE + "."+ type+ ">)");
+  execute("INSERT INTO %s (key, udt) VALUES (1, {txt: 'one', i:1})");
+  for (int version=Server.VERSION_2; version <= Server.CURRENT_VERSION; version++) {
+    executeNet(version,"USE " + KEYSPACE);
+    executeNet(version,"CREATE FUNCTION f_use1( udt frozen<" + type + "> ) "+ "RETURNS frozen<"+ type+ "> "+ "LANGUAGE java "+ "AS $$return "+ "     udt;$$;");
+    try {
+      List<Row> rowsNet=executeNet(version,"SELECT f_use1(udt) FROM %s WHERE key = 1").all();
+      Assert.assertEquals(1,rowsNet.size());
+      UDTValue udtVal=rowsNet.get(0).getUDTValue(0);
+      Assert.assertEquals("one",udtVal.getString("txt"));
+      Assert.assertEquals(1,udtVal.getInt("i"));
+    }
+  finally {
+      executeNet(version,"DROP FUNCTION f_use1");
+    }
+  }
+}

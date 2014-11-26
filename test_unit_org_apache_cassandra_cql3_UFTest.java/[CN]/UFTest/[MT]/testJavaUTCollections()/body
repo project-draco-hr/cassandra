@@ -1,0 +1,10 @@
+{
+  String type=KEYSPACE + "." + createType("CREATE TYPE %s (txt text, i int)");
+  createTable(String.format("CREATE TABLE %%s " + "(key int primary key, lst list<frozen<%s>>, st set<frozen<%s>>, mp map<int, frozen<%s>>)",type,type,type));
+  String fName1=createFunction(KEYSPACE,"list<frozen<" + type + ">>","CREATE FUNCTION %s( lst list<frozen<" + type + ">> ) "+ "RETURNS text LANGUAGE java\n"+ "AS $$"+ "     com.datastax.driver.core.UDTValue udtVal = (com.datastax.driver.core.UDTValue)lst.get(1);"+ "     return udtVal.getString(\"txt\");$$;");
+  String fName2=createFunction(KEYSPACE,"set<frozen<" + type + ">>","CREATE FUNCTION %s( st set<frozen<" + type + ">> ) "+ "RETURNS text LANGUAGE java\n"+ "AS $$"+ "     com.datastax.driver.core.UDTValue udtVal = (com.datastax.driver.core.UDTValue)st.iterator().next();"+ "     return udtVal.getString(\"txt\");$$;");
+  String fName3=createFunction(KEYSPACE,"map<int, frozen<" + type + ">>","CREATE FUNCTION %s( mp map<int, frozen<" + type + ">> ) "+ "RETURNS text LANGUAGE java\n"+ "AS $$"+ "     com.datastax.driver.core.UDTValue udtVal = (com.datastax.driver.core.UDTValue)mp.get(Integer.valueOf(3));"+ "     return udtVal.getString(\"txt\");$$;");
+  execute("INSERT INTO %s (key, lst, st, mp) values (1, " + "[ {txt: 'one', i:1}, {txt: 'three', i:1}, {txt: 'one', i:1} ] , " + "{ {txt: 'one', i:1}, {txt: 'three', i:3}, {txt: 'two', i:2} }, "+ "{ 1: {txt: 'one', i:1}, 2: {txt: 'one', i:3}, 3: {txt: 'two', i:2} })");
+  assertRows(execute("SELECT " + fName1 + "(lst), "+ fName2+ "(st), "+ fName3+ "(mp) FROM %s WHERE key = 1"),row("three","one","two"));
+  for (int version=Server.VERSION_2; version <= Server.CURRENT_VERSION; version++)   assertRowsNet(version,executeNet(version,"SELECT " + fName1 + "(lst), "+ fName2+ "(st), "+ fName3+ "(mp) FROM %s WHERE key = 1"),row("three","one","two"));
+}

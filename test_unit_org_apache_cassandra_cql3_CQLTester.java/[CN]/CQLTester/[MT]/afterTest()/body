@@ -1,14 +1,21 @@
 {
+  dropPerTestKeyspace();
   usePrepared=USE_PREPARED_VALUES;
   if (currentTable == null)   return;
   final String tableToDrop=currentTable;
   final Set<String> typesToDrop=currentTypes.isEmpty() ? Collections.emptySet() : new HashSet(currentTypes);
+  final Set<String> functionsToDrop=currentFunctions.isEmpty() ? Collections.emptySet() : new HashSet(currentFunctions);
+  final Set<String> aggregatesToDrop=currentAggregates.isEmpty() ? Collections.emptySet() : new HashSet(currentAggregates);
   currentTable=null;
   currentTypes.clear();
+  currentFunctions.clear();
+  currentAggregates.clear();
   ScheduledExecutors.optionalTasks.execute(new Runnable(){
     public void run(){
       try {
         schemaChange(String.format("DROP TABLE IF EXISTS %s.%s",KEYSPACE,tableToDrop));
+        for (        String aggregateName : aggregatesToDrop)         schemaChange(String.format("DROP AGGREGATE IF EXISTS %s",aggregateName));
+        for (        String functionName : functionsToDrop)         schemaChange(String.format("DROP FUNCTION IF EXISTS %s",functionName));
         for (        String typeName : typesToDrop)         schemaChange(String.format("DROP TYPE IF EXISTS %s.%s",KEYSPACE,typeName));
         final CountDownLatch latch=new CountDownLatch(1);
         ScheduledExecutors.nonPeriodicTasks.execute(new Runnable(){

@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, lst list<double>, st set<text>, mp map<int, boolean>)");
+  String fList=createFunction(KEYSPACE_PER_TEST,"list<double>","CREATE FUNCTION %s( lst list<double> ) " + "RETURNS list<double> LANGUAGE java\n" + "AS $$return lst;$$;");
+  String fSet=createFunction(KEYSPACE_PER_TEST,"set<text>","CREATE FUNCTION %s( st set<text> ) " + "RETURNS set<text> LANGUAGE java\n" + "AS $$return st;$$;");
+  String fMap=createFunction(KEYSPACE_PER_TEST,"map<int, boolean>","CREATE FUNCTION %s( mp map<int, boolean> ) " + "RETURNS map<int, boolean> LANGUAGE java\n" + "AS $$return mp;$$;");
+  List<Double> list=Arrays.asList(1d,2d,3d);
+  Set<String> set=new TreeSet<>(Arrays.asList("one","three","two"));
+  Map<Integer,Boolean> map=new TreeMap<>();
+  map.put(1,true);
+  map.put(2,false);
+  map.put(3,true);
+  execute("INSERT INTO %s (key, lst, st, mp) VALUES (1, ?, ?, ?)",list,set,map);
+  assertRows(execute("SELECT " + fList + "(lst), "+ fSet+ "(st), "+ fMap+ "(mp) FROM %s WHERE key = 1"),row(list,set,map));
+  for (int version=Server.VERSION_2; version <= Server.CURRENT_VERSION; version++)   assertRowsNet(version,executeNet(version,"SELECT " + fList + "(lst), "+ fSet+ "(st), "+ fMap+ "(mp) FROM %s WHERE key = 1"),row(list,set,map));
+}

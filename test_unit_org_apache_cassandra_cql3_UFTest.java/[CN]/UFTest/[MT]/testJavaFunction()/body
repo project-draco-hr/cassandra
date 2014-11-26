@@ -1,11 +1,11 @@
 {
   createTable("CREATE TABLE %s (key int primary key, val double)");
   String functionBody="\n" + "  // parameter val is of type java.lang.Double\n" + "  /* return type is of type java.lang.Double */\n"+ "  if (val == null) {\n"+ "    return null;\n"+ "  }\n"+ "  double v = Math.sin( val.doubleValue() );\n"+ "  return Double.valueOf(v);\n";
-  String cql=String.format("CREATE OR REPLACE FUNCTION %s.jft(val double) RETURNS double LANGUAGE JAVA\n" + "AS '%s';",KEYSPACE,functionBody);
-  execute(cql);
-  assertRows(execute("SELECT language, body FROM system.schema_functions WHERE keyspace_name=? AND function_name='jft'",KEYSPACE),row("java",functionBody));
+  String fName=createFunction(KEYSPACE,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS double " + "LANGUAGE JAVA "+ "AS '" + functionBody + "';");
+  FunctionName fNameName=parseFunctionName(fName);
+  assertRows(execute("SELECT language, body FROM system.schema_functions WHERE keyspace_name=? AND function_name=?",fNameName.keyspace,fNameName.name),row("java",functionBody));
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1d);
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",2,2d);
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",3,3d);
-  assertRows(execute("SELECT key, val, " + KEYSPACE + ".jft(val) FROM %s"),row(1,1d,Math.sin(1d)),row(2,2d,Math.sin(2d)),row(3,3d,Math.sin(3d)));
+  assertRows(execute("SELECT key, val, " + fName + "(val) FROM %s"),row(1,1d,Math.sin(1d)),row(2,2d,Math.sin(2d)),row(3,3d,Math.sin(3d)));
 }

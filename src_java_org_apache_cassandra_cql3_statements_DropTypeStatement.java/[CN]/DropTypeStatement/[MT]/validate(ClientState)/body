@@ -6,6 +6,10 @@
     if (ifExists)     return;
  else     throw new InvalidRequestException(String.format("No user type named %s exists.",name));
   }
+  for (  Function function : Functions.all()) {
+    if (isUsedBy(function.returnType()))     throw new InvalidRequestException(String.format("Cannot drop user type %s as it is still used by function %s",name,function));
+    for (    AbstractType<?> argType : function.argTypes())     if (isUsedBy(argType))     throw new InvalidRequestException(String.format("Cannot drop user type %s as it is still used by function %s",name,function));
+  }
   for (  KSMetaData ksm2 : Schema.instance.getKeyspaceDefinitions()) {
     for (    UserType ut : ksm2.userTypes.getAllTypes().values()) {
       if (ut.keyspace.equals(name.getKeyspace()) && ut.name.equals(name.getUserTypeName()))       continue;

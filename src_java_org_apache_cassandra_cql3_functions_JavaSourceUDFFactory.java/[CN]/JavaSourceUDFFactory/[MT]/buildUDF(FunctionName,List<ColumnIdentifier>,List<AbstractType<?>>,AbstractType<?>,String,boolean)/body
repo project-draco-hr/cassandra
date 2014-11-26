@@ -1,6 +1,8 @@
 {
-  Class<?> javaReturnType=UDFunction.javaType(returnType);
-  Class<?>[] javaParamTypes=UDFunction.javaParamTypes(argTypes);
+  DataType[] argDataTypes=UDFunction.driverTypes(argTypes);
+  DataType returnDataType=UDFunction.driverType(returnType);
+  Class<?>[] javaParamTypes=UDFunction.javaTypes(argDataTypes);
+  Class<?> javaReturnType=returnDataType.asJavaClass();
   String clsName=generateClassName(name);
   String codeCtor=generateConstructor(clsName);
   String codeExec=generateExecuteMethod(argNames,javaParamTypes);
@@ -14,8 +16,8 @@
     cc.addConstructor(CtNewConstructor.make(codeCtor,cc));
     cc.addMethod(CtNewMethod.make(codeExecInt,cc));
     cc.addMethod(CtNewMethod.make(codeExec,cc));
-    Constructor ctor=cc.toClass().getDeclaredConstructor(FunctionName.class,List.class,List.class,AbstractType.class,String.class,boolean.class);
-    return (UDFunction)ctor.newInstance(name,argNames,argTypes,returnType,body,deterministic);
+    Constructor ctor=cc.toClass().getDeclaredConstructor(FunctionName.class,List.class,List.class,DataType[].class,AbstractType.class,DataType.class,String.class,boolean.class);
+    return (UDFunction)ctor.newInstance(name,argNames,argTypes,argDataTypes,returnType,returnDataType,body,deterministic);
   }
  catch (  NotFoundException|CannotCompileException|NoSuchMethodException|LinkageError|InstantiationException|IllegalAccessException e) {
     throw new InvalidRequestException(String.format("Could not compile function '%s' from Java source: %s",name,e));

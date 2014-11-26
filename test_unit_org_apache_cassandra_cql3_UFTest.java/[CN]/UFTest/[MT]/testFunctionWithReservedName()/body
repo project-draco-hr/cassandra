@@ -1,16 +1,15 @@
 {
-  execute("CREATE TABLE " + KS_FOO + ".second_tab (key int primary key, val double)");
-  String cql="CREATE OR REPLACE FUNCTION " + KS_FOO + ".now() RETURNS timestamp LANGUAGE JAVA\n"+ "AS 'return null;';";
-  execute(cql);
-  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",1,1d);
-  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",2,2d);
-  execute("INSERT INTO " + KS_FOO + ".second_tab (key, val) VALUES (?, ?)",3,3d);
-  UntypedResultSet rows=execute("SELECT key, val, now() FROM " + KS_FOO + ".second_tab");
+  execute("CREATE TABLE " + KEYSPACE_PER_TEST + ".second_tab (key int primary key, val double)");
+  String fName=createFunction(KEYSPACE_PER_TEST,"","CREATE OR REPLACE FUNCTION %s() RETURNS timestamp LANGUAGE JAVA " + "AS 'return null;';");
+  execute("INSERT INTO " + KEYSPACE_PER_TEST + ".second_tab (key, val) VALUES (?, ?)",1,1d);
+  execute("INSERT INTO " + KEYSPACE_PER_TEST + ".second_tab (key, val) VALUES (?, ?)",2,2d);
+  execute("INSERT INTO " + KEYSPACE_PER_TEST + ".second_tab (key, val) VALUES (?, ?)",3,3d);
+  UntypedResultSet rows=execute("SELECT key, val, now() FROM " + KEYSPACE_PER_TEST + ".second_tab");
   Assert.assertEquals(3,rows.size());
   UntypedResultSet.Row row=rows.iterator().next();
   Date ts=row.getTimestamp(row.getColumns().get(2).name.toString());
   Assert.assertNotNull(ts);
-  rows=execute("SELECT key, val, " + KS_FOO + ".now() FROM "+ KS_FOO+ ".second_tab");
+  rows=execute("SELECT key, val, " + fName + "() FROM "+ KEYSPACE_PER_TEST+ ".second_tab");
   Assert.assertEquals(3,rows.size());
   row=rows.iterator().next();
   Assert.assertFalse(row.has(row.getColumns().get(2).name.toString()));

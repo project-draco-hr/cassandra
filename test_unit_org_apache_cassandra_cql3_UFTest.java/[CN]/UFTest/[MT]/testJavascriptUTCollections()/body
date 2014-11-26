@@ -1,0 +1,14 @@
+{
+  String type=createType("CREATE TYPE %s (txt text, i int)");
+  createTable(String.format("CREATE TABLE %%s " + "(key int primary key, lst list<frozen<%s>>, st set<frozen<%s>>, mp map<int, frozen<%s>>)",type,type,type));
+  String fName=createFunction(KEYSPACE,"list<frozen<" + type + ">>","CREATE FUNCTION %s( lst list<frozen<" + type + ">> ) "+ "RETURNS text "+ "LANGUAGE javascript\n"+ "AS $$"+ "        lst.get(1).getString(\"txt\");$$;");
+  createFunctionOverload(fName,"set<frozen<" + type + ">>","CREATE FUNCTION %s( st set<frozen<" + type + ">> ) "+ "RETURNS text "+ "LANGUAGE javascript\n"+ "AS $$"+ "        st.iterator().next().getString(\"txt\");$$;");
+  createFunctionOverload(fName,"map<int, frozen<" + type + ">>","CREATE FUNCTION %s( mp map<int, frozen<" + type + ">> ) "+ "RETURNS text "+ "LANGUAGE javascript\n"+ "AS $$"+ "        mp.get(java.lang.Integer.valueOf(3)).getString(\"txt\");$$;");
+  execute("INSERT INTO %s (key, lst, st, mp) values (1, " + "[ {txt: 'one', i:1}, {txt: 'three', i:1}, {txt: 'one', i:1} ] , " + "{ {txt: 'one', i:1}, {txt: 'three', i:3}, {txt: 'two', i:2} }, "+ "{ 1: {txt: 'one', i:1}, 2: {txt: 'one', i:3}, 3: {txt: 'two', i:2} })");
+  assertRows(execute("SELECT " + fName + "(lst) FROM %s WHERE key = 1"),row("three"));
+  assertRows(execute("SELECT " + fName + "(st) FROM %s WHERE key = 1"),row("one"));
+  assertRows(execute("SELECT " + fName + "(mp) FROM %s WHERE key = 1"),row("two"));
+  String cqlSelect="SELECT " + fName + "(lst), "+ fName+ "(st), "+ fName+ "(mp) FROM %s WHERE key = 1";
+  assertRows(execute(cqlSelect),row("three","one","two"));
+  for (int version=Server.VERSION_2; version <= Server.CURRENT_VERSION; version++)   assertRowsNet(version,executeNet(version,cqlSelect),row("three","one","two"));
+}

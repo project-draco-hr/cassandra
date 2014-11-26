@@ -1,0 +1,32 @@
+{
+  Object[] params=new Object[argTypes.size()];
+  for (int i=0; i < params.length; i++)   params[i]=compose(protocolVersion,i,parameters.get(i));
+  try {
+    Bindings bindings=new SimpleBindings();
+    for (int i=0; i < params.length; i++)     bindings.put(argNames.get(i).toString(),params[i]);
+    Object result=script.eval(bindings);
+    if (result == null)     return null;
+    Class<?> javaReturnType=returnDataType.asJavaClass();
+    Class<?> resultType=result.getClass();
+    if (!javaReturnType.isAssignableFrom(resultType)) {
+      if (result instanceof Number) {
+        Number rNumber=(Number)result;
+        if (javaReturnType == Integer.class)         result=rNumber.intValue();
+ else         if (javaReturnType == Long.class)         result=rNumber.longValue();
+ else         if (javaReturnType == Float.class)         result=rNumber.floatValue();
+ else         if (javaReturnType == Double.class)         result=rNumber.doubleValue();
+ else         if (javaReturnType == BigInteger.class) {
+          if (rNumber instanceof BigDecimal)           result=((BigDecimal)rNumber).toBigInteger();
+ else           if (rNumber instanceof Double || rNumber instanceof Float)           result=new BigDecimal(rNumber.toString()).toBigInteger();
+ else           result=BigInteger.valueOf(rNumber.longValue());
+        }
+ else         if (javaReturnType == BigDecimal.class)         result=new BigDecimal(rNumber.toString());
+      }
+    }
+    return decompose(protocolVersion,result);
+  }
+ catch (  RuntimeException|ScriptException e) {
+    logger.info("Execution of UDF '{}' failed",name,e);
+    throw new InvalidRequestException("Execution of user-defined function '" + name + "' failed: "+ e);
+  }
+}
