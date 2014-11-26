@@ -1,0 +1,20 @@
+{
+  List<DataDirectoryCandidate> candidates=new ArrayList<>();
+  long totalAvailable=0L;
+  boolean tooBig=false;
+  for (  DataDirectory dataDir : dataFileLocations) {
+    if (BlacklistedDirectories.isUnwritable(getLocationForDisk(dataDir)))     continue;
+    DataDirectoryCandidate candidate=new DataDirectoryCandidate(dataDir);
+    if (candidate.availableSpace < writeSize) {
+      tooBig=true;
+      continue;
+    }
+    candidates.add(candidate);
+    totalAvailable+=candidate.availableSpace;
+  }
+  if (candidates.isEmpty())   if (tooBig)   return null;
+ else   throw new IOError(new IOException("All configured data directories have been blacklisted as unwritable for erroring out"));
+  if (candidates.size() == 1)   return candidates.get(0).dataDirectory;
+  sortWriteableCandidates(candidates,totalAvailable);
+  return pickWriteableDirectory(candidates);
+}
