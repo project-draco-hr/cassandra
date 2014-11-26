@@ -1,7 +1,17 @@
 {
+  Set<Integer> liveDescriptors=new HashSet<>();
   for (  SSTableReader sstable : cfs.getSSTables()) {
     assertFalse(sstable.isMarkedCompacted());
     assertEquals(1,sstable.referenceCount());
+    liveDescriptors.add(sstable.descriptor.generation);
+  }
+  for (  File dir : cfs.directories.getCFDirectories()) {
+    for (    File f : dir.listFiles()) {
+      if (f.getName().contains("Data")) {
+        Descriptor d=Descriptor.fromFilename(f.getAbsolutePath());
+        assertTrue(d.toString(),liveDescriptors.contains(d.generation));
+      }
+    }
   }
   assertTrue(cfs.getDataTracker().getCompacting().isEmpty());
 }
