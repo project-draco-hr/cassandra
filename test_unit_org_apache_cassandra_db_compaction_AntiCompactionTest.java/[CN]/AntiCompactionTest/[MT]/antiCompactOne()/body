@@ -11,19 +11,25 @@
   int repairedKeys=0;
   int nonRepairedKeys=0;
   for (  SSTableReader sstable : store.getSSTables()) {
-    SSTableScanner scanner=sstable.getScanner();
-    while (scanner.hasNext()) {
-      SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
-      if (sstable.isRepaired()) {
-        assertTrue(range.contains(row.getKey().getToken()));
-        repairedKeys++;
-      }
+    try (SSTableScanner scanner=sstable.getScanner()){
+      while (scanner.hasNext()) {
+        SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+        if (sstable.isRepaired()) {
+          assertTrue(range.contains(row.getKey().getToken()));
+          repairedKeys++;
+        }
  else {
-        assertFalse(range.contains(row.getKey().getToken()));
-        nonRepairedKeys++;
+          assertFalse(range.contains(row.getKey().getToken()));
+          nonRepairedKeys++;
+        }
       }
     }
+   }
+  for (  SSTableReader sstable : store.getSSTables()) {
+    assertFalse(sstable.isMarkedCompacted());
+    assertEquals(1,sstable.referenceCount());
   }
+  assertEquals(0,store.getDataTracker().getCompacting().size());
   assertEquals(repairedKeys,4);
   assertEquals(nonRepairedKeys,6);
 }
