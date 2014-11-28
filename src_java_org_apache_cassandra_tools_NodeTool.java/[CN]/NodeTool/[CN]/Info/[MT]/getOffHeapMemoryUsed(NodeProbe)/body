@@ -1,0 +1,14 @@
+{
+  long offHeapMemUsedInBytes=0;
+  Iterator<Map.Entry<String,ColumnFamilyStoreMBean>> cfamilies=probe.getColumnFamilyStoreMBeanProxies();
+  while (cfamilies.hasNext()) {
+    Entry<String,ColumnFamilyStoreMBean> entry=cfamilies.next();
+    String keyspaceName=entry.getKey();
+    String cfName=entry.getValue().getColumnFamilyName();
+    offHeapMemUsedInBytes+=(Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"MemtableOffHeapSize");
+    offHeapMemUsedInBytes+=(Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"BloomFilterOffHeapMemoryUsed");
+    offHeapMemUsedInBytes+=(Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"IndexSummaryOffHeapMemoryUsed");
+    offHeapMemUsedInBytes+=(Long)probe.getColumnFamilyMetric(keyspaceName,cfName,"CompressionMetadataOffHeapMemoryUsed");
+  }
+  return offHeapMemUsedInBytes / (1024d * 1024);
+}
