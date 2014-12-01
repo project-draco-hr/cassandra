@@ -58,7 +58,10 @@
     }
   }
   tokenMetadata.updateNormalTokens(tokensToUpdateInMetadata,endpoint);
-  for (  InetAddress ep : endpointsToRemove)   removeEndpoint(ep);
+  for (  InetAddress ep : endpointsToRemove) {
+    removeEndpoint(ep);
+    if (DatabaseDescriptor.isReplacing() && DatabaseDescriptor.getReplaceAddress().equals(ep))     Gossiper.instance.replacementQuarantine(ep);
+  }
   if (!tokensToUpdateInSystemKeyspace.isEmpty())   SystemKeyspace.updateTokens(endpoint,tokensToUpdateInSystemKeyspace);
   if (!localTokensToRemove.isEmpty())   SystemKeyspace.updateLocalTokens(Collections.<Token>emptyList(),localTokensToRemove);
   if (tokenMetadata.isMoving(endpoint)) {
