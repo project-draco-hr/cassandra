@@ -1,0 +1,20 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, e int, PRIMARY KEY (a, b, c, d))");
+  createIndex("CREATE INDEX ON %s (b)");
+  createIndex("CREATE INDEX ON %s (e)");
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,0,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,0,1,0,1);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,0,1,1,2);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,1,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,1,1,0,1);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,1,1,1,2);
+  execute("INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?)",0,2,0,0,0);
+  assertRows(execute("SELECT * FROM %s WHERE (b) = (?)",1),row(0,1,0,0,0),row(0,1,1,0,1),row(0,1,1,1,2));
+  assertRows(execute("SELECT * FROM %s WHERE (b, c) = (?, ?) ALLOW FILTERING",1,1),row(0,1,1,0,1),row(0,1,1,1,2));
+  assertRows(execute("SELECT * FROM %s WHERE (b, c) = (?, ?) AND e = ? ALLOW FILTERING",1,1,2),row(0,1,1,1,2));
+  assertRows(execute("SELECT * FROM %s WHERE (b) IN ((?)) AND e = ? ALLOW FILTERING",1,2),row(0,1,1,1,2));
+  assertInvalidMessage("IN restrictions are not supported on indexed columns","SELECT * FROM %s WHERE (b) IN ((?), (?)) AND e = ? ALLOW FILTERING",0,1,2);
+  assertInvalidMessage("IN restrictions are not supported on indexed columns","SELECT * FROM %s WHERE (b, c) IN ((?, ?)) AND e = ? ALLOW FILTERING",0,1,2);
+  assertInvalidMessage("IN restrictions are not supported on indexed columns","SELECT * FROM %s WHERE (b, c) IN ((?, ?), (?, ?)) AND e = ? ALLOW FILTERING",0,1,1,1,2);
+  assertInvalidMessage("Slice restrictions are not supported on indexed columns which are part of a multi column relation","SELECT * FROM %s WHERE (b) >= (?) AND e = ? ALLOW FILTERING",1,2);
+}

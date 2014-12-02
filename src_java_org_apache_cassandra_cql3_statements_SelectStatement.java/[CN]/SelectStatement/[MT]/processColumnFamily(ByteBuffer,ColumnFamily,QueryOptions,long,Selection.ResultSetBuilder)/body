@@ -8,10 +8,10 @@
     keyComponents=new ByteBuffer[]{key};
   }
   Iterator<Cell> cells=cf.getSortedColumns().iterator();
-  if (sliceRestriction != null)   cells=applySliceRestriction(cells,options);
+  if (restrictions.isNonCompositeSliceWithExclusiveBounds())   cells=applySliceRestriction(cells,options);
   CQL3Row.RowIterator iter=cfm.comparator.CQL3RowBuilder(cfm,now).group(cells);
   CQL3Row staticRow=iter.getStaticRow();
-  if (staticRow != null && !iter.hasNext() && !usesSecondaryIndexing && hasNoClusteringColumnsRestriction()) {
+  if (staticRow != null && !iter.hasNext() && !restrictions.usesSecondaryIndexing() && restrictions.hasNoClusteringColumnsRestriction()) {
     result.newRow(options.getProtocolVersion());
     for (    ColumnDefinition def : selection.getColumns()) {
 switch (def.kind) {

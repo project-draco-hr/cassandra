@@ -1,0 +1,10 @@
+{
+  if (!columnDefs.equals(cfm.partitionKeyColumns())) {
+    checkTrue(columnDefs.containsAll(cfm.partitionKeyColumns()),"The token() function must be applied to all partition key components or none of them");
+    checkContainsNoDuplicates(columnDefs,"The token() function contains duplicate partition key components");
+    checkContainsOnly(columnDefs,cfm.partitionKeyColumns(),"The token() function must contains only partition key components");
+    throw invalidRequest("The token function arguments must be in the partition key order: %s",Joiner.on(", ").join(ColumnDefinition.toIdentifiers(cfm.partitionKeyColumns())));
+  }
+  ColumnDefinition firstColumn=columnDefs.get(0);
+  return Collections.singletonList(new ColumnSpecification(firstColumn.ksName,firstColumn.cfName,new ColumnIdentifier("partition key token",true),StorageService.getPartitioner().getTokenValidator()));
+}

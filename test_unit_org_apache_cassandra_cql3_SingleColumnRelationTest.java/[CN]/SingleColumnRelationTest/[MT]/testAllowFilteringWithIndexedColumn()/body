@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, a int, b int)");
+  createIndex("CREATE INDEX ON %s(a)");
+  execute("INSERT INTO %s(k, a, b) VALUES(?, ?, ?)",1,10,100);
+  execute("INSERT INTO %s(k, a, b) VALUES(?, ?, ?)",2,20,200);
+  execute("INSERT INTO %s(k, a, b) VALUES(?, ?, ?)",3,30,300);
+  execute("INSERT INTO %s(k, a, b) VALUES(?, ?, ?)",4,40,400);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",1),row(1,10,100));
+  assertRows(execute("SELECT * FROM %s WHERE a = ?",20),row(2,20,200));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? ALLOW FILTERING",1),row(1,10,100));
+  assertRows(execute("SELECT * FROM %s WHERE a = ? ALLOW FILTERING",20),row(2,20,200));
+  assertInvalid("SELECT * FROM %s WHERE a = ? AND b = ?");
+  assertRows(execute("SELECT * FROM %s WHERE a = ? AND b = ? ALLOW FILTERING",20,200),row(2,20,200));
+}

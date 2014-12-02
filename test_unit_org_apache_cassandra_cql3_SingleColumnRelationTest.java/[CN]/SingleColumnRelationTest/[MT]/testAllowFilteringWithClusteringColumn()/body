@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k, c))");
+  execute("INSERT INTO %s (k, c, v) VALUES(?, ?, ?)",1,2,1);
+  execute("INSERT INTO %s (k, c, v) VALUES(?, ?, ?)",1,3,2);
+  execute("INSERT INTO %s (k, c, v) VALUES(?, ?, ?)",2,2,3);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",1),row(1,2,1),row(1,3,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND c > ?",1,2),row(1,3,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND c = ?",1,2),row(1,2,1));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? ALLOW FILTERING",1),row(1,2,1),row(1,3,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND c > ? ALLOW FILTERING",1,2),row(1,3,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = ? AND c = ? ALLOW FILTERING",1,2),row(1,2,1));
+  assertInvalidMessage("Cannot execute this query as it might involve data filtering","SELECT * FROM %s WHERE c = ?",2);
+  assertInvalidMessage("Cannot execute this query as it might involve data filtering","SELECT * FROM %s WHERE c > ? AND c <= ?",2,4);
+  assertRows(execute("SELECT * FROM %s WHERE c = ? ALLOW FILTERING",2),row(1,2,1),row(2,2,3));
+  assertRows(execute("SELECT * FROM %s WHERE c > ? AND c <= ? ALLOW FILTERING",2,4),row(1,3,2));
+}

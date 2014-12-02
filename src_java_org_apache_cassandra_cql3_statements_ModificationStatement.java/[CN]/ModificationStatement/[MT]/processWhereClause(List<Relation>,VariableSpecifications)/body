@@ -4,7 +4,7 @@
       throw new InvalidRequestException(String.format("Multi-column relations cannot be used in WHERE clauses for UPDATE and DELETE statements: %s",relation));
     }
     SingleColumnRelation rel=(SingleColumnRelation)relation;
-    if (rel.onToken)     throw new InvalidRequestException(String.format("The token function cannot be used in WHERE clauses for UPDATE and DELETE statements: %s",relation));
+    if (rel.onToken())     throw new InvalidRequestException(String.format("The token function cannot be used in WHERE clauses for UPDATE and DELETE statements: %s",relation));
     ColumnIdentifier id=rel.getEntity().prepare(cfm);
     ColumnDefinition def=cfm.getColumnDefinition(id);
     if (def == null)     throw new InvalidRequestException(String.format("Unknown key identifier %s",id));
@@ -12,26 +12,8 @@ switch (def.kind) {
 case PARTITION_KEY:
 case CLUSTERING_COLUMN:
       Restriction restriction;
-    if (rel.operator() == Operator.EQ) {
-      Term t=rel.getValue().prepare(keyspace(),def);
-      t.collectMarkerSpecification(names);
-      restriction=new SingleColumnRestriction.EQ(t,false);
-    }
- else     if (def.kind == ColumnDefinition.Kind.PARTITION_KEY && rel.operator() == Operator.IN) {
-      if (rel.getValue() != null) {
-        Term t=rel.getValue().prepare(keyspace(),def);
-        t.collectMarkerSpecification(names);
-        restriction=new SingleColumnRestriction.InWithMarker((Lists.Marker)t);
-      }
- else {
-        List<Term> values=new ArrayList<Term>(rel.getInValues().size());
-        for (        Term.Raw raw : rel.getInValues()) {
-          Term t=raw.prepare(keyspace(),def);
-          t.collectMarkerSpecification(names);
-          values.add(t);
-        }
-        restriction=new SingleColumnRestriction.InWithValues(values);
-      }
+    if (rel.isEQ() || (def.isPartitionKey() && rel.isIN())) {
+      restriction=rel.toRestriction(cfm,names);
     }
  else {
       throw new InvalidRequestException(String.format("Invalid operator %s for PRIMARY KEY part %s",rel.operator(),def.name));

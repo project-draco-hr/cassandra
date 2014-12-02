@@ -1,0 +1,21 @@
+{
+  CBuilder builder=ctype.builder();
+  Iterator<ColumnDefinition> iter=columnDefs.iterator();
+  ColumnDefinition firstName=iter.next();
+  Bound firstComponentBound=!firstName.isReversedType() ? bound : bound.reverse();
+  if (!hasBound(firstComponentBound)) {
+    Composite prefix=builder.build();
+    return Collections.singletonList(builder.remainingCount() > 0 && bound.isEnd() ? prefix.end() : prefix);
+  }
+  List<ByteBuffer> vals=componentBounds(firstComponentBound,options);
+  ByteBuffer v=checkNotNull(vals.get(firstName.position()),"Invalid null value in condition for column %s",firstName.name);
+  builder.add(v);
+  while (iter.hasNext()) {
+    ColumnDefinition def=iter.next();
+    if (def.position() >= vals.size())     break;
+    v=checkNotNull(vals.get(def.position()),"Invalid null value in condition for column %s",def.name);
+    builder.add(v);
+  }
+  Composite.EOC eoc=eocFor(this,bound,firstComponentBound);
+  return Collections.singletonList(builder.build().withEOC(eoc));
+}

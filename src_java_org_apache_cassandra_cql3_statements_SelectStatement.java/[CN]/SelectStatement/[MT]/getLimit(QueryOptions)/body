@@ -1,16 +1,15 @@
 {
-  int l=Integer.MAX_VALUE;
   if (limit != null) {
-    ByteBuffer b=limit.bindAndGet(options);
-    if (b == null)     throw new InvalidRequestException("Invalid null value of limit");
+    ByteBuffer b=checkNotNull(limit.bindAndGet(options),"Invalid null value of limit");
     try {
       Int32Type.instance.validate(b);
-      l=Int32Type.instance.compose(b);
+      int l=Int32Type.instance.compose(b);
+      checkTrue(l > 0,"LIMIT must be strictly positive");
+      return l;
     }
  catch (    MarshalException e) {
       throw new InvalidRequestException("Invalid limit value");
     }
   }
-  if (l <= 0)   throw new InvalidRequestException("LIMIT must be strictly positive");
-  return l;
+  return Integer.MAX_VALUE;
 }

@@ -1,0 +1,17 @@
+{
+  ColumnSpecification receiver=columnDef;
+  checkFalse(columnDef.isCompactValue(),"Predicates on the non-primary-key column (%s) of a COMPACT table are not yet supported",columnDef.name);
+  if (isIN()) {
+    checkFalse(columnDef.isPartitionKey() && !isLastPartitionKey(cfm,columnDef),"Partition KEY part %s cannot be restricted by IN relation (only the last part of the partition key can)",columnDef.name);
+    checkFalse(!columnDef.isPrimaryKeyColumn() && !canHaveOnlyOneValue(),"IN predicates on non-primary-key columns (%s) is not yet supported",columnDef.name);
+  }
+ else   if (isSlice()) {
+    checkFalse(columnDef.isPartitionKey(),"Only EQ and IN relation are supported on the partition key (unless you use the token() function)");
+  }
+  checkFalse(isContainsKey() && !(receiver.type instanceof MapType),"Cannot use CONTAINS KEY on non-map column %s",receiver.name);
+  if (receiver.type.isCollection()) {
+    checkFalse(receiver.type.isMultiCell() && !(isContainsKey() || isContains()),"Collection column '%s' (%s) cannot be restricted by a '%s' relation",receiver.name,receiver.type.asCQL3Type(),operator());
+    if (isContainsKey() || isContains())     receiver=((CollectionType<?>)receiver.type).makeCollectionReceiver(receiver,isContainsKey());
+  }
+  return Collections.singletonList(receiver);
+}

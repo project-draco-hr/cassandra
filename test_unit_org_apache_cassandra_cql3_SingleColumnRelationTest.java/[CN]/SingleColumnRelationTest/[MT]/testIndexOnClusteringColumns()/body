@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (id1 int, id2 int, author text, time bigint, v1 text, v2 text, PRIMARY KEY ((id1, id2), author, time))");
+  createIndex("CREATE INDEX ON %s(time)");
+  createIndex("CREATE INDEX ON %s(id2)");
+  execute("INSERT INTO %s(id1, id2, author, time, v1, v2) VALUES(0, 0, 'bob', 0, 'A', 'A')");
+  execute("INSERT INTO %s(id1, id2, author, time, v1, v2) VALUES(0, 0, 'bob', 1, 'B', 'B')");
+  execute("INSERT INTO %s(id1, id2, author, time, v1, v2) VALUES(0, 1, 'bob', 2, 'C', 'C')");
+  execute("INSERT INTO %s(id1, id2, author, time, v1, v2) VALUES(0, 0, 'tom', 0, 'D', 'D')");
+  execute("INSERT INTO %s(id1, id2, author, time, v1, v2) VALUES(0, 1, 'tom', 1, 'E', 'E')");
+  assertRows(execute("SELECT v1 FROM %s WHERE time = 1"),row("B"),row("E"));
+  assertRows(execute("SELECT v1 FROM %s WHERE id2 = 1"),row("C"),row("E"));
+  assertRows(execute("SELECT v1 FROM %s WHERE id1 = 0 AND id2 = 0 AND author = 'bob' AND time = 0"),row("A"));
+  execute("UPDATE %s SET v2 = null WHERE id1 = 0 AND id2 = 0 AND author = 'bob' AND time = 1");
+  assertRows(execute("SELECT v1 FROM %s WHERE id2 = 0"),row("A"),row("B"),row("D"));
+  assertRows(execute("SELECT v1 FROM %s WHERE time = 1"),row("B"),row("E"));
+  assertInvalidMessage("IN restrictions are not supported on indexed columns","SELECT v1 FROM %s WHERE id2 = 0 and time IN (1, 2) ALLOW FILTERING");
+}

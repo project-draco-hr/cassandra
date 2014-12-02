@@ -6,7 +6,8 @@
   assertRows(execute("SELECT * FROM %s WHERE account = ? AND categories CONTAINS KEY ?","test","lmn"),row("test",5,map("lmn","foo")));
   assertRows(execute("SELECT * FROM %s WHERE categories CONTAINS KEY ?","lmn"),row("test",5,map("lmn","foo")));
   assertRows(execute("SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ?","test",5,"lmn"),row("test",5,map("lmn","foo")));
-  assertInvalid("SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS KEY ?","test",5,"lmn","notPresent");
+  assertInvalidMessage("Unsupported null value for indexed column categories","SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ?","test",5,null);
+  assertInvalidMessage("Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING","SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS KEY ?","test",5,"lmn","notPresent");
   assertEmpty(execute("SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS KEY ? ALLOW FILTERING","test",5,"lmn","notPresent"));
-  assertInvalid("SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS ?","test",5,"lmn","foo");
+  assertInvalidMessage("Cannot execute this query as it might involve data filtering and thus may have unpredictable performance. If you want to execute this query despite the performance unpredictability, use ALLOW FILTERING","SELECT * FROM %s WHERE account = ? AND id = ? AND categories CONTAINS KEY ? AND categories CONTAINS ?","test",5,"lmn","foo");
 }

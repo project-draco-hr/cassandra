@@ -1,0 +1,11 @@
+{
+  ByteBuffer startKeyBytes=getPartitionKeyBound(Bound.START,options);
+  ByteBuffer finishKeyBytes=getPartitionKeyBound(Bound.END,options);
+  RowPosition startKey=RowPosition.ForKey.get(startKeyBytes,p);
+  RowPosition finishKey=RowPosition.ForKey.get(finishKeyBytes,p);
+  if (startKey.compareTo(finishKey) > 0 && !finishKey.isMinimum())   return null;
+  if (partitionKeyRestrictions.isInclusive(Bound.START)) {
+    return partitionKeyRestrictions.isInclusive(Bound.END) ? new Bounds<>(startKey,finishKey) : new IncludingExcludingBounds<>(startKey,finishKey);
+  }
+  return partitionKeyRestrictions.isInclusive(Bound.END) ? new Range<>(startKey,finishKey) : new ExcludingBounds<>(startKey,finishKey);
+}

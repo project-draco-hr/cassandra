@@ -1,0 +1,29 @@
+{
+  CBuilder builder=ctype.builder();
+  List<ColumnDefinition> defs=new ArrayList<>(restrictions.getColumnDefs());
+  CompositesBuilder compositeBuilder=new CompositesBuilder(builder,ctype);
+  int keyPosition=0;
+  for (  ColumnDefinition def : defs) {
+    Bound b=!def.isReversedType() ? bound : bound.reverse();
+    Restriction r=restrictions.getRestriction(def);
+    if (keyPosition != def.position() || r.isContains()) {
+      EOC eoc=!compositeBuilder.isEmpty() && bound.isEnd() ? EOC.END : EOC.NONE;
+      return compositeBuilder.buildWithEOC(eoc);
+    }
+    if (r.isSlice()) {
+      if (!r.hasBound(b)) {
+        EOC eoc=!compositeBuilder.isEmpty() && bound.isEnd() ? EOC.END : EOC.NONE;
+        return compositeBuilder.buildWithEOC(eoc);
+      }
+      ByteBuffer value=checkNotNull(r.bounds(b,options).get(0),"Invalid null clustering key part %s",r);
+      compositeBuilder.addElementToAll(value);
+      Composite.EOC eoc=eocFor(r,bound,b);
+      return compositeBuilder.buildWithEOC(eoc);
+    }
+    compositeBuilder.addEachElementToAll(r.values(options));
+    checkFalse(compositeBuilder.containsNull(),"Invalid null clustering key part %s",def.name);
+    keyPosition++;
+  }
+  EOC eoc=bound.isEnd() && compositeBuilder.hasRemaining() ? EOC.END : EOC.NONE;
+  return compositeBuilder.buildWithEOC(eoc);
+}
