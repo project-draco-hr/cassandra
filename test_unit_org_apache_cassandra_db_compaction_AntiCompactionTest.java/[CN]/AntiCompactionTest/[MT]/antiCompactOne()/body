@@ -1,15 +1,5 @@
 {
-  Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF);
-  store.disableAutoCompaction();
-  long timestamp=System.currentTimeMillis();
-  for (int i=0; i < 10; i++) {
-    DecoratedKey key=Util.dk(Integer.toString(i));
-    Mutation rm=new Mutation(KEYSPACE1,key.getKey());
-    for (int j=0; j < 10; j++)     rm.add(CF,Util.cellname(Integer.toString(j)),ByteBufferUtil.EMPTY_BYTE_BUFFER,timestamp,0);
-    rm.applyUnsafe();
-  }
-  store.forceBlockingFlush();
+  ColumnFamilyStore store=prepareColumnFamilyStore();
   Collection<SSTableReader> sstables=store.getUnrepairedSSTables();
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("4".getBytes()));
@@ -21,19 +11,25 @@
   int repairedKeys=0;
   int nonRepairedKeys=0;
   for (  SSTableReader sstable : store.getSSTables()) {
-    ICompactionScanner scanner=sstable.getScanner();
-    while (scanner.hasNext()) {
-      SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
-      if (sstable.isRepaired()) {
-        assertTrue(range.contains(row.getKey().getToken()));
-        repairedKeys++;
-      }
+    try (ICompactionScanner scanner=sstable.getScanner()){
+      while (scanner.hasNext()) {
+        SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+        if (sstable.isRepaired()) {
+          assertTrue(range.contains(row.getKey().getToken()));
+          repairedKeys++;
+        }
  else {
-        assertFalse(range.contains(row.getKey().getToken()));
-        nonRepairedKeys++;
+          assertFalse(range.contains(row.getKey().getToken()));
+          nonRepairedKeys++;
+        }
       }
     }
+   }
+  for (  SSTableReader sstable : store.getSSTables()) {
+    assertFalse(sstable.isMarkedCompacted());
+    assertEquals(1,sstable.referenceCount());
   }
+  assertEquals(0,store.getDataTracker().getCompacting().size());
   assertEquals(repairedKeys,4);
   assertEquals(nonRepairedKeys,6);
 }
