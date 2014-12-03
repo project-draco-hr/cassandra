@@ -2,6 +2,8 @@
   InetAddress local=FBUtilities.getBroadcastAddress();
   InetAddress dst=r2.endpoint.equals(local) ? r1.endpoint : r2.endpoint;
   InetAddress preferred=SystemKeyspace.getPreferredIP(dst);
-  logger.info(String.format("[repair #%s] Performing streaming repair of %d ranges with %s",desc.sessionId,differences.size(),dst));
+  String message=String.format("Performing streaming repair of %d ranges with %s",differences.size(),dst);
+  logger.info("[repair #{}] {}",desc.sessionId,message);
+  Tracing.traceRepair(message);
   new StreamPlan("Repair",repairedAt,1,false).listeners(this).flushBeforeTransfer(true).requestRanges(dst,preferred,desc.keyspace,differences,desc.columnFamily).transferRanges(dst,preferred,desc.keyspace,differences,desc.columnFamily).execute();
 }

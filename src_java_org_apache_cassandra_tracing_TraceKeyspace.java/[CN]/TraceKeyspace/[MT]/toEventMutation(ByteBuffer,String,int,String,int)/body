@@ -1,0 +1,11 @@
+{
+  Mutation mutation=new Mutation(NAME,sessionId);
+  ColumnFamily cells=mutation.addOrGet(EventsTable);
+  ttl=ttl == DAY ? 0 : ttl;
+  CFRowAdder adder=new CFRowAdder(cells,cells.metadata().comparator.make(UUIDGen.getTimeUUID()),FBUtilities.timestampMicros(),ttl);
+  adder.add("activity",message);
+  adder.add("source",FBUtilities.getBroadcastAddress());
+  if (elapsed >= 0)   adder.add("source_elapsed",elapsed);
+  adder.add("thread",threadName);
+  return mutation;
+}

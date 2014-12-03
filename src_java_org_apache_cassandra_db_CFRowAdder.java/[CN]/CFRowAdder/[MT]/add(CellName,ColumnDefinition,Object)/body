@@ -4,7 +4,9 @@
   }
  else {
     AbstractType valueType=def.type.isCollection() ? ((CollectionType)def.type).valueComparator() : def.type;
-    cf.addColumn(new BufferCell(name,value instanceof ByteBuffer ? (ByteBuffer)value : valueType.decompose(value),timestamp));
+    ByteBuffer valueBytes=value instanceof ByteBuffer ? (ByteBuffer)value : valueType.decompose(value);
+    if (ttl == 0)     cf.addColumn(new BufferCell(name,valueBytes,timestamp));
+ else     cf.addColumn(new BufferExpiringCell(name,valueBytes,timestamp,ttl));
   }
   return this;
 }
