@@ -1,14 +1,15 @@
 {
   RepairJobDesc desc=message.payload.desc;
+  try {
 switch (message.payload.messageType) {
 case PREPARE_MESSAGE:
-    PrepareMessage prepareMessage=(PrepareMessage)message.payload;
-  List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
-for (UUID cfId : prepareMessage.cfIds) {
-  Pair<String,String> kscf=Schema.instance.getCF(cfId);
-  ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-  columnFamilyStores.add(columnFamilyStore);
-}
+      PrepareMessage prepareMessage=(PrepareMessage)message.payload;
+    List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
+  for (  UUID cfId : prepareMessage.cfIds) {
+    Pair<String,String> kscf=Schema.instance.getCF(cfId);
+    ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+    columnFamilyStores.add(columnFamilyStore);
+  }
 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
@@ -52,5 +53,11 @@ break;
 default :
 ActiveRepairService.instance.handleMessage(message.from,message.payload);
 break;
+}
+}
+ catch (Exception e) {
+logger.error("Got error, removing parent repair session");
+if (desc != null && desc.parentSessionId != null) ActiveRepairService.instance.removeParentRepairSession(desc.parentSessionId);
+throw new RuntimeException(e);
 }
 }

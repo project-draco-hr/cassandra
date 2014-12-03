@@ -2,9 +2,14 @@
   Map<UUID,Set<SSTableReader>> sstablesToRepair=new HashMap<>();
   for (  ColumnFamilyStore cfs : columnFamilyStores) {
     Set<SSTableReader> sstables=new HashSet<>();
+    Set<SSTableReader> currentlyRepairing=currentlyRepairing(cfs.metadata.cfId);
     for (    SSTableReader sstable : cfs.getSSTables()) {
       if (new Bounds<>(sstable.first.getToken(),sstable.last.getToken()).intersects(ranges)) {
         if (!sstable.isRepaired()) {
+          if (currentlyRepairing.contains(sstable)) {
+            logger.error("Already repairing " + sstable + ", can not continue.");
+            throw new RuntimeException("Already repairing " + sstable + ", can not continue.");
+          }
           sstables.add(sstable);
         }
       }
