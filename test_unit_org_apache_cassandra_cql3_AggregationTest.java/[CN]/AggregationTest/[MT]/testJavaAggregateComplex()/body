@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int primary key, b int)");
+  execute("INSERT INTO %s (a, b) VALUES (1, 1)");
+  execute("INSERT INTO %s (a, b) VALUES (2, 2)");
+  execute("INSERT INTO %s (a, b) VALUES (3, 3)");
+  String fState=createFunction(KEYSPACE,"frozen<tuple<bigint, int>>, int","CREATE FUNCTION %s(a frozen<tuple<bigint, int>>, b int) " + "RETURNS frozen<tuple<bigint, int>> " + "LANGUAGE java "+ "AS '"+ "a.setLong(0, a.getLong(0) + b.intValue());"+ "a.setInt(1, a.getInt(1) + 1);"+ "return a;"+ "'");
+  String fFinal=createFunction(KEYSPACE,"frozen<tuple<bigint, int>>","CREATE FUNCTION %s(a frozen<tuple<bigint, int>>) " + "RETURNS double " + "LANGUAGE java "+ "AS '"+ "double r = a.getLong(0);"+ "r /= a.getInt(1);"+ "return Double.valueOf(r);"+ "'");
+  String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + " "+ "STYPE frozen<tuple<bigint, int>> "+ "FINALFUNC "+ shortFunctionName(fFinal)+ " "+ "INITCOND (0, 0)");
+  assertRows(execute("SELECT " + a + "(b) FROM %s"),row(2d));
+}

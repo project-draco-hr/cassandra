@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (a int primary key, b int)");
+  execute("INSERT INTO %s (a, b) VALUES (1, 1)");
+  execute("INSERT INTO %s (a, b) VALUES (2, 2)");
+  execute("INSERT INTO %s (a, b) VALUES (3, 3)");
+  String fState=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "RETURNS int " + "LANGUAGE java "+ "AS 'return Integer.valueOf((a!=null?a.intValue():0) + b.intValue());'");
+  String a=createAggregate(KEYSPACE,"int, int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + " "+ "STYPE int");
+  assertRows(execute("SELECT " + a + "(b) FROM %s"),row(6));
+  execute("DROP AGGREGATE " + a + "(int)");
+  execute("DROP FUNCTION " + fState + "(int, int)");
+  assertInvalid("SELECT " + a + "(b) FROM %s");
+}

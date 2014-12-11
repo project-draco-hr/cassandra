@@ -1,0 +1,16 @@
+{
+  String f=createFunction(KEYSPACE,"double, double","CREATE OR REPLACE FUNCTION %s(state double, val double) " + "RETURNS double " + "LANGUAGE javascript "+ "AS '\"string\";';");
+  createFunctionOverload(f,"double, double","CREATE OR REPLACE FUNCTION %s(state int, val int) " + "RETURNS int " + "LANGUAGE javascript "+ "AS '\"string\";';");
+  assertInvalid("DROP AGGREGATE " + f);
+  assertInvalid("DROP AGGREGATE " + f + "(double, double)");
+  String a=createAggregate(KEYSPACE,"double","CREATE OR REPLACE AGGREGATE %s(double) " + "SFUNC " + shortFunctionName(f) + " "+ "STYPE double");
+  createAggregateOverload(a,"int","CREATE OR REPLACE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(f) + " "+ "STYPE int");
+  assertInvalid("DROP FUNCTION " + a);
+  assertInvalid("DROP FUNCTION " + a + "(double)");
+  assertInvalid("DROP AGGREGATE " + a);
+  assertInvalid("DROP AGGREGATE IF EXISTS " + a);
+  execute("DROP AGGREGATE IF EXISTS " + KEYSPACE + ".non_existing");
+  execute("DROP AGGREGATE IF EXISTS " + a + "(int, text)");
+  execute("DROP AGGREGATE " + a + "(double)");
+  execute("DROP AGGREGATE IF EXISTS " + a + "(double)");
+}

@@ -1,0 +1,14 @@
+{
+  Mutation mutation=makeSchemaMutation(name);
+  ColumnFamily cf=mutation.addOrGet(SystemKeyspace.SCHEMA_AGGREGATES_TABLE);
+  Composite prefix=SystemKeyspace.SchemaAggregatesTable.comparator.make(name.name,UDHelper.computeSignature(argTypes));
+  CFRowAdder adder=new CFRowAdder(cf,prefix,timestamp);
+  adder.resetCollection("argument_types");
+  adder.add("return_type",returnType.toString());
+  adder.add("state_func",stateFunction.name().name);
+  if (stateType != null)   adder.add("state_type",stateType.toString());
+  if (finalFunction != null)   adder.add("final_func",finalFunction.name().name);
+  if (initcond != null)   adder.add("initcond",initcond);
+  for (  AbstractType<?> argType : argTypes)   adder.addListEntry("argument_types",argType.toString());
+  return mutation;
+}

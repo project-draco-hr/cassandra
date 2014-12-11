@@ -1,0 +1,29 @@
+{
+  List<Function> olds=Functions.find(functionName);
+  if (!argsPresent && olds != null && olds.size() > 1)   throw new InvalidRequestException(String.format("'DROP AGGREGATE %s' matches multiple function definitions; " + "specify the argument types by issuing a statement like " + "'DROP AGGREGATE %s (type, type, ...)'. Hint: use cqlsh "+ "'DESCRIBE AGGREGATE %s' command to find all overloads",functionName,functionName,functionName));
+  List<AbstractType<?>> argTypes=new ArrayList<>(argRawTypes.size());
+  for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(rawType.prepare(functionName.keyspace).getType());
+  Function old;
+  if (argsPresent) {
+    old=Functions.find(functionName,argTypes);
+    if (old == null || !(old instanceof AggregateFunction)) {
+      if (ifExists)       return false;
+      StringBuilder sb=new StringBuilder();
+      for (      CQL3Type.Raw rawType : argRawTypes) {
+        if (sb.length() > 0)         sb.append(", ");
+        sb.append(rawType);
+      }
+      throw new InvalidRequestException(String.format("Cannot drop non existing aggregate '%s(%s)'",functionName,sb));
+    }
+  }
+ else {
+    if (olds == null || olds.isEmpty() || !(olds.get(0) instanceof AggregateFunction)) {
+      if (ifExists)       return false;
+      throw new InvalidRequestException(String.format("Cannot drop non existing aggregate '%s'",functionName));
+    }
+    old=olds.get(0);
+  }
+  if (old.isNative())   throw new InvalidRequestException(String.format("Cannot drop aggregate '%s' because it is a " + "native (built-in) function",functionName));
+  MigrationManager.announceAggregateDrop((UDAggregate)old,isLocalOnly);
+  return true;
+}

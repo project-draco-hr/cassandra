@@ -1,0 +1,22 @@
+{
+  return new Aggregate(){
+    private ByteBuffer state;
+{
+      reset();
+    }
+    public void addInput(    int protocolVersion,    List<ByteBuffer> values) throws InvalidRequestException {
+      List<ByteBuffer> copy=new ArrayList<>(values.size() + 1);
+      copy.add(state);
+      copy.addAll(values);
+      state=stateFunction.execute(protocolVersion,copy);
+    }
+    public ByteBuffer compute(    int protocolVersion) throws InvalidRequestException {
+      if (finalFunction == null)       return state;
+      return finalFunction.execute(protocolVersion,Collections.singletonList(state));
+    }
+    public void reset(){
+      state=initcond != null ? initcond.duplicate() : null;
+    }
+  }
+;
+}
