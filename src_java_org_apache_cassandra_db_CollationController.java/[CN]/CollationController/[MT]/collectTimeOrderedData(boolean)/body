@@ -48,8 +48,13 @@
     filter.collateOnDiskAtom(returnCF,container.iterator(),gcBefore);
     if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategy().shouldDefragment()) {
       Tracing.trace("Defragmenting requested data");
-      Mutation mutation=new Mutation(cfs.keyspace.getName(),filter.key.getKey(),returnCF.cloneMe());
-      Keyspace.open(mutation.getKeyspaceName()).apply(mutation,false,false);
+      final Mutation mutation=new Mutation(cfs.keyspace.getName(),filter.key.getKey(),returnCF.cloneMe());
+      StageManager.getStage(Stage.MUTATION).execute(new Runnable(){
+        public void run(){
+          Keyspace.open(mutation.getKeyspaceName()).apply(mutation,false,false);
+        }
+      }
+);
     }
     return returnCF;
   }
