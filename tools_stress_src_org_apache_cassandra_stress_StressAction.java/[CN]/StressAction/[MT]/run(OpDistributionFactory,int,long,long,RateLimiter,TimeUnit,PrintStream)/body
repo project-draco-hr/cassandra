@@ -6,7 +6,10 @@
   final StressMetrics metrics=new StressMetrics(output,settings.log.intervalMillis,settings);
   final CountDownLatch done=new CountDownLatch(threadCount);
   final Consumer[] consumers=new Consumer[threadCount];
-  for (int i=0; i < threadCount; i++)   consumers[i]=new Consumer(operations,done,workManager,metrics,rateLimiter);
+  for (int i=0; i < threadCount; i++) {
+    Timer timer=metrics.getTiming().newTimer(settings.samples.liveCount / threadCount);
+    consumers[i]=new Consumer(operations,done,workManager,timer,metrics,rateLimiter);
+  }
   for (int i=0; i < threadCount; i++)   consumers[i].start();
   metrics.start();
   if (durationUnits != null) {

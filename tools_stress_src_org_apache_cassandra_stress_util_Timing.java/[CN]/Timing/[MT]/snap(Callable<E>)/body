@@ -1,5 +1,27 @@
 {
-  final TimingResult<E> result=snap(rnd,call);
-  history=TimingInterval.merge(rnd,Arrays.asList(result.timing,history),200000,history.startNanos());
+  final Timer[] timers=this.timers.toArray(new Timer[0]);
+  final CountDownLatch ready=new CountDownLatch(timers.length);
+  for (int i=0; i < timers.length; i++) {
+    final Timer timer=timers[i];
+    timer.requestReport(ready);
+  }
+  E extra;
+  try {
+    extra=call.call();
+  }
+ catch (  Exception e) {
+    if (e instanceof InterruptedException)     throw (InterruptedException)e;
+    throw new RuntimeException(e);
+  }
+  if (!ready.await(5L,TimeUnit.MINUTES))   throw new RuntimeException("Timed out waiting for a timer thread - seems one got stuck. Check GC/Heap size");
+  boolean done=true;
+  List<TimingInterval> intervals=new ArrayList<>();
+  for (  Timer timer : timers) {
+    intervals.add(timer.report);
+    done&=!timer.running();
+  }
+  this.done=done;
+  TimingResult<E> result=new TimingResult<>(extra,TimingInterval.merge(intervals,reportSampleCount,history.endNanos()));
+  history=TimingInterval.merge(Arrays.asList(result.timing,history),historySampleCount,history.startNanos());
   return result;
 }
