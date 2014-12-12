@@ -1,0 +1,40 @@
+{
+  if (count == 1) {
+    queue.add(generator.generate());
+    return;
+  }
+switch (this.generator.order) {
+case SORTED:
+    if (Comparable.class.isAssignableFrom(generator.clazz)) {
+      tosort.clear();
+      for (int i=0; i < count; i++)       tosort.add(generator.generate());
+      Collections.sort((List<Comparable>)(List<?>)tosort);
+      for (int i=0; i < count; i++)       if (i == 0 || ((Comparable)tosort.get(i - 1)).compareTo(i) < 0)       queue.add(tosort.get(i));
+      break;
+    }
+case ARBITRARY:
+  unique.clear();
+for (int i=0; i < count; i++) {
+  Object next=generator.generate();
+  if (unique.add(next))   queue.add(next);
+}
+break;
+case SHUFFLED:
+unique.clear();
+tosort.clear();
+ThreadLocalRandom rand=ThreadLocalRandom.current();
+for (int i=0; i < count; i++) {
+Object next=generator.generate();
+if (unique.add(next)) tosort.add(next);
+}
+for (int i=0; i < tosort.size(); i++) {
+int index=rand.nextInt(i,tosort.size());
+Object obj=tosort.get(index);
+tosort.set(index,tosort.get(i));
+queue.add(obj);
+}
+break;
+default :
+throw new IllegalStateException();
+}
+}
