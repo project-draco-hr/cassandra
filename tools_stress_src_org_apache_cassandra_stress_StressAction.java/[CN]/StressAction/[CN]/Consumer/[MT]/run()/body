@@ -18,22 +18,9 @@ break;
 default :
 throw new IllegalStateException();
 }
-int maxBatchSize=operations.maxBatchSize();
-Partition[] partitions=new Partition[maxBatchSize];
 while (true) {
 Operation op=operations.next();
-op.generator.reset();
-int batchSize=workManager.takePermits(Math.max(1,(int)op.partitionCount.next()));
-if (batchSize < 0) break;
-if (rateLimiter != null) rateLimiter.acquire(batchSize);
-int partitionCount=0;
-while (partitionCount < batchSize) {
-Partition p=op.generator.generate(op);
-if (p == null) break;
-partitions[partitionCount++]=p;
-}
-if (partitionCount == 0) break;
-op.setPartitions(Arrays.asList(partitions).subList(0,partitionCount));
+if (!op.ready(workManager,rateLimiter)) break;
 try {
 switch (settings.mode.api) {
 case JAVA_DRIVER_NATIVE:
