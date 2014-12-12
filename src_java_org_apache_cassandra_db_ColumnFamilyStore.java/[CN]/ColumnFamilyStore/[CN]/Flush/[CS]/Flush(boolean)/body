@@ -3,12 +3,18 @@
   metric.pendingFlushes.inc();
   writeBarrier=keyspace.writeOrder.newBarrier();
   memtables=new ArrayList<>();
-  final ReplayPosition minReplayPosition=CommitLog.instance.getContext();
+  AtomicReference<ReplayPosition> lastReplayPositionHolder=new AtomicReference<>();
   for (  ColumnFamilyStore cfs : concatWithIndexes()) {
     Memtable mt=cfs.data.switchMemtable(truncate);
-    mt.setDiscarding(writeBarrier,minReplayPosition);
+    mt.setDiscarding(writeBarrier,lastReplayPositionHolder);
     memtables.add(mt);
   }
+  ReplayPosition lastReplayPosition;
+  while (true) {
+    lastReplayPosition=new Memtable.LastReplayPosition(CommitLog.instance.getContext());
+    ReplayPosition currentLast=lastReplayPositionHolder.get();
+    if ((currentLast == null || currentLast.compareTo(lastReplayPosition) <= 0) && lastReplayPositionHolder.compareAndSet(currentLast,lastReplayPosition))     break;
+  }
   writeBarrier.issue();
-  postFlush=new PostFlush(!truncate,writeBarrier);
+  postFlush=new PostFlush(!truncate,writeBarrier,lastReplayPosition);
 }
