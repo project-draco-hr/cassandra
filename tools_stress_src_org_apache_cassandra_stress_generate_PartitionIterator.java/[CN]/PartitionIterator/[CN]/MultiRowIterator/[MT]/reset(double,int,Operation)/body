@@ -1,0 +1,32 @@
+{
+  if (this.useChance < 1d) {
+    Arrays.fill(rollmodifier,1d);
+    Arrays.fill(chancemodifier,1d);
+  }
+  generator.clusteringComponents.get(0).setSeed(idseed);
+  int firstComponentCount=(int)generator.clusteringComponents.get(0).clusteringDistribution.next();
+  int expectedRowCount;
+  int position=seed.position();
+  isWrite=op.isWrite();
+  if (isWrite)   expectedRowCount=firstComponentCount * generator.clusteringDescendantAverages[0];
+ else   if (position != 0)   expectedRowCount=setLimit(position);
+ else   expectedRowCount=setNoLimit(firstComponentCount);
+  if (Double.isNaN(useChance))   useChance=Math.max(0d,Math.min(1d,targetCount / (double)expectedRowCount));
+  this.useChance=useChance;
+  while (true) {
+    for (    Queue<?> q : clusteringComponents)     q.clear();
+    clusteringSeeds[0]=idseed;
+    fill(clusteringComponents[0],firstComponentCount,generator.clusteringComponents.get(0));
+    if (isWrite) {
+      position=seed.moveForwards(Math.max(1,expectedRowCount / seed.visits));
+      isFirstWrite=position == 0;
+    }
+switch (seek(isWrite ? position : null)) {
+case END_OF_PARTITION:
+      return false;
+case SUCCESS:
+    return true;
+}
+if (!isWrite) throw new IllegalStateException();
+}
+}
