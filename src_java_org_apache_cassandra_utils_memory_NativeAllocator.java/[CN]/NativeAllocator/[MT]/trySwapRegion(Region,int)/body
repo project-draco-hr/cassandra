@@ -1,0 +1,12 @@
+{
+  int size;
+  if (current == null)   size=MIN_REGION_SIZE;
+ else   size=current.capacity * 2;
+  if (minSize > size)   size=Integer.highestOneBit(minSize) << 3;
+  size=Math.min(MAX_REGION_SIZE,size);
+  RaceAllocated raceAllocated=RACE_ALLOCATED.get(size);
+  Region next=raceAllocated.poll();
+  if (next == null)   next=new Region(allocator.allocate(size),size);
+  if (currentRegion.compareAndSet(current,next))   regions.add(next);
+ else   if (!raceAllocated.stash(next))   allocator.free(next.peer);
+}
