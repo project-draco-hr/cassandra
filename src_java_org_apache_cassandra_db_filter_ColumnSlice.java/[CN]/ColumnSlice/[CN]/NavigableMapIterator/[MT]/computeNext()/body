@@ -1,19 +1,20 @@
 {
-  if (currentSlice == null) {
-    if (idx >= slices.length)     return endOfData();
-    ColumnSlice slice=slices[idx++];
-    if (slice.start.remaining() == 0) {
-      if (slice.finish.remaining() == 0)       currentSlice=map.values().iterator();
- else       currentSlice=map.headMap(slice.finish,true).values().iterator();
-    }
- else     if (slice.finish.remaining() == 0) {
-      currentSlice=map.tailMap(slice.start,true).values().iterator();
-    }
+  while (currentSlice != null || idx < slices.length) {
+    if (currentSlice == null) {
+      ColumnSlice slice=slices[idx++];
+      if (slice.start.remaining() == 0) {
+        if (slice.finish.remaining() == 0)         currentSlice=map.values().iterator();
+ else         currentSlice=map.headMap(slice.finish,true).values().iterator();
+      }
+ else       if (slice.finish.remaining() == 0) {
+        currentSlice=map.tailMap(slice.start,true).values().iterator();
+      }
  else {
-      currentSlice=map.subMap(slice.start,true,slice.finish,true).values().iterator();
+        currentSlice=map.subMap(slice.start,true,slice.finish,true).values().iterator();
+      }
     }
+    if (currentSlice.hasNext())     return currentSlice.next();
+    currentSlice=null;
   }
-  if (currentSlice.hasNext())   return currentSlice.next();
-  currentSlice=null;
-  return computeNext();
+  return endOfData();
 }
