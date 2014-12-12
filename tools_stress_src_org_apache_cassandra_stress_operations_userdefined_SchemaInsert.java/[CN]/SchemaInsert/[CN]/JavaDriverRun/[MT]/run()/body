@@ -1,12 +1,7 @@
 {
-  Partition.RowIterator[] iterators=new Partition.RowIterator[partitions.size()];
-  for (int i=0; i < iterators.length; i++)   iterators[i]=partitions.get(i).iterator(selectChance.next(),true);
   List<BoundStatement> stmts=new ArrayList<>();
   partitionCount=partitions.size();
-  for (  Partition.RowIterator iterator : iterators) {
-    if (iterator.done())     continue;
-    for (    Row row : iterator.next())     stmts.add(bindRow(row));
-  }
+  for (  PartitionIterator iterator : partitions)   while (iterator.hasNext())   stmts.add(bindRow(iterator.next()));
   rowCount+=stmts.size();
   for (int j=0; j < stmts.size(); j+=65535) {
     List<BoundStatement> substmts=stmts.subList(j,Math.min(j + stmts.size(),j + 65535));
@@ -27,6 +22,5 @@
       e.printStackTrace();
     }
   }
-  for (  Partition.RowIterator iterator : iterators)   iterator.markWriteFinished();
   return true;
 }

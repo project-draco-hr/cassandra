@@ -6,11 +6,14 @@
     return managing == null ? seed : managing;
   }
   while (true) {
-    int index=(int)sample.next();
+    int index=(int)(sample.next() - sampleOffset);
     Seed seed=sampleFrom.get(index);
-    if (seed != null && seed.take())     return seed;
+    if (seed != null && seed.isSaved())     return seed;
     seed=writes.next((int)visits.next());
     if (seed == null)     return null;
-    if (managing.putIfAbsent(seed,seed) == null)     return seed;
+    if (managing.putIfAbsent(seed.seed,seed) == null) {
+      if (!updateSampleImmediately || seed.save(sampleFrom,sampleSize))       return seed;
+      managing.remove(seed.seed,seed);
+    }
   }
 }
