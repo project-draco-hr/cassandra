@@ -13,13 +13,19 @@
   sstable.first=getMinimalKey(first);
   sstable.last=getMinimalKey(exclusiveUpperBoundOfReadableIndex);
   DecoratedKey inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(1);
-  if (inclusiveUpperBoundOfReadableData == null)   return null;
+  if (inclusiveUpperBoundOfReadableData == null) {
+    sstable.releaseReference();
+    return null;
+  }
   int offset=2;
   while (true) {
     RowIndexEntry indexEntry=sstable.getPosition(inclusiveUpperBoundOfReadableData,SSTableReader.Operator.GT);
     if (indexEntry != null && indexEntry.position <= dataFile.getLastFlushOffset())     break;
     inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(offset++);
-    if (inclusiveUpperBoundOfReadableData == null)     return null;
+    if (inclusiveUpperBoundOfReadableData == null) {
+      sstable.releaseReference();
+      return null;
+    }
   }
   sstable.last=getMinimalKey(inclusiveUpperBoundOfReadableData);
   return sstable;
