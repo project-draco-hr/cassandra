@@ -3,8 +3,29 @@
     cqlVersion=CqlVersion.CQL3;
     Cql3Options opts=(Cql3Options)options;
     api=opts.mode().displayPrefix.equals("native") ? ConnectionAPI.JAVA_DRIVER_NATIVE : ConnectionAPI.THRIFT;
-    style=opts.usePrepared.setByUser() ? ConnectionStyle.CQL_PREPARED : ConnectionStyle.CQL;
+    style=opts.useUnPrepared.setByUser() ? ConnectionStyle.CQL : ConnectionStyle.CQL_PREPARED;
     compression=ProtocolOptions.Compression.valueOf(opts.useCompression.value().toUpperCase()).name();
+    username=opts.user.value();
+    password=opts.password.value();
+    authProviderClassname=opts.authProvider.value();
+    if (authProviderClassname != null) {
+      try {
+        Class<?> clazz=Class.forName(authProviderClassname);
+        if (!AuthProvider.class.isAssignableFrom(clazz))         throw new IllegalArgumentException(clazz + " is not a valid auth provider");
+        if (PlainTextAuthProvider.class.equals(clazz)) {
+          authProvider=(AuthProvider)clazz.getConstructor(String.class,String.class).newInstance(username,password);
+        }
+ else {
+          authProvider=(AuthProvider)clazz.newInstance();
+        }
+      }
+ catch (      Exception e) {
+        throw new IllegalArgumentException("Invalid auth provider class: " + opts.authProvider.value(),e);
+      }
+    }
+ else {
+      authProvider=null;
+    }
   }
  else   if (options instanceof Cql3SimpleNativeOptions) {
     cqlVersion=CqlVersion.CQL3;
@@ -12,6 +33,10 @@
     api=ConnectionAPI.SIMPLE_NATIVE;
     style=opts.usePrepared.setByUser() ? ConnectionStyle.CQL_PREPARED : ConnectionStyle.CQL;
     compression=ProtocolOptions.Compression.NONE.name();
+    username=null;
+    password=null;
+    authProvider=null;
+    authProviderClassname=null;
   }
  else   if (options instanceof Cql2ThriftOptions) {
     cqlVersion=CqlVersion.CQL2;
@@ -19,6 +44,10 @@
     Cql2ThriftOptions opts=(Cql2ThriftOptions)options;
     style=opts.usePrepared.setByUser() ? ConnectionStyle.CQL_PREPARED : ConnectionStyle.CQL;
     compression=ProtocolOptions.Compression.NONE.name();
+    username=null;
+    password=null;
+    authProvider=null;
+    authProviderClassname=null;
   }
  else   if (options instanceof ThriftOptions) {
     ThriftOptions opts=(ThriftOptions)options;
@@ -26,6 +55,10 @@
     api=opts.smart.setByUser() ? ConnectionAPI.THRIFT_SMART : ConnectionAPI.THRIFT;
     style=ConnectionStyle.THRIFT;
     compression=ProtocolOptions.Compression.NONE.name();
+    username=opts.user.value();
+    password=opts.password.value();
+    authProviderClassname=null;
+    authProvider=null;
   }
  else   throw new IllegalStateException();
 }
