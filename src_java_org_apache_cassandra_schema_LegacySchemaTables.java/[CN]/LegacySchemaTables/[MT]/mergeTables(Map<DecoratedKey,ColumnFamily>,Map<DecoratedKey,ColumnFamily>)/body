@@ -1,0 +1,32 @@
+{
+  List<CFMetaData> created=new ArrayList<>();
+  List<CFMetaData> altered=new ArrayList<>();
+  List<CFMetaData> dropped=new ArrayList<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().hasColumns())   created.addAll(createTablesFromTablesPartition(new Row(entry.getKey(),entry.getValue())).values());
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    String keyspaceName=AsciiType.instance.compose(entry.getKey().getKey());
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.hasColumns() && post.hasColumns()) {
+      MapDifference<String,CFMetaData> delta=Maps.difference(Schema.instance.getKSMetaData(keyspaceName).cfMetaData(),createTablesFromTablesPartition(new Row(entry.getKey(),post)));
+      dropped.addAll(delta.entriesOnlyOnLeft().values());
+      created.addAll(delta.entriesOnlyOnRight().values());
+      Iterables.addAll(altered,Iterables.transform(delta.entriesDiffering().values(),new Function<MapDifference.ValueDifference<CFMetaData>,CFMetaData>(){
+        public CFMetaData apply(        MapDifference.ValueDifference<CFMetaData> pair){
+          return pair.rightValue();
+        }
+      }
+));
+    }
+ else     if (pre.hasColumns()) {
+      dropped.addAll(Schema.instance.getKSMetaData(keyspaceName).cfMetaData().values());
+    }
+ else     if (post.hasColumns()) {
+      created.addAll(createTablesFromTablesPartition(new Row(entry.getKey(),post)).values());
+    }
+  }
+  for (  CFMetaData cfm : created)   Schema.instance.addTable(cfm);
+  for (  CFMetaData cfm : altered)   Schema.instance.updateTable(cfm.ksName,cfm.cfName);
+  for (  CFMetaData cfm : dropped)   Schema.instance.dropTable(cfm.ksName,cfm.cfName);
+}

@@ -1,0 +1,15 @@
+{
+  ColumnFamily cells=mutation.addOrGet(Functions);
+  Composite prefix=Functions.comparator.make(function.name().name,UDHelper.calculateSignature(function));
+  CFRowAdder adder=new CFRowAdder(cells,prefix,timestamp);
+  adder.resetCollection("argument_names");
+  adder.resetCollection("argument_types");
+  for (int i=0; i < function.argNames().size(); i++) {
+    adder.addListEntry("argument_names",function.argNames().get(i).bytes);
+    adder.addListEntry("argument_types",function.argTypes().get(i).toString());
+  }
+  adder.add("body",function.body());
+  adder.add("is_deterministic",function.isDeterministic());
+  adder.add("language",function.language());
+  adder.add("return_type",function.returnType().toString());
+}

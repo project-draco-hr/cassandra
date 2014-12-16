@@ -1,0 +1,14 @@
+{
+  String ksName=result.getString("keyspace_name");
+  String cfName=result.getString("columnfamily_name");
+  Row serializedColumns=readSchemaPartitionForTable(COLUMNS,ksName,cfName);
+  CFMetaData cfm=createTableFromTableRowAndColumnsPartition(result,serializedColumns);
+  Row serializedTriggers=readSchemaPartitionForTable(TRIGGERS,ksName,cfName);
+  try {
+    for (    TriggerDefinition trigger : createTriggersFromTriggersPartition(serializedTriggers))     cfm.addTriggerDefinition(trigger);
+  }
+ catch (  InvalidRequestException e) {
+    throw new RuntimeException(e);
+  }
+  return cfm;
+}

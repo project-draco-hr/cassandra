@@ -1,0 +1,32 @@
+{
+  List<UserType> created=new ArrayList<>();
+  List<UserType> altered=new ArrayList<>();
+  List<UserType> dropped=new ArrayList<>();
+  MapDifference<DecoratedKey,ColumnFamily> diff=Maps.difference(before,after);
+  for (  Map.Entry<DecoratedKey,ColumnFamily> entry : diff.entriesOnlyOnRight().entrySet())   if (entry.getValue().hasColumns())   created.addAll(createTypesFromPartition(new Row(entry.getKey(),entry.getValue())).values());
+  for (  Map.Entry<DecoratedKey,MapDifference.ValueDifference<ColumnFamily>> entry : diff.entriesDiffering().entrySet()) {
+    String keyspaceName=AsciiType.instance.compose(entry.getKey().getKey());
+    ColumnFamily pre=entry.getValue().leftValue();
+    ColumnFamily post=entry.getValue().rightValue();
+    if (pre.hasColumns() && post.hasColumns()) {
+      MapDifference<ByteBuffer,UserType> delta=Maps.difference(Schema.instance.getKSMetaData(keyspaceName).userTypes.getAllTypes(),createTypesFromPartition(new Row(entry.getKey(),post)));
+      dropped.addAll(delta.entriesOnlyOnLeft().values());
+      created.addAll(delta.entriesOnlyOnRight().values());
+      Iterables.addAll(altered,Iterables.transform(delta.entriesDiffering().values(),new Function<MapDifference.ValueDifference<UserType>,UserType>(){
+        public UserType apply(        MapDifference.ValueDifference<UserType> pair){
+          return pair.rightValue();
+        }
+      }
+));
+    }
+ else     if (pre.hasColumns()) {
+      dropped.addAll(Schema.instance.getKSMetaData(keyspaceName).userTypes.getAllTypes().values());
+    }
+ else     if (post.hasColumns()) {
+      created.addAll(createTypesFromPartition(new Row(entry.getKey(),post)).values());
+    }
+  }
+  for (  UserType type : created)   Schema.instance.addType(type);
+  for (  UserType type : altered)   Schema.instance.updateType(type);
+  for (  UserType type : dropped)   Schema.instance.dropType(type);
+}

@@ -1,9 +1,8 @@
 {
   String keyspace=ConfigHelper.getOutputKeyspace(conf);
   String cfName=ConfigHelper.getOutputColumnFamily(conf);
-  String query="SELECT key_validator," + "       key_aliases," + "       column_aliases "+ "FROM system.schema_columnfamilies "+ "WHERE keyspace_name='%s' and columnfamily_name='%s'";
-  String formatted=String.format(query,keyspace,cfName);
-  CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(formatted),Compression.NONE,ConsistencyLevel.ONE);
+  String query=String.format("SELECT key_validator, key_aliases, column_aliases " + "FROM %s.%s " + "WHERE keyspace_name = '%s' and columnfamily_name = '%s'",SystemKeyspace.NAME,LegacySchemaTables.COLUMNFAMILIES,keyspace,cfName);
+  CqlResult result=client.execute_cql3_query(ByteBufferUtil.bytes(query),Compression.NONE,ConsistencyLevel.ONE);
   Column rawKeyValidator=result.rows.get(0).columns.get(0);
   String validator=ByteBufferUtil.string(ByteBuffer.wrap(rawKeyValidator.getValue()));
   keyValidator=parseType(validator);

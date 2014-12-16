@@ -1,0 +1,22 @@
+{
+  Set<String> keyspaces=new HashSet<>(mutations.size());
+  for (  Mutation mutation : mutations)   keyspaces.add(ByteBufferUtil.string(mutation.key()));
+  Map<DecoratedKey,ColumnFamily> oldKeyspaces=readSchemaForKeyspaces(KEYSPACES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> oldColumnFamilies=readSchemaForKeyspaces(COLUMNFAMILIES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> oldTypes=readSchemaForKeyspaces(USERTYPES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> oldFunctions=readSchemaForKeyspaces(FUNCTIONS,keyspaces);
+  Map<DecoratedKey,ColumnFamily> oldAggregates=readSchemaForKeyspaces(AGGREGATES,keyspaces);
+  for (  Mutation mutation : mutations)   mutation.apply();
+  if (doFlush)   flushSchemaTables();
+  Map<DecoratedKey,ColumnFamily> newKeyspaces=readSchemaForKeyspaces(KEYSPACES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> newColumnFamilies=readSchemaForKeyspaces(COLUMNFAMILIES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> newTypes=readSchemaForKeyspaces(USERTYPES,keyspaces);
+  Map<DecoratedKey,ColumnFamily> newFunctions=readSchemaForKeyspaces(FUNCTIONS,keyspaces);
+  Map<DecoratedKey,ColumnFamily> newAggregates=readSchemaForKeyspaces(AGGREGATES,keyspaces);
+  Set<String> keyspacesToDrop=mergeKeyspaces(oldKeyspaces,newKeyspaces);
+  mergeTables(oldColumnFamilies,newColumnFamilies);
+  mergeTypes(oldTypes,newTypes);
+  mergeFunctions(oldFunctions,newFunctions);
+  mergeAggregates(oldAggregates,newAggregates);
+  for (  String keyspaceToDrop : keyspacesToDrop)   Schema.instance.dropKeyspace(keyspaceToDrop);
+}

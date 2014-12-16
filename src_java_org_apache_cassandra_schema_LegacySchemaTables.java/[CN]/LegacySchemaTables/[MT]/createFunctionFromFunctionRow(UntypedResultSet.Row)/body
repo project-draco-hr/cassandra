@@ -1,0 +1,20 @@
+{
+  String ksName=row.getString("keyspace_name");
+  String functionName=row.getString("function_name");
+  FunctionName name=new FunctionName(ksName,functionName);
+  List<ColumnIdentifier> argNames=new ArrayList<>();
+  if (row.has("argument_names"))   for (  String arg : row.getList("argument_names",UTF8Type.instance))   argNames.add(new ColumnIdentifier(arg,true));
+  List<AbstractType<?>> argTypes=new ArrayList<>();
+  if (row.has("argument_types"))   for (  String type : row.getList("argument_types",UTF8Type.instance))   argTypes.add(parseType(type));
+  AbstractType<?> returnType=parseType(row.getString("return_type"));
+  boolean isDeterministic=row.getBoolean("is_deterministic");
+  String language=row.getString("language");
+  String body=row.getString("body");
+  try {
+    return UDFunction.create(name,argNames,argTypes,returnType,language,body,isDeterministic);
+  }
+ catch (  InvalidRequestException e) {
+    logger.error(String.format("Cannot load function '%s' from schema: this function won't be available (on this node)",name),e);
+    return UDFunction.createBrokenFunction(name,argNames,argTypes,returnType,language,body,e);
+  }
+}

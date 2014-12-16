@@ -1,0 +1,38 @@
+{
+  ColumnFamily cells=mutation.addOrGet(Columnfamilies);
+  Composite prefix=Columnfamilies.comparator.make(table.cfName);
+  CFRowAdder adder=new CFRowAdder(cells,prefix,timestamp);
+  adder.add("cf_id",table.cfId);
+  adder.add("type",table.cfType.toString());
+  if (table.isSuper()) {
+    adder.add("comparator",table.comparator.subtype(0).toString());
+    adder.add("subcomparator",table.comparator.subtype(1).toString());
+  }
+ else {
+    adder.add("comparator",table.comparator.toString());
+  }
+  adder.add("bloom_filter_fp_chance",table.getBloomFilterFpChance());
+  adder.add("caching",table.getCaching().toString());
+  adder.add("comment",table.getComment());
+  adder.add("compaction_strategy_class",table.compactionStrategyClass.getName());
+  adder.add("compaction_strategy_options",json(table.compactionStrategyOptions));
+  adder.add("compression_parameters",json(table.compressionParameters.asThriftOptions()));
+  adder.add("default_time_to_live",table.getDefaultTimeToLive());
+  adder.add("default_validator",table.getDefaultValidator().toString());
+  adder.add("gc_grace_seconds",table.getGcGraceSeconds());
+  adder.add("key_validator",table.getKeyValidator().toString());
+  adder.add("local_read_repair_chance",table.getDcLocalReadRepairChance());
+  adder.add("max_compaction_threshold",table.getMaxCompactionThreshold());
+  adder.add("max_index_interval",table.getMaxIndexInterval());
+  adder.add("memtable_flush_period_in_ms",table.getMemtableFlushPeriod());
+  adder.add("min_compaction_threshold",table.getMinCompactionThreshold());
+  adder.add("min_index_interval",table.getMinIndexInterval());
+  adder.add("read_repair_chance",table.getReadRepairChance());
+  adder.add("speculative_retry",table.getSpeculativeRetry().toString());
+  for (  Map.Entry<ColumnIdentifier,Long> entry : table.getDroppedColumns().entrySet())   adder.addMapEntry("dropped_columns",entry.getKey().toString(),entry.getValue());
+  adder.add("is_dense",table.getIsDense());
+  if (withColumnsAndTriggers) {
+    for (    ColumnDefinition column : table.allColumns())     addColumnToSchemaMutation(table,column,timestamp,mutation);
+    for (    TriggerDefinition trigger : table.getTriggers().values())     addTriggerToSchemaMutation(table,trigger,timestamp,mutation);
+  }
+}
