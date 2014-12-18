@@ -6,21 +6,19 @@
   if (cd == null)   throw new InvalidRequestException("No column definition found for column " + target.column);
   boolean isMap=cd.type instanceof MapType;
   boolean isFrozenCollection=cd.type.isCollection() && !cd.type.isMultiCell();
-  if (target.isCollectionKeys) {
-    if (!isMap)     throw new InvalidRequestException("Cannot create index on keys of column " + target + " with non-map type");
-    if (!cd.type.isMultiCell())     throw new InvalidRequestException("Cannot create index on keys of frozen<map> column " + target);
+  if (isFrozenCollection) {
+    validateForFrozenCollection(target);
   }
- else   if (target.isFullCollection) {
-    if (!isFrozenCollection)     throw new InvalidRequestException("full() indexes can only be created on frozen collections");
-  }
- else   if (isFrozenCollection) {
-    throw new InvalidRequestException("Frozen collections currently only support full-collection indexes. " + "For example, 'CREATE INDEX ON <table>(full(<columnName>))'.");
+ else {
+    validateNotFullIndex(target);
+    validateIsValuesIndexIfTargetColumnNotCollection(cd,target);
+    validateTargetColumnIsMapIfIndexInvolvesKeys(isMap,target);
   }
   if (cd.getIndexType() != null) {
-    boolean previousIsKeys=cd.hasIndexOption(SecondaryIndex.INDEX_KEYS_OPTION_NAME);
-    if (isMap && target.isCollectionKeys != previousIsKeys) {
-      String msg="Cannot create index on %s %s, an index on %s %s already exists and indexing " + "a map on both keys and values at the same time is not currently supported";
-      throw new InvalidRequestException(String.format(msg,target.column,target.isCollectionKeys ? "keys" : "values",target.column,previousIsKeys ? "keys" : "values"));
+    IndexTarget.TargetType prevType=IndexTarget.TargetType.fromColumnDefinition(cd);
+    if (isMap && target.type != prevType) {
+      String msg="Cannot create index on %s(%s): an index on %s(%s) already exists and indexing " + "a map on more than one dimension at the same time is not currently supported";
+      throw new InvalidRequestException(String.format(msg,target.type,target.column,prevType,target.column));
     }
     if (ifNotExists)     return;
  else     throw new InvalidRequestException("Index already exists");

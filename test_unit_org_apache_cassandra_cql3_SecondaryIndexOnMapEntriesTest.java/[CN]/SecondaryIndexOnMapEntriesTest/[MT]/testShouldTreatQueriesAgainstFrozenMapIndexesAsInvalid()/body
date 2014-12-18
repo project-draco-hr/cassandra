@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (k TEXT PRIMARY KEY, v FROZEN<MAP<TEXT, TEXT>>)");
+  createIndex("CREATE INDEX ON %s(FULL(V))");
+  try {
+    execute("SELECT * FROM %s WHERE v['somekey'] = 'somevalue'");
+    fail("Expected index query to fail");
+  }
+ catch (  InvalidRequestException e) {
+    String expectedMessage="Map-entry equality predicates on frozen map column v are not supported";
+    assertTrue("Expected error message to contain '" + expectedMessage + "' but got '"+ e.getMessage()+ "'",e.getMessage().contains(expectedMessage));
+  }
+}

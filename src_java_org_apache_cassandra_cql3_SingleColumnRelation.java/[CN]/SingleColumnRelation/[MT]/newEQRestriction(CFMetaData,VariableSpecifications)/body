@@ -1,5 +1,11 @@
 {
   ColumnDefinition columnDef=toColumnDefinition(cfm,entity);
-  Term term=toTerm(toReceivers(cfm,columnDef),value,cfm.ksName,boundNames);
-  return new SingleColumnRestriction.EQ(columnDef,term);
+  if (mapKey == null) {
+    Term term=toTerm(toReceivers(cfm,columnDef),value,cfm.ksName,boundNames);
+    return new SingleColumnRestriction.EQ(columnDef,term);
+  }
+  List<? extends ColumnSpecification> receivers=toReceivers(cfm,columnDef);
+  Term entryKey=toTerm(Collections.singletonList(receivers.get(0)),mapKey,cfm.ksName,boundNames);
+  Term entryValue=toTerm(Collections.singletonList(receivers.get(1)),value,cfm.ksName,boundNames);
+  return new SingleColumnRestriction.Contains(columnDef,entryKey,entryValue);
 }
