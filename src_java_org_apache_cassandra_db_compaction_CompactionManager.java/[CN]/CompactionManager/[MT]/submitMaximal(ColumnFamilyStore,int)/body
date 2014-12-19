@@ -1,11 +1,15 @@
 {
   final Collection<AbstractCompactionTask> tasks=cfStore.getCompactionStrategy().getMaximalTask(gcBefore);
-  Runnable runnable=new WrappedRunnable(){
-    protected void runMayThrow() throws IOException {
-      if (tasks == null)       return;
-      for (      AbstractCompactionTask task : tasks)       task.execute(metrics);
+  if (tasks == null)   return Collections.emptyList();
+  List<Future<?>> futures=new ArrayList<>();
+  for (  final AbstractCompactionTask task : tasks) {
+    Runnable runnable=new WrappedRunnable(){
+      protected void runMayThrow() throws IOException {
+        task.execute(metrics);
+      }
     }
-  }
 ;
-  return executor.submit(runnable);
+    futures.add(executor.submit(runnable));
+  }
+  return futures;
 }
