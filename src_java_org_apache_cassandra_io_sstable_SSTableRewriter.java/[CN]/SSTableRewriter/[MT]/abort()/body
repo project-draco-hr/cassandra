@@ -1,21 +1,17 @@
 {
   switchWriter(null);
   moveStarts(null,Functions.forMap(originalStarts),true);
-  List<SSTableReader> close=Lists.newArrayList(finishedOpenedEarly);
-  for (  Pair<SSTableWriter,SSTableReader> w : finishedWriters) {
-    w.left.abort(w.right == null);
-    if (isOffline && w.right != null) {
-      w.right.markObsolete();
-      w.right.releaseReference();
-    }
-  }
-  for (  SSTableReader sstable : close)   sstable.markObsolete();
   for (  SSTableReader sstable : finished) {
     sstable.markObsolete();
     sstable.releaseReference();
   }
-  if (!isOffline) {
-    dataTracker.replaceEarlyOpenedFiles(close,Collections.<SSTableReader>emptyList());
-    dataTracker.unmarkCompacting(close);
+  for (  Finished finished : finishedEarly) {
+    boolean opened=finished.reader != null;
+    finished.writer.abort(!opened);
+    if (opened) {
+      discard.add(finished.reader);
+      finished.reader.markObsolete();
+    }
   }
+  replaceWithFinishedReaders(Collections.<SSTableReader>emptyList());
 }

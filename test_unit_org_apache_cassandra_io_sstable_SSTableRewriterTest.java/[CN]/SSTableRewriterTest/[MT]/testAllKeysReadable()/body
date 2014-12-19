@@ -1,0 +1,44 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
+  cfs.truncateBlocking();
+  for (int i=0; i < 100; i++) {
+    DecoratedKey key=Util.dk(Integer.toString(i));
+    Mutation rm=new Mutation(KEYSPACE,key.getKey());
+    for (int j=0; j < 10; j++)     rm.add(CF,Util.cellname(Integer.toString(j)),ByteBufferUtil.EMPTY_BYTE_BUFFER,100);
+    rm.apply();
+  }
+  cfs.forceBlockingFlush();
+  cfs.forceMajorCompaction();
+  validateKeys(keyspace);
+  assertEquals(1,cfs.getSSTables().size());
+  SSTableReader s=cfs.getSSTables().iterator().next();
+  Set<SSTableReader> compacting=new HashSet<>();
+  compacting.add(s);
+  cfs.getDataTracker().markCompacting(compacting);
+  SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,false);
+  SSTableRewriter.overrideOpenInterval(1);
+  SSTableWriter w=getWriter(cfs,s.descriptor.directory);
+  rewriter.switchWriter(w);
+  int keyCount=0;
+  try (ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
+    while (scanner.hasNext()) {
+      rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
+      if (keyCount % 10 == 0) {
+        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+      }
+      keyCount++;
+      validateKeys(keyspace);
+    }
+    try {
+      cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,rewriter.finish(),OperationType.COMPACTION);
+      cfs.getDataTracker().unmarkCompacting(compacting);
+    }
+ catch (    Throwable t) {
+      rewriter.abort();
+    }
+  }
+   validateKeys(keyspace);
+  Thread.sleep(1000);
+  validateCFS(cfs);
+}

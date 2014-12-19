@@ -4,7 +4,6 @@
   cfs.truncateBlocking();
   cfs.disableAutoCompaction();
   SSTableReader s=writeFile(cfs,400);
-  DecoratedKey origFirst=s.first;
   cfs.addSSTable(s);
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   SSTableRewriter.overrideOpenInterval(1000000);
@@ -15,8 +14,7 @@
     while (scanner.hasNext()) {
       rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
       if (rewriter.currentWriter().getOnDiskFilePointer() > 2500000) {
-        assertEquals(1,cfs.getSSTables().size());
-        assertEquals(origFirst,cfs.getSSTables().iterator().next().first);
+        assertEquals(files,cfs.getSSTables().size());
         rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
         files++;
       }

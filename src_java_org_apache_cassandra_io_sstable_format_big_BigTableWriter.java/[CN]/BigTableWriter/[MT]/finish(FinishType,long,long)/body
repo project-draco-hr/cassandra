@@ -1,0 +1,20 @@
+{
+  Pair<Descriptor,StatsMetadata> p;
+  p=close(finishType,repairedAt);
+  Descriptor desc=p.left;
+  StatsMetadata metadata=p.right;
+  if (finishType == FinishType.EARLY)   desc=makeTmpLinks();
+  SegmentedFile ifile=iwriter.builder.complete(desc.filenameFor(Component.PRIMARY_INDEX),finishType);
+  SegmentedFile dfile=dbuilder.complete(desc.filenameFor(Component.DATA),finishType);
+  SSTableReader sstable=SSTableReader.internalOpen(desc.asType(Descriptor.Type.FINAL),components,this.metadata,partitioner,ifile,dfile,iwriter.summary.build(partitioner),iwriter.bf,maxDataAge,metadata,finishType.openReason);
+  sstable.first=getMinimalKey(first);
+  sstable.last=getMinimalKey(last);
+switch (finishType) {
+case NORMAL:
+case FINISH_EARLY:
+    sstable.saveSummary(iwriter.builder,dbuilder);
+  iwriter=null;
+dbuilder=null;
+}
+return sstable;
+}
