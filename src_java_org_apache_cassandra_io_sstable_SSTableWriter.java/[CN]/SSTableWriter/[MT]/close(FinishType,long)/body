@@ -1,0 +1,20 @@
+{
+switch (type) {
+case EARLY:
+case NORMAL:
+    iwriter.close();
+  dataFile.close();
+}
+Map<MetadataType,MetadataComponent> metadataComponents;
+metadataComponents=sstableMetadataCollector.finalizeMetadata(partitioner.getClass().getCanonicalName(),metadata.getBloomFilterFpChance(),repairedAt);
+Descriptor descriptor=this.descriptor;
+switch (type) {
+case NORMAL:
+case FINISH_EARLY:
+dataFile.writeFullChecksum(descriptor);
+writeMetadata(descriptor,metadataComponents);
+SSTable.appendTOC(descriptor,components);
+descriptor=rename(descriptor,components);
+}
+return Pair.create(descriptor,(StatsMetadata)metadataComponents.get(MetadataType.STATS));
+}
