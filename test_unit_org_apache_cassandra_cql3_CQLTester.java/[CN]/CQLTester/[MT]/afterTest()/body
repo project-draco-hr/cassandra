@@ -1,14 +1,13 @@
 {
-  if (currentTable == null)   return;
-  final String tableToDrop=currentTable;
-  final Set<String> typesToDrop=currentTypes.isEmpty() ? Collections.emptySet() : new HashSet(currentTypes);
-  currentTable=null;
-  currentTypes.clear();
+  final List<String> tablesToDrop=copy(tables);
+  final List<String> typesToDrop=copy(types);
+  tables=null;
+  types=null;
   ScheduledExecutors.optionalTasks.execute(new Runnable(){
     public void run(){
       try {
-        schemaChange(String.format("DROP TABLE IF EXISTS %s.%s",KEYSPACE,tableToDrop));
-        for (        String typeName : typesToDrop)         schemaChange(String.format("DROP TYPE IF EXISTS %s.%s",KEYSPACE,typeName));
+        for (int i=tablesToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP TABLE IF EXISTS %s.%s",KEYSPACE,tablesToDrop.get(i)));
+        for (int i=typesToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP TYPE IF EXISTS %s.%s",KEYSPACE,typesToDrop.get(i)));
         final CountDownLatch latch=new CountDownLatch(1);
         ScheduledExecutors.nonPeriodicTasks.execute(new Runnable(){
           public void run(){
@@ -17,7 +16,7 @@
         }
 );
         latch.await(2,TimeUnit.SECONDS);
-        removeAllSSTables(KEYSPACE,tableToDrop);
+        removeAllSSTables(KEYSPACE,tablesToDrop);
       }
  catch (      Exception e) {
         throw new RuntimeException(e);
