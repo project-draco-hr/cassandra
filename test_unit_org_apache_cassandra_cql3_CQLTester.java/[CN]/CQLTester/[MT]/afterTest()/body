@@ -1,22 +1,21 @@
 {
   dropPerTestKeyspace();
   usePrepared=USE_PREPARED_VALUES;
-  if (currentTable == null)   return;
-  final String tableToDrop=currentTable;
-  final Set<String> typesToDrop=currentTypes.isEmpty() ? Collections.emptySet() : new HashSet(currentTypes);
-  final Set<String> functionsToDrop=currentFunctions.isEmpty() ? Collections.emptySet() : new HashSet(currentFunctions);
-  final Set<String> aggregatesToDrop=currentAggregates.isEmpty() ? Collections.emptySet() : new HashSet(currentAggregates);
-  currentTable=null;
-  currentTypes.clear();
-  currentFunctions.clear();
-  currentAggregates.clear();
+  final List<String> tablesToDrop=copy(tables);
+  final List<String> typesToDrop=copy(types);
+  final List<String> functionsToDrop=copy(functions);
+  final List<String> aggregatesToDrop=copy(aggregates);
+  tables=null;
+  types=null;
+  functions=null;
+  aggregates=null;
   ScheduledExecutors.optionalTasks.execute(new Runnable(){
     public void run(){
       try {
-        schemaChange(String.format("DROP TABLE IF EXISTS %s.%s",KEYSPACE,tableToDrop));
-        for (        String aggregateName : aggregatesToDrop)         schemaChange(String.format("DROP AGGREGATE IF EXISTS %s.%s",KEYSPACE,aggregateName));
-        for (        String functionName : functionsToDrop)         schemaChange(String.format("DROP FUNCTION IF EXISTS %s.%s",KEYSPACE,functionName));
-        for (        String typeName : typesToDrop)         schemaChange(String.format("DROP TYPE IF EXISTS %s.%s",KEYSPACE,typeName));
+        for (int i=tablesToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP TABLE IF EXISTS %s.%s",KEYSPACE,tablesToDrop.get(i)));
+        for (int i=aggregatesToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP AGGREGATE IF EXISTS %s",aggregatesToDrop.get(i)));
+        for (int i=functionsToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP FUNCTION IF EXISTS %s",functionsToDrop.get(i)));
+        for (int i=typesToDrop.size() - 1; i >= 0; i--)         schemaChange(String.format("DROP TYPE IF EXISTS %s.%s",KEYSPACE,typesToDrop.get(i)));
         final CountDownLatch latch=new CountDownLatch(1);
         ScheduledExecutors.nonPeriodicTasks.execute(new Runnable(){
           public void run(){
@@ -25,7 +24,7 @@
         }
 );
         latch.await(2,TimeUnit.SECONDS);
-        removeAllSSTables(KEYSPACE,tableToDrop);
+        removeAllSSTables(KEYSPACE,tablesToDrop);
       }
  catch (      Exception e) {
         throw new RuntimeException(e);
