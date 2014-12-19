@@ -57,6 +57,7 @@
       logger.info(String.format("Nodes %s and %s have the same token %s.  Ignoring %s",endpoint,currentOwner,token,endpoint));
     }
   }
+  boolean isMoving=tokenMetadata.isMoving(endpoint);
   tokenMetadata.updateNormalTokens(tokensToUpdateInMetadata,endpoint);
   for (  InetAddress ep : endpointsToRemove) {
     removeEndpoint(ep);
@@ -64,7 +65,7 @@
   }
   if (!tokensToUpdateInSystemKeyspace.isEmpty())   SystemKeyspace.updateTokens(endpoint,tokensToUpdateInSystemKeyspace);
   if (!localTokensToRemove.isEmpty())   SystemKeyspace.updateLocalTokens(Collections.<Token>emptyList(),localTokensToRemove);
-  if (tokenMetadata.isMoving(endpoint)) {
+  if (isMoving) {
     tokenMetadata.removeFromMoving(endpoint);
     if (!isClientMode) {
       for (      IEndpointLifecycleSubscriber subscriber : lifecycleSubscribers)       subscriber.onMove(endpoint);
