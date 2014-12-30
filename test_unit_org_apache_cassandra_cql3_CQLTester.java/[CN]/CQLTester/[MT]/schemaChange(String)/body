@@ -1,6 +1,12 @@
 {
   try {
-    QueryProcessor.executeOnceInternal(query);
+    ClientState state=ClientState.forInternalCalls();
+    state.setKeyspace(SystemKeyspace.NAME);
+    QueryState queryState=new QueryState(state);
+    ParsedStatement.Prepared prepared=QueryProcessor.parseStatement(query,queryState);
+    prepared.statement.validate(state);
+    QueryOptions options=QueryOptions.forInternalCalls(Collections.<ByteBuffer>emptyList());
+    lastSchemaChangeResult=prepared.statement.executeInternal(queryState,options);
   }
  catch (  Exception e) {
     throw new RuntimeException("Error setting schema for test (query was: " + query + ")",e);
