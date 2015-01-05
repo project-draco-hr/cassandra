@@ -1,0 +1,20 @@
+{
+  String name=String.format("org.apache.cassandra.metrics:type=ThreadPools,path=%s,scope=%s,name=%s",jmxPath,poolName,metricName);
+  try {
+    ObjectName oName=new ObjectName(name);
+switch (metricName) {
+case "ActiveTasks":
+case "PendingTasks":
+case "CompletedTasks":
+      return JMX.newMBeanProxy(mbeanServerConn,oName,JmxReporter.JmxGaugeMBean.class).getValue();
+case "TotalBlockedTasks":
+case "CurrentlyBlockedTasks":
+    return JMX.newMBeanProxy(mbeanServerConn,oName,JmxReporter.JmxCounterMBean.class).getCount();
+default :
+  throw new AssertionError("Unknown metric name " + metricName);
+}
+}
+ catch (Throwable e) {
+throw new RuntimeException("Error reading: " + name,e);
+}
+}

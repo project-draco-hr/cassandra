@@ -1,30 +1,27 @@
 {
   MetricNameFactory factory=new DefaultNameFactory("Cache",type);
-  capacity=Metrics.newGauge(factory.createMetricName("Capacity"),new Gauge<Long>(){
-    public Long value(){
+  capacity=Metrics.register(factory.createMetricName("Capacity"),new Gauge<Long>(){
+    public Long getValue(){
       return cache.capacity();
     }
   }
 );
-  hits=Metrics.newMeter(factory.createMetricName("Hits"),"hits",TimeUnit.SECONDS);
-  requests=Metrics.newMeter(factory.createMetricName("Requests"),"requests",TimeUnit.SECONDS);
-  hitRate=Metrics.newGauge(factory.createMetricName("HitRate"),new RatioGauge(){
-    protected double getNumerator(){
-      return hits.count();
-    }
-    protected double getDenominator(){
-      return requests.count();
+  hits=Metrics.meter(factory.createMetricName("Hits"));
+  requests=Metrics.meter(factory.createMetricName("Requests"));
+  hitRate=Metrics.register(factory.createMetricName("HitRate"),new RatioGauge(){
+    @Override public Ratio getRatio(){
+      return Ratio.of(hits.getCount(),requests.getCount());
     }
   }
 );
-  size=Metrics.newGauge(factory.createMetricName("Size"),new Gauge<Long>(){
-    public Long value(){
+  size=Metrics.register(factory.createMetricName("Size"),new Gauge<Long>(){
+    public Long getValue(){
       return cache.weightedSize();
     }
   }
 );
-  entries=Metrics.newGauge(factory.createMetricName("Entries"),new Gauge<Integer>(){
-    public Integer value(){
+  entries=Metrics.register(factory.createMetricName("Entries"),new Gauge<Integer>(){
+    public Integer getValue(){
       return cache.size();
     }
   }

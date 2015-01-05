@@ -1,6 +1,6 @@
 {
-  pendingTasks=Metrics.newGauge(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
-    public Integer value(){
+  pendingTasks=Metrics.register(factory.createMetricName("PendingTasks"),new Gauge<Integer>(){
+    public Integer getValue(){
       int n=0;
       for (      String keyspaceName : Schema.instance.getKeyspaces()) {
         for (        ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores())         n+=cfs.getCompactionStrategy().getEstimatedRemainingTasks();
@@ -10,14 +10,14 @@
     }
   }
 );
-  completedTasks=Metrics.newGauge(factory.createMetricName("CompletedTasks"),new Gauge<Long>(){
-    public Long value(){
+  completedTasks=Metrics.register(factory.createMetricName("CompletedTasks"),new Gauge<Long>(){
+    public Long getValue(){
       long completedTasks=0;
       for (      ThreadPoolExecutor collector : collectors)       completedTasks+=collector.getCompletedTaskCount();
       return completedTasks;
     }
   }
 );
-  totalCompactionsCompleted=Metrics.newMeter(factory.createMetricName("TotalCompactionsCompleted"),"compaction completed",TimeUnit.SECONDS);
-  bytesCompacted=Metrics.newCounter(factory.createMetricName("BytesCompacted"));
+  totalCompactionsCompleted=Metrics.meter(factory.createMetricName("TotalCompactionsCompleted"));
+  bytesCompacted=Metrics.counter(factory.createMetricName("BytesCompacted"));
 }
