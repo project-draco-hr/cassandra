@@ -1,0 +1,23 @@
+{
+  if (parallelismDegree < 0 || parallelismDegree > RepairParallelism.values().length - 1) {
+    throw new IllegalArgumentException("Invalid parallelism degree specified: " + parallelismDegree);
+  }
+  RepairParallelism parallelism=RepairParallelism.values()[parallelismDegree];
+  if (FBUtilities.isWindows() && parallelism != RepairParallelism.PARALLEL) {
+    logger.warn("Snapshot-based repair is not yet supported on Windows.  Reverting to parallel repair.");
+    parallelism=RepairParallelism.PARALLEL;
+  }
+  RepairOption options=new RepairOption(parallelism,primaryRange,!fullRepair,false,1,Collections.<Range<Token>>emptyList());
+  if (dataCenters != null) {
+    options.getDataCenters().addAll(dataCenters);
+  }
+  if (hosts != null) {
+    options.getHosts().addAll(hosts);
+  }
+  if (columnFamilies != null) {
+    for (    String columnFamily : columnFamilies) {
+      options.getColumnFamilies().add(columnFamily);
+    }
+  }
+  return forceRepairAsync(keyspace,options);
+}

@@ -1,10 +1,14 @@
 {
-  if (FBUtilities.isWindows() && parallelismDegree != RepairParallelism.PARALLEL) {
+  if (parallelismDegree < 0 || parallelismDegree > RepairParallelism.values().length - 1) {
+    throw new IllegalArgumentException("Invalid parallelism degree specified: " + parallelismDegree);
+  }
+  RepairParallelism parallelism=RepairParallelism.values()[parallelismDegree];
+  if (FBUtilities.isWindows() && parallelism != RepairParallelism.PARALLEL) {
     logger.warn("Snapshot-based repair is not yet supported on Windows.  Reverting to parallel repair.");
-    parallelismDegree=RepairParallelism.PARALLEL;
+    parallelism=RepairParallelism.PARALLEL;
   }
   Collection<Range<Token>> repairingRange=createRepairRangeFrom(beginToken,endToken);
-  RepairOption options=new RepairOption(parallelismDegree,false,!fullRepair,false,1,repairingRange);
+  RepairOption options=new RepairOption(parallelism,false,!fullRepair,false,1,repairingRange);
   options.getDataCenters().addAll(dataCenters);
   if (hosts != null) {
     options.getHosts().addAll(hosts);
