@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, primary key((a, b)))");
+  createIndex("CREATE INDEX ON %s(b)");
+  createIndex("CREATE INDEX ON %s(c)");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 0, 0);");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 1, 1);");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 2, 2);");
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 0, 3);");
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 1, 4);");
+  assertRows(execute("SELECT * FROM %s WHERE b = ?;",1),row(0,1,1),row(1,1,4));
+  assertRows(execute("SELECT * FROM %s WHERE token(a, b) > token(?, ?) AND b = ?;",0,0,1),row(0,1,1),row(1,1,4));
+  assertRows(execute("SELECT * FROM %s WHERE b = ? AND token(a, b) > token(?, ?);",1,0,0),row(0,1,1),row(1,1,4));
+  assertRows(execute("SELECT * FROM %s WHERE b = ? AND token(a, b) > token(?, ?) and c = ? ALLOW FILTERING;",1,0,0,4),row(1,1,4));
+}
