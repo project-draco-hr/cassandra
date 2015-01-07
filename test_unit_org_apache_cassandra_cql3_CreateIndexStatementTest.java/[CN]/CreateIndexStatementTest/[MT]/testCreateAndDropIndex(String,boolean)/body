@@ -1,0 +1,24 @@
+{
+  execute("USE system");
+  assertInvalidMessage("Index '" + removeQuotes(indexName.toLowerCase(Locale.US)) + "' could not be found","DROP INDEX " + indexName + ";");
+  createTable("CREATE TABLE %s (a int primary key, b int);");
+  createIndex("CREATE INDEX " + indexName + " ON %s(b);");
+  createIndex("CREATE INDEX IF NOT EXISTS " + indexName + " ON %s(b);");
+  assertInvalidMessage("Index already exists","CREATE INDEX " + indexName + " ON %s(b)");
+  execute("INSERT INTO %s (a, b) values (?, ?);",0,0);
+  execute("INSERT INTO %s (a, b) values (?, ?);",1,1);
+  execute("INSERT INTO %s (a, b) values (?, ?);",2,2);
+  execute("INSERT INTO %s (a, b) values (?, ?);",3,1);
+  assertRows(execute("SELECT * FROM %s where b = ?",1),row(1,1),row(3,1));
+  assertInvalidMessage("Index '" + removeQuotes(indexName.toLowerCase(Locale.US)) + "' could not be found in any of the tables of keyspace 'system'","DROP INDEX " + indexName);
+  if (addKeyspaceOnDrop) {
+    dropIndex("DROP INDEX " + KEYSPACE + "."+ indexName);
+  }
+ else {
+    execute("USE " + KEYSPACE);
+    dropIndex("DROP INDEX " + indexName);
+  }
+  assertInvalidMessage("No secondary indexes on the restricted columns support the provided operators","SELECT * FROM %s where b = ?",1);
+  dropIndex("DROP INDEX IF EXISTS " + indexName);
+  assertInvalidMessage("Index '" + removeQuotes(indexName.toLowerCase(Locale.US)) + "' could not be found","DROP INDEX " + indexName);
+}
