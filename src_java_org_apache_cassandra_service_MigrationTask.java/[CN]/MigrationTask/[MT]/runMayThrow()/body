@@ -1,11 +1,15 @@
 {
-  MessageOut message=new MessageOut<>(MessagingService.Verb.MIGRATION_REQUEST,null,MigrationManager.MigrationsSerializer.instance);
+  if (!MigrationManager.shouldPullSchemaFrom(endpoint)) {
+    logger.info("Skipped sending a migration request: node {} has a higher major version now.",endpoint);
+    return;
+  }
   if (!FailureDetector.instance.isAlive(endpoint)) {
     logger.error("Can't send migration request: node {} is down.",endpoint);
     return;
   }
+  MessageOut message=new MessageOut<>(MessagingService.Verb.MIGRATION_REQUEST,null,MigrationManager.MigrationsSerializer.instance);
   IAsyncCallback<Collection<RowMutation>> cb=new IAsyncCallback<Collection<RowMutation>>(){
-    @Override public void response(    MessageIn<Collection<RowMutation>> message){
+    public void response(    MessageIn<Collection<RowMutation>> message){
       try {
         DefsTables.mergeSchema(message.payload);
       }
@@ -16,7 +20,7 @@ catch (      ConfigurationException e) {
         logger.error("Configuration exception merging remote schema",e);
       }
     }
-    @Override public boolean isLatencyForSnitch(){
+    public boolean isLatencyForSnitch(){
       return false;
     }
   }
