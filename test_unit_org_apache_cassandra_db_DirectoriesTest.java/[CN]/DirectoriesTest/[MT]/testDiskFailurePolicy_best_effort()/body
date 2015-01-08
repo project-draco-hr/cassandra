@@ -2,21 +2,17 @@
   DiskFailurePolicy origPolicy=DatabaseDescriptor.getDiskFailurePolicy();
   try {
     DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
-    for (    DataDirectory dd : Directories.dataFileLocations) {
-      dd.location.setExecutable(false);
-      dd.location.setWritable(false);
+    if (Directories.dataFileLocations.length > 0) {
+      String[] path=new String[]{KS,"bad"};
+      File dir=new File(Directories.dataFileLocations[0].location,StringUtils.join(path,File.separator));
+      FileUtils.handleFSError(new FSWriteError(new IOException("Unable to create directory " + dir),dir));
     }
-    Directories.create(KS,"bad");
     for (    DataDirectory dd : Directories.dataFileLocations) {
       File file=new File(dd.location,new File(KS,"bad").getPath());
       Assert.assertTrue(BlacklistedDirectories.isUnwritable(file));
     }
   }
   finally {
-    for (    DataDirectory dd : Directories.dataFileLocations) {
-      dd.location.setExecutable(true);
-      dd.location.setWritable(true);
-    }
     DatabaseDescriptor.setDiskFailurePolicy(origPolicy);
   }
 }
