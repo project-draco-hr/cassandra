@@ -2,21 +2,17 @@
   DiskFailurePolicy origPolicy=DatabaseDescriptor.getDiskFailurePolicy();
   try {
     DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.best_effort);
-    for (    DataDirectory dd : Directories.dataDirectories) {
-      dd.location.setExecutable(false);
-      dd.location.setWritable(false);
+    if (Directories.dataDirectories.length > 0) {
+      String[] path=new String[]{KS,"bad"};
+      File dir=new File(Directories.dataDirectories[0].location,StringUtils.join(path,File.separator));
+      FileUtils.handleFSError(new FSWriteError(new IOException("Unable to create directory " + dir),dir));
     }
-    CFMetaData cfm=new CFMetaData(KS,"badbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbadbad",ColumnFamilyType.Standard,null);
-    Directories dir=new Directories(cfm);
-    for (    File file : dir.getCFDirectories()) {
+    for (    DataDirectory dd : Directories.dataDirectories) {
+      File file=new File(dd.location,new File(KS,"bad").getPath());
       assertTrue(BlacklistedDirectories.isUnwritable(file));
     }
   }
   finally {
-    for (    DataDirectory dd : Directories.dataDirectories) {
-      dd.location.setExecutable(true);
-      dd.location.setWritable(true);
-    }
     DatabaseDescriptor.setDiskFailurePolicy(origPolicy);
   }
 }
