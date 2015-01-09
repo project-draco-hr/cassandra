@@ -4,7 +4,8 @@
   Keyspace keyspace=Keyspace.open(command.keyspace);
   List<Row> rows;
   try {
-    int cql3RowCount=0;
+    int liveRowCount=0;
+    boolean countLiveRows=command.countCQL3Rows() || command.ignoredTombstonedPartitions();
     rows=new ArrayList<>();
     List<? extends AbstractBounds<RowPosition>> ranges;
     if (keyspace.getReplicationStrategy() instanceof LocalStrategy)     ranges=command.keyRange.unwrap();
@@ -51,7 +52,7 @@
       try {
         for (        Row row : handler.get()) {
           rows.add(row);
-          if (nodeCmd.countCQL3Rows())           cql3RowCount+=row.getLiveCount(command.predicate,command.timestamp);
+          if (countLiveRows)           liveRowCount+=row.getLiveCount(command.predicate,command.timestamp);
         }
         FBUtilities.waitOnFutures(resolver.repairResults,DatabaseDescriptor.getWriteRpcTimeout());
       }
@@ -76,7 +77,7 @@ catch (      TimeoutException ex) {
 catch (      DigestMismatchException e) {
         throw new AssertionError(e);
       }
-      int count=nodeCmd.countCQL3Rows() ? cql3RowCount : rows.size();
+      int count=countLiveRows ? liveRowCount : rows.size();
       if (count >= nodeCmd.limit())       break;
     }
   }
