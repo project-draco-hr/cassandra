@@ -1,0 +1,13 @@
+{
+  RowIndexEntry rie=sstableWriter.append(row);
+  if (sstableWriter.currentWriter().getOnDiskFilePointer() > currentBytesToWrite && currentRatioIndex < ratios.length - 1) {
+    currentRatioIndex++;
+    currentBytesToWrite=Math.round(totalSize * ratios[currentRatioIndex]);
+    long currentPartitionsToWrite=Math.round(ratios[currentRatioIndex] * estimatedTotalKeys);
+    File sstableDirectory=cfs.directories.getLocationForDisk(getWriteDirectory(Math.round(totalSize * ratios[currentRatioIndex])));
+    SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),currentPartitionsToWrite,minRepairedAt,cfs.metadata,cfs.partitioner,new MetadataCollector(allSSTables,cfs.metadata.comparator,0));
+    sstableWriter.switchWriter(writer);
+    logger.debug("Switching writer, currentPartitionsToWrite = {}",currentPartitionsToWrite);
+  }
+  return rie != null;
+}

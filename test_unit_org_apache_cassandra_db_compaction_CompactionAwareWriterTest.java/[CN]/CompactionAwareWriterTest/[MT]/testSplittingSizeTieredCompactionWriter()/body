@@ -1,0 +1,26 @@
+{
+  Keyspace ks=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(CF);
+  cfs.disableAutoCompaction();
+  int rowCount=10000;
+  populate(cfs,rowCount);
+  Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
+  long beforeSize=sstables.iterator().next().onDiskLength();
+  CompactionAwareWriter writer=new SplittingSizeTieredCompactionWriter(cfs,sstables,sstables,OperationType.COMPACTION,0);
+  int rows=compact(cfs,sstables,writer);
+  long expectedSize=beforeSize / 2;
+  List<SSTableReader> sortedSSTables=new ArrayList<>(cfs.getSSTables());
+  Collections.sort(sortedSSTables,new Comparator<SSTableReader>(){
+    @Override public int compare(    SSTableReader o1,    SSTableReader o2){
+      return Longs.compare(o2.onDiskLength(),o1.onDiskLength());
+    }
+  }
+);
+  for (  SSTableReader sstable : sortedSSTables) {
+    assertEquals(expectedSize,sstable.onDiskLength(),10000);
+    expectedSize/=2;
+  }
+  assertEquals(rowCount,rows);
+  validateData(cfs,rowCount);
+  cfs.truncateBlocking();
+}

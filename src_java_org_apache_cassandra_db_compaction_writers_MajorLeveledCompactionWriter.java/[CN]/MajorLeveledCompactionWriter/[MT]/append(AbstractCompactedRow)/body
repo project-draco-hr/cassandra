@@ -1,0 +1,19 @@
+{
+  long posBefore=rewriter.currentWriter().getOnDiskFilePointer();
+  RowIndexEntry rie=rewriter.append(row);
+  totalWrittenInLevel+=rewriter.currentWriter().getOnDiskFilePointer() - posBefore;
+  partitionsWritten++;
+  if (rewriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize) {
+    if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel,maxSSTableSize)) {
+      totalWrittenInLevel=0;
+      currentLevel++;
+    }
+    averageEstimatedKeysPerSSTable=Math.round(((double)averageEstimatedKeysPerSSTable * sstablesWritten + partitionsWritten) / (sstablesWritten + 1));
+    File sstableDirectory=cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
+    SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),averageEstimatedKeysPerSSTable,minRepairedAt,cfs.metadata,cfs.partitioner,new MetadataCollector(allSSTables,cfs.metadata.comparator,currentLevel,skipAncestors));
+    rewriter.switchWriter(writer);
+    partitionsWritten=0;
+    sstablesWritten++;
+  }
+  return rie != null;
+}
