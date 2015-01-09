@@ -57,7 +57,7 @@
           MessageOut<? extends AbstractRangeCommand> message=nodeCmd.createMessage();
           for (          InetAddress endpoint : filteredEndpoints) {
             Tracing.trace("Enqueuing request to {}",endpoint);
-            MessagingService.instance().sendRR(message,endpoint,handler);
+            MessagingService.instance().sendRRWithFailure(message,endpoint,handler);
           }
         }
         scanHandlers.add(Pair.create(nodeCmd,handler));
@@ -75,15 +75,16 @@
           }
           repairResponses.addAll(resolver.repairResults);
         }
- catch (        ReadTimeoutException ex) {
+ catch (        ReadTimeoutException|ReadFailureException ex) {
           int blockFor=consistency_level.blockFor(keyspace);
           int responseCount=resolver.responses.size();
           String gotData=responseCount > 0 ? resolver.isDataPresent() ? " (including data)" : " (only digests)" : "";
+          boolean isTimeout=ex instanceof ReadTimeoutException;
           if (Tracing.isTracing()) {
-            Tracing.trace("Timed out; received {} of {} responses{} for range {} of {}",new Object[]{responseCount,blockFor,gotData,i,ranges.size()});
+            Tracing.trace("{}; received {} of {} responses{} for range {} of {}",new Object[]{(isTimeout ? "Timed out" : "Failed"),responseCount,blockFor,gotData,i,ranges.size()});
           }
  else           if (logger.isDebugEnabled()) {
-            logger.debug("Range slice timeout; received {} of {} responses{} for range {} of {}",responseCount,blockFor,gotData,i,ranges.size());
+            logger.debug("Range slice {}; received {} of {} responses{} for range {} of {}",(isTimeout ? "timeout" : "failure"),responseCount,blockFor,gotData,i,ranges.size());
           }
           throw ex;
         }

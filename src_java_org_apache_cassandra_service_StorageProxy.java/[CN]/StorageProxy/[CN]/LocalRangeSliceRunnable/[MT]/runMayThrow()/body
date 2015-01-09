@@ -1,5 +1,12 @@
 {
-  RangeSliceReply result=new RangeSliceReply(command.executeLocally());
-  MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-  handler.response(result);
+  try {
+    RangeSliceReply result=new RangeSliceReply(command.executeLocally());
+    MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+    handler.response(result);
+  }
+ catch (  Throwable t) {
+    handler.onFailure(FBUtilities.getBroadcastAddress());
+    if (t instanceof TombstoneOverwhelmingException)     logger.error(t.getMessage());
+ else     throw t;
+  }
 }

@@ -1,7 +1,14 @@
 {
-  Keyspace keyspace=Keyspace.open(command.ksName);
-  Row r=command.getRow(keyspace);
-  ReadResponse result=ReadVerbHandler.getResponse(command,r);
-  MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-  handler.response(result);
+  try {
+    Keyspace keyspace=Keyspace.open(command.ksName);
+    Row r=command.getRow(keyspace);
+    ReadResponse result=ReadVerbHandler.getResponse(command,r);
+    MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+    handler.response(result);
+  }
+ catch (  Throwable t) {
+    handler.onFailure(FBUtilities.getBroadcastAddress());
+    if (t instanceof TombstoneOverwhelmingException)     logger.error(t.getMessage());
+ else     throw t;
+  }
 }
