@@ -1,9 +1,11 @@
 {
   if (partialCompactionsAcceptable() && sstables.size() > 1) {
     logger.warn("insufficient space to compact all requested files {}",StringUtils.join(sstables,", "));
-    return sstables.remove(cfs.getMaxSizeFile(sstables));
+    SSTableReader removedSSTable=cfs.getMaxSizeFile(sstables);
+    if (sstables.remove(removedSSTable)) {
+      cfs.getDataTracker().unmarkCompacting(Arrays.asList(removedSSTable));
+      return true;
+    }
   }
- else {
-    return false;
-  }
+  return false;
 }
