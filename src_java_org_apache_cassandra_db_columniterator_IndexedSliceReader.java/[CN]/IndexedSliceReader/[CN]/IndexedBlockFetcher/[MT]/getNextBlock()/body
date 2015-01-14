@@ -15,6 +15,11 @@
   while (file.bytesPastMark(mark) < currentIndex.width || deserializer.hasUnprocessed()) {
     Composite start=currentStart();
     if (!inSlice && !start.isEmpty() && deserializer.compareNextTo(start) < 0) {
+      if (deserializer.nextIsRangeTombstone()) {
+        RangeTombstone rt=(RangeTombstone)deserializer.readNext();
+        if (comparator.compare(rt.max,start) >= 0)         addColumn(rt);
+        continue;
+      }
       if (reversed) {
         prefetched.addFirst(deserializer.readNext());
       }
