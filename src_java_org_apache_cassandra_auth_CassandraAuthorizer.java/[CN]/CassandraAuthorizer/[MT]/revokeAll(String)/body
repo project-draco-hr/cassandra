@@ -1,8 +1,14 @@
 {
   try {
-    process(String.format("DELETE FROM %s.%s WHERE username = '%s'",Auth.AUTH_KS,PERMISSIONS_CF,escape(droppedUser)));
+    UntypedResultSet rows=process(String.format("SELECT resource FROM %s.%s WHERE role = '%s'",AuthKeyspace.NAME,AuthKeyspace.ROLE_PERMISSIONS,escape(revokee)));
+    List<CQLStatement> statements=new ArrayList<>();
+    for (    UntypedResultSet.Row row : rows) {
+      statements.add(QueryProcessor.getStatement(String.format("DELETE FROM %s.%s WHERE resource = '%s' AND role = '%s'",AuthKeyspace.NAME,AuthKeyspace.RESOURCE_ROLE_INDEX,escape(row.getString("resource")),escape(revokee)),ClientState.forInternalCalls()).statement);
+    }
+    statements.add(QueryProcessor.getStatement(String.format("DELETE FROM %s.%s WHERE role = '%s'",AuthKeyspace.NAME,AuthKeyspace.ROLE_PERMISSIONS,escape(revokee)),ClientState.forInternalCalls()).statement);
+    executeLoggedBatch(statements);
   }
- catch (  RequestExecutionException e) {
-    logger.warn("CassandraAuthorizer failed to revoke all permissions of {}: {}",droppedUser,e);
+ catch (  RequestExecutionException|RequestValidationException e) {
+    logger.warn("CassandraAuthorizer failed to revoke all permissions of {}: {}",revokee,e);
   }
 }

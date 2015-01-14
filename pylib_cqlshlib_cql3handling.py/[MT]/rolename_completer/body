@@ -1,0 +1,11 @@
+@completer_for('rolename', 'role')
+def rolename_completer(ctxt, cass):
+
+    def maybe_quote(name):
+        if CqlRuleSet.is_valid_cql3_name(name):
+            return name
+        return ("'%s'" % name)
+    if (ctxt.matched[0][0] == 'K_CREATE'):
+        return [Hint('<rolename>')]
+    session = cass.session
+    return [maybe_quote(row[0].replace("'", "''")) for row in session.execute('LIST ROLES')]

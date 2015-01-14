@@ -1,0 +1,19 @@
+{
+  try {
+    if (Schema.instance.getCFMetaData("system_auth","permissions") != null) {
+      logger.info("Converting legacy permissions data");
+      CQLStatement insertStatement=QueryProcessor.getStatement(String.format("INSERT INTO %s.%s (role, resource, permissions) " + "VALUES (?, ?, ?)",AuthKeyspace.NAME,AuthKeyspace.ROLE_PERMISSIONS),ClientState.forInternalCalls()).statement;
+      CQLStatement indexStatement=QueryProcessor.getStatement(String.format("INSERT INTO %s.%s (resource, role) VALUES (?,?)",AuthKeyspace.NAME,AuthKeyspace.RESOURCE_ROLE_INDEX),ClientState.forInternalCalls()).statement;
+      UntypedResultSet permissions=process("SELECT * FROM system_auth.permissions");
+      for (      UntypedResultSet.Row row : permissions) {
+        insertStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(row.getBytes("username"),row.getBytes("resource"),row.getBytes("permissions"))));
+        indexStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(row.getBytes("resource"),row.getBytes("username"))));
+      }
+      logger.info("Completed conversion of legacy permissions");
+    }
+  }
+ catch (  Exception e) {
+    logger.info("Unable to complete conversion of legacy permissions data (perhaps not enough nodes are upgraded yet). " + "Conversion should not be considered complete");
+    logger.debug("Conversion error",e);
+  }
+}

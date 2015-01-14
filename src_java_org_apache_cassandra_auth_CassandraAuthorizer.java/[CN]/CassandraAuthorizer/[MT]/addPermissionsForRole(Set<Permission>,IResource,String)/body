@@ -1,0 +1,11 @@
+{
+  QueryOptions options=QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,Lists.newArrayList(ByteBufferUtil.bytes(rolename),ByteBufferUtil.bytes(resource.getName())));
+  SelectStatement statement=Schema.instance.getCFMetaData(AuthKeyspace.NAME,USER_PERMISSIONS) == null ? authorizeRoleStatement : legacyAuthorizeRoleStatement;
+  ResultMessage.Rows rows=statement.execute(QueryState.forInternalCalls(),options);
+  UntypedResultSet result=UntypedResultSet.create(rows.result);
+  if (!result.isEmpty() && result.one().has(PERMISSIONS)) {
+    for (    String perm : result.one().getSet(PERMISSIONS,UTF8Type.instance)) {
+      permissions.add(Permission.valueOf(perm));
+    }
+  }
+}

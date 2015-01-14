@@ -1,13 +1,8 @@
 {
-  if (!performer.isSuper() && !performer.getName().equals(of))   throw new UnauthorizedException(String.format("You are not authorized to view %s's permissions",of == null ? "everyone" : of));
-  Set<PermissionDetails> details=new HashSet<PermissionDetails>();
-  for (  UntypedResultSet.Row row : process(buildListQuery(resource,of))) {
-    if (row.has(PERMISSIONS)) {
-      for (      String p : row.getSet(PERMISSIONS,UTF8Type.instance)) {
-        Permission permission=Permission.valueOf(p);
-        if (permissions.contains(permission))         details.add(new PermissionDetails(row.getString(USERNAME),DataResource.fromName(row.getString(RESOURCE)),permission));
-      }
-    }
-  }
+  if (!performer.isSuper() && !performer.getRoles().contains(grantee))   throw new UnauthorizedException(String.format("You are not authorized to view %s's permissions",grantee == null ? "everyone" : grantee));
+  if (null == grantee)   return listPermissionsForRole(permissions,resource,grantee);
+  Set<String> roles=DatabaseDescriptor.getRoleManager().getRoles(grantee,true);
+  Set<PermissionDetails> details=new HashSet<>();
+  for (  String role : roles)   details.addAll(listPermissionsForRole(permissions,resource,role));
   return details;
 }

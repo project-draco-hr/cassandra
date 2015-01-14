@@ -1,0 +1,27 @@
+{
+  try {
+    if (Schema.instance.getCFMetaData("system_auth","users") != null) {
+      logger.info("Converting legacy users");
+      UntypedResultSet users=QueryProcessor.process("SELECT * FROM system_auth.users",ConsistencyLevel.QUORUM);
+      for (      UntypedResultSet.Row row : users) {
+        Map<Option,Object> options=new HashMap<>();
+        options.put(Option.SUPERUSER,row.getBoolean("super"));
+        options.put(Option.LOGIN,true);
+        createRole(null,row.getString("name"),options);
+      }
+      logger.info("Completed conversion of legacy users");
+    }
+    if (Schema.instance.getCFMetaData("system_auth","credentials") != null) {
+      logger.info("Migrating legacy credentials data to new system table");
+      UntypedResultSet credentials=QueryProcessor.process("SELECT * FROM system_auth.credentials",ConsistencyLevel.QUORUM);
+      for (      UntypedResultSet.Row row : credentials) {
+        QueryProcessor.process(String.format("UPDATE %s.%s SET salted_hash = '%s' WHERE role = '%s'",AuthKeyspace.NAME,AuthKeyspace.ROLES,row.getString("salted_hash"),row.getString("username")),consistencyForRole(row.getString("username")));
+      }
+      logger.info("Completed conversion of legacy credentials");
+    }
+  }
+ catch (  Exception e) {
+    logger.info("Unable to complete conversion of legacy auth data (perhaps not enough nodes are upgraded yet). " + "Conversion should not be considered complete");
+    logger.debug("Conversion error",e);
+  }
+}

@@ -46,10 +46,13 @@
   if (conf.authenticator != null)   authenticator=FBUtilities.newAuthenticator(conf.authenticator);
   if (conf.authorizer != null)   authorizer=FBUtilities.newAuthorizer(conf.authorizer);
   if (authenticator instanceof AllowAllAuthenticator && !(authorizer instanceof AllowAllAuthorizer))   throw new ConfigurationException("AllowAllAuthenticator can't be used with " + conf.authorizer);
+  if (conf.role_manager != null)   roleManager=FBUtilities.newRoleManager(conf.role_manager);
+  if (authenticator instanceof PasswordAuthenticator && !(roleManager instanceof CassandraRoleManager))   throw new ConfigurationException("CassandraRoleManager must be used with PasswordAuthenticator");
   if (conf.internode_authenticator != null)   internodeAuthenticator=FBUtilities.construct(conf.internode_authenticator,"internode_authenticator");
  else   internodeAuthenticator=new AllowAllInternodeAuthenticator();
   authenticator.validateConfiguration();
   authorizer.validateConfiguration();
+  roleManager.validateConfiguration();
   internodeAuthenticator.validateConfiguration();
   if (conf.partitioner == null) {
     throw new ConfigurationException("Missing directive: partitioner");

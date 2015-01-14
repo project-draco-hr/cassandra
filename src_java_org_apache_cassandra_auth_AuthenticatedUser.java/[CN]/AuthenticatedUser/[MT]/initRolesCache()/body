@@ -1,0 +1,21 @@
+{
+  if (DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)   return null;
+  int validityPeriod=DatabaseDescriptor.getRolesValidity();
+  if (validityPeriod <= 0)   return null;
+  return CacheBuilder.newBuilder().refreshAfterWrite(validityPeriod,TimeUnit.MILLISECONDS).build(new CacheLoader<String,Set<String>>(){
+    public Set<String> load(    String name){
+      return loadRoles(name);
+    }
+    public ListenableFuture<Set<String>> reload(    final String name,    Set<String> oldValue){
+      ListenableFutureTask<Set<String>> task=ListenableFutureTask.create(new Callable<Set<String>>(){
+        public Set<String> call(){
+          return loadRoles(name);
+        }
+      }
+);
+      ScheduledExecutors.optionalTasks.execute(task);
+      return task;
+    }
+  }
+);
+}

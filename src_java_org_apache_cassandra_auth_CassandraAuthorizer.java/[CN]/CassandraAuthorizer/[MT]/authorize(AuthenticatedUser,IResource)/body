@@ -1,9 +1,8 @@
 {
   if (user.isSuper())   return Permission.ALL;
-  UntypedResultSet result;
+  Set<Permission> permissions=EnumSet.noneOf(Permission.class);
   try {
-    ResultMessage.Rows rows=authorizeStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,Lists.newArrayList(ByteBufferUtil.bytes(user.getName()),ByteBufferUtil.bytes(resource.getName()))));
-    result=UntypedResultSet.create(rows.result);
+    for (    String role : user.getRoles())     addPermissionsForRole(permissions,resource,role);
   }
  catch (  RequestValidationException e) {
     throw new AssertionError(e);
@@ -12,8 +11,5 @@ catch (  RequestExecutionException e) {
     logger.warn("CassandraAuthorizer failed to authorize {} for {}",user,resource);
     return Permission.NONE;
   }
-  if (result.isEmpty() || !result.one().has(PERMISSIONS))   return Permission.NONE;
-  Set<Permission> permissions=EnumSet.noneOf(Permission.class);
-  for (  String perm : result.one().getSet(PERMISSIONS,UTF8Type.instance))   permissions.add(Permission.valueOf(perm));
   return permissions;
 }

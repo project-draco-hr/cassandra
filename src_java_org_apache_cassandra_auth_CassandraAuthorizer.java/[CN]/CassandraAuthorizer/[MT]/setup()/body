@@ -1,10 +1,12 @@
 {
-  Auth.setupTable(PERMISSIONS_CF,PERMISSIONS_CF_SCHEMA);
-  try {
-    String query=String.format("SELECT permissions FROM %s.%s WHERE username = ? AND resource = ?",Auth.AUTH_KS,PERMISSIONS_CF);
-    authorizeStatement=(SelectStatement)QueryProcessor.parseStatement(query).prepare().statement;
-  }
- catch (  RequestValidationException e) {
-    throw new AssertionError(e);
+  authorizeRoleStatement=prepare(ROLE,AuthKeyspace.ROLE_PERMISSIONS);
+  if (Schema.instance.getCFMetaData(AuthKeyspace.NAME,"permissions") != null) {
+    legacyAuthorizeRoleStatement=prepare(USERNAME,USER_PERMISSIONS);
+    ScheduledExecutors.optionalTasks.schedule(new Runnable(){
+      public void run(){
+        convertLegacyData();
+      }
+    }
+,AuthKeyspace.SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
   }
 }

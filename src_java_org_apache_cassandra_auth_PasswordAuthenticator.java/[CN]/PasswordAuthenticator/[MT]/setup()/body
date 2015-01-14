@@ -1,16 +1,8 @@
 {
-  Auth.setupTable(CREDENTIALS_CF,CREDENTIALS_CF_SCHEMA);
-  ScheduledExecutors.nonPeriodicTasks.schedule(new Runnable(){
-    public void run(){
-      setupDefaultUser();
-    }
-  }
-,Auth.SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
-  try {
-    String query=String.format("SELECT %s FROM %s.%s WHERE username = ?",SALTED_HASH,Auth.AUTH_KS,CREDENTIALS_CF);
-    authenticateStatement=(SelectStatement)QueryProcessor.parseStatement(query).prepare().statement;
-  }
- catch (  RequestValidationException e) {
-    throw new AssertionError(e);
+  String query=String.format("SELECT %s FROM %s.%s WHERE role = ?",SALTED_HASH,AuthKeyspace.NAME,AuthKeyspace.ROLES);
+  authenticateStatement=prepare(query);
+  if (Schema.instance.getCFMetaData(AuthKeyspace.NAME,LEGACY_CREDENTIALS_TABLE) != null) {
+    query=String.format("SELECT %s from %s.%s WHERE username = ?",SALTED_HASH,AuthKeyspace.NAME,LEGACY_CREDENTIALS_TABLE);
+    legacyAuthenticateStatement=prepare(query);
   }
 }

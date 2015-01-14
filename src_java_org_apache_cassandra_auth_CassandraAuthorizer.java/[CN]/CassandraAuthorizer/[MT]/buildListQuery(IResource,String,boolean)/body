@@ -1,0 +1,18 @@
+{
+  String tableName=useLegacyTable ? USER_PERMISSIONS : AuthKeyspace.ROLE_PERMISSIONS;
+  String entityName=useLegacyTable ? USERNAME : ROLE;
+  List<String> vars=Lists.newArrayList(AuthKeyspace.NAME,tableName);
+  List<String> conditions=new ArrayList<>();
+  if (resource != null) {
+    conditions.add("resource = '%s'");
+    vars.add(escape(resource.getName()));
+  }
+  if (grantee != null) {
+    conditions.add(entityName + " = '%s'");
+    vars.add(escape(grantee));
+  }
+  String query="SELECT " + entityName + ", resource, permissions FROM %s.%s";
+  if (!conditions.isEmpty())   query+=" WHERE " + StringUtils.join(conditions," AND ");
+  if (resource != null && grantee == null)   query+=" ALLOW FILTERING";
+  return String.format(query,vars.toArray());
+}
