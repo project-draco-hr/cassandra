@@ -6,14 +6,10 @@
   for (  ColumnDefinition def : defs) {
     Bound b=!def.isReversedType() ? bound : bound.reverse();
     Restriction r=restrictions.getRestriction(def);
-    if (keyPosition != def.position() || r.isContains()) {
-      EOC eoc=!compositeBuilder.isEmpty() && bound.isEnd() ? EOC.END : EOC.NONE;
-      return compositeBuilder.buildWithEOC(eoc);
-    }
+    if (keyPosition != def.position() || r.isContains())     return compositeBuilder.buildWithEOC(bound.isEnd() ? EOC.END : EOC.START);
     if (r.isSlice()) {
       if (!r.hasBound(b)) {
-        EOC eoc=!compositeBuilder.isEmpty() && bound.isEnd() ? EOC.END : EOC.NONE;
-        return compositeBuilder.buildWithEOC(eoc);
+        return compositeBuilder.buildWithEOC(bound.isEnd() ? EOC.END : EOC.START);
       }
       ByteBuffer value=checkNotNull(r.bounds(b,options).get(0),"Invalid null clustering key part %s",r);
       compositeBuilder.addElementToAll(value);
@@ -26,6 +22,6 @@
     checkFalse(compositeBuilder.containsNull(),"Invalid null clustering key part %s",def.name);
     keyPosition++;
   }
-  EOC eoc=bound.isEnd() && compositeBuilder.hasRemaining() ? EOC.END : EOC.NONE;
+  EOC eoc=!compositeBuilder.hasRemaining() ? EOC.NONE : (bound.isEnd() ? EOC.END : EOC.START);
   return compositeBuilder.buildWithEOC(eoc);
 }

@@ -7,7 +7,13 @@
     while ((prefetchedCol=prefetched.peek()) != null) {
       if (isColumnBeforeSliceStart(prefetchedCol)) {
         inSlice=false;
-        if (!setNextSlice())         return false;
+        if (prefetchedCol instanceof RangeTombstone) {
+          blockColumns.addLast(prefetched.poll());
+          gotSome=true;
+          continue;
+        }
+        if (hasMoreSlice())         setNextSlice();
+ else         prefetched.poll();
       }
  else       if (inSlice || isColumnBeforeSliceFinish(prefetchedCol)) {
         blockColumns.addLast(prefetched.poll());

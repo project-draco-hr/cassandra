@@ -5,7 +5,13 @@
   while (deserializer.hasNext()) {
     Composite start=currentStart();
     if (!inSlice && !start.isEmpty() && deserializer.compareNextTo(start) < 0) {
-      deserializer.skipNext();
+      if (deserializer.nextIsRangeTombstone()) {
+        RangeTombstone rt=(RangeTombstone)deserializer.readNext();
+        if (comparator.compare(rt.max,start) >= 0)         addColumn(rt);
+      }
+ else {
+        deserializer.skipNext();
+      }
       continue;
     }
     Composite finish=currentFinish();
