@@ -1,7 +1,6 @@
 {
   if (!hasMoreSlice())   return false;
   if (reversed && !prefetched.isEmpty()) {
-    boolean gotSome=false;
     boolean inSlice=false;
     OnDiskAtom prefetchedCol;
     while ((prefetchedCol=prefetched.peek()) != null) {
@@ -9,7 +8,6 @@
         inSlice=false;
         if (prefetchedCol instanceof RangeTombstone) {
           blockColumns.addLast(prefetched.poll());
-          gotSome=true;
           continue;
         }
         if (hasMoreSlice())         setNextSlice();
@@ -17,14 +15,13 @@
       }
  else       if (inSlice || isColumnBeforeSliceFinish(prefetchedCol)) {
         blockColumns.addLast(prefetched.poll());
-        gotSome=true;
         inSlice=true;
       }
  else {
         prefetched.poll();
       }
     }
-    if (gotSome)     return true;
+    if (!blockColumns.isEmpty())     return true;
   }
   try {
     return getNextBlock();
