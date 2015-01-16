@@ -1,0 +1,16 @@
+{
+  int pos=input.position();
+  final int decompressedLength=(input.get(pos) & 0xFF) | ((input.get(pos + 1) & 0xFF) << 8) | ((input.get(pos + 2) & 0xFF) << 16)| ((input.get(pos + 3) & 0xFF) << 24);
+  int inputLength=input.remaining() - INTEGER_BYTES;
+  final int compressedLength;
+  try {
+    compressedLength=decompressor.decompress(input,input.position() + INTEGER_BYTES,output,output.position(),decompressedLength);
+  }
+ catch (  LZ4Exception e) {
+    throw new IOException(e);
+  }
+  if (compressedLength != inputLength) {
+    throw new IOException("Compressed lengths mismatch: " + compressedLength + " vs "+ inputLength);
+  }
+  return decompressedLength;
+}
