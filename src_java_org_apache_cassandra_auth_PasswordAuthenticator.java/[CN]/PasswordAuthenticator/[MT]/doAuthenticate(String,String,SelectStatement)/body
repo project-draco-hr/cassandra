@@ -1,12 +1,6 @@
 {
-  UntypedResultSet result;
-  try {
-    ResultMessage.Rows rows=authenticationStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(consistencyForRole(username),Lists.newArrayList(ByteBufferUtil.bytes(username))));
-    result=UntypedResultSet.create(rows.result);
-  }
- catch (  RequestValidationException e) {
-    throw new AssertionError(e);
-  }
+  ResultMessage.Rows rows=authenticationStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(consistencyForRole(username),Lists.newArrayList(ByteBufferUtil.bytes(username))));
+  UntypedResultSet result=UntypedResultSet.create(rows.result);
   if ((result.isEmpty() || !result.one().has(SALTED_HASH)) || !BCrypt.checkpw(password,result.one().getString(SALTED_HASH)))   throw new AuthenticationException("Username and/or password are incorrect");
   return new AuthenticatedUser(username);
 }
