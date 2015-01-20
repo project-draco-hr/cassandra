@@ -1,0 +1,17 @@
+{
+  MessageOut<ReadCommand> message=null;
+  boolean hasLocalEndpoint=false;
+  for (  InetAddress endpoint : endpoints) {
+    if (isLocalRequest(endpoint)) {
+      hasLocalEndpoint=true;
+      continue;
+    }
+    logger.trace("reading {} from {}",readCommand.isDigestQuery() ? "digest" : "data",endpoint);
+    if (message == null)     message=readCommand.createMessage();
+    MessagingService.instance().sendRRWithFailure(message,endpoint,handler);
+  }
+  if (hasLocalEndpoint) {
+    logger.trace("reading {} locally",readCommand.isDigestQuery() ? "digest" : "data");
+    StageManager.getStage(Stage.READ).maybeExecuteImmediately(new LocalReadRunnable(command,handler));
+  }
+}
