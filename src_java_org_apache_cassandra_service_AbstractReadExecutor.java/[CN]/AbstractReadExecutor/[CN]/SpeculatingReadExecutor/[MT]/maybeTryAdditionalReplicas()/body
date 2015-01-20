@@ -2,10 +2,7 @@
   if (cfs.sampleLatencyNanos > TimeUnit.MILLISECONDS.toNanos(command.getTimeout()))   return;
   if (!handler.await(cfs.sampleLatencyNanos,TimeUnit.NANOSECONDS)) {
     ReadCommand retryCommand=command;
-    if (resolver.getData() != null) {
-      retryCommand=command.copy();
-      retryCommand.setDigestQuery(true);
-    }
+    if (resolver.getData() != null)     retryCommand=command.copy().setIsDigestQuery(true);
     InetAddress extraReplica=Iterables.getLast(targetReplicas);
     logger.trace("speculating read retry on {}",extraReplica);
     MessagingService.instance().sendRR(retryCommand.createMessage(),extraReplica,handler);
