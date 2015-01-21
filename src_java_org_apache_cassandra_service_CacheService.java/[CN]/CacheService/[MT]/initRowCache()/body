@@ -1,7 +1,15 @@
 {
   logger.info("Initializing row cache with capacity of {} MBs",DatabaseDescriptor.getRowCacheSizeInMB());
-  long rowCacheInMemoryCapacity=DatabaseDescriptor.getRowCacheSizeInMB() * 1024 * 1024;
-  ICache<RowCacheKey,IRowCacheEntry> rc=new SerializingCacheProvider().create(rowCacheInMemoryCapacity);
+  CacheProvider<RowCacheKey,IRowCacheEntry> cacheProvider;
+  String cacheProviderClassName=DatabaseDescriptor.getRowCacheSizeInMB() > 0 ? DatabaseDescriptor.getRowCacheClassName() : "org.apache.cassandra.cache.NopCacheProvider";
+  try {
+    Class<CacheProvider<RowCacheKey,IRowCacheEntry>> cacheProviderClass=(Class<CacheProvider<RowCacheKey,IRowCacheEntry>>)Class.forName(cacheProviderClassName);
+    cacheProvider=cacheProviderClass.newInstance();
+  }
+ catch (  Exception e) {
+    throw new RuntimeException("Cannot find configured row cache provider class " + DatabaseDescriptor.getRowCacheClassName());
+  }
+  ICache<RowCacheKey,IRowCacheEntry> rc=cacheProvider.create();
   AutoSavingCache<RowCacheKey,IRowCacheEntry> rowCache=new AutoSavingCache<>(rc,CacheType.ROW_CACHE,new RowCacheSerializer());
   int rowCacheKeysToSave=DatabaseDescriptor.getRowCacheKeysToSave();
   rowCache.scheduleSaving(DatabaseDescriptor.getRowCacheSavePeriod(),rowCacheKeysToSave);

@@ -1,7 +1,7 @@
 {
   logger.debug("Deleting old {} files.",cacheType);
   deleteOldCacheFiles();
-  if (keys.isEmpty()) {
+  if (!keyIterator.hasNext()) {
     logger.debug("Skipping {} save, cache is empty.",cacheType);
     return;
   }
@@ -10,7 +10,8 @@
   HashMap<UUID,OutputStream> streams=new HashMap<>();
   HashMap<UUID,File> paths=new HashMap<>();
   try {
-    for (    K key : keys) {
+    while (keyIterator.hasNext()) {
+      K key=keyIterator.next();
       UUID cfId=key.getCFId();
       if (!Schema.instance.hasCF(key.getCFId()))       continue;
       DataOutputPlus writer=writers.get(cfId);
@@ -35,9 +36,15 @@
         throw new FSWriteError(e,paths.get(cfId));
       }
       keysWritten++;
+      if (keysWritten >= keysEstimate)       break;
     }
   }
   finally {
+    if (keyIterator instanceof Closeable)     try {
+      ((Closeable)keyIterator).close();
+    }
+ catch (    IOException ignored) {
+    }
     for (    OutputStream writer : streams.values())     FileUtils.closeQuietly(writer);
   }
   for (  Map.Entry<UUID,DataOutputPlus> entry : writers.entrySet()) {
@@ -47,5 +54,5 @@
     cacheFile.delete();
     if (!tmpFile.renameTo(cacheFile))     logger.error("Unable to rename {} to {}",tmpFile,cacheFile);
   }
-  logger.info("Saved {} ({} items) in {} ms",cacheType,keys.size(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+  logger.info("Saved {} ({} items) in {} ms",cacheType,keysWritten,TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
 }

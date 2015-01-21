@@ -1,2 +1,13 @@
 {
+  CompactionManager.instance.disableAutoCompaction();
+  ColumnFamilyStore store=Keyspace.open(KEYSPACE_CACHED).getColumnFamilyStore(CF_CACHED);
+  CacheService.instance.invalidateRowCache();
+  assertEquals(0,CacheService.instance.rowCache.size());
+  SchemaLoader.insertData(KEYSPACE_CACHED,CF_CACHED,offset,totalKeys);
+  SchemaLoader.readData(KEYSPACE_CACHED,CF_CACHED,offset,totalKeys);
+  assertEquals(totalKeys,CacheService.instance.rowCache.size());
+  CacheService.instance.rowCache.submitWrite(keysToSave).get();
+  CacheService.instance.invalidateRowCache();
+  assertEquals(0,CacheService.instance.rowCache.size());
+  assertEquals(keysToSave == Integer.MAX_VALUE ? totalKeys : keysToSave,CacheService.instance.rowCache.loadSaved(store));
 }
