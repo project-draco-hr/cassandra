@@ -20,6 +20,11 @@
           }
         }
       }
+      Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfs.metadata.cfId,validator.desc.parentSessionId);
+      if (!Sets.intersection(currentlyRepairing,sstablesToValidate).isEmpty()) {
+        logger.error("Cannot start multiple repair sessions over the same sstables");
+        throw new RuntimeException("Cannot start multiple repair sessions over the same sstables");
+      }
       prs.addSSTables(cfs.metadata.cfId,sstablesToValidate);
       sstables=prs.getAndReferenceSSTablesInRange(cfs.metadata.cfId,validator.desc.range);
       if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;

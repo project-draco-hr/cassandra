@@ -1,7 +1,20 @@
 {
   Runnable runnable=new WrappedRunnable(){
     @Override public void runMayThrow() throws Exception {
-      performAnticompaction(cfs,ranges,validatedForRepair,repairedAt);
+      boolean success=false;
+      while (!success) {
+        for (        SSTableReader compactingSSTable : cfs.getDataTracker().getCompacting()) {
+          if (sstables.remove(compactingSSTable))           SSTableReader.releaseReferences(Arrays.asList(compactingSSTable));
+        }
+        Set<SSTableReader> compactedSSTables=new HashSet<>();
+        for (        SSTableReader sstable : sstables) {
+          if (sstable.isMarkedCompacted())           compactedSSTables.add(sstable);
+        }
+        sstables.removeAll(compactedSSTables);
+        SSTableReader.releaseReferences(compactedSSTables);
+        success=sstables.isEmpty() || cfs.getDataTracker().markCompacting(sstables);
+      }
+      performAnticompaction(cfs,ranges,sstables,repairedAt);
     }
   }
 ;

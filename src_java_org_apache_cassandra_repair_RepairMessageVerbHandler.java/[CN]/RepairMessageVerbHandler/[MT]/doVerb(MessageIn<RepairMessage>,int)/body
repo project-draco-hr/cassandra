@@ -1,14 +1,15 @@
 {
   RepairJobDesc desc=message.payload.desc;
+  try {
 switch (message.payload.messageType) {
 case PREPARE_MESSAGE:
-    PrepareMessage prepareMessage=(PrepareMessage)message.payload;
-  logger.debug("Preparing, {}",prepareMessage);
-List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
+      PrepareMessage prepareMessage=(PrepareMessage)message.payload;
+    logger.debug("Preparing, {}",prepareMessage);
+  List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
 for (UUID cfId : prepareMessage.cfIds) {
-Pair<String,String> kscf=Schema.instance.getCF(cfId);
-ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-columnFamilyStores.add(columnFamilyStore);
+  Pair<String,String> kscf=Schema.instance.getCF(cfId);
+  ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+  columnFamilyStores.add(columnFamilyStore);
 }
 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges,prepareMessage.isIncremental);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
@@ -23,6 +24,11 @@ return sstable != null && !(sstable.partitioner instanceof LocalPartitioner) && 
 }
 }
 );
+Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfs.metadata.cfId,desc.parentSessionId);
+if (!Sets.intersection(currentlyRepairing,snapshottedSSSTables).isEmpty()) {
+logger.error("Cannot start multiple repair sessions over the same sstables");
+throw new RuntimeException("Cannot start multiple repair sessions over the same sstables");
+}
 ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).addSSTables(cfs.metadata.cfId,snapshottedSSSTables);
 logger.debug("Enqueuing response to snapshot request {} to {}",desc.sessionId,message.from);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
@@ -59,5 +65,11 @@ break;
 default :
 ActiveRepairService.instance.handleMessage(message.from,message.payload);
 break;
+}
+}
+ catch (Exception e) {
+logger.error("Got error, removing parent repair session");
+if (desc != null && desc.parentSessionId != null) ActiveRepairService.instance.removeParentRepairSession(desc.parentSessionId);
+throw new RuntimeException(e);
 }
 }
