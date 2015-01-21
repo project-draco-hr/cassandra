@@ -1,0 +1,15 @@
+{
+  TopKSampler<String> sampler=new TopKSampler<String>();
+  sampler.beginSampling(10);
+  insert(sampler);
+  waitForEmpty(1000);
+  SamplerResult single=sampler.finishSampling(10);
+  TopKSampler<String> sampler2=new TopKSampler<String>();
+  sampler2.beginSampling(10);
+  for (int i=1; i <= 10; i++) {
+    sampler2.addSample("item" + i,i);
+  }
+  waitForEmpty(1000);
+  Assert.assertEquals(countMap(single.topK),countMap(sampler2.finishSampling(10).topK));
+  Assert.assertEquals(sampler.hll.cardinality(),sampler2.hll.cardinality());
+}
