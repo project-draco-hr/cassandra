@@ -1,31 +1,28 @@
 {
   if (scalar == 0) {
-    this.position[0]=-1;
+    this.currentRow[0]=-1;
     clusteringComponents[0].addFirst(this);
     return setHasNext(advance(0,true));
   }
-  int[] position=this.position;
+  int[] position=this.currentRow;
   decompose(scalar,position);
-  boolean incremented=false;
   for (int i=0; i < position.length; i++) {
     if (i != 0)     fill(i);
     for (int c=position[i]; c > 0; c--)     clusteringComponents[i].poll();
     if (clusteringComponents[i].isEmpty()) {
       int j=i;
-      while (--j >= 0) {
+      while (true) {
+        if (--j < 0)         return setHasNext(false);
         clusteringComponents[j].poll();
         if (!clusteringComponents[j].isEmpty())         break;
       }
-      if (j < 0)       return setHasNext(false);
       position[j]++;
       Arrays.fill(position,j + 1,position.length,0);
       while (j < i)       fill(++j);
-      incremented=true;
     }
-    if (clusteringComponents[i].isEmpty())     throw new IllegalStateException();
     row.row[i]=clusteringComponents[i].peek();
   }
-  if (incremented && compareToLastRow() > 0)   return setHasNext(false);
+  if (compareToLastRow(currentRow.length - 1) > 0)   return setHasNext(false);
   position[position.length - 1]--;
   clusteringComponents[position.length - 1].addFirst(this);
   return setHasNext(advance(position.length - 1,true));
