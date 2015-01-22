@@ -1,0 +1,20 @@
+{
+  CellNameType type=new SimpleDenseCellNameType(Int32Type.instance);
+  ColumnFamily map=ArrayBackedSortedColumns.factory.create(metadata(),false);
+  int n=127;
+  int[] values=new int[n];
+  for (int i=0; i < n; i++)   values[i]=i;
+  Set<Integer> toRemove=Sets.newHashSet(3,12,13,15,58,103,112);
+  for (  int value : values)   map.addColumn(new BufferCell(type.makeCellName(value)));
+  BatchRemoveIterator<Cell> batchIter=map.batchRemoveIterator();
+  while (batchIter.hasNext())   if (toRemove.contains(batchIter.next().name().toByteBuffer().getInt(0)))   batchIter.remove();
+  batchIter.commit();
+  int expected=0;
+  while (toRemove.contains(expected))   expected++;
+  for (  Cell column : map) {
+    assertEquals(expected,column.name().toByteBuffer().getInt(0));
+    expected++;
+    while (toRemove.contains(expected))     expected++;
+  }
+  assertEquals(expected,n);
+}
