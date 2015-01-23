@@ -3,11 +3,16 @@
   String keyspace=args.get(0);
   String cfname=args.get(1);
   ColumnFamilyStoreMBean store=probe.getCfsProxy(keyspace,cfname);
+  long[] estimatedRowSizeHistogram=store.getEstimatedRowSizeHistogram();
+  long[] estimatedColumnCountHistogram=store.getEstimatedColumnCountHistogram();
+  if (isEmpty(estimatedRowSizeHistogram) || isEmpty(estimatedColumnCountHistogram)) {
+    System.err.println("No SSTables exists, unable to calculate 'Partition Size' and 'Cell Count' percentiles");
+  }
   String[] percentiles=new String[]{"50%","75%","95%","98%","99%","Min","Max"};
   double[] readLatency=probe.metricPercentilesAsArray(store.getRecentReadLatencyHistogramMicros());
   double[] writeLatency=probe.metricPercentilesAsArray(store.getRecentWriteLatencyHistogramMicros());
-  double[] estimatedRowSizePercentiles=probe.metricPercentilesAsArray(store.getEstimatedRowSizeHistogram());
-  double[] estimatedColumnCountPercentiles=probe.metricPercentilesAsArray(store.getEstimatedColumnCountHistogram());
+  double[] estimatedRowSizePercentiles=probe.metricPercentilesAsArray(estimatedRowSizeHistogram);
+  double[] estimatedColumnCountPercentiles=probe.metricPercentilesAsArray(estimatedColumnCountHistogram);
   double[] sstablesPerRead=probe.metricPercentilesAsArray(store.getRecentSSTablesPerReadHistogram());
   System.out.println(format("%s/%s histograms",keyspace,cfname));
   System.out.println(format("%-10s%10s%18s%18s%18s%18s","Percentile","SSTables","Write Latency","Read Latency","Partition Size","Cell Count"));
