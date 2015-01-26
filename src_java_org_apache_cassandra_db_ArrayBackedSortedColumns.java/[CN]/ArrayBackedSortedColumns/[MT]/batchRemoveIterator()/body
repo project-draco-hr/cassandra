@@ -1,2 +1,42 @@
 {
+  return new BatchRemoveIterator<Column>(){
+    private Iterator<Column> iter=iterator();
+    private BitSet removedIndexes=new BitSet(columns.size());
+    private int idx=-1;
+    private boolean shouldCallNext=true;
+    private boolean isCommitted=false;
+    private boolean removedAnything=false;
+    public void commit(){
+      if (isCommitted)       throw new IllegalStateException();
+      isCommitted=true;
+      if (!removedAnything)       return;
+      int size=columns.size();
+      int retainedCount=0;
+      int clearIdx, setIdx=-1;
+      while (true) {
+        clearIdx=removedIndexes.nextClearBit(setIdx + 1);
+        if (clearIdx >= size)         break;
+        setIdx=removedIndexes.nextSetBit(clearIdx + 1);
+        if (setIdx < 0)         setIdx=size;
+        if (retainedCount != clearIdx)         Collections.copy(columns.subList(retainedCount,retainedCount + setIdx - clearIdx),columns.subList(clearIdx,setIdx));
+        retainedCount+=(setIdx - clearIdx);
+      }
+      columns.subList(retainedCount,size).clear();
+    }
+    public boolean hasNext(){
+      return iter.hasNext();
+    }
+    public Column next(){
+      idx++;
+      shouldCallNext=false;
+      return iter.next();
+    }
+    public void remove(){
+      if (shouldCallNext)       throw new IllegalStateException();
+      removedIndexes.set(reversed ? columns.size() - idx - 1 : idx);
+      removedAnything=true;
+      shouldCallNext=true;
+    }
+  }
+;
 }
