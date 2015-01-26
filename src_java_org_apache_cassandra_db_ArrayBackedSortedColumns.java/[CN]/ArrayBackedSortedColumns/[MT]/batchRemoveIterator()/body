@@ -1,2 +1,43 @@
 {
+  maybeSortCells();
+  return new BatchRemoveIterator<Cell>(){
+    private final Iterator<Cell> iter=iterator();
+    private BitSet removedIndexes=new BitSet(size);
+    private int idx=-1;
+    private boolean shouldCallNext=false;
+    private boolean isCommitted=false;
+    private boolean removedAnything=false;
+    public void commit(){
+      if (isCommitted)       throw new IllegalStateException();
+      isCommitted=true;
+      if (!removedAnything)       return;
+      int retainedCount=0;
+      int clearIdx, setIdx=-1;
+      while (true) {
+        clearIdx=removedIndexes.nextClearBit(setIdx + 1);
+        if (clearIdx >= size)         break;
+        setIdx=removedIndexes.nextSetBit(clearIdx + 1);
+        if (setIdx < 0)         setIdx=size;
+        if (retainedCount != clearIdx)         System.arraycopy(cells,clearIdx,cells,retainedCount,setIdx - clearIdx);
+        retainedCount+=(setIdx - clearIdx);
+      }
+      for (int i=retainedCount; i < size; i++)       cells[i]=null;
+      size=sortedSize=retainedCount;
+    }
+    public boolean hasNext(){
+      return iter.hasNext();
+    }
+    public Cell next(){
+      idx++;
+      shouldCallNext=false;
+      return iter.next();
+    }
+    public void remove(){
+      if (shouldCallNext)       throw new IllegalStateException();
+      removedIndexes.set(reversed ? size - idx - 1 : idx);
+      removedAnything=true;
+      shouldCallNext=true;
+    }
+  }
+;
 }
