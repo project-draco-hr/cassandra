@@ -1,0 +1,18 @@
+{
+  startupChecks=startupChecks.withTest(StartupChecks.checkSSTablesFormat);
+  File dataDir=new File(DatabaseDescriptor.getAllDataFileLocations()[0]);
+  Path sstableDir=Paths.get(dataDir.getAbsolutePath(),"Keyspace1","Standard1");
+  Files.createDirectories(sstableDir);
+  copyInvalidLegacySSTables(sstableDir);
+  verifyFailure(startupChecks,"Detected unreadable sstables");
+  FileUtils.deleteRecursive(sstableDir.toFile());
+  Path snapshotDir=sstableDir.resolve("snapshots");
+  Files.createDirectories(snapshotDir);
+  copyInvalidLegacySSTables(snapshotDir);
+  startupChecks.verify();
+  FileUtils.deleteRecursive(sstableDir.toFile());
+  Path backupDir=sstableDir.resolve("backups");
+  Files.createDirectories(backupDir);
+  copyInvalidLegacySSTables(backupDir);
+  startupChecks.verify();
+}

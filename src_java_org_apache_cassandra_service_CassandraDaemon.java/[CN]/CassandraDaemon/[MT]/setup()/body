@@ -1,36 +1,18 @@
 {
+  logSystemInfo();
   try {
-    logger.info("Hostname: {}",InetAddress.getLocalHost().getHostName());
+    startupChecks.verify();
   }
- catch (  UnknownHostException e1) {
-    logger.info("Could not resolve local host");
-  }
-  long now=System.currentTimeMillis();
-  if (now < EARLIEST_LAUNCH_DATE) {
-    String msg=String.format("current machine time is %s, but that is seemingly incorrect. exiting now.",new Date(now).toString());
-    logger.error(msg);
-    throw new IllegalStateException(msg);
-  }
-  if (!DatabaseDescriptor.hasLargeAddressSpace())   logger.info("32bit JVM detected.  It is recommended to run Cassandra on a 64bit JVM for better performance.");
-  String javaVersion=System.getProperty("java.version");
-  String javaVmName=System.getProperty("java.vm.name");
-  logger.info("JVM vendor/version: {}/{}",javaVmName,javaVersion);
-  if (javaVmName.contains("OpenJDK")) {
-    logger.warn("OpenJDK is not recommended. Please upgrade to the newest Oracle Java release");
-  }
- else   if (!javaVmName.contains("HotSpot")) {
-    logger.warn("Non-Oracle JVM detected.  Some features, such as immediate unmap of compacted SSTables, may not work as intended");
-  }
-  logger.info("Heap size: {}/{}",Runtime.getRuntime().totalMemory(),Runtime.getRuntime().maxMemory());
-  for (  MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans())   logger.info("{} {}: {}",pool.getName(),pool.getType(),pool.getPeakUsage());
-  logger.info("Classpath: {}",System.getProperty("java.class.path"));
-  if (!CLibrary.jnaAvailable()) {
-    boolean jnaRequired=!Boolean.getBoolean("cassandra.boot_without_jna");
-    if (jnaRequired) {
-      exitOrFail(3,"JNA failing to initialize properly. Use -Dcassandra.boot_without_jna=true to bootstrap even so.");
-    }
+ catch (  StartupException e) {
+    exitOrFail(e.returnCode,e.getMessage(),e.getCause());
   }
   CLibrary.tryMlockall();
+  try {
+    SystemKeyspace.snapshotOnVersionChange();
+  }
+ catch (  IOException e) {
+    exitOrFail(3,e.getMessage(),e.getCause());
+  }
   maybeInitJmx();
   Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler(){
     public void uncaughtException(    Thread t,    Throwable e){
@@ -51,31 +33,6 @@
     }
   }
 );
-  Iterable<String> dirs=Iterables.concat(Arrays.asList(DatabaseDescriptor.getAllDataFileLocations()),Arrays.asList(DatabaseDescriptor.getCommitLogLocation(),DatabaseDescriptor.getSavedCachesLocation()));
-  SigarLibrary sigarLibrary=new SigarLibrary();
-  if (sigarLibrary.initialized())   sigarLibrary.warnIfRunningInDegradedMode();
- else   logger.info("Sigar could not be initialized");
-  for (  String dataDir : dirs) {
-    logger.debug("Checking directory {}",dataDir);
-    File dir=new File(dataDir);
-    if (!dir.exists()) {
-      logger.error("Directory {} doesn't exist",dataDir);
-      if (!dir.mkdirs()) {
-        exitOrFail(3,"Has no permission to create directory " + dataDir);
-      }
-    }
-    if (!Directories.verifyFullPermissions(dir,dataDir)) {
-      exitOrFail(3,"Insufficient permissions on directory " + dataDir);
-    }
-  }
-  if (CacheService.instance == null)   throw new RuntimeException("Failed to initialize Cache Service.");
-  for (  CFMetaData cfm : Schema.instance.getKeyspaceMetaData(SystemKeyspace.NAME).values())   ColumnFamilyStore.scrubDataDirectories(cfm);
-  try {
-    SystemKeyspace.checkHealth();
-  }
- catch (  ConfigurationException e) {
-    exitOrFail(100,"Fatal exception during initialization",e);
-  }
   Schema.instance.loadFromDisk();
   Map<Pair<String,String>,Map<Integer,UUID>> unfinishedCompactions=SystemKeyspace.getUnfinishedCompactions();
   for (  Pair<String,String> kscf : unfinishedCompactions.keySet()) {

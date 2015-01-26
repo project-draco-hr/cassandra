@@ -1,31 +1,17 @@
 {
-  String jmxPort=System.getProperty("com.sun.management.jmxremote.port");
-  if (jmxPort == null) {
-    logger.warn("JMX is not enabled to receive remote connections. Please see cassandra-env.sh for more info.");
-    jmxPort=System.getProperty("cassandra.jmx.local.port");
-    if (jmxPort == null) {
-      logger.error("cassandra.jmx.local.port missing from cassandra-env.sh, unable to start local JMX service." + jmxPort);
-    }
- else {
-      System.setProperty("java.rmi.server.hostname",InetAddress.getLoopbackAddress().getHostAddress());
-      try {
-        RMIServerSocketFactory serverFactory=new RMIServerSocketFactoryImpl();
-        LocateRegistry.createRegistry(Integer.valueOf(jmxPort),null,serverFactory);
-        StringBuffer url=new StringBuffer();
-        url.append("service:jmx:");
-        url.append("rmi://localhost/jndi/");
-        url.append("rmi://localhost:").append(jmxPort).append("/jmxrmi");
-        Map env=new HashMap();
-        env.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE,serverFactory);
-        jmxServer=new RMIConnectorServer(new JMXServiceURL(url.toString()),env,ManagementFactory.getPlatformMBeanServer());
-        jmxServer.start();
-      }
- catch (      IOException e) {
-        logger.error("Error starting local jmx server: ",e);
-      }
-    }
+  if (System.getProperty("com.sun.management.jmxremote.port") != null)   return;
+  String jmxPort=System.getProperty("cassandra.jmx.local.port");
+  if (jmxPort == null)   return;
+  System.setProperty("java.rmi.server.hostname",InetAddress.getLoopbackAddress().getHostAddress());
+  RMIServerSocketFactory serverFactory=new RMIServerSocketFactoryImpl();
+  Map<String,?> env=Collections.singletonMap(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE,serverFactory);
+  try {
+    LocateRegistry.createRegistry(Integer.valueOf(jmxPort),null,serverFactory);
+    JMXServiceURL url=new JMXServiceURL(String.format("service:jmx:rmi://localhost/jndi/rmi://localhost:%s/jmxrmi",jmxPort));
+    jmxServer=new RMIConnectorServer(url,env,ManagementFactory.getPlatformMBeanServer());
+    jmxServer.start();
   }
- else {
-    logger.info("JMX is enabled to receive remote connections on port: " + jmxPort);
+ catch (  IOException e) {
+    logger.error("Error starting local jmx server: ",e);
   }
 }
