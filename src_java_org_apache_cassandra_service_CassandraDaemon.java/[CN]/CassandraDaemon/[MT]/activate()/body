@@ -8,6 +8,12 @@
  catch (    Exception e) {
       logger.error("error registering MBean {}",MBEAN_NAME,e);
     }
+    try {
+      DatabaseDescriptor.forceStaticInitialization();
+    }
+ catch (    ExceptionInInitializerError e) {
+      throw e.getCause();
+    }
     setup();
     if (pidFile != null) {
       new File(pidFile).deleteOnExit();
@@ -19,9 +25,17 @@
     start();
   }
  catch (  Throwable e) {
-    logger.error("Exception encountered during startup",e);
-    e.printStackTrace();
-    System.out.println("Exception encountered during startup: " + e.getMessage());
-    exitOrFail(3,"Exception encountered during startup",e);
+    boolean logStackTrace=e instanceof ConfigurationException ? ((ConfigurationException)e).logStackTrace : true;
+    System.out.println("Exception (" + e.getClass().getName() + ") encountered during startup: "+ e.getMessage());
+    if (logStackTrace) {
+      if (runManaged)       logger.error("Exception encountered during startup",e);
+      e.printStackTrace();
+      exitOrFail(3,"Exception encountered during startup",e);
+    }
+ else {
+      if (runManaged)       logger.error("Exception encountered during startup: " + e.getMessage());
+      System.err.println(e.getMessage());
+      exitOrFail(3,"Exception encountered during startup: " + e.getMessage());
+    }
   }
 }
