@@ -38,13 +38,9 @@
     return;
   }
   logger.info("Loading new SSTables and building secondary indexes for {}/{}: {}",keyspace.getName(),name,newSSTables);
-  SSTableReader.acquireReferences(newSSTables);
-  data.addSSTables(newSSTables);
-  try {
+  try (Refs<SSTableReader> refs=Refs.ref(newSSTables)){
+    data.addSSTables(newSSTables);
     indexManager.maybeBuildSecondaryIndexes(newSSTables,indexManager.allIndexesNames());
   }
-  finally {
-    SSTableReader.releaseReferences(newSSTables);
-  }
-  logger.info("Done loading load new SSTables for {}/{}",keyspace.getName(),name);
+   logger.info("Done loading load new SSTables for {}/{}",keyspace.getName(),name);
 }

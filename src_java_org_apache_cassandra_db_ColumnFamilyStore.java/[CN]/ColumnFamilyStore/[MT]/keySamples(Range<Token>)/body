@@ -1,14 +1,10 @@
 {
-  Collection<SSTableReader> sstables=markCurrentSSTablesReferenced();
-  try {
-    Iterable<DecoratedKey>[] samples=new Iterable[sstables.size()];
+  try (RefViewFragment view=selectAndReference(ALL_SSTABLES)){
+    Iterable<DecoratedKey>[] samples=new Iterable[view.sstables.size()];
     int i=0;
-    for (    SSTableReader sstable : sstables) {
+    for (    SSTableReader sstable : view.sstables) {
       samples[i++]=sstable.getKeySamples(range);
     }
     return Iterables.concat(samples);
   }
-  finally {
-    SSTableReader.releaseReferences(sstables);
-  }
-}
+ }

@@ -4,10 +4,11 @@
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("-10".getBytes()),new BytesToken("-1".getBytes()));
   List<Range<Token>> ranges=Arrays.asList(range);
-  SSTableReader.acquireReferences(sstables);
-  CompactionManager.instance.performAnticompaction(store,ranges,sstables,1);
+  Refs<SSTableReader> refs=Refs.tryRef(sstables);
+  if (refs == null)   throw new IllegalStateException();
+  CompactionManager.instance.performAnticompaction(store,ranges,refs,1);
   assertThat(store.getSSTables().size(),is(1));
   assertThat(Iterables.get(store.getSSTables(),0).isRepaired(),is(false));
-  assertThat(Iterables.get(store.getSSTables(),0).referenceCount(),is(1));
+  assertThat(Iterables.get(store.getSSTables(),0).sharedRef().globalCount(),is(1));
   assertThat(store.getDataTracker().getCompacting().size(),is(0));
 }

@@ -2,14 +2,10 @@
   ColumnFamilyStore cfs=Keyspace.open(ksName).getColumnFamilyStore(cfName);
   Set<String> indexes=new HashSet<String>(Arrays.asList(idxNames));
   Collection<SSTableReader> sstables=cfs.getSSTables();
-  try {
+  try (Refs<SSTableReader> refs=Refs.ref(sstables)){
     cfs.indexManager.setIndexRemoved(indexes);
-    SSTableReader.acquireReferences(sstables);
     logger.info(String.format("User Requested secondary index re-build for %s/%s indexes",ksName,cfName));
     cfs.indexManager.maybeBuildSecondaryIndexes(sstables,indexes);
     cfs.indexManager.setIndexBuilt(indexes);
   }
-  finally {
-    SSTableReader.releaseReferences(sstables);
-  }
-}
+ }

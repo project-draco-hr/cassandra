@@ -4,9 +4,10 @@
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("4".getBytes()));
   List<Range<Token>> ranges=Arrays.asList(range);
-  SSTableReader.acquireReferences(sstables);
+  Refs<SSTableReader> refs=Refs.tryRef(sstables);
+  if (refs == null)   throw new IllegalStateException();
   long repairedAt=1000;
-  CompactionManager.instance.performAnticompaction(store,ranges,sstables,repairedAt);
+  CompactionManager.instance.performAnticompaction(store,ranges,refs,repairedAt);
   assertEquals(2,store.getSSTables().size());
   int repairedKeys=0;
   int nonRepairedKeys=0;
@@ -27,7 +28,7 @@
    }
   for (  SSTableReader sstable : store.getSSTables()) {
     assertFalse(sstable.isMarkedCompacted());
-    assertEquals(1,sstable.referenceCount());
+    assertEquals(1,sstable.sharedRef().globalCount());
   }
   assertEquals(0,store.getDataTracker().getCompacting().size());
   assertEquals(repairedKeys,4);

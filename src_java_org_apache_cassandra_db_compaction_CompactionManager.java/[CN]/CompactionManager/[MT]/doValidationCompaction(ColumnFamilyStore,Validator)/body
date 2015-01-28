@@ -1,6 +1,6 @@
 {
   if (!cfs.isValid())   return;
-  Collection<SSTableReader> sstables=null;
+  Refs<SSTableReader> sstables=null;
   try {
     String snapshotName=validator.desc.sessionId.toString();
     int gcBefore;
@@ -11,7 +11,7 @@
     }
  else {
       StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(),cfs.name);
-      if (validator.desc.parentSessionId == null || ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId) == null)       sstables=cfs.markCurrentSSTablesReferenced();
+      if (validator.desc.parentSessionId == null || ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId) == null)       sstables=cfs.selectAndReference(ColumnFamilyStore.ALL_SSTABLES).refs;
  else       sstables=ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId).getAndReferenceSSTables(cfs.metadata.cfId);
       if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;
  else       gcBefore=getDefaultGcBefore(cfs);
@@ -49,6 +49,6 @@
     }
   }
   finally {
-    if (sstables != null)     SSTableReader.releaseReferences(sstables);
+    if (sstables != null)     sstables.release();
   }
 }
