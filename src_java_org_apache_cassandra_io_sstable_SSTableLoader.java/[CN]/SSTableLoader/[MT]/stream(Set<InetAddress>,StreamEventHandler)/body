@@ -12,15 +12,18 @@
     InetAddress remote=entry.getKey();
     if (toIgnore.contains(remote))     continue;
     List<StreamSession.SSTableStreamingSections> endpointDetails=new LinkedList<>();
+    List<Ref> refs=new ArrayList<>();
     try {
       for (      StreamSession.SSTableStreamingSections details : streamingDetails.get(remote)) {
-        if (!details.sstable.acquireReference())         throw new IllegalStateException();
+        Ref ref=details.sstable.tryRef();
+        if (ref == null)         throw new IllegalStateException();
+        refs.add(ref);
         endpointDetails.add(details);
       }
       plan.transferFiles(remote,endpointDetails);
     }
   finally {
-      for (      StreamSession.SSTableStreamingSections details : endpointDetails)       details.sstable.releaseReference();
+      for (      Ref ref : refs)       ref.release();
     }
   }
   plan.listeners(this,listeners);

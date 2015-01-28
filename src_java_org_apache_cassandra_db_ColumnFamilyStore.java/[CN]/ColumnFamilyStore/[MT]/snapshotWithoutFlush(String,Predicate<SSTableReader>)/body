@@ -1,9 +1,8 @@
 {
   Set<SSTableReader> snapshottedSSTables=new HashSet<>();
   for (  ColumnFamilyStore cfs : concatWithIndexes()) {
-    DataTracker.View currentView=cfs.markCurrentViewReferenced();
     final JSONArray filesJSONArr=new JSONArray();
-    try {
+    try (RefViewFragment currentView=cfs.selectAndReference(ALL_SSTABLES)){
       for (      SSTableReader ssTable : currentView.sstables) {
         if (ssTable.openReason == SSTableReader.OpenReason.EARLY || (predicate != null && !predicate.apply(ssTable))) {
           continue;
@@ -16,9 +15,6 @@
       }
       writeSnapshotManifest(filesJSONArr,snapshotName);
     }
-  finally {
-      SSTableReader.releaseReferences(currentView.sstables);
-    }
-  }
+   }
   return snapshottedSSTables;
 }

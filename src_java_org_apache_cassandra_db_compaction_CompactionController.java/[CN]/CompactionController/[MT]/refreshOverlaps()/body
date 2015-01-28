@@ -1,6 +1,6 @@
 {
-  if (this.overlappingSSTables != null)   SSTableReader.releaseReferences(overlappingSSTables);
-  Set<SSTableReader> overlapping=compacting == null ? null : cfs.getAndReferenceOverlappingSSTables(compacting);
-  this.overlappingSSTables=overlapping == null ? Collections.<SSTableReader>emptySet() : overlapping;
-  this.overlappingTree=overlapping == null ? null : DataTracker.buildIntervalTree(overlapping);
+  if (this.overlappingSSTables != null)   overlappingSSTables.release();
+  if (compacting == null)   overlappingSSTables=Refs.tryRef(Collections.<SSTableReader>emptyList());
+ else   overlappingSSTables=cfs.getAndReferenceOverlappingSSTables(compacting);
+  this.overlappingTree=DataTracker.buildIntervalTree(overlappingSSTables);
 }

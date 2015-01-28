@@ -18,10 +18,11 @@
   cfs.getColumnFamily(QueryFilter.getSliceFilter(key2,COLUMN_FAMILY1,Composites.EMPTY,Composites.EMPTY,false,10,System.currentTimeMillis()));
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
   Set<SSTableReader> readers=cfs.getDataTracker().getSSTables();
-  for (  SSTableReader reader : readers)   reader.acquireReference();
+  Refs<SSTableReader> refs=Refs.tryRef(readers);
+  if (refs == null)   throw new IllegalStateException();
   Util.compactAll(cfs,Integer.MAX_VALUE).get();
   assertKeyCacheSize(4,KEYSPACE1,COLUMN_FAMILY1);
-  for (  SSTableReader reader : readers)   reader.releaseReference();
+  refs.release();
   Uninterruptibles.sleepUninterruptibly(10,TimeUnit.MILLISECONDS);
   ;
   while (ScheduledExecutors.nonPeriodicTasks.getActiveCount() + ScheduledExecutors.nonPeriodicTasks.getQueue().size() > 0)   ;

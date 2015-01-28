@@ -1,22 +1,21 @@
 {
-  List<SSTableReader> sstables=new ArrayList<>();
+  Refs<SSTableReader> refs=new Refs<>();
   try {
     for (    ColumnFamilyStore cfStore : stores) {
       List<AbstractBounds<RowPosition>> rowBoundsList=new ArrayList<>(ranges.size());
       for (      Range<Token> range : ranges)       rowBoundsList.add(range.toRowBounds());
-      ColumnFamilyStore.ViewFragment view=cfStore.selectAndReference(cfStore.viewFilter(rowBoundsList));
-      sstables.addAll(view.sstables);
+      refs.addAll(cfStore.selectAndReference(cfStore.viewFilter(rowBoundsList)).refs);
     }
-    List<SSTableStreamingSections> sections=new ArrayList<>(sstables.size());
-    for (    SSTableReader sstable : sstables) {
+    List<SSTableStreamingSections> sections=new ArrayList<>(refs.size());
+    for (    SSTableReader sstable : refs) {
       long repairedAt=overriddenRepairedAt;
       if (overriddenRepairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)       repairedAt=sstable.getSSTableMetadata().repairedAt;
-      sections.add(new SSTableStreamingSections(sstable,sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges),repairedAt));
+      sections.add(new SSTableStreamingSections(sstable,refs.get(sstable),sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges),repairedAt));
     }
     return sections;
   }
  catch (  Throwable t) {
-    SSTableReader.releaseReferences(sstables);
+    refs.release();
     throw t;
   }
 }
