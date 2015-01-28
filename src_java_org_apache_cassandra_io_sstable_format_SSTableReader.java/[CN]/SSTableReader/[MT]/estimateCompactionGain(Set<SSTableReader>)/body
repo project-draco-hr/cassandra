@@ -1,0 +1,21 @@
+{
+  Set<ICardinality> cardinalities=new HashSet<>(overlapping.size());
+  for (  SSTableReader sstable : overlapping) {
+    try {
+      ICardinality cardinality=((CompactionMetadata)sstable.descriptor.getMetadataSerializer().deserialize(sstable.descriptor,MetadataType.COMPACTION)).cardinalityEstimator;
+      if (cardinality != null)       cardinalities.add(cardinality);
+ else       logger.debug("Got a null cardinality estimator in: " + sstable.getFilename());
+    }
+ catch (    IOException e) {
+      logger.warn("Could not read up compaction metadata for " + sstable,e);
+    }
+  }
+  long totalKeyCountBefore=0;
+  for (  ICardinality cardinality : cardinalities) {
+    totalKeyCountBefore+=cardinality.cardinality();
+  }
+  if (totalKeyCountBefore == 0)   return 1;
+  long totalKeyCountAfter=mergeCardinalities(cardinalities).cardinality();
+  logger.debug("Estimated compaction gain: {}/{}={}",totalKeyCountAfter,totalKeyCountBefore,((double)totalKeyCountAfter) / totalKeyCountBefore);
+  return ((double)totalKeyCountAfter) / totalKeyCountBefore;
+}
