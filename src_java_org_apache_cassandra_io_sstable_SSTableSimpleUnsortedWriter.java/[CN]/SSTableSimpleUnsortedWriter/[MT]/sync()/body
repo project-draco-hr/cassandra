@@ -1,12 +1,14 @@
 {
   if (buffer.isEmpty())   return;
-  checkForWriterException();
-  columnFamily=null;
-  try {
-    writeQueue.put(buffer);
-  }
- catch (  InterruptedException e) {
-    throw new RuntimeException(e);
+  while (true) {
+    checkForWriterException();
+    columnFamily=null;
+    try {
+      if (writeQueue.offer(buffer,1L,TimeUnit.SECONDS))       break;
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
   }
   buffer=new Buffer();
   currentSize=0;

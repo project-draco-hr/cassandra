@@ -5,7 +5,12 @@
       Buffer b=writeQueue.take();
       if (b == SENTINEL)       return;
       writer=getWriter();
-      for (      Map.Entry<DecoratedKey,ColumnFamily> entry : b.entrySet())       writer.append(entry.getKey(),entry.getValue());
+      boolean first=true;
+      for (      Map.Entry<DecoratedKey,ColumnFamily> entry : b.entrySet()) {
+        if (entry.getValue().getColumnCount() > 0)         writer.append(entry.getKey(),entry.getValue());
+ else         if (!first)         throw new AssertionError("Empty partition");
+        first=false;
+      }
       writer.close();
     }
   }
