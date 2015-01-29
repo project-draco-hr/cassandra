@@ -11,6 +11,10 @@
   logger.debug("Scheduling a background task check for {}.{} with {}",cfs.keyspace.getName(),cfs.name,cfs.getCompactionStrategy().getName());
   List<Future<?>> futures=new ArrayList<Future<?>>();
   do {
+    if (executor.isShutdown()) {
+      logger.info("Executor has shut down, not submitting background task");
+      return Collections.emptyList();
+    }
     compactingCF.add(cfs);
     futures.add(executor.submit(new BackgroundCompactionTask(cfs)));
   }
