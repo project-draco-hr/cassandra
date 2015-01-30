@@ -4,6 +4,7 @@
   for (  Multiset.Entry<ColumnIdentifier> entry : definedNames.entrySet())   if (entry.getCount() > 1)   throw new InvalidRequestException(String.format("Multiple definition of identifier %s",entry.getElement()));
   properties.validate();
   CreateTableStatement stmt=new CreateTableStatement(cfName,properties,ifNotExists,staticColumns);
+  boolean hasCounters=false;
   Map<ByteBuffer,CollectionType> definedMultiCellCollections=null;
   for (  Map.Entry<ColumnIdentifier,CQL3Type.Raw> entry : definitions.entrySet()) {
     ColumnIdentifier id=entry.getKey();
@@ -12,10 +13,12 @@
       if (definedMultiCellCollections == null)       definedMultiCellCollections=new HashMap<>();
       definedMultiCellCollections.put(id.bytes,(CollectionType)pt.getType());
     }
+ else     if (entry.getValue().isCounter())     hasCounters=true;
     stmt.columns.put(id,pt.getType());
   }
   if (keyAliases.isEmpty())   throw new InvalidRequestException("No PRIMARY KEY specifed (exactly one required)");
  else   if (keyAliases.size() > 1)   throw new InvalidRequestException("Multiple PRIMARY KEYs specifed (exactly one required)");
+ else   if (hasCounters && properties.getDefaultTimeToLive() > 0)   throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
   List<ColumnIdentifier> kAliases=keyAliases.get(0);
   List<AbstractType<?>> keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
   for (  ColumnIdentifier alias : kAliases) {
