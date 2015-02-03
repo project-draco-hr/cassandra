@@ -6,7 +6,17 @@
       CQLStatement indexStatement=QueryProcessor.getStatement(String.format("INSERT INTO %s.%s (resource, role) VALUES (?,?)",AuthKeyspace.NAME,AuthKeyspace.RESOURCE_ROLE_INDEX),ClientState.forInternalCalls()).statement;
       UntypedResultSet permissions=process("SELECT * FROM system_auth.permissions");
       for (      UntypedResultSet.Row row : permissions) {
-        insertStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(row.getBytes("username"),row.getBytes("resource"),row.getBytes("permissions"))));
+        final IResource resource=Resources.fromName(row.getString("resource"));
+        Predicate<String> isApplicable=new Predicate<String>(){
+          public boolean apply(          String s){
+            return resource.applicablePermissions().contains(Permission.valueOf(s));
+          }
+        }
+;
+        SetSerializer<String> serializer=SetSerializer.getInstance(UTF8Serializer.instance);
+        Set<String> originalPerms=serializer.deserialize(row.getBytes("permissions"));
+        Set<String> filteredPerms=ImmutableSet.copyOf(Iterables.filter(originalPerms,isApplicable));
+        insertStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(row.getBytes("username"),row.getBytes("resource"),serializer.serialize(filteredPerms))));
         indexStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(row.getBytes("resource"),row.getBytes("username"))));
       }
       logger.info("Completed conversion of legacy permissions");

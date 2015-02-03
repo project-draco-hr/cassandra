@@ -1,0 +1,14 @@
+{
+  Set<PermissionDetails> details=new HashSet<>();
+  boolean useLegacyTable=Schema.instance.getCFMetaData(AuthKeyspace.NAME,USER_PERMISSIONS) != null;
+  String entityColumnName=useLegacyTable ? USERNAME : ROLE;
+  for (  UntypedResultSet.Row row : process(buildListQuery(resource,role,useLegacyTable))) {
+    if (row.has(PERMISSIONS)) {
+      for (      String p : row.getSet(PERMISSIONS,UTF8Type.instance)) {
+        Permission permission=Permission.valueOf(p);
+        if (permissions.contains(permission))         details.add(new PermissionDetails(row.getString(entityColumnName),Resources.fromName(row.getString(RESOURCE)),permission));
+      }
+    }
+  }
+  return details;
+}
