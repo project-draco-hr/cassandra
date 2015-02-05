@@ -1,0 +1,18 @@
+{
+  Map<Range<Token>,Pair<Long,Long>> estimates=new HashMap<>(localRanges.size());
+  for (  Range<Token> range : localRanges) {
+    List<SSTableReader> sstables=null;
+    Refs<SSTableReader> refs=null;
+    while (refs == null)     refs=Refs.tryRef(table.viewFilter(range.toRowBounds()).apply(table.getDataTracker().getView()));
+    long partitionsCount, meanPartitionSize;
+    try {
+      partitionsCount=estimatePartitionsCount(sstables,range);
+      meanPartitionSize=estimateMeanPartitionSize(sstables);
+    }
+  finally {
+      refs.release();
+    }
+    estimates.put(range,Pair.create(partitionsCount,meanPartitionSize));
+  }
+  SystemKeyspace.updateSizeEstimates(table.metadata.ksName,table.metadata.cfName,estimates);
+}
