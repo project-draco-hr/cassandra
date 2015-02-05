@@ -1,0 +1,15 @@
+{
+  long timestamp=FBUtilities.timestampMicros();
+  CFMetaData estimatesTable=CFMetaData.SizeEstimatesCf;
+  Mutation mutation=new Mutation(Keyspace.SYSTEM_KS,UTF8Type.instance.decompose(keyspace));
+  mutation.deleteRange(SIZE_ESTIMATES_CF,estimatesTable.comparator.make(table).start(),estimatesTable.comparator.make(table).end(),timestamp - 1);
+  ColumnFamily cells=mutation.addOrGet(estimatesTable);
+  for (  Map.Entry<Range<Token>,Pair<Long,Long>> entry : estimates.entrySet()) {
+    Range<Token> range=entry.getKey();
+    Pair<Long,Long> values=entry.getValue();
+    Composite prefix=estimatesTable.comparator.make(table,range.left.toString(),range.right.toString());
+    CFRowAdder adder=new CFRowAdder(cells,prefix,timestamp);
+    adder.add("partitions_count",values.left).add("mean_partition_size",values.right);
+  }
+  mutation.apply();
+}
