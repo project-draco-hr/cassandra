@@ -2,5 +2,13 @@
   boolean didChangeSchema=announceMigration(false);
   if (!didChangeSchema)   return new ResultMessage.Void();
   Event.SchemaChange ce=changeEvent();
+  AuthenticatedUser user=state.getClientState().getUser();
+  if (user != null && !user.isAnonymous() && ce != null && ce.change == Event.SchemaChange.Change.CREATED) {
+    try {
+      grantPermissionsToCreator(state);
+    }
+ catch (    UnsupportedOperationException e) {
+    }
+  }
   return ce == null ? new ResultMessage.Void() : new ResultMessage.SchemaChange(ce);
 }
