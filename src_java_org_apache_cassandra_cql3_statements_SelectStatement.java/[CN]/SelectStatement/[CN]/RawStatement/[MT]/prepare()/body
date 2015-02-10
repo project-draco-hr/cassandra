@@ -37,11 +37,15 @@
   }
   if (hasSingleColumnRelations && hasMultiColumnRelations)   throw new InvalidRequestException("Mixing single column relations and multi column relations on clustering columns is not allowed");
   processPartitionKeyRestrictions(stmt,cfDef,hasQueriableIndex);
-  if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.removeAll(cfDef.partitionKeys());
+  if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.keySet().removeAll(cfDef.partitionKeys());
   if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
   processColumnRestrictions(stmt,cfDef,hasQueriableIndex);
   if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
-  if (!stmt.usesSecondaryIndexing)   stmt.restrictedNames.removeAll(cfDef.clusteringColumns());
+  for (  Name clusteringColumn : cfDef.clusteringColumns()) {
+    Boolean indexed=stmt.restrictedNames.get(clusteringColumn);
+    if (indexed == null)     break;
+    if (!indexed)     stmt.restrictedNames.remove(clusteringColumn);
+  }
   if (!stmt.metadataRestrictions.isEmpty()) {
     if (!hasQueriableIndex)     throw new InvalidRequestException("No indexed columns present in by-columns clause with Equal operator");
     stmt.usesSecondaryIndexing=true;

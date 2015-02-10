@@ -1,7 +1,7 @@
 {
   if (!usesSecondaryIndexing || restrictedNames.isEmpty())   return Collections.emptyList();
   List<IndexExpression> expressions=new ArrayList<IndexExpression>();
-  for (  CFDefinition.Name name : restrictedNames) {
+  for (  CFDefinition.Name name : restrictedNames.keySet()) {
     Restriction restriction;
 switch (name.kind) {
 case KEY_ALIAS:
@@ -30,9 +30,16 @@ expressions.add(new IndexExpression(name.name.key,op,value));
 }
 }
  else {
+ByteBuffer value;
+if (restriction.isMultiColumn()) {
+List<ByteBuffer> values=restriction.values(variables);
+value=values.get(name.position);
+}
+ else {
 List<ByteBuffer> values=restriction.values(variables);
 if (values.size() != 1) throw new InvalidRequestException("IN restrictions are not supported on indexed columns");
-ByteBuffer value=values.get(0);
+value=values.get(0);
+}
 validateIndexExpressionValue(value,name);
 expressions.add(new IndexExpression(name.name.key,IndexOperator.EQ,value));
 }
