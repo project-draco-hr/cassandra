@@ -13,25 +13,8 @@
   checkFalse(selectsOnlyStaticColumns && hasClusteringColumnsRestriction(),"Cannot restrict clustering columns when selecting only static columns");
   processClusteringColumnsRestrictions(hasQueriableIndex,selectACollection);
   if (isKeyRange && hasQueriableClusteringColumnIndex)   usesSecondaryIndexing=true;
-  if (usesSecondaryIndexing) {
-    indexRestrictions.add(clusteringColumnsRestrictions);
-  }
- else   if (clusteringColumnsRestrictions.isContains()) {
-    indexRestrictions.add(new ForwardingPrimaryKeyRestrictions(){
-      @Override protected PrimaryKeyRestrictions getDelegate(){
-        return clusteringColumnsRestrictions;
-      }
-      @Override public void addIndexExpressionTo(      List<IndexExpression> expressions,      QueryOptions options) throws InvalidRequestException {
-        List<IndexExpression> list=new ArrayList<>();
-        super.addIndexExpressionTo(list,options);
-        for (        IndexExpression expression : list) {
-          if (expression.isContains() || expression.isContainsKey())           expressions.add(expression);
-        }
-      }
-    }
-);
-    usesSecondaryIndexing=true;
-  }
+  usesSecondaryIndexing=usesSecondaryIndexing || clusteringColumnsRestrictions.isContains();
+  if (usesSecondaryIndexing)   indexRestrictions.add(clusteringColumnsRestrictions);
   if (!nonPrimaryKeyRestrictions.isEmpty()) {
     usesSecondaryIndexing=true;
     indexRestrictions.add(nonPrimaryKeyRestrictions);
