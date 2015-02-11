@@ -3,20 +3,4 @@
   this.sstableMetadata=sstableMetadata;
   this.maxDataAge=maxDataAge;
   this.openReason=openReason;
-  tidy.deletingTask=new SSTableDeletingTask(this);
-  if (Keyspace.SYSTEM_KS.equals(desc.ksname) || Config.isClientMode() || openReason != OpenReason.NORMAL) {
-    readMeter=null;
-    readMeterSyncFuture=null;
-    return;
-  }
-  readMeter=SystemKeyspace.getSSTableReadMeter(desc.ksname,desc.cfname,desc.generation);
-  readMeterSyncFuture=syncExecutor.scheduleAtFixedRate(new Runnable(){
-    public void run(){
-      if (!isCompacted.get()) {
-        meterSyncThrottle.acquire();
-        SystemKeyspace.persistSSTableReadMeter(desc.ksname,desc.cfname,desc.generation,readMeter);
-      }
-    }
-  }
-,1,5,TimeUnit.MINUTES);
 }

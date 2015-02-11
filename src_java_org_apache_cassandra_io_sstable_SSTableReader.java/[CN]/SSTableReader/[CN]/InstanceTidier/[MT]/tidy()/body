@@ -1,0 +1,22 @@
+{
+  if (!setup)   return;
+  final ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreInstance(metadata.cfId);
+  final OpOrder.Barrier barrier;
+  if (cfs != null) {
+    barrier=cfs.readOrdering.newBarrier();
+    barrier.issue();
+  }
+ else   barrier=null;
+  ScheduledExecutors.nonPeriodicTasks.execute(new Runnable(){
+    public void run(){
+      if (barrier != null)       barrier.await();
+      bf.close();
+      dfile.close();
+      ifile.close();
+      if (summary != null)       summary.close();
+      if (runOnClose != null)       runOnClose.run();
+      typeRef.release();
+    }
+  }
+);
+}
