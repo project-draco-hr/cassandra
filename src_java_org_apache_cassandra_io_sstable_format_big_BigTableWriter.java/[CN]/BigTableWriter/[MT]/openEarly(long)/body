@@ -5,12 +5,12 @@
   Descriptor link=makeTmpLinks();
   SegmentedFile ifile=iwriter.builder.complete(link.filenameFor(Component.PRIMARY_INDEX),FinishType.EARLY);
   SegmentedFile dfile=dbuilder.complete(link.filenameFor(Component.DATA),FinishType.EARLY);
-  SSTableReader sstable=SSTableReader.internalOpen(descriptor.asType(Descriptor.Type.FINAL),components,metadata,partitioner,ifile,dfile,iwriter.summary.build(partitioner,exclusiveUpperBoundOfReadableIndex),iwriter.bf,maxDataAge,sstableMetadata,SSTableReader.OpenReason.EARLY);
+  SSTableReader sstable=SSTableReader.internalOpen(descriptor.asType(Descriptor.Type.FINAL),components,metadata,partitioner,ifile,dfile,iwriter.summary.build(partitioner,exclusiveUpperBoundOfReadableIndex),iwriter.bf.sharedCopy(),maxDataAge,sstableMetadata,SSTableReader.OpenReason.EARLY);
   sstable.first=getMinimalKey(first);
   sstable.last=getMinimalKey(exclusiveUpperBoundOfReadableIndex);
   DecoratedKey inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(1);
   if (inclusiveUpperBoundOfReadableData == null) {
-    sstable.sharedRef().release();
+    sstable.selfRef().release();
     return null;
   }
   int offset=2;
@@ -19,7 +19,7 @@
     if (indexEntry != null && indexEntry.position <= dataFile.getLastFlushOffset())     break;
     inclusiveUpperBoundOfReadableData=iwriter.getMaxReadableKey(offset++);
     if (inclusiveUpperBoundOfReadableData == null) {
-      sstable.sharedRef().release();
+      sstable.selfRef().release();
       return null;
     }
   }

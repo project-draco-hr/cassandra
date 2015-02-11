@@ -12,17 +12,17 @@
   }
 );
   double totalReads=0.0;
-  for (  SSTableReader sstr : sstables)   if (sstr.readMeter != null)   totalReads+=sstr.readMeter.twoHourRate();
+  for (  SSTableReader sstr : sstables)   if (sstr.getReadMeter() != null)   totalReads+=sstr.getReadMeter().twoHourRate();
   if (totalReads == 0.0)   return sstables;
   double maxColdReads=coldReadsToOmit * totalReads;
   double totalColdReads=0.0;
   int cutoffIndex=0;
   while (cutoffIndex < sstables.size()) {
     SSTableReader sstable=sstables.get(cutoffIndex);
-    if (sstable.readMeter == null) {
+    if (sstable.getReadMeter() == null) {
       throw new AssertionError("If you're seeing this exception, please attach your logs to CASSANDRA-8238 to help us debug. " + sstable);
     }
-    double reads=sstable.readMeter.twoHourRate();
+    double reads=sstable.getReadMeter().twoHourRate();
     if (totalColdReads + reads > maxColdReads)     break;
     totalColdReads+=reads;
     cutoffIndex++;

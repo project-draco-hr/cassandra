@@ -1,0 +1,20 @@
+{
+  this.desc=reader.descriptor;
+  this.isCompacted=new AtomicBoolean();
+  this.live=reader;
+  if (SystemKeyspace.NAME.equals(desc.ksname)) {
+    readMeter=null;
+    readMeterSyncFuture=null;
+    return;
+  }
+  readMeter=SystemKeyspace.getSSTableReadMeter(desc.ksname,desc.cfname,desc.generation);
+  readMeterSyncFuture=syncExecutor.scheduleAtFixedRate(new Runnable(){
+    public void run(){
+      if (!isCompacted.get()) {
+        meterSyncThrottle.acquire();
+        SystemKeyspace.persistSSTableReadMeter(desc.ksname,desc.cfname,desc.generation,readMeter);
+      }
+    }
+  }
+,1,5,TimeUnit.MINUTES);
+}
