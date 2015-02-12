@@ -1,0 +1,29 @@
+{
+  RandomAccessFile raf;
+  try {
+    raf=new RandomAccessFile(path,"r");
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  while (length < boundaries.get(boundaries.size() - 1))   boundaries.remove(boundaries.size() - 1);
+  List<Long> boundaries=new ArrayList<>(this.boundaries);
+  if (length != boundaries.get(boundaries.size() - 1))   boundaries.add(length);
+  int segcount=boundaries.size() - 1;
+  Segment[] segments=new Segment[segcount];
+  try {
+    for (int i=0; i < segcount; i++) {
+      long start=boundaries.get(i);
+      long size=boundaries.get(i + 1) - start;
+      MappedByteBuffer segment=size <= MAX_SEGMENT_SIZE ? raf.getChannel().map(FileChannel.MapMode.READ_ONLY,start,size) : null;
+      segments[i]=new Segment(start,segment);
+    }
+  }
+ catch (  IOException e) {
+    throw new FSReadError(e,path);
+  }
+ finally {
+    FileUtils.closeQuietly(raf);
+  }
+  return segments;
+}
