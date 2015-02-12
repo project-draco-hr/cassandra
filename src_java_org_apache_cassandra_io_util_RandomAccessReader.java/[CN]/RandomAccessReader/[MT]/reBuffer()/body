@@ -1,15 +1,20 @@
 {
   resetBuffer();
   try {
-    if (bufferOffset >= channel.size())     return;
-    channel.position(bufferOffset);
-    int read=0;
-    while (read < buffer.length) {
-      int n=super.read(buffer,read,buffer.length - read);
-      if (n < 0)       break;
-      read+=n;
+    int read=buffer.length;
+    if (bufferOffset + read > fileLength) {
+      if (bufferOffset >= fileLength)       return;
+      read=(int)(fileLength - bufferOffset);
     }
-    validBufferBytes=read;
+    channel.position(bufferOffset);
+    int offset=0;
+    while (read > 0) {
+      int n=super.read(buffer,offset,read);
+      if (n < 0)       throw new IllegalStateException();
+      read-=n;
+      offset+=n;
+    }
+    validBufferBytes=offset;
   }
  catch (  IOException e) {
     throw new FSReadError(e,filePath);
