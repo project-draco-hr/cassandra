@@ -1,0 +1,15 @@
+{
+  bf.add(key.getKey());
+  long indexStart=indexFile.getFilePointer();
+  try {
+    ByteBufferUtil.writeWithShortLength(key.getKey(),indexFile.stream);
+    rowIndexEntrySerializer.serialize(indexEntry,indexFile.stream);
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,indexFile.getPath());
+  }
+  long indexEnd=indexFile.getFilePointer();
+  if (logger.isTraceEnabled())   logger.trace("wrote index entry: {} at {}",indexEntry,indexStart);
+  summary.maybeAddEntry(key,indexStart,indexEnd,dataEnd);
+  builder.addPotentialBoundary(indexStart);
+}

@@ -1,14 +1,15 @@
 {
-  long currentPosition=beforeAppend(row.key);
+  long startPosition=beforeAppend(row.key);
   RowIndexEntry entry;
   try {
-    entry=row.write(currentPosition,dataFile);
+    entry=row.write(startPosition,dataFile);
     if (entry == null)     return null;
   }
  catch (  IOException e) {
     throw new FSWriteError(e,dataFile.getPath());
   }
-  metadataCollector.update(dataFile.getFilePointer() - currentPosition,row.columnStats());
-  afterAppend(row.key,currentPosition,entry);
+  long endPosition=dataFile.getFilePointer();
+  metadataCollector.update(endPosition - startPosition,row.columnStats());
+  afterAppend(row.key,endPosition,entry);
   return entry;
 }
