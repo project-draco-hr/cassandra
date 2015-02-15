@@ -1,0 +1,8 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, dval double)");
+  execute("INSERT INTO %s (key, dval) VALUES (?, ?)",1,1d);
+  String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) RETURNS double LANGUAGE JAVA\n" + "AS 'throw new RuntimeException()';");
+  for (int version=Server.VERSION_2; version <= Server.CURRENT_VERSION; version++) {
+    assertRowsNet(version,executeNet(version,"SELECT " + fName + "(dval) FROM %s WHERE key = 1"));
+  }
+}

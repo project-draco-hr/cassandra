@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, val int)");
+  execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1);
+  String fState=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "RETURNS int " + "LANGUAGE javascript "+ "AS 'a + b;'");
+  String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + " "+ "STYPE int ");
+  UDAggregate f=(UDAggregate)Functions.find(parseFunctionName(a)).get(0);
+  Functions.replaceFunction(UDAggregate.createBroken(f.name(),f.argTypes(),f.returnType(),null,new InvalidRequestException("foo bar is broken")));
+  assertInvalidThrowMessage("foo bar is broken",InvalidRequestException.class,"SELECT " + a + "(val) FROM %s");
+}

@@ -1,7 +1,12 @@
 {
-  if (msg.error.code() == ExceptionCode.READ_FAILURE && version < Server.VERSION_4) {
-    ReadFailureException rfe=(ReadFailureException)msg.error;
+  if (version < Server.VERSION_4) {
+switch (msg.error.code()) {
+case READ_FAILURE:
+      ReadFailureException rfe=(ReadFailureException)msg.error;
     return new ReadTimeoutException(rfe.consistency,rfe.received,rfe.blockFor,rfe.dataPresent);
-  }
-  return msg.error;
+case FUNCTION_FAILURE:
+  return new InvalidRequestException(msg.toString());
+}
+}
+return msg.error;
 }

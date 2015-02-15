@@ -4,19 +4,19 @@
   execute("INSERT INTO %s(key, d) VALUES (?, ?)",2,2d);
   execute("INSERT INTO %s(key, d) VALUES (?, ?)",3,3d);
   String fSin=createFunction(KEYSPACE_PER_TEST,"double","CREATE FUNCTION %s ( input double ) " + "RETURNS double " + "LANGUAGE java "+ "AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
-  assertInvalid("CREATE FUNCTION " + fSin + " ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
+  assertInvalidMessage("already exists","CREATE FUNCTION " + fSin + " ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
   execute("CREATE FUNCTION IF NOT EXISTS " + fSin + " ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
   assertRows(execute("SELECT key, " + fSin + "(d) FROM %s"),row(1,Math.sin(1d)),row(2,Math.sin(2d)),row(3,Math.sin(3d)));
-  assertInvalid("CREATE OR REPLACE FUNCTION " + fSin + " ( input double ) RETURNS text LANGUAGE java AS 'return Double.valueOf(42d);'");
+  assertInvalidMessage("the new return type text is not compatible with the return type double of existing function","CREATE OR REPLACE FUNCTION " + fSin + " ( input double ) RETURNS text LANGUAGE java AS 'return Double.valueOf(42d);'");
   execute("CREATE OR REPLACE FUNCTION " + fSin + " ( input double ) RETURNS double LANGUAGE java AS 'return Double.valueOf(42d);'");
   assertRows(execute("SELECT key, " + fSin + "(d) FROM %s"),row(1,42.0),row(2,42.0),row(3,42.0));
   String fSin2=createFunction(KEYSPACE,"double","CREATE FUNCTION %s ( input double ) " + "RETURNS double " + "LANGUAGE java "+ "AS 'return Double.valueOf(Math.sin(input.doubleValue()));'");
   assertRows(execute("SELECT key, " + fSin2 + "(d) FROM %s"),row(1,Math.sin(1d)),row(2,Math.sin(2d)),row(3,Math.sin(3d)));
   execute("DROP FUNCTION " + fSin);
   execute("DROP FUNCTION " + fSin2);
-  assertInvalid("DROP FUNCTION " + fSin);
+  assertInvalidMessage("Cannot drop non existing function","DROP FUNCTION " + fSin);
   execute("DROP FUNCTION IF EXISTS " + fSin);
-  assertInvalid("DROP FUNCTION dateof");
-  assertInvalid("DROP FUNCTION uuid");
-  assertInvalid("SELECT key, sin(d) FROM %s");
+  assertInvalidMessage("system keyspace is not user-modifiable","DROP FUNCTION dateof");
+  assertInvalidMessage("system keyspace is not user-modifiable","DROP FUNCTION uuid");
+  assertInvalidMessage("Unknown function","SELECT key, sin(d) FROM %s");
 }
