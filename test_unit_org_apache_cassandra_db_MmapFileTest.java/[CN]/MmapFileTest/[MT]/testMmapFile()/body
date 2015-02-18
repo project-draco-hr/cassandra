@@ -1,0 +1,86 @@
+{
+  ObjectName bpmName=new ObjectName("java.nio:type=BufferPool,name=mapped");
+  MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
+  Long mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+  Long mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+  Assert.assertEquals("# of mapped buffers should be 0",Long.valueOf(0L),mmapCount);
+  Assert.assertEquals("amount of mapped memory should be 0",Long.valueOf(0L),mmapMemoryUsed);
+  File f1=File.createTempFile("MmapFileTest1",".bin");
+  File f2=File.createTempFile("MmapFileTest2",".bin");
+  File f3=File.createTempFile("MmapFileTest2",".bin");
+  try {
+    int size=1024 * 1024;
+    try (RandomAccessFile raf=new RandomAccessFile(f1,"rw")){
+      raf.setLength(size);
+    }
+     try (RandomAccessFile raf=new RandomAccessFile(f2,"rw")){
+      raf.setLength(size);
+    }
+     try (RandomAccessFile raf=new RandomAccessFile(f3,"rw")){
+      raf.setLength(size);
+    }
+     try (FileChannel channel=FileChannel.open(f1.toPath(),StandardOpenOption.WRITE,StandardOpenOption.READ)){
+      MappedByteBuffer buffer=channel.map(FileChannel.MapMode.READ_WRITE,0,size);
+      mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+      mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+      Assert.assertEquals("mapped buffers don't work?",Long.valueOf(1L),mmapCount);
+      Assert.assertTrue("mapped buffers don't work?",mmapMemoryUsed >= size);
+      Assert.assertTrue(buffer.isDirect());
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      ((DirectBuffer)buffer).cleaner().clean();
+    }
+     mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+    mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+    Assert.assertEquals("# of mapped buffers should be 0",Long.valueOf(0L),mmapCount);
+    Assert.assertEquals("amount of mapped memory should be 0",Long.valueOf(0L),mmapMemoryUsed);
+    try (FileChannel channel=FileChannel.open(f2.toPath(),StandardOpenOption.WRITE,StandardOpenOption.READ)){
+      MappedByteBuffer buffer=channel.map(FileChannel.MapMode.READ_WRITE,0,size);
+      mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+      mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+      Assert.assertEquals("mapped buffers don't work?",Long.valueOf(1L),mmapCount);
+      Assert.assertTrue("mapped buffers don't work?",mmapMemoryUsed >= size);
+      Assert.assertTrue(buffer.isDirect());
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      ((DirectBuffer)buffer).cleaner().clean();
+    }
+     mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+    mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+    Assert.assertEquals("# of mapped buffers should be 0",Long.valueOf(0L),mmapCount);
+    Assert.assertEquals("amount of mapped memory should be 0",Long.valueOf(0L),mmapMemoryUsed);
+    try (FileChannel channel=FileChannel.open(f3.toPath(),StandardOpenOption.WRITE,StandardOpenOption.READ)){
+      MappedByteBuffer buffer=channel.map(FileChannel.MapMode.READ_WRITE,0,size);
+      mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+      mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+      Assert.assertEquals("mapped buffers don't work?",Long.valueOf(1L),mmapCount);
+      Assert.assertTrue("mapped buffers don't work?",mmapMemoryUsed >= size);
+      Assert.assertTrue(buffer.isDirect());
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      buffer.putInt(42);
+      ((DirectBuffer)buffer).cleaner().clean();
+    }
+     mmapCount=(Long)mbs.getAttribute(bpmName,"Count");
+    mmapMemoryUsed=(Long)mbs.getAttribute(bpmName,"MemoryUsed");
+    Assert.assertEquals("# of mapped buffers should be 0",Long.valueOf(0L),mmapCount);
+    Assert.assertEquals("amount of mapped memory should be 0",Long.valueOf(0L),mmapMemoryUsed);
+    Assert.assertTrue(f1.delete());
+    Assert.assertTrue(f2.delete());
+    Assert.assertTrue(f3.delete());
+  }
+  finally {
+    Runtime.getRuntime().gc();
+    f1.delete();
+    f2.delete();
+    f3.delete();
+  }
+}

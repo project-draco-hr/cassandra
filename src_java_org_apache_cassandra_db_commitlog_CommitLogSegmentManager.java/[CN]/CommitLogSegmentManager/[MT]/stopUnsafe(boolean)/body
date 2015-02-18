@@ -1,0 +1,19 @@
+{
+  logger.debug("CLSM closing and clearing existing commit log segments...");
+  while (!segmentManagementTasks.isEmpty())   Thread.yield();
+  shutdown();
+  try {
+    awaitTermination();
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException(e);
+  }
+  for (  CommitLogSegment segment : activeSegments)   closeAndDeleteSegmentUnsafe(segment,deleteSegments);
+  activeSegments.clear();
+  for (  CommitLogSegment segment : availableSegments)   closeAndDeleteSegmentUnsafe(segment,deleteSegments);
+  availableSegments.clear();
+  allocatingFrom=null;
+  segmentManagementTasks.clear();
+  size.set(0L);
+  logger.debug("CLSM done with closing and clearing existing commit log segments.");
+}
