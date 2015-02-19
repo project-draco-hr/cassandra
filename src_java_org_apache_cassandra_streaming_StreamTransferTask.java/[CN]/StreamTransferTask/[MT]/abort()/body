@@ -3,5 +3,16 @@
   aborted=true;
   for (  ScheduledFuture future : timeoutTasks.values())   future.cancel(false);
   timeoutTasks.clear();
-  for (  OutgoingFileMessage file : files.values())   file.sstable.releaseReference();
+  Throwable fail=null;
+  for (  OutgoingFileMessage file : files.values()) {
+    try {
+      file.sstable.releaseReference();
+    }
+ catch (    Throwable t) {
+      if (fail == null)       fail=t;
+ else       fail.addSuppressed(t);
+    }
+  }
+  files.clear();
+  if (fail != null)   Throwables.propagate(fail);
 }
