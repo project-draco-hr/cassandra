@@ -1,0 +1,30 @@
+{
+  PrintStream out=System.out;
+  if (args.length < 2) {
+    out.println("This command should be run with Cassandra stopped!");
+    out.println("Usage: sstableofflinerelevel [--dry-run] <keyspace> <columnfamily>");
+    System.exit(1);
+  }
+  boolean dryRun=args[0].equals("--dry-run");
+  String keyspace=args[args.length - 2];
+  String columnfamily=args[args.length - 1];
+  Schema.instance.loadFromDisk(false);
+  if (Schema.instance.getCFMetaData(keyspace,columnfamily) == null)   throw new IllegalArgumentException(String.format("Unknown keyspace/columnFamily %s.%s",keyspace,columnfamily));
+  Keyspace ks=Keyspace.openWithoutSSTables(keyspace);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(columnfamily);
+  Directories.SSTableLister lister=cfs.directories.sstableLister().skipTemporary(true);
+  Set<SSTableReader> sstables=new HashSet<>();
+  for (  Map.Entry<Descriptor,Set<Component>> sstable : lister.list().entrySet()) {
+    if (sstable.getKey() != null) {
+      SSTableReader reader=SSTableReader.open(sstable.getKey());
+      sstables.add(reader);
+    }
+  }
+  if (sstables.isEmpty()) {
+    out.println("No sstables to relevel for " + keyspace + "."+ columnfamily);
+    System.exit(1);
+  }
+  Relevel rl=new Relevel(sstables);
+  rl.relevel(dryRun);
+  System.exit(0);
+}
