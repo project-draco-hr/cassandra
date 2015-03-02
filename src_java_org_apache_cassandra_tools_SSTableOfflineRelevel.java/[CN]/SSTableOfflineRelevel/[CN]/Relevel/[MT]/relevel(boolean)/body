@@ -1,0 +1,44 @@
+{
+  List<SSTableReader> sortedSSTables=new ArrayList<>(sstables);
+  Collections.sort(sortedSSTables,new Comparator<SSTableReader>(){
+    @Override public int compare(    SSTableReader o1,    SSTableReader o2){
+      return o1.last.compareTo(o2.last);
+    }
+  }
+);
+  List<List<SSTableReader>> levels=new ArrayList<>();
+  while (!sortedSSTables.isEmpty()) {
+    Iterator<SSTableReader> it=sortedSSTables.iterator();
+    List<SSTableReader> level=new ArrayList<>();
+    DecoratedKey lastLast=null;
+    while (it.hasNext()) {
+      SSTableReader sstable=it.next();
+      if (lastLast == null || lastLast.compareTo(sstable.first) < 0) {
+        level.add(sstable);
+        lastLast=sstable.last;
+        it.remove();
+      }
+    }
+    levels.add(level);
+  }
+  List<SSTableReader> l0=new ArrayList<>();
+  if (approxExpectedLevels < levels.size()) {
+    for (int i=approxExpectedLevels; i < levels.size(); i++)     l0.addAll(levels.get(i));
+    levels=levels.subList(0,approxExpectedLevels);
+  }
+  if (dryRun)   System.out.println("Potential leveling: ");
+ else   System.out.println("New leveling: ");
+  System.out.println("L0=" + l0.size());
+  for (int i=levels.size() - 1; i >= 0; i--)   System.out.println(String.format("L%d %d",levels.size() - i,levels.get(i).size()));
+  if (!dryRun) {
+    for (    SSTableReader sstable : l0) {
+      if (sstable.getSSTableLevel() != 0)       sstable.descriptor.getMetadataSerializer().mutateLevel(sstable.descriptor,0);
+    }
+    for (int i=levels.size() - 1; i >= 0; i--) {
+      for (      SSTableReader sstable : levels.get(i)) {
+        int newLevel=levels.size() - i;
+        if (newLevel != sstable.getSSTableLevel())         sstable.descriptor.getMetadataSerializer().mutateLevel(sstable.descriptor,newLevel);
+      }
+    }
+  }
+}
