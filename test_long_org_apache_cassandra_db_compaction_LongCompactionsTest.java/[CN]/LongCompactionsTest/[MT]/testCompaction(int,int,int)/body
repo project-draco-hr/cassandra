@@ -1,25 +1,2 @@
 {
-  CompactionManager.instance.disableAutoCompaction();
-  Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard1");
-  ArrayList<SSTableReader> sstables=new ArrayList<SSTableReader>();
-  for (int k=0; k < sstableCount; k++) {
-    SortedMap<String,ColumnFamily> rows=new TreeMap<String,ColumnFamily>();
-    for (int j=0; j < rowsPerSSTable; j++) {
-      String key=String.valueOf(j);
-      Cell[] cols=new Cell[colsPerRow];
-      for (int i=0; i < colsPerRow; i++) {
-        cols[i]=Util.column(String.valueOf(i),String.valueOf(i),k);
-      }
-      rows.put(key,SSTableUtils.createCF(Long.MIN_VALUE,Integer.MIN_VALUE,cols));
-    }
-    SSTableReader sstable=SSTableUtils.prepare().write(rows);
-    sstables.add(sstable);
-    store.addSSTable(sstable);
-  }
-  Thread.sleep(1000);
-  long start=System.nanoTime();
-  final int gcBefore=(int)(System.currentTimeMillis() / 1000) - Schema.instance.getCFMetaData(KEYSPACE1,"Standard1").getGcGraceSeconds();
-  new CompactionTask(store,sstables,gcBefore,false).execute(null);
-  System.out.println(String.format("%s: sstables=%d rowsper=%d colsper=%d: %d ms",this.getClass().getName(),sstableCount,rowsPerSSTable,colsPerRow,TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start)));
 }
