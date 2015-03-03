@@ -1,0 +1,27 @@
+{
+  if (DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)   return null;
+  if (validityPeriod <= 0)   return null;
+  return CacheBuilder.newBuilder().refreshAfterWrite(updateInterval,TimeUnit.MILLISECONDS).expireAfterWrite(validityPeriod,TimeUnit.MILLISECONDS).maximumSize(maxEntries).build(new CacheLoader<RoleResource,Set<RoleResource>>(){
+    public Set<RoleResource> load(    RoleResource primaryRole){
+      return roleManager.getRoles(primaryRole,true);
+    }
+    public ListenableFuture<Set<RoleResource>> reload(    final RoleResource primaryRole,    final Set<RoleResource> oldValue){
+      ListenableFutureTask<Set<RoleResource>> task;
+      task=ListenableFutureTask.create(new Callable<Set<RoleResource>>(){
+        public Set<RoleResource> call() throws Exception {
+          try {
+            return roleManager.getRoles(primaryRole,true);
+          }
+ catch (          Exception e) {
+            logger.debug("Error performing async refresh of user roles",e);
+            throw e;
+          }
+        }
+      }
+);
+      cacheRefreshExecutor.execute(task);
+      return task;
+    }
+  }
+);
+}
