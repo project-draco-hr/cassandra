@@ -14,7 +14,11 @@
   try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
     test.run(scanner,controller,s,cfs,rewriter);
   }
-   Thread.sleep(1000);
+ catch (  Throwable t) {
+    rewriter.abort();
+    throw t;
+  }
+  Thread.sleep(1000);
   assertEquals(startSize,cfs.metric.liveDiskSpaceUsed.count());
   assertEquals(1,cfs.getSSTables().size());
   assertFileCounts(s.descriptor.directory.list(),0,0);
