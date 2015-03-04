@@ -5,6 +5,7 @@
   SSTableReader s=writeFile(cfs,1000);
   if (!offline)   cfs.addSSTable(s);
   Set<SSTableReader> compacting=Sets.newHashSet(s);
+  cfs.getDataTracker().markCompacting(compacting);
   SSTableRewriter.overrideOpenInterval(10000000);
   SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,offline);
   SSTableWriter w=getWriter(cfs,s.descriptor.directory);
@@ -23,7 +24,10 @@
       rewriter.abort();
     }
   }
-   Thread.sleep(1000);
+  finally {
+    cfs.getDataTracker().unmarkCompacting(compacting);
+  }
+  Thread.sleep(1000);
   int filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   assertEquals(filecount,1);
   if (!offline) {
