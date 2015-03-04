@@ -5,25 +5,25 @@
     long histogramCount=sstableMetadata.estimatedRowSize.count();
     long estimatedKeys=histogramCount > 0 && !sstableMetadata.estimatedRowSize.isOverflowed() ? histogramCount : estimateRowsFromIndex(primaryIndex);
     if (recreateBloomFilter)     bf=FilterFactory.getFilter(estimatedKeys,metadata.getBloomFilterFpChance(),true);
-    IndexSummaryBuilder summaryBuilder=null;
-    if (!summaryLoaded)     summaryBuilder=new IndexSummaryBuilder(estimatedKeys,metadata.getMinIndexInterval(),samplingLevel);
-    long indexPosition;
-    RowIndexEntry.IndexSerializer rowIndexSerializer=descriptor.getFormat().getIndexSerializer(metadata);
-    while ((indexPosition=primaryIndex.getFilePointer()) != indexSize) {
-      ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
-      RowIndexEntry indexEntry=rowIndexSerializer.deserialize(primaryIndex,descriptor.version);
-      DecoratedKey decoratedKey=partitioner.decorateKey(key);
-      if (first == null)       first=decoratedKey;
-      last=decoratedKey;
-      if (recreateBloomFilter)       bf.add(decoratedKey);
-      if (!summaryLoaded) {
-        summaryBuilder.maybeAddEntry(decoratedKey,indexPosition);
-        ibuilder.addPotentialBoundary(indexPosition);
-        dbuilder.addPotentialBoundary(indexEntry.position);
+    try (IndexSummaryBuilder summaryBuilder=summaryLoaded ? null : new IndexSummaryBuilder(estimatedKeys,metadata.getMinIndexInterval(),samplingLevel)){
+      long indexPosition;
+      RowIndexEntry.IndexSerializer rowIndexSerializer=descriptor.getFormat().getIndexSerializer(metadata);
+      while ((indexPosition=primaryIndex.getFilePointer()) != indexSize) {
+        ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
+        RowIndexEntry indexEntry=rowIndexSerializer.deserialize(primaryIndex,descriptor.version);
+        DecoratedKey decoratedKey=partitioner.decorateKey(key);
+        if (first == null)         first=decoratedKey;
+        last=decoratedKey;
+        if (recreateBloomFilter)         bf.add(decoratedKey);
+        if (!summaryLoaded) {
+          summaryBuilder.maybeAddEntry(decoratedKey,indexPosition);
+          ibuilder.addPotentialBoundary(indexPosition);
+          dbuilder.addPotentialBoundary(indexEntry.position);
+        }
       }
+      if (!summaryLoaded)       indexSummary=summaryBuilder.build(partitioner);
     }
-    if (!summaryLoaded)     indexSummary=summaryBuilder.build(partitioner);
-  }
+   }
   finally {
     FileUtils.closeQuietly(primaryIndex);
   }
