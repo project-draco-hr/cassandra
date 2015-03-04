@@ -1,10 +1,16 @@
 {
   out.writeInt(t.minIndexInterval);
-  out.writeInt(t.summarySize);
-  out.writeLong(t.bytes.size());
+  out.writeInt(t.offsetCount);
+  out.writeLong(t.getOffHeapSize());
   if (withSamplingLevel) {
     out.writeInt(t.samplingLevel);
     out.writeInt(t.sizeAtFullSampling);
   }
-  out.write(t.bytes);
+  int baseOffset=t.offsetCount * 4;
+  for (int i=0; i < t.offsetCount; i++) {
+    int offset=t.offsets.getInt(i * 4) + baseOffset;
+    if (ByteOrder.nativeOrder() != ByteOrder.BIG_ENDIAN)     offset=Integer.reverseBytes(offset);
+    out.writeInt(offset);
+  }
+  out.write(t.entries,0,t.entriesLength);
 }

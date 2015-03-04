@@ -3,7 +3,7 @@
   if (minIndexInterval != expectedMinIndexInterval) {
     throw new IOException(String.format("Cannot read index summary because min_index_interval changed from %d to %d.",minIndexInterval,expectedMinIndexInterval));
   }
-  int summarySize=in.readInt();
+  int offsetCount=in.readInt();
   long offheapSize=in.readLong();
   int samplingLevel, fullSamplingSummarySize;
   if (haveSamplingLevel) {
@@ -12,13 +12,16 @@
   }
  else {
     samplingLevel=BASE_SAMPLING_LEVEL;
-    fullSamplingSummarySize=summarySize;
+    fullSamplingSummarySize=offsetCount;
   }
   int effectiveIndexInterval=(int)Math.ceil((BASE_SAMPLING_LEVEL / (double)samplingLevel) * minIndexInterval);
   if (effectiveIndexInterval > maxIndexInterval) {
     throw new IOException(String.format("Rebuilding index summary because the effective index interval (%d) is higher than" + " the current max index interval (%d)",effectiveIndexInterval,maxIndexInterval));
   }
-  RefCountedMemory memory=new RefCountedMemory(offheapSize);
-  FBUtilities.copy(in,new MemoryOutputStream(memory),offheapSize);
-  return new IndexSummary(partitioner,memory,summarySize,fullSamplingSummarySize,minIndexInterval,samplingLevel);
+  Memory offsets=Memory.allocate(offsetCount * 4);
+  Memory entries=Memory.allocate(offheapSize - offsets.size());
+  FBUtilities.copy(in,new MemoryOutputStream(offsets),offsets.size());
+  FBUtilities.copy(in,new MemoryOutputStream(entries),entries.size());
+  for (int i=0; i < offsets.size(); i+=4)   offsets.setInt(i,(int)(offsets.getInt(i) - offsets.size()));
+  return new IndexSummary(partitioner,offsets,offsetCount,entries,entries.size(),fullSamplingSummarySize,minIndexInterval,samplingLevel);
 }
