@@ -1,2 +1,30 @@
 {
+  SafeMemory offsets;
+  int count=this.count;
+switch (type) {
+case FINAL:
+case SHARED_FINAL:
+    if (this.offsets.size() != count * 8L) {
+      SafeMemory tmp=this.offsets.copy(count * 8L);
+      this.offsets.free();
+      this.offsets=tmp;
+    }
+  if (type == OpenType.SHARED_FINAL) {
+    offsets=this.offsets.sharedCopy();
+  }
+ else {
+    offsets=this.offsets;
+    this.offsets=null;
+  }
+break;
+case SHARED:
+offsets=this.offsets.sharedCopy();
+count=(int)(dataLength / parameters.chunkLength());
+if (dataLength % parameters.chunkLength() != 0) count++;
+if (count < this.count) compressedLength=offsets.getLong(count * 8L);
+break;
+default :
+throw new AssertionError();
+}
+return new CompressionMetadata(filePath,parameters,offsets,count * 8L,dataLength,compressedLength);
 }

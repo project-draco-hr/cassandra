@@ -18,15 +18,19 @@
         assertEquals(cfs.getSSTables().size(),files);
       }
     }
+    List<SSTableReader> sstables=rewriter.finish();
+    assertEquals(files,sstables.size());
+    assertEquals(files,cfs.getSSTables().size());
+    assertEquals(1,cfs.getDataTracker().getView().shadowed.size());
+    cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,sstables,OperationType.COMPACTION);
+    assertEquals(files,cfs.getSSTables().size());
+    assertEquals(0,cfs.getDataTracker().getView().shadowed.size());
+    Thread.sleep(1000);
+    assertFileCounts(s.descriptor.directory.list(),0,0);
+    validateCFS(cfs);
   }
-   List<SSTableReader> sstables=rewriter.finish();
-  assertEquals(files,sstables.size());
-  assertEquals(files,cfs.getSSTables().size());
-  assertEquals(1,cfs.getDataTracker().getView().shadowed.size());
-  cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,sstables,OperationType.COMPACTION);
-  assertEquals(files,cfs.getSSTables().size());
-  assertEquals(0,cfs.getDataTracker().getView().shadowed.size());
-  Thread.sleep(1000);
-  assertFileCounts(s.descriptor.directory.list(),0,0);
-  validateCFS(cfs);
+ catch (  Throwable t) {
+    rewriter.abort();
+    throw t;
+  }
 }
