@@ -1,0 +1,22 @@
+{
+  CompositesBuilder builder=new CompositesBuilder(ctype);
+  int keyPosition=0;
+  for (  Restriction r : restrictions) {
+    ColumnDefinition def=r.getFirstColumn();
+    Bound b=!def.isReversedType() ? bound : bound.reverse();
+    if (keyPosition != def.position() || r.isContains())     break;
+    if (r.isSlice()) {
+      if (!r.hasBound(b)) {
+        return builder.buildWithEOC(bound.isEnd() ? EOC.END : EOC.START);
+      }
+      r.appendBoundTo(builder,b,options);
+      Composite.EOC eoc=eocFor(r,bound,b);
+      return builder.buildWithEOC(eoc);
+    }
+    r.appendBoundTo(builder,b,options);
+    if (builder.hasMissingElements())     return Collections.emptyList();
+    keyPosition=r.getLastColumn().position() + 1;
+  }
+  EOC eoc=!builder.hasRemaining() ? EOC.NONE : (bound.isEnd() ? EOC.END : EOC.START);
+  return builder.buildWithEOC(eoc);
+}

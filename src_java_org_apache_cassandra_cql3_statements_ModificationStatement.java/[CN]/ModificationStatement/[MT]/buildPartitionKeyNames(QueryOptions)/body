@@ -1,24 +1,15 @@
 {
-  CBuilder keyBuilder=cfm.getKeyValidatorAsCType().builder();
-  List<ByteBuffer> keys=new ArrayList<ByteBuffer>();
+  CompositesBuilder keyBuilder=new CompositesBuilder(cfm.getKeyValidatorAsCType());
   for (  ColumnDefinition def : cfm.partitionKeyColumns()) {
-    Restriction r=processedKeys.get(def.name);
-    if (r == null)     throw new InvalidRequestException(String.format("Missing mandatory PRIMARY KEY part %s",def.name));
-    List<ByteBuffer> values=r.values(options);
-    if (keyBuilder.remainingCount() == 1) {
-      for (      ByteBuffer val : values) {
-        if (val == null)         throw new InvalidRequestException(String.format("Invalid null value for partition key part %s",def.name));
-        ByteBuffer key=keyBuilder.buildWith(val).toByteBuffer();
-        ThriftValidation.validateKey(cfm,key);
-        keys.add(key);
-      }
-    }
- else {
-      if (values.size() != 1)       throw new InvalidRequestException("IN is only supported on the last column of the partition key");
-      ByteBuffer val=values.get(0);
-      if (val == null)       throw new InvalidRequestException(String.format("Invalid null value for partition key part %s",def.name));
-      keyBuilder.add(val);
+    Restriction r=checkNotNull(processedKeys.get(def.name),"Missing mandatory PRIMARY KEY part %s",def.name);
+    r.appendTo(keyBuilder,options);
+  }
+  return Lists.transform(keyBuilder.build(),new Function<Composite,ByteBuffer>(){
+    @Override public ByteBuffer apply(    Composite composite){
+      ByteBuffer byteBuffer=composite.toByteBuffer();
+      ThriftValidation.validateKey(cfm,byteBuffer);
+      return byteBuffer;
     }
   }
-  return keys;
+);
 }

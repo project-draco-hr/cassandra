@@ -1,2 +1,18 @@
 {
+  CompositesBuilder builder=new CompositesBuilder(cfm.comparator);
+  ColumnDefinition firstEmptyKey=null;
+  for (  ColumnDefinition def : cfm.clusteringColumns()) {
+    Restriction r=processedKeys.get(def.name);
+    if (r == null) {
+      firstEmptyKey=def;
+      checkFalse(requireFullClusteringKey() && !cfm.comparator.isDense() && cfm.comparator.isCompound(),"Missing mandatory PRIMARY KEY part %s",def.name);
+    }
+ else     if (firstEmptyKey != null) {
+      throw invalidRequest("Missing PRIMARY KEY part %s since %s is set",firstEmptyKey.name,def.name);
+    }
+ else {
+      r.appendTo(builder,options);
+    }
+  }
+  return builder.build().get(0);
 }

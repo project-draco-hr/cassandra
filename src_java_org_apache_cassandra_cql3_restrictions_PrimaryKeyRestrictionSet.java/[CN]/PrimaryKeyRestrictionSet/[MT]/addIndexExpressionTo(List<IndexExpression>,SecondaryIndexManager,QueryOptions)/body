@@ -1,0 +1,13 @@
+{
+  Boolean clusteringColumns=null;
+  int position=0;
+  for (  Restriction restriction : restrictions) {
+    ColumnDefinition columnDef=restriction.getFirstColumn();
+    if (clusteringColumns == null)     clusteringColumns=columnDef.isClusteringColumn() ? Boolean.TRUE : Boolean.FALSE;
+    if (clusteringColumns && !restriction.isContains() && position == columnDef.position()) {
+      position=restriction.getLastColumn().position() + 1;
+      if (!restriction.hasSupportingIndex(indexManager))       continue;
+    }
+    restriction.addIndexExpressionTo(expressions,indexManager,options);
+  }
+}
