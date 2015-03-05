@@ -1,0 +1,12 @@
+{
+  List<AbstractType<?>> types=new ArrayList<>();
+  for (int i=0, m=restrictions.length; i < m; i++)   types.add(Int32Type.instance);
+  CompoundSparseCellNameType cType=new CompoundSparseCellNameType(types);
+  CFMetaData cfMetaData=new CFMetaData("keyspace","test",ColumnFamilyType.Standard,cType);
+  List<ColumnDefinition> columnDefs=new ArrayList<>();
+  for (int i=0, m=restrictions.length; i < m; i++) {
+    ByteBuffer name=ByteBufferUtil.bytes("clustering_" + i);
+    columnDefs.add(ColumnDefinition.clusteringKeyDef(cfMetaData,name,types.get(i),i));
+  }
+  return SelectStatement.buildBound(bound,columnDefs,restrictions,false,cType,QueryOptions.DEFAULT);
+}

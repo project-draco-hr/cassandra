@@ -1,21 +1,39 @@
 {
   List<ColumnDefinition> restrictedColumns=new ArrayList<>();
   Set<ColumnDefinition> seen=new HashSet<>();
-  int previousPosition=-1;
-  for (  ColumnDefinition def : defs) {
-    if (def.kind != ColumnDefinition.Kind.CLUSTERING_COLUMN)     throw new InvalidRequestException(String.format("Multi-column relations can only be applied to clustering columns: %s",def));
-    if (seen.contains(def))     throw new InvalidRequestException(String.format("Column \"%s\" appeared twice in a relation: %s",def,relation));
+  Restriction existing=null;
+  int previousPosition=defs.get(0).position() - 1;
+  for (int i=0, m=defs.size(); i < m; i++) {
+    ColumnDefinition def=defs.get(i);
+    if (def.kind != ColumnDefinition.Kind.CLUSTERING_COLUMN)     throw new InvalidRequestException(String.format("Multi-column relations can only be applied to clustering columns: %s",def.name));
+    if (seen.contains(def))     throw new InvalidRequestException(String.format("Column \"%s\" appeared twice in a relation: %s",def.name,relation));
     seen.add(def);
     if (def.position() != previousPosition + 1) {
       if (previousPosition == -1)       throw new InvalidRequestException(String.format("Clustering columns may not be skipped in multi-column relations. " + "They should appear in the PRIMARY KEY order. Got %s",relation));
- else       throw new InvalidRequestException(String.format("Clustering columns must appear in the PRIMARY KEY order in multi-column relations: %s",relation));
+      throw new InvalidRequestException(String.format("Clustering columns must appear in the PRIMARY KEY order in multi-column relations: %s",relation));
     }
     previousPosition++;
-    Restriction existing=getExistingRestriction(stmt,def);
+    Restriction previous=existing;
+    existing=getExistingRestriction(stmt,def);
     Operator operator=relation.operator();
     if (existing != null) {
-      if (operator == Operator.EQ || operator == Operator.IN)       throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by more than one relation if it is in an %s relation",def,relation.operator()));
- else       if (!existing.isSlice())       throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by an equality relation and an inequality relation",def));
+      if (operator == Operator.EQ || operator == Operator.IN) {
+        throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by more than one relation if it is in an %s relation",def.name,operator));
+      }
+ else       if (!existing.isSlice()) {
+        throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by an equality relation and an inequality relation",def.name));
+      }
+ else {
+        if (!existing.isMultiColumn()) {
+          throw new InvalidRequestException(String.format("Column \"%s\" cannot have both tuple-notation inequalities and single-column inequalities: %s",def.name,relation));
+        }
+        boolean existingRestrictionStartBefore=(i == 0 && def.position() != 0 && stmt.columnRestrictions[def.position() - 1] == existing);
+        boolean existingRestrictionStartAfter=(i != 0 && previous != existing);
+        if (existingRestrictionStartBefore || existingRestrictionStartAfter) {
+          throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by two tuple-notation inequalities not starting with the same column: %s",def.name,relation));
+        }
+        checkBound(existing,def,operator);
+      }
     }
     restrictedColumns.add(def);
   }
@@ -57,11 +75,10 @@ case GTE:
 {
   Term t=relation.getValue().prepare(keyspace(),defs);
   t.collectMarkerSpecification(boundNames);
+  Restriction.Slice restriction=(Restriction.Slice)getExistingRestriction(stmt,defs.get(0));
+  if (restriction == null)   restriction=new MultiColumnRestriction.Slice(false);
+  restriction.setBound(relation.operator(),t);
   for (  ColumnDefinition def : defs) {
-    Restriction.Slice restriction=(Restriction.Slice)getExistingRestriction(stmt,def);
-    if (restriction == null)     restriction=new MultiColumnRestriction.Slice(false);
- else     if (!restriction.isMultiColumn())     throw new InvalidRequestException(String.format("Column \"%s\" cannot have both tuple-notation inequalities and single-column inequalities: %s",def.name,relation));
-    restriction.setBound(def.name,relation.operator(),t);
     stmt.columnRestrictions[def.position()]=restriction;
   }
   break;
