@@ -1,0 +1,31 @@
+{
+  final long count=counter.incrementAndGet();
+  long limit=DatabaseDescriptor.getNativeTransportMaxConcurrentConnections();
+  if (limit < 0) {
+    limit=Long.MAX_VALUE;
+  }
+  if (count > limit) {
+    logger.warn("Exceeded maximum native connection limit of {} by using {} connections",limit,count);
+    ctx.close();
+  }
+ else {
+    long perIpLimit=DatabaseDescriptor.getNativeTransportMaxConcurrentConnectionsPerIp();
+    if (perIpLimit > 0) {
+      InetAddress address=((InetSocketAddress)ctx.channel().remoteAddress()).getAddress();
+      AtomicLong perIpCount=connectionsPerClient.get(address);
+      if (perIpCount == null) {
+        perIpCount=new AtomicLong(0);
+        AtomicLong old=connectionsPerClient.putIfAbsent(address,perIpCount);
+        if (old != null) {
+          perIpCount=old;
+        }
+      }
+      if (perIpCount.incrementAndGet() > perIpLimit) {
+        logger.warn("Exceeded maximum native connection limit per ip of {} by using {} connections",perIpLimit,perIpCount);
+        ctx.close();
+        return;
+      }
+    }
+    ctx.fireChannelActive();
+  }
+}
