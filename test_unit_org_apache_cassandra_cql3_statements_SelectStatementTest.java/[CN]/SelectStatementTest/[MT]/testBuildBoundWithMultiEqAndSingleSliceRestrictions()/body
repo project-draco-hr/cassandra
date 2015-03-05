@@ -1,0 +1,16 @@
+{
+  ByteBuffer value1=ByteBufferUtil.bytes(1);
+  ByteBuffer value2=ByteBufferUtil.bytes(2);
+  ByteBuffer value3=ByteBufferUtil.bytes(3);
+  MultiColumnRestriction.EQ multiEq=new MultiColumnRestriction.EQ(toMultiItemTerminal(value1,value2),false);
+  SingleColumnRestriction.Slice singleSlice=new SingleColumnRestriction.Slice(false);
+  singleSlice.setBound(Relation.Type.GT,toTerm(value3));
+  Restriction[] restrictions=new Restriction[]{multiEq,multiEq,singleSlice};
+  CFDefinition cfDef=createCFDefinition(restrictions.length);
+  List<ByteBuffer> bounds=executeBuildBound(cfDef,restrictions,Bound.START);
+  assertEquals(1,bounds.size());
+  assertForRelationComposite(cfDef,bounds.get(0),Relation.Type.GT,value1,value2,value3);
+  bounds=executeBuildBound(cfDef,restrictions,Bound.END);
+  assertEquals(1,bounds.size());
+  assertEndOfRangeComposite(cfDef,bounds.get(0),value1,value2);
+}
