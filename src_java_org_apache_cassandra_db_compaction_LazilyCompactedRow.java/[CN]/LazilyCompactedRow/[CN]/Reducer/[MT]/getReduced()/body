@@ -2,7 +2,7 @@
   if (tombstone != null) {
     RangeTombstone t=tombstone;
     tombstone=null;
-    if (t.timestamp() < maxPurgeableTimestamp && t.data.isGcAble(controller.gcBefore)) {
+    if (t.timestamp() < getMaxPurgeableTimestamp() && t.data.isGcAble(controller.gcBefore)) {
       indexBuilder.tombstoneTracker().update(t,true);
       return null;
     }
@@ -17,10 +17,12 @@
     }
   }
  else {
-    boolean shouldPurge=container.getSortedColumns().iterator().next().timestamp() < maxPurgeableTimestamp;
     container.delete(maxRowTombstone);
-    removeDeleted(container,shouldPurge,key,controller);
     Iterator<Cell> iter=container.iterator();
+    Cell c=iter.next();
+    boolean shouldPurge=c.getLocalDeletionTime() < Integer.MAX_VALUE && c.timestamp() < getMaxPurgeableTimestamp();
+    removeDeleted(container,shouldPurge,key,controller);
+    iter=container.iterator();
     if (!iter.hasNext()) {
       container=ArrayBackedSortedColumns.factory.create(emptyColumnFamily.metadata());
       return null;

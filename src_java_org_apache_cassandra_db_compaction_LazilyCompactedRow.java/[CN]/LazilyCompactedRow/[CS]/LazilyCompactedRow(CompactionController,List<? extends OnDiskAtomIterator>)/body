@@ -8,10 +8,9 @@
     DeletionTime rowTombstone=row.getColumnFamily().deletionInfo().getTopLevelDeletion();
     if (maxRowTombstone.compareTo(rowTombstone) < 0)     maxRowTombstone=rowTombstone;
   }
-  maxPurgeableTimestamp=controller.maxPurgeableTimestamp(key);
   emptyColumnFamily=ArrayBackedSortedColumns.factory.create(controller.cfs.metadata);
   emptyColumnFamily.delete(maxRowTombstone);
-  if (maxRowTombstone.markedForDeleteAt < maxPurgeableTimestamp)   emptyColumnFamily.purgeTombstones(controller.gcBefore);
+  if (!maxRowTombstone.isLive() && maxRowTombstone.markedForDeleteAt < getMaxPurgeableTimestamp())   emptyColumnFamily.purgeTombstones(controller.gcBefore);
   reducer=new Reducer();
   merger=Iterators.filter(MergeIterator.get(rows,emptyColumnFamily.getComparator().onDiskAtomComparator(),reducer),Predicates.notNull());
 }
