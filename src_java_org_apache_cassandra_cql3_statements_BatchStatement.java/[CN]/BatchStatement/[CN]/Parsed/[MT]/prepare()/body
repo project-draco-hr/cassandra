@@ -1,10 +1,23 @@
 {
   VariableSpecifications boundNames=getBoundVariables();
+  String firstKS=null;
+  String firstCF=null;
+  boolean haveMultipleCFs=false;
   List<ModificationStatement> statements=new ArrayList<>(parsedStatements.size());
-  for (  ModificationStatement.Parsed parsed : parsedStatements)   statements.add(parsed.prepare(boundNames));
+  for (  ModificationStatement.Parsed parsed : parsedStatements) {
+    if (firstKS == null) {
+      firstKS=parsed.keyspace();
+      firstCF=parsed.columnFamily();
+    }
+ else     if (!haveMultipleCFs) {
+      haveMultipleCFs=!firstKS.equals(parsed.keyspace()) || !firstCF.equals(parsed.columnFamily());
+    }
+    statements.add(parsed.prepare(boundNames));
+  }
   Attributes prepAttrs=attrs.prepare("[batch]","[batch]");
   prepAttrs.collectMarkerSpecification(boundNames);
   BatchStatement batchStatement=new BatchStatement(boundNames.size(),type,statements,prepAttrs);
   batchStatement.validate();
-  return new ParsedStatement.Prepared(batchStatement,boundNames);
+  Short[] partitionKeyBindIndexes=haveMultipleCFs ? null : boundNames.getPartitionKeyBindIndexes(batchStatement.statements.get(0).cfm);
+  return new ParsedStatement.Prepared(batchStatement,boundNames,partitionKeyBindIndexes);
 }

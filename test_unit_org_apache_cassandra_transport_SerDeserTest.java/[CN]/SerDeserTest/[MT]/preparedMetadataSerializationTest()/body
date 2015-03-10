@@ -1,0 +1,18 @@
+{
+  List<ColumnSpecification> columnNames=new ArrayList<>();
+  for (int i=0; i < 3; i++)   columnNames.add(new ColumnSpecification("ks","cf",new ColumnIdentifier("col" + i,false),Int32Type.instance));
+  ResultSet.PreparedMetadata meta=new ResultSet.PreparedMetadata(columnNames,new Short[]{2,1});
+  ByteBuf buf=Unpooled.buffer(meta.codec.encodedSize(meta,Server.VERSION_4));
+  meta.codec.encode(meta,buf,Server.VERSION_4);
+  ResultSet.PreparedMetadata decodedMeta=meta.codec.decode(buf,Server.VERSION_4);
+  assertEquals(meta,decodedMeta);
+  buf=Unpooled.buffer(meta.codec.encodedSize(meta,Server.VERSION_3));
+  meta.codec.encode(meta,buf,Server.VERSION_3);
+  decodedMeta=meta.codec.decode(buf,Server.VERSION_3);
+  assertNotSame(meta,decodedMeta);
+  ResultSet.PreparedMetadata metaWithoutIndexes=new ResultSet.PreparedMetadata(columnNames,null);
+  buf=Unpooled.buffer(metaWithoutIndexes.codec.encodedSize(metaWithoutIndexes,Server.VERSION_4));
+  metaWithoutIndexes.codec.encode(metaWithoutIndexes,buf,Server.VERSION_4);
+  ResultSet.PreparedMetadata decodedMetaWithoutIndexes=metaWithoutIndexes.codec.decode(buf,Server.VERSION_4);
+  assertEquals(decodedMeta,decodedMetaWithoutIndexes);
+}

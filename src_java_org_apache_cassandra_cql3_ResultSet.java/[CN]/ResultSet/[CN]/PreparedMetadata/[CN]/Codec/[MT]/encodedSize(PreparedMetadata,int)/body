@@ -1,0 +1,18 @@
+{
+  boolean globalTablesSpec=m.flags.contains(Flag.GLOBAL_TABLES_SPEC);
+  int size=8;
+  if (globalTablesSpec) {
+    size+=CBUtil.sizeOfString(m.names.get(0).ksName);
+    size+=CBUtil.sizeOfString(m.names.get(0).cfName);
+  }
+  if (m.partitionKeyBindIndexes != null && version >= 4)   size+=4 + 2 * m.partitionKeyBindIndexes.length;
+  for (  ColumnSpecification name : m.names) {
+    if (!globalTablesSpec) {
+      size+=CBUtil.sizeOfString(name.ksName);
+      size+=CBUtil.sizeOfString(name.cfName);
+    }
+    size+=CBUtil.sizeOfString(name.name.toString());
+    size+=DataType.codec.oneSerializedSize(DataType.fromType(name.type,version),version);
+  }
+  return size;
+}
