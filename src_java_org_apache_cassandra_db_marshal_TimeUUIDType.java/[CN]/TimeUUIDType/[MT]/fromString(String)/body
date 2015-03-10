@@ -1,19 +1,6 @@
 {
-  if (source.isEmpty())   return ByteBufferUtil.EMPTY_BYTE_BUFFER;
-  ByteBuffer idBytes=null;
-  if (regexPattern.matcher(source).matches()) {
-    UUID uuid=null;
-    try {
-      uuid=UUID.fromString(source);
-      idBytes=decompose(uuid);
-    }
- catch (    IllegalArgumentException e) {
-      throw new MarshalException(String.format("Unable to make UUID from '%s'",source),e);
-    }
-    if (uuid.version() != 1)     throw new MarshalException("TimeUUID supports only version 1 UUIDs");
-  }
- else {
-    throw new MarshalException(String.format("Unknown timeuuid representation: %s",source));
-  }
-  return idBytes;
+  ByteBuffer parsed=UUIDType.parse(source);
+  if (parsed == null)   throw new MarshalException(String.format("Unknown timeuuid representation: %s",source));
+  if (parsed.remaining() == 16 && UUIDType.version(parsed) != 1)   throw new MarshalException("TimeUUID supports only version 1 UUIDs");
+  return parsed;
 }
