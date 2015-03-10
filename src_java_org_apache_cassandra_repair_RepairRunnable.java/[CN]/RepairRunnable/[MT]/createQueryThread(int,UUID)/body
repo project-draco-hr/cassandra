@@ -1,0 +1,48 @@
+{
+  return new Thread(new WrappedRunnable(){
+    public void runMayThrow() throws Exception {
+      TraceState state=Tracing.instance.get(sessionId);
+      if (state == null)       throw new Exception("no tracestate");
+      String format="select event_id, source, activity from %s.%s where session_id = ? and event_id > ? and event_id < ?;";
+      String query=String.format(format,TraceKeyspace.NAME,TraceKeyspace.EVENTS);
+      SelectStatement statement=(SelectStatement)QueryProcessor.parseStatement(query).prepare().statement;
+      ByteBuffer sessionIdBytes=ByteBufferUtil.bytes(sessionId);
+      InetAddress source=FBUtilities.getBroadcastAddress();
+      HashSet<UUID>[] seen=new HashSet[]{new HashSet<>(),new HashSet<>()};
+      int si=0;
+      UUID uuid;
+      long tlast=System.currentTimeMillis(), tcur;
+      TraceState.Status status;
+      long minWaitMillis=125;
+      long maxWaitMillis=1000 * 1024L;
+      long timeout=minWaitMillis;
+      boolean shouldDouble=false;
+      while ((status=state.waitActivity(timeout)) != TraceState.Status.STOPPED) {
+        if (status == TraceState.Status.IDLE) {
+          timeout=shouldDouble ? Math.min(timeout * 2,maxWaitMillis) : timeout;
+          shouldDouble=!shouldDouble;
+        }
+ else {
+          timeout=minWaitMillis;
+          shouldDouble=false;
+        }
+        ByteBuffer tminBytes=ByteBufferUtil.bytes(UUIDGen.minTimeUUID(tlast - 1000));
+        ByteBuffer tmaxBytes=ByteBufferUtil.bytes(UUIDGen.maxTimeUUID(tcur=System.currentTimeMillis()));
+        QueryOptions options=QueryOptions.forInternalCalls(ConsistencyLevel.ONE,Lists.newArrayList(sessionIdBytes,tminBytes,tmaxBytes));
+        ResultMessage.Rows rows=statement.execute(QueryState.forInternalCalls(),options);
+        UntypedResultSet result=UntypedResultSet.create(rows.result);
+        for (        UntypedResultSet.Row r : result) {
+          if (source.equals(r.getInetAddress("source")))           continue;
+          if ((uuid=r.getUUID("event_id")).timestamp() > (tcur - 1000) * 10000)           seen[si].add(uuid);
+          if (seen[si == 0 ? 1 : 0].contains(uuid))           continue;
+          String message=String.format("%s: %s",r.getInetAddress("source"),r.getString("activity"));
+          fireProgressEvent("repair:" + cmd,new ProgressEvent(ProgressEventType.NOTIFICATION,0,0,message));
+        }
+        tlast=tcur;
+        si=si == 0 ? 1 : 0;
+        seen[si].clear();
+      }
+    }
+  }
+);
+}
