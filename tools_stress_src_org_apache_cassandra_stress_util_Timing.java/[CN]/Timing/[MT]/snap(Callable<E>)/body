@@ -1,9 +1,13 @@
 {
-  final Timer[] timers=this.timers.toArray(new Timer[0]);
-  final CountDownLatch ready=new CountDownLatch(timers.length);
-  for (int i=0; i < timers.length; i++) {
-    final Timer timer=timers[i];
-    timer.requestReport(ready);
+  int timerCount=0;
+  for (  List<Timer> timersForOperation : timers.values()) {
+    timerCount+=timersForOperation.size();
+  }
+  final CountDownLatch ready=new CountDownLatch(timerCount);
+  for (  List<Timer> timersForOperation : timers.values()) {
+    for (    Timer timer : timersForOperation) {
+      timer.requestReport(ready);
+    }
   }
   E extra;
   try {
@@ -13,15 +17,21 @@
     if (e instanceof InterruptedException)     throw (InterruptedException)e;
     throw new RuntimeException(e);
   }
-  if (!ready.await(5L,TimeUnit.MINUTES))   throw new RuntimeException("Timed out waiting for a timer thread - seems one got stuck. Check GC/Heap size");
-  boolean done=true;
-  List<TimingInterval> intervals=new ArrayList<>();
-  for (  Timer timer : timers) {
-    intervals.add(timer.report);
-    done&=!timer.running();
+  if (!ready.await(5L,TimeUnit.MINUTES)) {
+    throw new RuntimeException("Timed out waiting for a timer thread - seems one got stuck. Check GC/Heap size");
   }
+  boolean done=true;
+  Map<String,TimingInterval> intervals=new TreeMap<>();
+  for (  Map.Entry<String,List<Timer>> entry : timers.entrySet()) {
+    List<TimingInterval> operationIntervals=new ArrayList<>();
+    for (    Timer timer : entry.getValue()) {
+      operationIntervals.add(timer.report);
+      done&=!timer.running();
+    }
+    intervals.put(entry.getKey(),TimingInterval.merge(operationIntervals,reportSampleCount,history.get(entry.getKey()).endNanos()));
+  }
+  TimingIntervals result=new TimingIntervals(intervals);
   this.done=done;
-  TimingResult<E> result=new TimingResult<>(extra,TimingInterval.merge(intervals,reportSampleCount,history.endNanos()));
-  history=TimingInterval.merge(Arrays.asList(result.timing,history),historySampleCount,history.startNanos());
-  return result;
+  history=history.merge(result,historySampleCount,history.startNanos());
+  return new TimingResult<>(extra,result);
 }

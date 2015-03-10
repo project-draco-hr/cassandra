@@ -6,6 +6,7 @@
   List<String> runIds=new ArrayList<>();
   do {
     output.println(String.format("Running with %d threadCount",threadCount));
+    if (settings.command.truncate == SettingsCommand.TruncateWhen.ALWAYS)     settings.command.truncateTables(settings);
     StressMetrics result=run(settings.command.getFactory(settings),threadCount,settings.command.count,settings.command.duration,rateLimiter,settings.command.durationUnits,output);
     if (result == null)     return false;
     results.add(result);
@@ -26,6 +27,6 @@
     }
   }
  while (!auto || (hasAverageImprovement(results,3,0) && hasAverageImprovement(results,5,settings.command.targetUncertainty)));
-  StressMetrics.summarise(runIds,results,output);
+  StressMetrics.summarise(runIds,results,output,settings.samples.historyCount);
   return true;
 }
