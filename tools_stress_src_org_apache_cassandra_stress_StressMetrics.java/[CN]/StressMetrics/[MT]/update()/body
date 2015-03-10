@@ -1,7 +1,14 @@
 {
   Timing.TimingResult<JmxCollector.GcStats> result=timing.snap(gcStatsCollector);
   totalGcStats=JmxCollector.GcStats.aggregate(Arrays.asList(totalGcStats,result.extra));
-  if (result.timing.partitionCount != 0)   printRow("",result.timing,timing.getHistory(),result.extra,rowRateUncertainty,output);
-  rowRateUncertainty.update(result.timing.adjustedRowRate());
+  TimingInterval current=result.intervals.combine(settings.samples.reportCount);
+  TimingInterval history=timing.getHistory().combine(settings.samples.historyCount);
+  rowRateUncertainty.update(current.adjustedRowRate());
+  if (current.partitionCount != 0) {
+    if (result.intervals.intervals().size() > 1) {
+      for (      Map.Entry<String,TimingInterval> type : result.intervals.intervals().entrySet())       printRow("",type.getKey(),type.getValue(),timing.getHistory().get(type.getKey()),result.extra,rowRateUncertainty,output);
+    }
+    printRow("","total",current,history,result.extra,rowRateUncertainty,output);
+  }
   if (timing.done())   stop=true;
 }
