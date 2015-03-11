@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (k int primary key, m map<frozen<map<int, int>>, int>)");
+  execute("INSERT INTO %s (k, m) VALUES (1, {{1 : 1, 2 : 2} : 1})");
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,map(map(1,1,2,2),1)));
+  execute("UPDATE %s SET m[?]=2 WHERE k=1",map(1,1,2,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,map(map(1,1,2,2),2)));
+  execute("UPDATE %s SET m = m + ? WHERE k=1",map(map(3,3,4,4),3));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,map(map(1,1,2,2),2,map(3,3,4,4),3)));
+  execute("DELETE m[?] FROM %s WHERE k = 1",map(1,1,2,2));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,map(map(3,3,4,4),3)));
+}

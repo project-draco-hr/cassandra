@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (k int primary key, l list<frozen<map<int, int>>>)");
+  execute("INSERT INTO %s (k, l) VALUES (1, [{1 : 1, 2 : 2}])");
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(1,1,2,2))));
+  execute("UPDATE %s SET l[?]=? WHERE k=1",0,map(3,3,4,4));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(3,3,4,4))));
+  execute("UPDATE %s SET l = ? + l WHERE k=1",list(map(1,1,2,2)));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(1,1,2,2),map(3,3,4,4))));
+  execute("UPDATE %s SET l = l + ? WHERE k=1",list(map(5,5,6,6)));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(1,1,2,2),map(3,3,4,4),map(5,5,6,6))));
+  execute("UPDATE %s SET l = l - ? WHERE k=1",list(map(3,3,4,4)));
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(1,1,2,2),map(5,5,6,6))));
+  execute("DELETE l[0] FROM %s WHERE k = 1");
+  assertRows(execute("SELECT * FROM %s WHERE k = 1"),row(1,list(map(5,5,6,6))));
+}
