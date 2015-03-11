@@ -1,14 +1,14 @@
 {
   if (buffer == null)   throw new ClosedChannelException();
   int length=src.remaining();
-  int offset=src.position();
-  while (length > 0) {
-    int n=writeAtMost(src,offset,length);
-    offset+=n;
-    length-=n;
+  int finalLimit=src.limit();
+  while (src.hasRemaining()) {
+    if (!buffer.hasRemaining())     reBuffer();
+    if (buffer.remaining() < src.remaining())     src.limit(src.position() + buffer.remaining());
+    buffer.put(src);
+    src.limit(finalLimit);
     isDirty=true;
     syncNeeded=true;
   }
-  src.position(offset);
   return length;
 }

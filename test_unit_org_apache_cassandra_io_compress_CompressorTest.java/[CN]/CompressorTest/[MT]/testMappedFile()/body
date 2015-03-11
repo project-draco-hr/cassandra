@@ -1,17 +1,26 @@
 {
   byte[] data=new byte[1 << 20];
   new Random().nextBytes(data);
+  ByteBuffer src=makeBB(data.length);
+  src.put(data);
+  src.flip();
   File temp=File.createTempFile("tempfile",".tmp");
   temp.deleteOnExit();
   final int outOffset=3;
-  final WrappedArray out=new WrappedArray(new byte[outOffset + compressor.initialCompressedBufferLength(data.length)]);
-  new Random().nextBytes(out.buffer);
-  final int compressedLength=compressor.compress(data,0,data.length,out,outOffset);
-  Files.write(out.buffer,temp);
+  byte[] garbage=new byte[outOffset + compressor.initialCompressedBufferLength(data.length)];
+  new Random().nextBytes(garbage);
+  WrappedByteBuffer dest=makeWrappedBB(outOffset + compressor.initialCompressedBufferLength(data.length));
+  dest.buffer.put(garbage);
+  dest.buffer.clear();
+  dest.buffer.position(outOffset);
+  final int compressedLength=compressor.compress(src,dest);
+  FileChannel channel=new FileOutputStream(temp,false).getChannel();
+  dest.buffer.clear();
+  channel.write(dest.buffer);
   MappedByteBuffer mappedData=Files.map(temp);
   mappedData.position(outOffset);
   mappedData.limit(compressedLength + outOffset);
-  ByteBuffer result=compressor.useDirectOutputByteBuffers() ? ByteBuffer.allocateDirect(data.length + 100) : ByteBuffer.allocate(data.length + 100);
+  ByteBuffer result=makeBB(data.length + 100);
   int length=compressor.uncompress(mappedData,result);
   Assert.assertEquals(data.length,length);
   for (int i=0; i < length; i++) {

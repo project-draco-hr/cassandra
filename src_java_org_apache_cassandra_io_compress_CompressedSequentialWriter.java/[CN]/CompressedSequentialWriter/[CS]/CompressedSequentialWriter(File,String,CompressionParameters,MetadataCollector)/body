@@ -1,8 +1,8 @@
 {
-  super(file,parameters.chunkLength());
+  super(file,parameters.chunkLength(),parameters.sstableCompressor.useDirectOutputByteBuffers());
   this.compressor=parameters.sstableCompressor;
-  compressed=new ICompressor.WrappedArray(new byte[compressor.initialCompressedBufferLength(buffer.length)]);
+  compressed=compressor.useDirectOutputByteBuffers() ? new ICompressor.WrappedByteBuffer(ByteBuffer.allocateDirect(compressor.initialCompressedBufferLength(buffer.capacity()))) : new ICompressor.WrappedByteBuffer(ByteBuffer.allocate(compressor.initialCompressedBufferLength(buffer.capacity())));
   metadataWriter=CompressionMetadata.Writer.open(parameters,offsetsPath);
   this.sstableMetadataCollector=sstableMetadataCollector;
-  crcMetadata=new DataIntegrityMetadata.ChecksumWriter(out);
+  crcMetadata=new DataIntegrityMetadata.ChecksumWriter(new DataOutputStreamAndChannel(channel));
 }

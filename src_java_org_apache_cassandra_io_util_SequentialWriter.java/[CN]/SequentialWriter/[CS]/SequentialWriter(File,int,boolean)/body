@@ -1,0 +1,16 @@
+{
+  try {
+    if (file.exists())     channel=FileChannel.open(file.toPath(),StandardOpenOption.READ,StandardOpenOption.WRITE);
+ else     channel=FileChannel.open(file.toPath(),StandardOpenOption.READ,StandardOpenOption.WRITE,StandardOpenOption.CREATE);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  filePath=file.getAbsolutePath();
+  buffer=offheap ? ByteBuffer.allocateDirect(bufferSize) : ByteBuffer.allocate(bufferSize);
+  this.trickleFsync=DatabaseDescriptor.getTrickleFsync();
+  this.trickleFsyncByteInterval=DatabaseDescriptor.getTrickleFsyncIntervalInKb() * 1024;
+  fd=CLibrary.getfd(channel);
+  directoryFD=CLibrary.tryOpenDirectory(file.getParent());
+  stream=new DataOutputStreamAndChannel(this,this);
+}
