@@ -37,15 +37,19 @@
   if (stmt.selectsOnlyStaticColumns && stmt.hasClusteringColumnsRestriction())   throw new InvalidRequestException("Cannot restrict clustering columns when selecting only static columns");
   processColumnRestrictions(stmt,hasQueriableIndex,cfm);
   if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
+  int numberOfRestrictionsEvaluatedWithSlices=0;
   for (  ColumnDefinition def : cfm.clusteringColumns()) {
     Boolean indexed=stmt.restrictedColumns.get(def);
     if (indexed == null)     break;
-    if (!indexed && stmt.columnRestrictions[def.position()].canEvaluateWithSlices())     stmt.restrictedColumns.remove(def);
+    if (!indexed && stmt.columnRestrictions[def.position()].canEvaluateWithSlices()) {
+      stmt.restrictedColumns.remove(def);
+      numberOfRestrictionsEvaluatedWithSlices++;
+    }
   }
   if (!stmt.metadataRestrictions.isEmpty())   stmt.usesSecondaryIndexing=true;
   if (stmt.usesSecondaryIndexing)   validateSecondaryIndexSelections(stmt);
   if (!stmt.parameters.orderings.isEmpty())   processOrderingClause(stmt,cfm);
-  checkNeedsFiltering(stmt);
+  checkNeedsFiltering(stmt,numberOfRestrictionsEvaluatedWithSlices);
   if (parameters.isDistinct)   stmt.validateDistinctSelection();
   return new ParsedStatement.Prepared(stmt,boundNames);
 }
