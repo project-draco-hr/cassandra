@@ -1,16 +1,11 @@
 {
-  try {
-    final CounterMutation cm=message.payload;
-    logger.debug("Applying forwarded {}",cm);
-    String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
-    StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter,new Runnable(){
-      public void run(){
-        MessagingService.instance().sendReply(new WriteResponse().createMessage(),id,message.from);
-      }
+  final CounterMutation cm=message.payload;
+  logger.debug("Applying forwarded {}",cm);
+  String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+  StorageProxy.applyCounterMutationOnLeader(cm,localDataCenter,new Runnable(){
+    public void run(){
+      MessagingService.instance().sendReply(new WriteResponse().createMessage(),id,message.from);
     }
+  }
 );
-  }
- catch (  RequestExecutionException e) {
-    logger.debug("counter error",e);
-  }
 }

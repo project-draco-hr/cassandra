@@ -4,7 +4,7 @@
   Token tk=StorageService.getPartitioner().getToken(proposal.key);
   List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(keyspace.getName(),tk);
   Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,keyspace.getName());
-  AbstractWriteResponseHandler responseHandler=null;
+  AbstractWriteResponseHandler<Commit> responseHandler=null;
   if (shouldBlock) {
     AbstractReplicationStrategy rs=keyspace.getReplicationStrategy();
     responseHandler=rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,consistencyLevel,null,WriteType.SIMPLE);
@@ -12,7 +12,7 @@
   MessageOut<Commit> message=new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT,proposal,Commit.serializer);
   for (  InetAddress destination : Iterables.concat(naturalEndpoints,pendingEndpoints)) {
     if (FailureDetector.instance.isAlive(destination)) {
-      if (shouldBlock)       MessagingService.instance().sendRR(message,destination,responseHandler);
+      if (shouldBlock)       MessagingService.instance().sendRRWithFailure(message,destination,responseHandler);
  else       MessagingService.instance().sendOneWay(message,destination);
     }
   }

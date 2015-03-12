@@ -9,9 +9,12 @@
     throw new AssertionError(ex);
   }
   if (!success) {
-    int acks=ackCount();
     int blockedFor=totalBlockFor();
+    int acks=ackCount();
     if (acks >= blockedFor)     acks=blockedFor - 1;
     throw new WriteTimeoutException(writeType,consistencyLevel,acks,blockedFor);
+  }
+  if (totalBlockFor() + failures > totalEndpoints()) {
+    throw new WriteFailureException(consistencyLevel,ackCount(),failures,totalBlockFor(),writeType);
   }
 }

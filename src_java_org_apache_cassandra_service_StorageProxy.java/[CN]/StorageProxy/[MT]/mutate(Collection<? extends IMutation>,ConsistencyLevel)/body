@@ -2,7 +2,7 @@
   Tracing.trace("Determining replicas for mutation");
   final String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
   long startTime=System.nanoTime();
-  List<AbstractWriteResponseHandler> responseHandlers=new ArrayList<>(mutations.size());
+  List<AbstractWriteResponseHandler<IMutation>> responseHandlers=new ArrayList<>(mutations.size());
   try {
     for (    IMutation mutation : mutations) {
       if (mutation instanceof CounterMutation) {
@@ -13,26 +13,25 @@
         responseHandlers.add(performWrite(mutation,consistency_level,localDataCenter,standardWritePerformer,null,wt));
       }
     }
-    for (    AbstractWriteResponseHandler responseHandler : responseHandlers) {
+    for (    AbstractWriteResponseHandler<IMutation> responseHandler : responseHandlers) {
       responseHandler.get();
     }
   }
- catch (  WriteTimeoutException ex) {
+ catch (  WriteTimeoutException|WriteFailureException ex) {
     if (consistency_level == ConsistencyLevel.ANY) {
-      for (      IMutation mutation : mutations) {
-        if (mutation instanceof CounterMutation)         continue;
-        Token tk=StorageService.getPartitioner().getToken(mutation.key());
-        List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(mutation.getKeyspaceName(),tk);
-        Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,mutation.getKeyspaceName());
-        for (        InetAddress target : Iterables.concat(naturalEndpoints,pendingEndpoints)) {
-          if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))           submitHint((Mutation)mutation,target,null);
-        }
-      }
-      Tracing.trace("Wrote hint to satisfy CL.ANY after no replicas acknowledged the write");
+      hintMutations(mutations);
     }
  else {
-      writeMetrics.timeouts.mark();
-      Tracing.trace("Write timeout; received {} of {} required replies",ex.received,ex.blockFor);
+      if (ex instanceof WriteFailureException) {
+        writeMetrics.failures.mark();
+        WriteFailureException fe=(WriteFailureException)ex;
+        Tracing.trace("Write failure; received {} of {} required replies, failed {} requests",new Object[]{fe.received,fe.blockFor,fe.failures});
+      }
+ else {
+        writeMetrics.timeouts.mark();
+        WriteTimeoutException te=(WriteTimeoutException)ex;
+        Tracing.trace("Write timeout; received {} of {} required replies",te.received,te.blockFor);
+      }
       throw ex;
     }
   }

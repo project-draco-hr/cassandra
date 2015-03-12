@@ -12,13 +12,17 @@
   try {
     verbHandler.doVerb(message,id);
   }
- catch (  Throwable t) {
-    if (message.doCallbackOnFailure()) {
-      MessageOut response=new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE).withParameter(MessagingService.FAILURE_RESPONSE_PARAM,MessagingService.ONE_BYTE);
-      MessagingService.instance().sendReply(response,id,message.from);
-    }
-    if (t instanceof TombstoneOverwhelmingException)     logger.error(t.getMessage());
- else     throw t;
+ catch (  IOException ioe) {
+    handleFailure(ioe);
+    throw new RuntimeException(ioe);
+  }
+catch (  TombstoneOverwhelmingException toe) {
+    handleFailure(toe);
+    logger.error(toe.getMessage());
+  }
+catch (  Throwable t) {
+    handleFailure(t);
+    throw t;
   }
   if (GOSSIP_VERBS.contains(message.verb))   Gossiper.instance.setLastProcessedMessageAt(constructionTime);
 }

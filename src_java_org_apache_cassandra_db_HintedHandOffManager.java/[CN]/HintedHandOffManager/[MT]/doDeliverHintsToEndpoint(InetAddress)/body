@@ -21,7 +21,7 @@
       logger.info("Endpoint {} died during hint delivery; aborting ({} delivered)",endpoint,rowsReplayed);
       break;
     }
-    List<WriteResponseHandler> responseHandlers=Lists.newArrayList();
+    List<WriteResponseHandler<Mutation>> responseHandlers=Lists.newArrayList();
     for (    final Cell hint : hintsPage) {
       if (hintedHandOffPaused) {
         logger.debug("Hints delivery process is paused, aborting");
@@ -62,16 +62,16 @@ catch (      IOException e) {
         }
       }
 ;
-      WriteResponseHandler responseHandler=new WriteResponseHandler(endpoint,WriteType.SIMPLE,callback);
+      WriteResponseHandler<Mutation> responseHandler=new WriteResponseHandler<>(endpoint,WriteType.SIMPLE,callback);
       MessagingService.instance().sendRR(message,endpoint,responseHandler,false);
       responseHandlers.add(responseHandler);
     }
-    for (    WriteResponseHandler handler : responseHandlers) {
+    for (    WriteResponseHandler<Mutation> handler : responseHandlers) {
       try {
         handler.get();
       }
- catch (      WriteTimeoutException e) {
-        logger.info("Timed out replaying hints to {}; aborting ({} delivered)",endpoint,rowsReplayed);
+ catch (      WriteTimeoutException|WriteFailureException e) {
+        logger.info("Failed replaying hints to {}; aborting ({} delivered), error : {}",endpoint,rowsReplayed,e.getMessage());
         break delivery;
       }
     }
