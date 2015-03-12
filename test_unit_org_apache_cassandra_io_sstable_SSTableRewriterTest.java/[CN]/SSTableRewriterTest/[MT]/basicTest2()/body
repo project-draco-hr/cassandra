@@ -1,13 +1,13 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   SSTableReader s=writeFile(cfs,1000);
   cfs.addSSTable(s);
   Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
   assertEquals(1,sstables.size());
   SSTableRewriter.overrideOpenInterval(10000000);
-  try (SSTableRewriter writer=new SSTableRewriter(cfs,sstables,1000,false);AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables)){
+  try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables);LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN);SSTableRewriter writer=new SSTableRewriter(cfs,txn,1000,false)){
     ISSTableScanner scanner=scanners.scanners.get(0);
     CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(System.currentTimeMillis()));
     writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory));
@@ -15,8 +15,7 @@
       AbstractCompactedRow row=new LazilyCompactedRow(controller,Arrays.asList(scanner.next()));
       writer.append(row);
     }
-    Collection<SSTableReader> newsstables=writer.finish();
-    cfs.getDataTracker().markCompactedSSTablesReplaced(sstables,newsstables,OperationType.COMPACTION);
+    writer.finish();
   }
    SSTableDeletingTask.waitForDeletions();
   validateCFS(cfs);

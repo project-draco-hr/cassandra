@@ -4,11 +4,11 @@
   cfs.disableAutoCompaction();
   int rowCount=1000;
   populate(cfs,rowCount);
-  Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
-  long beforeSize=sstables.iterator().next().onDiskLength();
+  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getSSTables(),OperationType.COMPACTION);
+  long beforeSize=txn.originals().iterator().next().onDiskLength();
   int sstableSize=(int)beforeSize / 10;
-  CompactionAwareWriter writer=new MaxSSTableSizeWriter(cfs,sstables,sstables,sstableSize,0,false,OperationType.COMPACTION);
-  int rows=compact(cfs,sstables,writer);
+  CompactionAwareWriter writer=new MaxSSTableSizeWriter(cfs,txn,txn.originals(),sstableSize,0,false,OperationType.COMPACTION);
+  int rows=compact(cfs,txn,writer);
   assertEquals(10,cfs.getSSTables().size());
   assertEquals(rowCount,rows);
   validateData(cfs,rowCount);

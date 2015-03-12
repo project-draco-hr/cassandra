@@ -1,24 +1,5 @@
 {
-  try {
-    moveStarts(null,null,true);
-  }
- catch (  Throwable t) {
-    accumulate=merge(accumulate,t);
-  }
-  for (  SSTableReader sstable : preparedForCommit) {
-    try {
-      sstable.markObsolete();
-      sstable.selfRef().release();
-    }
- catch (    Throwable t) {
-      accumulate=merge(accumulate,t);
-    }
-  }
-  if (writer != null)   finishedWriters.add(new Finished(writer,currentlyOpenedEarly));
-  for (  Finished finished : finishedWriters) {
-    accumulate=finished.writer.abort(accumulate);
-    if (finished.reader != null)     discard.add(finished.reader);
-  }
-  accumulate=replaceWithFinishedReaders(Collections.<SSTableReader>emptyList(),accumulate);
+  for (  SSTableWriter writer : writers)   accumulate=writer.abort(accumulate);
+  accumulate=transaction.abort(accumulate);
   return accumulate;
 }

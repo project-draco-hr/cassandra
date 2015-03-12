@@ -1,0 +1,9 @@
+{
+  ColumnFamilyStore cfs=MockSchema.newCFS();
+  Tracker tracker=new Tracker(cfs,false);
+  List<SSTableReader> readers=ImmutableList.of(MockSchema.sstable(0,17),MockSchema.sstable(1,121),MockSchema.sstable(2,9));
+  tracker.addInitialSSTables(copyOf(readers));
+  Assert.assertEquals(3,tracker.view.get().sstables.size());
+  for (  SSTableReader reader : readers)   Assert.assertTrue(reader.isDeleteNotificationSetup());
+  Assert.assertEquals(17 + 121 + 9,cfs.metric.liveDiskSpaceUsed.getCount());
+}

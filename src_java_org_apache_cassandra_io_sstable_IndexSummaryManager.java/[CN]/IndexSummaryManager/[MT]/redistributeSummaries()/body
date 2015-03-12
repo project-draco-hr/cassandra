@@ -1,9 +1,9 @@
 {
-  Pair<List<SSTableReader>,Multimap<DataTracker,SSTableReader>> compactingAndNonCompacting=getCompactingAndNonCompactingSSTables();
+  Pair<List<SSTableReader>,Map<UUID,LifecycleTransaction>> compactingAndNonCompacting=getCompactingAndNonCompactingSSTables();
   try {
-    redistributeSummaries(compactingAndNonCompacting.left,Lists.newArrayList(compactingAndNonCompacting.right.values()),this.memoryPoolBytes);
+    redistributeSummaries(compactingAndNonCompacting.left,compactingAndNonCompacting.right,this.memoryPoolBytes);
   }
   finally {
-    for (    DataTracker tracker : compactingAndNonCompacting.right.keySet())     tracker.unmarkCompacting(compactingAndNonCompacting.right.get(tracker));
+    for (    LifecycleTransaction modifier : compactingAndNonCompacting.right.values())     modifier.close();
   }
 }

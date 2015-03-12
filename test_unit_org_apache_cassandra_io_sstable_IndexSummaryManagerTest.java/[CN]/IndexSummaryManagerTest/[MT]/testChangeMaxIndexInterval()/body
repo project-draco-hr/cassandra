@@ -8,19 +8,25 @@
   createSSTables(ksname,cfname,numSSTables,numRows);
   List<SSTableReader> sstables=new ArrayList<>(cfs.getSSTables());
   for (  SSTableReader sstable : sstables)   sstable.overrideReadMeter(new RestorableMeter(100.0,100.0));
-  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,sstables,1);
-  sstables=new ArrayList<>(cfs.getSSTables());
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
+    redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),10);
+  }
+   sstables=new ArrayList<>(cfs.getSSTables());
   for (  SSTableReader sstable : sstables)   assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
   cfs.metadata.maxIndexInterval(cfs.metadata.getMaxIndexInterval() / 2);
-  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,sstables,1);
-  sstables=new ArrayList<>(cfs.getSSTables());
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
+    redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),1);
+  }
+   sstables=new ArrayList<>(cfs.getSSTables());
   for (  SSTableReader sstable : sstables) {
     assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
     assertEquals(numRows / cfs.metadata.getMaxIndexInterval(),sstable.getIndexSummarySize());
   }
   cfs.metadata.maxIndexInterval(cfs.metadata.getMaxIndexInterval() * 2);
-  IndexSummaryManager.redistributeSummaries(Collections.EMPTY_LIST,sstables,1);
-  for (  SSTableReader sstable : cfs.getSSTables()) {
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
+    redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),1);
+  }
+   for (  SSTableReader sstable : cfs.getSSTables()) {
     assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
     assertEquals(numRows / cfs.metadata.getMaxIndexInterval(),sstable.getIndexSummarySize());
   }

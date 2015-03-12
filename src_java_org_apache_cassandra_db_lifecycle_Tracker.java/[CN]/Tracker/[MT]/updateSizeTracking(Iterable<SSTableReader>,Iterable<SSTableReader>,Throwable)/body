@@ -1,0 +1,27 @@
+{
+  if (cfstore == null)   return accumulate;
+  long add=0;
+  for (  SSTableReader sstable : newSSTables) {
+    if (logger.isDebugEnabled())     logger.debug("adding {} to list of files tracked for {}.{}",sstable.descriptor,cfstore.keyspace.getName(),cfstore.name);
+    try {
+      add+=sstable.bytesOnDisk();
+    }
+ catch (    Throwable t) {
+      accumulate=merge(accumulate,t);
+    }
+  }
+  long subtract=0;
+  for (  SSTableReader sstable : oldSSTables) {
+    if (logger.isDebugEnabled())     logger.debug("removing {} from list of files tracked for {}.{}",sstable.descriptor,cfstore.keyspace.getName(),cfstore.name);
+    try {
+      subtract+=sstable.bytesOnDisk();
+    }
+ catch (    Throwable t) {
+      accumulate=merge(accumulate,t);
+    }
+  }
+  StorageMetrics.load.inc(add - subtract);
+  cfstore.metric.liveDiskSpaceUsed.inc(add - subtract);
+  cfstore.metric.totalDiskSpaceUsed.inc(add);
+  return accumulate;
+}

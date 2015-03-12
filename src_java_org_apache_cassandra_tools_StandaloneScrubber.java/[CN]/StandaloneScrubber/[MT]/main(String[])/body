@@ -34,8 +34,8 @@
     System.out.println(String.format("Pre-scrub sstables snapshotted into snapshot %s",snapshotName));
     if (!options.manifestCheckOnly) {
       for (      SSTableReader sstable : sstables) {
-        try {
-          Scrubber scrubber=new Scrubber(cfs,sstable,options.skipCorrupted,handler,true,!options.noValidate);
+        try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable)){
+          Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate);
           try {
             scrubber.scrub();
           }

@@ -1,0 +1,14 @@
+{
+  if (logger.isDebugEnabled())   logger.debug("Checkpointing update:{}, obsolete:{}",staged.update,staged.obsolete);
+  if (staged.isEmpty())   return accumulate;
+  Set<SSTableReader> toUpdate=toUpdate();
+  Set<SSTableReader> fresh=copyOf(fresh());
+  checkNotReplaced(filterIn(toUpdate,staged.update));
+  tracker.apply(compose(updateCompacting(emptySet(),fresh),updateLiveSet(toUpdate,staged.update)));
+  marked.addAll(fresh);
+  logged.log(staged);
+  accumulate=setReplaced(filterOut(toUpdate,staged.obsolete),accumulate);
+  accumulate=release(selfRefs(filterOut(toUpdate,staged.obsolete)),accumulate);
+  staged.clear();
+  return accumulate;
+}

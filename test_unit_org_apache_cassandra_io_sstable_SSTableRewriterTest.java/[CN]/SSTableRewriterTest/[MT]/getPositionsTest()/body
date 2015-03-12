@@ -1,14 +1,16 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
+  assertEquals(0,cfs.metric.liveDiskSpaceUsed.getCount());
+  assertEquals(0,cfs.metric.totalDiskSpaceUsed.getCount());
   SSTableReader s=writeFile(cfs,1000);
   cfs.addSSTable(s);
   Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
   assertEquals(1,sstables.size());
   SSTableRewriter.overrideOpenInterval(10000000);
   boolean checked=false;
-  try (SSTableRewriter writer=new SSTableRewriter(cfs,sstables,1000,false);AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables)){
+  try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategy().getScanners(sstables);LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN);SSTableRewriter writer=new SSTableRewriter(cfs,txn,1000,false)){
     ISSTableScanner scanner=scanners.scanners.get(0);
     CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(System.currentTimeMillis()));
     writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory));
@@ -19,7 +21,7 @@
         checked=true;
         for (        SSTableReader sstable : cfs.getSSTables()) {
           if (sstable.openReason == SSTableReader.OpenReason.EARLY) {
-            SSTableReader c=sstables.iterator().next();
+            SSTableReader c=txn.current(sstables.iterator().next());
             Collection<Range<Token>> r=Arrays.asList(new Range<>(cfs.partitioner.getMinimumToken(),cfs.partitioner.getMinimumToken()));
             List<Pair<Long,Long>> tmplinkPositions=sstable.getPositionsForRanges(r);
             List<Pair<Long,Long>> compactingPositions=c.getPositionsForRanges(r);
@@ -33,14 +35,13 @@
       }
     }
     assertTrue(checked);
-    Collection<SSTableReader> newsstables=writer.finish();
-    cfs.getDataTracker().markCompactedSSTablesReplaced(sstables,newsstables,OperationType.COMPACTION);
+    writer.finish();
   }
    SSTableDeletingTask.waitForDeletions();
   validateCFS(cfs);
   int filecounts=assertFileCounts(sstables.iterator().next().descriptor.directory.list(),0,0);
   assertEquals(1,filecounts);
-  cfs.truncateBlocking();
+  truncate(cfs);
   SSTableDeletingTask.waitForDeletions();
   validateCFS(cfs);
 }

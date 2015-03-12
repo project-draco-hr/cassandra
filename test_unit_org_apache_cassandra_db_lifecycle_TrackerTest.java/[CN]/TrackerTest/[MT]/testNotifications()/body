@@ -1,0 +1,34 @@
+{
+  SSTableReader r1=MockSchema.sstable(0), r2=MockSchema.sstable(1);
+  Tracker tracker=new Tracker(null,false);
+  MockListener listener=new MockListener(false);
+  tracker.subscribe(listener);
+  tracker.notifyAdded(r1);
+  Assert.assertEquals(r1,((SSTableAddedNotification)listener.received.get(0)).added);
+  listener.received.clear();
+  tracker.notifyDeleting(r1);
+  Assert.assertEquals(r1,((SSTableDeletingNotification)listener.received.get(0)).deleting);
+  listener.received.clear();
+  Assert.assertNull(tracker.notifySSTablesChanged(singleton(r1),singleton(r2),OperationType.COMPACTION,null));
+  Assert.assertEquals(singleton(r1),((SSTableListChangedNotification)listener.received.get(0)).removed);
+  Assert.assertEquals(singleton(r2),((SSTableListChangedNotification)listener.received.get(0)).added);
+  listener.received.clear();
+  tracker.notifySSTableRepairedStatusChanged(singleton(r1));
+  Assert.assertEquals(singleton(r1),((SSTableRepairStatusChanged)listener.received.get(0)).sstable);
+  listener.received.clear();
+  Memtable memtable=MockSchema.memtable();
+  tracker.notifyRenewed(memtable);
+  Assert.assertEquals(memtable,((MemtableRenewedNotification)listener.received.get(0)).renewed);
+  listener.received.clear();
+  tracker.unsubscribe(listener);
+  MockListener failListener=new MockListener(true);
+  tracker.subscribe(failListener);
+  tracker.subscribe(listener);
+  Assert.assertNotNull(tracker.notifyAdded(r1,null));
+  Assert.assertEquals(r1,((SSTableAddedNotification)listener.received.get(0)).added);
+  listener.received.clear();
+  Assert.assertNotNull(tracker.notifySSTablesChanged(singleton(r1),singleton(r2),OperationType.COMPACTION,null));
+  Assert.assertEquals(singleton(r1),((SSTableListChangedNotification)listener.received.get(0)).removed);
+  Assert.assertEquals(singleton(r2),((SSTableListChangedNotification)listener.received.get(0)).added);
+  listener.received.clear();
+}

@@ -1,7 +1,7 @@
 {
   if (writer.getFilePointer() - currentlyOpenedEarlyAt > preemptiveOpenInterval) {
     if (isOffline) {
-      for (      SSTableReader reader : rewriting) {
+      for (      SSTableReader reader : transaction.originals()) {
         RowIndexEntry index=reader.getPosition(key,SSTableReader.Operator.GE);
         CLibrary.trySkipCache(fileDescriptors.get(reader.descriptor),0,index == null ? 0 : index.position);
       }
@@ -9,10 +9,10 @@
  else {
       SSTableReader reader=writer.setMaxDataAge(maxAge).openEarly();
       if (reader != null) {
-        replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
-        currentlyOpenedEarly=reader;
+        transaction.update(reader,false);
         currentlyOpenedEarlyAt=writer.getFilePointer();
-        moveStarts(reader,reader.last,false);
+        moveStarts(reader,reader.last);
+        transaction.checkpoint();
       }
     }
   }

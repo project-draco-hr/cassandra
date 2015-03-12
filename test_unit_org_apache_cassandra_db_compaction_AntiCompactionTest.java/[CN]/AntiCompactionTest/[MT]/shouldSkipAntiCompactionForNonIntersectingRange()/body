@@ -9,8 +9,9 @@
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("-10".getBytes()),new BytesToken("-1".getBytes()));
   List<Range<Token>> ranges=Arrays.asList(range);
-  Refs<SSTableReader> refs=Refs.ref(sstables);
-  CompactionManager.instance.performAnticompaction(store,ranges,refs,0);
-  assertThat(store.getSSTables().size(),is(10));
+  try (LifecycleTransaction txn=store.getTracker().tryModify(sstables,OperationType.ANTICOMPACTION);Refs<SSTableReader> refs=Refs.ref(sstables)){
+    CompactionManager.instance.performAnticompaction(store,ranges,refs,txn,0);
+  }
+   assertThat(store.getSSTables().size(),is(10));
   assertThat(Iterables.get(store.getSSTables(),0).isRepaired(),is(false));
 }

@@ -1,17 +1,20 @@
 {
+  if (newWriter != null)   writers.add(newWriter.setMaxDataAge(maxAge));
   if (writer == null || writer.getFilePointer() == 0) {
-    if (writer != null)     writer.abort();
+    if (writer != null) {
+      writer.abort();
+      writers.remove(writer);
+    }
     writer=newWriter;
     return;
   }
   SSTableReader reader=null;
   if (preemptiveOpenInterval != Long.MAX_VALUE) {
     reader=writer.setMaxDataAge(maxAge).openFinalEarly();
-    replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
-    moveStarts(reader,reader.last,false);
+    transaction.update(reader,false);
+    moveStarts(reader,reader.last);
+    transaction.checkpoint();
   }
-  finishedWriters.add(new Finished(writer,reader));
-  currentlyOpenedEarly=null;
   currentlyOpenedEarlyAt=0;
   writer=newWriter;
 }

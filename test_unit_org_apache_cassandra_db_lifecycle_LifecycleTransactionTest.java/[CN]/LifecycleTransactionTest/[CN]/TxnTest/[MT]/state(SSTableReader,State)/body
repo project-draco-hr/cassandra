@@ -1,0 +1,34 @@
+{
+  SSTableReader original=select(reader,originals);
+  boolean isOriginal=original != null;
+switch (state) {
+case ABORTED:
+{
+      return new ReaderState(Action.NONE,Action.NONE,original,original,isOriginal);
+    }
+case READY_TO_COMMIT:
+{
+    ReaderState prev=state(reader,State.IN_PROGRESS);
+    Action logged;
+    SSTableReader visible;
+    if (prev.staged == Action.NONE) {
+      logged=prev.logged;
+      visible=prev.currentlyVisible;
+    }
+ else {
+      logged=prev.staged;
+      visible=prev.nextVisible;
+    }
+    return new ReaderState(logged,Action.NONE,visible,visible,isOriginal);
+  }
+case IN_PROGRESS:
+{
+  Action logged=Action.get(loggedUpdate.contains(reader) || loggedNew.contains(reader),loggedObsolete.contains(reader));
+  Action staged=Action.get(stagedNew.contains(reader),stagedObsolete.contains(reader));
+  SSTableReader currentlyVisible=ReaderState.visible(reader,in(loggedObsolete),loggedNew,loggedUpdate,originals);
+  SSTableReader nextVisible=ReaderState.visible(reader,orIn(stagedObsolete,loggedObsolete),stagedNew,loggedNew,loggedUpdate,originals);
+  return new ReaderState(logged,staged,currentlyVisible,nextVisible,isOriginal);
+}
+}
+throw new IllegalStateException();
+}

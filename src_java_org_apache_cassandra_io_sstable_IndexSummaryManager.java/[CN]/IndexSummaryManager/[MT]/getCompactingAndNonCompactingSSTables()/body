@@ -1,15 +1,17 @@
 {
   List<SSTableReader> allCompacting=new ArrayList<>();
-  Multimap<DataTracker,SSTableReader> allNonCompacting=HashMultimap.create();
+  Map<UUID,LifecycleTransaction> allNonCompacting=new HashMap<>();
   for (  Keyspace ks : Keyspace.all()) {
     for (    ColumnFamilyStore cfStore : ks.getColumnFamilyStores()) {
       Set<SSTableReader> nonCompacting, allSSTables;
+      LifecycleTransaction txn=null;
       do {
-        allSSTables=cfStore.getDataTracker().getSSTables();
-        nonCompacting=Sets.newHashSet(cfStore.getDataTracker().getUncompactingSSTables(allSSTables));
+        View view=cfStore.getTracker().getView();
+        allSSTables=view.sstables;
+        nonCompacting=ImmutableSet.copyOf(view.getUncompacting(allSSTables));
       }
- while (!(nonCompacting.isEmpty() || cfStore.getDataTracker().markCompacting(nonCompacting)));
-      allNonCompacting.putAll(cfStore.getDataTracker(),nonCompacting);
+ while (null == (txn=cfStore.getTracker().tryModify(nonCompacting,OperationType.UNKNOWN)));
+      allNonCompacting.put(cfStore.metadata.cfId,txn);
       allCompacting.addAll(Sets.difference(allSSTables,nonCompacting));
     }
   }

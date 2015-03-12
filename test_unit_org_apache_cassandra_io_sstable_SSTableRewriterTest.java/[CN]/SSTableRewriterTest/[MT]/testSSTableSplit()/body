@@ -1,16 +1,17 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   cfs.disableAutoCompaction();
   SSTableReader s=writeFile(cfs,1000);
-  cfs.getDataTracker().markCompacting(Arrays.asList(s),true,false);
-  SSTableSplitter splitter=new SSTableSplitter(cfs,s,10);
-  splitter.split();
-  assertFileCounts(s.descriptor.directory.list(),0,0);
-  s.selfRef().release();
-  SSTableDeletingTask.waitForDeletions();
-  for (  File f : s.descriptor.directory.listFiles()) {
-    FileUtils.deleteRecursive(f);
+  try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.UNKNOWN,s)){
+    SSTableSplitter splitter=new SSTableSplitter(cfs,txn,10);
+    splitter.split();
+    assertFileCounts(s.descriptor.directory.list(),0,0);
+    s.selfRef().release();
+    SSTableDeletingTask.waitForDeletions();
+    for (    File f : s.descriptor.directory.listFiles()) {
+      FileUtils.deleteRecursive(f);
+    }
   }
-}
+ }

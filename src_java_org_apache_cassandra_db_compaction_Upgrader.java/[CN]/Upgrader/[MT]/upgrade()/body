@@ -1,7 +1,6 @@
 {
   outputHandler.output("Upgrading " + sstable);
-  Set<SSTableReader> toUpgrade=Sets.newHashSet(sstable);
-  try (SSTableRewriter writer=new SSTableRewriter(cfs,toUpgrade,CompactionTask.getMaxDataAge(toUpgrade),true);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(toUpgrade)){
+  try (SSTableRewriter writer=new SSTableRewriter(cfs,transaction,CompactionTask.getMaxDataAge(transaction.originals()),true);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(transaction.originals())){
     Iterator<AbstractCompactedRow> iter=new CompactionIterable(compactionType,scanners.scanners,controller,DatabaseDescriptor.getSSTableFormat(),UUIDGen.getTimeUUID()).iterator();
     writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata().repairedAt));
     while (iter.hasNext()) {
