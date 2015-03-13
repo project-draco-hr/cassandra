@@ -4,10 +4,16 @@
     return;
   }
   if (writer.getFilePointer() != 0) {
-    SSTableReader reader=writer.finish(SSTableWriter.FinishType.EARLY,maxAge,-1);
-    replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
-    moveStarts(reader,reader.last,false);
-    finishedEarly.add(new Finished(writer,reader));
+    if (preemptiveOpenInterval == Long.MAX_VALUE) {
+      SSTableReader reader=writer.finish(SSTableWriter.FinishType.NORMAL,maxAge,-1);
+      finishedReaders.add(reader);
+    }
+ else {
+      SSTableReader reader=writer.finish(SSTableWriter.FinishType.EARLY,maxAge,-1);
+      replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
+      moveStarts(reader,reader.last,false);
+      finishedEarly.add(new Finished(writer,reader));
+    }
   }
  else {
     writer.abort();
