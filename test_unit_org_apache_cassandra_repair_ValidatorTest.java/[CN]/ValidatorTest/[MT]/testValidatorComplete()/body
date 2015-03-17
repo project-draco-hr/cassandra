@@ -2,8 +2,8 @@
   Range<Token> range=new Range<>(partitioner.getMinimumToken(),partitioner.getRandomToken());
   final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),keyspace,columnFamily,range);
   final SimpleCondition lock=new SimpleCondition();
-  SinkManager.add(new IMessageSink(){
-    @SuppressWarnings("unchecked") public MessageOut handleMessage(    MessageOut message,    int id,    InetAddress to){
+  MessagingService.instance().addMessageSink(new IMessageSink(){
+    @SuppressWarnings("unchecked") public boolean allowOutgoingMessage(    MessageOut message,    int id,    InetAddress to){
       try {
         if (message.verb == MessagingService.Verb.REPAIR_MESSAGE) {
           RepairMessage m=(RepairMessage)message.payload;
@@ -16,10 +16,10 @@
   finally {
         lock.signalAll();
       }
-      return null;
+      return false;
     }
-    public MessageIn handleMessage(    MessageIn message,    int id,    InetAddress to){
-      return null;
+    public boolean allowIncomingMessage(    MessageIn message,    int id){
+      return false;
     }
   }
 );

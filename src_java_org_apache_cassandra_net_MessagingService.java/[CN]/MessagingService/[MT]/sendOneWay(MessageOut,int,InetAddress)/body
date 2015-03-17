@@ -1,10 +1,7 @@
 {
   if (logger.isTraceEnabled())   logger.trace("{} sending {} to {}@{}",FBUtilities.getBroadcastAddress(),message.verb,id,to);
   if (to.equals(FBUtilities.getBroadcastAddress()))   logger.trace("Message-to-self {} going over MessagingService",message);
-  MessageOut processedMessage=SinkManager.processOutboundMessage(message,id,to);
-  if (processedMessage == null) {
-    return;
-  }
-  OutboundTcpConnection connection=getConnection(to,processedMessage);
-  connection.enqueue(processedMessage,id);
+  for (  IMessageSink ms : messageSinks)   if (!ms.allowOutgoingMessage(message,id,to))   return;
+  OutboundTcpConnection connection=getConnection(to,message);
+  connection.enqueue(message,id);
 }
