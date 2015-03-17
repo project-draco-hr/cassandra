@@ -4,8 +4,13 @@
     if (ni == null)     throw new ConfigurationException("Configured " + configName + " \""+ intf+ "\" could not be found");
     Enumeration<InetAddress> addrs=ni.getInetAddresses();
     if (!addrs.hasMoreElements())     throw new ConfigurationException("Configured " + configName + " \""+ intf+ "\" was found, but had no addresses");
-    InetAddress retval=listenAddress=addrs.nextElement();
-    if (addrs.hasMoreElements())     throw new ConfigurationException("Configured " + configName + " \""+ intf+ "\" can't have more than one address");
+    InetAddress retval=null;
+    while (addrs.hasMoreElements()) {
+      InetAddress temp=addrs.nextElement();
+      if (preferIPv6 && temp.getClass() == Inet6Address.class)       return temp;
+      if (!preferIPv6 && temp.getClass() == Inet4Address.class)       return temp;
+      if (retval == null)       retval=temp;
+    }
     return retval;
   }
  catch (  SocketException e) {
