@@ -1,0 +1,23 @@
+{
+  Config testConfig=DatabaseDescriptor.loadConfig();
+  testConfig.listen_interface=suitableInterface.getName();
+  testConfig.listen_address=null;
+  DatabaseDescriptor.applyAddressConfig(testConfig);
+  if (hasIPv4andIPv6) {
+    testConfig=DatabaseDescriptor.loadConfig();
+    testConfig.listen_interface=suitableInterface.getName();
+    testConfig.listen_address=null;
+    testConfig.listen_interface_prefer_ipv6=true;
+    DatabaseDescriptor.applyAddressConfig(testConfig);
+    assertEquals(DatabaseDescriptor.getListenAddress().getClass(),Inet6Address.class);
+    testConfig=DatabaseDescriptor.loadConfig();
+    testConfig.listen_interface=suitableInterface.getName();
+    testConfig.listen_address=null;
+    testConfig.listen_interface_prefer_ipv6=false;
+    DatabaseDescriptor.applyAddressConfig(testConfig);
+    assertEquals(DatabaseDescriptor.getListenAddress().getClass(),Inet4Address.class);
+  }
+ else {
+    assertEquals(DatabaseDescriptor.getRpcAddress(),suitableInterface.getInetAddresses().nextElement());
+  }
+}
