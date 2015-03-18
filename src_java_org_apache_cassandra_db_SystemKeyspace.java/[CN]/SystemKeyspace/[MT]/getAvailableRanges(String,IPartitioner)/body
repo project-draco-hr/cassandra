@@ -1,0 +1,12 @@
+{
+  Set<Range<Token>> result=new HashSet<>();
+  String query="SELECT * FROM system.%s WHERE keyspace_name=?";
+  UntypedResultSet rs=executeInternal(String.format(query,AVAILABLE_RANGES),keyspace);
+  for (  UntypedResultSet.Row row : rs) {
+    Set<ByteBuffer> rawRanges=row.getSet("ranges",BytesType.instance);
+    for (    ByteBuffer rawRange : rawRanges) {
+      result.add(byteBufferToRange(rawRange,partitioner));
+    }
+  }
+  return ImmutableSet.copyOf(result);
+}

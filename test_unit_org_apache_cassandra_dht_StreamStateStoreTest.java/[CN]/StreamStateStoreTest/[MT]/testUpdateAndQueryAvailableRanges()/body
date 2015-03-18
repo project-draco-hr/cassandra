@@ -1,0 +1,24 @@
+{
+  IPartitioner p=new Murmur3Partitioner();
+  Token.TokenFactory factory=p.getTokenFactory();
+  Range<Token> range=new Range<>(factory.fromString("0"),factory.fromString("100"));
+  InetAddress local=FBUtilities.getBroadcastAddress();
+  StreamSession session=new StreamSession(local,local,new DefaultConnectionFactory(),0,true);
+  session.addStreamRequest("keyspace1",Collections.singleton(range),Collections.singleton("cf"),0);
+  StreamStateStore store=new StreamStateStore();
+  store.handleStreamEvent(new StreamEvent.SessionCompleteEvent(session));
+  assertFalse(store.isDataAvailable("keyspace1",factory.fromString("50")));
+  session.state(StreamSession.State.COMPLETE);
+  store.handleStreamEvent(new StreamEvent.SessionCompleteEvent(session));
+  assertTrue(store.isDataAvailable("keyspace1",factory.fromString("50")));
+  assertFalse(store.isDataAvailable("keyspace1",factory.fromString("0")));
+  assertFalse(store.isDataAvailable("keyspace1",factory.fromString("101")));
+  assertFalse(store.isDataAvailable("keyspace2",factory.fromString("50")));
+  Range<Token> range2=new Range<>(factory.fromString("100"),factory.fromString("200"));
+  session=new StreamSession(local,local,new DefaultConnectionFactory(),0,true);
+  session.addStreamRequest("keyspace1",Collections.singleton(range2),Collections.singleton("cf"),0);
+  session.state(StreamSession.State.COMPLETE);
+  store.handleStreamEvent(new StreamEvent.SessionCompleteEvent(session));
+  assertTrue(store.isDataAvailable("keyspace1",factory.fromString("101")));
+  assertTrue(store.isDataAvailable("keyspace1",factory.fromString("50")));
+}

@@ -4,6 +4,10 @@
     InetAddress source=entry.getValue().getKey();
     InetAddress preferred=SystemKeyspace.getPreferredIP(source);
     Collection<Range<Token>> ranges=entry.getValue().getValue();
+    Set<Range<Token>> availableRanges=stateStore.getAvailableRanges(keyspace,StorageService.getPartitioner());
+    if (ranges.removeAll(availableRanges)) {
+      logger.info(availableRanges + " already available. Skipping streaming.");
+    }
     if (logger.isDebugEnabled())     logger.debug("{}ing from {} ranges {}",description,source,StringUtils.join(ranges,", "));
     streamPlan.requestRanges(source,preferred,keyspace,ranges);
   }

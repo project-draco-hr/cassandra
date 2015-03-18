@@ -1,8 +1,8 @@
 {
   isBootstrapMode=true;
   SystemKeyspace.updateTokens(tokens);
-  if (!DatabaseDescriptor.isReplacing()) {
-    List<Pair<ApplicationState,VersionedValue>> states=new ArrayList<Pair<ApplicationState,VersionedValue>>();
+  if (!replacing) {
+    List<Pair<ApplicationState,VersionedValue>> states=new ArrayList<>();
     states.add(Pair.create(ApplicationState.TOKENS,valueFactory.tokens(tokens)));
     states.add(Pair.create(ApplicationState.STATUS,valueFactory.bootstrapping(tokens)));
     Gossiper.instance.addLocalApplicationStates(states);
@@ -14,7 +14,11 @@
     SystemKeyspace.removeEndpoint(DatabaseDescriptor.getReplaceAddress());
   }
   if (!Gossiper.instance.seenAnySeed())   throw new IllegalStateException("Unable to contact any seeds!");
+  if (Boolean.getBoolean("cassandra.reset_bootstrap_progress")) {
+    logger.info("Resetting bootstrap progress to start fresh");
+    SystemKeyspace.resetAvailableRanges();
+  }
   setMode(Mode.JOINING,"Starting to bootstrap...",true);
-  new BootStrapper(FBUtilities.getBroadcastAddress(),tokens,tokenMetadata).bootstrap();
+  new BootStrapper(FBUtilities.getBroadcastAddress(),tokens,tokenMetadata).bootstrap(streamStateStore,!replacing && useStrictConsistency);
   logger.info("Bootstrap completed! for the tokens {}",tokens);
 }
