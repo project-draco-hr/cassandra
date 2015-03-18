@@ -1,0 +1,27 @@
+{
+  final Thread current=Thread.currentThread();
+  final Semaphore helperReady=new Semaphore(0);
+  final Semaphore helperGo=new Semaphore(0);
+  new Thread(){
+    @Override public void run(){
+      try {
+        helperReady.release();
+        helperGo.acquire();
+        Thread.sleep(50);
+        LockSupport.unpark(current);
+      }
+ catch (      Exception e) {
+        e.printStackTrace();
+        logger.error("Error",e);
+        System.exit(-1);
+      }
+    }
+  }
+.start();
+  long start=System.nanoTime();
+  helperGo.release();
+  long parkNanos=TimeUnit.MILLISECONDS.toNanos(500);
+  CoalescingStrategies.parkLoop(parkNanos);
+  long delta=System.nanoTime() - start;
+  assertTrue(delta >= (parkNanos - (parkNanos / 16)));
+}

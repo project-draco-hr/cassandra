@@ -1,0 +1,16 @@
+{
+  if (input.drainTo(out,maxItems) == 0) {
+    out.add(input.take());
+    input.drainTo(out,maxItems - 1);
+  }
+  for (  Coalescable qm : out)   logSample(qm.timestampNanos());
+  long averageGap=averageGap();
+  debugGap(averageGap);
+  int count=out.size();
+  if (maybeSleep(count,averageGap,maxCoalesceWindow,parker)) {
+    input.drainTo(out,maxItems - out.size());
+    int prevCount=count;
+    count=out.size();
+    for (int i=prevCount; i < count; i++)     logSample(out.get(i).timestampNanos());
+  }
+}
