@@ -3,8 +3,8 @@
   String cfname=CF_STANDARDRACE;
   Keyspace keyspace=Keyspace.open(ksname);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
-  int numSSTables=20;
-  int numRows=28;
+  int numSSTables=50;
+  int numRows=1 << 10;
   createSSTables(ksname,cfname,numSSTables,numRows);
   List<SSTableReader> sstables=new ArrayList<>(cfs.getSSTables());
   ExecutorService tp=Executors.newFixedThreadPool(2);
@@ -26,11 +26,11 @@
   }
   while (cfs.getSSTables().size() != 1)   cfs.forceMajorCompaction();
   try {
-    Assert.assertFalse(failed.get());
+    Assert.assertFalse(failed.getAndSet(true));
     for (    SSTableReader sstable : sstables) {
       Assert.assertEquals(true,sstable.isMarkedCompacted());
     }
-    Assert.assertEquals(20,sstables.size());
+    Assert.assertEquals(numSSTables,sstables.size());
     try {
       totalOffHeapSize(sstables);
       Assert.fail("This should have failed");
@@ -42,4 +42,5 @@
     tp.shutdownNow();
     CompactionManager.instance.finishCompactionsAndShutdown(10,TimeUnit.SECONDS);
   }
+  cfs.truncateBlocking();
 }
