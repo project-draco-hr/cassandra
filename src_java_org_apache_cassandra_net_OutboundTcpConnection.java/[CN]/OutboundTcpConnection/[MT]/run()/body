@@ -1,13 +1,12 @@
 {
-  final List<QueuedMessage> drainedMessages=new ArrayList<>(128);
+  final int drainedMessageSize=128;
+  final List<QueuedMessage> drainedMessages=new ArrayList<>(drainedMessageSize);
   outer:   while (true) {
-    if (backlog.drainTo(drainedMessages,drainedMessages.size()) == 0) {
-      try {
-        drainedMessages.add(backlog.take());
-      }
- catch (      InterruptedException e) {
-        throw new AssertionError(e);
-      }
+    try {
+      cs.coalesce(backlog,drainedMessages,drainedMessageSize);
+    }
+ catch (    InterruptedException e) {
+      throw new AssertionError(e);
     }
     currentMsgBufferCount=drainedMessages.size();
     int count=drainedMessages.size();
@@ -19,8 +18,8 @@
           if (isStopped)           break outer;
           continue;
         }
-        if (qm.isTimedOut(m.getTimeout()))         dropped.incrementAndGet();
- else         if (socket != null || connect())         writeConnected(qm,count == 1 && backlog.size() == 0);
+        if (qm.isTimedOut(TimeUnit.MILLISECONDS.toNanos(m.getTimeout()),System.nanoTime()))         dropped.incrementAndGet();
+ else         if (socket != null || connect())         writeConnected(qm,count == 1 && backlog.isEmpty());
  else         backlog.clear();
       }
  catch (      Exception e) {

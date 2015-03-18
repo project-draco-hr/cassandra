@@ -1,0 +1,31 @@
+{
+  String classname=null;
+  String strategyCleaned=strategy.trim().toUpperCase();
+switch (strategyCleaned) {
+case "MOVINGAVERAGE":
+    classname=MovingAverageCoalescingStrategy.class.getName();
+  break;
+case "FIXED":
+classname=FixedCoalescingStrategy.class.getName();
+break;
+case "TIMEHORIZON":
+classname=TimeHorizonMovingAverageCoalescingStrategy.class.getName();
+break;
+case "DISABLED":
+classname=DisabledCoalescingStrategy.class.getName();
+break;
+default :
+classname=strategy;
+}
+try {
+Class<?> clazz=Class.forName(classname);
+if (!CoalescingStrategy.class.isAssignableFrom(clazz)) {
+throw new RuntimeException(classname + " is not an instance of CoalescingStrategy");
+}
+Constructor<?> constructor=clazz.getConstructor(int.class,Parker.class,Logger.class,String.class);
+return (CoalescingStrategy)constructor.newInstance(coalesceWindow,parker,logger,displayName);
+}
+ catch (Exception e) {
+throw new RuntimeException(e);
+}
+}
