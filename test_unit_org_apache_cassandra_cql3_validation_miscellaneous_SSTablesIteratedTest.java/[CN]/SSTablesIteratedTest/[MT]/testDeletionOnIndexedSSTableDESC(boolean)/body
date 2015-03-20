@@ -1,0 +1,27 @@
+{
+  DatabaseDescriptor.setColumnIndexSize(1);
+  createTable("CREATE TABLE %s (id int, col int, val text, PRIMARY KEY (id, col)) WITH CLUSTERING ORDER BY (col DESC)");
+  for (int i=1; i <= 1000; i++) {
+    execute("INSERT INTO %s (id, col, val) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+  }
+  flush();
+  Object[][] allRows=new Object[1000][];
+  for (int i=1001; i <= 2000; i++) {
+    execute("INSERT INTO %s (id, col, val) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+    allRows[2000 - i]=row(1,i,Integer.toString(i));
+  }
+  if (deleteWithRange) {
+    execute("DELETE FROM %s WHERE id=1 and col <= ?",1000);
+  }
+ else {
+    for (int i=1; i <= 1000; i++)     execute("DELETE FROM %s WHERE id=1 and col = ?",i);
+  }
+  flush();
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 1",1,row(1,2000,"2000"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 2",1,row(1,2000,"2000"),row(1,1999,"1999"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1",2,allRows);
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col > 1000 LIMIT 1",1,row(1,2000,"2000"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col <= 2000 LIMIT 1",1,row(1,2000,"2000"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col > 1000",1,allRows);
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col <= 2000",2,allRows);
+}

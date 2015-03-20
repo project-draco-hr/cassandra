@@ -1,0 +1,42 @@
+{
+  DatabaseDescriptor.setColumnIndexSize(1);
+  createTable("CREATE TABLE %s (id int, col int, val1 text, val2 text, PRIMARY KEY (id, col)) WITH CLUSTERING ORDER BY (col ASC)");
+  for (int i=1; i <= 500; i++) {
+    if (i % 2 == 0)     execute("INSERT INTO %s (id, col, val1) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+ else     execute("INSERT INTO %s (id, col, val1, val2) VALUES (?, ?, ?, ?)",1,i,Integer.toString(i),Integer.toString(i));
+  }
+  for (int i=1001; i <= 1500; i++) {
+    if (i % 2 == 0)     execute("INSERT INTO %s (id, col, val1) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+ else     execute("INSERT INTO %s (id, col, val1, val2) VALUES (?, ?, ?, ?)",1,i,Integer.toString(i),Integer.toString(i));
+  }
+  flush();
+  for (int i=501; i <= 1000; i++) {
+    if (i % 2 == 0)     execute("INSERT INTO %s (id, col, val1) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+ else     execute("INSERT INTO %s (id, col, val1, val2) VALUES (?, ?, ?, ?)",1,i,Integer.toString(i),Integer.toString(i));
+  }
+  for (int i=1501; i <= 2000; i++) {
+    if (i % 2 == 0)     execute("INSERT INTO %s (id, col, val1) VALUES (?, ?, ?)",1,i,Integer.toString(i));
+ else     execute("INSERT INTO %s (id, col, val1, val2) VALUES (?, ?, ?, ?)",1,i,Integer.toString(i),Integer.toString(i));
+  }
+  if (deleteWithRange) {
+    execute("DELETE FROM %s WHERE id=1 and col > ? and col <= ?",250,750);
+  }
+ else {
+    for (int i=251; i <= 750; i++)     execute("DELETE FROM %s WHERE id=1 and col = ?",i);
+  }
+  flush();
+  Object[][] allRows=new Object[1500][];
+  for (int i=1; i <= 2000; i++) {
+    if (i > 250 && i <= 750)     continue;
+    int idx=(i <= 250 ? i - 1 : i - 501);
+    if (i % 2 == 0)     allRows[idx]=row(1,i,Integer.toString(i),null);
+ else     allRows[idx]=row(1,i,Integer.toString(i),Integer.toString(i));
+  }
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 1",2,row(1,1,"1","1"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 2",2,row(1,1,"1","1"),row(1,2,"2",null));
+  executeAndCheck("SELECT * FROM %s WHERE id=1",2,allRows);
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col > 1000 LIMIT 1",2,row(1,1001,"1001","1001"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col <= 2000 LIMIT 1",2,row(1,1,"1","1"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col > 500 LIMIT 1",2,row(1,751,"751","751"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col <= 500 LIMIT 1",2,row(1,1,"1","1"));
+}

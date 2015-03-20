@@ -4,65 +4,49 @@
   ColumnFamilyStore.ViewFragment view=cfs.select(View.select(SSTableSet.LIVE,partitionKey()));
   List<UnfilteredRowIterator> iterators=new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
   ClusteringIndexFilter filter=clusteringIndexFilter();
+  long minTimestamp=Long.MAX_VALUE;
   try {
     for (    Memtable memtable : view.memtables) {
       Partition partition=memtable.getPartition(partitionKey());
       if (partition == null)       continue;
+      minTimestamp=Math.min(minTimestamp,memtable.getMinTimestamp());
       @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition);
       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,partition.stats().minLocalDeletionTime);
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter);
     }
-    int sstablesIterated=0;
     Collections.sort(view.sstables,SSTableReader.maxTimestampComparator);
-    List<SSTableReader> skippedSSTables=null;
     long mostRecentPartitionTombstone=Long.MIN_VALUE;
-    long minTimestamp=Long.MAX_VALUE;
     int nonIntersectingSSTables=0;
+    List<SSTableReader> skippedSSTablesWithTombstones=null;
     for (    SSTableReader sstable : view.sstables) {
-      minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
       if (sstable.getMaxTimestamp() < mostRecentPartitionTombstone)       break;
       if (!shouldInclude(sstable)) {
         nonIntersectingSSTables++;
-        if (sstable.getSSTableMetadata().maxLocalDeletionTime != Integer.MAX_VALUE) {
-          if (skippedSSTables == null)           skippedSSTables=new ArrayList<>();
-          skippedSSTables.add(sstable);
+        if (sstable.hasTombstones()) {
+          if (skippedSSTablesWithTombstones == null)           skippedSSTablesWithTombstones=new ArrayList<>();
+          skippedSSTablesWithTombstones.add(sstable);
         }
         continue;
       }
-      sstable.incrementReadCount();
-      @SuppressWarnings("resource") UnfilteredRowIterator iter=sstable.iterator(partitionKey(),filter.getSlices(metadata()),columnFilter(),filter.isReversed(),isForThrift());
+      minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
+      @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(sstable,true);
       if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
-      iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter);
+      iterators.add(iter);
       mostRecentPartitionTombstone=Math.max(mostRecentPartitionTombstone,iter.partitionLevelDeletion().markedForDeleteAt());
-      sstablesIterated++;
     }
     int includedDueToTombstones=0;
-    if (skippedSSTables != null) {
-      for (      SSTableReader sstable : skippedSSTables) {
+    if (skippedSSTablesWithTombstones != null) {
+      for (      SSTableReader sstable : skippedSSTablesWithTombstones) {
         if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
-        sstable.incrementReadCount();
-        @SuppressWarnings("resource") UnfilteredRowIterator iter=sstable.iterator(partitionKey(),filter.getSlices(metadata()),columnFilter(),filter.isReversed(),isForThrift());
-        if (iter.partitionLevelDeletion().markedForDeleteAt() > minTimestamp) {
-          iterators.add(iter);
-          if (!sstable.isRepaired())           oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
-          includedDueToTombstones++;
-          sstablesIterated++;
-        }
- else {
-          iter.close();
-        }
+        @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(sstable,false);
+        if (!sstable.isRepaired())         oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
+        iterators.add(iter);
+        includedDueToTombstones++;
       }
     }
     if (Tracing.isTracing())     Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones",nonIntersectingSSTables,view.sstables.size(),includedDueToTombstones);
-    cfs.metric.updateSSTableIterated(sstablesIterated);
     if (iterators.isEmpty())     return EmptyIterators.unfilteredRow(cfs.metadata,partitionKey(),filter.isReversed());
-    Tracing.trace("Merging data from memtables and {} sstables",sstablesIterated);
-    @SuppressWarnings("resource") UnfilteredRowIterator merged=UnfilteredRowIterators.merge(iterators,nowInSec());
-    if (!merged.isEmpty()) {
-      DecoratedKey key=merged.partitionKey();
-      cfs.metric.samplers.get(TableMetrics.Sampler.READS).addSample(key.getKey(),key.hashCode(),1);
-    }
-    return withStateTracking(merged);
+    return withStateTracking(withSSTablesIterated(iterators,cfs.metric));
   }
  catch (  RuntimeException|Error e) {
     try {

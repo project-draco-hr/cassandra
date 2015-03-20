@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (id int, col int, val text, PRIMARY KEY (id, col)) WITH CLUSTERING ORDER BY (col ASC)");
+  execute("INSERT INTO %s (id, col, val) VALUES (?, ?, ?)",1,10,"10");
+  execute("INSERT INTO %s (id, col, val) VALUES (?, ?, ?)",1,30,"30");
+  flush();
+  execute("INSERT INTO %s (id, col, val) VALUES (?, ?, ?)",1,20,"20");
+  flush();
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 1",1,row(1,10,"10"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 2",2,row(1,10,"10"),row(1,20,"20"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 LIMIT 3",2,row(1,10,"10"),row(1,20,"20"),row(1,30,"30"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1",2,row(1,10,"10"),row(1,20,"20"),row(1,30,"30"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col > 25 LIMIT 1",1,row(1,30,"30"));
+  executeAndCheck("SELECT * FROM %s WHERE id=1 AND col < 40 LIMIT 1",1,row(1,10,"10"));
+}

@@ -1,0 +1,35 @@
+{
+  createTable("CREATE TABLE %s ( k int, p int, s int static, v int, PRIMARY KEY (k, p))");
+  execute("INSERT INTO %s(k, s) VALUES (0, 42)");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(0,null,42,null));
+  Object[][] row=getRows(execute("SELECT s, writetime(s) FROM %s WHERE k=0"));
+  assertEquals(42,row[0][0]);
+  assertTrue((Long)row[0][1] > 0);
+  execute("INSERT INTO %s (k, p, s, v) VALUES (0, 0, 12, 0)");
+  execute("INSERT INTO %s (k, p, s, v) VALUES (0, 1, 24, 1)");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(0,0,24,0),row(0,1,24,1));
+  assertRows(execute("SELECT * FROM %s WHERE k=0 AND p=0"),row(0,0,24,0));
+  assertRows(execute("SELECT * FROM %s WHERE k=0 AND p=1"),row(0,1,24,1));
+  assertRows(execute("SELECT * FROM %s WHERE k=0 AND p IN (0, 1)"),row(0,0,24,0),row(0,1,24,1));
+  assertRows(execute("SELECT p, v FROM %s WHERE k=0 AND p=1"),row(1,1));
+  assertRows(execute("SELECT DISTINCT s FROM %s WHERE k=0"),row(24));
+  assertRows(execute("SELECT s FROM %s WHERE k=0"),row(24),row(24));
+  assertRows(execute("SELECT s, v FROM %s WHERE k=0"),row(24,0),row(24,1));
+  assertRows(execute("SELECT s, v FROM %s WHERE k=0 AND p=1"),row(24,1));
+  assertRows(execute("SELECT p, s FROM %s WHERE k=0 AND p=1"),row(1,24));
+  assertRows(execute("SELECT k, p, s FROM %s WHERE k=0 AND p=1"),row(0,1,24));
+  execute("DELETE FROM %s WHERE k=0 AND p=0");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(0,1,24,1));
+  execute("DELETE s FROM %s WHERE k=0");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(0,1,null,1));
+  execute("ALTER TABLE %s ADD s2 int static");
+  assertRows(execute("SELECT * FROM %s"),row(0,1,null,null,1));
+  execute("INSERT INTO %s (k, p, s2, v) VALUES(0, 2, 42, 2)");
+  assertRows(execute("SELECT * FROM %s"),row(0,1,null,42,1),row(0,2,null,42,2));
+  execute("ALTER TABLE %s DROP s2");
+  assertRows(execute("SELECT * FROM %s"),row(0,1,null,1),row(0,2,null,2));
+}
