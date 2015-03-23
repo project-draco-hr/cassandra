@@ -6,15 +6,8 @@
   fillCounterCF(cfs,2);
   List<Row> rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
   assertEquals(2,rows.size());
+  overrdeWithGarbage(cfs,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
   SSTableReader sstable=cfs.getSSTables().iterator().next();
-  long row0Start=sstable.getPosition(RowPosition.ForKey.get(ByteBufferUtil.bytes("0"),sstable.partitioner),SSTableReader.Operator.EQ).position;
-  long row1Start=sstable.getPosition(RowPosition.ForKey.get(ByteBufferUtil.bytes("1"),sstable.partitioner),SSTableReader.Operator.EQ).position;
-  long startPosition=row0Start < row1Start ? row0Start : row1Start;
-  long endPosition=row0Start < row1Start ? row1Start : row0Start;
-  RandomAccessFile file=new RandomAccessFile(sstable.getFilename(),"rw");
-  file.seek(startPosition);
-  file.writeBytes(StringUtils.repeat('z',(int)(endPosition - startPosition)));
-  file.close();
   Scrubber scrubber=new Scrubber(cfs,sstable,false,false);
   try {
     scrubber.scrub();

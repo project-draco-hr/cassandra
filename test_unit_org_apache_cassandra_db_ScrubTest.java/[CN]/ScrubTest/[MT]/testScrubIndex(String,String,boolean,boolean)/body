@@ -1,0 +1,32 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  cfs.clearUnsafe();
+  int numRows=1000;
+  long[] colValues=new long[numRows * 2];
+  for (int i=0; i < colValues.length; i+=2) {
+    colValues[i]=(i % 4 == 0 ? 1L : 2L);
+    colValues[i + 1]=3L;
+  }
+  fillIndexCF(cfs,composite,colValues);
+  IndexExpression expr=new IndexExpression(ByteBufferUtil.bytes(colName),Operator.EQ,ByteBufferUtil.bytes(1L));
+  List<Row> rows=cfs.search(Util.range("",""),Arrays.asList(expr),new IdentityQueryFilter(),numRows);
+  assertNotNull(rows);
+  assertEquals(numRows / 2,rows.size());
+  Set<ColumnFamilyStore> indexCfss=cfs.indexManager.getIndexesBackedByCfs();
+  assertTrue(indexCfss.size() == 1);
+  for (  ColumnFamilyStore indexCfs : indexCfss) {
+    for (int i=0; i < scrubs.length; i++) {
+      boolean failure=!scrubs[i];
+      if (failure) {
+        overrdeWithGarbage(indexCfs,ByteBufferUtil.bytes(1L),ByteBufferUtil.bytes(2L));
+      }
+      CompactionManager.AllSSTableOpStatus result=indexCfs.scrub(false,false,true);
+      assertEquals(failure ? CompactionManager.AllSSTableOpStatus.ABORTED : CompactionManager.AllSSTableOpStatus.SUCCESSFUL,result);
+    }
+  }
+  rows=cfs.search(Util.range("",""),Arrays.asList(expr),new IdentityQueryFilter(),numRows);
+  assertNotNull(rows);
+  assertEquals(numRows / 2,rows.size());
+}

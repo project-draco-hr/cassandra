@@ -2,9 +2,16 @@
   Options options=Options.parseArgs(args);
   try {
     Schema.instance.loadFromDisk(false);
-    if (Schema.instance.getCFMetaData(options.keyspaceName,options.cfName) == null)     throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",options.keyspaceName,options.cfName));
+    if (Schema.instance.getKSMetaData(options.keyspaceName) == null)     throw new IllegalArgumentException(String.format("Unknown keyspace %s",options.keyspaceName));
     Keyspace keyspace=Keyspace.openWithoutSSTables(options.keyspaceName);
-    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(options.cfName);
+    ColumnFamilyStore cfs=null;
+    for (    ColumnFamilyStore c : keyspace.getValidColumnFamilies(true,false,options.cfName)) {
+      if (c.name.equals(options.cfName)) {
+        cfs=c;
+        break;
+      }
+    }
+    if (cfs == null)     throw new IllegalArgumentException(String.format("Unknown table %s.%s",options.keyspaceName,options.cfName));
     String snapshotName="pre-scrub-" + System.currentTimeMillis();
     OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
     Directories.SSTableLister lister=cfs.directories.sstableLister().skipTemporary(true);
@@ -13,7 +20,7 @@
       Set<Component> components=entry.getValue();
       if (!components.contains(Component.DATA) || !components.contains(Component.PRIMARY_INDEX))       continue;
       try {
-        SSTableReader sstable=SSTableReader.openNoValidation(entry.getKey(),components,cfs.metadata);
+        SSTableReader sstable=SSTableReader.openNoValidation(entry.getKey(),components,cfs);
         sstables.add(sstable);
         File snapshotDirectory=Directories.getSnapshotDirectory(sstable.descriptor,snapshotName);
         sstable.createLinks(snapshotDirectory.getPath());
@@ -32,7 +39,13 @@
           try {
             scrubber.scrub();
           }
-  finally {
+ catch (          Throwable t) {
+            if (!cfs.rebuildOnFailedScrub(t)) {
+              System.out.println(t.getMessage());
+              throw t;
+            }
+          }
+ finally {
             scrubber.close();
           }
           sstable.markObsolete();

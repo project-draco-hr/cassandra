@@ -1,0 +1,19 @@
+{
+  assertTrue(values.length % 2 == 0);
+  for (int i=0; i < values.length; i+=2) {
+    String key=String.valueOf(i);
+    ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE,cfs.name);
+    if (composite) {
+      String clusterKey="c" + key;
+      cf.addColumn(column(clusterKey,COL_COMPOSITES_INDEX,values[i],1L));
+      cf.addColumn(column(clusterKey,COL_NON_INDEX,values[i + 1],1L));
+    }
+ else {
+      cf.addColumn(column(COL_KEYS_INDEX,values[i],1L));
+      cf.addColumn(column(COL_NON_INDEX,values[i + 1],1L));
+    }
+    Mutation rm=new Mutation(KEYSPACE,ByteBufferUtil.bytes(key),cf);
+    rm.applyUnsafe();
+  }
+  cfs.forceBlockingFlush();
+}
