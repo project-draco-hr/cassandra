@@ -1,0 +1,35 @@
+{
+  if (isBootstrapMode && SystemKeyspace.bootstrapInProgress()) {
+    logger.info("Resuming bootstrap...");
+    final Collection<Token> tokens=SystemKeyspace.getSavedTokens();
+    BootStrapper bootstrapper=new BootStrapper(FBUtilities.getBroadcastAddress(),tokens,tokenMetadata);
+    bootstrapper.addProgressListener(progressSupport);
+    ListenableFuture<StreamState> bootstrapStream=bootstrapper.bootstrap(streamStateStore,!replacing && useStrictConsistency);
+    Futures.addCallback(bootstrapStream,new FutureCallback<StreamState>(){
+      @Override public void onSuccess(      StreamState streamState){
+        isBootstrapMode=false;
+        isSurveyMode=true;
+        try {
+          progressSupport.progress("bootstrap",ProgressEvent.createNotification("Joining ring..."));
+          joinRing();
+        }
+ catch (        IOException ignore) {
+        }
+        progressSupport.progress("bootstrap",new ProgressEvent(ProgressEventType.COMPLETE,1,1,"Resume bootstrap complete"));
+        logger.info("Resume complete");
+      }
+      @Override public void onFailure(      Throwable e){
+        String message="Error during bootstrap: " + e.getCause().getMessage();
+        logger.error(message,e.getCause());
+        progressSupport.progress("bootstrap",new ProgressEvent(ProgressEventType.ERROR,1,1,message));
+        progressSupport.progress("bootstrap",new ProgressEvent(ProgressEventType.COMPLETE,1,1,"Resume bootstrap complete"));
+      }
+    }
+);
+    return true;
+  }
+ else {
+    logger.info("Resuming bootstrap is requested, but the node is already bootstrapped.");
+    return false;
+  }
+}
