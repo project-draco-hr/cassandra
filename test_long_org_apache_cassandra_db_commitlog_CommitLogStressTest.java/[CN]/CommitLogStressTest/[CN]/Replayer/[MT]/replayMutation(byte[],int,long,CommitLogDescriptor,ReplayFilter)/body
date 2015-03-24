@@ -1,0 +1,23 @@
+{
+  if (desc.id < discardedPos.segment) {
+    System.out.format("Mutation from discarded segment, segment %d pos %d\n",desc.id,entryLocation);
+    return;
+  }
+ else   if (desc.id == discardedPos.segment && entryLocation <= discardedPos.position)   return;
+  FastByteArrayInputStream bufIn=new FastByteArrayInputStream(inputBuffer,0,size);
+  Mutation mutation;
+  try {
+    mutation=Mutation.serializer.deserialize(new DataInputStream(bufIn),desc.getMessagingVersion(),ColumnSerializer.Flag.LOCAL);
+  }
+ catch (  IOException e) {
+    throw new AssertionError(e);
+  }
+  for (  ColumnFamily cf : mutation.getColumnFamilies()) {
+    for (    Cell c : cf.getSortedColumns()) {
+      if (new String(c.name().toByteBuffer().array(),StandardCharsets.UTF_8).startsWith("name")) {
+        hash=hash(hash,c.value());
+        ++cells;
+      }
+    }
+  }
+}

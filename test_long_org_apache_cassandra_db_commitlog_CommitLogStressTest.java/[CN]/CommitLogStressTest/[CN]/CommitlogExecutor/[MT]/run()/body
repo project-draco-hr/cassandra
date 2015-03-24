@@ -1,0 +1,20 @@
+{
+  RateLimiter rl=rateLimit != 0 ? RateLimiter.create(rateLimit) : null;
+  final ThreadLocalRandom tlr=ThreadLocalRandom.current();
+  while (!stop) {
+    if (rl != null)     rl.acquire();
+    String ks="Keyspace1";
+    ByteBuffer key=randomBytes(16,tlr);
+    Mutation mutation=new Mutation(ks,key);
+    for (int ii=0; ii < numCells; ii++) {
+      int sz=randomSize ? tlr.nextInt(cellSize) : cellSize;
+      ByteBuffer bytes=randomBytes(sz,tlr);
+      mutation.add("Standard1",Util.cellname("name" + ii),bytes,System.currentTimeMillis());
+      hash=hash(hash,bytes);
+      ++cells;
+      dataSize+=sz;
+    }
+    rp=commitLog.add(mutation);
+    counter.incrementAndGet();
+  }
+}

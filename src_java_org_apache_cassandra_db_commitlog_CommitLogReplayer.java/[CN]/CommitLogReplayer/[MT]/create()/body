@@ -1,0 +1,13 @@
+{
+  Map<UUID,ReplayPosition> cfPositions=new HashMap<UUID,ReplayPosition>();
+  Ordering<ReplayPosition> replayPositionOrdering=Ordering.from(ReplayPosition.comparator);
+  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
+    ReplayPosition rp=ReplayPosition.getReplayPosition(cfs.getSSTables());
+    ReplayPosition truncatedAt=SystemKeyspace.getTruncatedPosition(cfs.metadata.cfId);
+    if (truncatedAt != null)     rp=replayPositionOrdering.max(Arrays.asList(rp,truncatedAt));
+    cfPositions.put(cfs.metadata.cfId,rp);
+  }
+  ReplayPosition globalPosition=replayPositionOrdering.min(cfPositions.values());
+  logger.debug("Global replay position is {} from columnfamilies {}",globalPosition,FBUtilities.toString(cfPositions));
+  return new CommitLogReplayer(globalPosition,cfPositions);
+}

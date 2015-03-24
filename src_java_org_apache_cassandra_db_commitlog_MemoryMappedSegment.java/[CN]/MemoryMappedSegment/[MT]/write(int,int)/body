@@ -1,0 +1,14 @@
+{
+  if (nextMarker <= buffer.capacity() - SYNC_MARKER_SIZE) {
+    buffer.putInt(nextMarker,0);
+    buffer.putInt(nextMarker + 4,0);
+  }
+  writeSyncMarker(buffer,startMarker,startMarker,nextMarker);
+  try {
+    ((MappedByteBuffer)buffer).force();
+  }
+ catch (  Exception e) {
+    throw new FSWriteError(e,getPath());
+  }
+  CLibrary.trySkipCache(fd,startMarker,nextMarker);
+}

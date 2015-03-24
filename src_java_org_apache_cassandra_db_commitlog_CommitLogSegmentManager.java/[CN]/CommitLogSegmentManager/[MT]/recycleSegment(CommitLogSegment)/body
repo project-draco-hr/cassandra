@@ -1,19 +1,5 @@
 {
-  boolean archiveSuccess=CommitLog.instance.archiver.maybeWaitForArchiving(segment.getName());
+  boolean archiveSuccess=commitLog.archiver.maybeWaitForArchiving(segment.getName());
   activeSegments.remove(segment);
-  if (!archiveSuccess) {
-    discardSegment(segment,false);
-    return;
-  }
-  if (isCapExceeded()) {
-    discardSegment(segment,true);
-    return;
-  }
-  logger.debug("Recycling {}",segment);
-  segmentManagementTasks.add(new Callable<CommitLogSegment>(){
-    public CommitLogSegment call(){
-      return segment.recycle();
-    }
-  }
-);
+  discardSegment(segment,archiveSuccess);
 }

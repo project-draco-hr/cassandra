@@ -1,0 +1,13 @@
+{
+  compressorClass=DatabaseDescriptor.getCommitLogCompression();
+  this.location=location;
+  ICompressor compressor=compressorClass != null ? CompressionParameters.createCompressor(compressorClass) : null;
+  DatabaseDescriptor.createAllDirectories();
+  this.compressor=compressor;
+  this.archiver=archiver;
+  metrics=new CommitLogMetrics();
+  executor=DatabaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch ? new BatchCommitLogService(this) : new PeriodicCommitLogService(this);
+  allocator=new CommitLogSegmentManager(this);
+  executor.start();
+  metrics.attach(executor,allocator);
+}

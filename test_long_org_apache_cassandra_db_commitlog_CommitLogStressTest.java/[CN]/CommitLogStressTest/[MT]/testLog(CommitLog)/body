@@ -1,0 +1,44 @@
+{
+  System.out.format("\nTesting commit log size %dmb, compressor %s, sync %s%s%s\n",mb(DatabaseDescriptor.getCommitLogSegmentSize()),commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.executor.getClass().getSimpleName(),randomSize ? " random size" : "",discardedRun ? " with discarded run" : "");
+  commitLog.allocator.enableReserveSegmentCreation();
+  final List<CommitlogExecutor> threads=new ArrayList<>();
+  ScheduledExecutorService scheduled=startThreads(commitLog,threads);
+  discardedPos=ReplayPosition.NONE;
+  if (discardedRun) {
+    Thread.sleep(runTimeMs / 3);
+    stop=true;
+    scheduled.shutdown();
+    scheduled.awaitTermination(2,TimeUnit.SECONDS);
+    for (    CommitlogExecutor t : threads) {
+      t.join();
+      CommitLog.instance.discardCompletedSegments(Schema.instance.getCFMetaData("Keyspace1","Standard1").cfId,t.rp);
+      if (t.rp.compareTo(discardedPos) > 0)       discardedPos=t.rp;
+    }
+    threads.clear();
+    System.out.format("Discarded at %s\n",discardedPos);
+    scheduled=startThreads(commitLog,threads);
+  }
+  Thread.sleep(runTimeMs);
+  stop=true;
+  scheduled.shutdown();
+  scheduled.awaitTermination(2,TimeUnit.SECONDS);
+  int hash=0;
+  int cells=0;
+  for (  CommitlogExecutor t : threads) {
+    t.join();
+    hash+=t.hash;
+    cells+=t.cells;
+  }
+  commitLog.shutdownBlocking();
+  System.out.print("Stopped. Replaying... ");
+  System.out.flush();
+  Replayer repl=new Replayer();
+  File[] files=new File(location).listFiles();
+  repl.recover(files);
+  for (  File f : files)   if (!f.delete())   Assert.fail("Failed to delete " + f);
+  if (hash == repl.hash && cells == repl.cells)   System.out.println("Test success.");
+ else {
+    System.out.format("Test failed. Cells %d expected %d, hash %d expected %d.\n",repl.cells,cells,repl.hash,hash);
+    failed=true;
+  }
+}
