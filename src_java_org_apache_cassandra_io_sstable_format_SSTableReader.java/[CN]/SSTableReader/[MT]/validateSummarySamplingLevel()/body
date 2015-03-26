@@ -1,0 +1,30 @@
+{
+  Iterator<FileDataInput> segments=ifile.iterator(0);
+  int i=0;
+  int summaryEntriesChecked=0;
+  int expectedIndexInterval=getMinIndexInterval();
+  while (segments.hasNext()) {
+    FileDataInput in=segments.next();
+    try {
+      while (!in.isEOF()) {
+        ByteBuffer indexKey=ByteBufferUtil.readWithShortLength(in);
+        if (i % expectedIndexInterval == 0) {
+          ByteBuffer summaryKey=ByteBuffer.wrap(indexSummary.getKey(i / expectedIndexInterval));
+          if (!summaryKey.equals(indexKey))           return false;
+          summaryEntriesChecked++;
+          if (summaryEntriesChecked == Downsampling.BASE_SAMPLING_LEVEL)           return true;
+        }
+        RowIndexEntry.Serializer.skip(in);
+        i++;
+      }
+    }
+ catch (    IOException e) {
+      markSuspect();
+      throw new CorruptSSTableException(e,in.getPath());
+    }
+ finally {
+      FileUtils.closeQuietly(in);
+    }
+  }
+  return true;
+}

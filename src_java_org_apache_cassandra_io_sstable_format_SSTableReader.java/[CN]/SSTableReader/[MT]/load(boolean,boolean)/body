@@ -2,8 +2,27 @@
   SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
   SegmentedFile.Builder dbuilder=compression ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
   boolean summaryLoaded=loadSummary(ibuilder,dbuilder);
-  if (recreateBloomFilter || !summaryLoaded)   buildSummary(recreateBloomFilter,ibuilder,dbuilder,summaryLoaded,Downsampling.BASE_SAMPLING_LEVEL);
+  boolean builtSummary=false;
+  if (recreateBloomFilter || !summaryLoaded) {
+    buildSummary(recreateBloomFilter,ibuilder,dbuilder,summaryLoaded,Downsampling.BASE_SAMPLING_LEVEL);
+    builtSummary=true;
+  }
   ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
   dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
-  if (saveSummaryIfCreated && (recreateBloomFilter || !summaryLoaded))   saveSummary(ibuilder,dbuilder);
+  if (!descriptor.version.hasSamplingLevel() && !builtSummary && !validateSummarySamplingLevel()) {
+    indexSummary.close();
+    ifile.close();
+    dfile.close();
+    logger.info("Detected erroneously downsampled index summary; will rebuild summary at full sampling");
+    FileUtils.deleteWithConfirm(new File(descriptor.filenameFor(Component.SUMMARY)));
+    ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode());
+    dbuilder=compression ? SegmentedFile.getCompressedBuilder() : SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode());
+    buildSummary(false,ibuilder,dbuilder,false,Downsampling.BASE_SAMPLING_LEVEL);
+    ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
+    dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
+    saveSummary(ibuilder,dbuilder);
+  }
+ else   if (saveSummaryIfCreated && builtSummary) {
+    saveSummary(ibuilder,dbuilder);
+  }
 }
