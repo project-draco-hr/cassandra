@@ -1,0 +1,19 @@
+{
+  Range<Token> range=new Range<>(partitioner.getMinimumToken(),partitioner.getRandomToken());
+  final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),keyspace,columnFamily,range);
+  InetAddress remote=InetAddress.getByName("127.0.0.2");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(columnFamily);
+  Token mid=partitioner.midpoint(range.left,range.right);
+  DecoratedKey key=new DecoratedKey(mid,ByteBufferUtil.bytes("inconceivable!"));
+  Validator validator1=new Validator(desc,remote,0);
+  validator1.prepare(cfs);
+  validator1.complete();
+  LazilyCompactedRow row3=new LazilyCompactedRow(new CompactionController(cfs,null,0),null);
+  Validator validator2=new Validator(desc,remote,0);
+  validator2.prepare(cfs);
+  PrecompactedRow row2=new PrecompactedRow(key,null);
+  validator2.add(row2);
+  validator2.complete();
+  List<TreeRange> diff=MerkleTree.difference(validator1.tree,validator2.tree);
+  assertTrue("Found tree mismatch: " + diff,diff.size() == 0);
+}
