@@ -1,0 +1,333 @@
+{
+  init();
+  int read=0;
+  int totalRead=0;
+  DummyChannel dc=new DummyChannel();
+  NIODataInputStream is=new NIODataInputStream(dc,1024 * 4);
+  dis=new DataInputStream(new ByteArrayInputStream(corpus.array()));
+  int iteration=0;
+  while (totalRead < corpus.capacity()) {
+    assertEquals(corpus.position(),totalRead);
+    int action=r.nextInt(16);
+    iteration++;
+switch (action) {
+case 0:
+{
+        byte bytes[]=new byte[111];
+        int expectedBytes=corpus.capacity() - totalRead;
+        boolean expectEOF=expectedBytes < 111;
+        boolean threwEOF=false;
+        try {
+          is.readFully(bytes);
+        }
+ catch (        EOFException e) {
+          threwEOF=true;
+        }
+        assertEquals(expectEOF,threwEOF);
+        if (expectEOF)         return;
+        validateAgainstCorpus(bytes,0,111,totalRead);
+        totalRead+=111;
+        break;
+      }
+case 1:
+{
+      byte bytes[]=new byte[r.nextInt(1024 * 8 + 1)];
+      int offset=bytes.length == 0 ? 0 : r.nextInt(bytes.length);
+      int length=bytes.length == 0 ? 0 : r.nextInt(bytes.length - offset);
+      int expectedBytes=corpus.capacity() - totalRead;
+      boolean expectEOF=expectedBytes < length;
+      boolean threwEOF=false;
+      try {
+        is.readFully(bytes,offset,length);
+      }
+ catch (      EOFException e) {
+        threwEOF=true;
+      }
+      assertEquals(expectEOF,threwEOF);
+      if (expectEOF)       return;
+      validateAgainstCorpus(bytes,offset,length,totalRead);
+      totalRead+=length;
+      break;
+    }
+case 2:
+{
+    byte bytes[]=new byte[r.nextInt(1024 * 8 + 1)];
+    int offset=bytes.length == 0 ? 0 : r.nextInt(bytes.length);
+    int length=bytes.length == 0 ? 0 : r.nextInt(bytes.length - offset);
+    int expectedBytes=corpus.capacity() - totalRead;
+    boolean expectEOF=expectedBytes == 0;
+    read=is.read(bytes,offset,length);
+    assertTrue((expectEOF && read <= 0) || (!expectEOF && read >= 0));
+    if (expectEOF)     return;
+    validateAgainstCorpus(bytes,offset,read,totalRead);
+    totalRead+=read;
+    break;
+  }
+case 3:
+{
+  byte bytes[]=new byte[111];
+  int expectedBytes=corpus.capacity() - totalRead;
+  boolean expectEOF=expectedBytes == 0;
+  read=is.read(bytes);
+  assertTrue((expectEOF && read <= 0) || (!expectEOF && read >= 0));
+  if (expectEOF)   return;
+  validateAgainstCorpus(bytes,0,read,totalRead);
+  totalRead+=read;
+  break;
+}
+case 4:
+{
+boolean expected=corpus.get() != 0;
+boolean canonical=dis.readBoolean();
+boolean actual=is.readBoolean();
+assertTrue(expected == canonical && canonical == actual);
+totalRead++;
+break;
+}
+case 5:
+{
+byte expected=corpus.get();
+byte canonical=dis.readByte();
+byte actual=is.readByte();
+assertTrue(expected == canonical && canonical == actual);
+totalRead++;
+break;
+}
+case 6:
+{
+int expected=corpus.get() & 0xFF;
+int canonical=dis.read();
+int actual=is.read();
+assertTrue(expected == canonical && canonical == actual);
+totalRead++;
+break;
+}
+case 7:
+{
+int expected=corpus.get() & 0xFF;
+int canonical=dis.readUnsignedByte();
+int actual=is.readUnsignedByte();
+assertTrue(expected == canonical && canonical == actual);
+totalRead++;
+break;
+}
+case 8:
+{
+if (corpus.remaining() < 2) {
+boolean threw=false;
+try {
+is.readShort();
+}
+ catch (EOFException e) {
+try {
+dis.readShort();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 2);
+totalRead=corpus.capacity();
+break;
+}
+short expected=corpus.getShort();
+short canonical=dis.readShort();
+short actual=is.readShort();
+assertTrue(expected == canonical && canonical == actual);
+totalRead+=2;
+break;
+}
+case 9:
+{
+if (corpus.remaining() < 2) {
+boolean threw=false;
+try {
+is.readUnsignedShort();
+}
+ catch (EOFException e) {
+try {
+dis.readUnsignedShort();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 2);
+totalRead=corpus.capacity();
+break;
+}
+int ch1=corpus.get() & 0xFF;
+int ch2=corpus.get() & 0xFF;
+int expected=(ch1 << 8) + (ch2 << 0);
+int canonical=dis.readUnsignedShort();
+int actual=is.readUnsignedShort();
+assertTrue(expected == canonical && canonical == actual);
+totalRead+=2;
+break;
+}
+case 10:
+{
+if (corpus.remaining() < 2) {
+boolean threw=false;
+try {
+is.readChar();
+}
+ catch (EOFException e) {
+try {
+dis.readChar();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 2);
+totalRead=corpus.capacity();
+break;
+}
+char expected=corpus.getChar();
+char canonical=dis.readChar();
+char actual=is.readChar();
+assertTrue(expected == canonical && canonical == actual);
+totalRead+=2;
+break;
+}
+case 11:
+{
+if (corpus.remaining() < 4) {
+boolean threw=false;
+try {
+is.readInt();
+}
+ catch (EOFException e) {
+try {
+dis.readInt();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 4);
+totalRead=corpus.capacity();
+break;
+}
+int expected=corpus.getInt();
+int canonical=dis.readInt();
+int actual=is.readInt();
+assertTrue(expected == canonical && canonical == actual);
+totalRead+=4;
+break;
+}
+case 12:
+{
+if (corpus.remaining() < 4) {
+boolean threw=false;
+try {
+is.readFloat();
+}
+ catch (EOFException e) {
+try {
+dis.readFloat();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 4);
+totalRead=corpus.capacity();
+break;
+}
+float expected=corpus.getFloat();
+float canonical=dis.readFloat();
+float actual=is.readFloat();
+totalRead+=4;
+if (Float.isNaN(expected)) {
+assertTrue(Float.isNaN(canonical) && Float.isNaN(actual));
+}
+ else {
+assertTrue(expected == canonical && canonical == actual);
+}
+break;
+}
+case 13:
+{
+if (corpus.remaining() < 8) {
+boolean threw=false;
+try {
+is.readLong();
+}
+ catch (EOFException e) {
+try {
+dis.readLong();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 8);
+totalRead=corpus.capacity();
+break;
+}
+long expected=corpus.getLong();
+long canonical=dis.readLong();
+long actual=is.readLong();
+assertTrue(expected == canonical && canonical == actual);
+totalRead+=8;
+break;
+}
+case 14:
+{
+if (corpus.remaining() < 8) {
+boolean threw=false;
+try {
+is.readDouble();
+}
+ catch (EOFException e) {
+try {
+dis.readDouble();
+}
+ catch (EOFException e2) {
+}
+threw=true;
+}
+assertTrue(threw);
+assertTrue(corpus.remaining() - totalRead < 8);
+totalRead=corpus.capacity();
+break;
+}
+double expected=corpus.getDouble();
+double canonical=dis.readDouble();
+double actual=is.readDouble();
+totalRead+=8;
+if (Double.isNaN(expected)) {
+assertTrue(Double.isNaN(canonical) && Double.isNaN(actual));
+}
+ else {
+assertTrue(expected == canonical && canonical == actual);
+}
+break;
+}
+case 15:
+{
+int skipBytes=r.nextInt(1024);
+int actuallySkipped=Math.min(skipBytes,corpus.remaining());
+totalRead+=actuallySkipped;
+corpus.position(corpus.position() + actuallySkipped);
+int canonical=dis.skipBytes(actuallySkipped);
+int actual=is.skipBytes(actuallySkipped);
+assertEquals(actuallySkipped,canonical);
+assertEquals(canonical,actual);
+break;
+}
+default :
+fail("Should never reach here");
+}
+}
+assertEquals(totalRead,corpus.capacity());
+assertEquals(-1,dis.read());
+}

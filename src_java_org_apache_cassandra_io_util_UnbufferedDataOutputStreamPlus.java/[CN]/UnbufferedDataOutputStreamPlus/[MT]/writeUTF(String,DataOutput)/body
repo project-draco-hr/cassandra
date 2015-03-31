@@ -1,0 +1,43 @@
+{
+  int length=str.length();
+  int utfCount=calculateUTFLength(str,length);
+  if (utfCount > 65535)   throw new UTFDataFormatException();
+  byte[] utfBytes=retrieveTemporaryBuffer(utfCount + 2);
+  int utfIndex=2;
+  utfBytes[0]=(byte)(utfCount >> 8);
+  utfBytes[1]=(byte)utfCount;
+  int bufferLength=utfBytes.length;
+  if (utfCount == length && utfCount + utfIndex < bufferLength) {
+    for (int charIndex=0; charIndex < length; charIndex++)     utfBytes[utfIndex++]=(byte)str.charAt(charIndex);
+  }
+ else {
+    int charIndex=0;
+    while (charIndex < length) {
+      char ch=str.charAt(charIndex);
+      int sizeOfChar=sizeOfChar(ch);
+      if (utfIndex + sizeOfChar > bufferLength) {
+        out.write(utfBytes,0,utfIndex);
+        utfIndex=0;
+      }
+switch (sizeOfChar) {
+case 3:
+        utfBytes[utfIndex]=(byte)(0xe0 | (0x0f & (ch >> 12)));
+      utfBytes[utfIndex + 1]=(byte)(0x80 | (0x3f & (ch >> 6)));
+    utfBytes[utfIndex + 2]=(byte)(0x80 | (0x3f & ch));
+  break;
+case 2:
+utfBytes[utfIndex]=(byte)(0xc0 | (0x1f & (ch >> 6)));
+utfBytes[utfIndex + 1]=(byte)(0x80 | (0x3f & ch));
+break;
+case 1:
+utfBytes[utfIndex]=(byte)ch;
+break;
+default :
+throw new IllegalStateException();
+}
+utfIndex+=sizeOfChar;
+charIndex++;
+}
+}
+out.write(utfBytes,0,utfIndex);
+}

@@ -1,0 +1,34 @@
+{
+  return new WritableByteChannel(){
+    @Override public boolean isOpen(){
+      return true;
+    }
+    @Override public void close() throws IOException {
+    }
+    @Override public int write(    ByteBuffer src) throws IOException {
+      int toWrite=src.remaining();
+      if (src.hasArray()) {
+        DataOutputStreamPlus.this.write(src.array(),src.arrayOffset() + src.position(),src.remaining());
+        src.position(src.limit());
+        return toWrite;
+      }
+      if (toWrite < 16) {
+        int offset=src.position();
+        for (int i=0; i < toWrite; i++)         DataOutputStreamPlus.this.write(src.get(i + offset));
+        src.position(src.limit());
+        return toWrite;
+      }
+      byte[] buf=retrieveTemporaryBuffer(toWrite);
+      int totalWritten=0;
+      while (totalWritten < toWrite) {
+        int toWriteThisTime=Math.min(buf.length,toWrite - totalWritten);
+        ByteBufferUtil.arrayCopy(src,src.position() + totalWritten,buf,0,toWriteThisTime);
+        DataOutputStreamPlus.this.write(buf,0,toWriteThisTime);
+        totalWritten+=toWriteThisTime;
+      }
+      src.position(src.limit());
+      return totalWritten;
+    }
+  }
+;
+}

@@ -1,0 +1,27 @@
+{
+  init();
+  DummyChannel dc=new DummyChannel();
+  dc.slices.clear();
+  dc.slices.offer(ByteBuffer.allocate(8190));
+  NIODataInputStream is=new NIODataInputStream(dc,4096);
+  assertEquals(0,is.available());
+  is.read();
+  assertEquals(4095,is.available());
+  is.read(new byte[4095]);
+  assertEquals(0,is.available());
+  is.read(new byte[10]);
+  assertEquals(8190 - 10 - 4096,is.available());
+  File f=File.createTempFile("foo","bar");
+  RandomAccessFile fos=new RandomAccessFile(f,"rw");
+  fos.write(new byte[10]);
+  fos.seek(0);
+  is=new NIODataInputStream(fos.getChannel(),8);
+  int remaining=10;
+  assertEquals(10,is.available());
+  while (remaining > 0) {
+    is.read();
+    remaining--;
+    assertEquals(remaining,is.available());
+  }
+  assertEquals(0,is.available());
+}

@@ -1,0 +1,31 @@
+{
+  final ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  DataOutputStream daos=new DataOutputStream(baos);
+  String simple="foobar42";
+  String twoByte="??";
+  String threeByte="???";
+  String fourByte="????";
+  assertEquals(2,twoByte.getBytes(Charsets.UTF_8).length);
+  assertEquals(3,threeByte.getBytes(Charsets.UTF_8).length);
+  assertEquals(4,fourByte.getBytes(Charsets.UTF_8).length);
+  daos.writeUTF(simple);
+  daos.writeUTF(twoByte);
+  daos.writeUTF(threeByte);
+  daos.writeUTF(fourByte);
+  NIODataInputStream is=new NIODataInputStream(new ReadableByteChannel(){
+    @Override public boolean isOpen(){
+      return false;
+    }
+    @Override public void close() throws IOException {
+    }
+    @Override public int read(    ByteBuffer dst) throws IOException {
+      dst.put(baos.toByteArray());
+      return baos.toByteArray().length;
+    }
+  }
+,4096);
+  assertEquals(simple,is.readUTF());
+  assertEquals(twoByte,is.readUTF());
+  assertEquals(threeByte,is.readUTF());
+  assertEquals(fourByte,is.readUTF());
+}
