@@ -1,0 +1,63 @@
+{
+  QueryHandler queryHandler=(QueryHandler)cqlQueryHandlerField.get(null);
+  cqlQueryHandlerField.set(null,new TestQueryHandler());
+  try {
+    requireNetwork();
+    Assert.assertSame(TestQueryHandler.class,ClientState.getCQLQueryHandler().getClass());
+    SimpleClient client=new SimpleClient(nativeAddr.getHostAddress(),nativePort,Server.VERSION_3);
+    try {
+      client.connect(false);
+      Map<String,byte[]> reqMap;
+      QueryMessage queryMessage=new QueryMessage("CREATE TABLE " + KEYSPACE + ".atable (pk int PRIMARY KEY, v text)",QueryOptions.DEFAULT);
+      PrepareMessage prepareMessage=new PrepareMessage("SELECT * FROM " + KEYSPACE + ".atable");
+      reqMap=Collections.singletonMap("foo","42".getBytes());
+      responsePayload=Collections.singletonMap("bar","42".getBytes());
+      queryMessage.setCustomPayload(reqMap);
+      try {
+        client.execute(queryMessage);
+        Assert.fail();
+      }
+ catch (      ProtocolException e) {
+      }
+      queryMessage.setCustomPayload(null);
+      client.execute(queryMessage);
+      reqMap=Collections.singletonMap("foo","43".getBytes());
+      responsePayload=Collections.singletonMap("bar","43".getBytes());
+      prepareMessage.setCustomPayload(reqMap);
+      try {
+        client.execute(prepareMessage);
+        Assert.fail();
+      }
+ catch (      ProtocolException e) {
+      }
+      prepareMessage.setCustomPayload(null);
+      ResultMessage.Prepared prepareResponse=(ResultMessage.Prepared)client.execute(prepareMessage);
+      ExecuteMessage executeMessage=new ExecuteMessage(prepareResponse.statementId,QueryOptions.DEFAULT);
+      reqMap=Collections.singletonMap("foo","44".getBytes());
+      responsePayload=Collections.singletonMap("bar","44".getBytes());
+      executeMessage.setCustomPayload(reqMap);
+      try {
+        client.execute(executeMessage);
+        Assert.fail();
+      }
+ catch (      ProtocolException e) {
+      }
+      BatchMessage batchMessage=new BatchMessage(BatchStatement.Type.UNLOGGED,Collections.<Object>singletonList("INSERT INTO " + KEYSPACE + ".atable (pk,v) VALUES (1, 'foo')"),Collections.singletonList(Collections.<ByteBuffer>emptyList()),QueryOptions.DEFAULT);
+      reqMap=Collections.singletonMap("foo","45".getBytes());
+      responsePayload=Collections.singletonMap("bar","45".getBytes());
+      batchMessage.setCustomPayload(reqMap);
+      try {
+        client.execute(batchMessage);
+        Assert.fail();
+      }
+ catch (      ProtocolException e) {
+      }
+    }
+  finally {
+      client.close();
+    }
+  }
+  finally {
+    cqlQueryHandlerField.set(null,queryHandler);
+  }
+}

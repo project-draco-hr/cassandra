@@ -1,0 +1,25 @@
+{
+  sessionNet(3);
+  SimpleClient clientA=new SimpleClient(nativeAddr.getHostAddress(),nativePort,Server.VERSION_3);
+  clientA.connect(false);
+  try {
+    SimpleClient.SimpleEventHandler eventHandlerA=new SimpleClient.SimpleEventHandler();
+    clientA.setEventHandler(eventHandlerA);
+    try {
+      clientA.execute(new RegisterMessage(Collections.singletonList(Event.Type.TRACE_COMPLETE)));
+      Assert.fail();
+    }
+ catch (    RuntimeException e) {
+      Assert.assertTrue(e.getCause() instanceof ProtocolException);
+    }
+    createTable("CREATE TABLE %s (pk int PRIMARY KEY, v text)");
+    QueryMessage query=new QueryMessage("SELECT * FROM " + KEYSPACE + '.'+ currentTable(),QueryOptions.DEFAULT);
+    query.setTracingRequested();
+    clientA.execute(query);
+    Event event=eventHandlerA.queue.poll(250,TimeUnit.MILLISECONDS);
+    Assert.assertNull(event);
+  }
+  finally {
+    clientA.close();
+  }
+}

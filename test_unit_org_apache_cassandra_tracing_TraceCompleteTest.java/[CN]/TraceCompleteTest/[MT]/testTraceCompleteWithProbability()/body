@@ -1,0 +1,32 @@
+{
+  sessionNet(3);
+  double traceProbability=StorageService.instance.getTraceProbability();
+  StorageService.instance.setTraceProbability(1.1d);
+  SimpleClient clientA=new SimpleClient(nativeAddr.getHostAddress(),nativePort);
+  clientA.connect(false);
+  try {
+    SimpleClient.SimpleEventHandler eventHandlerA=new SimpleClient.SimpleEventHandler();
+    clientA.setEventHandler(eventHandlerA);
+    SimpleClient clientB=new SimpleClient(nativeAddr.getHostAddress(),nativePort);
+    clientB.connect(false);
+    try {
+      SimpleClient.SimpleEventHandler eventHandlerB=new SimpleClient.SimpleEventHandler();
+      clientB.setEventHandler(eventHandlerB);
+      Message.Response resp=clientA.execute(new RegisterMessage(Collections.singletonList(Event.Type.TRACE_COMPLETE)));
+      Assert.assertSame(Message.Type.READY,resp.type);
+      createTable("CREATE TABLE %s (pk int PRIMARY KEY, v text)");
+      QueryMessage query=new QueryMessage("SELECT * FROM " + KEYSPACE + '.'+ currentTable(),QueryOptions.DEFAULT);
+      clientA.execute(query);
+      Event event=eventHandlerA.queue.poll(2000,TimeUnit.MILLISECONDS);
+      Assert.assertNull(event);
+      Assert.assertNull(eventHandlerB.queue.poll(100,TimeUnit.MILLISECONDS));
+    }
+  finally {
+      clientB.close();
+    }
+  }
+  finally {
+    StorageService.instance.setTraceProbability(traceProbability);
+    clientA.close();
+  }
+}
