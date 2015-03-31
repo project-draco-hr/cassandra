@@ -1,0 +1,53 @@
+{
+  Options options=Options.parseArgs(args);
+  try {
+    Schema.instance.loadFromDisk(false);
+    boolean hasFailed=false;
+    if (Schema.instance.getCFMetaData(options.keyspaceName,options.cfName) == null)     throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",options.keyspaceName,options.cfName));
+    Keyspace keyspace=Keyspace.openWithoutSSTables(options.keyspaceName);
+    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(options.cfName);
+    OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
+    Directories.SSTableLister lister=cfs.directories.sstableLister().skipTemporary(true);
+    boolean extended=options.extended;
+    List<SSTableReader> sstables=new ArrayList<>();
+    for (    Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
+      Set<Component> components=entry.getValue();
+      if (!components.contains(Component.DATA) || !components.contains(Component.PRIMARY_INDEX))       continue;
+      try {
+        SSTableReader sstable=SSTableReader.openNoValidation(entry.getKey(),components,cfs);
+        sstables.add(sstable);
+      }
+ catch (      Exception e) {
+        JVMStabilityInspector.inspectThrowable(e);
+        System.err.println(String.format("Error Loading %s: %s",entry.getKey(),e.getMessage()));
+        if (options.debug)         e.printStackTrace(System.err);
+      }
+    }
+    for (    SSTableReader sstable : sstables) {
+      try {
+        Verifier verifier=new Verifier(cfs,sstable,handler,true);
+        try {
+          verifier.verify(extended);
+        }
+ catch (        CorruptSSTableException cs) {
+          System.err.println(String.format("Error verifying %s: %s",sstable,cs.getMessage()));
+          hasFailed=true;
+        }
+ finally {
+          verifier.close();
+        }
+      }
+ catch (      Exception e) {
+        System.err.println(String.format("Error verifying %s: %s",sstable,e.getMessage()));
+        e.printStackTrace(System.err);
+      }
+    }
+    CompactionManager.instance.finishCompactionsAndShutdown(5,TimeUnit.MINUTES);
+    System.exit(hasFailed ? 1 : 0);
+  }
+ catch (  Exception e) {
+    System.err.println(e.getMessage());
+    if (options.debug)     e.printStackTrace(System.err);
+    System.exit(1);
+  }
+}
