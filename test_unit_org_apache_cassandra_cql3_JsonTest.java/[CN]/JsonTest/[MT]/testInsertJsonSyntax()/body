@@ -1,0 +1,19 @@
+{
+  createTable("CREATE TABLE %s (k int primary key, v int)");
+  execute("INSERT INTO %s JSON ?","{\"k\": 0, \"v\": 0}");
+  assertRows(execute("SELECT * FROM %s"),row(0,0));
+  execute("INSERT INTO %s JSON ?","{\"k\": 0, \"v\": 0}");
+  assertRows(execute("SELECT * FROM %s"),row(0,0));
+  execute("INSERT INTO %s JSON ?","{\"k\": 0, \"v\": null}");
+  assertRows(execute("SELECT * FROM %s"),row(0,null));
+  execute("INSERT INTO %s JSON ?","{\"v\": 1, \"k\": 0}");
+  assertRows(execute("SELECT * FROM %s"),row(0,1));
+  execute("INSERT INTO %s JSON ?","{\"k\": 0}");
+  assertRows(execute("SELECT * FROM %s"),row(0,null));
+  if (USE_PREPARED_VALUES)   assertInvalidMessage("Got null for INSERT JSON values","INSERT INTO %s JSON ?",new Object[]{null});
+  assertInvalidMessage("Got null for INSERT JSON values","INSERT INTO %s JSON ?","null");
+  assertInvalidMessage("Could not decode JSON string as a map","INSERT INTO %s JSON ?","\"notamap\"");
+  assertInvalidMessage("Could not decode JSON string as a map","INSERT INTO %s JSON ?","12.34");
+  assertInvalidMessage("JSON values map contains unrecognized column","INSERT INTO %s JSON ?","{\"k\": 0, \"v\": 0, \"zzz\": 0}");
+  assertInvalidMessage("Unable to make int from","INSERT INTO %s JSON ?","{\"k\": 0, \"v\": \"notanint\"}");
+}

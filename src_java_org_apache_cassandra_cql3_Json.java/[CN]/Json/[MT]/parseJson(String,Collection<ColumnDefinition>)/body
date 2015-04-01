@@ -1,0 +1,32 @@
+{
+  try {
+    Map<String,Object> valueMap=JSON_OBJECT_MAPPER.readValue(jsonString,Map.class);
+    if (valueMap == null)     throw new InvalidRequestException("Got null for INSERT JSON values");
+    handleCaseSensitivity(valueMap);
+    Map<ColumnIdentifier,Term> columnMap=new HashMap<>(expectedReceivers.size());
+    for (    ColumnSpecification spec : expectedReceivers) {
+      Object parsedJsonObject=valueMap.remove(spec.name.toString());
+      if (parsedJsonObject == null) {
+        columnMap.put(spec.name,null);
+      }
+ else {
+        try {
+          columnMap.put(spec.name,spec.type.fromJSONObject(parsedJsonObject));
+        }
+ catch (        MarshalException exc) {
+          throw new InvalidRequestException(String.format("Error decoding JSON value for %s: %s",spec.name,exc.getMessage()));
+        }
+      }
+    }
+    if (!valueMap.isEmpty()) {
+      throw new InvalidRequestException(String.format("JSON values map contains unrecognized column: %s",valueMap.keySet().iterator().next()));
+    }
+    return columnMap;
+  }
+ catch (  IOException exc) {
+    throw new InvalidRequestException(String.format("Could not decode JSON string as a map: %s. (String was: %s)",exc.toString(),jsonString));
+  }
+catch (  MarshalException exc) {
+    throw new InvalidRequestException(exc.getMessage());
+  }
+}
