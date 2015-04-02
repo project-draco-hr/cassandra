@@ -64,6 +64,14 @@
     }
   }
 );
+  estimatedRowCount=Metrics.newGauge(factory.createMetricName("EstimatedRowCount"),new Gauge<Long>(){
+    public Long value(){
+      long memtablePartitions=0;
+      for (      Memtable memtable : cfs.getDataTracker().getView().getAllMemtables())       memtablePartitions+=memtable.partitionCount();
+      return SSTableReader.getApproximateKeyCount(cfs.getSSTables()) + memtablePartitions;
+    }
+  }
+);
   estimatedColumnCountHistogram=Metrics.newGauge(factory.createMetricName("EstimatedColumnCountHistogram"),new Gauge<long[]>(){
     public long[] value(){
       return combineHistograms(cfs.getSSTables(),new GetHistogram(){
