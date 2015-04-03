@@ -18,21 +18,22 @@
   int repairedKeys=0;
   int nonRepairedKeys=0;
   for (  SSTableReader sstable : store.getSSTables()) {
-    ISSTableScanner scanner=sstable.getScanner();
-    while (scanner.hasNext()) {
-      SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
-      if (sstable.isRepaired()) {
-        assertTrue(range.contains(row.getKey().getToken()));
-        assertEquals(repairedAt,sstable.getSSTableMetadata().repairedAt);
-        repairedKeys++;
-      }
+    try (ISSTableScanner scanner=sstable.getScanner()){
+      while (scanner.hasNext()) {
+        SSTableIdentityIterator row=(SSTableIdentityIterator)scanner.next();
+        if (sstable.isRepaired()) {
+          assertTrue(range.contains(row.getKey().getToken()));
+          assertEquals(repairedAt,sstable.getSSTableMetadata().repairedAt);
+          repairedKeys++;
+        }
  else {
-        assertFalse(range.contains(row.getKey().getToken()));
-        assertEquals(ActiveRepairService.UNREPAIRED_SSTABLE,sstable.getSSTableMetadata().repairedAt);
-        nonRepairedKeys++;
+          assertFalse(range.contains(row.getKey().getToken()));
+          assertEquals(ActiveRepairService.UNREPAIRED_SSTABLE,sstable.getSSTableMetadata().repairedAt);
+          nonRepairedKeys++;
+        }
       }
     }
-  }
+   }
   assertEquals(repairedKeys,40);
   assertEquals(nonRepairedKeys,60);
 }
