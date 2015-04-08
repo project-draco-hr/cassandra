@@ -20,16 +20,22 @@
       unRepairedSSTableWriter.switchWriter(CompactionManager.createWriter(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstable));
       CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners.scanners,controller);
       Iterator<AbstractCompactedRow> iter=ci.iterator();
-      while (iter.hasNext()) {
-        AbstractCompactedRow row=iter.next();
-        if (Range.isInRanges(row.key.getToken(),ranges)) {
-          repairedSSTableWriter.append(row);
-          repairedKeyCount++;
-        }
+      metrics.beginCompaction(ci);
+      try {
+        while (iter.hasNext()) {
+          AbstractCompactedRow row=iter.next();
+          if (Range.isInRanges(row.key.getToken(),ranges)) {
+            repairedSSTableWriter.append(row);
+            repairedKeyCount++;
+          }
  else {
-          unRepairedSSTableWriter.append(row);
-          unrepairedKeyCount++;
+            unRepairedSSTableWriter.append(row);
+            unrepairedKeyCount++;
+          }
         }
+      }
+  finally {
+        metrics.finishCompaction(ci);
       }
       anticompactedSSTables.addAll(repairedSSTableWriter.finish(repairedAt));
       anticompactedSSTables.addAll(unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE));
