@@ -2,11 +2,9 @@
   Set<SSTableReader> snapshottedSSTables=new HashSet<>();
   for (  ColumnFamilyStore cfs : concatWithIndexes()) {
     final JSONArray filesJSONArr=new JSONArray();
-    try (RefViewFragment currentView=cfs.selectAndReference(ALL_SSTABLES)){
+    try (RefViewFragment currentView=cfs.selectAndReference(CANONICAL_SSTABLES)){
       for (      SSTableReader ssTable : currentView.sstables) {
-        if (ssTable.openReason == SSTableReader.OpenReason.EARLY || (predicate != null && !predicate.apply(ssTable))) {
-          continue;
-        }
+        if (predicate != null && !predicate.apply(ssTable))         continue;
         File snapshotDirectory=Directories.getSnapshotDirectory(ssTable.descriptor,snapshotName);
         ssTable.createLinks(snapshotDirectory.getPath());
         filesJSONArr.add(ssTable.descriptor.relativeFilenameFor(Component.DATA));
