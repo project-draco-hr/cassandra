@@ -1,0 +1,48 @@
+{
+  StringBuilder sb=new StringBuilder();
+  for (int ii=0; ii < 11; ii++) {
+    sb.append(BufferedDataOutputStreamTest.fourByte);
+    sb.append(BufferedDataOutputStreamTest.threeByte);
+    sb.append(BufferedDataOutputStreamTest.twoByte);
+  }
+  smallM=sb.toString();
+  sb=new StringBuilder();
+  while (sb.length() < 1024 * 12) {
+    sb.append(small);
+  }
+  large=sb.toString();
+  sb=new StringBuilder();
+  while (sb.length() < 1024 * 12) {
+    sb.append(smallM);
+  }
+  largeM=sb.toString();
+  hole=new BufferedOutputStream(new OutputStream(){
+    @Override public void write(    int b) throws IOException {
+      bh.consume(b);
+    }
+    @Override public void write(    byte b[]) throws IOException {
+      bh.consume(b);
+    }
+    @Override public void write(    byte b[],    int a,    int c) throws IOException {
+      bh.consume(b);
+      bh.consume(a);
+      bh.consume(c);
+    }
+  }
+);
+  streamA=new WrappedDataOutputStreamPlus(hole);
+  streamB=new BufferedDataOutputStreamPlus(new WritableByteChannel(){
+    @Override public boolean isOpen(){
+      return true;
+    }
+    @Override public void close() throws IOException {
+    }
+    @Override public int write(    ByteBuffer src) throws IOException {
+      bh.consume(src);
+      int remaining=src.remaining();
+      src.position(src.limit());
+      return remaining;
+    }
+  }
+,8192);
+}
