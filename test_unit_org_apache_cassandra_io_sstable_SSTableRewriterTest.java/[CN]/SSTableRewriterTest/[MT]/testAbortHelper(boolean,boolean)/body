@@ -26,8 +26,9 @@
   }
   finally {
     cfs.getDataTracker().unmarkCompacting(compacting);
+    if (offline)     s.selfRef().release();
   }
-  Thread.sleep(1000);
+  SSTableDeletingTask.waitForDeletions();
   int filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   assertEquals(filecount,1);
   if (!offline) {
@@ -35,12 +36,12 @@
     validateCFS(cfs);
   }
   cfs.truncateBlocking();
-  Thread.sleep(1000);
+  SSTableDeletingTask.waitForDeletions();
   filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   if (offline) {
     assertEquals(1,filecount);
     for (    File f : s.descriptor.directory.listFiles()) {
-      f.delete();
+      FileUtils.deleteRecursive(f);
     }
     filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   }

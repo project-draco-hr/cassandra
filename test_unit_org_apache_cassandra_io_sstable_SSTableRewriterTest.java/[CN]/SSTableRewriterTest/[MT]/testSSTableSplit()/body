@@ -7,9 +7,10 @@
   cfs.getDataTracker().markCompacting(Arrays.asList(s),true,false);
   SSTableSplitter splitter=new SSTableSplitter(cfs,s,10);
   splitter.split();
-  Thread.sleep(1000);
   assertFileCounts(s.descriptor.directory.list(),0,0);
+  s.selfRef().release();
+  SSTableDeletingTask.waitForDeletions();
   for (  File f : s.descriptor.directory.listFiles()) {
-    f.delete();
+    FileUtils.deleteRecursive(f);
   }
 }

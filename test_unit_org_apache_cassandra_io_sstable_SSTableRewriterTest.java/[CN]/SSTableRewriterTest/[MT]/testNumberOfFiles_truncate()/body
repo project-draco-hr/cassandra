@@ -19,16 +19,16 @@
         assertEquals(cfs.getSSTables().size(),files);
       }
     }
-    List<SSTableReader> sstables=rewriter.finish();
-    cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,sstables,OperationType.COMPACTION);
-    Thread.sleep(1000);
-    assertFileCounts(s.descriptor.directory.list(),0,0);
-    cfs.truncateBlocking();
-    Thread.sleep(1000);
-    validateCFS(cfs);
   }
  catch (  Throwable t) {
     rewriter.abort();
     throw t;
   }
+  List<SSTableReader> sstables=rewriter.finish();
+  cfs.getDataTracker().markCompactedSSTablesReplaced(compacting,sstables,OperationType.COMPACTION);
+  SSTableDeletingTask.waitForDeletions();
+  assertFileCounts(s.descriptor.directory.list(),0,0);
+  cfs.truncateBlocking();
+  SSTableDeletingTask.waitForDeletions();
+  validateCFS(cfs);
 }
