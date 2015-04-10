@@ -1,2 +1,29 @@
 {
+  String ksname="Keyspace1";
+  String cfname="StandardLeveled";
+  Keyspace keyspace=Keyspace.open(ksname);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  byte[] b=new byte[100 * 1024];
+  new Random().nextBytes(b);
+  ByteBuffer value=ByteBuffer.wrap(b);
+  int rows=20;
+  int columns=10;
+  for (int r=0; r < rows; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    RowMutation rm=new RowMutation(ksname,key.key);
+    for (int c=0; c < columns; c++) {
+      rm.add(cfname,ByteBufferUtil.bytes("column" + c),value,0);
+    }
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  waitForLeveling(cfs);
+  LeveledCompactionStrategy strategy=(LeveledCompactionStrategy)cfs.getCompactionStrategy();
+  assertTrue(strategy.getLevelSize(1) > 0);
+  assertTrue(strategy.getLevelSize(2) > 0);
+  Range<Token> range=new Range<Token>(Util.token(""),Util.token(""));
+  int gcBefore=keyspace.getColumnFamilyStore(cfname).gcBefore(System.currentTimeMillis());
+  RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),ksname,cfname,range);
+  Validator validator=new Validator(desc,FBUtilities.getBroadcastAddress(),gcBefore);
+  CompactionManager.instance.submitValidation(cfs,validator).get();
 }
