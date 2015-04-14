@@ -1,0 +1,27 @@
+{
+  Map<Keyspace,List<String>> keyspaceColumnfamily=new HashMap<Keyspace,List<String>>();
+  for (  String columnFamily : columnFamilyList) {
+    String splittedString[]=columnFamily.split("\\.");
+    if (splittedString.length == 2) {
+      String keyspaceName=splittedString[0];
+      String columnFamilyName=splittedString[1];
+      if (keyspaceName == null)       throw new IOException("You must supply a keyspace name");
+      if (operationMode.equals(Mode.JOINING))       throw new IOException("Cannot snapshot until bootstrap completes");
+      if (columnFamilyName == null)       throw new IOException("You must supply a column family name");
+      if (tag == null || tag.equals(""))       throw new IOException("You must supply a snapshot name.");
+      Keyspace keyspace=getValidKeyspace(keyspaceName);
+      ColumnFamilyStore columnFamilyStore=keyspace.getColumnFamilyStore(columnFamilyName);
+      if (columnFamilyStore.snapshotExists(tag))       throw new IOException("Snapshot " + tag + " already exists.");
+      if (!keyspaceColumnfamily.containsKey(keyspace)) {
+        keyspaceColumnfamily.put(keyspace,new ArrayList<String>());
+      }
+      keyspaceColumnfamily.get(keyspace).add(columnFamilyName);
+    }
+ else {
+      throw new IllegalArgumentException("Cannot take a snapshot on secondary index or invalid column family name. You must supply a column family name in the form of keyspace.columnfamily");
+    }
+  }
+  for (  Entry<Keyspace,List<String>> entry : keyspaceColumnfamily.entrySet()) {
+    for (    String columnFamily : entry.getValue())     entry.getKey().snapshot(tag,columnFamily);
+  }
+}
