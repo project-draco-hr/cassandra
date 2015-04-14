@@ -2,12 +2,25 @@
   try {
     StringBuilder sb=new StringBuilder();
     sb.append("Requested creating snapshot(s) for ");
-    if (keyspaces.isEmpty())     sb.append("[all keyspaces]");
- else     sb.append("[").append(join(keyspaces,", ")).append("]");
-    if (!snapshotName.isEmpty())     sb.append(" with snapshot name [").append(snapshotName).append("]");
-    System.out.println(sb.toString());
-    probe.takeSnapshot(snapshotName,columnFamily,toArray(keyspaces,String.class));
-    System.out.println("Snapshot directory: " + snapshotName);
+    if (null != kcList && !kcList.isEmpty()) {
+      kcList=kcList.replace(" ","");
+      if (keyspaces.isEmpty() && null == columnFamily)       sb.append("[").append(kcList).append("]");
+ else {
+        throw new IOException("When specifying the Keyspace columfamily list for a snapshot, you should not specify columnfamily");
+      }
+      if (!snapshotName.isEmpty())       sb.append(" with snapshot name [").append(snapshotName).append("]");
+      System.out.println(sb.toString());
+      probe.takeMultipleColumnFamilySnapshot(snapshotName,kcList.split(","));
+      System.out.println("Snapshot directory: " + snapshotName);
+    }
+ else {
+      if (keyspaces.isEmpty())       sb.append("[all keyspaces]");
+ else       sb.append("[").append(join(keyspaces,", ")).append("]");
+      if (!snapshotName.isEmpty())       sb.append(" with snapshot name [").append(snapshotName).append("]");
+      System.out.println(sb.toString());
+      probe.takeSnapshot(snapshotName,columnFamily,toArray(keyspaces,String.class));
+      System.out.println("Snapshot directory: " + snapshotName);
+    }
   }
  catch (  IOException e) {
     throw new RuntimeException("Error during taking a snapshot",e);
