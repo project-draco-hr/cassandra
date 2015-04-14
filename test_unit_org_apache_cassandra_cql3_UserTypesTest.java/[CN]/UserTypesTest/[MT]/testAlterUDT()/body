@@ -1,0 +1,12 @@
+{
+  String myType=KEYSPACE + '.' + createType("CREATE TYPE %s (a int)");
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b frozen<" + myType + ">)");
+  execute("INSERT INTO %s (a, b) VALUES (1, {a: 1})");
+  assertRows(execute("SELECT b.a FROM %s"),row(1));
+  flush();
+  execute("ALTER TYPE " + myType + " ADD b int");
+  execute("INSERT INTO %s (a, b) VALUES (2, {a: 2, b :2})");
+  assertRows(execute("SELECT b.a, b.b FROM %s"),row(1,null),row(2,2));
+  flush();
+  assertRows(execute("SELECT b.a, b.b FROM %s"),row(1,null),row(2,2));
+}
