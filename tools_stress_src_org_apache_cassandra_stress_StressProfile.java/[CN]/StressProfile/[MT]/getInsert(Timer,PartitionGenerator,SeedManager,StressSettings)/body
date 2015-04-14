@@ -51,11 +51,13 @@ if (batchType == BatchStatement.Type.LOGGED && maxBatchSize > 65535) {
 if (maxBatchSize > 100000) System.err.printf("WARNING: You have defined a schema that permits very large batches (%.0f max rows (>100K)). This may OOM this stress client, or the server.%n",selectchance.get().max() * partitions.get().maxValue() * generator.maxRowCount);
 JavaDriverClient client=settings.getJavaDriverClient();
 String query=sb.toString();
-try {
-  thriftInsertId=settings.getThriftClient().prepare_cql3_query(query,Compression.NONE);
-}
- catch (TException e) {
-  throw new RuntimeException(e);
+if (settings.mode.api != ConnectionAPI.JAVA_DRIVER_NATIVE) {
+  try {
+    thriftInsertId=settings.getThriftClient().prepare_cql3_query(query,Compression.NONE);
+  }
+ catch (  TException e) {
+    throw new RuntimeException(e);
+  }
 }
 insertStatement=client.prepare(query);
 }
