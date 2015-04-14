@@ -2,5 +2,8 @@
   state.ensureNotAnonymous();
   if (!DatabaseDescriptor.getRoleManager().isExistingRole(grantee))   throw new InvalidRequestException(String.format("Role %s doesn't exist",grantee.getRoleName()));
   resource=maybeCorrectResource(resource,state);
+  if (resource instanceof FunctionResource && SystemKeyspace.NAME.equals(((FunctionResource)resource).getKeyspace())) {
+    throw new InvalidRequestException("Altering permissions on builtin functions is not supported");
+  }
   if (!resource.exists())   throw new InvalidRequestException(String.format("Resource %s doesn't exist",resource));
 }

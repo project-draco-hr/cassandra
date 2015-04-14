@@ -1,0 +1,18 @@
+{
+  List<ModificationStatement> statements=new ArrayList<>();
+  List<String> functions=new ArrayList<>();
+  for (int i=0; i < 3; i++) {
+    String functionName=createSimpleFunction(false);
+    ModificationStatement stmt=(ModificationStatement)getStatement(String.format("INSERT INTO %s (k, v1, v2) " + "VALUES (%s, %s, %s)",KEYSPACE + "." + currentTable(),i,i,functionCall(functionName)));
+    functions.add(functionName);
+    statements.add(stmt);
+  }
+  BatchStatement batch=new BatchStatement(-1,BatchStatement.Type.LOGGED,statements,Attributes.none());
+  assertUnauthorized(batch,functions);
+  grantExecuteOnFunction(functions.get(0));
+  assertUnauthorized(batch,functions.subList(1,functions.size()));
+  grantExecuteOnFunction(functions.get(1));
+  assertUnauthorized(batch,functions.subList(2,functions.size()));
+  grantExecuteOnFunction(functions.get(2));
+  batch.checkAccess(clientState);
+}

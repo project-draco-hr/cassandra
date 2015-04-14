@@ -1,0 +1,15 @@
+{
+  String innerFunc=createFunction("int","CREATE NON DETERMINISTIC FUNCTION %s(input int) " + "RETURNS int " + "LANGUAGE java "+ "AS 'return input;'");
+  String sFunc=createSimpleStateFunction();
+  String fFunc=createSimpleFinalFunction();
+  String aggDef=aggregateCql(sFunc,fFunc);
+  grantExecuteOnFunction(sFunc);
+  grantExecuteOnFunction(fFunc);
+  String aggregate=createAggregate(KEYSPACE,"int",aggDef);
+  String cql=String.format("SELECT %s(%s(v1)) FROM %s",aggregate,innerFunc,KEYSPACE + "." + currentTable());
+  assertUnauthorized(cql,aggregate,"int");
+  grantExecuteOnFunction(aggregate);
+  assertUnauthorized(cql,innerFunc,"int");
+  grantExecuteOnFunction(innerFunc);
+  getStatement(cql).checkAccess(clientState);
+}

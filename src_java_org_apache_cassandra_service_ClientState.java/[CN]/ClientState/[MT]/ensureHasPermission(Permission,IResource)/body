@@ -1,4 +1,5 @@
 {
-  for (  IResource r : Resources.chain(resource))   if (authorize(r).contains(perm))   return;
-  throw new UnauthorizedException(String.format("User %s has no %s permission on %s or any of its parents",user.getName(),perm,resource));
+  if (DatabaseDescriptor.getAuthorizer() instanceof AllowAllAuthorizer)   return;
+  if (resource instanceof FunctionResource && resource.hasParent())   if (((FunctionResource)resource).getKeyspace().equals(SystemKeyspace.NAME))   return;
+  checkPermissionOnResourceChain(perm,resource);
 }

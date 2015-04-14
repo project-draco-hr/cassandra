@@ -1,0 +1,23 @@
+{
+  String sFunc=createSimpleStateFunction();
+  String fFunc=createSimpleFinalFunction();
+  String aggDef=aggregateCql(sFunc,fFunc);
+  grantExecuteOnFunction(sFunc);
+  grantExecuteOnFunction(fFunc);
+  String aggregate=createAggregate(KEYSPACE,"int",aggDef);
+  grantExecuteOnFunction(aggregate);
+  String cql=String.format("SELECT %s(v1) FROM %s",aggregate,KEYSPACE + "." + currentTable());
+  getStatement(cql).checkAccess(clientState);
+  revokeExecuteOnFunction(aggregate);
+  assertUnauthorized(cql,aggregate,"int");
+  grantExecuteOnFunction(aggregate);
+  getStatement(cql).checkAccess(clientState);
+  revokeExecuteOnFunction(sFunc);
+  assertUnauthorized(cql,sFunc,"int, int");
+  grantExecuteOnFunction(sFunc);
+  getStatement(cql).checkAccess(clientState);
+  revokeExecuteOnFunction(fFunc);
+  assertUnauthorized(cql,fFunc,"int");
+  grantExecuteOnFunction(fFunc);
+  getStatement(cql).checkAccess(clientState);
+}

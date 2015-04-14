@@ -1,25 +1,4 @@
 {
-  List<AbstractType<?>> argTypes=new ArrayList<>(argRawTypes.size());
-  for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(rawType.prepare(functionName.keyspace).getType());
-  FunctionName stateFuncName=new FunctionName(functionName.keyspace,stateFunc);
-  FunctionName finalFuncName;
-  ScalarFunction fFinal=null;
-  AbstractType<?> stateType=stateTypeRaw.prepare(functionName.keyspace).getType();
-  Function f=Functions.find(stateFuncName,stateArguments(stateType,argTypes));
-  if (!(f instanceof ScalarFunction))   throw new InvalidRequestException("State function " + stateFuncSig(stateFuncName,stateTypeRaw,argRawTypes) + " does not exist or is not a scalar function");
-  ScalarFunction fState=(ScalarFunction)f;
-  AbstractType<?> returnType;
-  if (finalFunc != null) {
-    finalFuncName=new FunctionName(functionName.keyspace,finalFunc);
-    f=Functions.find(finalFuncName,Collections.<AbstractType<?>>singletonList(stateType));
-    if (!(f instanceof ScalarFunction))     throw new InvalidRequestException("Final function " + finalFuncName + "("+ stateTypeRaw+ ") does not exist or is not a scalar function");
-    fFinal=(ScalarFunction)f;
-    returnType=fFinal.returnType();
-  }
- else {
-    returnType=fState.returnType();
-    if (!returnType.equals(stateType))     throw new InvalidRequestException("State function " + stateFuncSig(stateFuncName,stateTypeRaw,argRawTypes) + " return type must be the same as the first argument type (if no final function is used)");
-  }
   Function old=Functions.find(functionName,argTypes);
   if (old != null) {
     if (ifNotExists)     return false;
@@ -28,12 +7,7 @@
     if (old.isNative())     throw new InvalidRequestException(String.format("Cannot replace native aggregate %s",old));
     if (!old.returnType().isValueCompatibleWith(returnType))     throw new InvalidRequestException(String.format("Cannot replace aggregate %s, the new return type %s is not compatible with the return type %s of existing function",functionName,returnType.asCQL3Type(),old.returnType().asCQL3Type()));
   }
-  ByteBuffer initcond=null;
-  if (ival != null) {
-    ColumnSpecification receiver=new ColumnSpecification(functionName.keyspace,"--dummy--",new ColumnIdentifier("(aggregate_initcond)",true),stateType);
-    initcond=ival.prepare(functionName.keyspace,receiver).bindAndGet(QueryOptions.DEFAULT);
-  }
-  udAggregate=new UDAggregate(functionName,argTypes,returnType,fState,fFinal,initcond);
+  udAggregate=new UDAggregate(functionName,argTypes,returnType,stateFunction,finalFunction,initcond);
   replaced=old != null;
   MigrationManager.announceNewAggregate(udAggregate,isLocalOnly);
   return true;

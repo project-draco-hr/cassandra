@@ -1,0 +1,25 @@
+{
+  argTypes=new ArrayList<>(argRawTypes.size());
+  for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(rawType.prepare(functionName.keyspace).getType());
+  AbstractType<?> stateType=stateTypeRaw.prepare(functionName.keyspace).getType();
+  FunctionName stateFuncName=new FunctionName(functionName.keyspace,stateFunc);
+  Function f=Functions.find(stateFuncName,stateArguments(stateType,argTypes));
+  if (!(f instanceof ScalarFunction))   throw new InvalidRequestException("State function " + stateFuncSig(stateFuncName,stateTypeRaw,argRawTypes) + " does not exist or is not a scalar function");
+  stateFunction=(ScalarFunction)f;
+  if (finalFunc != null) {
+    FunctionName finalFuncName=new FunctionName(functionName.keyspace,finalFunc);
+    f=Functions.find(finalFuncName,Collections.<AbstractType<?>>singletonList(stateType));
+    if (!(f instanceof ScalarFunction))     throw new InvalidRequestException("Final function " + finalFuncName + "("+ stateTypeRaw+ ") does not exist or is not a scalar function");
+    finalFunction=(ScalarFunction)f;
+    returnType=finalFunction.returnType();
+  }
+ else {
+    returnType=stateFunction.returnType();
+    if (!returnType.equals(stateType))     throw new InvalidRequestException("State function " + stateFuncSig(stateFunction.name(),stateTypeRaw,argRawTypes) + " return type must be the same as the first argument type (if no final function is used)");
+  }
+  if (ival != null) {
+    ColumnSpecification receiver=new ColumnSpecification(functionName.keyspace,"--dummy--",new ColumnIdentifier("(aggregate_initcond)",true),stateType);
+    initcond=ival.prepare(functionName.keyspace,receiver).bindAndGet(QueryOptions.DEFAULT);
+  }
+  return super.prepare();
+}
