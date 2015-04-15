@@ -1,7 +1,12 @@
 {
+  EndpointState mystate=endpointStateMap.get(FBUtilities.getBroadcastAddress());
+  if (mystate != null && !isSilentShutdownState(mystate)) {
+    logger.info("Announcing shutdown");
+    addLocalApplicationState(ApplicationState.STATUS,StorageService.instance.valueFactory.shutdown(true));
+    MessageOut message=new MessageOut(MessagingService.Verb.GOSSIP_SHUTDOWN);
+    for (    InetAddress ep : liveEndpoints)     MessagingService.instance().sendOneWay(message,ep);
+    Uninterruptibles.sleepUninterruptibly(Integer.getInteger("cassandra.shutdown_announce_in_ms",2000),TimeUnit.MILLISECONDS);
+  }
+ else   logger.warn("No local state or state is in silent shutdown, not announcing shutdown");
   if (scheduledGossipTask != null)   scheduledGossipTask.cancel(false);
-  logger.info("Announcing shutdown");
-  Uninterruptibles.sleepUninterruptibly(intervalInMillis * 2,TimeUnit.MILLISECONDS);
-  MessageOut message=new MessageOut(MessagingService.Verb.GOSSIP_SHUTDOWN);
-  for (  InetAddress ep : liveEndpoints)   MessagingService.instance().sendOneWay(message,ep);
 }
