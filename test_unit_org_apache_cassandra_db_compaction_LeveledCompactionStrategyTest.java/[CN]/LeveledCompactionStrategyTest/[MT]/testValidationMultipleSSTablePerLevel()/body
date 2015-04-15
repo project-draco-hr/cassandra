@@ -1,2 +1,27 @@
 {
+  byte[] b=new byte[100 * 1024];
+  new Random().nextBytes(b);
+  ByteBuffer value=ByteBuffer.wrap(b);
+  int rows=20;
+  int columns=10;
+  for (int r=0; r < rows; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    Mutation rm=new Mutation(ksname,key.getKey());
+    for (int c=0; c < columns; c++) {
+      rm.add(cfname,Util.cellname("column" + c),value,0);
+    }
+    rm.apply();
+    cfs.forceBlockingFlush();
+  }
+  waitForLeveling(cfs);
+  WrappingCompactionStrategy strategy=(WrappingCompactionStrategy)cfs.getCompactionStrategy();
+  assertTrue(strategy.getSSTableCountPerLevel()[1] > 0);
+  assertTrue(strategy.getSSTableCountPerLevel()[2] > 0);
+  Range<Token> range=new Range<>(Util.token(""),Util.token(""));
+  int gcBefore=keyspace.getColumnFamilyStore(cfname).gcBefore(System.currentTimeMillis());
+  UUID parentRepSession=UUID.randomUUID();
+  ActiveRepairService.instance.registerParentRepairSession(parentRepSession,Arrays.asList(cfs),Arrays.asList(range));
+  RepairJobDesc desc=new RepairJobDesc(parentRepSession,UUID.randomUUID(),ksname,cfname,range);
+  Validator validator=new Validator(desc,FBUtilities.getBroadcastAddress(),gcBefore);
+  CompactionManager.instance.submitValidation(cfs,validator).get();
 }
