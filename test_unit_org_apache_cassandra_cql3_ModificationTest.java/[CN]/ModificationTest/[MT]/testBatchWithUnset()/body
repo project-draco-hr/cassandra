@@ -1,0 +1,6 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, s text, i int)");
+  String qualifiedTable=keyspace() + "." + currentTable();
+  execute("BEGIN BATCH " + "INSERT INTO %s (k, s, i) VALUES (100, 'batchtext', 7); " + "INSERT INTO " + qualifiedTable + " (k, s, i) VALUES (111, 'batchtext', 7); "+ "UPDATE "+ qualifiedTable+ " SET s=?, i=? WHERE k = 100; "+ "UPDATE "+ qualifiedTable+ " SET s=?, i=? WHERE k=111; "+ "APPLY BATCH;",null,unset(),unset(),null);
+  assertRows(execute("SELECT k, s, i FROM %s where k in (100,111)"),row(100,null,7),row(111,"batchtext",null));
+}

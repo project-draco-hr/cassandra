@@ -1,0 +1,15 @@
+{
+  if (column.type.isMultiCell()) {
+    if (value == null)     return;
+    Map<ByteBuffer,ByteBuffer> elements=((Value)value).map;
+    for (    Map.Entry<ByteBuffer,ByteBuffer> entry : elements.entrySet()) {
+      CellName cellName=cf.getComparator().create(prefix,column,entry.getKey());
+      cf.addColumn(params.makeColumn(cellName,entry.getValue()));
+    }
+  }
+ else {
+    CellName cellName=cf.getComparator().create(prefix,column);
+    if (value == null)     cf.addAtom(params.makeTombstone(cellName));
+ else     cf.addColumn(params.makeColumn(cellName,value.get(Server.CURRENT_VERSION)));
+  }
+}

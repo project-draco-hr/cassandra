@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, l list<text>)");
+  Object l=list("foo","foo");
+  execute("INSERT INTO %s (k, l) VALUES (10, ?)",l);
+  assertRows(execute("SELECT l FROM %s WHERE k = 10"),row(l));
+  execute("INSERT INTO %s (k, l) VALUES (10, ?)",unset());
+  assertRows(execute("SELECT l FROM %s WHERE k = 10"),row(l));
+  execute("UPDATE %s SET l[1] = ? WHERE k = 10",unset());
+  assertRows(execute("SELECT l FROM %s WHERE k = 10"),row(l));
+  assertInvalidMessage("Invalid unset value for list index","UPDATE %s SET l[?] = 'foo' WHERE k = 10",unset());
+  execute("DELETE l[?] FROM %s WHERE k = 10",unset());
+  assertRows(execute("SELECT l FROM %s WHERE k = 10"),row(l));
+  execute("UPDATE %s SET l = l - ? WHERE k = 10",unset());
+  assertRows(execute("SELECT l FROM %s WHERE k = 10"),row(l));
+  assertInvalidMessage("Invalid unset value for column k","SELECT * FROM %s WHERE k IN ?",unset());
+  assertInvalidMessage("Invalid unset value for column k","SELECT * FROM %s WHERE k IN (?)",unset());
+}
