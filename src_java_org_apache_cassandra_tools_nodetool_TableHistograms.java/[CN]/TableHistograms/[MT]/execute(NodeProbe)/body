@@ -1,9 +1,9 @@
 {
-  checkArgument(args.size() == 2,"cfhistograms requires ks and cf args");
+  checkArgument(args.size() == 2,"tablehistograms requires keyspace and table name arguments");
   String keyspace=args.get(0);
-  String cfname=args.get(1);
-  long[] estimatedRowSize=(long[])probe.getColumnFamilyMetric(keyspace,cfname,"EstimatedRowSizeHistogram");
-  long[] estimatedColumnCount=(long[])probe.getColumnFamilyMetric(keyspace,cfname,"EstimatedColumnCountHistogram");
+  String table=args.get(1);
+  long[] estimatedRowSize=(long[])probe.getColumnFamilyMetric(keyspace,table,"EstimatedRowSizeHistogram");
+  long[] estimatedColumnCount=(long[])probe.getColumnFamilyMetric(keyspace,table,"EstimatedColumnCountHistogram");
   double[] estimatedRowSizePercentiles=new double[7];
   double[] estimatedColumnCountPercentiles=new double[7];
   double[] offsetPercentiles=new double[]{0.5,0.75,0.95,0.98,0.99};
@@ -39,10 +39,10 @@
     estimatedColumnCountPercentiles[6]=columnCountHist.max();
   }
   String[] percentiles=new String[]{"50%","75%","95%","98%","99%","Min","Max"};
-  double[] readLatency=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspace,cfname,"ReadLatency"));
-  double[] writeLatency=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspace,cfname,"WriteLatency"));
-  double[] sstablesPerRead=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxHistogramMBean)probe.getColumnFamilyMetric(keyspace,cfname,"SSTablesPerReadHistogram"));
-  System.out.println(format("%s/%s histograms",keyspace,cfname));
+  double[] readLatency=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspace,table,"ReadLatency"));
+  double[] writeLatency=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspace,table,"WriteLatency"));
+  double[] sstablesPerRead=probe.metricPercentilesAsArray((CassandraMetricsRegistry.JmxHistogramMBean)probe.getColumnFamilyMetric(keyspace,table,"SSTablesPerReadHistogram"));
+  System.out.println(format("%s/%s histograms",keyspace,table));
   System.out.println(format("%-10s%10s%18s%18s%18s%18s","Percentile","SSTables","Write Latency","Read Latency","Partition Size","Cell Count"));
   System.out.println(format("%-10s%10s%18s%18s%18s%18s","","","(micros)","(micros)","(bytes)",""));
   for (int i=0; i < percentiles.length; i++) {
