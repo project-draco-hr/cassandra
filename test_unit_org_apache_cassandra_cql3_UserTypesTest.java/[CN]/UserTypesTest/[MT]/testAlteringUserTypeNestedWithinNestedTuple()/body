@@ -1,0 +1,14 @@
+{
+  String type=createType("CREATE TYPE %s (a int, b int)");
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b frozen<tuple<int, tuple<int, " + KEYSPACE + "."+ type+ ">>>)");
+  execute("INSERT INTO %s (a, b) VALUES(1, (1, (1, {a:1, b:1})))");
+  assertRows(execute("SELECT * FROM %s"),row(1,tuple(1,tuple(1,userType(1,1)))));
+  flush();
+  execute("ALTER TYPE " + KEYSPACE + "."+ type+ " ADD c int");
+  execute("INSERT INTO %s (a, b) VALUES(2, (2, (1, {a: 2, b: 2, c: 2})))");
+  execute("INSERT INTO %s (a, b) VALUES(3, (3, (1, {a: 3, b: 3})))");
+  execute("INSERT INTO %s (a, b) VALUES(4, (4, (1, {b:4})))");
+  assertRows(execute("SELECT * FROM %s"),row(1,tuple(1,tuple(1,userType(1,1)))),row(2,tuple(2,tuple(1,userType(2,2,2)))),row(3,tuple(3,tuple(1,userType(3,3,null)))),row(4,tuple(4,tuple(1,userType(null,4,null)))));
+  flush();
+  assertRows(execute("SELECT * FROM %s"),row(1,tuple(1,tuple(1,userType(1,1)))),row(2,tuple(2,tuple(1,userType(2,2,2)))),row(3,tuple(3,tuple(1,userType(3,3,null)))),row(4,tuple(4,tuple(1,userType(null,4,null)))));
+}
