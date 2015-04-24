@@ -2,14 +2,15 @@
   Keyspace ks=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore cfs=ks.getColumnFamilyStore(CF);
   cfs.disableAutoCompaction();
-  int rowCount=10000;
+  int rowCount=20000;
+  int targetSSTableCount=50;
   populate(cfs,rowCount);
   Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
   long beforeSize=sstables.iterator().next().onDiskLength();
-  int sstableCount=(int)beforeSize / 100;
-  CompactionAwareWriter writer=new MajorLeveledCompactionWriter(cfs,sstables,sstables,sstableCount,false,OperationType.COMPACTION);
+  int sstableSize=(int)beforeSize / targetSSTableCount;
+  CompactionAwareWriter writer=new MajorLeveledCompactionWriter(cfs,sstables,sstables,sstableSize,false,OperationType.COMPACTION);
   int rows=compact(cfs,sstables,writer);
-  assertEquals(100,cfs.getSSTables().size());
+  assertEquals(targetSSTableCount,cfs.getSSTables().size());
   int[] levelCounts=new int[5];
   assertEquals(rowCount,rows);
   for (  SSTableReader sstable : cfs.getSSTables()) {
@@ -17,7 +18,7 @@
   }
   assertEquals(0,levelCounts[0]);
   assertEquals(10,levelCounts[1]);
-  assertEquals(90,levelCounts[2]);
+  assertEquals(targetSSTableCount - 10,levelCounts[2]);
   for (int i=3; i < levelCounts.length; i++)   assertEquals(0,levelCounts[i]);
   validateData(cfs,rowCount);
   cfs.truncateBlocking();
