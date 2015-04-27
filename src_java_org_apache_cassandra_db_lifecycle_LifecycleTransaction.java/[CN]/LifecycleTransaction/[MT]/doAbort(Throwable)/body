@@ -1,9 +1,12 @@
 {
   if (logger.isDebugEnabled())   logger.debug("Aborting transaction over {}, with ({},{}) logged and ({},{}) staged",originals,logged.update,logged.obsolete,staged.update,staged.obsolete);
-  if (logged.isEmpty() && staged.isEmpty())   return accumulate;
+  accumulate=abortObsoletion(obsoletions,accumulate);
+  if (logged.isEmpty() && staged.isEmpty())   return transactionLogs.abort(accumulate);
   Iterable<SSTableReader> obsolete=filterOut(concatUniq(staged.update,logged.update),originals);
   logger.debug("Obsoleting {}",obsolete);
-  accumulate=markObsolete(null,obsolete,accumulate);
+  accumulate=prepareForObsoletion(obsolete,transactionLogs,obsoletions=new ArrayList<>(),accumulate);
+  accumulate=transactionLogs.abort(accumulate);
+  accumulate=markObsolete(obsoletions,accumulate);
   accumulate=tracker.apply(updateLiveSet(logged.update,restoreUpdatedOriginals()),accumulate);
   accumulate=setReplaced(logged.update,accumulate);
   accumulate=release(selfRefs(concat(staged.update,logged.update,logged.obsolete)),accumulate);

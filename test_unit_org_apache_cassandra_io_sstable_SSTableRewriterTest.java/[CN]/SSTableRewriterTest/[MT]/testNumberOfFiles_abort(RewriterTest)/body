@@ -9,13 +9,13 @@
   long startSize=cfs.metric.liveDiskSpaceUsed.getCount();
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,false,10000000)){
-    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
-    test.run(scanner,controller,s,cfs,rewriter);
+    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
+    test.run(scanner,controller,s,cfs,rewriter,txn);
   }
-   SSTableDeletingTask.waitForDeletions();
+   TransactionLogs.waitForDeletions();
   assertEquals(startSize,cfs.metric.liveDiskSpaceUsed.getCount());
   assertEquals(1,cfs.getSSTables().size());
-  assertFileCounts(s.descriptor.directory.list(),0,0);
+  assertFileCounts(s.descriptor.directory.list());
   assertEquals(cfs.getSSTables().iterator().next().first,origFirst);
   assertEquals(cfs.getSSTables().iterator().next().last,origLast);
   validateCFS(cfs);

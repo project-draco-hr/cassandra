@@ -22,8 +22,8 @@
   CompactionStrategyManager strategy=cfs.getCompactionStrategyManager();
   try (SSTableRewriter repairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);SSTableRewriter unRepairedSSTableWriter=new SSTableRewriter(cfs,anticompactionGroup,groupMaxDataAge,false,false);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(anticompactionGroup.originals());CompactionController controller=new CompactionController(cfs,sstableAsSet,getDefaultGcBefore(cfs,nowInSec));CompactionIterator ci=new CompactionIterator(OperationType.ANTICOMPACTION,scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID(),metrics)){
     int expectedBloomFilterSize=Math.max(cfs.metadata.getMinIndexInterval(),(int)(SSTableReader.getApproximateKeyCount(sstableAsSet)));
-    repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,repairedAt,sstableAsSet));
-    unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstableAsSet));
+    repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,repairedAt,sstableAsSet,anticompactionGroup));
+    unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstableAsSet,anticompactionGroup));
     while (ci.hasNext()) {
       try (UnfilteredRowIterator partition=ci.next()){
         if (Range.isInRanges(partition.partitionKey().getToken(),ranges)) {

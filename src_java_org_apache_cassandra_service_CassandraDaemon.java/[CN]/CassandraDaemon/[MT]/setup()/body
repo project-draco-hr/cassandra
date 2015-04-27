@@ -10,7 +10,9 @@
     exitOrFail(e.returnCode,e.getMessage(),e.getCause());
   }
   try {
-    SystemKeyspace.snapshotOnVersionChange();
+    if (SystemKeyspace.snapshotOnVersionChange()) {
+      SystemKeyspace.migrateDataDirs();
+    }
   }
  catch (  IOException e) {
     exitOrFail(3,e.getMessage(),e.getCause());
@@ -38,12 +40,6 @@
   LegacySchemaMigrator.migrate();
   StorageService.instance.populateTokenMetadata();
   Schema.instance.loadFromDisk();
-  Map<Pair<String,String>,Map<Integer,UUID>> unfinishedCompactions=SystemKeyspace.getUnfinishedCompactions();
-  for (  Pair<String,String> kscf : unfinishedCompactions.keySet()) {
-    CFMetaData cfm=Schema.instance.getCFMetaData(kscf.left,kscf.right);
-    if (cfm != null)     ColumnFamilyStore.removeUnfinishedCompactionLeftovers(cfm,unfinishedCompactions.get(kscf));
-  }
-  SystemKeyspace.discardCompactionsInProgress();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
     if (keyspaceName.equals(SystemKeyspace.NAME))     continue;
     for (    CFMetaData cfm : Schema.instance.getTables(keyspaceName))     ColumnFamilyStore.scrubDataDirectories(cfm);

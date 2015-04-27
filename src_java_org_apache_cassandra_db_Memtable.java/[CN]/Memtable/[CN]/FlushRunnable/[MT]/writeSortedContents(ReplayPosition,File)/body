@@ -1,7 +1,7 @@
 {
   logger.info("Writing {}",Memtable.this.toString());
   SSTableReader ssTable;
-  try (SSTableWriter writer=createFlushWriter(cfs.getTempSSTablePath(sstableDirectory),columnsCollector.get(),statsCollector.get())){
+  try (SSTableTxnWriter writer=createFlushWriter(cfs.getSSTablePath(sstableDirectory),columnsCollector.get(),statsCollector.get())){
     boolean trackContention=logger.isDebugEnabled();
     int heavilyContendedRowCount=0;
     for (    AtomicBTreePartition partition : partitions.values()) {
@@ -14,7 +14,7 @@
        }
     }
     if (writer.getFilePointer() > 0) {
-      logger.info(String.format("Completed flushing %s (%s) for commitlog position %s",writer.getFilename(),FBUtilities.prettyPrintMemory(writer.getOnDiskFilePointer()),context));
+      logger.info(String.format("Completed flushing %s (%s) for commitlog position %s",writer.getFilename(),FBUtilities.prettyPrintMemory(writer.getFilePointer()),context));
       ssTable=writer.finish(true);
     }
  else {

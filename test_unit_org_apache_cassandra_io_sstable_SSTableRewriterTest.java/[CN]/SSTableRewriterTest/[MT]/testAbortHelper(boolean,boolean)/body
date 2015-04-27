@@ -6,11 +6,11 @@
   if (!offline)   cfs.addSSTable(s);
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   try (ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=offline ? LifecycleTransaction.offline(OperationType.UNKNOWN,compacting) : cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,offline,10000000);CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,Collections.singletonList(scanner),controller,FBUtilities.nowInSeconds(),UUIDGen.getTimeUUID())){
-    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
     while (ci.hasNext()) {
       rewriter.append(ci.next());
       if (rewriter.currentWriter().getOnDiskFilePointer() > 25000000) {
-        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
       }
     }
     try {
@@ -24,8 +24,8 @@
   finally {
     if (offline)     s.selfRef().release();
   }
-  SSTableDeletingTask.waitForDeletions();
-  int filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
+  TransactionLogs.waitForDeletions();
+  int filecount=assertFileCounts(s.descriptor.directory.list());
   assertEquals(filecount,1);
   if (!offline) {
     assertEquals(1,cfs.getSSTables().size());
@@ -36,13 +36,13 @@
     assertEquals(0,cfs.getSSTables().size());
     cfs.truncateBlocking();
   }
-  filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
+  filecount=assertFileCounts(s.descriptor.directory.list());
   if (offline) {
     assertEquals(1,filecount);
     for (    File f : s.descriptor.directory.listFiles()) {
       FileUtils.deleteRecursive(f);
     }
-    filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
+    filecount=assertFileCounts(s.descriptor.directory.list());
   }
   assertEquals(0,filecount);
   truncate(cfs);

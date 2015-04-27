@@ -1,0 +1,9 @@
+{
+  cfs.truncateBlocking();
+  String schema="CREATE TABLE %s.%s (key ascii, name ascii, val ascii, val1 ascii, PRIMARY KEY (key, name))";
+  String query="INSERT INTO %s.%s (key, name, val) VALUES (?, ?, ?)";
+  try (CQLSSTableWriter writer=CQLSSTableWriter.builder().withPartitioner(StorageService.getPartitioner()).inDirectory(cfs.directories.getDirectoryForNewSSTables()).forTable(String.format(schema,cfs.keyspace.getName(),cfs.name)).using(String.format(query,cfs.keyspace.getName(),cfs.name)).build()){
+    for (int j=0; j < numPartitions; j++)     writer.addRow(String.format("key%d",j),"col1","0");
+  }
+   cfs.loadNewSSTables();
+}

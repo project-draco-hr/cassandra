@@ -64,16 +64,18 @@
     for (    SSTableReader sstable : sstables) {
       try (LifecycleTransaction transaction=LifecycleTransaction.offline(OperationType.UNKNOWN,sstable)){
         new SSTableSplitter(cfs,transaction,options.sizeInMB).split();
-        sstable.markObsolete(null);
-        sstable.selfRef().release();
+        transaction.obsoleteOriginals();
       }
  catch (      Exception e) {
         System.err.println(String.format("Error splitting %s: %s",sstable,e.getMessage()));
         if (options.debug)         e.printStackTrace(System.err);
       }
+ finally {
+        sstable.selfRef().release();
+      }
     }
     CompactionManager.instance.finishCompactionsAndShutdown(5,TimeUnit.MINUTES);
-    SSTableDeletingTask.waitForDeletions();
+    TransactionLogs.waitForDeletions();
     System.exit(0);
   }
  catch (  Exception e) {

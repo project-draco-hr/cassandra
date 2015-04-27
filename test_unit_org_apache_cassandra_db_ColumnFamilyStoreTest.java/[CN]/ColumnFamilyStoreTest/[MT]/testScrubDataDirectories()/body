@@ -1,0 +1,16 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
+  ColumnFamilyStore.scrubDataDirectories(cfs.metadata);
+  new RowUpdateBuilder(cfs.metadata,2,"key").clustering("name").add("val","2").build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  Collection<SSTableReader> ssTables=cfs.getSSTables();
+  assertEquals(1,ssTables.size());
+  SSTableReader ssTable=ssTables.iterator().next();
+  String dataFileName=ssTable.descriptor.filenameFor(Component.DATA);
+  String tmpDataFileName=ssTable.descriptor.tmpFilenameFor(Component.DATA);
+  new File(dataFileName).renameTo(new File(tmpDataFileName));
+  ColumnFamilyStore.scrubDataDirectories(cfs.metadata);
+  List<File> ssTableFiles=new Directories(cfs.metadata).sstableLister().listFiles();
+  assertNotNull(ssTableFiles);
+  assertEquals(0,ssTableFiles.size());
+}

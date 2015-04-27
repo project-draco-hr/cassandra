@@ -1,0 +1,10 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(REWRITE_FINISHED_CF);
+  SSTableReader oldSSTable=getSSTable(cfs,1);
+  LifecycleTransaction txn=cfs.getTracker().tryModify(oldSSTable,OperationType.COMPACTION);
+  SSTableReader newSSTable=replaceSSTable(cfs,txn,false);
+  TransactionLogs.waitForDeletions();
+  assertFiles(txn.logs().getDataFolder(),new HashSet<>(newSSTable.getAllFilePaths()));
+  assertFiles(txn.logs().getLogsFolder(),Collections.<String>emptySet());
+}

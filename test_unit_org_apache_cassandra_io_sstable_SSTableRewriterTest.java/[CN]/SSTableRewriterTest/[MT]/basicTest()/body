@@ -11,15 +11,15 @@
   assertEquals(sstables.iterator().next().bytesOnDisk(),cfs.metric.liveDiskSpaceUsed.getCount());
   int nowInSec=FBUtilities.nowInSeconds();
   try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables);LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN);SSTableRewriter writer=new SSTableRewriter(cfs,txn,1000,false);CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(nowInSec));CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID())){
-    writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory));
+    writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory,txn));
     while (ci.hasNext()) {
       writer.append(ci.next());
     }
     writer.finish();
   }
-   SSTableDeletingTask.waitForDeletions();
+   TransactionLogs.waitForDeletions();
   validateCFS(cfs);
-  int filecounts=assertFileCounts(sstables.iterator().next().descriptor.directory.list(),0,0);
+  int filecounts=assertFileCounts(sstables.iterator().next().descriptor.directory.list());
   assertEquals(1,filecounts);
   truncate(cfs);
 }

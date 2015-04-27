@@ -30,20 +30,18 @@
     for (    SSTableReader sstable : readers) {
       try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.UPGRADE_SSTABLES,sstable)){
         Upgrader upgrader=new Upgrader(cfs,txn,handler);
-        upgrader.upgrade();
-        if (!options.keepSource) {
-          System.out.format("Deleting table %s.%n",sstable.descriptor.baseFilename());
-          sstable.markObsolete(null);
-          sstable.selfRef().release();
-        }
+        upgrader.upgrade(options.keepSource);
       }
  catch (      Exception e) {
         System.err.println(String.format("Error upgrading %s: %s",sstable,e.getMessage()));
         if (options.debug)         e.printStackTrace(System.err);
       }
+ finally {
+        sstable.selfRef().ensureReleased();
+      }
     }
     CompactionManager.instance.finishCompactionsAndShutdown(5,TimeUnit.MINUTES);
-    SSTableDeletingTask.waitForDeletions();
+    TransactionLogs.waitForDeletions();
     System.exit(0);
   }
  catch (  Exception e) {

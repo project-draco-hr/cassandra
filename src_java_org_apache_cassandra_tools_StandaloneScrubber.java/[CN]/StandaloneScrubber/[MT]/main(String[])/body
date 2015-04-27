@@ -36,7 +36,7 @@
       for (      SSTableReader sstable : sstables) {
         try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable)){
           txn.obsoleteOriginals();
-          try (Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate)){
+          try (Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate,false)){
             scrubber.scrub();
           }
  catch (          Throwable t) {
@@ -54,7 +54,7 @@
     }
     checkManifest(cfs.getCompactionStrategyManager(),cfs,sstables);
     CompactionManager.instance.finishCompactionsAndShutdown(5,TimeUnit.MINUTES);
-    SSTableDeletingTask.waitForDeletions();
+    TransactionLogs.waitForDeletions();
     System.exit(0);
   }
  catch (  Exception e) {

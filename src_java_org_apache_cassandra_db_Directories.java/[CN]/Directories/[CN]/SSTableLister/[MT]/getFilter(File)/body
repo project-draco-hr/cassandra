@@ -1,0 +1,22 @@
+{
+  final Set<File> temporaryFiles=skipTemporary || onlyTemporary ? LifecycleTransaction.getTemporaryFiles(metadata,location) : Collections.<File>emptySet();
+  return new FileFilter(){
+    public boolean accept(    File file){
+      if (file.isDirectory())       return false;
+      Pair<Descriptor,Component> pair=SSTable.tryComponentFromFilename(file.getParentFile(),file.getName());
+      if (pair == null)       return false;
+      if (!pair.left.ksname.equals(metadata.ksName) || !pair.left.cfname.equals(metadata.cfName))       return false;
+      if (skipTemporary && temporaryFiles.contains(file))       return false;
+      if (onlyTemporary && !temporaryFiles.contains(file))       return false;
+      Set<Component> previous=components.get(pair.left);
+      if (previous == null) {
+        previous=new HashSet<>();
+        components.put(pair.left,previous);
+      }
+      previous.add(pair.right);
+      nbFiles++;
+      return false;
+    }
+  }
+;
+}

@@ -3,14 +3,14 @@
   if (writer == null || writer.getFilePointer() == 0) {
     if (writer != null) {
       writer.abort();
+      transaction.untrackNew(writer);
       writers.remove(writer);
     }
     writer=newWriter;
     return;
   }
-  SSTableReader reader=null;
   if (preemptiveOpenInterval != Long.MAX_VALUE) {
-    reader=writer.setMaxDataAge(maxAge).openFinalEarly();
+    SSTableReader reader=writer.setMaxDataAge(maxAge).openFinalEarly();
     transaction.update(reader,false);
     moveStarts(reader,reader.last);
     transaction.checkpoint();

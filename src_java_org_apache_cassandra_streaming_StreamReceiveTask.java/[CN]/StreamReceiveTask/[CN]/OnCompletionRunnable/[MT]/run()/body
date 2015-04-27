@@ -3,16 +3,13 @@
   if (kscf == null) {
     for (    SSTableWriter writer : task.sstables)     writer.abort();
     task.sstables.clear();
+    task.txn.abort();
     return;
   }
   ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-  File lockfiledir=cfs.directories.getWriteableLocationAsFile(task.sstables.size() * 256L);
-  if (lockfiledir == null)   throw new IOError(new IOException("All disks full"));
-  StreamLockfile lockfile=new StreamLockfile(lockfiledir,UUID.randomUUID());
-  lockfile.create(task.sstables);
   List<SSTableReader> readers=new ArrayList<>();
   for (  SSTableWriter writer : task.sstables)   readers.add(writer.finish(true));
-  lockfile.delete();
+  task.txn.finish();
   task.sstables.clear();
   try (Refs<SSTableReader> refs=Refs.ref(readers)){
     cfs.addSSTables(readers);

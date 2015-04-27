@@ -7,7 +7,6 @@
   for (  Map.Entry<Descriptor,Set<Component>> entry : lister.list().entrySet()) {
     Descriptor descriptor=entry.getKey();
     if (currentDescriptors.contains(descriptor))     continue;
-    if (descriptor.type.isTemporary)     continue;
     if (!descriptor.isCompatible())     throw new RuntimeException(String.format("Can't open incompatible SSTable! Current version %s, found file: %s",descriptor.getFormat().getLatestVersion(),descriptor));
     try {
       if (new File(descriptor.filenameFor(Component.STATS)).exists())       descriptor.getMetadataSerializer().mutateLevel(descriptor,0);
@@ -18,7 +17,7 @@
     }
     Descriptor newDescriptor;
     do {
-      newDescriptor=new Descriptor(descriptor.version,descriptor.directory,descriptor.ksname,descriptor.cfname,fileIndexGenerator.incrementAndGet(),Descriptor.Type.FINAL,descriptor.formatType);
+      newDescriptor=new Descriptor(descriptor.version,descriptor.directory,descriptor.ksname,descriptor.cfname,fileIndexGenerator.incrementAndGet(),descriptor.formatType);
     }
  while (new File(newDescriptor.filenameFor(Component.DATA)).exists());
     logger.info("Renaming new SSTable {} to {}",descriptor,newDescriptor);

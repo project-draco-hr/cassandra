@@ -10,11 +10,11 @@
   List<SSTableReader> sstables;
   int files=1;
   try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,false,10000000);CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,Collections.singletonList(scanner),controller,FBUtilities.nowInSeconds(),UUIDGen.getTimeUUID())){
-    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
     while (ci.hasNext()) {
       rewriter.append(ci.next());
       if (rewriter.currentWriter().getOnDiskFilePointer() > 25000000) {
-        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
+        rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
         files++;
         assertEquals(cfs.getSSTables().size(),files);
         assertEquals(s.bytesOnDisk(),cfs.metric.liveDiskSpaceUsed.getCount());
@@ -23,14 +23,15 @@
     }
     sstables=rewriter.finish();
   }
-   long sum=0;
+   TransactionLogs.waitForDeletions();
+  long sum=0;
   for (  SSTableReader x : cfs.getSSTables())   sum+=x.bytesOnDisk();
   assertEquals(sum,cfs.metric.liveDiskSpaceUsed.getCount());
   assertEquals(startStorageMetricsLoad - sBytesOnDisk + sum,StorageMetrics.load.getCount());
   assertEquals(files,sstables.size());
   assertEquals(files,cfs.getSSTables().size());
-  SSTableDeletingTask.waitForDeletions();
+  TransactionLogs.waitForDeletions();
   assertEquals(sum,cfs.metric.totalDiskSpaceUsed.getCount());
-  assertFileCounts(s.descriptor.directory.list(),0,0);
+  assertFileCounts(s.descriptor.directory.list());
   validateCFS(cfs);
 }

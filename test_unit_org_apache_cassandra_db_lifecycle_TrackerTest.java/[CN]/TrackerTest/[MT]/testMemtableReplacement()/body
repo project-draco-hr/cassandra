@@ -38,6 +38,7 @@
   Assert.assertEquals(1,listener.received.size());
   Assert.assertEquals(reader,((SSTableAddedNotification)listener.received.get(0)).added);
   listener.received.clear();
+  Assert.assertTrue(reader.isKeyCacheSetup());
   Assert.assertEquals(10,cfs.metric.liveDiskSpaceUsed.getCount());
   cfs=MockSchema.newCFS();
   tracker=cfs.getTracker();
@@ -51,7 +52,9 @@
   Assert.assertEquals(0,tracker.getView().sstables.size());
   Assert.assertEquals(0,tracker.getView().flushingMemtables.size());
   Assert.assertEquals(0,cfs.metric.liveDiskSpaceUsed.getCount());
+  Assert.assertEquals(3,listener.received.size());
   Assert.assertEquals(reader,((SSTableAddedNotification)listener.received.get(0)).added);
-  Assert.assertEquals(1,((SSTableListChangedNotification)listener.received.get(1)).removed.size());
+  Assert.assertTrue(listener.received.get(1) instanceof SSTableDeletingNotification);
+  Assert.assertEquals(1,((SSTableListChangedNotification)listener.received.get(2)).removed.size());
   DatabaseDescriptor.setIncrementalBackupsEnabled(backups);
 }
