@@ -17,8 +17,9 @@
       int version=MessagingService.getBits(header,15,8);
       logger.debug("Connection version {} from {}",version,socket.getInetAddress());
       socket.setSoTimeout(0);
-      Thread thread=isStream ? new IncomingStreamingConnection(version,socket) : new IncomingTcpConnection(version,MessagingService.getBits(header,2,1) == 1,socket);
+      Thread thread=isStream ? new IncomingStreamingConnection(version,socket,connections) : new IncomingTcpConnection(version,MessagingService.getBits(header,2,1) == 1,socket,connections);
       thread.start();
+      connections.add((Closeable)thread);
     }
  catch (    AsynchronousCloseException e) {
       logger.debug("Asynchronous close seen by server thread");
