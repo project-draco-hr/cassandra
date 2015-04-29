@@ -1,6 +1,11 @@
 {
   MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
   try {
+    ObjectName gcName=new ObjectName(ManagementFactory.GARBAGE_COLLECTOR_MXBEAN_DOMAIN_TYPE + ",*");
+    for (    ObjectName name : mbs.queryNames(gcName,null)) {
+      GarbageCollectorMXBean gc=ManagementFactory.newPlatformMXBeanProxy(mbs,name.getCanonicalName(),GarbageCollectorMXBean.class);
+      gcStates.put(gc.getName(),new GCState(gc,assumeGCIsPartiallyConcurrent(gc),assumeGCIsOldGen(gc)));
+    }
     mbs.registerMBean(this,new ObjectName(MBEAN_NAME));
   }
  catch (  Exception e) {
