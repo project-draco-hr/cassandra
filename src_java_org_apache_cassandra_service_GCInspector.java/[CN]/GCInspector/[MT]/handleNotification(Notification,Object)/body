@@ -3,20 +3,29 @@
   if (type.equals(GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION)) {
     CompositeData cd=(CompositeData)notification.getUserData();
     GarbageCollectionNotificationInfo info=GarbageCollectionNotificationInfo.from(cd);
-    long duration=info.getGcInfo().getDuration();
+    String gcName=info.getGcName();
+    GcInfo gcInfo=info.getGcInfo();
+    long duration=gcInfo.getDuration();
+    GCState gcState=gcStates.get(gcName);
+    if (gcState.assumeGCIsPartiallyConcurrent) {
+      long previousTotal=gcState.lastGcTotalDuration;
+      long total=gcState.gcBean.getCollectionTime();
+      gcState.lastGcTotalDuration=total;
+      duration=total - previousTotal;
+    }
     StringBuilder sb=new StringBuilder();
     sb.append(info.getGcName()).append(" GC in ").append(duration).append("ms.  ");
     long bytes=0;
-    List<String> keys=new ArrayList<>(info.getGcInfo().getMemoryUsageBeforeGc().keySet());
-    Collections.sort(keys);
-    for (    String key : keys) {
-      MemoryUsage before=info.getGcInfo().getMemoryUsageBeforeGc().get(key);
-      MemoryUsage after=info.getGcInfo().getMemoryUsageAfterGc().get(key);
+    Map<String,MemoryUsage> beforeMemoryUsage=gcInfo.getMemoryUsageBeforeGc();
+    Map<String,MemoryUsage> afterMemoryUsage=gcInfo.getMemoryUsageAfterGc();
+    for (    String key : gcState.keys(info)) {
+      MemoryUsage before=beforeMemoryUsage.get(key);
+      MemoryUsage after=afterMemoryUsage.get(key);
       if (after != null && after.getUsed() != before.getUsed()) {
         sb.append(key).append(": ").append(before.getUsed());
         sb.append(" -> ");
         sb.append(after.getUsed());
-        if (!key.equals(keys.get(keys.size() - 1)))         sb.append("; ");
+        if (!key.equals(gcState.keys[gcState.keys.length - 1]))         sb.append("; ");
         bytes+=before.getUsed() - after.getUsed();
       }
     }
@@ -28,6 +37,6 @@
     if (duration > MIN_LOG_DURATION)     logger.info(st);
  else     if (logger.isDebugEnabled())     logger.debug(st);
     if (duration > MIN_LOG_DURATION_TPSTATS)     StatusLogger.log();
-    if (info.getGcName().equals("ConcurrentMarkSweep"))     SSTableDeletingTask.rescheduleFailedTasks();
+    if (gcState.assumeGCIsOldGen)     SSTableDeletingTask.rescheduleFailedTasks();
   }
 }
