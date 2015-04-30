@@ -1,21 +1,15 @@
 {
-  assumeTrue(!Boolean.parseBoolean(System.getProperty("cassandra.test.compression","false")));
+  int numPartitions=1000;
   CompactionManager.instance.disableAutoCompaction();
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(COUNTER_CF);
   cfs.clearUnsafe();
-  fillCounterCF(cfs,2);
-  List<Row> rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(2,rows.size());
+  fillCounterCF(cfs,numPartitions);
+  List<Row> rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),numPartitions * 10);
+  assertEquals(numPartitions,rows.size());
+  assertEquals(1,cfs.getSSTables().size());
   SSTableReader sstable=cfs.getSSTables().iterator().next();
-  long row0Start=sstable.getPosition(RowPosition.ForKey.get(ByteBufferUtil.bytes("0"),sstable.partitioner),SSTableReader.Operator.EQ).position;
-  long row1Start=sstable.getPosition(RowPosition.ForKey.get(ByteBufferUtil.bytes("1"),sstable.partitioner),SSTableReader.Operator.EQ).position;
-  long startPosition=row0Start < row1Start ? row0Start : row1Start;
-  long endPosition=row0Start < row1Start ? row1Start : row0Start;
-  RandomAccessFile file=new RandomAccessFile(sstable.getFilename(),"rw");
-  file.seek(startPosition);
-  file.writeBytes(StringUtils.repeat('z',(int)(endPosition - startPosition)));
-  file.close();
+  overrideWithGarbage(sstable,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
   Scrubber scrubber=new Scrubber(cfs,sstable,false,false);
   try {
     scrubber.scrub();
@@ -23,10 +17,23 @@
   }
  catch (  IOError err) {
   }
+  Scrubber.ScrubResult scrubResult;
   scrubber=new Scrubber(cfs,sstable,true,false);
-  scrubber.scrub();
+  scrubResult=scrubber.scrubWithResult();
   scrubber.close();
+  assertNotNull(scrubResult);
+  boolean compression=Boolean.parseBoolean(System.getProperty("cassandra.test.compression","false"));
+  if (compression) {
+    assertEquals(0,scrubResult.emptyRows);
+    assertEquals(numPartitions,scrubResult.badRows + scrubResult.goodRows);
+    assertTrue(scrubResult.goodRows >= scrubResult.badRows * 2);
+  }
+ else {
+    assertEquals(0,scrubResult.emptyRows);
+    assertEquals(1,scrubResult.badRows);
+    assertEquals(numPartitions - 1,scrubResult.goodRows);
+  }
   assertEquals(1,cfs.getSSTables().size());
   rows=cfs.getRangeSlice(Util.range("",""),null,new IdentityQueryFilter(),1000);
-  assertEquals(1,rows.size());
+  assertEquals(scrubResult.goodRows,rows.size());
 }
