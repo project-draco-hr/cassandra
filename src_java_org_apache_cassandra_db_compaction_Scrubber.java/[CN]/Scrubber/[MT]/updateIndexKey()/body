@@ -1,0 +1,14 @@
+{
+  currentIndexKey=nextIndexKey;
+  currentRowPositionFromIndex=nextRowPositionFromIndex;
+  try {
+    nextIndexKey=indexFile.isEOF() ? null : ByteBufferUtil.readWithShortLength(indexFile);
+    nextRowPositionFromIndex=indexFile.isEOF() ? dataFile.length() : rowIndexEntrySerializer.deserialize(indexFile,sstable.descriptor.version).position;
+  }
+ catch (  Throwable th) {
+    JVMStabilityInspector.inspectThrowable(th);
+    outputHandler.warn("Error reading index file",th);
+    nextIndexKey=null;
+    nextRowPositionFromIndex=dataFile.length();
+  }
+}
