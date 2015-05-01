@@ -1,0 +1,24 @@
+{
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("Standard1");
+  Mutation rm;
+  ColumnFamily cf;
+  cf=ArrayBackedSortedColumns.factory.create("Keyspace1","Standard1");
+  cf.addColumn(column("col2","val1",1L));
+  rm=new Mutation("Keyspace1",ByteBufferUtil.bytes("keymulti"),cf);
+  rm.apply();
+  long time=System.currentTimeMillis();
+  assertNotNull(getFromTable(keyspace,"Standard1","keymulti","col2"));
+  cfs.truncateBlocking();
+  assertNull(getFromTable(keyspace,"Standard1","keymulti","col2"));
+  try {
+    CommitLog.instance.archiver.restorePointInTime=time;
+    CommitLog.instance.resetUnsafe();
+    CommitLog.instance.recover();
+  }
+  finally {
+    CommitLog.instance.archiver.restorePointInTime=Long.MAX_VALUE;
+  }
+  assertNotNull(getFromTable(keyspace,"Standard1","keymulti","col2"));
+  assertFalse(SystemKeyspace.getTruncatedAt(cfs.metadata.cfId) > time);
+}

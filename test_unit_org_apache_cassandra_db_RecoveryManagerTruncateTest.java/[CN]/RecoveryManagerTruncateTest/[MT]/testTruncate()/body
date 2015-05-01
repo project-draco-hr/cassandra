@@ -7,9 +7,11 @@
   cf.addColumn(column("col1","val1",1L));
   rm=new Mutation("Keyspace1",ByteBufferUtil.bytes("keymulti"),cf);
   rm.apply();
+  long time=System.currentTimeMillis();
   assertNotNull(getFromTable(keyspace,"Standard1","keymulti","col1"));
   cfs.truncateBlocking();
   CommitLog.instance.resetUnsafe();
   CommitLog.instance.recover();
   assertNull(getFromTable(keyspace,"Standard1","keymulti","col1"));
+  assertTrue(SystemKeyspace.getTruncatedAt(cfs.metadata.cfId) > time);
 }

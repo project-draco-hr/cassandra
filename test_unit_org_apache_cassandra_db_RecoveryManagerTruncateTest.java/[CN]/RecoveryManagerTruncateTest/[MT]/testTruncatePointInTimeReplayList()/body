@@ -1,0 +1,36 @@
+{
+  Keyspace keyspace=Keyspace.open("Keyspace1");
+  ColumnFamilyStore cfs1=keyspace.getColumnFamilyStore("Standard1");
+  ColumnFamilyStore cfs2=keyspace.getColumnFamilyStore("Standard2");
+  Mutation rm;
+  ColumnFamily cf;
+  cf=ArrayBackedSortedColumns.factory.create("Keyspace1","Standard1");
+  cf.addColumn(column("col3","val1",1L));
+  rm=new Mutation("Keyspace1",ByteBufferUtil.bytes("keymulti"),cf);
+  rm.apply();
+  cf=ArrayBackedSortedColumns.factory.create("Keyspace1","Standard2");
+  cf.addColumn(column("col4","val1",1L));
+  rm=new Mutation("Keyspace1",ByteBufferUtil.bytes("keymulti"),cf);
+  rm.apply();
+  long time=System.currentTimeMillis();
+  assertNotNull(getFromTable(keyspace,"Standard1","keymulti","col3"));
+  assertNotNull(getFromTable(keyspace,"Standard2","keymulti","col4"));
+  cfs1.truncateBlocking();
+  cfs2.truncateBlocking();
+  assertNull(getFromTable(keyspace,"Standard1","keymulti","col3"));
+  assertNull(getFromTable(keyspace,"Standard2","keymulti","col4"));
+  try {
+    CommitLog.instance.archiver.restorePointInTime=time;
+    System.setProperty("cassandra.replayList","Keyspace1.Standard1");
+    CommitLog.instance.resetUnsafe();
+    CommitLog.instance.recover();
+  }
+  finally {
+    CommitLog.instance.archiver.restorePointInTime=Long.MAX_VALUE;
+    System.clearProperty("cassandra.replayList");
+  }
+  assertNotNull(getFromTable(keyspace,"Standard1","keymulti","col3"));
+  assertNull(getFromTable(keyspace,"Standard2","keymulti","col4"));
+  assertFalse(SystemKeyspace.getTruncatedAt(cfs1.metadata.cfId) > time);
+  assertTrue(SystemKeyspace.getTruncatedAt(cfs2.metadata.cfId) > time);
+}
