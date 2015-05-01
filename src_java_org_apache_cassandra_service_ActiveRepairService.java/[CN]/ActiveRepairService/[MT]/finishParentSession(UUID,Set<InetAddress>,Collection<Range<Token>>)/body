@@ -1,14 +1,8 @@
 {
-  try {
-    for (    InetAddress neighbor : neighbors) {
-      AnticompactionRequest acr=new AnticompactionRequest(parentSession,successfulRanges);
-      MessageOut<RepairMessage> req=acr.createMessage();
-      MessagingService.instance().sendOneWay(req,neighbor);
-    }
-    List<Future<?>> futures=doAntiCompaction(parentSession,successfulRanges);
-    FBUtilities.waitOnFutures(futures);
+  for (  InetAddress neighbor : neighbors) {
+    AnticompactionRequest acr=new AnticompactionRequest(parentSession,successfulRanges);
+    MessageOut<RepairMessage> req=acr.createMessage();
+    MessagingService.instance().sendOneWay(req,neighbor);
   }
-  finally {
-    parentRepairSessions.remove(parentSession);
-  }
+  doAntiCompaction(parentSession,successfulRanges).get();
 }
