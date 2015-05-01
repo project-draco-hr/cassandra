@@ -1,2 +1,11 @@
 def test_parse_insert(self):
-    pass
+    parsed = parse_cqlsh_statements('INSERT INTO mytable (x) VALUES (2);')
+    self.assertSequenceEqual(tokens_with_types(parsed), [('INSERT', 'K_INSERT'), ('INTO', 'K_INTO'), ('mytable', 'identifier'), ('(', 'op'), ('x', 'identifier'), (')', 'op'), ('VALUES', 'K_VALUES'), ('(', 'op'), ('2', 'wholenumber'), (')', 'op'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("INSERT INTO mytable (x, y) VALUES (2, 'eggs');")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('INSERT', 'K_INSERT'), ('INTO', 'K_INTO'), ('mytable', 'identifier'), ('(', 'op'), ('x', 'identifier'), (',', 'op'), ('y', 'identifier'), (')', 'op'), ('VALUES', 'K_VALUES'), ('(', 'op'), ('2', 'wholenumber'), (',', 'op'), ("'eggs'", 'quotedStringLiteral'), (')', 'op'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("INSERT INTO mytable (x, y) VALUES (2, 'eggs');")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('INSERT', 'K_INSERT'), ('INTO', 'K_INTO'), ('mytable', 'identifier'), ('(', 'op'), ('x', 'identifier'), (',', 'op'), ('y', 'identifier'), (')', 'op'), ('VALUES', 'K_VALUES'), ('(', 'op'), ('2', 'wholenumber'), (',', 'op'), ("'eggs'", 'quotedStringLiteral'), (')', 'op'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements('INSERT INTO mytable (ids) VALUES (7ee251da-af52-49a4-97f4-3f07e406c7a7) USING TTL 86400;')
+    self.assertSequenceEqual(tokens_with_types(parsed), [('INSERT', 'K_INSERT'), ('INTO', 'K_INTO'), ('mytable', 'identifier'), ('(', 'op'), ('ids', 'identifier'), (')', 'op'), ('VALUES', 'K_VALUES'), ('(', 'op'), ('7ee251da-af52-49a4-97f4-3f07e406c7a7', 'uuid'), (')', 'op'), ('USING', 'K_USING'), ('TTL', 'K_TTL'), ('86400', 'wholenumber'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("INSERT INTO test_table (username) VALUES ('Albert') USING TIMESTAMP 1240003134 AND TTL 600;")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('INSERT', 'K_INSERT'), ('INTO', 'K_INTO'), ('test_table', 'identifier'), ('(', 'op'), ('username', 'identifier'), (')', 'op'), ('VALUES', 'K_VALUES'), ('(', 'op'), ("'Albert'", 'quotedStringLiteral'), (')', 'op'), ('USING', 'K_USING'), ('TIMESTAMP', 'K_TIMESTAMP'), ('1240003134', 'wholenumber'), ('AND', 'K_AND'), ('TTL', 'K_TTL'), ('600', 'wholenumber'), (';', 'endtoken')])

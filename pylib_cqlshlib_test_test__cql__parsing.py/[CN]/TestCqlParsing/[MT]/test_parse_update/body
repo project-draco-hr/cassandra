@@ -1,2 +1,15 @@
 def test_parse_update(self):
-    pass
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15 WHERE y = 'eggs';")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'eggs'", 'quotedStringLiteral'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab USING TTL 432000 SET x = 15 WHERE y = 'eggs';")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('USING', 'K_USING'), ('TTL', 'K_TTL'), ('432000', 'wholenumber'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'eggs'", 'quotedStringLiteral'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15, y = 'sausage' WHERE y = 'eggs';")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), (',', 'op'), ('y', 'identifier'), ('=', 'op'), ("'sausage'", 'quotedStringLiteral'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'eggs'", 'quotedStringLiteral'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15 WHERE y IN ('eggs', 'sausage', 'spam');")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('IN', 'K_IN'), ('(', 'op'), ("'eggs'", 'quotedStringLiteral'), (',', 'op'), ("'sausage'", 'quotedStringLiteral'), (',', 'op'), ("'spam'", 'quotedStringLiteral'), (')', 'op'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15 WHERE y = 'spam' if z = 'sausage';")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'spam'", 'quotedStringLiteral'), ('if', 'K_IF'), ('z', 'identifier'), ('=', 'op'), ("'sausage'", 'quotedStringLiteral'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15 WHERE y = 'spam' if z = 'sausage' AND w = 'spam';")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'spam'", 'quotedStringLiteral'), ('if', 'K_IF'), ('z', 'identifier'), ('=', 'op'), ("'sausage'", 'quotedStringLiteral'), ('AND', 'K_AND'), ('w', 'identifier'), ('=', 'op'), ("'spam'", 'quotedStringLiteral'), (';', 'endtoken')])
+    parsed = parse_cqlsh_statements("UPDATE tab SET x = 15 WHERE y = 'spam' IF EXISTS")
+    self.assertSequenceEqual(tokens_with_types(parsed), [('UPDATE', 'K_UPDATE'), ('tab', 'identifier'), ('SET', 'K_SET'), ('x', 'identifier'), ('=', 'op'), ('15', 'wholenumber'), ('WHERE', 'K_WHERE'), ('y', 'identifier'), ('=', 'op'), ("'spam'", 'quotedStringLiteral'), ('IF', 'K_IF'), ('EXISTS', 'identifier')])
