@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s (" + " key int PRIMARY KEY," + " val double)");
+  ResultMessage.Prepared control=QueryProcessor.prepare(String.format("INSERT INTO %s.%s (key, val) VALUES (?, ?)",KEYSPACE,currentTable()),ClientState.forInternalCalls(),false);
+  Assert.assertNotNull(QueryProcessor.instance.getPrepared(control.statementId));
+  String function=createFunction(KEYSPACE_PER_TEST,"double","CREATE FUNCTION %s ( input double ) " + "RETURNS double " + "LANGUAGE javascript "+ "AS 'input'");
+  Assert.assertEquals(1,Functions.find(parseFunctionName(function)).size());
+  List<ResultMessage.Prepared> prepared=new ArrayList<>();
+  prepared.add(prepareStatementWithDelayedValue(CollectionType.Kind.LIST,function));
+  prepared.add(prepareStatementWithDelayedValue(CollectionType.Kind.SET,function));
+  prepared.add(prepareStatementWithDelayedValue(CollectionType.Kind.MAP,function));
+  prepared.add(prepareStatementWithDelayedValueTuple(function));
+  if (dropKeyspace)   dropPerTestKeyspace();
+ else   execute("DROP FUNCTION " + function);
+  Assert.assertNotNull(QueryProcessor.instance.getPrepared(control.statementId));
+  for (  ResultMessage.Prepared removed : prepared)   Assert.assertNull(QueryProcessor.instance.getPrepared(removed.statementId));
+}

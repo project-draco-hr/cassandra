@@ -1,0 +1,26 @@
+{
+  String collectionType;
+  String literalArgs;
+switch (kind) {
+case LIST:
+    collectionType="list<double>";
+  literalArgs=String.format("[%s(0.0)]",function);
+break;
+case SET:
+collectionType="set<double>";
+literalArgs=String.format("{%s(0.0)}",function);
+break;
+case MAP:
+collectionType="map<double, double>";
+literalArgs=String.format("{%s(0.0):0.0}",function);
+break;
+default :
+Assert.fail("Unsupported collection type " + kind);
+collectionType=null;
+literalArgs=null;
+}
+createTable("CREATE TABLE %s (" + " key int PRIMARY KEY," + " val " + collectionType + ")");
+ResultMessage.Prepared prepared=QueryProcessor.prepare(String.format("INSERT INTO %s.%s (key, val) VALUES (?, %s)",KEYSPACE,currentTable(),literalArgs),ClientState.forInternalCalls(),false);
+Assert.assertNotNull(QueryProcessor.instance.getPrepared(prepared.statementId));
+return prepared;
+}
