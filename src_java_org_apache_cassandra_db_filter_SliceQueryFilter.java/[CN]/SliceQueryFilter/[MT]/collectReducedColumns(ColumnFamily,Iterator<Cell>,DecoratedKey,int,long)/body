@@ -12,9 +12,10 @@
     }
     container.maybeAppendColumn(cell,tester,gcBefore);
   }
-  boolean warnTombstones=respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.getTombstoneWarnThreshold();
+  boolean warnTombstones=logger.isWarnEnabled() && respectTombstoneThresholds() && columnCounter.ignored() > DatabaseDescriptor.getTombstoneWarnThreshold();
   if (warnTombstones) {
-    logger.warn("Read {} live and {} tombstoned cells in {}.{} (see tombstone_warn_threshold). {} columns were requested, slices={}",columnCounter.live(),columnCounter.ignored(),container.metadata().ksName,container.metadata().cfName,count,getSlicesInfo(container));
+    String msg=String.format("Read %d live and %d tombstoned cells in %s.%s for key: %1.512s (see tombstone_warn_threshold). %d columns were requested, slices=%1.512s",columnCounter.live(),columnCounter.ignored(),container.metadata().ksName,container.metadata().cfName,container.metadata().getKeyValidator().getString(key.getKey()),count,getSlicesInfo(container));
+    logger.warn(msg);
   }
   Tracing.trace("Read {} live and {} tombstoned cells{}",columnCounter.live(),columnCounter.ignored(),warnTombstones ? " (see tombstone_warn_threshold)" : "");
 }
