@@ -4,20 +4,8 @@ synchronized (this) {
     Iterable<ColumnFamilyStore> selfWithIndexes=concatWithIndexes();
     for (    ColumnFamilyStore cfs : selfWithIndexes)     cfs.getCompactionStrategy().pause();
     try {
-      Function<ColumnFamilyStore,CFMetaData> f=new Function<ColumnFamilyStore,CFMetaData>(){
-        public CFMetaData apply(        ColumnFamilyStore cfs){
-          return cfs.metadata;
-        }
-      }
-;
-      Iterable<CFMetaData> allMetadata=Iterables.transform(selfWithIndexes,f);
-      CompactionManager.instance.interruptCompactionFor(allMetadata,interruptValidation);
-      long start=System.nanoTime();
-      long delay=TimeUnit.MINUTES.toNanos(1);
-      while (System.nanoTime() - start < delay) {
-        if (CompactionManager.instance.isCompacting(selfWithIndexes))         Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
- else         break;
-      }
+      CompactionManager.instance.interruptCompactionForCFs(selfWithIndexes,interruptValidation);
+      CompactionManager.instance.waitForCessation(selfWithIndexes);
       for (      ColumnFamilyStore cfs : selfWithIndexes) {
         if (!cfs.getDataTracker().getCompacting().isEmpty()) {
           logger.warn("Unable to cancel in-progress compactions for {}.  Perhaps there is an unusually large row in progress somewhere, or the system is simply overloaded.",metadata.cfName);
