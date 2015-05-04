@@ -11,5 +11,10 @@
   DatabaseDescriptor.setCompactionThroughputMbPerSec(1);
   List<Future<?>> futures=CompactionManager.instance.submitMaximal(cfs,CompactionManager.GC_ALL);
   execute("DROP TABLE %s");
-  FBUtilities.waitOnFutures(futures);
+  try {
+    FBUtilities.waitOnFutures(futures);
+  }
+ catch (  Throwable t) {
+    if (!(t.getCause() instanceof ExecutionException) || !(t.getCause().getCause() instanceof CompactionInterruptedException))     throw t;
+  }
 }
