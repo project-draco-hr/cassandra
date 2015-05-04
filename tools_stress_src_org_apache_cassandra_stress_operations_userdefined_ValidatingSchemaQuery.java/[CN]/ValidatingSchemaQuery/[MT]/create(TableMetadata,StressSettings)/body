@@ -1,0 +1,54 @@
+{
+  List<Factory> factories=new ArrayList<>();
+  StringBuilder sb=new StringBuilder();
+  boolean first=true;
+  sb.append("SELECT * FROM ");
+  sb.append(metadata.getName());
+  sb.append(" WHERE");
+  for (  ColumnMetadata pk : metadata.getPartitionKey()) {
+    sb.append(first ? " " : " AND ");
+    sb.append(pk.getName());
+    sb.append(" = ?");
+    first=false;
+  }
+  String base=sb.toString();
+  factories.add(new Factory(new ValidatingStatement[]{prepare(settings,base,true,true)},0));
+  int maxDepth=metadata.getClusteringColumns().size() - 1;
+  for (int depth=0; depth <= maxDepth; depth++) {
+    StringBuilder cc=new StringBuilder();
+    StringBuilder arg=new StringBuilder();
+    cc.append("(");
+    arg.append("(");
+    for (int d=0; d <= depth; d++) {
+      if (d > 0) {
+        cc.append(",");
+        arg.append(",");
+      }
+      cc.append(metadata.getClusteringColumns().get(d).getName());
+      arg.append("?");
+    }
+    cc.append(")");
+    arg.append(")");
+    ValidatingStatement[] statements=new ValidatingStatement[depth < maxDepth ? 1 : 4];
+    int i=0;
+    for (    boolean incLb : depth < maxDepth ? new boolean[]{true} : new boolean[]{true,false}) {
+      for (      boolean incUb : depth < maxDepth ? new boolean[]{false} : new boolean[]{true,false}) {
+        String lb=incLb ? ">=" : ">";
+        String ub=incUb ? "<=" : "<";
+        sb.setLength(0);
+        sb.append(base);
+        sb.append(" AND ");
+        sb.append(cc);
+        sb.append(lb);
+        sb.append(arg);
+        sb.append(" AND ");
+        sb.append(cc);
+        sb.append(ub);
+        sb.append(arg);
+        statements[i++]=prepare(settings,sb.toString(),incLb,incUb);
+      }
+    }
+    factories.add(new Factory(statements,depth + 1));
+  }
+  return factories;
+}
