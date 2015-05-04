@@ -3,7 +3,11 @@
   for (  final Map.Entry<T,Double> ratio : ratios.entrySet()) {
     out.add(new OpDistributionFactory(){
       public OpDistribution get(      Timing timing,      int sampleCount){
-        return new FixedOpDistribution(SampledOpDistributionFactory.this.get(timing.newTimer(ratio.getKey().toString(),sampleCount),newGenerator(),ratio.getKey()));
+        List<? extends Operation> ops=SampledOpDistributionFactory.this.get(timing.newTimer(ratio.getKey().toString(),sampleCount),newGenerator(),ratio.getKey());
+        if (ops.size() == 1)         return new FixedOpDistribution(ops.get(0));
+        List<Pair<Operation,Double>> ratios=new ArrayList<>();
+        for (        Operation op : ops)         ratios.add(new Pair<>(op,1d / ops.size()));
+        return new SampledOpDistribution(new EnumeratedDistribution<Operation>(ratios),new DistributionFixed(1));
       }
       public String desc(){
         return ratio.getKey().toString();
