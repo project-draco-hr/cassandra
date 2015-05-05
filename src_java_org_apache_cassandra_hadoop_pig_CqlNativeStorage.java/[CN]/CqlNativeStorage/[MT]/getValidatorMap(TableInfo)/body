@@ -1,0 +1,16 @@
+{
+  Map<ByteBuffer,AbstractType> validators=new HashMap<>();
+  for (  ColumnInfo cd : cfDef.getColumns()) {
+    if (cd.getTypeName() != null) {
+      try {
+        AbstractType validator=TypeParser.parseCqlName(cd.getTypeName());
+        if (validator instanceof CounterColumnType)         validator=LongType.instance;
+        validators.put(ByteBufferUtil.bytes(cd.getName()),validator);
+      }
+ catch (      ConfigurationException|SyntaxException e) {
+        throw new IOException(e);
+      }
+    }
+  }
+  return validators;
+}

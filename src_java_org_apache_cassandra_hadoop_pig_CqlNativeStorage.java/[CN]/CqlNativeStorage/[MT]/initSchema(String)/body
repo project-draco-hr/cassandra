@@ -1,0 +1,17 @@
+{
+  Properties properties=UDFContext.getUDFContext().getUDFProperties(CqlNativeStorage.class);
+  if (!properties.containsKey(signature)) {
+    try {
+      Session client=CqlConfigHelper.getInputCluster(ConfigHelper.getInputInitialAddress(conf),conf).connect();
+      client.execute("USE " + keyspace);
+      TableMetadata cfInfo=getCfInfo(client);
+      if (cfInfo != null) {
+        properties.setProperty(signature,cfdefToString(cfInfo));
+      }
+ else       throw new IOException(String.format("Table '%s' not found in keyspace '%s'",column_family,keyspace));
+    }
+ catch (    Exception e) {
+      throw new IOException(e);
+    }
+  }
+}

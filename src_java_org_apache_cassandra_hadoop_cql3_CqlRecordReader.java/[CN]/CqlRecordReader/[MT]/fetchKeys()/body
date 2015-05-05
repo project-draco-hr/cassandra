@@ -1,19 +1,9 @@
 {
-  String query=String.format("SELECT column_name, component_index, type " + "FROM %s.%s " + "WHERE keyspace_name = '%s' AND columnfamily_name = '%s'",SystemKeyspace.NAME,LegacySchemaTables.COLUMNS,keyspace,cfName);
-  List<Row> rows=session.execute(query).all();
-  if (rows.isEmpty()) {
+  TableMetadata tableMetadata=session.getCluster().getMetadata().getKeyspace(Metadata.quote(keyspace)).getTable(Metadata.quote(cfName));
+  if (tableMetadata == null) {
     throw new RuntimeException("No table metadata found for " + keyspace + "."+ cfName);
   }
-  int numberOfPartitionKeys=0;
-  for (  Row row : rows)   if (row.getString(2).equals("partition_key"))   numberOfPartitionKeys++;
-  String[] partitionKeyArray=new String[numberOfPartitionKeys];
-  for (  Row row : rows) {
-    String type=row.getString(2);
-    String column=row.getString(0);
-    if (type.equals("partition_key")) {
-      int componentIndex=row.isNull(1) ? 0 : row.getInt(1);
-      partitionKeyArray[componentIndex]=column;
-    }
+  for (  ColumnMetadata partitionKey : tableMetadata.getPartitionKey()) {
+    partitionKeys.add(partitionKey.getName());
   }
-  partitionKeys.addAll(Arrays.asList(partitionKeyArray));
 }

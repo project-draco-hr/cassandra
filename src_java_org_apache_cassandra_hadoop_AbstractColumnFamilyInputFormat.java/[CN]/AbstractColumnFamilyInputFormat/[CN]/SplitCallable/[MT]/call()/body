@@ -1,2 +1,17 @@
 {
+  ArrayList<InputSplit> splits=new ArrayList<>();
+  Map<TokenRange,Long> subSplits;
+  subSplits=getSubSplits(keyspace,cfName,tokenRange,conf);
+  String[] endpoints=new String[hosts.size()];
+  int endpointIndex=0;
+  for (  Host endpoint : hosts)   endpoints[endpointIndex++]=endpoint.getAddress().getHostName();
+  for (  TokenRange subSplit : subSplits.keySet()) {
+    List<TokenRange> ranges=subSplit.unwrap();
+    for (    TokenRange subrange : ranges) {
+      ColumnFamilySplit split=new ColumnFamilySplit(subrange.getStart().toString().substring(2),subrange.getEnd().toString().substring(2),subSplits.get(subSplit),endpoints);
+      logger.debug("adding {}",split);
+      splits.add(split);
+    }
+  }
+  return splits;
 }

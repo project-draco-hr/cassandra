@@ -2,7 +2,9 @@
   File dir=new File(directory);
   if (!dir.exists() || !dir.isDirectory())   throw new IllegalArgumentException("Invalid directory " + directory);
   SSTableLoader.Client client=new SSTableLoader.Client(){
+    private String keyspace;
     public void init(    String keyspace){
+      this.keyspace=keyspace;
       try {
         setPartitioner(DatabaseDescriptor.getPartitioner());
         for (        Map.Entry<Range<Token>,List<InetAddress>> entry : StorageService.instance.getRangeToAddressMap(keyspace).entrySet()) {
@@ -14,11 +16,10 @@
         throw new RuntimeException(e);
       }
     }
-    public CFMetaData getCFMetaData(    String keyspace,    String cfName){
-      return Schema.instance.getCFMetaData(keyspace,cfName);
+    public CFMetaData getTableMetadata(    String tableName){
+      return Schema.instance.getCFMetaData(keyspace,tableName);
     }
   }
 ;
-  SSTableLoader loader=new SSTableLoader(dir,client,new OutputHandler.LogOutput());
-  return loader.stream();
+  return new SSTableLoader(dir,client,new OutputHandler.LogOutput()).stream();
 }

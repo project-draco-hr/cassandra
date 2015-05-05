@@ -1,0 +1,15 @@
+{
+  Map<String,CFMetaData> tables=new HashMap<>();
+  String query=String.format("SELECT columnfamily_name, cf_id, type, comparator, subcomparator FROM %s.%s WHERE keyspace_name = '%s'",SystemKeyspace.NAME,LegacySchemaTables.COLUMNFAMILIES,keyspace);
+  for (  Row row : session.execute(query)) {
+    String name=row.getString("columnfamily_name");
+    UUID id=row.getUUID("cf_id");
+    ColumnFamilyType type=ColumnFamilyType.valueOf(row.getString("type"));
+    AbstractType rawComparator=TypeParser.parse(row.getString("comparator"));
+    AbstractType subComparator=row.isNull("subcomparator") ? null : TypeParser.parse(row.getString("subcomparator"));
+    boolean isDense=row.getBool("is_dense");
+    CellNameType comparator=CellNames.fromAbstractType(CFMetaData.makeRawAbstractType(rawComparator,subComparator),isDense);
+    tables.put(name,new CFMetaData(keyspace,name,type,comparator,id));
+  }
+  return tables;
+}

@@ -1,0 +1,19 @@
+{
+  List<ByteBuffer> serialized=new ArrayList<ByteBuffer>(objects.size());
+  int totalLength=0;
+  for (  Object sub : objects) {
+    ByteBuffer buffer=objToBB(sub);
+    serialized.add(buffer);
+    totalLength+=2 + buffer.remaining() + 1;
+  }
+  ByteBuffer out=ByteBuffer.allocate(totalLength);
+  for (  ByteBuffer bb : serialized) {
+    int length=bb.remaining();
+    out.put((byte)((length >> 8) & 0xFF));
+    out.put((byte)(length & 0xFF));
+    out.put(bb);
+    out.put((byte)0);
+  }
+  out.flip();
+  return out;
+}

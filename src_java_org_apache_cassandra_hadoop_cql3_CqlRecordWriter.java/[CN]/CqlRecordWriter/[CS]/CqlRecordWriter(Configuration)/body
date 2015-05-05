@@ -1,19 +1,20 @@
 {
-  super(conf);
+  this.conf=conf;
+  this.queueSize=conf.getInt(ColumnFamilyOutputFormat.QUEUE_SIZE,32 * FBUtilities.getAvailableProcessors());
+  batchThreshold=conf.getLong(ColumnFamilyOutputFormat.BATCH_THRESHOLD,32);
   this.clients=new HashMap<>();
   try {
-    Cassandra.Client client=ConfigHelper.getClientFromOutputAddressList(conf);
+    String keyspace=ConfigHelper.getOutputKeyspace(conf);
+    Session client=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf).connect(keyspace);
+    ringCache=new NativeRingCache(conf);
     if (client != null) {
-      client.set_keyspace(ConfigHelper.getOutputKeyspace(conf));
-      String user=ConfigHelper.getOutputKeyspaceUserName(conf);
-      String password=ConfigHelper.getOutputKeyspacePassword(conf);
-      if ((user != null) && (password != null))       AbstractColumnFamilyOutputFormat.login(user,password,client);
-      retrievePartitionKeyValidator(client);
+      TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
+      clusterColumns=tableMetadata.getClusteringColumns();
+      partitionKeyColumns=tableMetadata.getPartitionKey();
       String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
       if (cqlQuery.toLowerCase().startsWith("insert"))       throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
       cql=appendKeyWhereClauses(cqlQuery);
-      TTransport transport=client.getOutputProtocol().getTransport();
-      if (transport.isOpen())       transport.close();
+      client.close();
     }
  else {
       throw new IllegalArgumentException("Invalid configuration specified " + conf);

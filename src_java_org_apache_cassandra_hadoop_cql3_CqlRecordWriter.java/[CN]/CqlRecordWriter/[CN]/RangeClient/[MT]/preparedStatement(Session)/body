@@ -1,0 +1,15 @@
+{
+  PreparedStatement statement=preparedStatements.get(client);
+  if (statement == null) {
+    PreparedStatement result;
+    try {
+      result=client.prepare(cql);
+    }
+ catch (    NoHostAvailableException e) {
+      throw new RuntimeException("failed to prepare cql query " + cql,e);
+    }
+    PreparedStatement previousId=preparedStatements.putIfAbsent(client,result);
+    statement=previousId == null ? result : previousId;
+  }
+  return statement;
+}

@@ -1,17 +1,14 @@
 {
   setLocation(location,job);
-  CfInfo cfInfo=getCfInfo(loadSignature);
-  CfDef cfDef=cfInfo.cfDef;
+  TableInfo cfInfo=getCfInfo(loadSignature);
   ResourceSchema schema=new ResourceSchema();
-  Map<MarshallerType,AbstractType> marshallers=getDefaultMarshallers(cfDef);
-  Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfDef);
+  Map<ByteBuffer,AbstractType> validators=getValidatorMap(cfInfo);
   List<ResourceFieldSchema> allSchemaFields=new ArrayList<ResourceFieldSchema>();
-  for (  ColumnDef cdef : cfDef.column_metadata) {
+  for (  ColumnInfo cdef : cfInfo.getColumns()) {
     ResourceFieldSchema valSchema=new ResourceFieldSchema();
-    AbstractType validator=validators.get(cdef.name);
-    if (validator == null)     validator=marshallers.get(MarshallerType.DEFAULT_VALIDATOR);
+    AbstractType validator=validators.get(cdef.getName());
     valSchema.setName(new String(cdef.getName()));
-    valSchema.setType(getPigType(validator));
+    valSchema.setType(StorageHelper.getPigType(validator));
     allSchemaFields.add(valSchema);
   }
   schema.setFields(allSchemaFields.toArray(new ResourceFieldSchema[allSchemaFields.size()]));

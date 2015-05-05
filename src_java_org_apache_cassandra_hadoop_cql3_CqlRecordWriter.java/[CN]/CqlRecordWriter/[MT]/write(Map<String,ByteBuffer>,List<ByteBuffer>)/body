@@ -1,15 +1,15 @@
 {
-  Range<Token> range=ringCache.getRange(getPartitionKey(keyColumns));
-  final InetAddress address=ringCache.getEndpoint(range).get(0);
+  TokenRange range=ringCache.getRange(getPartitionKey(keyColumns));
+  final InetAddress address=ringCache.getEndpoints(range).get(0);
   RangeClient client=clients.get(address);
   if (client == null) {
-    client=new RangeClient(ringCache.getEndpoint(range));
+    client=new RangeClient(ringCache.getEndpoints(range));
     client.start();
     clients.put(address,client);
   }
   List<ByteBuffer> allValues=new ArrayList<ByteBuffer>(values);
-  for (  String column : partitionKeyColumns)   allValues.add(keyColumns.get(column));
-  for (  String column : clusterColumns)   allValues.add(keyColumns.get(column));
+  for (  ColumnMetadata column : partitionKeyColumns)   allValues.add(keyColumns.get(column.getName()));
+  for (  ColumnMetadata column : clusterColumns)   allValues.add(keyColumns.get(column.getName()));
   client.put(allValues);
   if (progressable != null)   progressable.progress();
   if (context != null)   HadoopCompat.progress(context);

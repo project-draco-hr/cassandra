@@ -7,13 +7,33 @@
  catch (    InterruptedException e) {
       continue;
     }
-    Iterator<InetAddress> iter=endpoints.iterator();
+    ListIterator<InetAddress> iter=endpoints.listIterator();
     while (true) {
       try {
+        InetAddress address=iter.next();
+        String host=address.getHostName();
+        client=CqlConfigHelper.getOutputCluster(host,conf).connect();
+      }
+ catch (      Exception e) {
+        if (Thread.interrupted()) {
+          lastException=new IOException(e);
+          iter.previous();
+        }
+        closeInternal();
+        if ((e instanceof AuthenticationException || e instanceof InvalidQueryException) || !iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+      try {
         int i=0;
-        int itemId=preparedStatement(client);
+        PreparedStatement statement=preparedStatement(client);
         while (bindVariables != null) {
-          client.execute_prepared_cql3_query(itemId,bindVariables,ConsistencyLevel.ONE);
+          BoundStatement boundStatement=new BoundStatement(statement);
+          for (int columnPosition=0; columnPosition < bindVariables.size(); columnPosition++) {
+            boundStatement.setBytesUnsafe(columnPosition,bindVariables.get(columnPosition));
+          }
+          client.execute(boundStatement);
           i++;
           if (i >= batchThreshold)           break;
           bindVariables=queue.poll();
@@ -23,19 +43,6 @@
  catch (      Exception e) {
         closeInternal();
         if (!iter.hasNext()) {
-          lastException=new IOException(e);
-          break outer;
-        }
-      }
-      try {
-        InetAddress address=iter.next();
-        String host=address.getHostName();
-        int port=ConfigHelper.getOutputRpcPort(conf);
-        client=CqlOutputFormat.createAuthenticatedClient(host,port,conf);
-      }
- catch (      Exception e) {
-        closeInternal();
-        if ((!(e instanceof TException)) || !iter.hasNext()) {
           lastException=new IOException(e);
           break outer;
         }
