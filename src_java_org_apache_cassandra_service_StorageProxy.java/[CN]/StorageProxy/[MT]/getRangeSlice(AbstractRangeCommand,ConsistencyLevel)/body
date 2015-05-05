@@ -10,11 +10,21 @@
     List<? extends AbstractBounds<RowPosition>> ranges;
     if (keyspace.getReplicationStrategy() instanceof LocalStrategy)     ranges=command.keyRange.unwrap();
  else     ranges=getRestrictedRanges(command.keyRange);
-    float resultRowsPerRange=estimateResultRowsPerRange(command,keyspace);
-    resultRowsPerRange-=resultRowsPerRange * CONCURRENT_SUBREQUESTS_MARGIN;
-    int concurrencyFactor=resultRowsPerRange == 0.0 ? 1 : Math.max(1,Math.min(ranges.size(),(int)Math.ceil(command.limit() / resultRowsPerRange)));
-    logger.debug("Estimated result rows per range: {}; requested rows: {}, ranges.size(): {}; concurrent range requests: {}",resultRowsPerRange,command.limit(),ranges.size(),concurrencyFactor);
-    Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)",new Object[]{ranges.size(),concurrencyFactor,resultRowsPerRange});
+    int rowsToBeFetched=command.limit();
+    int concurrencyFactor;
+    if (command.requiresScanningAllRanges()) {
+      rowsToBeFetched*=ranges.size();
+      concurrencyFactor=ranges.size();
+      logger.debug("Requested rows: {}, ranges.size(): {}; concurrent range requests: {}",command.limit(),ranges.size(),concurrencyFactor);
+      Tracing.trace("Submitting range requests on {} ranges with a concurrency of {}",new Object[]{ranges.size(),concurrencyFactor});
+    }
+ else {
+      float resultRowsPerRange=estimateResultRowsPerRange(command,keyspace);
+      resultRowsPerRange-=resultRowsPerRange * CONCURRENT_SUBREQUESTS_MARGIN;
+      concurrencyFactor=resultRowsPerRange == 0.0 ? 1 : Math.max(1,Math.min(ranges.size(),(int)Math.ceil(command.limit() / resultRowsPerRange)));
+      logger.debug("Estimated result rows per range: {}; requested rows: {}, ranges.size(): {}; concurrent range requests: {}",resultRowsPerRange,command.limit(),ranges.size(),concurrencyFactor);
+      Tracing.trace("Submitting range requests on {} ranges with a concurrency of {} ({} rows per range expected)",new Object[]{ranges.size(),concurrencyFactor,resultRowsPerRange});
+    }
     boolean haveSufficientRows=false;
     int i=0;
     AbstractBounds<RowPosition> nextRange=null;
@@ -65,7 +75,6 @@
       Tracing.trace("Submitted {} concurrent range requests covering {} ranges",concurrentRequests,i - concurrentFetchStartingIndex);
       List<AsyncOneResponse> repairResponses=new ArrayList<>();
       for (      Pair<AbstractRangeCommand,ReadCallback<RangeSliceReply,Iterable<Row>>> cmdPairHandler : scanHandlers) {
-        AbstractRangeCommand nodeCmd=cmdPairHandler.left;
         ReadCallback<RangeSliceReply,Iterable<Row>> handler=cmdPairHandler.right;
         RangeSliceResponseResolver resolver=(RangeSliceResponseResolver)handler.resolver;
         try {
@@ -91,7 +100,7 @@ catch (        DigestMismatchException e) {
           throw new AssertionError(e);
         }
         int count=countLiveRows ? liveRowCount : rows.size();
-        if (count >= nodeCmd.limit()) {
+        if (count >= rowsToBeFetched) {
           haveSufficientRows=true;
           break;
         }
@@ -105,10 +114,10 @@ catch (        DigestMismatchException e) {
  else         logger.debug("Range slice timeout while read-repairing after receiving all {} data and digest responses",blockFor);
         throw new ReadTimeoutException(consistency_level,blockFor - 1,blockFor,true);
       }
-      if (haveSufficientRows)       return trim(command,rows);
+      if (haveSufficientRows)       return command.postReconciliationProcessing(rows);
       if (i < ranges.size()) {
         float fetchedRows=countLiveRows ? liveRowCount : rows.size();
-        float remainingRows=command.limit() - fetchedRows;
+        float remainingRows=rowsToBeFetched - fetchedRows;
         float actualRowsPerRange;
         if (fetchedRows == 0.0) {
           actualRowsPerRange=0.0f;
@@ -127,5 +136,5 @@ catch (        DigestMismatchException e) {
     rangeMetrics.addNano(latency);
     Keyspace.open(command.keyspace).getColumnFamilyStore(command.columnFamily).metric.coordinatorScanLatency.update(latency,TimeUnit.NANOSECONDS);
   }
-  return trim(command,rows);
+  return command.postReconciliationProcessing(rows);
 }
