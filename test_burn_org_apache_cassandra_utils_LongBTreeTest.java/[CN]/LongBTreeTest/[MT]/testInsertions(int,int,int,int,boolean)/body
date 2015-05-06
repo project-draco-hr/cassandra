@@ -1,0 +1,32 @@
+{
+  int batchesPerTest=perTestCount / modificationBatchSize;
+  int maximumRunLength=100;
+  int testKeyRange=perTestCount * testKeyRatio;
+  int tests=totalCount / perTestCount;
+  System.out.println(String.format("Performing %d tests of %d operations, with %.2f max size/key-range ratio in batches of ~%d ops",tests,perTestCount,1 / (float)testKeyRatio,modificationBatchSize));
+  int chunkSize=quickEquality ? tests : (int)(100000 / Math.pow(perTestCount,2));
+  for (int chunk=0; chunk < tests; chunk+=chunkSize) {
+    final List<ListenableFutureTask<List<ListenableFuture<?>>>> outer=new ArrayList<>();
+    for (int i=0; i < chunkSize; i++) {
+      outer.add(doOneTestInsertions(testKeyRange,maximumRunLength,modificationBatchSize,batchesPerTest,quickEquality));
+    }
+    final List<ListenableFuture<?>> inner=new ArrayList<>();
+    int complete=0;
+    int reportInterval=totalCount / 100;
+    int lastReportAt=0;
+    for (    ListenableFutureTask<List<ListenableFuture<?>>> f : outer) {
+      inner.addAll(f.get());
+      complete+=perTestCount;
+      if (complete - lastReportAt >= reportInterval) {
+        System.out.println(String.format("Completed %d of %d operations",(chunk * perTestCount) + complete,totalCount));
+        lastReportAt=complete;
+      }
+    }
+    Futures.allAsList(inner).get();
+  }
+  Snapshot snap=BTREE_TIMER.getSnapshot();
+  System.out.println(String.format("btree   : %.2fns, %.2fns, %.2fns",snap.getMedian(),snap.get95thPercentile(),snap.get999thPercentile()));
+  snap=TREE_TIMER.getSnapshot();
+  System.out.println(String.format("snaptree: %.2fns, %.2fns, %.2fns",snap.getMedian(),snap.get95thPercentile(),snap.get999thPercentile()));
+  System.out.println("Done");
+}
