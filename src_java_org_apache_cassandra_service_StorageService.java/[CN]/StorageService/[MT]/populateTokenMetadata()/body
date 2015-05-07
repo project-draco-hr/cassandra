@@ -1,0 +1,9 @@
+{
+  if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
+    logger.info("Populating token metadata from system tables");
+    Multimap<InetAddress,Token> loadedTokens=SystemKeyspace.loadTokens();
+    if (!shouldBootstrap())     loadedTokens.putAll(FBUtilities.getBroadcastAddress(),SystemKeyspace.getSavedTokens());
+    for (    InetAddress ep : loadedTokens.keySet())     tokenMetadata.updateNormalTokens(loadedTokens.get(ep),ep);
+    logger.info("Token metadata: {}",tokenMetadata);
+  }
+}
