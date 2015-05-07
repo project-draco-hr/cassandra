@@ -24,12 +24,11 @@
     }
     Collections.sort(view.sstables,SSTableReader.maxTimestampComparator);
     List<SSTableReader> skippedSSTables=null;
-    long mostRecentRowTombstone=Long.MIN_VALUE;
     long minTimestamp=Long.MAX_VALUE;
     int nonIntersectingSSTables=0;
     for (    SSTableReader sstable : view.sstables) {
       minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
-      if (sstable.getMaxTimestamp() < mostRecentRowTombstone)       break;
+      if (sstable.getMaxTimestamp() < returnDeletionInfo.getTopLevelDeletion().markedForDeleteAt)       break;
       if (!filter.shouldInclude(sstable)) {
         nonIntersectingSSTables++;
         if (sstable.getSSTableMetadata().maxLocalDeletionTime != Integer.MAX_VALUE) {
@@ -43,7 +42,6 @@
       iterators.add(iter);
       if (iter.getColumnFamily() != null) {
         ColumnFamily cf=iter.getColumnFamily();
-        if (cf.isMarkedForDelete())         mostRecentRowTombstone=cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
         returnCF.delete(cf);
         sstablesIterated++;
       }
