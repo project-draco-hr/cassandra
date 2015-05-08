@@ -85,9 +85,17 @@ catch (        Exception e) {
         }
       }
       if (!fullRepair) {
-        ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors,successful);
+        ListenableFuture future=ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors,successful);
+        future.addListener(new Runnable(){
+          @Override public void run(){
+            sendNotification("repair",String.format("Repair command #%d finished",cmd),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+          }
+        }
+,MoreExecutors.sameThreadExecutor());
       }
-      sendNotification("repair",String.format("Repair command #%d finished",cmd),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+ else {
+        sendNotification("repair",String.format("Repair command #%d finished",cmd),new int[]{cmd,ActiveRepairService.Status.FINISHED.ordinal()});
+      }
     }
   }
 ,null);

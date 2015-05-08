@@ -39,7 +39,13 @@ break;
 case ANTICOMPACTION_REQUEST:
 logger.debug("Got anticompaction request");
 AnticompactionRequest anticompactionRequest=(AnticompactionRequest)message.payload;
-ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
+ListenableFuture<?> compactionDone=ActiveRepairService.instance.doAntiCompaction(anticompactionRequest.parentRepairSession);
+compactionDone.addListener(new Runnable(){
+@Override public void run(){
+MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
+}
+}
+,MoreExecutors.sameThreadExecutor());
 break;
 default :
 ActiveRepairService.instance.handleMessage(message.from,message.payload);
