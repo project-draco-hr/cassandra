@@ -5,26 +5,8 @@
   rm=new Mutation(KEYSPACENOCOMMIT,ByteBufferUtil.bytes("row"));
   rm.add("Standard1",Util.cellname("commit2"),ByteBufferUtil.bytes("abcd"),0);
   rm.apply();
-  boolean commitLogMessageFound=false;
-  boolean noCommitLogMessageFound=false;
-  File commitLogDir=new File(DatabaseDescriptor.getCommitLogLocation());
-  byte[] commitBytes="commit".getBytes("UTF-8");
-  for (  String filename : commitLogDir.list()) {
-    BufferedInputStream is=null;
-    try {
-      is=new BufferedInputStream(new FileInputStream(commitLogDir.getAbsolutePath() + File.separator + filename));
-      if (!isEmptyCommitLog(is)) {
-        while (findPatternInStream(commitBytes,is)) {
-          char c=(char)is.read();
-          if (c == '1')           commitLogMessageFound=true;
- else           if (c == '2')           noCommitLogMessageFound=true;
-        }
-      }
-    }
-  finally {
-      if (is != null)       is.close();
-    }
-  }
-  assertTrue(commitLogMessageFound);
-  assertFalse(noCommitLogMessageFound);
+  Checker checker=new Checker();
+  CommitLogTestReplayer.examineCommitLog(checker);
+  assertTrue(checker.commitLogMessageFound);
+  assertFalse(checker.noCommitLogMessageFound);
 }
