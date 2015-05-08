@@ -85,28 +85,27 @@
 );
     futures.add(session);
   }
+  final Collection<Range<Token>> successfulRanges=new ArrayList<>();
+  final AtomicBoolean hasFailure=new AtomicBoolean();
   final ListenableFuture<List<RepairSessionResult>> allSessions=Futures.successfulAsList(futures);
-  Futures.addCallback(allSessions,new FutureCallback<List<RepairSessionResult>>(){
-    public void onSuccess(    List<RepairSessionResult> result){
-      boolean hasFailure=false;
-      Collection<Range<Token>> successfulRanges=new ArrayList<>();
-      for (      RepairSessionResult sessionResult : result) {
+  ListenableFuture anticompactionResult=Futures.transform(allSessions,new AsyncFunction<List<RepairSessionResult>,Object>(){
+    @SuppressWarnings("unchecked") public ListenableFuture apply(    List<RepairSessionResult> results) throws Exception {
+      for (      RepairSessionResult sessionResult : results) {
         if (sessionResult != null) {
           successfulRanges.add(sessionResult.range);
         }
  else {
-          hasFailure=true;
+          hasFailure.compareAndSet(false,true);
         }
       }
-      try {
-        ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors,successfulRanges);
-        SystemDistributedKeyspace.successfulParentRepair(parentSession,successfulRanges);
-      }
- catch (      Exception e) {
-        logger.error("Error in incremental repair",e);
-        SystemDistributedKeyspace.failParentRepair(parentSession,e);
-      }
-      if (hasFailure) {
+      return ActiveRepairService.instance.finishParentSession(parentSession,allNeighbors,successfulRanges);
+    }
+  }
+);
+  Futures.addCallback(anticompactionResult,new FutureCallback<Object>(){
+    public void onSuccess(    Object result){
+      SystemDistributedKeyspace.successfulParentRepair(parentSession,successfulRanges);
+      if (hasFailure.get()) {
         fireProgressEvent(tag,new ProgressEvent(ProgressEventType.ERROR,progress.get(),totalProgress,"Some repair failed"));
       }
  else {

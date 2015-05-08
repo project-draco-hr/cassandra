@@ -1,8 +1,10 @@
 {
+  List<ListenableFuture<?>> tasks=new ArrayList<>(neighbors.size() + 1);
   for (  InetAddress neighbor : neighbors) {
-    AnticompactionRequest acr=new AnticompactionRequest(parentSession,successfulRanges);
-    MessageOut<RepairMessage> req=acr.createMessage();
-    MessagingService.instance().sendOneWay(req,neighbor);
+    AnticompactionTask task=new AnticompactionTask(parentSession,neighbor,successfulRanges);
+    tasks.add(task);
+    task.run();
   }
-  doAntiCompaction(parentSession,successfulRanges).get();
+  tasks.add(doAntiCompaction(parentSession,successfulRanges));
+  return Futures.successfulAsList(tasks);
 }
