@@ -1,7 +1,7 @@
 {
   if (DatabaseDescriptor.getAuthenticator() instanceof AllowAllAuthenticator)   return null;
-  if (validityPeriod <= 0)   return null;
-  return CacheBuilder.newBuilder().refreshAfterWrite(updateInterval,TimeUnit.MILLISECONDS).expireAfterWrite(validityPeriod,TimeUnit.MILLISECONDS).maximumSize(maxEntries).build(new CacheLoader<RoleResource,Set<RoleResource>>(){
+  if (DatabaseDescriptor.getRolesValidity() <= 0)   return null;
+  LoadingCache<RoleResource,Set<RoleResource>> newcache=CacheBuilder.newBuilder().refreshAfterWrite(DatabaseDescriptor.getRolesUpdateInterval(),TimeUnit.MILLISECONDS).expireAfterWrite(DatabaseDescriptor.getRolesValidity(),TimeUnit.MILLISECONDS).maximumSize(DatabaseDescriptor.getRolesCacheMaxEntries()).build(new CacheLoader<RoleResource,Set<RoleResource>>(){
     public Set<RoleResource> load(    RoleResource primaryRole){
       return roleManager.getRoles(primaryRole,true);
     }
@@ -24,4 +24,6 @@
     }
   }
 );
+  if (existing != null)   newcache.putAll(existing.asMap());
+  return newcache;
 }
