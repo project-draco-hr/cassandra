@@ -2,15 +2,30 @@
   Refs<SSTableReader> refs=new Refs<>();
   try {
     for (    ColumnFamilyStore cfStore : stores) {
-      List<AbstractBounds<RowPosition>> rowBoundsList=new ArrayList<>(ranges.size());
+      final List<AbstractBounds<RowPosition>> rowBoundsList=new ArrayList<>(ranges.size());
       for (      Range<Token> range : ranges)       rowBoundsList.add(Range.makeRowRange(range));
-      refs.addAll(cfStore.selectAndReference(cfStore.viewFilter(rowBoundsList,!isIncremental)).refs);
+      refs.addAll(cfStore.selectAndReference(new Function<DataTracker.View,List<SSTableReader>>(){
+        public List<SSTableReader> apply(        DataTracker.View view){
+          List<SSTableReader> filteredSSTables=ColumnFamilyStore.CANONICAL_SSTABLES.apply(view);
+          Set<SSTableReader> sstables=Sets.newHashSet();
+          if (filteredSSTables != null) {
+            for (            AbstractBounds<RowPosition> rowBounds : rowBoundsList) {
+              for (              SSTableReader sstable : view.sstablesInBounds(rowBounds)) {
+                if (filteredSSTables.contains(sstable) && (!isIncremental || !sstable.isRepaired()))                 sstables.add(sstable);
+              }
+            }
+          }
+          logger.debug("ViewFilter for {}/{} sstables",sstables.size(),view.sstables.size());
+          return ImmutableList.copyOf(sstables);
+        }
+      }
+).refs);
     }
     List<SSTableStreamingSections> sections=new ArrayList<>(refs.size());
     for (    SSTableReader sstable : refs) {
       long repairedAt=overriddenRepairedAt;
       if (overriddenRepairedAt == ActiveRepairService.UNREPAIRED_SSTABLE)       repairedAt=sstable.getSSTableMetadata().repairedAt;
-      sections.add(new SSTableStreamingSections(sstable,refs.get(sstable),sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges),repairedAt));
+      sections.add(new SSTableStreamingSections(refs.get(sstable),sstable.getPositionsForRanges(ranges),sstable.estimatedKeysForRanges(ranges),repairedAt));
     }
     return sections;
   }
