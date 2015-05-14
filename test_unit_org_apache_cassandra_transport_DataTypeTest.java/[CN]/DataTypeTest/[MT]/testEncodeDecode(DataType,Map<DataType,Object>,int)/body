@@ -1,0 +1,23 @@
+{
+  ByteBuf dest=type.codec.encode(options,version);
+  Map<DataType,Object> results=type.codec.decode(dest,version);
+  for (  DataType key : results.keySet()) {
+    int ssize=type.serializedValueSize(results.get(key),version);
+    int esize=version < type.getProtocolVersion() ? 2 + TypeSizes.encodedUTF8Length(results.get(key).toString()) : 0;
+switch (type) {
+case LIST:
+case SET:
+      esize+=2;
+    break;
+case MAP:
+  esize+=4;
+break;
+case CUSTOM:
+esize=8;
+break;
+}
+assertEquals(esize,ssize);
+DataType expected=version < type.getProtocolVersion() ? DataType.CUSTOM : type;
+assertEquals(expected,key);
+}
+}
