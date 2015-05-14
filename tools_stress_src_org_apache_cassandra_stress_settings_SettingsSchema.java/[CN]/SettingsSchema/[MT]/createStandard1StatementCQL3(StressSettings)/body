@@ -1,0 +1,20 @@
+{
+  StringBuilder b=new StringBuilder();
+  b.append("CREATE TABLE IF NOT EXISTS ").append("standard1 (key blob PRIMARY KEY ");
+  try {
+    for (    ByteBuffer name : settings.columns.names)     b.append("\n, \"").append(ByteBufferUtil.string(name)).append("\" blob");
+  }
+ catch (  CharacterCodingException e) {
+    throw new RuntimeException(e);
+  }
+  b.append(") WITH COMPACT STORAGE AND compression = {");
+  if (compression != null)   b.append("'sstable_compression' : '").append(compression).append("'");
+  b.append("}");
+  if (compactionStrategy != null) {
+    b.append(" AND compaction = { 'class' : '").append(compactionStrategy).append("'");
+    for (    Map.Entry<String,String> entry : compactionStrategyOptions.entrySet())     b.append(", '").append(entry.getKey()).append("' : '").append(entry.getValue()).append("'");
+    b.append("}");
+  }
+  b.append(";\n");
+  return b.toString();
+}
