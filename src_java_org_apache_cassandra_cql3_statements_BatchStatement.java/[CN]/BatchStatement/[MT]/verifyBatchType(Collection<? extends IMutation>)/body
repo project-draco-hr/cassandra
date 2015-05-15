@@ -1,0 +1,12 @@
+{
+  if (type != Type.LOGGED && mutations.size() > 1) {
+    Set<String> ksCfPairs=new HashSet<>();
+    Set<ByteBuffer> keySet=new HashSet<>();
+    for (    IMutation im : mutations) {
+      keySet.add(im.key());
+      for (      ColumnFamily cf : im.getColumnFamilies())       ksCfPairs.add(String.format("%s.%s",cf.metadata().ksName,cf.metadata().cfName));
+    }
+    NoSpamLogger.log(logger,NoSpamLogger.Level.WARN,1,TimeUnit.MINUTES,unloggedBatchWarning,keySet.size(),keySet.size() == 1 ? "" : "s",ksCfPairs.size() == 1 ? "" : "s",ksCfPairs);
+    ClientWarn.warn(MessageFormatter.arrayFormat(unloggedBatchWarning,new Object[]{keySet.size(),keySet.size() == 1 ? "" : "s",ksCfPairs.size() == 1 ? "" : "s",ksCfPairs}).getMessage());
+  }
+}
