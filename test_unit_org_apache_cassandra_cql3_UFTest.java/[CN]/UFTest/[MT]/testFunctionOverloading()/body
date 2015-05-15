@@ -1,11 +1,11 @@
 {
   createTable("CREATE TABLE %s (k text PRIMARY KEY, v int)");
   execute("INSERT INTO %s(k, v) VALUES (?, ?)","f2",1);
-  String fOverload=createFunction(KEYSPACE_PER_TEST,"varchar","CREATE FUNCTION %s ( input varchar ) " + "RETURNS text " + "LANGUAGE java "+ "AS 'return \"f1\";'");
-  createFunctionOverload(fOverload,"int","CREATE OR REPLACE FUNCTION %s(i int) RETURNS text LANGUAGE java AS 'return \"f2\";'");
-  createFunctionOverload(fOverload,"text,text","CREATE OR REPLACE FUNCTION %s(v1 text, v2 text) RETURNS text LANGUAGE java AS 'return \"f3\";'");
-  createFunctionOverload(fOverload,"ascii","CREATE OR REPLACE FUNCTION %s(v ascii) RETURNS text LANGUAGE java AS 'return \"f1\";'");
-  assertInvalidMessage("already exists","CREATE FUNCTION " + fOverload + "(v varchar) RETURNS text LANGUAGE java AS 'return \"f1\";'");
+  String fOverload=createFunction(KEYSPACE_PER_TEST,"varchar","CREATE FUNCTION %s ( input varchar ) " + "RETURNS NULL ON NULL INPUT " + "RETURNS text "+ "LANGUAGE java "+ "AS 'return \"f1\";'");
+  createFunctionOverload(fOverload,"int","CREATE OR REPLACE FUNCTION %s(i int) " + "RETURNS NULL ON NULL INPUT " + "RETURNS text "+ "LANGUAGE java "+ "AS 'return \"f2\";'");
+  createFunctionOverload(fOverload,"text,text","CREATE OR REPLACE FUNCTION %s(v1 text, v2 text) " + "RETURNS NULL ON NULL INPUT " + "RETURNS text "+ "LANGUAGE java "+ "AS 'return \"f3\";'");
+  createFunctionOverload(fOverload,"ascii","CREATE OR REPLACE FUNCTION %s(v ascii) " + "RETURNS NULL ON NULL INPUT " + "RETURNS text "+ "LANGUAGE java "+ "AS 'return \"f1\";'");
+  assertInvalidMessage("already exists","CREATE FUNCTION " + fOverload + "(v varchar) "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java AS 'return \"f1\";'");
   assertRows(execute("SELECT " + fOverload + "(k), "+ fOverload+ "(v), "+ fOverload+ "(k, k) FROM %s"),row("f1","f2","f3"));
   forcePreparedValues();
   assertInvalidMessage("Ambiguous call to function","SELECT v FROM %s WHERE k = " + fOverload + "(?)","foo");

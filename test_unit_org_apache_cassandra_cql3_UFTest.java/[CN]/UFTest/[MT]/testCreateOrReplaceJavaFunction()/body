@@ -3,8 +3,8 @@
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1d);
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",2,2d);
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",3,3d);
-  String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE FUNCTION %s( input double ) " + "RETURNS double LANGUAGE java\n" + "AS '\n"+ "  // parameter val is of type java.lang.Double\n"+ "  /* return type is of type java.lang.Double */\n"+ "  if (input == null) {\n"+ "    return null;\n"+ "  }\n"+ "  return Math.sin( input );\n"+ "';");
+  String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE FUNCTION %s( input double ) " + "CALLED ON NULL INPUT " + "RETURNS double "+ "LANGUAGE java "+ "AS '\n"+ "  // parameter val is of type java.lang.Double\n"+ "  /* return type is of type java.lang.Double */\n"+ "  if (input == null) {\n"+ "    return null;\n"+ "  }\n"+ "  return Math.sin( input );\n"+ "';");
   assertRows(execute("SELECT key, val, " + fName + "(val) FROM %s"),row(1,1d,Math.sin(1d)),row(2,2d,Math.sin(2d)),row(3,3d,Math.sin(3d)));
-  execute("CREATE OR REPLACE FUNCTION " + fName + "( input double ) "+ "RETURNS double LANGUAGE java\n"+ "AS '\n"+ "  return input;\n"+ "';");
+  execute("CREATE OR REPLACE FUNCTION " + fName + "( input double ) "+ "CALLED ON NULL INPUT "+ "RETURNS double "+ "LANGUAGE java\n"+ "AS '\n"+ "  return input;\n"+ "';");
   assertRows(execute("SELECT key, val, " + fName + "(val) FROM %s"),row(1,1d,1d),row(2,2d,2d),row(3,3d,3d));
 }
