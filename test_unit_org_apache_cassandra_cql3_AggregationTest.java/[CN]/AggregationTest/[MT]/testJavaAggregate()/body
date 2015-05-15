@@ -3,8 +3,8 @@
   execute("INSERT INTO %s (a, b) VALUES (1, 1)");
   execute("INSERT INTO %s (a, b) VALUES (2, 2)");
   execute("INSERT INTO %s (a, b) VALUES (3, 3)");
-  String fState=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "RETURNS int " + "LANGUAGE java "+ "AS 'return Integer.valueOf((a!=null?a.intValue():0) + b.intValue());'");
-  String fFinal=createFunction(KEYSPACE,"int","CREATE FUNCTION %s(a int) " + "RETURNS text " + "LANGUAGE java "+ "AS 'return a.toString();'");
+  String fState=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "CALLED ON NULL INPUT " + "RETURNS int "+ "LANGUAGE java "+ "AS 'return Integer.valueOf((a!=null?a.intValue():0) + b.intValue());'");
+  String fFinal=createFunction(KEYSPACE,"int","CREATE FUNCTION %s(a int) " + "CALLED ON NULL INPUT " + "RETURNS text "+ "LANGUAGE java "+ "AS 'return a.toString();'");
   String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + " "+ "STYPE int "+ "FINALFUNC "+ shortFunctionName(fFinal)+ " "+ "INITCOND 42");
   assertRows(execute("SELECT " + a + "(b) FROM %s"),row("48"));
   execute("DROP AGGREGATE " + a + "(int)");

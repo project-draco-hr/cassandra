@@ -1,8 +1,8 @@
 {
   createTable("CREATE TABLE %s (key int primary key, dval double)");
   execute("INSERT INTO %s (key, dval) VALUES (?, ?)",1,1d);
-  String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) RETURNS double LANGUAGE JAVA\n" + "AS 'throw new RuntimeException();';");
+  String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVA\n"+ "AS 'throw new RuntimeException();';");
   UDFunction f=(UDFunction)Functions.find(parseFunctionName(fName)).get(0);
-  Functions.replaceFunction(UDFunction.createBrokenFunction(f.name(),f.argNames(),f.argTypes(),f.returnType(),"java",f.body(),new InvalidRequestException("foo bar is broken")));
+  Functions.replaceFunction(UDFunction.createBrokenFunction(f.name(),f.argNames(),f.argTypes(),f.returnType(),true,"java",f.body(),new InvalidRequestException("foo bar is broken")));
   assertInvalidThrowMessage("foo bar is broken",InvalidRequestException.class,"SELECT key, " + fName + "(dval) FROM %s");
 }
