@@ -1,16 +1,15 @@
 {
+  List<ListenableFuture<?>> tasks=new ArrayList<>(neighbors.size() + 1);
+  for (  InetAddress neighbor : neighbors) {
+    AnticompactionTask task=new AnticompactionTask(parentSession,neighbor,doAntiCompaction);
+    tasks.add(task);
+    task.run();
+  }
   if (doAntiCompaction) {
-    List<ListenableFuture<?>> tasks=new ArrayList<>(neighbors.size() + 1);
-    for (    InetAddress neighbor : neighbors) {
-      AnticompactionTask task=new AnticompactionTask(parentSession,neighbor);
-      tasks.add(task);
-      task.run();
-    }
     tasks.add(doAntiCompaction(parentSession));
-    return Futures.successfulAsList(tasks);
   }
  else {
     removeParentRepairSession(parentSession);
-    return Futures.immediateFuture(null);
   }
+  return Futures.successfulAsList(tasks);
 }
