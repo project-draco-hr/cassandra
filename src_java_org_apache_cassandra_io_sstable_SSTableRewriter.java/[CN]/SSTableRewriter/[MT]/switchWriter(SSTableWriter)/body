@@ -1,23 +1,16 @@
 {
-  if (writer == null) {
+  if (writer == null || writer.getFilePointer() == 0) {
+    if (writer != null)     writer.abort();
     writer=newWriter;
     return;
   }
-  if (writer.getFilePointer() != 0) {
-    if (preemptiveOpenInterval == Long.MAX_VALUE) {
-      SSTableReader reader=writer.finish(SSTableWriter.FinishType.NORMAL,maxAge,-1);
-      finishedReaders.add(reader);
-    }
- else {
-      SSTableReader reader=writer.finish(SSTableWriter.FinishType.EARLY,maxAge,-1);
-      replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
-      moveStarts(reader,reader.last,false);
-      finishedEarly.add(new Finished(writer,reader));
-    }
+  SSTableReader reader=null;
+  if (preemptiveOpenInterval != Long.MAX_VALUE) {
+    reader=writer.setMaxDataAge(maxAge).openFinalEarly();
+    replaceEarlyOpenedFile(currentlyOpenedEarly,reader);
+    moveStarts(reader,reader.last,false);
   }
- else {
-    writer.abort();
-  }
+  finishedWriters.add(new Finished(writer,reader));
   currentlyOpenedEarly=null;
   currentlyOpenedEarlyAt=0;
   writer=newWriter;

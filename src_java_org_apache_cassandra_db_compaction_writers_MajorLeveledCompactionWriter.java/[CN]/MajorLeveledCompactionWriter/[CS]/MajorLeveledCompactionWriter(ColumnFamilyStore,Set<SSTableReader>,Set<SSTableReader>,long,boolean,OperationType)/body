@@ -1,8 +1,7 @@
 {
-  super(cfs,nonExpiredSSTables);
+  super(cfs,allSSTables,nonExpiredSSTables,offline);
   this.maxSSTableSize=maxSSTableSize;
   this.allSSTables=allSSTables;
-  rewriter=new SSTableRewriter(cfs,allSSTables,CompactionTask.getMaxDataAge(nonExpiredSSTables),offline);
   expectedWriteSize=Math.min(maxSSTableSize,cfs.getExpectedCompactedFileSize(nonExpiredSSTables,compactionType));
   long estimatedSSTables=Math.max(1,SSTableReader.getTotalBytes(nonExpiredSSTables) / maxSSTableSize);
   long keysPerSSTable=estimatedTotalKeys / estimatedSSTables;
@@ -10,5 +9,5 @@
   skipAncestors=estimatedSSTables * allSSTables.size() > 200000;
   if (skipAncestors)   logger.warn("Many sstables involved in compaction, skipping storing ancestor information to avoid running out of memory");
   SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),keysPerSSTable,minRepairedAt,cfs.metadata,cfs.partitioner,new MetadataCollector(allSSTables,cfs.metadata.comparator,currentLevel,skipAncestors));
-  rewriter.switchWriter(writer);
+  sstableWriter.switchWriter(writer);
 }

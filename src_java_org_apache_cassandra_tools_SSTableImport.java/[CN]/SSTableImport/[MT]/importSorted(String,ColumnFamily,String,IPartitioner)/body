@@ -14,34 +14,35 @@
   }
   System.out.printf("Importing %s keys...%n",keyCountToImport);
   parser=getParser(jsonFile);
-  SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(ssTablePath),keyCountToImport,ActiveRepairService.UNREPAIRED_SSTABLE);
-  int lineNumber=1;
-  DecoratedKey prevStoredKey=null;
-  parser.nextToken();
-  while (parser.nextToken() != null) {
-    String key=parser.getCurrentName();
-    Map<?,?> row=parser.readValueAs(new TypeReference<Map<?,?>>(){
-    }
+  try (SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(ssTablePath),keyCountToImport,ActiveRepairService.UNREPAIRED_SSTABLE)){
+    int lineNumber=1;
+    DecoratedKey prevStoredKey=null;
+    parser.nextToken();
+    while (parser.nextToken() != null) {
+      String key=parser.getCurrentName();
+      Map<?,?> row=parser.readValueAs(new TypeReference<Map<?,?>>(){
+      }
 );
-    DecoratedKey currentKey=partitioner.decorateKey(getKeyValidator(columnFamily).fromString((String)row.get("key")));
-    if (row.containsKey("metadata"))     parseMeta((Map<?,?>)row.get("metadata"),columnFamily,null);
-    addColumnsToCF((List<?>)row.get("cells"),columnFamily);
-    if (prevStoredKey != null && prevStoredKey.compareTo(currentKey) != -1) {
-      System.err.printf("Line %d: Key %s is greater than previous, collection is not sorted properly. Aborting import. You might need to delete SSTables manually.%n",lineNumber,key);
-      return -1;
+      DecoratedKey currentKey=partitioner.decorateKey(getKeyValidator(columnFamily).fromString((String)row.get("key")));
+      if (row.containsKey("metadata"))       parseMeta((Map<?,?>)row.get("metadata"),columnFamily,null);
+      addColumnsToCF((List<?>)row.get("cells"),columnFamily);
+      if (prevStoredKey != null && prevStoredKey.compareTo(currentKey) != -1) {
+        System.err.printf("Line %d: Key %s is greater than previous, collection is not sorted properly. Aborting import. You might need to delete SSTables manually.%n",lineNumber,key);
+        return -1;
+      }
+      writer.append(currentKey,columnFamily);
+      columnFamily.clear();
+      prevStoredKey=currentKey;
+      importedKeys++;
+      lineNumber++;
+      long current=System.nanoTime();
+      if (TimeUnit.NANOSECONDS.toSeconds(current - start) >= 5) {
+        System.out.printf("Currently imported %d keys.%n",importedKeys);
+        start=current;
+      }
+      if (keyCountToImport == importedKeys)       break;
     }
-    writer.append(currentKey,columnFamily);
-    columnFamily.clear();
-    prevStoredKey=currentKey;
-    importedKeys++;
-    lineNumber++;
-    long current=System.nanoTime();
-    if (TimeUnit.NANOSECONDS.toSeconds(current - start) >= 5) {
-      System.out.printf("Currently imported %d keys.%n",importedKeys);
-      start=current;
-    }
-    if (keyCountToImport == importedKeys)     break;
+    writer.finish(true);
+    return importedKeys;
   }
-  writer.closeAndOpenReader();
-  return importedKeys;
-}
+ }

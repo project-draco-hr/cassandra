@@ -1,0 +1,17 @@
+{
+  Assert.assertTrue(file.exists());
+  Assert.assertTrue(offsetsFile.exists());
+  DataInputStream offsets=new DataInputStream(new ByteArrayInputStream(readFileToByteArray(offsetsFile)));
+  Assert.assertTrue(offsets.readUTF().endsWith("LZ4Compressor"));
+  Assert.assertEquals(0,offsets.readInt());
+  Assert.assertEquals(BUFFER_SIZE,offsets.readInt());
+  Assert.assertEquals(fullContents.length,offsets.readLong());
+  Assert.assertEquals(2,offsets.readInt());
+  Assert.assertEquals(0,offsets.readLong());
+  int offset=(int)offsets.readLong();
+  byte[] compressed=readFileToByteArray(file);
+  byte[] uncompressed=new byte[fullContents.length];
+  LZ4Compressor.instance.uncompress(compressed,0,offset - 4,uncompressed,0);
+  LZ4Compressor.instance.uncompress(compressed,offset,compressed.length - (4 + offset),uncompressed,partialContents.length);
+  Assert.assertTrue(Arrays.equals(fullContents,uncompressed));
+}
