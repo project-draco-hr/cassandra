@@ -5,15 +5,15 @@
   File metadata=new File(file.getPath() + ".meta");
   metadata.deleteOnExit();
   MetadataCollector sstableMetadataCollector=new MetadataCollector(new SimpleDenseCellNameType(BytesType.instance)).replayPosition(null);
-  SequentialWriter writer=new CompressedSequentialWriter(file,metadata.getPath(),new CompressionParameters(SnappyCompressor.instance),sstableMetadataCollector);
-  writer.write(CONTENT.getBytes());
-  writer.close();
-  ChannelProxy channel=new ChannelProxy(file);
+  try (SequentialWriter writer=new CompressedSequentialWriter(file,metadata.getPath(),new CompressionParameters(SnappyCompressor.instance),sstableMetadataCollector)){
+    writer.write(CONTENT.getBytes());
+    writer.finish();
+  }
+   ChannelProxy channel=new ChannelProxy(file);
   CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length());
   CompressionMetadata.Chunk chunk=meta.chunkFor(0);
   RandomAccessReader reader=CompressedRandomAccessReader.open(channel,meta);
   assertEquals(CONTENT,reader.readLine());
-  reader.close();
   Random random=new Random();
   RandomAccessFile checksumModifier=null;
   try {

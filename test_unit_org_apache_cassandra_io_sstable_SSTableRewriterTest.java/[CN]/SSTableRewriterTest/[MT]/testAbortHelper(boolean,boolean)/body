@@ -7,10 +7,8 @@
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   cfs.getDataTracker().markCompacting(compacting);
   SSTableRewriter.overrideOpenInterval(10000000);
-  SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,offline);
-  SSTableWriter w=getWriter(cfs,s.descriptor.directory);
-  rewriter.switchWriter(w);
-  try (ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
+  try (SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,offline);ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
+    rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
     while (scanner.hasNext()) {
       rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
       if (rewriter.currentWriter().getOnDiskFilePointer() > 25000000) {
@@ -18,7 +16,8 @@
       }
     }
     try {
-      rewriter.finishAndThrow(earlyException);
+      rewriter.throwDuringPrepare(earlyException);
+      rewriter.prepareToCommit();
     }
  catch (    Throwable t) {
       rewriter.abort();

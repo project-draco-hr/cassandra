@@ -1,8 +1,7 @@
 {
   logger.info("Writing {}",Memtable.this.toString());
   SSTableReader ssTable;
-  SSTableWriter writer=createFlushWriter(cfs.getTempSSTablePath(sstableDirectory));
-  try {
+  try (SSTableWriter writer=createFlushWriter(cfs.getTempSSTablePath(sstableDirectory))){
     boolean trackContention=logger.isDebugEnabled();
     int heavilyContendedRowCount=0;
     for (    Map.Entry<RowPosition,AtomicBTreeColumns> entry : rows.entrySet()) {
@@ -14,20 +13,14 @@
       if (!cf.isEmpty())       writer.append((DecoratedKey)entry.getKey(),cf);
     }
     if (writer.getFilePointer() > 0) {
-      writer.isolateReferences();
-      ssTable=writer.closeAndOpenReader();
+      ssTable=writer.finish(true);
       logger.info(String.format("Completed flushing %s (%d bytes) for commitlog position %s",ssTable.getFilename(),new File(ssTable.getFilename()).length(),context));
     }
  else {
-      writer.abort();
       ssTable=null;
       logger.info("Completed flushing; nothing needed to be retained.  Commitlog position was {}",context);
     }
     if (heavilyContendedRowCount > 0)     logger.debug(String.format("High update contention in %d/%d partitions of %s ",heavilyContendedRowCount,rows.size(),Memtable.this.toString()));
     return ssTable;
   }
- catch (  Throwable e) {
-    writer.abort();
-    throw Throwables.propagate(e);
-  }
-}
+ }
