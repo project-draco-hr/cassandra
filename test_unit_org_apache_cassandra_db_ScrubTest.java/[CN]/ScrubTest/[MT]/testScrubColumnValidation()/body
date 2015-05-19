@@ -4,5 +4,13 @@
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("test_compact_static_columns");
   QueryProcessor.processInternal("INSERT INTO \"Keyspace1\".test_compact_static_columns (a, b, c, d) VALUES (123, c3db07e8-b602-11e3-bc6b-e0b9a54a6d93, true, 'foobar')");
   cfs.forceBlockingFlush();
-  CompactionManager.instance.performScrub(cfs,false);
+  CompactionManager.instance.performScrub(cfs,false,true);
+  QueryProcessor.process("CREATE TABLE \"Keyspace1\".test_scrub_validation (a text primary key, b int)",ConsistencyLevel.ONE);
+  ColumnFamilyStore cfs2=keyspace.getColumnFamilyStore("test_scrub_validation");
+  RowMutation mutation=new RowMutation("Keyspace1",UTF8Type.instance.decompose("key"));
+  CompositeType ct=(CompositeType)cfs2.getComparator();
+  mutation.add("test_scrub_validation",ct.decompose("b"),LongType.instance.decompose(1L),System.currentTimeMillis());
+  mutation.apply();
+  cfs2.forceBlockingFlush();
+  CompactionManager.instance.performScrub(cfs2,false,false);
 }
