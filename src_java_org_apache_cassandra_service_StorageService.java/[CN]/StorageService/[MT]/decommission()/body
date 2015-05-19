@@ -14,8 +14,14 @@
     public void run(){
       shutdownClientServers();
       Gossiper.instance.stop();
-      MessagingService.instance().shutdown();
+      try {
+        MessagingService.instance().shutdown();
+      }
+ catch (      IOError ioe) {
+        logger.info("failed to shutdown message service: {}",ioe);
+      }
       StageManager.shutdownNow();
+      SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.DECOMMISSIONED);
       setMode(Mode.DECOMMISSIONED,true);
     }
   }
