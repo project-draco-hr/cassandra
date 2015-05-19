@@ -2,16 +2,14 @@
   argTypes=new ArrayList<>(argRawTypes.size());
   for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(rawType.prepare(functionName.keyspace).getType());
   AbstractType<?> stateType=stateTypeRaw.prepare(functionName.keyspace).getType();
-  FunctionName stateFuncName=new FunctionName(functionName.keyspace,stateFunc);
-  Function f=Functions.find(stateFuncName,stateArguments(stateType,argTypes));
-  if (!(f instanceof ScalarFunction))   throw new InvalidRequestException("State function " + stateFuncSig(stateFuncName,stateTypeRaw,argRawTypes) + " does not exist or is not a scalar function");
+  Function f=Functions.find(stateFunc,stateArguments(stateType,argTypes));
+  if (!(f instanceof ScalarFunction))   throw new InvalidRequestException("State function " + stateFuncSig(stateFunc,stateTypeRaw,argRawTypes) + " does not exist or is not a scalar function");
   stateFunction=(ScalarFunction)f;
   AbstractType<?> stateReturnType=stateFunction.returnType();
   if (!stateReturnType.equals(stateType))   throw new InvalidRequestException("State function " + stateFuncSig(stateFunction.name(),stateTypeRaw,argRawTypes) + " return type must be the same as the first argument type - check STYPE, argument and return types");
   if (finalFunc != null) {
-    FunctionName finalFuncName=new FunctionName(functionName.keyspace,finalFunc);
-    f=Functions.find(finalFuncName,Collections.<AbstractType<?>>singletonList(stateType));
-    if (!(f instanceof ScalarFunction))     throw new InvalidRequestException("Final function " + finalFuncName + '('+ stateTypeRaw+ ") does not exist or is not a scalar function");
+    f=Functions.find(finalFunc,Collections.<AbstractType<?>>singletonList(stateType));
+    if (!(f instanceof ScalarFunction))     throw new InvalidRequestException("Final function " + finalFunc + '('+ stateTypeRaw+ ") does not exist or is not a scalar function");
     finalFunction=(ScalarFunction)f;
     returnType=finalFunction.returnType();
   }
