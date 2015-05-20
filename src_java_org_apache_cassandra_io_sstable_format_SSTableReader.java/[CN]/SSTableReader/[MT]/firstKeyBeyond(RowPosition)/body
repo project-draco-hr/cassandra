@@ -3,8 +3,9 @@
   long sampledPosition=getIndexScanPosition(token);
   Iterator<FileDataInput> segments=ifile.iterator(sampledPosition);
   while (segments.hasNext()) {
-    FileDataInput in=segments.next();
-    try {
+    String path=null;
+    try (FileDataInput in=segments.next()){
+      path=in.getPath();
       while (!in.isEOF()) {
         ByteBuffer indexKey=ByteBufferUtil.readWithShortLength(in);
         DecoratedKey indexDecoratedKey=partitioner.decorateKey(indexKey);
@@ -14,10 +15,7 @@
     }
  catch (    IOException e) {
       markSuspect();
-      throw new CorruptSSTableException(e,in.getPath());
-    }
- finally {
-      FileUtils.closeQuietly(in);
+      throw new CorruptSSTableException(e,path);
     }
   }
   return null;

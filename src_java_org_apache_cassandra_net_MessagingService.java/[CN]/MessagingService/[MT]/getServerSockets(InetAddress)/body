@@ -22,6 +22,7 @@
       socket.setReuseAddress(true);
     }
  catch (    SocketException e) {
+      FileUtils.closeQuietly(socket);
       throw new ConfigurationException("Insufficient permissions to setReuseAddress",e);
     }
     InetSocketAddress address=new InetSocketAddress(localEp,DatabaseDescriptor.getStoragePort());
@@ -29,11 +30,13 @@
       socket.bind(address,500);
     }
  catch (    BindException e) {
+      FileUtils.closeQuietly(socket);
       if (e.getMessage().contains("in use"))       throw new ConfigurationException(address + " is in use by another process.  Change listen_address:storage_port in cassandra.yaml to values that do not conflict with other services");
  else       if (e.getMessage().contains("Cannot assign requested address"))       throw new ConfigurationException("Unable to bind to address " + address + ". Set listen_address in cassandra.yaml to an interface you can bind to, e.g., your private IP address on EC2");
  else       throw new RuntimeException(e);
     }
 catch (    IOException e) {
+      FileUtils.closeQuietly(socket);
       throw new RuntimeException(e);
     }
     logger.info("Starting Messaging Service on port {}",DatabaseDescriptor.getStoragePort());

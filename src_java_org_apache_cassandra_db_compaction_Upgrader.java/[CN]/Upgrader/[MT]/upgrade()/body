@@ -1,16 +1,18 @@
 {
   outputHandler.output("Upgrading " + sstable);
-  try (SSTableRewriter writer=new SSTableRewriter(cfs,transaction,CompactionTask.getMaxDataAge(transaction.originals()),true);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(transaction.originals())){
-    Iterator<AbstractCompactedRow> iter=new CompactionIterable(compactionType,scanners.scanners,controller,DatabaseDescriptor.getSSTableFormat(),UUIDGen.getTimeUUID()).iterator();
+  try (SSTableRewriter writer=new SSTableRewriter(cfs,transaction,CompactionTask.getMaxDataAge(transaction.originals()),true);AbstractCompactionStrategy.ScannerList scanners=strategy.getScanners(transaction.originals());CloseableIterator<AbstractCompactedRow> iter=new CompactionIterable(compactionType,scanners.scanners,controller,DatabaseDescriptor.getSSTableFormat(),UUIDGen.getTimeUUID()).iterator()){
     writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata().repairedAt));
     while (iter.hasNext()) {
-      AbstractCompactedRow row=iter.next();
+      @SuppressWarnings("resource") AbstractCompactedRow row=iter.next();
       writer.append(row);
     }
     writer.finish();
     outputHandler.output("Upgrade of " + sstable + " complete.");
   }
-  finally {
+ catch (  Exception e) {
+    Throwables.propagate(e);
+  }
+ finally {
     controller.close();
   }
 }
