@@ -3,6 +3,7 @@
   while (true) {
     List<SSTableReader> latestBucket=getNextBackgroundSSTables(gcBefore);
     if (latestBucket.isEmpty())     return null;
-    if (cfs.getDataTracker().markCompacting(latestBucket))     return new CompactionTask(cfs,latestBucket,gcBefore,false);
+    LifecycleTransaction modifier=cfs.getTracker().tryModify(latestBucket,OperationType.COMPACTION);
+    if (modifier != null)     return new CompactionTask(cfs,modifier,gcBefore,false);
   }
 }

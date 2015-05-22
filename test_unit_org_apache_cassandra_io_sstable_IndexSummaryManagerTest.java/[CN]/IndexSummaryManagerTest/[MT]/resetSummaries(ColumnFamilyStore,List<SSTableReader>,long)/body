@@ -1,0 +1,8 @@
+{
+  for (  SSTableReader sstable : sstables)   sstable.overrideReadMeter(new RestorableMeter(100.0,100.0));
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
+    sstables=redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),originalOffHeapSize * sstables.size());
+  }
+   for (  SSTableReader sstable : sstables)   assertEquals(BASE_SAMPLING_LEVEL,sstable.getIndexSummarySamplingLevel());
+  return sstables;
+}

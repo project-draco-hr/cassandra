@@ -4,12 +4,14 @@
   assertEquals(store.getSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("4".getBytes()));
   List<Range<Token>> ranges=Arrays.asList(range);
-  Refs<SSTableReader> refs=Refs.ref(sstables);
-  long repairedAt=1000;
-  CompactionManager.instance.performAnticompaction(store,ranges,refs,repairedAt);
-  assertEquals(2,store.getSSTables().size());
   int repairedKeys=0;
   int nonRepairedKeys=0;
+  try (LifecycleTransaction txn=store.getTracker().tryModify(sstables,OperationType.ANTICOMPACTION);Refs<SSTableReader> refs=Refs.ref(sstables)){
+    if (txn == null)     throw new IllegalStateException();
+    long repairedAt=1000;
+    CompactionManager.instance.performAnticompaction(store,ranges,refs,txn,repairedAt);
+  }
+   assertEquals(2,store.getSSTables().size());
   for (  SSTableReader sstable : store.getSSTables()) {
     try (ISSTableScanner scanner=sstable.getScanner()){
       while (scanner.hasNext()) {
@@ -29,7 +31,7 @@
     assertFalse(sstable.isMarkedCompacted());
     assertEquals(1,sstable.selfRef().globalCount());
   }
-  assertEquals(0,store.getDataTracker().getCompacting().size());
+  assertEquals(0,store.getTracker().getCompacting().size());
   assertEquals(repairedKeys,4);
   assertEquals(nonRepairedKeys,6);
 }

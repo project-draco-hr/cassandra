@@ -1,3 +1,10 @@
 {
-  return getDataTracker().getDroppableTombstoneRatio();
+  double allDroppable=0;
+  long allColumns=0;
+  int localTime=(int)(System.currentTimeMillis() / 1000);
+  for (  SSTableReader sstable : getSSTables()) {
+    allDroppable+=sstable.getDroppableTombstonesBefore(localTime - sstable.metadata.getGcGraceSeconds());
+    allColumns+=sstable.getEstimatedColumnCount().mean() * sstable.getEstimatedColumnCount().count();
+  }
+  return allColumns > 0 ? allDroppable / allColumns : 0;
 }

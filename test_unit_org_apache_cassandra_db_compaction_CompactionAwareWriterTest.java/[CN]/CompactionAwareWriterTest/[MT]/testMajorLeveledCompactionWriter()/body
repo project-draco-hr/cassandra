@@ -5,11 +5,11 @@
   int rowCount=20000;
   int targetSSTableCount=50;
   populate(cfs,rowCount);
-  Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
-  long beforeSize=sstables.iterator().next().onDiskLength();
+  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getSSTables(),OperationType.COMPACTION);
+  long beforeSize=txn.originals().iterator().next().onDiskLength();
   int sstableSize=(int)beforeSize / targetSSTableCount;
-  CompactionAwareWriter writer=new MajorLeveledCompactionWriter(cfs,sstables,sstables,sstableSize,false,OperationType.COMPACTION);
-  int rows=compact(cfs,sstables,writer);
+  CompactionAwareWriter writer=new MajorLeveledCompactionWriter(cfs,txn,txn.originals(),sstableSize,false,OperationType.COMPACTION);
+  int rows=compact(cfs,txn,writer);
   assertEquals(targetSSTableCount,cfs.getSSTables().size());
   int[] levelCounts=new int[5];
   assertEquals(rowCount,rows);

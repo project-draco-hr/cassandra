@@ -1,0 +1,13 @@
+{
+  logger.info("Performing anticompaction on {} sstables",repaired.originals().size());
+  Collection<Collection<SSTableReader>> groupedSSTables=cfs.getCompactionStrategy().groupSSTablesForAntiCompaction(repaired.originals());
+  int antiCompactedSSTableCount=0;
+  for (  Collection<SSTableReader> sstableGroup : groupedSSTables) {
+    try (LifecycleTransaction txn=repaired.split(sstableGroup)){
+      int antiCompacted=antiCompactGroup(cfs,ranges,txn,repairedAt);
+      antiCompactedSSTableCount+=antiCompacted;
+    }
+   }
+  String format="Anticompaction completed successfully, anticompacted from {} to {} sstable(s).";
+  logger.info(format,repaired.originals().size(),antiCompactedSSTableCount);
+}

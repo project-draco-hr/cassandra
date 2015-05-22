@@ -1,0 +1,15 @@
+{
+  if (sstable == null) {
+    apply(View.replaceFlushed(memtable,null));
+    return;
+  }
+  sstable.setupDeleteNotification(this);
+  sstable.setupKeyCache();
+  maybeIncrementallyBackup(sstable);
+  apply(View.replaceFlushed(memtable,sstable));
+  Throwable fail;
+  fail=updateSizeTracking(emptySet(),singleton(sstable),null);
+  fail=notifyAdded(sstable,fail);
+  if (cfstore != null && !cfstore.isValid())   dropSSTables();
+  maybeFail(fail);
+}

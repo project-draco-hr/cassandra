@@ -1,7 +1,8 @@
 {
   Iterable<SSTableReader> filteredSSTables=filterSuspectSSTables(sstables);
   if (Iterables.isEmpty(filteredSSTables))   return null;
-  if (!cfs.getDataTracker().markCompacting(ImmutableList.copyOf(filteredSSTables)))   return null;
-  if (splitOutput)   return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(cfs,filteredSSTables,gcBefore,false));
-  return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs,filteredSSTables,gcBefore,false));
+  LifecycleTransaction txn=cfs.getTracker().tryModify(filteredSSTables,OperationType.COMPACTION);
+  if (txn == null)   return null;
+  if (splitOutput)   return Arrays.<AbstractCompactionTask>asList(new SplittingCompactionTask(cfs,txn,gcBefore,false));
+  return Arrays.<AbstractCompactionTask>asList(new CompactionTask(cfs,txn,gcBefore,false));
 }

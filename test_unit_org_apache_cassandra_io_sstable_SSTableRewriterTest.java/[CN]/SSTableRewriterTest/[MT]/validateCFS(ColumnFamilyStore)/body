@@ -1,9 +1,11 @@
 {
   Set<Integer> liveDescriptors=new HashSet<>();
+  long spaceUsed=0;
   for (  SSTableReader sstable : cfs.getSSTables()) {
     assertFalse(sstable.isMarkedCompacted());
     assertEquals(1,sstable.selfRef().globalCount());
     liveDescriptors.add(sstable.descriptor.generation);
+    spaceUsed+=sstable.bytesOnDisk();
   }
   for (  File dir : cfs.directories.getCFDirectories()) {
     for (    File f : dir.listFiles()) {
@@ -13,5 +15,7 @@
       }
     }
   }
-  assertTrue(cfs.getDataTracker().getCompacting().isEmpty());
+  assertEquals(spaceUsed,cfs.metric.liveDiskSpaceUsed.getCount());
+  assertEquals(spaceUsed,cfs.metric.totalDiskSpaceUsed.getCount());
+  assertTrue(cfs.getTracker().getCompacting().isEmpty());
 }

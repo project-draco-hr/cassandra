@@ -1,0 +1,29 @@
+{
+  Descriptor descriptor=new Descriptor(temp("mockcfdir").getParentFile(),"mockks","mockcf",generation,Descriptor.Type.FINAL);
+  Set<Component> components=ImmutableSet.of(Component.DATA,Component.PRIMARY_INDEX,Component.FILTER,Component.TOC);
+  for (  Component component : components) {
+    File file=new File(descriptor.filenameFor(component));
+    try {
+      file.createNewFile();
+    }
+ catch (    IOException e) {
+    }
+    file.deleteOnExit();
+  }
+  if (size > 0) {
+    try {
+      File file=new File(descriptor.filenameFor(Component.DATA));
+      try (RandomAccessFile raf=new RandomAccessFile(file,"rw")){
+        raf.setLength(size);
+      }
+     }
+ catch (    IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  StatsMetadata metadata=(StatsMetadata)new MetadataCollector(cfs.metadata.comparator).finalizeMetadata(Murmur3Partitioner.instance.getClass().getCanonicalName(),0.01f,-1).get(MetadataType.STATS);
+  SSTableReader reader=SSTableReader.internalOpen(descriptor,components,cfs.metadata,Murmur3Partitioner.instance,segmentedFile.sharedCopy(),segmentedFile.sharedCopy(),indexSummary.sharedCopy(),new AlwaysPresentFilter(),1L,metadata,SSTableReader.OpenReason.NORMAL);
+  reader.first=reader.last=readerBounds(generation);
+  if (!keepRef)   reader.selfRef().release();
+  return reader;
+}

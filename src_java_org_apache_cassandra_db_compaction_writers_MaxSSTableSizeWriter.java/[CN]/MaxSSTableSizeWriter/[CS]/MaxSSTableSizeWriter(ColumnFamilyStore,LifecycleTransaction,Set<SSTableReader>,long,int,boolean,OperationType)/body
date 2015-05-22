@@ -1,0 +1,13 @@
+{
+  super(cfs,txn,nonExpiredSSTables,offline);
+  this.allSSTables=txn.originals();
+  this.level=level;
+  this.maxSSTableSize=maxSSTableSize;
+  long totalSize=cfs.getExpectedCompactedFileSize(nonExpiredSSTables,compactionType);
+  expectedWriteSize=Math.min(maxSSTableSize,totalSize);
+  estimatedTotalKeys=SSTableReader.getApproximateKeyCount(nonExpiredSSTables);
+  estimatedSSTables=Math.max(1,estimatedTotalKeys / maxSSTableSize);
+  File sstableDirectory=cfs.directories.getLocationForDisk(getWriteDirectory(expectedWriteSize));
+  SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(cfs.getTempSSTablePath(sstableDirectory)),estimatedTotalKeys / estimatedSSTables,minRepairedAt,cfs.metadata,cfs.partitioner,new MetadataCollector(allSSTables,cfs.metadata.comparator,level));
+  sstableWriter.switchWriter(writer);
+}

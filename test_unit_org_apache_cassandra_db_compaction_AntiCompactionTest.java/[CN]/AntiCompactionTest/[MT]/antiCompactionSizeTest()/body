@@ -7,8 +7,10 @@
   long origSize=s.bytesOnDisk();
   Range<Token> range=new Range<Token>(new BytesToken(ByteBufferUtil.bytes(0)),new BytesToken(ByteBufferUtil.bytes(500)));
   Collection<SSTableReader> sstables=cfs.getSSTables();
-  CompactionManager.instance.performAnticompaction(cfs,Arrays.asList(range),Refs.tryRef(sstables),12345);
-  long sum=0;
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.ANTICOMPACTION);Refs<SSTableReader> refs=Refs.ref(sstables)){
+    CompactionManager.instance.performAnticompaction(cfs,Arrays.asList(range),refs,txn,12345);
+  }
+   long sum=0;
   for (  SSTableReader x : cfs.getSSTables())   sum+=x.bytesOnDisk();
   assertEquals(sum,cfs.metric.liveDiskSpaceUsed.getCount());
   assertEquals(origSize,cfs.metric.liveDiskSpaceUsed.getCount(),100000);

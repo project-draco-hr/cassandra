@@ -1,0 +1,15 @@
+{
+  Tracker tracker=new Tracker(MockSchema.cfs,false);
+  List<SSTableReader> readers=ImmutableList.of(MockSchema.sstable(0),MockSchema.sstable(1),MockSchema.sstable(2));
+  tracker.addInitialSSTables(copyOf(readers));
+  try (LifecycleTransaction txn=tracker.tryModify(readers.get(0),OperationType.COMPACTION)){
+    Assert.assertNotNull(txn);
+    Assert.assertNull(tracker.tryModify(readers.get(0),OperationType.COMPACTION));
+    Assert.assertEquals(1,txn.originals().size());
+    Assert.assertTrue(txn.originals().contains(readers.get(0)));
+  }
+   try (LifecycleTransaction txn=tracker.tryModify(Collections.<SSTableReader>emptyList(),OperationType.COMPACTION)){
+    Assert.assertNotNull(txn);
+    Assert.assertEquals(0,txn.originals().size());
+  }
+ }

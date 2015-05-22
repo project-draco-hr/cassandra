@@ -18,13 +18,15 @@
   assertEquals(1,sstables.size());
   SSTableReader original=sstables.get(0);
   SSTableReader sstable=original;
-  for (int samplingLevel=1; samplingLevel < BASE_SAMPLING_LEVEL; samplingLevel++) {
-    SSTableReader prev=sstable;
-    sstable=sstable.cloneWithNewSummarySamplingLevel(cfs,samplingLevel);
-    assertEquals(samplingLevel,sstable.getIndexSummarySamplingLevel());
-    int expectedSize=(numRows * samplingLevel) / (sstable.metadata.getMinIndexInterval() * BASE_SAMPLING_LEVEL);
-    assertEquals(expectedSize,sstable.getIndexSummarySize(),1);
-    if (prev != original)     prev.selfRef().release();
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(asList(sstable),OperationType.UNKNOWN)){
+    for (int samplingLevel=1; samplingLevel < BASE_SAMPLING_LEVEL; samplingLevel++) {
+      sstable=sstable.cloneWithNewSummarySamplingLevel(cfs,samplingLevel);
+      assertEquals(samplingLevel,sstable.getIndexSummarySamplingLevel());
+      int expectedSize=(numRows * samplingLevel) / (sstable.metadata.getMinIndexInterval() * BASE_SAMPLING_LEVEL);
+      assertEquals(expectedSize,sstable.getIndexSummarySize(),1);
+      txn.update(sstable,true);
+      txn.checkpoint();
+    }
+    txn.finish();
   }
-  cfs.getDataTracker().replaceWithNewInstances(Collections.singleton(original),Collections.singleton(sstable));
-}
+ }

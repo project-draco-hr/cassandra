@@ -1,7 +1,7 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   SSTableReader s=writeFile(cfs,1000);
   cfs.addSSTable(s);
   DecoratedKey origFirst=s.first;
@@ -9,7 +9,7 @@
   long startSize=cfs.metric.liveDiskSpaceUsed.getCount();
   Set<SSTableReader> compacting=Sets.newHashSet(s);
   SSTableRewriter.overrideOpenInterval(10000000);
-  try (SSTableRewriter rewriter=new SSTableRewriter(cfs,compacting,1000,false);ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0)){
+  try (ISSTableScanner scanner=s.getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,false)){
     rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
     test.run(scanner,controller,s,cfs,rewriter);
   }
