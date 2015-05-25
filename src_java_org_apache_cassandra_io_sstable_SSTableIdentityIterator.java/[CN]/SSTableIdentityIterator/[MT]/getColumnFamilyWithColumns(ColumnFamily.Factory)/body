@@ -1,14 +1,25 @@
 {
   ColumnFamily cf=columnFamily.cloneMeShallow(containerFactory,false);
-  Iterator<OnDiskAtom> iter=cf.metadata().getOnDiskIterator(in,columnCount,flag,expireBefore,dataVersion);
-  while (iter.hasNext())   cf.addAtom(iter.next());
-  if (validateColumns) {
-    try {
-      cf.metadata().validateColumns(cf);
+  try {
+    Iterator<OnDiskAtom> iter=cf.metadata().getOnDiskIterator(in,columnCount,flag,expireBefore,dataVersion);
+    while (iter.hasNext())     cf.addAtom(iter.next());
+    if (validateColumns) {
+      try {
+        cf.metadata().validateColumns(cf);
+      }
+ catch (      MarshalException e) {
+        throw new RuntimeException("Error validating row " + key,e);
+      }
     }
- catch (    MarshalException e) {
-      throw new RuntimeException("Error validating row " + key,e);
+    return cf;
+  }
+ catch (  IOError e) {
+    if (e.getCause() instanceof IOException) {
+      if (sstable != null)       sstable.markSuspect();
+      throw new CorruptSSTableException((IOException)e.getCause(),filename);
+    }
+ else {
+      throw e;
     }
   }
-  return cf;
 }
