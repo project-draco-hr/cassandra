@@ -1,0 +1,22 @@
+{
+  Deflater def=deflater.get();
+  def.reset();
+  byte[] buffer=FBUtilities.getThreadLocalScratchBuffer();
+  int chunkLen=buffer.length / 2;
+  while (input.remaining() > chunkLen) {
+    input.get(buffer,0,chunkLen);
+    def.setInput(buffer,0,chunkLen);
+    while (!def.needsInput()) {
+      int len=def.deflate(buffer,chunkLen,chunkLen);
+      output.put(buffer,chunkLen,len);
+    }
+  }
+  int inputLength=input.remaining();
+  input.get(buffer,0,inputLength);
+  def.setInput(buffer,0,inputLength);
+  def.finish();
+  while (!def.finished()) {
+    int len=def.deflate(buffer,chunkLen,chunkLen);
+    output.put(buffer,chunkLen,len);
+  }
+}

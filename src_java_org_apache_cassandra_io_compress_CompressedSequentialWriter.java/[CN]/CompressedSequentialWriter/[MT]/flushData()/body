@@ -1,2 +1,29 @@
 {
+  seekToChunkStart();
+  try {
+    buffer.flip();
+    compressed.clear();
+    compressor.compress(buffer,compressed);
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Compression exception",e);
+  }
+  int compressedLength=compressed.position();
+  uncompressedSize+=buffer.position();
+  compressedSize+=compressedLength;
+  try {
+    metadataWriter.addOffset(chunkOffset);
+    chunkCount++;
+    compressed.flip();
+    channel.write(compressed);
+    compressed.rewind();
+    crcMetadata.appendDirect(compressed,true);
+    lastFlushOffset+=compressedLength + 4;
+    resetBuffer();
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,getPath());
+  }
+  chunkOffset+=compressedLength + 4;
+  if (runPostFlush != null)   runPostFlush.run();
 }
