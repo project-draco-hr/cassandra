@@ -1,0 +1,26 @@
+{
+  try {
+    Inflater inf=inflater.get();
+    inf.reset();
+    byte[] buffer=FBUtilities.getThreadLocalScratchBuffer();
+    int chunkLen=buffer.length / 2;
+    while (input.remaining() > chunkLen) {
+      input.get(buffer,0,chunkLen);
+      inf.setInput(buffer,0,chunkLen);
+      while (!inf.needsInput()) {
+        int len=inf.inflate(buffer,chunkLen,chunkLen);
+        output.put(buffer,chunkLen,len);
+      }
+    }
+    int inputLength=input.remaining();
+    input.get(buffer,0,inputLength);
+    inf.setInput(buffer,0,inputLength);
+    while (!inf.needsInput()) {
+      int len=inf.inflate(buffer,chunkLen,chunkLen);
+      output.put(buffer,chunkLen,len);
+    }
+  }
+ catch (  DataFormatException e) {
+    throw new IOException(e);
+  }
+}
