@@ -1,26 +1,2 @@
 {
-  Keyspace keyspace=Keyspace.open("Keyspace1");
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard2");
-  store.disableAutoCompaction();
-  store.truncateBlocking();
-  assertEquals(0,store.metric.liveDiskSpaceUsed.getCount());
-  assertEquals(0,store.metric.totalDiskSpaceUsed.getCount());
-  for (int j=0; j < 10; j++) {
-    ByteBuffer key=ByteBufferUtil.bytes(String.valueOf(j));
-    Mutation rm=new Mutation("Keyspace1",key);
-    rm.add("Standard2",cellname("0"),ByteBufferUtil.EMPTY_BYTE_BUFFER,j);
-    rm.apply();
-  }
-  store.forceBlockingFlush();
-  Collection<SSTableReader> sstables=store.getSSTables();
-  long size=0;
-  for (  SSTableReader reader : sstables) {
-    size+=reader.bytesOnDisk();
-  }
-  assertEquals(size,store.metric.liveDiskSpaceUsed.getCount());
-  assertEquals(size,store.metric.totalDiskSpaceUsed.getCount());
-  store.truncateBlocking();
-  assertEquals(0,store.metric.liveDiskSpaceUsed.getCount());
-  assertEquals(0,store.metric.totalDiskSpaceUsed.getCount());
-  store.enableAutoCompaction();
 }
