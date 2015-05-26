@@ -1,6 +1,6 @@
 {
   Keyspace keyspace=Keyspace.open("Keyspace1");
-  ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard2");
+  final ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard2");
   store.disableAutoCompaction();
   store.truncateBlocking();
   assertEquals(0,store.metric.liveDiskSpaceUsed.getCount());
@@ -20,7 +20,17 @@
   assertEquals(size,store.metric.liveDiskSpaceUsed.getCount());
   assertEquals(size,store.metric.totalDiskSpaceUsed.getCount());
   store.truncateBlocking();
-  assertEquals(0,store.metric.liveDiskSpaceUsed.getCount());
-  assertEquals(0,store.metric.totalDiskSpaceUsed.getCount());
+  Util.spinAssertEquals(0L,new Supplier<Object>(){
+    public Long get(){
+      return store.metric.liveDiskSpaceUsed.getCount();
+    }
+  }
+,30);
+  Util.spinAssertEquals(0L,new Supplier<Object>(){
+    public Long get(){
+      return store.metric.totalDiskSpaceUsed.getCount();
+    }
+  }
+,30);
   store.enableAutoCompaction();
 }
