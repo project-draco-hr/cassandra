@@ -1,0 +1,25 @@
+{
+  Comparator<ByteBuffer> cmp=reversed ? cfm.comparator.reverseComparator : cfm.comparator;
+  List<ColumnSlice> newSlices=new ArrayList<>();
+  boolean pastNewStart=false;
+  for (int i=0; i < slices.length; i++) {
+    ColumnSlice slice=slices[i];
+    if (pastNewStart) {
+      newSlices.add(slice);
+      continue;
+    }
+    if (slices[i].isBefore(cmp,newStart)) {
+      if (!reversed && sliceIncludesStatics(slice,cfm))       newSlices.add(new ColumnSlice(ByteBufferUtil.EMPTY_BYTE_BUFFER,cfm.getStaticColumnNameBuilder().buildAsEndOfRange()));
+      continue;
+    }
+ else     if (slice.includes(cmp,newStart)) {
+      if (!reversed && sliceIncludesStatics(slice,cfm) && !newStart.equals(ByteBufferUtil.EMPTY_BYTE_BUFFER))       newSlices.add(new ColumnSlice(ByteBufferUtil.EMPTY_BYTE_BUFFER,cfm.getStaticColumnNameBuilder().buildAsEndOfRange()));
+      newSlices.add(new ColumnSlice(newStart,slice.finish));
+    }
+ else {
+      newSlices.add(slice);
+    }
+    pastNewStart=true;
+  }
+  return withUpdatedSlices(newSlices.toArray(new ColumnSlice[newSlices.size()]));
+}
