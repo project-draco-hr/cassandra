@@ -20,8 +20,15 @@
   }
   Memory offsets=Memory.allocate(offsetCount * 4);
   Memory entries=Memory.allocate(offheapSize - offsets.size());
-  FBUtilities.copy(in,new MemoryOutputStream(offsets),offsets.size());
-  FBUtilities.copy(in,new MemoryOutputStream(entries),entries.size());
+  try {
+    FBUtilities.copy(in,new MemoryOutputStream(offsets),offsets.size());
+    FBUtilities.copy(in,new MemoryOutputStream(entries),entries.size());
+  }
+ catch (  IOException ioe) {
+    offsets.free();
+    entries.free();
+    throw ioe;
+  }
   for (int i=0; i < offsets.size(); i+=4)   offsets.setInt(i,(int)(offsets.getInt(i) - offsets.size()));
   return new IndexSummary(partitioner,offsets,offsetCount,entries,entries.size(),fullSamplingSummarySize,minIndexInterval,samplingLevel);
 }

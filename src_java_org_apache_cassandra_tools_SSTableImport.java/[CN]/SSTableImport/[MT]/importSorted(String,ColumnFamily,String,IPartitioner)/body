@@ -1,20 +1,20 @@
 {
   int importedKeys=0;
   long start=System.nanoTime();
-  JsonParser parser=getParser(jsonFile);
-  if (keyCountToImport == null) {
-    keyCountToImport=0;
-    System.out.println("Counting keys to import, please wait... (NOTE: to skip this use -n <num_keys>)");
-    parser.nextToken();
-    while (parser.nextToken() != null) {
-      parser.skipChildren();
-      if (parser.getCurrentToken() == JsonToken.END_ARRAY)       break;
-      keyCountToImport++;
+  try (JsonParser parser=getParser(jsonFile)){
+    if (keyCountToImport == null) {
+      keyCountToImport=0;
+      System.out.println("Counting keys to import, please wait... (NOTE: to skip this use -n <num_keys>)");
+      parser.nextToken();
+      while (parser.nextToken() != null) {
+        parser.skipChildren();
+        if (parser.getCurrentToken() == JsonToken.END_ARRAY)         break;
+        keyCountToImport++;
+      }
     }
+    System.out.printf("Importing %s keys...%n",keyCountToImport);
   }
-  System.out.printf("Importing %s keys...%n",keyCountToImport);
-  parser=getParser(jsonFile);
-  try (SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(ssTablePath),keyCountToImport,ActiveRepairService.UNREPAIRED_SSTABLE)){
+   try (JsonParser parser=getParser(jsonFile);SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(ssTablePath),keyCountToImport,ActiveRepairService.UNREPAIRED_SSTABLE)){
     int lineNumber=1;
     DecoratedKey prevStoredKey=null;
     parser.nextToken();

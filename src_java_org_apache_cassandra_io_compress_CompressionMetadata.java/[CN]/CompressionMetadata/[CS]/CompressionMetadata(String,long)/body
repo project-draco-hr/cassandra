@@ -1,13 +1,6 @@
 {
   this.indexFilePath=indexFilePath;
-  DataInputStream stream;
-  try {
-    stream=new DataInputStream(new FileInputStream(indexFilePath));
-  }
- catch (  FileNotFoundException e) {
-    throw new RuntimeException(e);
-  }
-  try {
+  try (DataInputStream stream=new DataInputStream(new FileInputStream(indexFilePath))){
     String compressorName=stream.readUTF();
     int optionCount=stream.readInt();
     Map<String,String> options=new HashMap<>(optionCount);
@@ -27,11 +20,11 @@
     compressedFileLength=compressedLength;
     chunkOffsets=readChunkOffsets(stream);
   }
- catch (  IOException e) {
-    throw new CorruptSSTableException(e,indexFilePath);
+ catch (  FileNotFoundException e) {
+    throw new RuntimeException(e);
   }
- finally {
-    FileUtils.closeQuietly(stream);
+catch (  IOException e) {
+    throw new CorruptSSTableException(e,indexFilePath);
   }
   this.chunkOffsetsSize=chunkOffsets.size();
 }

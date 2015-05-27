@@ -1,6 +1,6 @@
 {
   Runnable runnable=new WrappedRunnable(){
-    @Override public void runMayThrow() throws Exception {
+    @Override @SuppressWarnings("resource") public void runMayThrow() throws Exception {
       LifecycleTransaction modifier=null;
       while (modifier == null) {
         for (        SSTableReader compactingSSTable : cfs.getTracker().getCompacting())         sstables.releaseIfHolds(compactingSSTable);
@@ -15,6 +15,7 @@
 ;
   if (executor.isShutdown()) {
     logger.info("Compaction executor has shut down, not submitting anticompaction");
+    sstables.release();
     return Futures.immediateCancelledFuture();
   }
   ListenableFutureTask<?> task=ListenableFutureTask.create(runnable,null);

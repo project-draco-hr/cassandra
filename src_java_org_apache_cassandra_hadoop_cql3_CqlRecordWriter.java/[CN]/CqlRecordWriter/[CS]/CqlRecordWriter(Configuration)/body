@@ -5,21 +5,21 @@
   this.clients=new HashMap<>();
   try {
     String keyspace=ConfigHelper.getOutputKeyspace(conf);
-    Session client=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf).connect(keyspace);
-    ringCache=new NativeRingCache(conf);
-    if (client != null) {
-      TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
-      clusterColumns=tableMetadata.getClusteringColumns();
-      partitionKeyColumns=tableMetadata.getPartitionKey();
-      String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
-      if (cqlQuery.toLowerCase().startsWith("insert"))       throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
-      cql=appendKeyWhereClauses(cqlQuery);
-      client.close();
-    }
+    try (Session client=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf).connect(keyspace)){
+      ringCache=new NativeRingCache(conf);
+      if (client != null) {
+        TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
+        clusterColumns=tableMetadata.getClusteringColumns();
+        partitionKeyColumns=tableMetadata.getPartitionKey();
+        String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
+        if (cqlQuery.toLowerCase().startsWith("insert"))         throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
+        cql=appendKeyWhereClauses(cqlQuery);
+      }
  else {
-      throw new IllegalArgumentException("Invalid configuration specified " + conf);
+        throw new IllegalArgumentException("Invalid configuration specified " + conf);
+      }
     }
-  }
+   }
  catch (  Exception e) {
     throw new RuntimeException(e);
   }

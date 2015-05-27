@@ -1,12 +1,11 @@
 {
-  Scrubber scrubber=new Scrubber(cfs,modifier,skipCorrupted,false,checkData);
-  CompactionInfo.Holder scrubInfo=scrubber.getScrubInfo();
-  metrics.beginCompaction(scrubInfo);
-  try {
+  CompactionInfo.Holder scrubInfo=null;
+  try (Scrubber scrubber=new Scrubber(cfs,modifier,skipCorrupted,false,checkData)){
+    scrubInfo=scrubber.getScrubInfo();
+    metrics.beginCompaction(scrubInfo);
     scrubber.scrub();
   }
   finally {
-    scrubber.close();
-    metrics.finishCompaction(scrubInfo);
+    if (scrubInfo != null)     metrics.finishCompaction(scrubInfo);
   }
 }

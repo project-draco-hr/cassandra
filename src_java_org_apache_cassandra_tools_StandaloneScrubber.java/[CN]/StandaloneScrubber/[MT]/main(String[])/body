@@ -35,8 +35,7 @@
     if (!options.manifestCheckOnly) {
       for (      SSTableReader sstable : sstables) {
         try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable)){
-          Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate);
-          try {
+          try (Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate)){
             scrubber.scrub();
           }
  catch (          Throwable t) {
@@ -44,9 +43,6 @@
               System.out.println(t.getMessage());
               throw t;
             }
-          }
- finally {
-            scrubber.close();
           }
           sstable.markObsolete();
           sstable.selfRef().release();

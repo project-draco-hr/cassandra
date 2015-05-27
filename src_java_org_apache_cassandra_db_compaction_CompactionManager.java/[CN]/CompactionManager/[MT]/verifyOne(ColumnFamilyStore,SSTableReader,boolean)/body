@@ -1,12 +1,11 @@
 {
-  Verifier verifier=new Verifier(cfs,sstable,false);
-  CompactionInfo.Holder verifyInfo=verifier.getVerifyInfo();
-  metrics.beginCompaction(verifyInfo);
-  try {
+  CompactionInfo.Holder verifyInfo=null;
+  try (Verifier verifier=new Verifier(cfs,sstable,false)){
+    verifyInfo=verifier.getVerifyInfo();
+    metrics.beginCompaction(verifyInfo);
     verifier.verify(extendedVerify);
   }
   finally {
-    verifier.close();
-    metrics.finishCompaction(verifyInfo);
+    if (verifyInfo != null)     metrics.finishCompaction(verifyInfo);
   }
 }

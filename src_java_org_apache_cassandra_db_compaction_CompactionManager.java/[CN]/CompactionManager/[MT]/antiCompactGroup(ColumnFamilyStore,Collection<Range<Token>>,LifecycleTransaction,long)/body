@@ -24,11 +24,11 @@
     repairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,repairedAt,sstableAsSet));
     unRepairedSSTableWriter.switchWriter(CompactionManager.createWriterForAntiCompaction(cfs,destination,expectedBloomFilterSize,ActiveRepairService.UNREPAIRED_SSTABLE,sstableAsSet));
     CompactionIterable ci=new CompactionIterable(OperationType.ANTICOMPACTION,scanners.scanners,controller,DatabaseDescriptor.getSSTableFormat(),UUIDGen.getTimeUUID());
-    Iterator<AbstractCompactedRow> iter=ci.iterator();
     metrics.beginCompaction(ci);
     try {
+      @SuppressWarnings("resource") CloseableIterator<AbstractCompactedRow> iter=ci.iterator();
       while (iter.hasNext()) {
-        AbstractCompactedRow row=iter.next();
+        @SuppressWarnings("resource") AbstractCompactedRow row=iter.next();
         if (Range.isInRanges(row.key.getToken(),ranges)) {
           repairedSSTableWriter.append(row);
           repairedKeyCount++;

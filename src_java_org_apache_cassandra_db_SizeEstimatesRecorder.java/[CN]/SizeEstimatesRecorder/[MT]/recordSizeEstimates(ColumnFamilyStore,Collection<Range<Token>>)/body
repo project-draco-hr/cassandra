@@ -2,17 +2,17 @@
   Map<Range<Token>,Pair<Long,Long>> estimates=new HashMap<>(localRanges.size());
   for (  Range<Token> range : localRanges) {
     Refs<SSTableReader> refs=null;
-    while (refs == null) {
-      ColumnFamilyStore.ViewFragment view=table.select(table.viewFilter(Range.makeRowRange(range)));
-      refs=Refs.tryRef(view.sstables);
-    }
     long partitionsCount, meanPartitionSize;
     try {
+      while (refs == null) {
+        ColumnFamilyStore.ViewFragment view=table.select(table.viewFilter(Range.makeRowRange(range)));
+        refs=Refs.tryRef(view.sstables);
+      }
       partitionsCount=estimatePartitionsCount(refs,range);
       meanPartitionSize=estimateMeanPartitionSize(refs);
     }
   finally {
-      refs.release();
+      if (refs != null)       refs.release();
     }
     estimates.put(range,Pair.create(partitionsCount,meanPartitionSize));
   }

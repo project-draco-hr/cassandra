@@ -4,8 +4,9 @@
   int summaryEntriesChecked=0;
   int expectedIndexInterval=getMinIndexInterval();
   while (segments.hasNext()) {
-    FileDataInput in=segments.next();
-    try {
+    String path=null;
+    try (FileDataInput in=segments.next()){
+      path=in.getPath();
       while (!in.isEOF()) {
         ByteBuffer indexKey=ByteBufferUtil.readWithShortLength(in);
         if (i % expectedIndexInterval == 0) {
@@ -20,10 +21,7 @@
     }
  catch (    IOException e) {
       markSuspect();
-      throw new CorruptSSTableException(e,in.getPath());
-    }
- finally {
-      FileUtils.closeQuietly(in);
+      throw new CorruptSSTableException(e,path);
     }
   }
   return true;
