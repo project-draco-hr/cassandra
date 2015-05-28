@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b frozen<set<int>>)");
+  createIndex("CREATE INDEX ON %s (FULL(b))");
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",0,set());
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",1,set(1,2,3));
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",2,set(4,5,6));
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",3,set(7,8,9));
+  String fState=createFunction(KEYSPACE,"set<int>","CREATE FUNCTION %s (state set<int>, values set<int>) " + "CALLED ON NULL INPUT " + "RETURNS set<int> "+ "LANGUAGE java\n"+ "AS 'return values;';");
+  String fFinal=createFunction(KEYSPACE,"set<int>","CREATE FUNCTION %s(state set<int>) " + "CALLED ON NULL INPUT " + "RETURNS set<int> "+ "LANGUAGE java "+ "AS 'return state;'");
+  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(set<int>) " + "SFUNC " + fState + " "+ "STYPE frozen<set<int>> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  String aggregation=createAggregate(KEYSPACE,"set<int>","CREATE AGGREGATE %s(set<int>) " + "SFUNC " + fState + " "+ "STYPE set<int> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  assertRows(execute("SELECT " + aggregation + "(b) FROM %s"),row(set(7,8,9)));
+  assertInvalidMessage("The function arguments should not be frozen","DROP AGGREGATE %s (frozen<set<int>>);");
+}

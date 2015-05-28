@@ -1,7 +1,7 @@
 {
   String type=KEYSPACE + '.' + createType("CREATE TYPE %s (txt text, i int)");
   createTable("CREATE TABLE %s (key int primary key, udt frozen<" + type + ">)");
-  String fName=createFunction(KEYSPACE,"frozen<" + type + '>',"CREATE FUNCTION %s( udt frozen<" + type + "> ) "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS $$return udt.getString(\"txt\");$$;");
+  String fName=createFunction(KEYSPACE,type,"CREATE FUNCTION %s( udt " + type + " ) "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS $$return udt.getString(\"txt\");$$;");
   execute("INSERT INTO %s (key, udt) VALUES (1, {txt: 'one', i:1})");
   assertRows(execute("SELECT " + fName + "(udt) FROM %s WHERE key = 1"),row("one"));
   execute("ALTER TYPE " + type + " RENAME txt TO str");
