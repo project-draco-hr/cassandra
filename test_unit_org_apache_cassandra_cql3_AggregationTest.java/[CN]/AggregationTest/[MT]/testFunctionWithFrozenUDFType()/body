@@ -1,0 +1,15 @@
+{
+  String myType=createType("CREATE TYPE %s (f int)");
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b frozen<" + myType + ">)");
+  createIndex("CREATE INDEX ON %s (b)");
+  execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",0,1);
+  execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",1,2);
+  execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",2,4);
+  execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",3,7);
+  String fState=createFunction(KEYSPACE,"tuple<int, int>","CREATE FUNCTION %s (state " + myType + ", values "+ myType+ ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java\n"+ "AS 'return values;';");
+  String fFinal=createFunction(KEYSPACE,myType,"CREATE FUNCTION %s(state " + myType + ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java "+ "AS 'return state;'");
+  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(" + myType + ") "+ "SFUNC "+ fState+ " "+ "STYPE frozen<"+ myType+ "> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  String aggregation=createAggregate(KEYSPACE,myType,"CREATE AGGREGATE %s(" + myType + ") "+ "SFUNC "+ fState+ " "+ "STYPE "+ myType+ " "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  assertRows(execute("SELECT " + aggregation + "(b).f FROM %s"),row(7));
+  assertInvalidMessage("The function arguments should not be frozen","DROP AGGREGATE %s (frozen<" + myType + ">);");
+}

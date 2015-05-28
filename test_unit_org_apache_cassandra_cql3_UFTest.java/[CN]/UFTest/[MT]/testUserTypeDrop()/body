@@ -1,7 +1,7 @@
 {
   String type=KEYSPACE + '.' + createType("CREATE TYPE %s (txt text, i int)");
   createTable("CREATE TABLE %s (key int primary key, udt frozen<" + type + ">)");
-  String fName=createFunction(KEYSPACE,"frozen<" + type + '>',"CREATE FUNCTION %s( udt frozen<" + type + "> ) "+ "CALLED ON NULL INPUT "+ "RETURNS int "+ "LANGUAGE java "+ "AS $$return "+ "     Integer.valueOf(udt.getInt(\"i\"));$$;");
+  String fName=createFunction(KEYSPACE,type,"CREATE FUNCTION %s( udt " + type + " ) "+ "CALLED ON NULL INPUT "+ "RETURNS int "+ "LANGUAGE java "+ "AS $$return "+ "     Integer.valueOf(udt.getInt(\"i\"));$$;");
   FunctionName fNameName=parseFunctionName(fName);
   Assert.assertEquals(1,Functions.find(fNameName).size());
   ResultMessage.Prepared prepared=QueryProcessor.prepare(String.format("SELECT key, %s(udt) FROM %s.%s",fName,KEYSPACE,currentTable()),ClientState.forInternalCalls(),false);
