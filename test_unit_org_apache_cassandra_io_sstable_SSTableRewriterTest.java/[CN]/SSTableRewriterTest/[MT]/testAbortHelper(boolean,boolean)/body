@@ -5,8 +5,7 @@
   SSTableReader s=writeFile(cfs,1000);
   if (!offline)   cfs.addSSTable(s);
   Set<SSTableReader> compacting=Sets.newHashSet(s);
-  SSTableRewriter.overrideOpenInterval(10000000);
-  try (ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=offline ? LifecycleTransaction.offline(OperationType.UNKNOWN,compacting) : cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,offline)){
+  try (ISSTableScanner scanner=compacting.iterator().next().getScanner();CompactionController controller=new CompactionController(cfs,compacting,0);LifecycleTransaction txn=offline ? LifecycleTransaction.offline(OperationType.UNKNOWN,compacting) : cfs.getTracker().tryModify(compacting,OperationType.UNKNOWN);SSTableRewriter rewriter=new SSTableRewriter(cfs,txn,1000,offline,10000000)){
     rewriter.switchWriter(getWriter(cfs,s.descriptor.directory));
     while (scanner.hasNext()) {
       rewriter.append(new LazilyCompactedRow(controller,Arrays.asList(scanner.next())));
