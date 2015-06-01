@@ -2,6 +2,7 @@
   RepairJobDesc desc=message.payload.desc;
   try {
 switch (message.payload.messageType) {
+case PREPARE_GLOBAL_MESSAGE:
 case PREPARE_MESSAGE:
       PrepareMessage prepareMessage=(PrepareMessage)message.payload;
     logger.debug("Preparing, {}",prepareMessage);
@@ -11,7 +12,10 @@ for (UUID cfId : prepareMessage.cfIds) {
   ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
   columnFamilyStores.add(columnFamilyStore);
 }
-ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges,prepareMessage.isIncremental);
+CassandraVersion peerVersion=SystemKeyspace.getReleaseVersion(message.from);
+boolean isGlobal=peerVersion == null || peerVersion.compareTo(ActiveRepairService.SUPPORTS_GLOBAL_PREPARE_FLAG_VERSION) < 0 || message.payload.messageType.equals(RepairMessage.Type.PREPARE_GLOBAL_MESSAGE);
+logger.debug("Received prepare message: global message = {}, peerVersion = {},",message.payload.messageType.equals(RepairMessage.Type.PREPARE_GLOBAL_MESSAGE),peerVersion);
+ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges,prepareMessage.isIncremental,isGlobal);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
 case SNAPSHOT:
@@ -44,7 +48,7 @@ case SYNC_REQUEST:
 SyncRequest request=(SyncRequest)message.payload;
 logger.debug("Syncing {}",request);
 long repairedAt=ActiveRepairService.UNREPAIRED_SSTABLE;
-if (desc.parentSessionId != null && ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId) != null) repairedAt=ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).repairedAt;
+if (desc.parentSessionId != null && ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId) != null) repairedAt=ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).getRepairedAt();
 StreamingRepairTask task=new StreamingRepairTask(desc,request,repairedAt);
 task.run();
 break;

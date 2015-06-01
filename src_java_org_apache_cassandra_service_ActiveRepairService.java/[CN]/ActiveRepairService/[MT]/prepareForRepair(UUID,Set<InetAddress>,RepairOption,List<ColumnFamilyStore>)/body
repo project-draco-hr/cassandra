@@ -1,5 +1,5 @@
 {
-  registerParentRepairSession(parentRepairSession,columnFamilyStores,options.getRanges(),options.isIncremental());
+  registerParentRepairSession(parentRepairSession,columnFamilyStores,options.getRanges(),options.isIncremental(),options.isGlobal());
   final CountDownLatch prepareLatch=new CountDownLatch(endpoints.size());
   final AtomicBoolean status=new AtomicBoolean(true);
   final Set<String> failedNodes=Collections.synchronizedSet(new HashSet<String>());
@@ -20,7 +20,10 @@
   List<UUID> cfIds=new ArrayList<>(columnFamilyStores.size());
   for (  ColumnFamilyStore cfs : columnFamilyStores)   cfIds.add(cfs.metadata.cfId);
   for (  InetAddress neighbour : endpoints) {
-    PrepareMessage message=new PrepareMessage(parentRepairSession,cfIds,options.getRanges(),options.isIncremental());
+    CassandraVersion peerVersion=SystemKeyspace.getReleaseVersion(neighbour);
+    boolean isGlobal=options.isGlobal() && peerVersion != null && peerVersion.compareTo(SUPPORTS_GLOBAL_PREPARE_FLAG_VERSION) >= 0;
+    logger.debug("Sending prepare message: options.isGlobal = {}, peerVersion = {}",options.isGlobal(),peerVersion);
+    PrepareMessage message=new PrepareMessage(parentRepairSession,cfIds,options.getRanges(),options.isIncremental(),isGlobal);
     MessageOut<RepairMessage> msg=message.createMessage();
     MessagingService.instance().sendRR(msg,neighbour,callback,TimeUnit.HOURS.toMillis(1),true);
   }
