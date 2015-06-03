@@ -7,7 +7,7 @@
     memtable.cfs.data.markFlushing(memtable);
     if (memtable.isClean() || truncate) {
       memtable.cfs.replaceFlushed(memtable,null);
-      memtable.setDiscarded();
+      reclaim(memtable);
       iter.remove();
     }
   }
@@ -16,17 +16,9 @@
     return;
   }
   metric.memtableSwitchCount.inc();
-  for (  final Memtable memtable : memtables) {
+  for (  Memtable memtable : memtables) {
     MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
-    final OpOrder.Barrier readBarrier=readOrdering.newBarrier();
-    readBarrier.issue();
-    reclaimExecutor.execute(new WrappedRunnable(){
-      public void runMayThrow() throws InterruptedException, ExecutionException {
-        readBarrier.await();
-        memtable.setDiscarded();
-      }
-    }
-);
+    reclaim(memtable);
   }
   postFlush.latch.countDown();
 }
