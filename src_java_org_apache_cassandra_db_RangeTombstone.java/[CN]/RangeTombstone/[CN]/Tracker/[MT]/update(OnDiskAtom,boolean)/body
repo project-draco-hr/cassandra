@@ -1,2 +1,32 @@
 {
+  ListIterator<RangeTombstone> iterator=openedTombstones.listIterator();
+  while (iterator.hasNext()) {
+    RangeTombstone t=iterator.next();
+    if (comparator.compare(atom.name(),t.max) > 0) {
+      iterator.remove();
+    }
+ else {
+      iterator.previous();
+      break;
+    }
+  }
+  if (atom instanceof RangeTombstone) {
+    RangeTombstone toAdd=(RangeTombstone)atom;
+    if (isExpired)     toAdd=new ExpiredRangeTombstone(toAdd);
+    while (iterator.hasNext()) {
+      RangeTombstone existing=iterator.next();
+      int cmp=comparator.compare(toAdd.max,existing.max);
+      if (cmp > 0) {
+        if (toAdd.data.supersedes(existing.data))         iterator.remove();
+      }
+ else {
+        if (toAdd.data.supersedes(existing.data)) {
+          if (cmp == 0)           iterator.set(toAdd);
+ else           insertBefore(toAdd,iterator);
+        }
+        return;
+      }
+    }
+    iterator.add(toAdd);
+  }
 }
