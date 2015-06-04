@@ -1,0 +1,39 @@
+{
+  String type=createType("CREATE TYPE %s (txt text, i int)");
+  TypesTestDef[] typeDefs={new TypesTestDef("timestamp","timestamp","ts",new Date()),new TypesTestDef("date","date","dt",12345),new TypesTestDef("time","time","tim",12345L),new TypesTestDef("uuid","uuid","uu",UUID.randomUUID()),new TypesTestDef("timeuuid","timeuuid","tu",UUIDGen.getTimeUUID()),new TypesTestDef("tinyint","tinyint","ti",(byte)42),new TypesTestDef("smallint","smallint","si",(short)43),new TypesTestDef("int","int","i",44),new TypesTestDef("bigint","bigint","b",45L),new TypesTestDef("float","float","f",46f),new TypesTestDef("double","double","d",47d),new TypesTestDef("boolean","boolean","x",true),new TypesTestDef("ascii","ascii","a","tqbfjutld"),new TypesTestDef("text","text","t","k\u00f6lsche jung"),new TypesTestDef("tuple<int, text>","frozen<tuple<int, text>>","tup",tuple(1,"foo"))};
+  String createTableDDL="CREATE TABLE %s (key int PRIMARY KEY";
+  String insertDML="INSERT INTO %s (key";
+  List<Object> values=new ArrayList<>();
+  for (  TypesTestDef typeDef : typeDefs) {
+    createTableDDL+=", " + typeDef.columnName + ' '+ typeDef.tableType;
+    insertDML+=", " + typeDef.columnName;
+    String typeName=typeDef.udfType;
+    typeDef.fCheckArgAndReturn=createFunction(KEYSPACE,typeName,"CREATE OR REPLACE FUNCTION %s(val " + typeName + ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ typeName+ ' '+ "LANGUAGE java\n"+ "AS 'return val;';");
+    typeDef.fCalledOnNull=createFunction(KEYSPACE,typeName,"CREATE OR REPLACE FUNCTION %s(val " + typeName + ") "+ "CALLED ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS 'return \"called\";';");
+    typeDef.fReturnsNullOnNull=createFunction(KEYSPACE,typeName,"CREATE OR REPLACE FUNCTION %s(val " + typeName + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS 'return \"called\";';");
+    values.add(typeDef.referenceValue);
+  }
+  createTableDDL+=')';
+  createTable(createTableDDL);
+  insertDML+=") VALUES (1";
+  for (  TypesTestDef ignored : typeDefs)   insertDML+=", ?";
+  insertDML+=')';
+  execute(insertDML,values.toArray());
+  for (int i=0; i < values.size(); i++)   values.set(i,null);
+  execute(insertDML.replace('1','2'),values.toArray());
+  for (  TypesTestDef typeDef : typeDefs) {
+    assertRows(execute("SELECT " + typeDef.fCheckArgAndReturn + '('+ typeDef.columnName+ ") FROM %s WHERE key = 1"),row(new Object[]{typeDef.referenceValue}));
+  }
+  for (  TypesTestDef typeDef : typeDefs) {
+    assertRows(execute("SELECT " + typeDef.fCalledOnNull + '('+ typeDef.columnName+ ") FROM %s WHERE key = 1"),row(new Object[]{"called"}));
+  }
+  for (  TypesTestDef typeDef : typeDefs) {
+    assertRows(execute("SELECT " + typeDef.fCalledOnNull + '('+ typeDef.columnName+ ") FROM %s WHERE key = 2"),row(new Object[]{"called"}));
+  }
+  for (  TypesTestDef typeDef : typeDefs) {
+    assertRows(execute("SELECT " + typeDef.fReturnsNullOnNull + '('+ typeDef.columnName+ ") FROM %s WHERE key = 1"),row(new Object[]{"called"}));
+  }
+  for (  TypesTestDef typeDef : typeDefs) {
+    assertRows(execute("SELECT " + typeDef.fReturnsNullOnNull + '('+ typeDef.columnName+ ") FROM %s WHERE key = 2"),row(new Object[]{null}));
+  }
+}
