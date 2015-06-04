@@ -1,13 +1,24 @@
 {
-  createTable("CREATE TABLE %s (key int primary key, ival int, lval bigint, fval float, dval double, vval varint, ddval decimal)");
-  execute("INSERT INTO %s (key, ival, lval, fval, dval, vval, ddval) VALUES (?, ?, ?, ?, ?, ?, ?)",1,1,1L,1f,1d,BigInteger.valueOf(1L),BigDecimal.valueOf(1d));
-  Object[][] variations={new Object[]{"int","ival",1,2},new Object[]{"bigint","lval",1L,2L},new Object[]{"float","fval",1f,2f},new Object[]{"double","dval",1d,2d},new Object[]{"varint","vval",BigInteger.valueOf(1L),BigInteger.valueOf(2L)},new Object[]{"decimal","ddval",BigDecimal.valueOf(1d),BigDecimal.valueOf(2d)}};
+  UUID ruuid=UUID.randomUUID();
+  UUID tuuid=UUIDGen.getTimeUUID();
+  createTable("CREATE TABLE %s (key int primary key, " + "tival tinyint, sival smallint, ival int, lval bigint, fval float, dval double, vval varint, ddval decimal, " + "timval time, dtval date, tsval timestamp, uval uuid, tuval timeuuid)");
+  execute("INSERT INTO %s (key, tival, sival, ival, lval, fval, dval, vval, ddval, timval, dtval, tsval, uval, tuval) VALUES " + "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",1,(byte)1,(short)1,1,1L,1f,1d,BigInteger.valueOf(1L),BigDecimal.valueOf(1d),1L,Integer.MAX_VALUE,new Date(1),ruuid,tuuid);
+  Object[][] variations={new Object[]{"tinyint","tival",(byte)1,(byte)2},new Object[]{"smallint","sival",(short)1,(short)2},new Object[]{"int","ival",1,2},new Object[]{"bigint","lval",1L,2L},new Object[]{"float","fval",1f,2f},new Object[]{"double","dval",1d,2d},new Object[]{"varint","vval",BigInteger.valueOf(1L),BigInteger.valueOf(2L)},new Object[]{"decimal","ddval",BigDecimal.valueOf(1d),BigDecimal.valueOf(2d)},new Object[]{"time","timval",1L,2L}};
   for (  Object[] variation : variations) {
     Object type=variation[0];
     Object col=variation[1];
     Object expected1=variation[2];
     Object expected2=variation[3];
     String fName=createFunction(KEYSPACE,type.toString(),"CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS "+ type+ ' '+ "LANGUAGE javascript "+ "AS 'val+1;';");
+    assertRows(execute("SELECT key, " + col + ", "+ fName+ '('+ col+ ") FROM %s"),row(1,expected1,expected2));
+  }
+  variations=new Object[][]{new Object[]{"timestamp","tsval",new Date(1),new Date(1)},new Object[]{"uuid","uval",ruuid,ruuid},new Object[]{"timeuuid","tuval",tuuid,tuuid},new Object[]{"date","dtval",Integer.MAX_VALUE,Integer.MAX_VALUE}};
+  for (  Object[] variation : variations) {
+    Object type=variation[0];
+    Object col=variation[1];
+    Object expected1=variation[2];
+    Object expected2=variation[3];
+    String fName=createFunction(KEYSPACE,type.toString(),"CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS "+ type+ ' '+ "LANGUAGE javascript "+ "AS 'val;';");
     assertRows(execute("SELECT key, " + col + ", "+ fName+ '('+ col+ ") FROM %s"),row(1,expected1,expected2));
   }
 }
