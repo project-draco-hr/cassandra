@@ -1,0 +1,19 @@
+{
+  commitLog.executor.requestExtraSync().awaitUninterruptibly();
+  commitLog.executor.requestExtraSync().awaitUninterruptibly();
+  commitLog.allocator.awaitManagementTasksCompletion();
+  long combinedSize=0;
+  for (  File f : new File(commitLog.location).listFiles())   combinedSize+=f.length();
+  Assert.assertEquals(combinedSize,commitLog.getActiveOnDiskSize());
+  List<String> logFileNames=commitLog.getActiveSegmentNames();
+  Map<String,Double> ratios=commitLog.getActiveSegmentCompressionRatios();
+  Collection<CommitLogSegment> segments=commitLog.allocator.getActiveSegments();
+  for (  CommitLogSegment segment : segments) {
+    Assert.assertTrue(logFileNames.remove(segment.getName()));
+    Double ratio=ratios.remove(segment.getName());
+    Assert.assertEquals(segment.logFile.length(),segment.onDiskSize());
+    Assert.assertEquals(segment.onDiskSize() * 1.0 / segment.contentSize(),ratio,0.01);
+  }
+  Assert.assertTrue(logFileNames.isEmpty());
+  Assert.assertTrue(ratios.isEmpty());
+}
