@@ -1,0 +1,9 @@
+{
+  pig.registerQuery("CC = load 'cql://thrift_ks/cc?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20cc%20where%20token(key)%20%3E%20%3F%20and%20token(key)%20%3C%3D%20%3F' using CqlNativeStorage();");
+  pig.registerQuery("A = foreach CC generate key, name, value;");
+  pig.registerQuery("B = GROUP A BY key;");
+  pig.registerQuery("total_hits = foreach B generate group, SUM(A.value);");
+  Tuple t=pig.openIterator("total_hits").next();
+  Assert.assertEquals(t.get(0),"chuck");
+  Assert.assertEquals(t.get(1),4l);
+}

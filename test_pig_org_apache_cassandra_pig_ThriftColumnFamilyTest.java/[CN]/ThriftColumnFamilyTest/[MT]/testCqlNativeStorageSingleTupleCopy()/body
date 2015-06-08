@@ -1,0 +1,13 @@
+{
+  executeCQLStatements(deleteCopyOfSomeAppTableData);
+  pig.setBatchOn();
+  pig.registerQuery("rows = LOAD 'cql://thrift_ks/some_app?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20some_app%20where%20token(key)%20%3E%20%3F%20and%20token(key)%20%3C%3D%20%3F' USING CqlNativeStorage();");
+  pig.registerQuery("onecol = FOREACH rows GENERATE TOTUPLE(TOTUPLE('key', key)), TOTUPLE(percent);");
+  pig.registerQuery("STORE onecol INTO 'cql://thrift_ks/copy_of_some_app?" + defaultParameters + nativeParameters+ "&output_query=UPDATE+thrift_ks.copy_of_some_app+set+percent+%3D+%3F' USING CqlNativeStorage();");
+  pig.executeBatch();
+  String value=getColumnValue("thrift_ks","copy_of_some_app","name","qux","UTF8Type");
+  if (value != null)   Assert.fail();
+  value=getColumnValue("thrift_ks","copy_of_some_app","vote_type","qux","UTF8Type");
+  if (value != null)   Assert.fail();
+  Assert.assertEquals("64.7",getColumnValue("thrift_ks","copy_of_some_app","percent","qux","FloatType"));
+}

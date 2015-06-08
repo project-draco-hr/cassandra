@@ -1,0 +1,27 @@
+{
+  pig.registerQuery("U8 = load 'cql://thrift_ks/u8?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20u8%20where%20token(key)%20%3E%20%3F%20and%20token(key)%20%3C%3D%20%3F' using CqlNativeStorage();");
+  pig.registerQuery("Bytes = load 'cql://thrift_ks/bytes?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20bytes%20where%20token(key)%20%3E%20%3F%20and%20token(key)%20%3C%3D%20%3F' using CqlNativeStorage();");
+  pig.registerQuery("b = foreach Bytes generate (chararray)key, column1, value;");
+  pig.registerQuery("a = join Bytes by key, U8 by key;");
+  Iterator<Tuple> it=pig.openIterator("a");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),new DataByteArray("foo".getBytes()));
+    Assert.assertEquals(t.get(1),"x");
+    Assert.assertEquals(t.get(2),new DataByteArray("Z".getBytes()));
+    Assert.assertEquals(t.get(3),"foo");
+    Assert.assertEquals(t.get(4),"x");
+    Assert.assertEquals(t.get(5),new DataByteArray("Z".getBytes()));
+  }
+  pig.registerQuery("c = join b by (chararray)key, U8 by (chararray)key;");
+  it=pig.openIterator("c");
+  if (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),"foo");
+    Assert.assertEquals(t.get(1),"x");
+    Assert.assertEquals(t.get(2),new DataByteArray("Z".getBytes()));
+    Assert.assertEquals(t.get(3),"foo");
+    Assert.assertEquals(t.get(4),"x");
+    Assert.assertEquals(t.get(5),new DataByteArray("Z".getBytes()));
+  }
+}
