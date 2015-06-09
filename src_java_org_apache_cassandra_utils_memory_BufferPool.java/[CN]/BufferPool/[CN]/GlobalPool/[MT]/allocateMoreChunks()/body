@@ -1,0 +1,19 @@
+{
+  while (true) {
+    long cur=memoryUsage.get();
+    if (cur + MACRO_CHUNK_SIZE > MEMORY_USAGE_THRESHOLD) {
+      noSpamLogger.info("Maximum memory usage reached ({} bytes), cannot allocate chunk of {} bytes",MEMORY_USAGE_THRESHOLD,MACRO_CHUNK_SIZE);
+      return false;
+    }
+    if (memoryUsage.compareAndSet(cur,cur + MACRO_CHUNK_SIZE))     break;
+  }
+  Chunk chunk=new Chunk(allocateDirectAligned(MACRO_CHUNK_SIZE));
+  chunk.acquire(null);
+  macroChunks.add(chunk);
+  for (int i=0; i < MACRO_CHUNK_SIZE; i+=CHUNK_SIZE) {
+    Chunk add=new Chunk(chunk.get(CHUNK_SIZE));
+    chunks.add(add);
+    if (DEBUG)     debug.register(add);
+  }
+  return true;
+}

@@ -1,0 +1,50 @@
+{
+  final ByteBuffer[] buffers=new ByteBuffer[sizes.length];
+  int sum=0;
+  for (int i=0; i < sizes.length; i++) {
+    buffers[i]=BufferPool.get(sizes[i]);
+    assertNotNull(buffers[i]);
+    assertEquals(sizes[i],buffers[i].capacity());
+    sum+=BufferPool.currentChunk().roundUp(buffers[i].capacity());
+  }
+  final BufferPool.Chunk chunk=BufferPool.currentChunk();
+  assertNotNull(chunk);
+  assertFalse(chunk.isFree());
+  assertTrue(sum < BufferPool.GlobalPool.MACRO_CHUNK_SIZE);
+  ExecutorService executorService=Executors.newFixedThreadPool(threadCount);
+  final CountDownLatch finished=new CountDownLatch(threadCount);
+  for (int i=0; i < threadCount; i++) {
+    final int idx=i % sizes.length;
+    final ByteBuffer buffer=buffers[idx];
+    executorService.submit(new Runnable(){
+      @Override public void run(){
+        try {
+          assertNotSame(chunk,BufferPool.currentChunk());
+          BufferPool.put(buffer);
+        }
+ catch (        AssertionError ex) {
+          ex.printStackTrace();
+        }
+catch (        Throwable t) {
+          t.printStackTrace();
+          fail(t.getMessage());
+        }
+ finally {
+          finished.countDown();
+        }
+      }
+    }
+);
+  }
+  finished.await();
+  assertEquals(0,executorService.shutdownNow().size());
+  executorService=null;
+  System.gc();
+  System.gc();
+  System.gc();
+  assertTrue(BufferPool.currentChunk().isFree());
+  ByteBuffer buffer=BufferPool.get(sizes[0]);
+  assertNotNull(buffer);
+  assertEquals(sizes[0],buffer.capacity());
+  BufferPool.put(buffer);
+}

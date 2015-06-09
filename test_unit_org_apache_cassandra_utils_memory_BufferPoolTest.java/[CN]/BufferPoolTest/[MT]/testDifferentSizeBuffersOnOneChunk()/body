@@ -1,0 +1,24 @@
+{
+  int[] sizes=new int[]{5,1024,4096,8,16000,78,512,256,63,55,89,90,255,32,2048,128};
+  int sum=0;
+  List<ByteBuffer> buffers=new ArrayList<>(sizes.length);
+  for (int i=0; i < sizes.length; i++) {
+    ByteBuffer buffer=BufferPool.get(sizes[i]);
+    assertNotNull(buffer);
+    assertTrue(buffer.capacity() >= sizes[i]);
+    buffers.add(buffer);
+    sum+=BufferPool.currentChunk().roundUp(buffer.capacity());
+  }
+  assertTrue(sum <= BufferPool.GlobalPool.MACRO_CHUNK_SIZE);
+  BufferPool.Chunk chunk=BufferPool.currentChunk();
+  assertNotNull(chunk);
+  Random rnd=new Random();
+  rnd.setSeed(298347529L);
+  while (!buffers.isEmpty()) {
+    int index=rnd.nextInt(buffers.size());
+    ByteBuffer buffer=buffers.remove(index);
+    BufferPool.put(buffer);
+  }
+  assertEquals(null,BufferPool.currentChunk());
+  assertEquals(0,chunk.free());
+}

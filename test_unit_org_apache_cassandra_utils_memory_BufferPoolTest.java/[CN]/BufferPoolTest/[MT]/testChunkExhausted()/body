@@ -1,0 +1,22 @@
+{
+  final int size=BufferPool.CHUNK_SIZE / 64;
+  int[] sizes=new int[128];
+  Arrays.fill(sizes,size);
+  int sum=0;
+  List<ByteBuffer> buffers=new ArrayList<>(sizes.length);
+  for (int i=0; i < sizes.length; i++) {
+    ByteBuffer buffer=BufferPool.get(sizes[i]);
+    assertNotNull(buffer);
+    assertTrue(buffer.capacity() >= sizes[i]);
+    buffers.add(buffer);
+    sum+=buffer.capacity();
+  }
+  assertTrue(sum <= BufferPool.GlobalPool.MACRO_CHUNK_SIZE);
+  BufferPool.Chunk chunk=BufferPool.currentChunk();
+  assertNotNull(chunk);
+  for (int i=0; i < sizes.length; i++) {
+    BufferPool.put(buffers.get(i));
+  }
+  assertEquals(null,BufferPool.currentChunk());
+  assertEquals(0,chunk.free());
+}

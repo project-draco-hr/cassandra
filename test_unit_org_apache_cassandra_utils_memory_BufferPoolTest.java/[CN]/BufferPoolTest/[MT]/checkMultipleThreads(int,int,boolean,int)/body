@@ -1,0 +1,45 @@
+{
+  ExecutorService executorService=Executors.newFixedThreadPool(threadCount);
+  final CountDownLatch finished=new CountDownLatch(threadCount);
+  for (int i=0; i < threadCount; i++) {
+    final int[] threadSizes=new int[numBuffersPerThread];
+    for (int j=0; j < threadSizes.length; j++)     threadSizes[j]=sizes[(i * numBuffersPerThread + j) % sizes.length];
+    final Random rand=new Random();
+    executorService.submit(new Runnable(){
+      @Override public void run(){
+        try {
+          Thread.sleep(rand.nextInt(3));
+          List<ByteBuffer> toBeReturned=new ArrayList<ByteBuffer>(threadSizes.length);
+          for (int j=0; j < threadSizes.length; j++) {
+            ByteBuffer buffer=BufferPool.get(threadSizes[j]);
+            assertNotNull(buffer);
+            assertEquals(threadSizes[j],buffer.capacity());
+            for (int i=0; i < 10; i++)             buffer.putInt(i);
+            buffer.rewind();
+            Thread.sleep(rand.nextInt(3));
+            for (int i=0; i < 10; i++)             assertEquals(i,buffer.getInt());
+            if (returnImmediately)             BufferPool.put(buffer);
+ else             toBeReturned.add(buffer);
+            assertTrue(BufferPool.sizeInBytes() > 0);
+          }
+          Thread.sleep(rand.nextInt(3));
+          for (          ByteBuffer buffer : toBeReturned)           BufferPool.put(buffer);
+        }
+ catch (        Exception ex) {
+          ex.printStackTrace();
+          fail(ex.getMessage());
+        }
+ finally {
+          finished.countDown();
+        }
+      }
+    }
+);
+  }
+  finished.await();
+  assertEquals(0,executorService.shutdownNow().size());
+  for (int i=0; i < 5; i++) {
+    System.gc();
+    Thread.sleep(100);
+  }
+}

@@ -1,0 +1,16 @@
+{
+  final int size=RandomAccessReader.DEFAULT_BUFFER_SIZE;
+  final int numBuffers=BufferPool.CHUNK_SIZE / size;
+  List<ByteBuffer> buffers1=new ArrayList<>(numBuffers);
+  List<ByteBuffer> buffers2=new ArrayList<>(numBuffers);
+  for (int i=0; i < numBuffers; i++)   buffers1.add(BufferPool.get(size));
+  BufferPool.Chunk chunk1=BufferPool.currentChunk();
+  assertNotNull(chunk1);
+  for (int i=0; i < numBuffers; i++)   buffers2.add(BufferPool.get(size));
+  assertEquals(2,BufferPool.numChunks());
+  for (  ByteBuffer buffer : buffers1)   BufferPool.put(buffer);
+  assertEquals(1,BufferPool.numChunks());
+  for (  ByteBuffer buffer : buffers2)   BufferPool.put(buffer);
+  assertEquals(0,BufferPool.numChunks());
+  buffers2.clear();
+}

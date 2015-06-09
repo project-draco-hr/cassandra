@@ -1,0 +1,23 @@
+{
+  int slotCount=(size - 1 + unit()) >>> shift;
+  if (slotCount > 64)   return null;
+  long slotBits=-1L >>> (64 - slotCount);
+  long searchMask=0x1111111111111111L;
+  searchMask*=15L >>> ((slotCount - 1) & 3);
+  searchMask&=-1L >>> (slotCount - 1);
+  while (true) {
+    long cur=freeSlots;
+    int index=Long.numberOfTrailingZeros(cur & searchMask);
+    if (index == 64)     return null;
+    searchMask^=1L << index;
+    long candidate=slotBits << index;
+    if ((candidate & cur) == candidate) {
+      while (true) {
+        if (freeSlotsUpdater.compareAndSet(this,cur,cur & ~candidate))         break;
+        cur=freeSlots;
+        assert((candidate & cur) == candidate);
+      }
+      return get(index << shift,size);
+    }
+  }
+}

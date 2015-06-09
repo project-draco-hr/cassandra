@@ -1,0 +1,22 @@
+{
+  final int size=4096;
+  final int numBuffersInChunk=BufferPool.GlobalPool.MACRO_CHUNK_SIZE / size;
+  List<ByteBuffer> buffers=new ArrayList<>(numBuffersInChunk);
+  Set<Long> addresses=new HashSet<>(numBuffersInChunk);
+  for (int i=0; i < numBuffersInChunk; i++) {
+    ByteBuffer buffer=BufferPool.get(size);
+    buffers.add(buffer);
+    addresses.add(MemoryUtil.getAddress(buffer));
+  }
+  for (int i=numBuffersInChunk - 1; i >= 0; i--)   BufferPool.put(buffers.get(i));
+  buffers.clear();
+  for (int i=0; i < numBuffersInChunk; i++) {
+    ByteBuffer buffer=BufferPool.get(size);
+    assertNotNull(buffer);
+    assertEquals(size,buffer.capacity());
+    addresses.remove(MemoryUtil.getAddress(buffer));
+    buffers.add(buffer);
+  }
+  assertTrue(addresses.isEmpty());
+  for (  ByteBuffer buffer : buffers)   BufferPool.put(buffer);
+}
