@@ -1,12 +1,16 @@
 {
   return parallelAllSSTableOperation(cfs,new OneSSTableOperation(){
-    @Override public Iterable<SSTableReader> filterSSTables(    Iterable<SSTableReader> input){
-      return Iterables.filter(input,new Predicate<SSTableReader>(){
-        @Override public boolean apply(        SSTableReader sstable){
-          return !(excludeCurrentVersion && sstable.descriptor.version.equals(sstable.descriptor.getFormat().getLatestVersion()));
+    @Override public Iterable<SSTableReader> filterSSTables(    LifecycleTransaction transaction){
+      Iterable<SSTableReader> sstables=new ArrayList<>(transaction.originals());
+      Iterator<SSTableReader> iter=sstables.iterator();
+      while (iter.hasNext()) {
+        SSTableReader sstable=iter.next();
+        if (excludeCurrentVersion && sstable.descriptor.version.equals(sstable.descriptor.getFormat().getLatestVersion())) {
+          transaction.cancel(sstable);
+          iter.remove();
         }
       }
-);
+      return sstables;
     }
     @Override public void execute(    LifecycleTransaction txn) throws IOException {
       AbstractCompactionTask task=cfs.getCompactionStrategy().getCompactionTask(txn,NO_GC,Long.MAX_VALUE);
