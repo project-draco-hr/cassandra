@@ -14,6 +14,14 @@
   if (hosts != null) {
     options.getHosts().addAll(hosts);
   }
+  if (primaryRange) {
+    if (options.getDataCenters().isEmpty() && options.getHosts().isEmpty())     options.getRanges().addAll(getPrimaryRanges(keyspace));
+ else     if (options.getDataCenters().size() == 1 && options.getDataCenters().contains(DatabaseDescriptor.getLocalDataCenter()))     options.getRanges().addAll(getPrimaryRangesWithinDC(keyspace));
+ else     throw new IllegalArgumentException("You need to run primary range repair on all nodes in the cluster.");
+  }
+ else {
+    options.getRanges().addAll(getLocalRanges(keyspace));
+  }
   if (columnFamilies != null) {
     for (    String columnFamily : columnFamilies) {
       options.getColumnFamilies().add(columnFamily);
