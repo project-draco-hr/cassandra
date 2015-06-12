@@ -3,7 +3,9 @@
   if (compacting == null)   return Collections.<SSTableReader>emptySet();
   List<SSTableReader> candidates=new ArrayList<>();
   long minTimestamp=Long.MAX_VALUE;
-  for (  SSTableReader sstable : overlapping)   minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
+  for (  SSTableReader sstable : overlapping) {
+    if (sstable.getSSTableMetadata().maxLocalDeletionTime >= gcBefore)     minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
+  }
   for (  SSTableReader candidate : compacting) {
     if (candidate.getSSTableMetadata().maxLocalDeletionTime < gcBefore)     candidates.add(candidate);
  else     minTimestamp=Math.min(minTimestamp,candidate.getMinTimestamp());
