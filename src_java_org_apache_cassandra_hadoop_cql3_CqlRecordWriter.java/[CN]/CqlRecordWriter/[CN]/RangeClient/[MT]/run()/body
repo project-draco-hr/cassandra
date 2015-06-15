@@ -10,22 +10,6 @@
     ListIterator<InetAddress> iter=endpoints.listIterator();
     while (true) {
       try {
-        InetAddress address=iter.next();
-        String host=address.getHostName();
-        client=CqlConfigHelper.getOutputCluster(host,conf).connect();
-      }
- catch (      Exception e) {
-        if (canRetryDriverConnection(e)) {
-          iter.previous();
-        }
-        closeInternal();
-        if ((e instanceof AuthenticationException || e instanceof InvalidQueryException) || !iter.hasNext()) {
-          lastException=new IOException(e);
-          break outer;
-        }
-        continue;
-      }
-      try {
         int i=0;
         PreparedStatement statement=preparedStatement(client);
         while (bindVariables != null) {
@@ -43,6 +27,21 @@
  catch (      Exception e) {
         closeInternal();
         if (!iter.hasNext()) {
+          lastException=new IOException(e);
+          break outer;
+        }
+      }
+      try {
+        InetAddress address=iter.next();
+        String host=address.getHostName();
+        client=CqlConfigHelper.getOutputCluster(host,conf).connect();
+      }
+ catch (      Exception e) {
+        if (canRetryDriverConnection(e)) {
+          iter.previous();
+        }
+        closeInternal();
+        if ((e instanceof AuthenticationException || e instanceof InvalidQueryException) || !iter.hasNext()) {
           lastException=new IOException(e);
           break outer;
         }
