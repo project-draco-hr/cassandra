@@ -117,17 +117,6 @@
       }
     }
   }
-  Runnable runnable=new Runnable(){
-    public void run(){
-      for (      Keyspace keyspaceName : Keyspace.all()) {
-        for (        ColumnFamilyStore cf : keyspaceName.getColumnFamilyStores()) {
-          for (          ColumnFamilyStore store : cf.concatWithIndexes())           CompactionManager.instance.submitBackground(store);
-        }
-      }
-    }
-  }
-;
-  ScheduledExecutors.optionalTasks.schedule(runnable,5,TimeUnit.MINUTES);
   SystemKeyspace.finishStartup();
   StorageService.instance.registerDaemon(this);
   try {
@@ -151,6 +140,7 @@
     }
   }
   if (!FBUtilities.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))   waitForGossipToSettle();
+  ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(),5,1,TimeUnit.MINUTES);
   int sizeRecorderInterval=Integer.getInteger("cassandra.size_recorder_interval",5 * 60);
   if (sizeRecorderInterval > 0)   ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(SizeEstimatesRecorder.instance,30,sizeRecorderInterval,TimeUnit.SECONDS);
   InetAddress rpcAddr=DatabaseDescriptor.getRpcAddress();
