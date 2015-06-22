@@ -1,0 +1,9 @@
+{
+  String fAdder=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "CALLED ON NULL INPUT " + "RETURNS int "+ "LANGUAGE java "+ "AS 'return (a != null ? a : 0) + (b != null ? b : 0);'");
+  String aAggr=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fAdder) + ' '+ "STYPE int "+ "FINALFUNC intasblob");
+  createTable("CREATE TABLE %s (a int primary key, b int)");
+  execute("INSERT INTO %s (a, b) VALUES (1, 1)");
+  execute("INSERT INTO %s (a, b) VALUES (2, 2)");
+  execute("INSERT INTO %s (a, b) VALUES (3, 3)");
+  assertRows(execute("SELECT " + aAggr + "(b) FROM %s"),row(Int32Serializer.instance.serialize(6)));
+}
