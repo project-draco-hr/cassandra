@@ -1,19 +1,21 @@
 {
-  if (DatabaseDescriptor.shouldHintByDC()) {
+  if (!DatabaseDescriptor.hintedHandoffEnabled()) {
+    HintedHandOffManager.instance.metrics.incrPastWindow(ep);
+    return false;
+  }
+  Set<String> disabledDCs=DatabaseDescriptor.hintedHandoffDisabledDCs();
+  if (!disabledDCs.isEmpty()) {
     final String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
-    if (!DatabaseDescriptor.hintedHandoffEnabled(dc)) {
+    if (disabledDCs.contains(dc)) {
+      Tracing.trace("Not hinting {} since its data center {} has been disabled {}",ep,dc,disabledDCs);
       HintedHandOffManager.instance.metrics.incrPastWindow(ep);
       return false;
     }
   }
- else   if (!DatabaseDescriptor.hintedHandoffEnabled()) {
-    HintedHandOffManager.instance.metrics.incrPastWindow(ep);
-    return false;
-  }
   boolean hintWindowExpired=Gossiper.instance.getEndpointDowntime(ep) > DatabaseDescriptor.getMaxHintWindow();
   if (hintWindowExpired) {
     HintedHandOffManager.instance.metrics.incrPastWindow(ep);
-    Tracing.trace("Not hinting {} which has been down {}ms",ep,Gossiper.instance.getEndpointDowntime(ep));
+    Tracing.trace("Not hinting {} which has been down {} ms",ep,Gossiper.instance.getEndpointDowntime(ep));
   }
   return !hintWindowExpired;
 }
