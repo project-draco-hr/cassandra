@@ -6,8 +6,8 @@
       buildSummary(recreateBloomFilter,ibuilder,dbuilder,summaryLoaded,Downsampling.BASE_SAMPLING_LEVEL);
       builtSummary=true;
     }
-    if (components.contains(Component.PRIMARY_INDEX))     ifile=ibuilder.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
-    dfile=dbuilder.complete(descriptor.filenameFor(Component.DATA));
+    if (components.contains(Component.PRIMARY_INDEX))     ifile=ibuilder.buildIndex(descriptor,indexSummary);
+    dfile=dbuilder.buildData(descriptor,sstableMetadata);
     if (!descriptor.version.hasSamplingLevel() && !builtSummary && !validateSummarySamplingLevel()&& ifile != null) {
       indexSummary.close();
       ifile.close();
@@ -16,8 +16,8 @@
       FileUtils.deleteWithConfirm(new File(descriptor.filenameFor(Component.SUMMARY)));
       try (SegmentedFile.Builder ibuilderRebuild=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode(),false);SegmentedFile.Builder dbuilderRebuild=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode(),compression)){
         buildSummary(false,ibuilderRebuild,dbuilderRebuild,false,Downsampling.BASE_SAMPLING_LEVEL);
-        ifile=ibuilderRebuild.complete(descriptor.filenameFor(Component.PRIMARY_INDEX));
-        dfile=dbuilderRebuild.complete(descriptor.filenameFor(Component.DATA));
+        ifile=ibuilderRebuild.buildIndex(descriptor,indexSummary);
+        dfile=dbuilderRebuild.buildData(descriptor,sstableMetadata);
         saveSummary(ibuilderRebuild,dbuilderRebuild);
       }
      }

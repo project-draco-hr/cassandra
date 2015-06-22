@@ -1,0 +1,14 @@
+{
+  Config.DiskOptimizationStrategy strategy=DatabaseDescriptor.getDiskOptimizationStrategy();
+  if (strategy == Config.DiskOptimizationStrategy.ssd) {
+    double pageCrossProbability=(recordSize % 4096) / 4096.;
+    if ((pageCrossProbability - DatabaseDescriptor.getDiskOptimizationPageCrossChance()) > -1e-16)     recordSize+=4096;
+    return roundBufferSize(recordSize);
+  }
+ else   if (strategy == Config.DiskOptimizationStrategy.spinning) {
+    return roundBufferSize(recordSize + 4096);
+  }
+ else {
+    throw new IllegalStateException("Unsupported disk optimization strategy: " + strategy);
+  }
+}
