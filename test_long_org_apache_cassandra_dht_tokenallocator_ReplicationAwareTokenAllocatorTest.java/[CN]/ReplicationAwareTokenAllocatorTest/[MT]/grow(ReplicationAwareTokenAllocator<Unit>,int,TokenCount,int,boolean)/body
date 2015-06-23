@@ -1,0 +1,27 @@
+{
+  int size=t.unitCount();
+  Summary su=new Summary();
+  Summary st=new Summary();
+  Random rand=new Random(targetClusterSize + perUnitCount);
+  TestReplicationStrategy strategy=(TestReplicationStrategy)t.strategy;
+  if (size < targetClusterSize) {
+    System.out.format("Adding %d unit(s) using %s...",targetClusterSize - size,t.toString());
+    long time=System.currentTimeMillis();
+    while (size < targetClusterSize) {
+      int tokens=tc.tokenCount(perUnitCount,rand);
+      Unit unit=new Unit();
+      strategy.addUnit(unit);
+      t.addUnit(unit,tokens);
+      ++size;
+      if (verifyMetrics)       updateSummary(t,su,st,false);
+    }
+    System.out.format(" Done in %.3fs\n",(System.currentTimeMillis() - time) / 1000.0);
+    if (verifyMetrics) {
+      updateSummary(t,su,st,true);
+      double maxExpected=1.0 + tc.spreadExpectation() * strategy.spreadExpectation() / (perUnitCount * t.replicas);
+      if (su.max > maxExpected) {
+        Assert.fail(String.format("Expected max unit size below %.4f, was %.4f",maxExpected,su.max));
+      }
+    }
+  }
+}

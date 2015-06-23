@@ -1,0 +1,15 @@
+{
+  int size=t.sortedTokens.size();
+  double inverseAverage=1.0 * size / t.strategy.replicas();
+  Map<Unit,Double> ownership=evaluateReplicatedOwnership(t);
+  SummaryStatistics unitStat=new SummaryStatistics();
+  for (  Map.Entry<Unit,Double> en : ownership.entrySet())   unitStat.addValue(en.getValue() * inverseAverage / t.unitToTokens.get(en.getKey()).size());
+  su.update(unitStat);
+  SummaryStatistics tokenStat=new SummaryStatistics();
+  for (  Token tok : t.sortedTokens.keySet())   tokenStat.addValue(replicatedTokenOwnership(tok,t.sortedTokens,t.strategy) * inverseAverage);
+  st.update(tokenStat);
+  if (print) {
+    System.out.format("Size %d(%d)   \tunit %s  token %s   %s\n",t.unitCount(),size,mms(unitStat),mms(tokenStat),t.strategy);
+    System.out.format("Worst intermediate unit\t%s  token %s\n",su,st);
+  }
+}

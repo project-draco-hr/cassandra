@@ -1,0 +1,21 @@
+{
+  GroupInfo tokenGroup=token.owningUnit.group;
+  PopulateVisitor visitor=new PopulateVisitor();
+  Token replicationStart;
+  Token replicationThreshold=token.token;
+  GroupInfo currGroup;
+  for (TokenInfo<Unit> curr=token.prevInRing(); ; curr=curr.prev) {
+    replicationStart=curr.token;
+    currGroup=curr.owningUnit.group;
+    if (!visitor.add(currGroup))     continue;
+    if (visitor.visitedAll())     break;
+    replicationThreshold=replicationStart;
+    if (currGroup == tokenGroup)     break;
+  }
+  if (newUnitGroup == tokenGroup)   replicationThreshold=token.token;
+ else   if (newUnitGroup != currGroup && visitor.seen(newUnitGroup))   replicationThreshold=replicationStart;
+  visitor.clean();
+  token.replicationThreshold=replicationThreshold;
+  token.replicationStart=replicationStart;
+  return replicationStart;
+}

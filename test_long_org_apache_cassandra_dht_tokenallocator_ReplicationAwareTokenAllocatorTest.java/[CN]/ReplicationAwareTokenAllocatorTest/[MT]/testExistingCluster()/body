@@ -1,0 +1,14 @@
+{
+  for (int rf=1; rf <= 5; ++rf) {
+    for (int perUnitCount=1; perUnitCount <= MAX_VNODE_COUNT; perUnitCount*=4) {
+      testExistingCluster(perUnitCount,fixedTokenCount,new SimpleReplicationStrategy(rf));
+      testExistingCluster(perUnitCount,varyingTokenCount,new SimpleReplicationStrategy(rf));
+      if (rf == 1)       continue;
+      for (int groupSize=4; groupSize <= 64 && groupSize * rf * 4 < TARGET_CLUSTER_SIZE; groupSize*=4) {
+        testExistingCluster(perUnitCount,fixedTokenCount,new BalancedGroupReplicationStrategy(rf,groupSize));
+        testExistingCluster(perUnitCount,varyingTokenCount,new UnbalancedGroupReplicationStrategy(rf,groupSize / 2,groupSize * 2,seededRand));
+      }
+      testExistingCluster(perUnitCount,fixedTokenCount,new FixedGroupCountReplicationStrategy(rf,rf * 2));
+    }
+  }
+}

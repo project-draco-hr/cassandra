@@ -1,0 +1,35 @@
+{
+  final String dc=snitch.getDatacenter(endpoint);
+  final int replicas=rs.getReplicationFactor(dc);
+  Topology topology=tokenMetadata.getTopology();
+  int racks=topology.getDatacenterRacks().get(dc).size();
+  if (replicas >= racks) {
+    return new StrategyAdapter(){
+      @Override public int replicas(){
+        return replicas;
+      }
+      @Override public Object getGroup(      InetAddress unit){
+        return snitch.getRack(unit);
+      }
+      @Override public boolean inAllocationRing(      InetAddress other){
+        return dc.equals(snitch.getDatacenter(other));
+      }
+    }
+;
+  }
+ else   if (racks == 1) {
+    return new StrategyAdapter(){
+      @Override public int replicas(){
+        return replicas;
+      }
+      @Override public Object getGroup(      InetAddress unit){
+        return unit;
+      }
+      @Override public boolean inAllocationRing(      InetAddress other){
+        return dc.equals(snitch.getDatacenter(other));
+      }
+    }
+;
+  }
+ else   throw new ConfigurationException(String.format("Token allocation failed: the number of racks %d in datacentre %s is lower than its replication factor %d.",replicas,dc,racks));
+}

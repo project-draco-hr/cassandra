@@ -1,0 +1,18 @@
+{
+  double tokenChange=0;
+  UnitInfo<Unit> candidateUnit=candidate.owningUnit;
+  Token candidateEnd=candidate.token;
+  UnitAdjustmentTracker<Unit> unitTracker=new UnitAdjustmentTracker<>(candidateUnit);
+  tokenChange+=applyOwnershipAdjustment(candidate,candidateUnit,candidate.replicationStart,candidateEnd,optTokenOwnership,unitTracker);
+  ReplicationVisitor replicationVisitor=new ReplicationVisitor();
+  for (TokenInfo<Unit> curr=candidate.split; !replicationVisitor.visitedAll(); curr=curr.next) {
+    UnitInfo<Unit> currUnit=curr.owningUnit;
+    if (!replicationVisitor.add(currUnit.group))     continue;
+    Token replicationEnd=curr.token;
+    Token replicationStart=findUpdatedReplicationStart(curr,candidate);
+    tokenChange+=applyOwnershipAdjustment(curr,currUnit,replicationStart,replicationEnd,optTokenOwnership,unitTracker);
+  }
+  replicationVisitor.clean();
+  double nodeChange=unitTracker.calculateUnitChange(newUnitMult,optTokenOwnership);
+  return -(tokenChange + nodeChange);
+}

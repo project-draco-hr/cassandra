@@ -1,0 +1,11 @@
+{
+  String allocationKeyspace=DatabaseDescriptor.getAllocateTokensKeyspace();
+  Collection<String> initialTokens=DatabaseDescriptor.getInitialTokens();
+  if (initialTokens.size() > 0 && allocationKeyspace != null)   logger.warn("manually specified tokens override automatic allocation");
+  if (initialTokens.size() > 0)   return getSpecifiedTokens(metadata,initialTokens);
+  int numTokens=DatabaseDescriptor.getNumTokens();
+  if (numTokens < 1)   throw new ConfigurationException("num_tokens must be >= 1");
+  if (allocationKeyspace != null)   return allocateTokens(metadata,address,allocationKeyspace,numTokens);
+  if (numTokens == 1)   logger.warn("Picking random token for a single vnode.  You should probably add more vnodes and/or use the automatic token allocation mechanism.");
+  return getRandomTokens(metadata,numTokens);
+}
