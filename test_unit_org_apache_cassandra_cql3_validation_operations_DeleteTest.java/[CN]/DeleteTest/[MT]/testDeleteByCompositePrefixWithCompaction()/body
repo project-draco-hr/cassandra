@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (k int, c1 int, c2 int, v1 text, PRIMARY KEY (k, c1, c2))");
+  for (int c1=0; c1 < 4; c1++)   for (int c2=0; c2 < 2; c2++)   execute("INSERT INTO %s (k, c1, c2, v1) VALUES (0, ?, ?, ?)",c1,c2,String.format("%d%d",c1,c2));
+  flush();
+  execute("DELETE FROM %s WHERE k = 0 AND c1 = 1");
+  flush();
+  compact();
+  Object[][] rows=getRows(execute("SELECT v1 FROM %s WHERE k = 0"));
+  int idx=0;
+  for (int c1=0; c1 < 4; c1++)   for (int c2=0; c2 < 2; c2++)   if (c1 != 1)   assertEquals(String.format("%d%d",c1,c2),rows[idx++][0]);
+}

@@ -1,0 +1,7 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, l list<int>)");
+  execute("BEGIN BATCH " + "UPDATE %1$s SET l = l +[ 1 ] WHERE k = 0; " + "UPDATE %1$s SET l = l + [ 2 ] WHERE k = 0; "+ "UPDATE %1$s SET l = l + [ 3 ] WHERE k = 0; "+ "APPLY BATCH");
+  assertRows(execute("SELECT l FROM %s WHERE k = 0"),row(list(1,2,3)));
+  execute("BEGIN BATCH " + "UPDATE %1$s SET l =[ 1 ] + l WHERE k = 1; " + "UPDATE %1$s SET l = [ 2 ] + l WHERE k = 1; "+ "UPDATE %1$s SET l = [ 3 ] + l WHERE k = 1; "+ "APPLY BATCH ");
+  assertRows(execute("SELECT l FROM %s WHERE k = 1"),row(list(3,2,1)));
+}

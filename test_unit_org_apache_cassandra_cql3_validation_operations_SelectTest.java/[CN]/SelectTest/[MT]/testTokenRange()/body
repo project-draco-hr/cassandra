@@ -1,0 +1,14 @@
+{
+  createTable(" CREATE TABLE %s (k int PRIMARY KEY, c int, v int)");
+  int c=100;
+  for (int i=0; i < c; i++)   execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",i,i,i);
+  Object[][] res=getRows(execute("SELECT k FROM %s"));
+  assertEquals(c,res.length);
+  Object[] inOrder=new Object[res.length];
+  for (int i=0; i < res.length; i++)   inOrder[i]=res[i][0];
+  Long min_token=Long.MIN_VALUE;
+  res=getRows(execute(String.format("SELECT k FROM %s.%s WHERE token(k) >= %d",keyspace(),currentTable(),min_token)));
+  assertEquals(c,res.length);
+  res=getRows(execute(String.format("SELECT k FROM %s.%s WHERE token(k) >= token(%d) AND token(k) < token(%d)",keyspace(),currentTable(),inOrder[32],inOrder[65])));
+  for (int i=32; i < 65; i++)   Assert.assertEquals(inOrder[i],res[i - 32][0]);
+}

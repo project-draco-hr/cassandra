@@ -1,0 +1,19 @@
+{
+  createTable("CREATE TABLE %s ( k int PRIMARY KEY, v int ) ");
+  for (int k=0; k < 5; k++)   execute("INSERT INTO %s (k, v) VALUES (?, 0)",k);
+  Object[][] rows=getRows(execute("SELECT k FROM %s"));
+  int[] ordered=sortIntRows(rows);
+  for (int k=0; k < 5; k++)   assertEquals(k,ordered[k]);
+  execute("DELETE FROM %s WHERE k=2");
+  rows=getRows(execute("SELECT k FROM %s"));
+  ordered=sortIntRows(rows);
+  int idx=0;
+  for (int k=0; k < 5; k++)   if (k != 2)   assertEquals(k,ordered[idx++]);
+  createTable("CREATE TABLE %s ( KEY varchar PRIMARY KEY, password varchar, gender varchar, birth_year bigint)");
+  execute("INSERT INTO %s (KEY, password) VALUES ('user1', 'ch@ngem3a')");
+  execute("UPDATE %s SET gender = 'm', birth_year = 1980 WHERE KEY = 'user1'");
+  assertRows(execute("SELECT * FROM %s WHERE KEY='user1'"),row("user1",1980L,"m","ch@ngem3a"));
+  execute("TRUNCATE %s");
+  assertEmpty(execute("SELECT * FROM %s"));
+  assertEmpty(execute("SELECT * FROM %s WHERE KEY='user1'"));
+}

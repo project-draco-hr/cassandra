@@ -1,0 +1,32 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v1 int,)");
+  assertRows(execute("DELETE FROM %s WHERE k=1 IF EXISTS"),row(false));
+  execute("INSERT INTO %s (k, v1) VALUES (1, 2)");
+  assertRows(execute("DELETE FROM %s WHERE k=1 IF EXISTS"),row(true));
+  assertEmpty(execute("SELECT * FROM %s WHERE k=1"));
+  assertRows(execute("DELETE FROM %s WHERE k=1 IF EXISTS"),row(false));
+  execute("UPDATE %s USING TTL 1 SET v1=2 WHERE k=1");
+  Thread.sleep(1001);
+  assertRows(execute("DELETE FROM %s WHERE k=1 IF EXISTS"),row(false));
+  assertEmpty(execute("SELECT * FROM %s WHERE k=1"));
+  execute("INSERT INTO %s (k, v1) VALUES (2, 2) USING TTL 1");
+  Thread.sleep(1001);
+  assertRows(execute("DELETE FROM %s WHERE k=2 IF EXISTS"),row(false));
+  assertEmpty(execute("SELECT * FROM %s WHERE k=2"));
+  execute("INSERT INTO %s (k, v1) VALUES (3, 2)");
+  assertRows(execute("DELETE v1 FROM %s WHERE k=3 IF EXISTS"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE k=3"),row(3,null));
+  assertRows(execute("DELETE v1 FROM %s WHERE k=3 IF EXISTS"),row(true));
+  assertRows(execute("DELETE FROM %s WHERE k=3 IF EXISTS"),row(true));
+  createTable("CREATE TABLE %s (k text, s text static, i int, v text, PRIMARY KEY (k, i) )");
+  execute("INSERT INTO %s (k, s, i, v) VALUES ('k', 's', 0, 'v')");
+  assertRows(execute("DELETE v FROM %s WHERE k='k' AND i=0 IF EXISTS"),row(true));
+  assertRows(execute("DELETE FROM %s WHERE k='k' AND i=0 IF EXISTS"),row(true));
+  assertRows(execute("DELETE v FROM %s WHERE k='k' AND i=0 IF EXISTS"),row(false));
+  assertRows(execute("DELETE FROM %s WHERE k='k' AND i=0 IF EXISTS"),row(false));
+  assertInvalid("DELETE FROM %s WHERE k = 'k' IF EXISTS");
+  assertInvalid("DELETE FROM %s WHERE k = 'k' IF v = 'foo'");
+  assertInvalid("DELETE FROM %s WHERE i = 0 IF EXISTS");
+  assertInvalid("DELETE FROM %s WHERE k = 0 AND i > 0 IF EXISTS");
+  assertInvalid("DELETE FROM %s WHERE k = 0 AND i > 0 IF v = 'foo'");
+}

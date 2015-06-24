@@ -1,0 +1,34 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, l %s)",frozen ? "frozen<list<text>>" : "list<text>"));
+    execute("INSERT INTO %s(k, l) VALUES (0, ['foo', 'bar', 'foobar'])");
+    check_applies_list("l = ['foo', 'bar', 'foobar']");
+    check_applies_list("l != ['baz']");
+    check_applies_list("l > ['a']");
+    check_applies_list("l >= ['a']");
+    check_applies_list("l < ['z']");
+    check_applies_list("l <= ['z']");
+    check_applies_list("l IN (null, ['foo', 'bar', 'foobar'], ['a'])");
+    check_applies_list("l > ['aaa', 'bbb'] AND l > ['aaa']");
+    check_applies_list("l != null AND l IN (['foo', 'bar', 'foobar'])");
+    check_does_not_apply_list("l = ['baz']");
+    check_does_not_apply_list("l != ['foo', 'bar', 'foobar']");
+    check_does_not_apply_list("l > ['z']");
+    check_does_not_apply_list("l >= ['z']");
+    check_does_not_apply_list("l < ['a']");
+    check_does_not_apply_list("l <= ['a']");
+    check_does_not_apply_list("l IN (['a'], null)");
+    check_does_not_apply_list("l IN ()");
+    check_does_not_apply_list("l IN () AND l IN (['foo', 'bar', 'foobar'])");
+    check_does_not_apply_list("l > ['zzz'] AND l < ['zzz']");
+    check_invalid_list("l = [null]",InvalidRequestException.class);
+    check_invalid_list("l < null",InvalidRequestException.class);
+    check_invalid_list("l <= null",InvalidRequestException.class);
+    check_invalid_list("l > null",InvalidRequestException.class);
+    check_invalid_list("l >= null",InvalidRequestException.class);
+    check_invalid_list("l IN null",SyntaxException.class);
+    check_invalid_list("l IN 367",SyntaxException.class);
+    check_invalid_list("l CONTAINS KEY 123",SyntaxException.class);
+    check_invalid_list("m CONTAINS 'bar'",SyntaxException.class);
+  }
+}

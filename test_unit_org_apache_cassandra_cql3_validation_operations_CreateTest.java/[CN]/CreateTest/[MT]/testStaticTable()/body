@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (userid uuid PRIMARY KEY, firstname text, lastname text, age int)");
+  UUID id1=UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+  UUID id2=UUID.fromString("f47ac10b-58cc-4372-a567-0e02b2c3d479");
+  execute("INSERT INTO %s (userid, firstname, lastname, age) VALUES (?, ?, ?, ?)",id1,"Frodo","Baggins",32);
+  execute("UPDATE %s SET firstname = ?, lastname = ?, age = ? WHERE userid = ?","Samwise","Gamgee",33,id2);
+  assertRows(execute("SELECT firstname, lastname FROM %s WHERE userid = ?",id1),row("Frodo","Baggins"));
+  assertRows(execute("SELECT * FROM %s WHERE userid = ?",id1),row(id1,32,"Frodo","Baggins"));
+  assertRows(execute("SELECT * FROM %s"),row(id2,33,"Samwise","Gamgee"),row(id1,32,"Frodo","Baggins"));
+  String batch="BEGIN BATCH " + "INSERT INTO %1$s (userid, age) VALUES (?, ?) " + "UPDATE %1$s SET age = ? WHERE userid = ? "+ "DELETE firstname, lastname FROM %1$s WHERE userid = ? "+ "DELETE firstname, lastname FROM %1$s WHERE userid = ? "+ "APPLY BATCH";
+  execute(batch,id1,36,37,id2,id1,id2);
+  assertRows(execute("SELECT * FROM %s"),row(id2,37,null,null),row(id1,36,null,null));
+}

@@ -1,0 +1,15 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)",frozen ? "frozen<map<text, text>>" : "map<text, text>"));
+    execute("INSERT INTO %s (k, m) VALUES (0, {'foo' : 'bar'})");
+    assertInvalid("DELETE FROM %s WHERE k=0 IF m[null] = 'foo'");
+    assertRows(execute("DELETE FROM %s WHERE k=0 IF m['foo'] = 'foo'"),row(false,map("foo","bar")));
+    assertRows(execute("DELETE FROM %s WHERE k=0 IF m['foo'] = null"),row(false,map("foo","bar")));
+    assertRows(execute("SELECT * FROM %s"),row(0,map("foo","bar")));
+    assertRows(execute("DELETE FROM %s WHERE k=0 IF m['foo'] = 'bar'"),row(true));
+    assertEmpty(execute("SELECT * FROM %s"));
+    execute("INSERT INTO %s(k, m) VALUES (1, null)");
+    if (frozen)     assertInvalid("UPDATE %s set m['foo'] = 'bar', m['bar'] = 'foo' WHERE k = 1 IF m['foo'] IN ('blah', null)");
+ else     assertRows(execute("UPDATE %s set m['foo'] = 'bar', m['bar'] = 'foo' WHERE k = 1 IF m['foo'] IN ('blah', null)"),row(true));
+  }
+}

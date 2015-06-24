@@ -1,0 +1,11 @@
+{
+  String tableName=createTable("CREATE TABLE %s (id text PRIMARY KEY, value1 blob, value2 blob)with comment = 'foo'");
+  execute("use " + KEYSPACE);
+  schemaChange("DROP INDEX IF EXISTS myindex");
+  createIndex("CREATE INDEX IF NOT EXISTS myindex ON %s (value1)");
+  assertTrue(waitForIndex(KEYSPACE,tableName,"myindex"));
+  execute("CREATE INDEX IF NOT EXISTS myindex ON %s (value1)");
+  execute("DROP INDEX IF EXISTS myindex");
+  Object[][] rows=getRows(execute("select index_name from system.\"IndexInfo\" where table_name = ?",tableName));
+  assertEquals(0,rows.length);
+}

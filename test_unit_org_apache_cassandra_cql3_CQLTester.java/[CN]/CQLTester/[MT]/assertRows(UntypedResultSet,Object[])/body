@@ -9,13 +9,16 @@
   while (iter.hasNext() && i < rows.length) {
     Object[] expected=rows[i];
     UntypedResultSet.Row actual=iter.next();
-    Assert.assertEquals(String.format("Invalid number of (expected) values provided for row %d",i),meta.size(),expected.length);
+    Assert.assertEquals(String.format("Invalid number of (expected) values provided for row %d",i),expected.length,meta.size());
     for (int j=0; j < meta.size(); j++) {
       ColumnSpecification column=meta.get(j);
       Object expectedValue=expected[j];
       ByteBuffer expectedByteValue=makeByteBuffer(expected[j],(AbstractType)column.type);
       ByteBuffer actualValue=actual.getBytes(column.name.toString());
-      if (!Objects.equal(expectedByteValue,actualValue))       Assert.fail(String.format("Invalid value for row %d column %d (%s of type %s), expected <%s> but got <%s>",i,j,column.name,column.type.asCQL3Type(),formatValue(expectedByteValue,column.type),formatValue(actualValue,column.type)));
+      if (!Objects.equal(expectedByteValue,actualValue)) {
+        Object actualValueDecoded=column.type.getSerializer().deserialize(actualValue);
+        if (!actualValueDecoded.equals(expected[j]))         Assert.fail(String.format("Invalid value for row %d column %d (%s of type %s), expected <%s> but got <%s>",i,j,column.name,column.type.asCQL3Type(),formatValue(expectedByteValue,column.type),formatValue(actualValue,column.type)));
+      }
     }
     i++;
   }

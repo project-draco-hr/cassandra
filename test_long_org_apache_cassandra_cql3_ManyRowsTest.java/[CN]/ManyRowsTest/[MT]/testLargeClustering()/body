@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k, c) )");
+  execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",0,0,0);
+  List<Integer> inValues=new ArrayList(10000);
+  for (int i=0; i < 10000; i++)   inValues.add(i);
+  assertRows(execute("SELECT * FROM %s WHERE k=? AND c IN ?",0,inValues),row(0,0,0));
+  Random rnd=new Random();
+  Set<Integer> clusteringValues=new HashSet<>();
+  for (int i=0; i < 1000; i++)   clusteringValues.add(rnd.nextInt(10000));
+  clusteringValues.add(0);
+  for (  int i : clusteringValues)   execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",0,i,i);
+  assertRowCount(execute("SELECT * FROM %s WHERE k=? AND c IN ?",0,inValues),clusteringValues.size());
+}

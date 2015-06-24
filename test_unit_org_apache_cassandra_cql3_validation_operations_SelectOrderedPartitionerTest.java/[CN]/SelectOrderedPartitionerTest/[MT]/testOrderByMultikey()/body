@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (my_id varchar, col1 int, col2 int, value varchar, PRIMARY KEY (my_id, col1, col2))");
+  execute("INSERT INTO %s (my_id, col1, col2, value) VALUES ( 'key1', 1, 1, 'a');");
+  execute("INSERT INTO %s (my_id, col1, col2, value) VALUES ( 'key2', 3, 3, 'a');");
+  execute("INSERT INTO %s (my_id, col1, col2, value) VALUES ( 'key3', 2, 2, 'b');");
+  execute("INSERT INTO %s (my_id, col1, col2, value) VALUES ( 'key4', 2, 1, 'b');");
+  assertRows(execute("SELECT col1 FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1"),row(1),row(2),row(3));
+  assertRows(execute("SELECT col1, value, my_id, col2 FROM %s WHERE my_id in('key3', 'key4') ORDER BY col1, col2"),row(2,"b","key4",1),row(2,"b","key3",2));
+  assertInvalid("SELECT col1 FROM %s ORDER BY col1");
+  assertInvalid("SELECT col1 FROM %s WHERE my_id > 'key1' ORDER BY col1");
+}

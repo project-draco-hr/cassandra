@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k, c)) WITH COMPACT STORAGE");
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (k, c, v) VALUES (0, ?, ?)",i,i);
+  assertRows(execute("SELECT v FROM %s WHERE k = 0 ORDER BY c DESC"),row(9),row(8),row(7),row(6),row(5),row(4),row(3),row(2),row(1),row(0));
+  createTable("CREATE TABLE %s (k int, c1 int, c2 int, v int, PRIMARY KEY (k, c1, c2)) WITH COMPACT STORAGE");
+  for (int i=0; i < 4; i++)   for (int j=0; j < 2; j++)   execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, ?, ?, ?)",i,j,i * 2 + j);
+  assertInvalid("SELECT v FROM %s WHERE k = 0 ORDER BY c DESC");
+  assertInvalid("SELECT v FROM %s WHERE k = 0 ORDER BY c2 DESC");
+  assertInvalid("SELECT v FROM %s WHERE k = 0 ORDER BY k DESC");
+  assertRows(execute("SELECT v FROM %s WHERE k = 0 ORDER BY c1 DESC"),row(7),row(6),row(5),row(4),row(3),row(2),row(1),row(0));
+  assertRows(execute("SELECT v FROM %s WHERE k = 0 ORDER BY c1"),row(0),row(1),row(2),row(3),row(4),row(5),row(6),row(7));
+}

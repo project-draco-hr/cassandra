@@ -1,0 +1,22 @@
+{
+  if (result == null) {
+    if (numExpectedRows > 0)     Assert.fail(String.format("No rows returned by query but %d expected",numExpectedRows));
+    return;
+  }
+  List<ColumnSpecification> meta=result.metadata();
+  Iterator<UntypedResultSet.Row> iter=result.iterator();
+  int i=0;
+  while (iter.hasNext() && i < numExpectedRows) {
+    UntypedResultSet.Row actual=iter.next();
+    assertNotNull(actual);
+    i++;
+  }
+  if (iter.hasNext()) {
+    while (iter.hasNext()) {
+      iter.next();
+      i++;
+    }
+    Assert.fail(String.format("Got less rows than expected. Expected %d but got %d.",numExpectedRows,i));
+  }
+  Assert.assertTrue(String.format("Got %s rows than expected. Expected %d but got %d",numExpectedRows > i ? "less" : "more",numExpectedRows,i),i == numExpectedRows);
+}

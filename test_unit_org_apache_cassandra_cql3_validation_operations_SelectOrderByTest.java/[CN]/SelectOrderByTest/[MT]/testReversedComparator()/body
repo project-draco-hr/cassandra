@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k, c)) WITH CLUSTERING ORDER BY (c DESC);");
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (k, c, v) VALUES (0, ?, ?)",i,i);
+  assertRows(execute("SELECT c, v FROM %s WHERE k = 0 ORDER BY c ASC"),row(0,0),row(1,1),row(2,2),row(3,3),row(4,4),row(5,5),row(6,6),row(7,7),row(8,8),row(9,9));
+  assertRows(execute("SELECT c, v FROM %s WHERE k = 0 ORDER BY c DESC"),row(9,9),row(8,8),row(7,7),row(6,6),row(5,5),row(4,4),row(3,3),row(2,2),row(1,1),row(0,0));
+  createTable("CREATE TABLE %s (k int, c1 int, c2 int, v text, PRIMARY KEY (k, c1, c2)) WITH CLUSTERING ORDER BY (c1 ASC, c2 DESC)");
+  for (int i=0; i < 10; i++)   for (int j=0; j < 10; j++)   execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, ?, ?, ?)",i,j,String.format("%d%d",i,j));
+  assertInvalid("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c1 ASC, c2 ASC");
+  assertInvalid("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c1 DESC, c2 DESC");
+  Object[][] expectedRows=new Object[100][];
+  for (int i=0; i < 10; i++)   for (int j=9; j >= 0; j--)   expectedRows[i * 10 + (9 - j)]=row(i,j,String.format("%d%d",i,j));
+  assertRows(execute("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c1 ASC"),expectedRows);
+  assertRows(execute("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c1 ASC, c2 DESC"),expectedRows);
+  for (int i=9; i >= 0; i--)   for (int j=0; j < 10; j++)   expectedRows[(9 - i) * 10 + j]=row(i,j,String.format("%d%d",i,j));
+  assertRows(execute("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c1 DESC, c2 ASC"),expectedRows);
+  assertInvalid("SELECT c1, c2, v FROM %s WHERE k = 0 ORDER BY c2 DESC, c1 ASC");
+}

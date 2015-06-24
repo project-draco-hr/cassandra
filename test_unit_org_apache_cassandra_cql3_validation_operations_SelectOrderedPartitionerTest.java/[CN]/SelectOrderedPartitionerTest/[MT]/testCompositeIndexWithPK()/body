@@ -1,0 +1,20 @@
+{
+  createTable("CREATE TABLE %s (blog_id int, time1 int, time2 int, author text, content text, PRIMARY KEY (blog_id, time1, time2))");
+  createIndex("CREATE INDEX ON %s(author)");
+  execute("INSERT INTO %s (blog_id, time1, time2, author, content) VALUES (?, ?, ?, ?, ?)",1,0,0,"foo","bar1");
+  execute("INSERT INTO %s (blog_id, time1, time2, author, content) VALUES (?, ?, ?, ?, ?)",1,0,1,"foo","bar2");
+  execute("INSERT INTO %s (blog_id, time1, time2, author, content) VALUES (?, ?, ?, ?, ?)",2,1,0,"foo","baz");
+  execute("INSERT INTO %s (blog_id, time1, time2, author, content) VALUES (?, ?, ?, ?, ?)",3,0,1,"gux","qux");
+  assertRows(execute("SELECT blog_id, content FROM %s WHERE author='foo'"),row(1,"bar1"),row(1,"bar2"),row(2,"baz"));
+  assertRows(execute("SELECT blog_id, content FROM %s WHERE time1 > 0 AND author='foo' ALLOW FILTERING"),row(2,"baz"));
+  assertRows(execute("SELECT blog_id, content FROM %s WHERE time1 = 1 AND author='foo' ALLOW FILTERING"),row(2,"baz"));
+  assertRows(execute("SELECT blog_id, content FROM %s WHERE time1 = 1 AND time2 = 0 AND author='foo' ALLOW FILTERING"),row(2,"baz"));
+  assertEmpty(execute("SELECT content FROM %s WHERE time1 = 1 AND time2 = 1 AND author='foo' ALLOW FILTERING"));
+  assertEmpty(execute("SELECT content FROM %s WHERE time1 = 1 AND time2 > 0 AND author='foo' ALLOW FILTERING"));
+  assertInvalid("SELECT content FROM %s WHERE time2 >= 0 AND author='foo'");
+  execute("SELECT blog_id, content FROM %s WHERE time1 > 0 AND author='foo'");
+  execute("SELECT blog_id, content FROM %s WHERE time1 = 1 AND author='foo'");
+  execute("SELECT blog_id, content FROM %s WHERE time1 = 1 AND time2 = 0 AND author='foo'");
+  execute("SELECT content FROM %s WHERE time1 = 1 AND time2 = 1 AND author='foo'");
+  execute("SELECT content FROM %s WHERE time1 = 1 AND time2 > 0 AND author='foo'");
+}
