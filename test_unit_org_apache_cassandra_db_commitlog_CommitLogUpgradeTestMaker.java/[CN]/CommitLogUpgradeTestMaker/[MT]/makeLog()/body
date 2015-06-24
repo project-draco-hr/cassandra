@@ -1,0 +1,29 @@
+{
+  CommitLog commitLog=CommitLog.instance;
+  System.out.format("\nUsing commit log size %dmb, compressor %s, sync %s%s\n",mb(DatabaseDescriptor.getCommitLogSegmentSize()),commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.executor.getClass().getSimpleName(),randomSize ? " random size" : "");
+  final List<CommitlogExecutor> threads=new ArrayList<>();
+  ScheduledExecutorService scheduled=startThreads(commitLog,threads);
+  Thread.sleep(runTimeMs);
+  stop=true;
+  scheduled.shutdown();
+  scheduled.awaitTermination(2,TimeUnit.SECONDS);
+  int hash=0;
+  int cells=0;
+  for (  CommitlogExecutor t : threads) {
+    t.join();
+    hash+=t.hash;
+    cells+=t.cells;
+  }
+  commitLog.shutdownBlocking();
+  File dataDir=new File(CommitLogUpgradeTest.DATA_DIR + FBUtilities.getReleaseVersionString());
+  System.out.format("Data will be stored in %s\n",dataDir);
+  if (dataDir.exists())   FileUtils.deleteRecursive(dataDir);
+  dataDir.mkdirs();
+  for (  File f : new File(DatabaseDescriptor.getCommitLogLocation()).listFiles())   FileUtils.createHardLink(f,new File(dataDir,f.getName()));
+  Properties prop=new Properties();
+  prop.setProperty(CFID_PROPERTY,Schema.instance.getId(KEYSPACE,TABLE).toString());
+  prop.setProperty(CELLS_PROPERTY,Integer.toString(cells));
+  prop.setProperty(HASH_PROPERTY,Integer.toString(hash));
+  prop.store(new FileOutputStream(new File(dataDir,PROPERTIES_FILE)),"CommitLog upgrade test, version " + FBUtilities.getReleaseVersionString());
+  System.out.println("Done");
+}
