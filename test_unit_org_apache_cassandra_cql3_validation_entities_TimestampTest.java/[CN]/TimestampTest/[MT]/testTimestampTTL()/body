@@ -1,0 +1,28 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, c text, d text)");
+  execute("INSERT INTO %s (k, c) VALUES (1, 'test')");
+  execute("INSERT INTO %s (k, c) VALUES (2, 'test') USING TTL 400");
+  Object[][] res=getRows(execute("SELECT k, c, writetime(c), ttl(c) FROM %s"));
+  Assert.assertEquals(2,res.length);
+  for (  Object[] r : res) {
+    assertTrue(r[2] instanceof Integer || r[2] instanceof Long);
+    if (r[0].equals(1))     assertNull(r[3]);
+ else     assertTrue(r[3] instanceof Integer || r[2] instanceof Long);
+  }
+  res=getRows(execute("SELECT k, c, blobAsBigint(bigintAsBlob(writetime(c))), ttl(c) FROM %s"));
+  Assert.assertEquals(2,res.length);
+  for (  Object[] r : res) {
+    assertTrue(r[2] instanceof Integer || r[2] instanceof Long);
+    if (r[0].equals(1))     assertNull(r[3]);
+ else     assertTrue(r[3] instanceof Integer || r[2] instanceof Long);
+  }
+  res=getRows(execute("SELECT k, c, writetime(c), blobAsInt(intAsBlob(ttl(c))) FROM %s"));
+  Assert.assertEquals(2,res.length);
+  for (  Object[] r : res) {
+    assertTrue(r[2] instanceof Integer || r[2] instanceof Long);
+    if (r[0].equals(1))     assertNull(r[3]);
+ else     assertTrue(r[3] instanceof Integer || r[2] instanceof Long);
+  }
+  assertInvalid("SELECT k, c, writetime(k) FROM %s");
+  assertRows(execute("SELECT k, d, writetime(d) FROM %s WHERE k = 1"),row(1,null,null));
+}

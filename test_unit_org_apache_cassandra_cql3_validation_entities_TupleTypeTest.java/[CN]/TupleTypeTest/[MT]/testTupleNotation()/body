@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (k int, v1 int, v2 int, v3 int, PRIMARY KEY (k, v1, v2, v3))");
+  for (int i=0; i < 2; i++)   for (int j=0; j < 2; j++)   for (int k=0; k < 2; k++)   execute("INSERT INTO %s (k, v1, v2, v3) VALUES (0, ?, ?, ?)",i,j,k);
+  assertRows(execute("SELECT v1, v2, v3 FROM %s WHERE k = 0"),row(0,0,0),row(0,0,1),row(0,1,0),row(0,1,1),row(1,0,0),row(1,0,1),row(1,1,0),row(1,1,1));
+  assertRows(execute("SELECT v1, v2, v3 FROM %s WHERE k = 0 AND (v1, v2, v3) >= (1, 0, 1)"),row(1,0,1),row(1,1,0),row(1,1,1));
+  assertRows(execute("SELECT v1, v2, v3 FROM %s WHERE k = 0 AND (v1, v2) >= (1, 1)"),row(1,1,0),row(1,1,1));
+  assertRows(execute("SELECT v1, v2, v3 FROM %s WHERE k = 0 AND (v1, v2) > (0, 1) AND (v1, v2, v3) <= (1, 1, 0)"),row(1,0,0),row(1,0,1),row(1,1,0));
+  assertInvalid("SELECT v1, v2, v3 FROM %s WHERE k = 0 AND (v1, v3) > (1, 0)");
+}

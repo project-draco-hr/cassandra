@@ -1,0 +1,33 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)",frozen ? "frozen<map<text, text>>" : "map<text, text>"));
+    execute("INSERT INTO %s (k, m) VALUES (0, {'foo' : 'bar'})");
+    check_applies_map("m = {'foo': 'bar'}");
+    check_applies_map("m > {'a': 'a'}");
+    check_applies_map("m >= {'a': 'a'}");
+    check_applies_map("m < {'z': 'z'}");
+    check_applies_map("m <= {'z': 'z'}");
+    check_applies_map("m != {'a': 'a'}");
+    check_applies_map("m IN (null, {'a': 'a'}, {'foo': 'bar'})");
+    check_applies_map("m > {'a': 'a'} AND m < {'z': 'z'}");
+    check_applies_map("m != null AND m IN (null, {'a': 'a'}, {'foo': 'bar'})");
+    check_does_not_apply_map("m = {'a': 'a'}");
+    check_does_not_apply_map("m > {'z': 'z'}");
+    check_does_not_apply_map("m >= {'z': 'z'}");
+    check_does_not_apply_map("m < {'a': 'a'}");
+    check_does_not_apply_map("m <= {'a': 'a'}");
+    check_does_not_apply_map("m != {'foo': 'bar'}");
+    check_does_not_apply_map("m IN ({'a': 'a'}, null)");
+    check_does_not_apply_map("m IN ()");
+    check_does_not_apply_map("m = null AND m != null");
+    check_invalid_map("m = {null: null}",InvalidRequestException.class);
+    check_invalid_map("m = {'a': null}",InvalidRequestException.class);
+    check_invalid_map("m = {null: 'a'}",InvalidRequestException.class);
+    check_invalid_map("m < null",InvalidRequestException.class);
+    check_invalid_map("m IN null",SyntaxException.class);
+    check_invalid_map("m CONTAINS 'bar'",SyntaxException.class);
+    check_invalid_map("m CONTAINS KEY 'foo'",SyntaxException.class);
+    check_invalid_map("m CONTAINS null",SyntaxException.class);
+    check_invalid_map("m CONTAINS KEY null",SyntaxException.class);
+  }
+}

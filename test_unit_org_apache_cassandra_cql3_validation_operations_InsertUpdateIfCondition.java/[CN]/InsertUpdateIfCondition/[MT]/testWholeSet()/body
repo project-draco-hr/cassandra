@@ -1,0 +1,35 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, s %s)",frozen ? "frozen<set<text>>" : "set<text>"));
+    execute("INSERT INTO %s (k, s) VALUES (0, {'bar', 'foo'})");
+    check_applies_set("s = {'bar', 'foo'}");
+    check_applies_set("s = {'foo', 'bar'}");
+    check_applies_set("s != {'baz'}");
+    check_applies_set("s > {'a'}");
+    check_applies_set("s >= {'a'}");
+    check_applies_set("s < {'z'}");
+    check_applies_set("s <= {'z'}");
+    check_applies_set("s IN (null, {'bar', 'foo'}, {'a'})");
+    check_applies_set("s > {'a'} AND s < {'z'}");
+    check_applies_set("s IN (null, {'bar', 'foo'}, {'a'}) AND s IN ({'a'}, {'bar', 'foo'}, null)");
+    check_does_not_apply_set("s = {'baz'}");
+    check_does_not_apply_set("s != {'bar', 'foo'}");
+    check_does_not_apply_set("s > {'z'}");
+    check_does_not_apply_set("s >= {'z'}");
+    check_does_not_apply_set("s < {'a'}");
+    check_does_not_apply_set("s <= {'a'}");
+    check_does_not_apply_set("s IN ({'a'}, null)");
+    check_does_not_apply_set("s IN ()");
+    check_does_not_apply_set("s != null AND s IN ()");
+    check_invalid_set("s = {null}",InvalidRequestException.class);
+    check_invalid_set("s < null",InvalidRequestException.class);
+    check_invalid_set("s <= null",InvalidRequestException.class);
+    check_invalid_set("s > null",InvalidRequestException.class);
+    check_invalid_set("s >= null",InvalidRequestException.class);
+    check_invalid_set("s IN null",SyntaxException.class);
+    check_invalid_set("s IN 367",SyntaxException.class);
+    check_invalid_set("s CONTAINS KEY 123",SyntaxException.class);
+    check_invalid_set("s['foo'] = 'foobar'",InvalidRequestException.class);
+    check_invalid_set("m CONTAINS 'bar'",SyntaxException.class);
+  }
+}

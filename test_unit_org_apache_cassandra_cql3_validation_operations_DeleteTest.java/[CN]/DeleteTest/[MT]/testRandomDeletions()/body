@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v int,)");
+  int nb_keys=30;
+  int nb_deletes=5;
+  List<Integer> deletions=new ArrayList<>(nb_keys);
+  for (int i=0; i < nb_keys; i++) {
+    execute("INSERT INTO %s (k, v) VALUES (?, ?)",i,i);
+    deletions.add(i);
+  }
+  Collections.shuffle(deletions);
+  for (int i=0; i < nb_deletes; i++)   execute("DELETE FROM %s WHERE k = ?",deletions.get(i));
+  assertRowCount(execute("SELECT * FROM %s LIMIT ?",(nb_keys / 2)),nb_keys / 2);
+}

@@ -1,0 +1,18 @@
+{
+  if (result == null)   return new Object[0][];
+  List<Object[]> ret=new ArrayList<>();
+  List<ColumnSpecification> meta=result.metadata();
+  Iterator<UntypedResultSet.Row> iter=result.iterator();
+  while (iter.hasNext()) {
+    UntypedResultSet.Row rowVal=iter.next();
+    Object[] row=new Object[meta.size()];
+    for (int j=0; j < meta.size(); j++) {
+      ColumnSpecification column=meta.get(j);
+      ByteBuffer val=rowVal.getBytes(column.name.toString());
+      row[j]=val == null ? null : column.type.getSerializer().deserialize(val);
+    }
+    ret.add(row);
+  }
+  Object[][] a=new Object[ret.size()][];
+  return ret.toArray(a);
+}

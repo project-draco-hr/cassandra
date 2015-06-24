@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s ( fn text, ln text, tags set<text>, PRIMARY KEY (fn, ln) )");
+  execute("UPDATE %s SET tags = tags + { 'foo' } WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET tags = tags + { 'bar' } WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET tags = tags + { 'foo' } WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET tags = tags + { 'foobar' } WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET tags = tags - { 'bar' } WHERE fn='Tom' AND ln='Bombadil'");
+  assertRows(execute("SELECT tags FROM %s"),row(set("foo","foobar")));
+  execute("UPDATE %s SET tags = { 'a', 'c', 'b' } WHERE fn='Bilbo' AND ln='Baggins'");
+  assertRows(execute("SELECT tags FROM %s WHERE fn='Bilbo' AND ln='Baggins'"),row(set("a","b","c")));
+  execute("UPDATE %s SET tags = { 'm', 'n' } WHERE fn='Bilbo' AND ln='Baggins'");
+  assertRows(execute("SELECT tags FROM %s WHERE fn='Bilbo' AND ln='Baggins'"),row(set("m","n")));
+  execute("DELETE tags['m'] FROM %s WHERE fn='Bilbo' AND ln='Baggins'");
+  assertRows(execute("SELECT tags FROM %s WHERE fn='Bilbo' AND ln='Baggins'"),row(set("n")));
+  execute("DELETE tags FROM %s WHERE fn='Bilbo' AND ln='Baggins'");
+  assertEmpty(execute("SELECT tags FROM %s WHERE fn='Bilbo' AND ln='Baggins'"));
+}

@@ -1,0 +1,31 @@
+{
+  createTable("CREATE TABLE %s (id int, k text, version int static, v text, PRIMARY KEY (id, k))");
+  execute("INSERT INTO %s (id, k, v) VALUES (1, 'foo', 'foo')");
+  assertRows(execute("INSERT INTO %s (id, k, version) VALUES (1, 'foo', 1) IF NOT EXISTS"),row(false,1,"foo",null,"foo"));
+  assertRows(execute("INSERT INTO %s (id, version) VALUES (1, 1) IF NOT EXISTS"),row(true));
+  assertRows(execute("SELECT * FROM %s"),row(1,"foo",1,"foo"));
+  execute("DELETE FROM %s WHERE id = 1");
+  execute("INSERT INTO %s(id, version) VALUES (0, 0)");
+  assertRows(execute("UPDATE %s SET v='foo', version=1 WHERE id=0 AND k='k1' IF version = 0"),row(true));
+  assertRows(execute("SELECT * FROM %s"),row(0,"k1",1,"foo"));
+  assertRows(execute("UPDATE %s SET v='bar', version=1 WHERE id=0 AND k='k2' IF version = 0"),row(false,1));
+  assertRows(execute("SELECT * FROM %s"),row(0,"k1",1,"foo"));
+  assertRows(execute("UPDATE %s SET v='bar', version=2 WHERE id=0 AND k='k2' IF version = 1"),row(true));
+  assertRows(execute("SELECT * FROM %s"),row(0,"k1",2,"foo"),row(0,"k2",2,"bar"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET v='foobar' WHERE id=0 AND k='k1'; " + "UPDATE %1$s SET v='barfoo' WHERE id=0 AND k='k2'; "+ "UPDATE %1$s SET version=3 WHERE id=0 IF version=1; "+ "APPLY BATCH "),row(false,0,null,2));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET v = 'foobar' WHERE id = 0 AND k = 'k1'; " + "UPDATE %1$s SET v = 'barfoo' WHERE id = 0 AND k = 'k2'; "+ "UPDATE %1$s SET version = 3 WHERE id = 0 IF version = 2; "+ "APPLY BATCH "),row(true));
+  assertRows(execute("SELECT * FROM %s"),row(0,"k1",3,"foobar"),row(0,"k2",3,"barfoo"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET version = 4 WHERE id = 0 IF version = 3; " + "UPDATE %1$s SET v='row1' WHERE id=0 AND k='k1' IF v='foo'; "+ "UPDATE %1$s SET v='row2' WHERE id=0 AND k='k2' IF v='bar'; "+ "APPLY BATCH "),row(false,0,"k1",3,"foobar"),row(false,0,"k2",3,"barfoo"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET version = 4 WHERE id = 0 IF version = 3; " + "UPDATE %1$s SET v='row1' WHERE id = 0 AND k='k1' IF v='foobar'; "+ "UPDATE %1$s SET v='row2' WHERE id = 0 AND k='k2' IF v='barfoo'; "+ "APPLY BATCH "),row(true));
+  assertRows(execute("SELECT * FROM %s"),row(0,"k1",4,"row1"),row(0,"k2",4,"row2"));
+  assertInvalid("BEGIN BATCH " + "UPDATE %1$s SET version=5 WHERE id=0 IF version=4; " + "UPDATE %1$s SET v='row1' WHERE id=0 AND k='k1'; "+ "UPDATE %1$s SET v='row2' WHERE id=1 AND k='k2'; "+ "APPLY BATCH ");
+  assertRows(execute("BEGIN BATCH " + "INSERT INTO %1$s (id, k, v) VALUES (1, 'k1', 'val1') IF NOT EXISTS; " + "INSERT INTO %1$s (id, k, v) VALUES (1, 'k2', 'val2') IF NOT EXISTS; "+ "APPLY BATCH "),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE id=1"),row(1,"k1",null,"val1"),row(1,"k2",null,"val2"));
+  assertRows(execute("INSERT INTO %s (id, k, v) VALUES (1, 'k2', 'val2') IF NOT EXISTS"),row(false,1,"k2",null,"val2"));
+  assertRows(execute("BEGIN BATCH " + "INSERT INTO %1$s (id, k, v) VALUES (1, 'k2', 'val2') IF NOT EXISTS; " + "INSERT INTO %1$s (id, k, v) VALUES (1, 'k3', 'val3') IF NOT EXISTS; "+ "APPLY BATCH"),row(false,1,"k2",null,"val2"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET v = 'newVal' WHERE id = 1 AND k = 'k2' IF v = 'val0'; " + "INSERT INTO %1$s (id, k, v) VALUES (1, 'k3', 'val3') IF NOT EXISTS; "+ "APPLY BATCH"),row(false,1,"k2",null,"val2"));
+  assertRows(execute("SELECT * FROM %s WHERE id=1"),row(1,"k1",null,"val1"),row(1,"k2",null,"val2"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET v = 'newVal' WHERE id = 1 AND k = 'k2' IF v = 'val2'; " + "INSERT INTO %1$s (id, k, v, version) VALUES(1, 'k3', 'val3', 1) IF NOT EXISTS; "+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE id=1"),row(1,"k1",1,"val1"),row(1,"k2",1,"newVal"),row(1,"k3",1,"val3"));
+  assertRows(execute("BEGIN BATCH " + "UPDATE %1$s SET v = 'newVal1' WHERE id = 1 AND k = 'k2' IF v = 'val2'; " + "UPDATE %1$s SET v = 'newVal2' WHERE id = 1 AND k = 'k2' IF v = 'val3'; "+ "APPLY BATCH"),row(false,1,"k2","newVal"));
+}

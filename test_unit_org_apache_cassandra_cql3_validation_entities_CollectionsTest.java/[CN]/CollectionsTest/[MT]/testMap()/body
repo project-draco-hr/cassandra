@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (fn text, ln text, m map<text, int>, PRIMARY KEY (fn, ln))");
+  execute("UPDATE %s SET m['foo'] = 3 WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET m['bar'] = 4 WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET m['woot'] = 5 WHERE fn='Tom' AND ln='Bombadil'");
+  execute("UPDATE %s SET m['bar'] = 6 WHERE fn='Tom' AND ln='Bombadil'");
+  execute("DELETE m['foo'] FROM %s WHERE fn='Tom' AND ln='Bombadil'");
+  assertRows(execute("SELECT m FROM %s"),row(map("bar",6,"woot",5)));
+  execute("UPDATE %s SET m = { 'a' : 4 , 'c' : 3, 'b' : 2 } WHERE fn='Bilbo' AND ln='Baggins'");
+  assertRows(execute("SELECT m FROM %s WHERE fn='Bilbo' AND ln='Baggins'"),row(map("a",4,"b",2,"c",3)));
+  execute("UPDATE %s SET m =  { 'm' : 4 , 'n' : 1, 'o' : 2 } WHERE fn='Bilbo' AND ln='Baggins'");
+  assertRows(execute("SELECT m FROM %s WHERE fn='Bilbo' AND ln='Baggins'"),row(map("m",4,"n",1,"o",2)));
+  execute("UPDATE %s SET m = {} WHERE fn='Bilbo' AND ln='Baggins'");
+  assertEmpty(execute("SELECT m FROM %s WHERE fn='Bilbo' AND ln='Baggins'"));
+}

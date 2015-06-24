@@ -1,0 +1,11 @@
+{
+  String tableName=createTable("CREATE TABLE %s (k int PRIMARY KEY, v int,)");
+  execute("ALTER TABLE %s WITH CACHING='ALL'");
+  execute("INSERT INTO %s (k,v) VALUES (0,0)");
+  execute("INSERT INTO %s (k,v) VALUES (1,1)");
+  createIndex("CREATE INDEX testindex on %s (v)");
+  assertTrue(waitForIndex(keyspace(),tableName,"testindex"));
+  assertRows(execute("SELECT k FROM %s WHERE v = 0"),row(0));
+  cleanupCache();
+  assertRows(execute("SELECT k FROM %s WHERE v = 0"),row(0));
+}
