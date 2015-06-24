@@ -1,0 +1,36 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, l %s)",frozen ? "frozen<list<text>>" : "list<text>"));
+    execute("INSERT INTO %s (k, l) VALUES (0, ['foo', 'bar', 'foobar'])");
+    check_applies_list("l[1] < 'zzz'");
+    check_applies_list("l[1] <= 'bar'");
+    check_applies_list("l[1] > 'aaa'");
+    check_applies_list("l[1] >= 'bar'");
+    check_applies_list("l[1] != 'xxx'");
+    check_applies_list("l[1] != null");
+    check_applies_list("l[1] IN (null, 'xxx', 'bar')");
+    check_applies_list("l[1] > 'aaa' AND l[1] < 'zzz'");
+    check_applies_list("l[3] = null");
+    check_applies_list("l[3] IN (null, 'xxx', 'bar')");
+    check_does_not_apply_list("l[1] < 'aaa'");
+    check_does_not_apply_list("l[1] <= 'aaa'");
+    check_does_not_apply_list("l[1] > 'zzz'");
+    check_does_not_apply_list("l[1] >= 'zzz'");
+    check_does_not_apply_list("l[1] != 'bar'");
+    check_does_not_apply_list("l[1] IN (null, 'xxx')");
+    check_does_not_apply_list("l[1] IN ()");
+    check_does_not_apply_list("l[1] != null AND l[1] IN ()");
+    check_does_not_apply_list("l[3] != null");
+    check_does_not_apply_list("l[3] = 'xxx'");
+    check_invalid_list("l[1] < null",InvalidRequestException.class);
+    check_invalid_list("l[1] <= null",InvalidRequestException.class);
+    check_invalid_list("l[1] > null",InvalidRequestException.class);
+    check_invalid_list("l[1] >= null",InvalidRequestException.class);
+    check_invalid_list("l[1] IN null",SyntaxException.class);
+    check_invalid_list("l[1] IN 367",SyntaxException.class);
+    check_invalid_list("l[1] IN (1, 2, 3)",InvalidRequestException.class);
+    check_invalid_list("l[1] CONTAINS 367",SyntaxException.class);
+    check_invalid_list("l[1] CONTAINS KEY 367",SyntaxException.class);
+    check_invalid_list("l[null] = null",InvalidRequestException.class);
+  }
+}

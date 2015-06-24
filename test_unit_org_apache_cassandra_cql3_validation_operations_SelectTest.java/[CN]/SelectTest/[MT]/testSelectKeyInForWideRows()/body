@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k, c)) WITH COMPACT STORAGE");
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (k, c, v) VALUES (0, ?, ?)",i,i);
+  assertRows(execute("SELECT v FROM %s WHERE k = 0 AND c IN (5, 2, 8)"),row(2),row(5),row(8));
+  createTable("CREATE TABLE %s (k int, c1 int, c2 int, v int, PRIMARY KEY (k, c1, c2)) WITH COMPACT STORAGE");
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, 0, ?, ?)",i,i);
+  assertEmpty(execute("SELECT v FROM %s WHERE k = 0 AND c1 IN (5, 2, 8) AND c2 = 3"));
+  assertRows(execute("SELECT v FROM %s WHERE k = 0 AND c1 = 0 AND c2 IN (5, 2, 8)"),row(2),row(5),row(8));
+}

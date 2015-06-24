@@ -1,0 +1,18 @@
+{
+  createTable("CREATE TABLE %s (k int, c1 int, c2 int, v int, PRIMARY KEY (k, c1, c2))");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, 0, 0, 0)");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, 0, 1, 1)");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (0, 0, 2, 2)");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (1, 1, 0, 3)");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (1, 1, 1, 4)");
+  execute("INSERT INTO %s (k, c1, c2, v) VALUES (1, 1, 2, 5)");
+  assertRows(execute("SELECT * FROM %s WHERE k=0 AND c1 = 0 AND c2 IN (2, 0)"),row(0,0,0,0),row(0,0,2,2));
+  assertRows(execute("SELECT * FROM %s WHERE k=0 AND c1 = 0 AND c2 IN (2, 0) ORDER BY c1 ASC, c2 ASC"),row(0,0,0,0),row(0,0,2,2));
+  assertRows(execute("SELECT v FROM %s WHERE k=0 AND c1 = 0 AND c2 IN (2, 0)"),row(0),row(2));
+  assertRows(execute("SELECT v FROM %s WHERE k=0 AND c1 = 0 AND c2 IN (2, 0) ORDER BY c1 ASC"),row(0),row(2));
+  assertRows(execute("SELECT v FROM %s WHERE k=0 AND c1 = 0 AND c2 IN (2, 0) ORDER BY c1 DESC"),row(2),row(0));
+  assertRows(execute("SELECT v FROM %s WHERE k IN (1, 0)"),row(0),row(1),row(2),row(3),row(4),row(5));
+  assertRows(execute("SELECT v FROM %s WHERE k IN (1, 0) ORDER BY c1 ASC"),row(0),row(1),row(2),row(3),row(4),row(5));
+  Object[][] results=getRows(execute("SELECT writetime(v) FROM %s WHERE k IN (1, 0) ORDER BY c1 ASC"));
+  assertTrue(isFirstIntSorted(results));
+}

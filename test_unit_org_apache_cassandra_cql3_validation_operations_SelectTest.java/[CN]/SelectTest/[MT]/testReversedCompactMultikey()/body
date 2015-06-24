@@ -1,0 +1,21 @@
+{
+  createTable("CREATE TABLE %s (key text, c1 int, c2 int, value text, PRIMARY KEY(key, c1, c2) ) WITH COMPACT STORAGE AND CLUSTERING ORDER BY(c1 DESC, c2 DESC)");
+  for (int i=0; i < 3; i++)   for (int j=0; j < 3; j++)   execute("INSERT INTO %s (key, c1, c2, value) VALUES ('foo', ?, ?, 'bar')",i,j);
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 = 1"),row(1,2),row(1,1),row(1,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 = 1 ORDER BY c1 ASC, c2 ASC"),row(1,0),row(1,1),row(1,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 = 1 ORDER BY c1 DESC, c2 DESC"),row(1,2),row(1,1),row(1,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 > 1"),row(2,2),row(2,1),row(2,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 > 1 ORDER BY c1 ASC, c2 ASC"),row(2,0),row(2,1),row(2,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 > 1 ORDER BY c1 DESC, c2 DESC"),row(2,2),row(2,1),row(2,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 >= 1"),row(2,2),row(2,1),row(2,0),row(1,2),row(1,1),row(1,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 >= 1 ORDER BY c1 ASC, c2 ASC"),row(1,0),row(1,1),row(1,2),row(2,0),row(2,1),row(2,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 >= 1 ORDER BY c1 ASC"),row(1,0),row(1,1),row(1,2),row(2,0),row(2,1),row(2,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 >= 1 ORDER BY c1 DESC, c2 DESC"),row(2,2),row(2,1),row(2,0),row(1,2),row(1,1),row(1,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 < 1"),row(0,2),row(0,1),row(0,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 < 1 ORDER BY c1 ASC, c2 ASC"),row(0,0),row(0,1),row(0,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 < 1 ORDER BY c1 DESC, c2 DESC"),row(0,2),row(0,1),row(0,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 <= 1"),row(1,2),row(1,1),row(1,0),row(0,2),row(0,1),row(0,0));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 <= 1 ORDER BY c1 ASC, c2 ASC"),row(0,0),row(0,1),row(0,2),row(1,0),row(1,1),row(1,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 <= 1 ORDER BY c1 ASC"),row(0,0),row(0,1),row(0,2),row(1,0),row(1,1),row(1,2));
+  assertRows(execute("SELECT c1, c2 FROM %s WHERE key='foo' AND c1 <= 1 ORDER BY c1 DESC, c2 DESC"),row(1,2),row(1,1),row(1,0),row(0,2),row(0,1),row(0,0));
+}

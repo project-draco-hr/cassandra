@@ -2,6 +2,11 @@
   int limit=getLimit(options);
   long now=System.currentTimeMillis();
   Pageable command=getPageableCommand(options,limit,now);
-  List<Row> rows=command == null ? Collections.<Row>emptyList() : (command instanceof Pageable.ReadCommands ? readLocally(keyspace(),((Pageable.ReadCommands)command).commands) : ((RangeSliceCommand)command).executeLocally());
-  return processResults(rows,options,limit,now);
+  int pageSize=getPageSize(options);
+  if (pageSize <= 0 || command == null || !QueryPagers.mayNeedPaging(command,pageSize)) {
+    List<Row> rows=command == null ? Collections.<Row>emptyList() : (command instanceof Pageable.ReadCommands ? readLocally(keyspace(),((Pageable.ReadCommands)command).commands) : ((RangeSliceCommand)command).executeLocally());
+    return processResults(rows,options,limit,now);
+  }
+  QueryPager pager=QueryPagers.localPager(command);
+  return execute(pager,options,limit,now,pageSize);
 }

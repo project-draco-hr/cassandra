@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (userid uuid, url text, time bigint, PRIMARY KEY (userid, url)) WITH COMPACT STORAGE");
+  UUID id1=UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+  UUID id2=UUID.fromString("f47ac10b-58cc-4372-a567-0e02b2c3d479");
+  UUID id3=UUID.fromString("810e8500-e29b-41d4-a716-446655440000");
+  execute("INSERT INTO %s (userid, url, time) VALUES (?, ?, ?)",id1,"http://foo.bar",42L);
+  execute("INSERT INTO %s (userid, url, time) VALUES (?, ?, ?)",id1,"http://foo-2.bar",24L);
+  execute("INSERT INTO %s (userid, url, time) VALUES (?, ?, ?)",id1,"http://bar.bar",128L);
+  execute("UPDATE %s SET time = 24 WHERE userid = ? and url = 'http://bar.foo'",id2);
+  execute("UPDATE %s SET time = 12 WHERE userid IN (?, ?) and url = 'http://foo-3'",id2,id1);
+  assertRows(execute("SELECT url, time FROM %s WHERE userid = ?",id1),row("http://bar.bar",128L),row("http://foo-2.bar",24L),row("http://foo-3",12L),row("http://foo.bar",42L));
+  assertRows(execute("SELECT * FROM %s WHERE userid = ?",id2),row(id2,"http://bar.foo",24L),row(id2,"http://foo-3",12L));
+  assertRows(execute("SELECT time FROM %s"),row(24L),row(12L),row(128L),row(24L),row(12L),row(42L));
+  assertInvalid("INSERT INTO %s (userid, url, time) VALUES (?, '', 42)",id3);
+}

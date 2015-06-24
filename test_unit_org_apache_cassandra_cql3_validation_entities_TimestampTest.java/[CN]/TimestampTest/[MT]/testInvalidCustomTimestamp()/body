@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (k int, v int, PRIMARY KEY (k, v))");
+  execute("BEGIN BATCH " + "INSERT INTO %1$s (k, v) VALUES(0, 0) IF NOT EXISTS; " + "INSERT INTO %1$s (k, v) VALUES(0, 1) IF NOT EXISTS; "+ "APPLY BATCH");
+  assertInvalid("BEGIN BATCH " + "INSERT INTO %1$s (k, v) VALUES(0, 2) IF NOT EXISTS USING TIMESTAMP 1; " + "INSERT INTO %1$s (k, v) VALUES(0, 3) IF NOT EXISTS; "+ "APPLY BATCH");
+  assertInvalid("BEGIN BATCH " + "USING TIMESTAMP 1 INSERT INTO %1$s (k, v) VALUES(0, 4) IF NOT EXISTS; " + "INSERT INTO %1$s (k, v) VALUES(0, 1) IF NOT EXISTS; "+ "APPLY BATCH");
+  execute("INSERT INTO %s (k, v) VALUES(1, 0) IF NOT EXISTS");
+  assertInvalid("INSERT INTO %s (k, v) VALUES(1, 1) IF NOT EXISTS USING TIMESTAMP 5");
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, c counter)");
+  execute("UPDATE %s SET c = c + 1 WHERE k = 0");
+  assertInvalid("UPDATE %s USING TIMESTAMP 10 SET c = c + 1 WHERE k = 0");
+  execute("BEGIN COUNTER BATCH " + "UPDATE %1$s SET c = c + 1 WHERE k = 0; " + "UPDATE %1$s SET c = c + 1 WHERE k = 0; "+ "APPLY BATCH");
+  assertInvalid("BEGIN COUNTER BATCH " + "UPDATE %1$s USING TIMESTAMP 3 SET c = c + 1 WHERE k = 0; " + "UPDATE %1$s SET c = c + 1 WHERE k = 0; "+ "APPLY BATCH");
+  assertInvalid("BEGIN COUNTER BATCH " + "USING TIMESTAMP 3 UPDATE %1$s SET c = c + 1 WHERE k = 0; " + "UPDATE %1$s SET c = c + 1 WHERE k = 0; "+ "APPLY BATCH");
+}

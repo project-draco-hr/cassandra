@@ -1,0 +1,35 @@
+{
+  for (  boolean frozen : new boolean[]{false,true}) {
+    createTable(String.format("CREATE TABLE %%s (k int PRIMARY KEY, m %s)",frozen ? "frozen<map<text, text>>" : "map<text, text>"));
+    execute("INSERT INTO %s (k, m) VALUES (0, {'foo' : 'bar'})");
+    check_applies_map("m['xxx'] = null");
+    check_applies_map("m['foo'] < 'zzz'");
+    check_applies_map("m['foo'] <= 'bar'");
+    check_applies_map("m['foo'] > 'aaa'");
+    check_applies_map("m['foo'] >= 'bar'");
+    check_applies_map("m['foo'] != 'xxx'");
+    check_applies_map("m['foo'] != null");
+    check_applies_map("m['foo'] IN (null, 'xxx', 'bar')");
+    check_applies_map("m['xxx'] IN (null, 'xxx', 'bar')");
+    check_applies_map("m['foo'] < 'zzz' AND m['foo'] > 'aaa'");
+    check_does_not_apply_map("m['foo'] < 'aaa'");
+    check_does_not_apply_map("m['foo'] <= 'aaa'");
+    check_does_not_apply_map("m['foo'] > 'zzz'");
+    check_does_not_apply_map("m['foo'] >= 'zzz'");
+    check_does_not_apply_map("m['foo'] != 'bar'");
+    check_does_not_apply_map("m['xxx'] != null");
+    check_does_not_apply_map("m['foo'] IN (null, 'xxx')");
+    check_does_not_apply_map("m['foo'] IN ()");
+    check_does_not_apply_map("m['foo'] != null AND m['foo'] = null");
+    check_invalid_map("m['foo'] < null",InvalidRequestException.class);
+    check_invalid_map("m['foo'] <= null",InvalidRequestException.class);
+    check_invalid_map("m['foo'] > null",InvalidRequestException.class);
+    check_invalid_map("m['foo'] >= null",InvalidRequestException.class);
+    check_invalid_map("m['foo'] IN null",SyntaxException.class);
+    check_invalid_map("m['foo'] IN 367",SyntaxException.class);
+    check_invalid_map("m['foo'] IN (1, 2, 3)",InvalidRequestException.class);
+    check_invalid_map("m['foo'] CONTAINS 367",SyntaxException.class);
+    check_invalid_map("m['foo'] CONTAINS KEY 367",SyntaxException.class);
+    check_invalid_map("m[null] = null",InvalidRequestException.class);
+  }
+}

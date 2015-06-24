@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (k int, t timeuuid, PRIMARY KEY(k, t))");
+  assertInvalidThrow(SyntaxException.class,"INSERT INTO %s (k, t) VALUES (0, 2012-11-07 18:18:22-0800)");
+  for (int i=0; i < 4; i++)   execute("INSERT INTO %s (k, t) VALUES (0, now())");
+  Object[][] rows=getRows(execute("SELECT * FROM %s"));
+  assertEquals(4,rows.length);
+  assertRowCount(execute("SELECT * FROM %s WHERE k = 0 AND t >= ?",rows[0][1]),4);
+  assertEmpty(execute("SELECT * FROM %s WHERE k = 0 AND t < ?",rows[0][1]));
+  assertRowCount(execute("SELECT * FROM %s WHERE k = 0 AND t > ? AND t <= ?",rows[0][1],rows[2][1]),2);
+  assertRowCount(execute("SELECT * FROM %s WHERE k = 0 AND t = ?",rows[0][1]),1);
+  assertInvalid("SELECT dateOf(k) FROM %s WHERE k = 0 AND t = ?",rows[0][1]);
+  for (int i=0; i < 4; i++) {
+    long timestamp=UUIDGen.unixTimestamp((UUID)rows[i][1]);
+    assertRows(execute("SELECT dateOf(t), unixTimestampOf(t) FROM %s WHERE k = 0 AND t = ?",rows[i][1]),row(new Date(timestamp),timestamp));
+  }
+  assertEmpty(execute("SELECT t FROM %s WHERE k = 0 AND t > maxTimeuuid(1234567) AND t < minTimeuuid('2012-11-07 18:18:22-0800')"));
+}

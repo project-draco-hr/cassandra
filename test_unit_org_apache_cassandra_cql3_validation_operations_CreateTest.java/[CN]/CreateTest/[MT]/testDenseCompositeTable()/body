@@ -1,0 +1,23 @@
+{
+  createTable("CREATE TABLE %s (userid uuid, ip text, port int, time bigint, PRIMARY KEY (userid, ip, port)) WITH COMPACT STORAGE");
+  UUID id1=UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
+  UUID id2=UUID.fromString("f47ac10b-58cc-4372-a567-0e02b2c3d479");
+  execute("INSERT INTO %s (userid, ip, port, time) VALUES (?, '192.168.0.1', 80, 42)",id1);
+  execute("INSERT INTO %s (userid, ip, port, time) VALUES (?, '192.168.0.2', 80, 24)",id1);
+  execute("INSERT INTO %s (userid, ip, port, time) VALUES (?, '192.168.0.2', 90, 42)",id1);
+  execute("UPDATE %s SET time = 24 WHERE userid = ? AND ip = '192.168.0.2' AND port = 80",id2);
+  execute("INSERT INTO %s (userid, ip, time) VALUES (?, '192.168.0.3', 42)",id2);
+  execute("UPDATE %s SET time = 42 WHERE userid = ? AND ip = '192.168.0.4'",id2);
+  assertRows(execute("SELECT ip, port, time FROM %s WHERE userid = ?",id1),row("192.168.0.1",80,42L),row("192.168.0.2",80,24L),row("192.168.0.2",90,42L));
+  assertRows(execute("SELECT ip, port, time FROM %s WHERE userid = ? and ip >= '192.168.0.2'",id1),row("192.168.0.2",80,24L),row("192.168.0.2",90,42L));
+  assertRows(execute("SELECT ip, port, time FROM %s WHERE userid = ? and ip = '192.168.0.2'",id1),row("192.168.0.2",80,24L),row("192.168.0.2",90,42L));
+  assertEmpty(execute("SELECT ip, port, time FROM %s WHERE userid = ? and ip > '192.168.0.2'",id1));
+  assertRows(execute("SELECT ip, port, time FROM %s WHERE userid = ? AND ip = '192.168.0.3'",id2),row("192.168.0.3",null,42L));
+  assertRows(execute("SELECT ip, port, time FROM %s WHERE userid = ? AND ip = '192.168.0.4'",id2),row("192.168.0.4",null,42L));
+  execute("DELETE time FROM %s WHERE userid = ? AND ip = '192.168.0.2' AND port = 80",id1);
+  assertRowCount(execute("SELECT * FROM %s WHERE userid = ?",id1),2);
+  execute("DELETE FROM %s WHERE userid = ?",id1);
+  assertEmpty(execute("SELECT * FROM %s WHERE userid = ?",id1));
+  execute("DELETE FROM %s WHERE userid = ? AND ip = '192.168.0.3'",id2);
+  assertEmpty(execute("SELECT * FROM %s WHERE userid = ? AND ip = '192.168.0.3'",id2));
+}
