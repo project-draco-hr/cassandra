@@ -27,9 +27,9 @@
           }
           syncCount++;
           totalSyncDuration+=now - syncStarted;
-          if (firstLagAt > 0 && now - firstLagAt >= LAG_REPORT_INTERVAL) {
-            logger.warn(String.format("Out of %d commit log syncs over the past %ds with average duration of %.2fms, %d have exceeded the configured commit interval by an average of %.2fms",syncCount,(now - firstLagAt) / 1000,(double)totalSyncDuration / syncCount,lagCount,(double)syncExceededIntervalBy / lagCount));
-            firstLagAt=0;
+          if (firstLagAt > 0) {
+            boolean logged=NoSpamLogger.log(logger,NoSpamLogger.Level.WARN,5,TimeUnit.MINUTES,"Out of {} commit log syncs over the past {}s with average duration of {}ms, {} have exceeded the configured commit interval by an average of {}ms",syncCount,(now - firstLagAt) / 1000,String.format("%.2f",(double)totalSyncDuration / syncCount),lagCount,String.format("%.2f",(double)syncExceededIntervalBy / lagCount));
+            if (logged)             firstLagAt=0;
           }
           if (sleep < 0 || !run)           continue;
           try {
