@@ -1,0 +1,21 @@
+{
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"64\",\"class\":\"org.apache.cassandra.io.compress.LZ4Compressor\"}"));
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'class' : 'SnappyCompressor', 'chunk_length_in_kb' : 32 };");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"32\",\"class\":\"org.apache.cassandra.io.compress.SnappyCompressor\"}"));
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'class' : 'SnappyCompressor', 'chunk_length_in_kb' : 32, 'enabled' : true };");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"32\",\"class\":\"org.apache.cassandra.io.compress.SnappyCompressor\"}"));
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'sstable_compression' : 'SnappyCompressor', 'chunk_length_kb' : 32 };");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"32\",\"class\":\"org.apache.cassandra.io.compress.SnappyCompressor\"}"));
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'sstable_compression' : '', 'chunk_length_kb' : 32 };");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"enabled\":\"false\"}"));
+  createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'enabled' : 'false'};");
+  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"enabled\":\"false\"}"));
+  assertThrowsConfigurationException("Missing sub-option 'class' for the 'compression' option.","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = {'chunk_length_in_kb' : 32};");
+  assertThrowsConfigurationException("The 'class' option must not be empty. To disable compression use 'enabled' : false","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'class' : ''};");
+  assertThrowsConfigurationException("If the 'enabled' option is set to false no other options must be specified","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'enabled' : 'false', 'class' : 'SnappyCompressor'};");
+  assertThrowsConfigurationException("If the 'enabled' option is set to false no other options must be specified","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'enabled' : 'false', 'chunk_length_in_kb' : 32};");
+  assertThrowsConfigurationException("The 'sstable_compression' option must not be used if the compression algorithm is already specified by the 'class' option","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'sstable_compression' : 'SnappyCompressor', 'class' : 'SnappyCompressor'};");
+  assertThrowsConfigurationException("The 'chunk_length_kb' option must not be used if the chunk length is already specified by the 'chunk_length_in_kb' option","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'class' : 'SnappyCompressor', 'chunk_length_kb' : 32 , 'chunk_length_in_kb' : 32 };");
+  assertThrowsConfigurationException("Unknown compression options unknownOption","CREATE TABLE %s (a text, b int, c int, primary key (a, b))" + " WITH compression = { 'class' : 'SnappyCompressor', 'unknownOption' : 32 };");
+}
