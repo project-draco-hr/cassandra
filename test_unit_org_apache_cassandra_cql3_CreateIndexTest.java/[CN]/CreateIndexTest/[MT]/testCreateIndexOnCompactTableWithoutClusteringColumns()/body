@@ -1,0 +1,11 @@
+{
+  executeSchemaChange("CREATE TABLE %s.compact_table (a int PRIMARY KEY, b int)" + " WITH COMPACT STORAGE;");
+  assertInvalid("Secondary indexes are not supported on PRIMARY KEY columns in COMPACT STORAGE tables","CREATE INDEX ON %s.compact_table (a);");
+  executeSchemaChange("CREATE INDEX ON %s.compact_table (b);");
+  execute("INSERT INTO %s.compact_table (a, b) VALUES (1, 1);");
+  execute("INSERT INTO %s.compact_table (a, b) VALUES (2, 4);");
+  execute("INSERT INTO %s.compact_table (a, b) VALUES (3, 6);");
+  UntypedResultSet results=execute("SELECT * FROM %s.compact_table WHERE b = 4;");
+  assertEquals(1,results.size());
+  checkRow(0,results,2,4);
+}
