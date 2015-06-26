@@ -1,3 +1,16 @@
 {
-  return submitBackground(cfs,true);
+  if (cfs.isAutoCompactionDisabled()) {
+    logger.debug("Autocompaction is disabled");
+    return Collections.emptyList();
+  }
+  int count=compactingCF.count(cfs);
+  if (count > 0 && executor.getActiveCount() >= executor.getMaximumPoolSize()) {
+    logger.debug("Background compaction is still running for {}.{} ({} remaining). Skipping",cfs.keyspace.getName(),cfs.name,count);
+    return Collections.emptyList();
+  }
+  logger.debug("Scheduling a background task check for {}.{} with {}",cfs.keyspace.getName(),cfs.name,cfs.getCompactionStrategy().getClass().getSimpleName());
+  List<Future<?>> futures=new ArrayList<>();
+  compactingCF.add(cfs);
+  futures.add(executor.submit(new BackgroundCompactionCandidate(cfs)));
+  return futures;
 }
