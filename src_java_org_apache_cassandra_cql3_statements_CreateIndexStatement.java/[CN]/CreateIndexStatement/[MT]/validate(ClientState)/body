@@ -24,7 +24,8 @@
  else     throw new InvalidRequestException("Index already exists");
   }
   properties.validate();
-  if ((cfm.comparator.isDense() || !cfm.comparator.isCompound()) && cd.kind != ColumnDefinition.Kind.REGULAR)   throw new InvalidRequestException("Secondary indexes are not supported on PRIMARY KEY columns in COMPACT STORAGE tables");
+  if ((cfm.comparator.isDense() || !cfm.comparator.isCompound()) && cd.isPrimaryKeyColumn())   throw new InvalidRequestException("Secondary indexes are not supported on PRIMARY KEY columns in COMPACT STORAGE tables");
+  if (cd.kind == ColumnDefinition.Kind.COMPACT_VALUE)   throw new InvalidRequestException("Secondary indexes are not supported on COMPACT STORAGE tables that have clustering columns");
   if (cd.isStatic())   throw new InvalidRequestException("Secondary indexes are not allowed on static columns");
   if (cd.kind == ColumnDefinition.Kind.PARTITION_KEY && cd.isOnAllComponents())   throw new InvalidRequestException(String.format("Cannot create secondary index on partition key column %s",target.column));
 }
