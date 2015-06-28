@@ -4,15 +4,15 @@
   int rowCount=20000;
   int targetSSTableCount=50;
   populate(rowCount);
-  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getSSTables(),OperationType.COMPACTION);
+  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getLiveSSTables(),OperationType.COMPACTION);
   long beforeSize=txn.originals().iterator().next().onDiskLength();
   int sstableSize=(int)beforeSize / targetSSTableCount;
   CompactionAwareWriter writer=new MajorLeveledCompactionWriter(cfs,txn,txn.originals(),sstableSize,false);
   int rows=compact(cfs,txn,writer);
-  assertEquals(targetSSTableCount,cfs.getSSTables().size());
+  assertEquals(targetSSTableCount,cfs.getLiveSSTables().size());
   int[] levelCounts=new int[5];
   assertEquals(rowCount,rows);
-  for (  SSTableReader sstable : cfs.getSSTables()) {
+  for (  SSTableReader sstable : cfs.getLiveSSTables()) {
     levelCounts[sstable.getSSTableLevel()]++;
   }
   assertEquals(0,levelCounts[0]);

@@ -13,14 +13,14 @@
   LeveledCompactionStrategy strategy=(LeveledCompactionStrategy)(cfs.getCompactionStrategyManager()).getStrategies().get(1);
   cfs.disableAutoCompaction();
   while (CompactionManager.instance.isCompacting(Arrays.asList(cfs)))   Thread.sleep(100);
-  for (  SSTableReader s : cfs.getSSTables()) {
+  for (  SSTableReader s : cfs.getLiveSSTables()) {
     assertTrue(s.getSSTableLevel() != 6);
     strategy.manifest.remove(s);
     s.descriptor.getMetadataSerializer().mutateLevel(s.descriptor,6);
     s.reloadSSTableMetadata();
     strategy.manifest.add(s);
   }
-  for (  SSTableReader s : cfs.getSSTables())   assertEquals(6,s.getSSTableLevel());
+  for (  SSTableReader s : cfs.getLiveSSTables())   assertEquals(6,s.getSSTableLevel());
   int[] levels=strategy.manifest.getAllLevelSize();
-  assertEquals(cfs.getSSTables().size(),levels[6]);
+  assertEquals(cfs.getLiveSSTables().size(),levels[6]);
 }

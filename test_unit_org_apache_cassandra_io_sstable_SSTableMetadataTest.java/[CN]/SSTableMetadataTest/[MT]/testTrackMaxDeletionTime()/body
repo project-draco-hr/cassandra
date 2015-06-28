@@ -8,18 +8,18 @@
   }
   new RowUpdateBuilder(store.metadata,timestamp,10000,"longttl").clustering("col").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   store.forceBlockingFlush();
-  assertEquals(1,store.getSSTables().size());
+  assertEquals(1,store.getLiveSSTables().size());
   int ttltimestamp=(int)(System.currentTimeMillis() / 1000);
   int firstDelTime=0;
-  for (  SSTableReader sstable : store.getSSTables()) {
+  for (  SSTableReader sstable : store.getLiveSSTables()) {
     firstDelTime=sstable.getSSTableMetadata().maxLocalDeletionTime;
     assertEquals(ttltimestamp + 10000,firstDelTime,10);
   }
   new RowUpdateBuilder(store.metadata,timestamp,20000,"longttl2").clustering("col").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   ttltimestamp=(int)(System.currentTimeMillis() / 1000);
   store.forceBlockingFlush();
-  assertEquals(2,store.getSSTables().size());
-  List<SSTableReader> sstables=new ArrayList<>(store.getSSTables());
+  assertEquals(2,store.getLiveSSTables().size());
+  List<SSTableReader> sstables=new ArrayList<>(store.getLiveSSTables());
   if (sstables.get(0).getSSTableMetadata().maxLocalDeletionTime < sstables.get(1).getSSTableMetadata().maxLocalDeletionTime) {
     assertEquals(sstables.get(0).getSSTableMetadata().maxLocalDeletionTime,firstDelTime);
     assertEquals(sstables.get(1).getSSTableMetadata().maxLocalDeletionTime,ttltimestamp + 20000,10);
@@ -28,9 +28,9 @@
     assertEquals(sstables.get(1).getSSTableMetadata().maxLocalDeletionTime,firstDelTime);
     assertEquals(sstables.get(0).getSSTableMetadata().maxLocalDeletionTime,ttltimestamp + 20000,10);
   }
-  Util.compact(store,store.getSSTables());
-  assertEquals(1,store.getSSTables().size());
-  for (  SSTableReader sstable : store.getSSTables()) {
+  Util.compact(store,store.getLiveSSTables());
+  assertEquals(1,store.getLiveSSTables().size());
+  for (  SSTableReader sstable : store.getLiveSSTables()) {
     assertEquals(sstable.getSSTableMetadata().maxLocalDeletionTime,ttltimestamp + 20000,10);
   }
 }

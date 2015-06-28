@@ -6,7 +6,7 @@
   cfs.clearUnsafe();
   fillCounterCF(cfs,2);
   assertOrderedAll(cfs,2);
-  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  SSTableReader sstable=cfs.getLiveSSTables().iterator().next();
   overrideWithGarbage(sstable,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
   try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,false,false,true)){
     scrubber.scrub();
@@ -18,6 +18,6 @@
     scrubber.scrub();
     scrubber.close();
   }
-   assertEquals(1,cfs.getSSTables().size());
+   assertEquals(1,cfs.getLiveSSTables().size());
   assertOrderedAll(cfs,1);
 }

@@ -3,12 +3,12 @@
   cfs.disableAutoCompaction();
   int rowCount=1000;
   populate(rowCount);
-  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getSSTables(),OperationType.COMPACTION);
+  LifecycleTransaction txn=cfs.getTracker().tryModify(cfs.getLiveSSTables(),OperationType.COMPACTION);
   long beforeSize=txn.originals().iterator().next().onDiskLength();
   int sstableSize=(int)beforeSize / 10;
   CompactionAwareWriter writer=new MaxSSTableSizeWriter(cfs,txn,txn.originals(),sstableSize,0,false);
   int rows=compact(cfs,txn,writer);
-  assertEquals(10,cfs.getSSTables().size());
+  assertEquals(10,cfs.getLiveSSTables().size());
   assertEquals(rowCount,rows);
   validateData(cfs,rowCount);
   cfs.truncateBlocking();

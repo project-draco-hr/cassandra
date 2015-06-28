@@ -6,18 +6,18 @@
   int numSSTables=1;
   int numRows=256;
   createSSTables(ksname,cfname,numSSTables,numRows);
-  List<SSTableReader> sstables=new ArrayList<>(cfs.getSSTables());
+  List<SSTableReader> sstables=new ArrayList<>(cfs.getLiveSSTables());
   for (  SSTableReader sstable : sstables)   sstable.overrideReadMeter(new RestorableMeter(100.0,100.0));
   try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
     redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),10);
   }
-   sstables=new ArrayList<>(cfs.getSSTables());
+   sstables=new ArrayList<>(cfs.getLiveSSTables());
   for (  SSTableReader sstable : sstables)   assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
   cfs.metadata.maxIndexInterval(cfs.metadata.getMaxIndexInterval() / 2);
   try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
     redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),1);
   }
-   sstables=new ArrayList<>(cfs.getSSTables());
+   sstables=new ArrayList<>(cfs.getLiveSSTables());
   for (  SSTableReader sstable : sstables) {
     assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
     assertEquals(numRows / cfs.metadata.getMaxIndexInterval(),sstable.getIndexSummarySize());
@@ -26,7 +26,7 @@
   try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
     redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),1);
   }
-   for (  SSTableReader sstable : cfs.getSSTables()) {
+   for (  SSTableReader sstable : cfs.getLiveSSTables()) {
     assertEquals(cfs.metadata.getMaxIndexInterval(),sstable.getEffectiveIndexInterval(),0.01);
     assertEquals(numRows / cfs.metadata.getMaxIndexInterval(),sstable.getIndexSummarySize());
   }

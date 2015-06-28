@@ -1,14 +1,14 @@
 {
   ColumnFamilyStore store=prepareColumnFamilyStore();
-  Collection<SSTableReader> sstables=store.getUnrepairedSSTables();
-  assertEquals(store.getSSTables().size(),sstables.size());
+  Collection<SSTableReader> sstables=getUnrepairedSSTables(store);
+  assertEquals(store.getLiveSSTables().size(),sstables.size());
   Range<Token> range=new Range<Token>(new BytesToken("0".getBytes()),new BytesToken("9999".getBytes()));
   List<Range<Token>> ranges=Arrays.asList(range);
   try (LifecycleTransaction txn=store.getTracker().tryModify(sstables,OperationType.ANTICOMPACTION);Refs<SSTableReader> refs=Refs.ref(sstables)){
     CompactionManager.instance.performAnticompaction(store,ranges,refs,txn,1);
   }
-   assertThat(store.getSSTables().size(),is(1));
-  assertThat(Iterables.get(store.getSSTables(),0).isRepaired(),is(true));
-  assertThat(Iterables.get(store.getSSTables(),0).selfRef().globalCount(),is(1));
+   assertThat(store.getLiveSSTables().size(),is(1));
+  assertThat(Iterables.get(store.getLiveSSTables(),0).isRepaired(),is(true));
+  assertThat(Iterables.get(store.getLiveSSTables(),0).selfRef().globalCount(),is(1));
   assertThat(store.getTracker().getCompacting().size(),is(0));
 }

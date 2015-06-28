@@ -7,8 +7,8 @@
   store.disableAutoCompaction();
   long timestamp=populate(KEYSPACE1,CF_DENSE1,0,9,3);
   store.forceBlockingFlush();
-  assertEquals(1,store.getSSTables().size());
-  long originalSize=store.getSSTables().iterator().next().uncompressedLength();
+  assertEquals(1,store.getLiveSSTables().size());
+  long originalSize=store.getLiveSSTables().iterator().next().uncompressedLength();
   TimeUnit.SECONDS.sleep(5);
   store.enableAutoCompaction();
   FBUtilities.waitOnFutures(CompactionManager.instance.submitBackground(store));
@@ -16,8 +16,8 @@
     TimeUnit.SECONDS.sleep(1);
   }
  while (CompactionManager.instance.getPendingTasks() > 0 || CompactionManager.instance.getActiveCompactions() > 0);
-  assertEquals(1,store.getSSTables().size());
-  long size=store.getSSTables().iterator().next().uncompressedLength();
+  assertEquals(1,store.getLiveSSTables().size());
+  long size=store.getLiveSSTables().iterator().next().uncompressedLength();
   assertTrue("should be less than " + originalSize + ", but was "+ size,size < originalSize);
   assertMaxTimestamp(store,timestamp);
   return store;

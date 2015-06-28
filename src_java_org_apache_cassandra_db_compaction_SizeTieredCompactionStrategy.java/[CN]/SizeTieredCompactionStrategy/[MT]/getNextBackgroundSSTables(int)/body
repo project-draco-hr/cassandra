@@ -1,18 +1,2 @@
 {
-  if (!isEnabled())   return Collections.emptyList();
-  int minThreshold=cfs.getMinimumCompactionThreshold();
-  int maxThreshold=cfs.getMaximumCompactionThreshold();
-  Iterable<SSTableReader> candidates=filterSuspectSSTables(Sets.intersection(cfs.getUncompactingSSTables(),sstables));
-  List<List<SSTableReader>> buckets=getBuckets(createSSTableAndLengthPairs(candidates),sizeTieredOptions.bucketHigh,sizeTieredOptions.bucketLow,sizeTieredOptions.minSSTableSize);
-  logger.debug("Compaction buckets are {}",buckets);
-  updateEstimatedCompactionsByTasks(buckets);
-  List<SSTableReader> mostInteresting=mostInterestingBucket(buckets,minThreshold,maxThreshold);
-  if (!mostInteresting.isEmpty())   return mostInteresting;
-  List<SSTableReader> sstablesWithTombstones=new ArrayList<>();
-  for (  SSTableReader sstable : candidates) {
-    if (worthDroppingTombstones(sstable,gcBefore))     sstablesWithTombstones.add(sstable);
-  }
-  if (sstablesWithTombstones.isEmpty())   return Collections.emptyList();
-  Collections.sort(sstablesWithTombstones,new SSTableReader.SizeComparator());
-  return Collections.singletonList(sstablesWithTombstones.get(0));
 }

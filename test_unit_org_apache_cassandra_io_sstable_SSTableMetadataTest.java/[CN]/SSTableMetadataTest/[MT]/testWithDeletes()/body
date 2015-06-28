@@ -6,27 +6,27 @@
   for (int i=0; i < 5; i++)   new RowUpdateBuilder(store.metadata,timestamp,100,"deletetest").clustering("deletecolumn" + i).add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   new RowUpdateBuilder(store.metadata,timestamp,1000,"deletetest").clustering("todelete").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   store.forceBlockingFlush();
-  assertEquals(1,store.getSSTables().size());
+  assertEquals(1,store.getLiveSSTables().size());
   int ttltimestamp=(int)(System.currentTimeMillis() / 1000);
   int firstMaxDelTime=0;
-  for (  SSTableReader sstable : store.getSSTables()) {
+  for (  SSTableReader sstable : store.getLiveSSTables()) {
     firstMaxDelTime=sstable.getSSTableMetadata().maxLocalDeletionTime;
     assertEquals(ttltimestamp + 1000,firstMaxDelTime,10);
   }
   RowUpdateBuilder.deleteRow(store.metadata,timestamp + 1,"deletetest","todelete").applyUnsafe();
   store.forceBlockingFlush();
-  assertEquals(2,store.getSSTables().size());
+  assertEquals(2,store.getLiveSSTables().size());
   boolean foundDelete=false;
-  for (  SSTableReader sstable : store.getSSTables()) {
+  for (  SSTableReader sstable : store.getLiveSSTables()) {
     if (sstable.getSSTableMetadata().maxLocalDeletionTime != firstMaxDelTime) {
       assertEquals(sstable.getSSTableMetadata().maxLocalDeletionTime,ttltimestamp,10);
       foundDelete=true;
     }
   }
   assertTrue(foundDelete);
-  Util.compact(store,store.getSSTables());
-  assertEquals(1,store.getSSTables().size());
-  for (  SSTableReader sstable : store.getSSTables()) {
+  Util.compact(store,store.getLiveSSTables());
+  assertEquals(1,store.getLiveSSTables().size());
+  for (  SSTableReader sstable : store.getLiveSSTables()) {
     assertEquals(ttltimestamp + 100,sstable.getSSTableMetadata().maxLocalDeletionTime,10);
   }
 }

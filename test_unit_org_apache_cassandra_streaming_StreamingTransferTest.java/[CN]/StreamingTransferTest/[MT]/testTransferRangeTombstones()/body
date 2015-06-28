@@ -12,10 +12,10 @@
   updates=new RowUpdateBuilder(cfs.metadata,FBUtilities.timestampMicros() + 1,key);
   updates.addRangeTombstone(Slice.make(comparator.make(5),comparator.make(7))).build().apply();
   cfs.forceBlockingFlush();
-  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  SSTableReader sstable=cfs.getLiveSSTables().iterator().next();
   cfs.clearUnsafe();
   transferSSTables(sstable);
-  assertEquals(1,cfs.getSSTables().size());
+  assertEquals(1,cfs.getLiveSSTables().size());
   Row r=Util.getOnlyRow(Util.cmd(cfs).build());
   Assert.assertFalse(r.isEmpty());
   Assert.assertTrue(1 == Int32Type.instance.compose(r.clustering().get(0)));

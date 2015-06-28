@@ -4,7 +4,7 @@
   truncate(cfs);
   SSTableReader s=writeFile(cfs,1000);
   cfs.addSSTable(s);
-  Set<SSTableReader> sstables=new HashSet<>(cfs.getSSTables());
+  Set<SSTableReader> sstables=new HashSet<>(cfs.getLiveSSTables());
   assertEquals(1,sstables.size());
   int nowInSec=FBUtilities.nowInSeconds();
   boolean checked=false;
@@ -15,7 +15,7 @@
       writer.append(row);
       if (!checked && writer.currentWriter().getFilePointer() > 1500000) {
         checked=true;
-        for (        SSTableReader sstable : cfs.getSSTables()) {
+        for (        SSTableReader sstable : cfs.getLiveSSTables()) {
           if (sstable.openReason == SSTableReader.OpenReason.EARLY) {
             SSTableReader c=txn.current(sstables.iterator().next());
             Collection<Range<Token>> r=Arrays.asList(new Range<>(cfs.partitioner.getMinimumToken(),cfs.partitioner.getMinimumToken()));

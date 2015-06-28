@@ -16,7 +16,7 @@
       if (rewriter.currentWriter().getOnDiskFilePointer() > 25000000) {
         rewriter.switchWriter(getWriter(cfs,s.descriptor.directory,txn));
         files++;
-        assertEquals(cfs.getSSTables().size(),files);
+        assertEquals(cfs.getLiveSSTables().size(),files);
         assertEquals(s.bytesOnDisk(),cfs.metric.liveDiskSpaceUsed.getCount());
         assertEquals(s.bytesOnDisk(),cfs.metric.totalDiskSpaceUsed.getCount());
       }
@@ -25,11 +25,11 @@
   }
    TransactionLogs.waitForDeletions();
   long sum=0;
-  for (  SSTableReader x : cfs.getSSTables())   sum+=x.bytesOnDisk();
+  for (  SSTableReader x : cfs.getLiveSSTables())   sum+=x.bytesOnDisk();
   assertEquals(sum,cfs.metric.liveDiskSpaceUsed.getCount());
   assertEquals(startStorageMetricsLoad - sBytesOnDisk + sum,StorageMetrics.load.getCount());
   assertEquals(files,sstables.size());
-  assertEquals(files,cfs.getSSTables().size());
+  assertEquals(files,cfs.getLiveSSTables().size());
   TransactionLogs.waitForDeletions();
   assertEquals(sum,cfs.metric.totalDiskSpaceUsed.getCount());
   assertFileCounts(s.descriptor.directory.list());
