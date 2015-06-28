@@ -4,7 +4,10 @@
   ReadRepairDecision repairDecision=Schema.instance.getCFMetaData(command.ksName,command.cfName).newReadRepairDecision();
   List<InetAddress> targetReplicas=consistencyLevel.filterForQuery(keyspace,allReplicas,repairDecision);
   consistencyLevel.assureSufficientLiveNodes(keyspace,targetReplicas);
-  if (repairDecision != ReadRepairDecision.NONE)   ReadRepairMetrics.attempted.mark();
+  if (repairDecision != ReadRepairDecision.NONE) {
+    Tracing.trace("Read-repair {}",repairDecision);
+    ReadRepairMetrics.attempted.mark();
+  }
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(command.cfName);
   RetryType retryType=cfs.metadata.getSpeculativeRetry().type;
   if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(command,consistencyLevel,targetReplicas);
