@@ -3,9 +3,9 @@
   PrepareCallback summary=null;
   int contentions=0;
   while (System.nanoTime() - start < timeout) {
-    long currentTime=(state.getTimestamp() / 1000) + 1;
-    long ballotMillis=summary == null ? currentTime : Math.max(currentTime,1 + UUIDGen.unixTimestamp(summary.mostRecentInProgressCommit.ballot));
-    UUID ballot=UUIDGen.getTimeUUID(ballotMillis);
+    long minTimestampMicrosToUse=summary == null ? Long.MIN_VALUE : 1 + UUIDGen.microsTimestamp(summary.mostRecentInProgressCommit.ballot);
+    long ballotMicros=state.getTimestamp(minTimestampMicrosToUse);
+    UUID ballot=UUIDGen.getTimeUUIDFromMicros(ballotMicros);
     Tracing.trace("Preparing {}",ballot);
     Commit toPrepare=Commit.newPrepare(key,metadata,ballot);
     summary=preparePaxos(toPrepare,liveEndpoints,requiredParticipants,consistencyForPaxos);
@@ -43,7 +43,6 @@
       sendCommit(mostRecent,missingMRC);
       continue;
     }
-    state.updateLastTimestamp(ballotMillis * 1000);
     return Pair.create(ballot,contentions);
   }
   throw new WriteTimeoutException(WriteType.CAS,consistencyForPaxos,0,consistencyForPaxos.blockFor(Keyspace.open(metadata.ksName)));
