@@ -37,6 +37,7 @@ if (insert == null) insert=new HashMap<>();
 lowerCase(insert);
 partitions=select(settings.insert.batchsize,"partitions","fixed(1)",insert,OptionDistribution.BUILDER);
 selectchance=select(settings.insert.selectRatio,"select","fixed(1)/1",insert,OptionRatioDistribution.BUILDER);
+rowPopulation=select(settings.insert.rowPopulationRatio,"row-population","fixed(1)/1",insert,OptionRatioDistribution.BUILDER);
 batchType=settings.insert.batchType != null ? settings.insert.batchType : !insert.containsKey("batchtype") ? BatchStatement.Type.LOGGED : BatchStatement.Type.valueOf(insert.remove("batchtype"));
 if (!insert.isEmpty()) throw new IllegalArgumentException("Unrecognised insert option(s): " + insert);
 Distribution visits=settings.insert.visits.get();
@@ -63,5 +64,5 @@ insertStatement=client.prepare(query);
 }
 }
 }
-return new SchemaInsert(timer,settings,generator,seedManager,partitions.get(),selectchance.get(),thriftInsertId,insertStatement,ThriftConversion.fromThrift(settings.command.consistencyLevel),batchType);
+return new SchemaInsert(timer,settings,generator,seedManager,partitions.get(),selectchance.get(),rowPopulation.get(),thriftInsertId,insertStatement,ThriftConversion.fromThrift(settings.command.consistencyLevel),batchType);
 }
