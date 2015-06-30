@@ -4,8 +4,9 @@
     if (ifExists)     return false;
  else     throw new InvalidRequestException(getMissingFunctionError());
   }
-  List<Function> references=Functions.getReferencesTo(old);
-  if (!references.isEmpty())   throw new InvalidRequestException(String.format("Function '%s' still referenced by %s",old,references));
+  KSMetaData ksm=Schema.instance.getKSMetaData(old.name().keyspace);
+  Collection<UDAggregate> referrers=ksm.functions.aggregatesUsingFunction(old);
+  if (!referrers.isEmpty())   throw new InvalidRequestException(String.format("Function '%s' still referenced by %s",old,referrers));
   MigrationManager.announceFunctionDrop((UDFunction)old,isLocalOnly);
   return true;
 }

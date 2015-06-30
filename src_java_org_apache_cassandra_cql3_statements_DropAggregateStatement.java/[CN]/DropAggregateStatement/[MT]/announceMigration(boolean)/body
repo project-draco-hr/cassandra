@@ -1,11 +1,11 @@
 {
-  List<Function> olds=Functions.find(functionName);
+  Collection<Function> olds=Schema.instance.getFunctions(functionName);
   if (!argsPresent && olds != null && olds.size() > 1)   throw new InvalidRequestException(String.format("'DROP AGGREGATE %s' matches multiple function definitions; " + "specify the argument types by issuing a statement like " + "'DROP AGGREGATE %s (type, type, ...)'. Hint: use cqlsh "+ "'DESCRIBE AGGREGATE %s' command to find all overloads",functionName,functionName,functionName));
   List<AbstractType<?>> argTypes=new ArrayList<>(argRawTypes.size());
   for (  CQL3Type.Raw rawType : argRawTypes)   argTypes.add(prepareType("arguments",rawType));
   Function old;
   if (argsPresent) {
-    old=Functions.find(functionName,argTypes);
+    old=Schema.instance.findFunction(functionName,argTypes).orElse(null);
     if (old == null || !(old instanceof AggregateFunction)) {
       if (ifExists)       return false;
       StringBuilder sb=new StringBuilder();
@@ -17,11 +17,11 @@
     }
   }
  else {
-    if (olds == null || olds.isEmpty() || !(olds.get(0) instanceof AggregateFunction)) {
+    if (olds == null || olds.isEmpty() || !(olds.iterator().next() instanceof AggregateFunction)) {
       if (ifExists)       return false;
       throw new InvalidRequestException(String.format("Cannot drop non existing aggregate '%s'",functionName));
     }
-    old=olds.get(0);
+    old=olds.iterator().next();
   }
   if (old.isNative())   throw new InvalidRequestException(String.format("Cannot drop aggregate '%s' because it is a " + "native (built-in) function",functionName));
   this.old=old;

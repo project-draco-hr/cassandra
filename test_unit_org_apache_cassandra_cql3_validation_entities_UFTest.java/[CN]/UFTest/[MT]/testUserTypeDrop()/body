@@ -3,12 +3,12 @@
   createTable("CREATE TABLE %s (key int primary key, udt frozen<" + type + ">)");
   String fName=createFunction(KEYSPACE,type,"CREATE FUNCTION %s( udt " + type + " ) "+ "CALLED ON NULL INPUT "+ "RETURNS int "+ "LANGUAGE java "+ "AS $$return "+ "     Integer.valueOf(udt.getInt(\"i\"));$$;");
   FunctionName fNameName=parseFunctionName(fName);
-  Assert.assertEquals(1,Functions.find(fNameName).size());
+  Assert.assertEquals(1,Schema.instance.getFunctions(fNameName).size());
   ResultMessage.Prepared prepared=QueryProcessor.prepare(String.format("SELECT key, %s(udt) FROM %s.%s",fName,KEYSPACE,currentTable()),ClientState.forInternalCalls(),false);
   Assert.assertNotNull(QueryProcessor.instance.getPrepared(prepared.statementId));
   assertInvalidMessage("Cannot drop user type","DROP TYPE " + type);
   execute("DROP TABLE %s");
   assertInvalidMessage("as it is still used by function","DROP TYPE " + type);
   Assert.assertNull(QueryProcessor.instance.getPrepared(prepared.statementId));
-  Assert.assertEquals(1,Functions.find(fNameName).size());
+  Assert.assertEquals(1,Schema.instance.getFunctions(fNameName).size());
 }
