@@ -5,10 +5,10 @@
   assertNotNull(Schema.instance.getKSMetaData(EMPTY_KEYSPACE));
   String tableName="added_later";
   CFMetaData newCf=addTestTable(EMPTY_KEYSPACE,tableName,"A new CF to add to an empty KS");
-  assertFalse(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
+  assertFalse(Schema.instance.getKSMetaData(newKs.name).tables.get(newCf.cfName).isPresent());
   MigrationManager.announceNewColumnFamily(newCf);
-  assertTrue(Schema.instance.getKSMetaData(newKs.name).cfMetaData().containsKey(newCf.cfName));
-  assertEquals(Schema.instance.getKSMetaData(newKs.name).cfMetaData().get(newCf.cfName),newCf);
+  assertTrue(Schema.instance.getKSMetaData(newKs.name).tables.get(newCf.cfName).isPresent());
+  assertEquals(Schema.instance.getKSMetaData(newKs.name).tables.get(newCf.cfName).get(),newCf);
   QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, col, val) VALUES (?, ?, ?)",EMPTY_KEYSPACE,tableName),"key0","col0","val0");
   ColumnFamilyStore cfs=Keyspace.open(newKs.name).getColumnFamilyStore(newCf.cfName);
   assertNotNull(cfs);
