@@ -1,13 +1,10 @@
 {
-  while (i < staticRow.columns().simpleColumnCount()) {
-    Cell cell=staticRow.getCell(staticRow.columns().getSimple(i++));
-    if (cell != null) {
-      Row.Writer writer=nextToMerge.writer();
-      writer.writeClusteringValue(cell.column().name.bytes);
-      writer.writeCell(metadata().compactValueColumn(),cell.isCounterCell(),cell.value(),cell.livenessInfo(),cell.path());
-      writer.endOfRow();
-      return;
-    }
+  if (!staticCells.hasNext()) {
+    nextToMerge=null;
+    return;
   }
-  nextToMerge=null;
+  Cell cell=staticCells.next();
+  builder.newRow(new Clustering(cell.column().name.bytes));
+  builder.addCell(new BufferCell(metadata().compactValueColumn(),cell.timestamp(),cell.ttl(),cell.localDeletionTime(),cell.value(),cell.path()));
+  nextToMerge=builder.build();
 }

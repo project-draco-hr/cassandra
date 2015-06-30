@@ -8,27 +8,34 @@
   }
   sb.append(": ").append(clustering().toString(metadata)).append(" | ");
   boolean isFirst=true;
-  ColumnDefinition prevColumn=null;
-  for (  Cell cell : this) {
+  for (  ColumnData cd : this) {
     if (isFirst)     isFirst=false;
  else     sb.append(", ");
     if (fullDetails) {
-      if (cell.column().isComplex() && !cell.column().equals(prevColumn)) {
-        DeletionTime complexDel=getDeletion(cell.column());
-        if (!complexDel.isLive())         sb.append("del(").append(cell.column().name).append(")=").append(complexDel).append(", ");
+      if (cd.column().isSimple()) {
+        sb.append(cd);
       }
-      sb.append(cell);
-      prevColumn=cell.column();
+ else {
+        ComplexColumnData complexData=(ComplexColumnData)cd;
+        if (!complexData.complexDeletion().isLive())         sb.append("del(").append(cd.column().name).append(")=").append(complexData.complexDeletion());
+        for (        Cell cell : complexData)         sb.append(", ").append(cell);
+      }
     }
  else {
-      sb.append(cell.column().name);
-      if (cell.column().type instanceof CollectionType) {
-        CollectionType ct=(CollectionType)cell.column().type;
-        sb.append("[").append(ct.nameComparator().getString(cell.path().get(0))).append("]");
-        sb.append("=").append(ct.valueComparator().getString(cell.value()));
+      if (cd.column().isSimple()) {
+        Cell cell=(Cell)cd;
+        sb.append(cell.column().name).append('=').append(cell.column().type.getString(cell.value()));
       }
  else {
-        sb.append("=").append(cell.column().type.getString(cell.value()));
+        ComplexColumnData complexData=(ComplexColumnData)cd;
+        CollectionType ct=(CollectionType)cd.column().type;
+        sb.append(cd.column().name).append("={");
+        int i=0;
+        for (        Cell cell : complexData) {
+          sb.append(i++ == 0 ? "" : ", ");
+          sb.append(ct.nameComparator().getString(cell.path().get(0))).append("->").append(ct.valueComparator().getString(cell.value()));
+        }
+        sb.append('}');
       }
     }
   }

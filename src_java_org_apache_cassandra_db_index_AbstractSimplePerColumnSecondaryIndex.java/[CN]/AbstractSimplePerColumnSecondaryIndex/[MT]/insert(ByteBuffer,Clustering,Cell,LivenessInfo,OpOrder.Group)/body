@@ -1,10 +1,7 @@
 {
   DecoratedKey valueKey=getIndexKeyFor(getIndexedValue(rowKey,clustering,cell));
-  PartitionUpdate upd=new PartitionUpdate(indexCfs.metadata,valueKey,PartitionColumns.NONE,1);
-  Row.Writer writer=upd.writer();
-  Rows.writeClustering(makeIndexClustering(rowKey,clustering,cell),writer);
-  writer.writePartitionKeyLivenessInfo(info);
-  writer.endOfRow();
+  Row row=ArrayBackedRow.noCellLiveRow(makeIndexClustering(rowKey,clustering,cell),info);
+  PartitionUpdate upd=PartitionUpdate.singleRowUpdate(indexCfs.metadata,valueKey,row);
   if (logger.isDebugEnabled())   logger.debug("applying index row {} in {}",indexCfs.metadata.getKeyValidator().getString(valueKey.getKey()),upd);
   indexCfs.apply(upd,SecondaryIndexManager.nullUpdater,opGroup,null);
 }

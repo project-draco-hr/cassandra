@@ -1,10 +1,10 @@
 {
-  return new FilteringRowIterator(iterator){
-    @Override public FilteringRow makeRowFilter(){
-      return FilteringRow.columnsFilteringRow(columnFilter);
+  return new AlteringUnfilteredRowIterator(iterator){
+    @Override public Row computeNextStatic(    Row row){
+      return columnFilter.fetchedColumns().statics.isEmpty() ? null : row.filter(columnFilter,iterator.metadata());
     }
-    @Override protected boolean includeRow(    Row row){
-      return clusterings.contains(row.clustering());
+    @Override public Row computeNext(    Row row){
+      return clusterings.contains(row.clustering()) ? row.filter(columnFilter,iterator.metadata()) : null;
     }
   }
 ;

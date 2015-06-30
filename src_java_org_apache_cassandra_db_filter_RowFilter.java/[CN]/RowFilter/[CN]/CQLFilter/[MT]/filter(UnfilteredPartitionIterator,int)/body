@@ -1,14 +1,9 @@
 {
   if (expressions.isEmpty())   return iter;
-  return new WrappingUnfilteredPartitionIterator(iter){
-    @Override public UnfilteredRowIterator computeNext(    final UnfilteredRowIterator iter){
-      return new FilteringRowIterator(iter){
-        private final TombstoneFilteringRow filter=new TombstoneFilteringRow(nowInSec);
-        protected boolean includeRow(        Row row){
-          return CQLFilter.this.isSatisfiedBy(iter.partitionKey(),filter.setTo(row));
-        }
-      }
-;
+  return new AlteringUnfilteredPartitionIterator(iter){
+    protected Row computeNext(    DecoratedKey partitionKey,    Row row){
+      Row purged=row.purge(DeletionPurger.PURGE_ALL,nowInSec);
+      return purged != null && CQLFilter.this.isSatisfiedBy(partitionKey,purged) ? row : null;
     }
   }
 ;

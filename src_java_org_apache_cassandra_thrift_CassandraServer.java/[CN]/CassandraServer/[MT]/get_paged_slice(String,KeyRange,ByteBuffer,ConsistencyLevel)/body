@@ -24,7 +24,7 @@
     }
  else {
       PartitionPosition end=range.end_key == null ? p.getTokenFactory().fromString(range.end_token).maxKeyBound() : PartitionPosition.ForKey.get(range.end_key,p);
-      bounds=new Bounds<PartitionPosition>(PartitionPosition.ForKey.get(range.start_key,p),end);
+      bounds=new Bounds<>(PartitionPosition.ForKey.get(range.start_key,p),end);
     }
     if (range.row_filter != null && !range.row_filter.isEmpty())     throw new InvalidRequestException("Cross-row paging is not supported along with index clauses");
     int nowInSec=FBUtilities.nowInSeconds();
@@ -32,7 +32,7 @@
     try {
       ClusteringIndexFilter filter=new ClusteringIndexSliceFilter(Slices.ALL,false);
       DataLimits limits=getLimits(range.count,true,Integer.MAX_VALUE);
-      Clustering pageFrom=metadata.isSuper() ? new SimpleClustering(start_column) : LegacyLayout.decodeCellName(metadata,start_column).clustering;
+      Clustering pageFrom=metadata.isSuper() ? new Clustering(start_column) : LegacyLayout.decodeCellName(metadata,start_column).clustering;
       PartitionRangeReadCommand cmd=new PartitionRangeReadCommand(false,true,metadata,nowInSec,ColumnFilter.all(metadata),RowFilter.NONE,limits,new DataRange(bounds,filter).forPaging(bounds,metadata.comparator,pageFrom,true));
       try (PartitionIterator results=StorageProxy.getRangeSlice(cmd,consistencyLevel)){
         return thriftifyKeySlices(results,new ColumnParent(column_family),limits.perPartitionCount());

@@ -2,7 +2,7 @@
   this.sstable=sstable;
   this.key=key;
   this.columns=columnFilter;
-  this.helper=new SerializationHelper(sstable.descriptor.version.correspondingMessagingVersion(),SerializationHelper.Flag.LOCAL,columnFilter);
+  this.helper=new SerializationHelper(sstable.metadata,sstable.descriptor.version.correspondingMessagingVersion(),SerializationHelper.Flag.LOCAL,columnFilter);
   this.isForThrift=isForThrift;
   if (indexEntry == null) {
     this.partitionLevelDeletion=DeletionTime.LIVE;
@@ -19,20 +19,20 @@
  else         file.seek(indexEntry.position);
         ByteBufferUtil.skipShortLength(file);
         this.partitionLevelDeletion=DeletionTime.serializer.deserialize(file);
-        this.reader=needsReader ? createReader(indexEntry,file,needSeekAtPartitionStart,shouldCloseFile) : null;
+        this.reader=needsReader ? createReader(indexEntry,file,true,shouldCloseFile) : null;
         this.staticRow=readStaticRow(sstable,file,helper,columns.fetchedColumns().statics,isForThrift,reader == null ? null : reader.deserializer);
       }
  else {
         this.partitionLevelDeletion=indexEntry.deletionTime();
         this.staticRow=Rows.EMPTY_STATIC_ROW;
-        this.reader=needsReader ? createReader(indexEntry,file,needSeekAtPartitionStart,shouldCloseFile) : null;
+        this.reader=needsReader ? createReader(indexEntry,file,false,shouldCloseFile) : null;
       }
-      if (reader == null && shouldCloseFile)       file.close();
+      if (reader == null && file != null && shouldCloseFile)       file.close();
     }
  catch (    IOException e) {
       sstable.markSuspect();
       String filePath=file.getPath();
-      if (shouldCloseFile && file != null) {
+      if (shouldCloseFile) {
         try {
           file.close();
         }

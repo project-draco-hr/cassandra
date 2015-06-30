@@ -1,0 +1,16 @@
+{
+  int estimatedRowCount=16;
+  int columnCount=metadata().partitionColumns().regulars.columnCount();
+  if (columnCount == 0 || metadata().clusteringColumns().isEmpty()) {
+    estimatedRowCount=1;
+  }
+ else {
+    try {
+      int estimatedRowsPerPartition=(int)(sstable.getEstimatedColumnCount().percentile(0.75) / columnCount);
+      estimatedRowCount=Math.max(estimatedRowsPerPartition / blocksCount,1);
+    }
+ catch (    IllegalStateException e) {
+    }
+  }
+  return new ReusablePartitionData(metadata(),partitionKey(),columns(),estimatedRowCount);
+}

@@ -1,17 +1,17 @@
 {
   ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(COUNTER1);
-  ByteBuffer col=ByteBufferUtil.bytes("c1");
-  TestCounterCell leftCell;
-  TestCounterCell rightCell;
-  leftCell=createLegacyCounterCell(cfs,col,2,2,0,Integer.MAX_VALUE);
-  rightCell=createLegacyCounterCell(cfs,col,2,1,0,Integer.MAX_VALUE);
+  ByteBuffer col=ByteBufferUtil.bytes("val");
+  Cell leftCell;
+  Cell rightCell;
+  leftCell=createLegacyCounterCell(cfs,col,2,2);
+  rightCell=createLegacyCounterCell(cfs,col,2,1);
   assertEquals(CounterContext.Relationship.EQUAL,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
-  leftCell=createLegacyCounterCell(cfs,col,1,2,0,Integer.MAX_VALUE);
-  rightCell=createLegacyCounterCell(cfs,col,2,1,0,Integer.MAX_VALUE);
+  leftCell=createLegacyCounterCell(cfs,col,1,2);
+  rightCell=createLegacyCounterCell(cfs,col,2,1);
   assertEquals(CounterContext.Relationship.DISJOINT,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
   CounterId id=CounterId.generate();
-  leftCell=createCounterCell(cfs,col,id,2,2,0,Integer.MAX_VALUE);
-  rightCell=createCounterCell(cfs,col,id,2,1,0,Integer.MAX_VALUE);
+  leftCell=createCounterCell(cfs,col,id,2,2);
+  rightCell=createCounterCell(cfs,col,id,2,1);
   assertEquals(CounterContext.Relationship.GREATER_THAN,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
   ContextState leftContext;
   ContextState rightContext;
@@ -20,9 +20,9 @@
   leftContext.writeRemote(CounterId.fromInt(6),2L,0L);
   leftContext.writeRemote(CounterId.fromInt(9),1L,0L);
   rightContext=ContextState.wrap(ByteBufferUtil.clone(leftContext.context));
-  leftCell=createCounterCellFromContext(cfs,col,leftContext,1,0,Integer.MAX_VALUE);
-  rightCell=createCounterCellFromContext(cfs,col,rightContext,1,0,Integer.MAX_VALUE);
-  assertEquals(CounterContext.Relationship.EQUAL,CounterContext.instance().diff(leftCell.value,rightCell.value));
+  leftCell=createCounterCellFromContext(cfs,col,leftContext,1);
+  rightCell=createCounterCellFromContext(cfs,col,rightContext,1);
+  assertEquals(CounterContext.Relationship.EQUAL,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
   leftContext=ContextState.allocate(0,0,4);
   leftContext.writeRemote(CounterId.fromInt(3),3L,0L);
   leftContext.writeRemote(CounterId.fromInt(6),2L,0L);
@@ -32,10 +32,10 @@
   rightContext.writeRemote(CounterId.fromInt(3),3L,0L);
   rightContext.writeRemote(CounterId.fromInt(6),2L,0L);
   rightContext.writeRemote(CounterId.fromInt(9),1L,0L);
-  leftCell=createCounterCellFromContext(cfs,col,leftContext,1,0,Integer.MAX_VALUE);
-  rightCell=createCounterCellFromContext(cfs,col,rightContext,1,0,Integer.MAX_VALUE);
-  assertEquals(CounterContext.Relationship.GREATER_THAN,CounterContext.instance().diff(leftCell.value,rightCell.value));
-  assertEquals(CounterContext.Relationship.LESS_THAN,CounterContext.instance().diff(rightCell.value,leftCell.value));
+  leftCell=createCounterCellFromContext(cfs,col,leftContext,1);
+  rightCell=createCounterCellFromContext(cfs,col,rightContext,1);
+  assertEquals(CounterContext.Relationship.GREATER_THAN,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
+  assertEquals(CounterContext.Relationship.LESS_THAN,CounterContext.instance().diff(rightCell.value(),leftCell.value()));
   leftContext=ContextState.allocate(0,0,3);
   leftContext.writeRemote(CounterId.fromInt(3),1L,0L);
   leftContext.writeRemote(CounterId.fromInt(4),1L,0L);
@@ -44,8 +44,8 @@
   rightContext.writeRemote(CounterId.fromInt(3),1L,0L);
   rightContext.writeRemote(CounterId.fromInt(6),1L,0L);
   rightContext.writeRemote(CounterId.fromInt(9),1L,0L);
-  leftCell=createCounterCellFromContext(cfs,col,leftContext,1,0,Integer.MAX_VALUE);
-  rightCell=createCounterCellFromContext(cfs,col,rightContext,1,0,Integer.MAX_VALUE);
-  assertEquals(CounterContext.Relationship.DISJOINT,CounterContext.instance().diff(leftCell.value,rightCell.value));
-  assertEquals(CounterContext.Relationship.DISJOINT,CounterContext.instance().diff(rightCell.value,leftCell.value));
+  leftCell=createCounterCellFromContext(cfs,col,leftContext,1);
+  rightCell=createCounterCellFromContext(cfs,col,rightContext,1);
+  assertEquals(CounterContext.Relationship.DISJOINT,CounterContext.instance().diff(leftCell.value(),rightCell.value()));
+  assertEquals(CounterContext.Relationship.DISJOINT,CounterContext.instance().diff(rightCell.value(),leftCell.value()));
 }

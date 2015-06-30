@@ -1,0 +1,19 @@
+{
+  PeekingIterator<Cell> staticCells=Iterators.peekingIterator(simpleCellsIterator(row));
+  if (!staticCells.hasNext())   return row;
+  builder.newRow(row.clustering());
+  ComplexColumnData complexData=row.getComplexColumnData(superColumnMapColumn);
+  PeekingIterator<Cell> dynamicCells=Iterators.peekingIterator(complexData == null ? Collections.<Cell>emptyIterator() : complexData.iterator());
+  builder.addComplexDeletion(superColumnMapColumn,complexData.complexDeletion());
+  while (staticCells.hasNext() && dynamicCells.hasNext()) {
+    Cell staticCell=staticCells.peek();
+    Cell dynamicCell=dynamicCells.peek();
+    int cmp=columnComparator.compare(staticCell.column().name.bytes,dynamicCell.path().get(0));
+    if (cmp < 0)     builder.addCell(makeDynamicCell(staticCells.next()));
+ else     if (cmp > 0)     builder.addCell(dynamicCells.next());
+ else     builder.addCell(Cells.reconcile(makeDynamicCell(staticCells.next()),dynamicCells.next(),nowInSec));
+  }
+  while (staticCells.hasNext())   builder.addCell(makeDynamicCell(staticCells.next()));
+  while (dynamicCells.hasNext())   builder.addCell(dynamicCells.next());
+  return builder.build();
+}

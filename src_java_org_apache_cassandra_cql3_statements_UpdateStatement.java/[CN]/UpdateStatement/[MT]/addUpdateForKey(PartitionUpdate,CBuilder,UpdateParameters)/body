@@ -1,21 +1,19 @@
 {
   params.newPartition(update.partitionKey());
   if (updatesRegularRows()) {
-    Clustering clustering=cbuilder.build();
-    Row.Writer writer=update.writer();
-    params.writeClustering(clustering,writer);
-    if (type == StatementType.INSERT && cfm.isCQLTable())     params.writePartitionKeyLivenessInfo(writer);
+    params.newRow(cbuilder.build());
+    if (type == StatementType.INSERT && cfm.isCQLTable())     params.addPrimaryKeyLivenessInfo();
     List<Operation> updates=getRegularOperations();
     if (cfm.isCompactTable() && updates.isEmpty()) {
       if (CompactTables.hasEmptyCompactValue(cfm))       updates=Collections.<Operation>singletonList(new Constants.Setter(cfm.compactValueColumn(),EMPTY));
  else       throw new InvalidRequestException(String.format("Column %s is mandatory for this COMPACT STORAGE table",cfm.compactValueColumn().name));
     }
-    for (    Operation op : updates)     op.execute(update.partitionKey(),clustering,writer,params);
-    writer.endOfRow();
+    for (    Operation op : updates)     op.execute(update.partitionKey(),params);
+    update.add(params.buildRow());
   }
   if (updatesStaticRow()) {
-    Row.Writer writer=update.staticWriter();
-    for (    Operation op : getStaticOperations())     op.execute(update.partitionKey(),Clustering.STATIC_CLUSTERING,writer,params);
-    writer.endOfRow();
+    params.newRow(Clustering.STATIC_CLUSTERING);
+    for (    Operation op : getStaticOperations())     op.execute(update.partitionKey(),params);
+    update.add(params.buildRow());
   }
 }

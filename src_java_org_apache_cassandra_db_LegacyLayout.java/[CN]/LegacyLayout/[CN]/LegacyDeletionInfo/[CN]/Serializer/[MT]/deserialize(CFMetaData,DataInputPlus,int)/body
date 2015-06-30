@@ -1,7 +1,7 @@
 {
   DeletionTime topLevel=DeletionTime.serializer.deserialize(in);
   int rangeCount=in.readInt();
-  if (rangeCount == 0)   return from(new DeletionInfo(topLevel));
+  if (rangeCount == 0)   return from(new MutableDeletionInfo(topLevel));
   RangeTombstoneList ranges=new RangeTombstoneList(metadata.comparator,rangeCount);
   List<LegacyRangeTombstone> inRowTombsones=new ArrayList<>();
   for (int i=0; i < rangeCount; i++) {
@@ -9,9 +9,9 @@
     LegacyBound end=decodeBound(metadata,ByteBufferUtil.readWithShortLength(in),false);
     int delTime=in.readInt();
     long markedAt=in.readLong();
-    LegacyRangeTombstone tombstone=new LegacyRangeTombstone(start,end,new SimpleDeletionTime(markedAt,delTime));
+    LegacyRangeTombstone tombstone=new LegacyRangeTombstone(start,end,new DeletionTime(markedAt,delTime));
     if (tombstone.isCollectionTombstone() || tombstone.isRowDeletion(metadata))     inRowTombsones.add(tombstone);
  else     ranges.add(start.bound,end.bound,markedAt,delTime);
   }
-  return new LegacyDeletionInfo(new DeletionInfo(topLevel,ranges),inRowTombsones);
+  return new LegacyDeletionInfo(new MutableDeletionInfo(topLevel,ranges),inRowTombsones);
 }

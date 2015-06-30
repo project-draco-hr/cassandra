@@ -1,8 +1,11 @@
 {
-  FilteredPartition partition=new FilteredPartition(iterator.metadata(),iterator.partitionKey(),iterator.columns(),4,iterator.isReverseOrder());
-  partition.staticRow=iterator.staticRow().takeAlias();
-  Writer writer=partition.new Writer(true);
-  while (iterator.hasNext())   iterator.next().copyTo(writer);
-  if (iterator.isReverseOrder())   partition.reverse();
-  return partition;
+  CFMetaData metadata=iterator.metadata();
+  boolean reversed=iterator.isReverseOrder();
+  List<Row> rows=new ArrayList<>();
+  while (iterator.hasNext()) {
+    Unfiltered unfiltered=iterator.next();
+    if (unfiltered.isRow())     rows.add((Row)unfiltered);
+  }
+  if (reversed)   Collections.reverse(rows);
+  return new FilteredPartition(metadata,iterator.partitionKey(),iterator.columns(),iterator.staticRow(),rows);
 }

@@ -5,8 +5,8 @@
   DeletionTime deletion=row.deletion();
   boolean hasComplexDeletion=row.hasComplexDeletion();
   if (isStatic)   flags|=IS_STATIC;
-  if (pkLiveness.hasTimestamp())   flags|=HAS_TIMESTAMP;
-  if (pkLiveness.hasTTL())   flags|=HAS_TTL;
+  if (!pkLiveness.isEmpty())   flags|=HAS_TIMESTAMP;
+  if (pkLiveness.isExpiring())   flags|=HAS_TTL;
   if (!deletion.isLive())   flags|=HAS_DELETION;
   if (hasComplexDeletion)   flags|=HAS_COMPLEX_DELETION;
   out.writeByte((byte)flags);
@@ -14,14 +14,14 @@
   if ((flags & HAS_TIMESTAMP) != 0)   out.writeLong(header.encodeTimestamp(pkLiveness.timestamp()));
   if ((flags & HAS_TTL) != 0) {
     out.writeInt(header.encodeTTL(pkLiveness.ttl()));
-    out.writeInt(header.encodeDeletionTime(pkLiveness.localDeletionTime()));
+    out.writeInt(header.encodeDeletionTime(pkLiveness.localExpirationTime()));
   }
   if ((flags & HAS_DELETION) != 0)   UnfilteredRowIteratorSerializer.writeDelTime(deletion,header,out);
   Columns columns=header.columns(isStatic);
   int simpleCount=columns.simpleColumnCount();
   boolean useSparse=header.useSparseColumnLayout(isStatic);
   SearchIterator<ColumnDefinition,ColumnData> cells=row.searchIterator();
-  for (int i=0; i < simpleCount; i++)   writeSimpleColumn(i,cells.next(columns.getSimple(i)),header,out,pkLiveness,useSparse);
-  for (int i=simpleCount; i < columns.columnCount(); i++)   writeComplexColumn(i,cells.next(columns.getComplex(i - simpleCount)),hasComplexDeletion,header,out,pkLiveness,useSparse);
+  for (int i=0; i < simpleCount; i++)   writeSimpleColumn(i,(Cell)cells.next(columns.getSimple(i)),pkLiveness,header,out,useSparse);
+  for (int i=simpleCount; i < columns.columnCount(); i++)   writeComplexColumn(i,(ComplexColumnData)cells.next(columns.getComplex(i - simpleCount)),hasComplexDeletion,pkLiveness,header,out,useSparse);
   if (useSparse)   out.writeShort(-1);
 }

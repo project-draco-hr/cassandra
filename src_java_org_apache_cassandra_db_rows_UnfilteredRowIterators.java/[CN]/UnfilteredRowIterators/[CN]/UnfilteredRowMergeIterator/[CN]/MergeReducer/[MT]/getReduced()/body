@@ -1,3 +1,12 @@
 {
-  return nextKind == Unfiltered.Kind.ROW ? rowMerger.merge(markerMerger.activeDeletion()) : markerMerger.merge();
+  if (nextKind == Unfiltered.Kind.ROW) {
+    Row merged=rowMerger.merge(markerMerger.activeDeletion());
+    if (listener != null)     listener.onMergedRows(merged == null ? ArrayBackedRow.emptyRow(rowMerger.mergedClustering()) : merged,columns().regulars,rowMerger.mergedRows());
+    return merged;
+  }
+ else {
+    RangeTombstoneMarker merged=markerMerger.merge();
+    if (merged != null && listener != null)     listener.onMergedRangeTombstoneMarkers(merged,markerMerger.mergedMarkers());
+    return merged;
+  }
 }

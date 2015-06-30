@@ -1,0 +1,15 @@
+{
+  long size=1;
+  if (cell == null)   return size;
+  boolean hasValue=cell.value().hasRemaining();
+  boolean isDeleted=cell.isTombstone();
+  boolean isExpiring=cell.isExpiring();
+  boolean useRowTimestamp=!rowLiveness.isEmpty() && cell.timestamp() == rowLiveness.timestamp();
+  boolean useRowTTL=isExpiring && rowLiveness.isExpiring() && cell.ttl() == rowLiveness.ttl() && cell.localDeletionTime() == rowLiveness.localExpirationTime();
+  if (!useRowTimestamp)   size+=TypeSizes.sizeofVInt(header.encodeTimestamp(cell.timestamp()));
+  if ((isDeleted || isExpiring) && !useRowTTL)   size+=TypeSizes.sizeofVInt(header.encodeDeletionTime(cell.localDeletionTime()));
+  if (isExpiring && !useRowTTL)   size+=TypeSizes.sizeofVInt(header.encodeTTL(cell.ttl()));
+  if (cell.column().isComplex())   size+=cell.column().cellPathSerializer().serializedSize(cell.path());
+  if (hasValue)   size+=header.getType(cell.column()).writtenLength(cell.value());
+  return size;
+}

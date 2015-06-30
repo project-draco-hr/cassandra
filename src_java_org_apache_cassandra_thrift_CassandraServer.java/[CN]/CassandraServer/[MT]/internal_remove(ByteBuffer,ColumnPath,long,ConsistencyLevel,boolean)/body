@@ -13,27 +13,21 @@
     update=PartitionUpdate.fullPartitionDelete(metadata,dk,timestamp,nowInSec);
   }
  else   if (column_path.super_column != null && column_path.column == null) {
-    update=new PartitionUpdate(metadata,dk,PartitionColumns.NONE,1);
-    Row.Writer writer=update.writer();
-    writer.writeClusteringValue(column_path.super_column);
-    writer.writeRowDeletion(new SimpleDeletionTime(timestamp,nowInSec));
-    writer.endOfRow();
+    Row row=ArrayBackedRow.emptyDeletedRow(new Clustering(column_path.super_column),new DeletionTime(timestamp,nowInSec));
+    update=PartitionUpdate.singleRowUpdate(metadata,dk,row);
   }
  else {
     try {
       LegacyLayout.LegacyCellName name=LegacyLayout.decodeCellName(metadata,column_path.super_column,column_path.column);
-      update=new PartitionUpdate(metadata,dk,PartitionColumns.of(name.column),1);
-      Row.Writer writer=name.column.isStatic() ? update.staticWriter() : update.writer();
-      name.clustering.writeTo(writer);
       CellPath path=name.collectionElement == null ? null : CellPath.create(name.collectionElement);
-      writer.writeCell(name.column,false,ByteBufferUtil.EMPTY_BYTE_BUFFER,SimpleLivenessInfo.forDeletion(timestamp,nowInSec),path);
-      writer.endOfRow();
+      Cell cell=BufferCell.tombstone(name.column,timestamp,nowInSec,path);
+      update=PartitionUpdate.singleRowUpdate(metadata,dk,ArrayBackedRow.singleCellRow(name.clustering,cell));
     }
  catch (    UnknownColumnException e) {
       throw new org.apache.cassandra.exceptions.InvalidRequestException(e.getMessage());
     }
   }
   org.apache.cassandra.db.Mutation mutation=new org.apache.cassandra.db.Mutation(update);
-  if (isCommutativeOp)   doInsert(consistency_level,Arrays.asList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))));
- else   doInsert(consistency_level,Arrays.asList(mutation));
+  if (isCommutativeOp)   doInsert(consistency_level,Collections.singletonList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))));
+ else   doInsert(consistency_level,Collections.singletonList(mutation));
 }

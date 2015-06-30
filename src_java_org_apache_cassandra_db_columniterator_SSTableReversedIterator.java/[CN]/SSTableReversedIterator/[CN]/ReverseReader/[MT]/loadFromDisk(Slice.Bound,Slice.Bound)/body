@@ -1,0 +1,23 @@
+{
+  buffer.reset();
+  if (start != null) {
+    while (deserializer.hasNext() && deserializer.compareNextTo(start) <= 0 && !stopReadingDisk()) {
+      if (deserializer.nextIsRow())       deserializer.skipNext();
+ else       updateOpenMarker((RangeTombstoneMarker)deserializer.readNext());
+    }
+  }
+  if (openMarker != null) {
+    RangeTombstone.Bound markerStart=start == null ? RangeTombstone.Bound.BOTTOM : RangeTombstone.Bound.fromSliceBound(start);
+    buffer.add(new RangeTombstoneBoundMarker(markerStart,openMarker));
+  }
+  while (deserializer.hasNext() && (end == null || deserializer.compareNextTo(end) <= 0) && !stopReadingDisk()) {
+    Unfiltered unfiltered=deserializer.readNext();
+    buffer.add(unfiltered);
+    if (unfiltered.isRangeTombstoneMarker())     updateOpenMarker((RangeTombstoneMarker)unfiltered);
+  }
+  if (openMarker != null) {
+    RangeTombstone.Bound markerEnd=end == null ? RangeTombstone.Bound.TOP : RangeTombstone.Bound.fromSliceBound(end);
+    buffer.add(new RangeTombstoneBoundMarker(markerEnd,getAndClearOpenMarker()));
+  }
+  buffer.build();
+}

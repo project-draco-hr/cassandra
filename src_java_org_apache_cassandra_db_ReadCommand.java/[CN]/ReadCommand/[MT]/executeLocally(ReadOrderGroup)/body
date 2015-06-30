@@ -4,9 +4,7 @@
   SecondaryIndexSearcher searcher=getIndexSearcher(cfs);
   UnfilteredPartitionIterator resultIterator=searcher == null ? queryStorage(cfs,orderGroup) : searcher.search(this,orderGroup);
   try {
-    resultIterator=UnfilteredPartitionIterators.convertExpiredCellsToTombstones(resultIterator,nowInSec);
-    resultIterator=withMetricsRecording(withoutExpiredTombstones(resultIterator,cfs),cfs.metric,startTimeNanos);
-    if (!metadata().getDroppedColumns().isEmpty())     resultIterator=UnfilteredPartitionIterators.removeDroppedColumns(resultIterator,metadata().getDroppedColumns());
+    resultIterator=withMetricsRecording(withoutPurgeableTombstones(resultIterator,cfs),cfs.metric,startTimeNanos);
     RowFilter updatedFilter=searcher == null ? rowFilter() : rowFilter().without(searcher.primaryClause(this));
     return limits().filter(rowFilter().filter(resultIterator,nowInSec()),nowInSec());
   }

@@ -8,18 +8,20 @@
     private DecoratedKey currentKey;
     @Override public UnfilteredRowIterator computeNext(    UnfilteredRowIterator iter){
       currentKey=iter.partitionKey();
-      return new WrappingUnfilteredRowIterator(iter){
-        public Unfiltered next(){
-          Unfiltered unfiltered=super.next();
-          if (unfiltered.kind() == Unfiltered.Kind.ROW) {
-            Row row=(Row)unfiltered;
-            if (row.hasLiveData(ReadCommand.this.nowInSec()))             ++liveRows;
-            for (            Cell cell : row)             if (!cell.isLive(ReadCommand.this.nowInSec()))             countTombstone(row.clustering());
+      return new AlteringUnfilteredRowIterator(iter){
+        @Override protected Row computeNextStatic(        Row row){
+          return computeNext(row);
+        }
+        @Override protected Row computeNext(        Row row){
+          if (row.hasLiveData(ReadCommand.this.nowInSec()))           ++liveRows;
+          for (          Cell cell : row.cells()) {
+            if (!cell.isLive(ReadCommand.this.nowInSec()))             countTombstone(row.clustering());
           }
- else {
-            countTombstone(unfiltered.clustering());
-          }
-          return unfiltered;
+          return row;
+        }
+        @Override protected RangeTombstoneMarker computeNext(        RangeTombstoneMarker marker){
+          countTombstone(marker.clustering());
+          return marker;
         }
         private void countTombstone(        ClusteringPrefix clustering){
           ++tombstones;

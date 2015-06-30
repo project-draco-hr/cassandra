@@ -3,11 +3,11 @@
     RangeTombstoneMarker marker=versions[i];
     if (merged.isClose(isReversed) && markerOpen[i] != null) {
       Slice.Bound open=markerOpen[i];
-      Slice.Bound close=merged.isBoundary() ? ((RangeTombstoneBoundaryMarker)merged).createCorrespondingCloseBound(isReversed).clustering() : merged.clustering();
-      update(i).addRangeTombstone(Slice.make(isReversed ? close : open,isReversed ? open : close),markerTime[i]);
+      Slice.Bound close=merged.closeBound(isReversed);
+      update(i).add(new RangeTombstone(Slice.make(isReversed ? close : open,isReversed ? open : close),markerTime[i]));
     }
     if (merged.isOpen(isReversed) && (marker == null || merged.openDeletionTime(isReversed).supersedes(marker.openDeletionTime(isReversed)))) {
-      markerOpen[i]=merged.isBoundary() ? ((RangeTombstoneBoundaryMarker)merged).createCorrespondingOpenBound(isReversed).clustering() : merged.clustering();
+      markerOpen[i]=merged.openBound(isReversed);
       markerTime[i]=merged.openDeletionTime(isReversed);
     }
   }

@@ -1,0 +1,18 @@
+{
+  if (header.isEmpty)   return UnfilteredRowIterators.emptyIterator(header.metadata,header.key,header.isReversed);
+  final SerializationHelper helper=new SerializationHelper(header.metadata,version,flag);
+  final SerializationHeader sHeader=header.sHeader;
+  return new AbstractUnfilteredRowIterator(header.metadata,header.key,header.partitionDeletion,sHeader.columns(),header.staticRow,header.isReversed,sHeader.stats()){
+    private final Row.Builder builder=ArrayBackedRow.sortedBuilder(sHeader.columns().regulars);
+    protected Unfiltered computeNext(){
+      try {
+        Unfiltered unfiltered=UnfilteredSerializer.serializer.deserialize(in,sHeader,helper,builder);
+        return unfiltered == null ? endOfData() : unfiltered;
+      }
+ catch (      IOException e) {
+        throw new IOError(e);
+      }
+    }
+  }
+;
+}

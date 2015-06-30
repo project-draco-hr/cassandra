@@ -1,0 +1,22 @@
+{
+  existing=existing == null || deletion.deletes(existing) ? null : existing;
+  update=update == null || deletion.deletes(update) ? null : update;
+  if (existing == null || update == null) {
+    if (update != null) {
+      updatePKIndexes(clustering,update,nowInSec,indexUpdater);
+      indexUpdater.insert(clustering,update);
+      builder.addCell(update);
+    }
+ else     if (existing != null) {
+      builder.addCell(existing);
+    }
+    return Long.MAX_VALUE;
+  }
+  Cell reconciled=reconcile(existing,update,nowInSec);
+  builder.addCell(reconciled);
+  if (reconciled == update) {
+    updatePKIndexes(clustering,update,nowInSec,indexUpdater);
+    indexUpdater.update(clustering,existing,reconciled);
+  }
+  return Math.abs(existing.timestamp() - update.timestamp());
+}

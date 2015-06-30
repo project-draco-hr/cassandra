@@ -4,9 +4,21 @@
   for (  Row e : expected) {
     Row c=current.getRow(e.clustering());
     if (c == null)     return false;
-    for (    Cell ce : e) {
-      Cell cc=c.getCell(ce.column());
-      if (cc == null || !cc.value().equals(ce.value()))       return false;
+    SearchIterator<ColumnDefinition,ColumnData> searchIter=c.searchIterator();
+    for (    ColumnData expectedData : e) {
+      ColumnDefinition column=expectedData.column();
+      ColumnData currentData=searchIter.next(column);
+      if (currentData == null)       return false;
+      if (column.isSimple()) {
+        if (!((Cell)currentData).value().equals(((Cell)expectedData).value()))         return false;
+      }
+ else {
+        ComplexColumnData currentComplexData=(ComplexColumnData)currentData;
+        for (        Cell expectedCell : (ComplexColumnData)expectedData) {
+          Cell currentCell=currentComplexData.getCell(expectedCell.path());
+          if (currentCell == null || !currentCell.value().equals(expectedCell.value()))           return false;
+        }
+      }
     }
   }
   return true;

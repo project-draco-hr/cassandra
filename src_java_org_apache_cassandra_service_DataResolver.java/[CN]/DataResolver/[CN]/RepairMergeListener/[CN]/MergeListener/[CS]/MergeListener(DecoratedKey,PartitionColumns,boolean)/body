@@ -2,4 +2,19 @@
   this.partitionKey=partitionKey;
   this.columns=columns;
   this.isReversed=isReversed;
+  this.diffListener=new RowDiffListener(){
+    public void onPrimaryKeyLivenessInfo(    int i,    Clustering clustering,    LivenessInfo merged,    LivenessInfo original){
+      if (merged != null && !merged.equals(original))       currentRow(i,clustering).addPrimaryKeyLivenessInfo(merged);
+    }
+    public void onDeletion(    int i,    Clustering clustering,    DeletionTime merged,    DeletionTime original){
+      if (merged != null && !merged.equals(original))       currentRow(i,clustering).addRowDeletion(merged);
+    }
+    public void onComplexDeletion(    int i,    Clustering clustering,    ColumnDefinition column,    DeletionTime merged,    DeletionTime original){
+      if (merged != null && !merged.equals(original))       currentRow(i,clustering).addComplexDeletion(column,merged);
+    }
+    public void onCell(    int i,    Clustering clustering,    Cell merged,    Cell original){
+      if (merged != null && !merged.equals(original))       currentRow(i,clustering).addCell(merged);
+    }
+  }
+;
 }

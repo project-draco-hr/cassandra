@@ -1,10 +1,20 @@
 {
-  return new WrappingUnfilteredRowIterator(iterator){
-    public Unfiltered next(){
-      Unfiltered next=super.next();
+  return new AlteringUnfilteredRowIterator(iterator){
+    @Override protected Row computeNextStatic(    Row row){
+      validate(row);
+      return row;
+    }
+    @Override protected Row computeNext(    Row row){
+      validate(row);
+      return row;
+    }
+    @Override protected RangeTombstoneMarker computeNext(    RangeTombstoneMarker marker){
+      validate(marker);
+      return marker;
+    }
+    private void validate(    Unfiltered unfiltered){
       try {
-        next.validateData(metadata());
-        return next;
+        unfiltered.validateData(iterator.metadata());
       }
  catch (      MarshalException me) {
         throw new CorruptSSTableException(me,filename);

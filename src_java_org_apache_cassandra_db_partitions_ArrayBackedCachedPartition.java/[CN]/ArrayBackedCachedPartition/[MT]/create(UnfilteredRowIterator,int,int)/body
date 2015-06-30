@@ -1,8 +1,34 @@
 {
-  ArrayBackedCachedPartition partition=new ArrayBackedCachedPartition(iterator.metadata(),iterator.partitionKey(),iterator.partitionLevelDeletion(),iterator.columns(),initialRowCapacity,iterator.isReverseOrder(),nowInSec);
-  partition.staticRow=iterator.staticRow().takeAlias();
-  Writer writer=partition.new Writer(nowInSec);
-  RangeTombstoneCollector markerCollector=partition.new RangeTombstoneCollector(iterator.isReverseOrder());
-  copyAll(iterator,writer,markerCollector,partition);
-  return partition;
+  CFMetaData metadata=iterator.metadata();
+  boolean reversed=iterator.isReverseOrder();
+  List<Row> rows=new ArrayList<>(initialRowCapacity);
+  MutableDeletionInfo.Builder deletionBuilder=MutableDeletionInfo.builder(iterator.partitionLevelDeletion(),metadata.comparator,reversed);
+  int cachedLiveRows=0;
+  int rowsWithNonExpiringCells=0;
+  int nonTombstoneCellCount=0;
+  int nonExpiringLiveCells=0;
+  while (iterator.hasNext()) {
+    Unfiltered unfiltered=iterator.next();
+    if (unfiltered.kind() == Unfiltered.Kind.ROW) {
+      Row row=(Row)unfiltered;
+      rows.add(row);
+      if (row.hasLiveData(nowInSec))       ++cachedLiveRows;
+      boolean hasNonExpiringCell=false;
+      for (      Cell cell : row.cells()) {
+        if (!cell.isTombstone()) {
+          ++nonTombstoneCellCount;
+          if (!cell.isExpiring()) {
+            hasNonExpiringCell=true;
+            ++nonExpiringLiveCells;
+          }
+        }
+      }
+      if (hasNonExpiringCell)       ++rowsWithNonExpiringCells;
+    }
+ else {
+      deletionBuilder.add((RangeTombstoneMarker)unfiltered);
+    }
+  }
+  if (reversed)   Collections.reverse(rows);
+  return new ArrayBackedCachedPartition(metadata,iterator.partitionKey(),iterator.columns(),iterator.staticRow(),rows,deletionBuilder.build(),iterator.stats(),nowInSec,cachedLiveRows,rowsWithNonExpiringCells,nonTombstoneCellCount,nonExpiringLiveCells);
 }

@@ -1,0 +1,24 @@
+{
+  if (isBuilt)   return;
+  if (rows.size() <= 1) {
+    finishBuild();
+    return;
+  }
+  Comparator<Row> comparator=metadata.comparator.rowComparator();
+  Collections.sort(rows,comparator);
+  int previous=0;
+  for (int current=1; current < rows.size(); current++) {
+    Row previousRow=rows.get(previous);
+    Row currentRow=rows.get(current);
+    int cmp=comparator.compare(previousRow,currentRow);
+    if (cmp == 0) {
+      rows.set(previous,Rows.merge(previousRow,currentRow,createdAtInSec));
+    }
+ else {
+      ++previous;
+      if (previous != current)       rows.set(previous,currentRow);
+    }
+  }
+  for (int j=rows.size() - 1; j > previous; j--)   rows.remove(j);
+  finishBuild();
+}

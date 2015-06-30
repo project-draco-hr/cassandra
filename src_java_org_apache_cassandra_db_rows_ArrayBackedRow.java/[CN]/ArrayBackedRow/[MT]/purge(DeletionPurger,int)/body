@@ -1,0 +1,17 @@
+{
+  if (!hasDeletion(nowInSec))   return this;
+  LivenessInfo newInfo=purger.shouldPurge(primaryKeyLivenessInfo,nowInSec) ? LivenessInfo.EMPTY : primaryKeyLivenessInfo;
+  DeletionTime newDeletion=purger.shouldPurge(deletion) ? DeletionTime.LIVE : deletion;
+  int newMinDeletionTime=Math.min(minDeletionTime(newInfo),minDeletionTime(newDeletion));
+  ColumnData[] newData=new ColumnData[size];
+  int newSize=0;
+  for (int i=0; i < size; i++) {
+    ColumnData purged=data[i].purge(purger,nowInSec);
+    if (purged != null) {
+      newData[newSize++]=purged;
+      newMinDeletionTime=Math.min(newMinDeletionTime,minDeletionTime(purged));
+    }
+  }
+  if (newSize == 0 && newInfo.isEmpty() && newDeletion.isLive())   return null;
+  return new ArrayBackedRow(clustering,columns,newInfo,newDeletion,newSize,newData,newMinDeletionTime);
+}

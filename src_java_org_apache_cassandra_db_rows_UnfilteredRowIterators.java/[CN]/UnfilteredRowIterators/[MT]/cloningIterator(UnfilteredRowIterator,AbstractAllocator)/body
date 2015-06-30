@@ -1,2 +1,17 @@
 {
+  return new AlteringUnfilteredRowIterator(iterator){
+    private Row.Builder regularBuilder;
+    @Override protected Row computeNextStatic(    Row row){
+      Row.Builder staticBuilder=allocator.cloningArrayBackedRowBuilder(columns().statics);
+      return Rows.copy(row,staticBuilder).build();
+    }
+    @Override protected Row computeNext(    Row row){
+      if (regularBuilder == null)       regularBuilder=allocator.cloningArrayBackedRowBuilder(columns().regulars);
+      return Rows.copy(row,regularBuilder).build();
+    }
+    @Override protected RangeTombstoneMarker computeNext(    RangeTombstoneMarker marker){
+      return marker.copy(allocator);
+    }
+  }
+;
 }

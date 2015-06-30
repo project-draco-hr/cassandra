@@ -1,0 +1,25 @@
+{
+  int flags=in.readUnsignedByte();
+  if ((flags & PRESENCE_MASK) == 0)   return null;
+  boolean hasValue=(flags & HAS_EMPTY_VALUE_MASK) == 0;
+  boolean isDeleted=(flags & IS_DELETED_MASK) != 0;
+  boolean isExpiring=(flags & IS_EXPIRING_MASK) != 0;
+  boolean useRowTimestamp=(flags & USE_ROW_TIMESTAMP_MASK) != 0;
+  boolean useRowTTL=(flags & USE_ROW_TTL_MASK) != 0;
+  long timestamp=useRowTimestamp ? rowLiveness.timestamp() : header.decodeTimestamp(in.readVInt());
+  int localDeletionTime=useRowTTL ? rowLiveness.localExpirationTime() : (isDeleted || isExpiring ? header.decodeDeletionTime((int)in.readVInt()) : NO_DELETION_TIME);
+  int ttl=useRowTTL ? rowLiveness.ttl() : (isExpiring ? header.decodeTTL((int)in.readVInt()) : NO_TTL);
+  CellPath path=column.isComplex() ? column.cellPathSerializer().deserialize(in) : null;
+  boolean isCounter=localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
+  ByteBuffer value=ByteBufferUtil.EMPTY_BYTE_BUFFER;
+  if (hasValue) {
+    if (helper.canSkipValue(column) || (path != null && helper.canSkipValue(path))) {
+      header.getType(column).skipValue(in);
+    }
+ else {
+      value=header.getType(column).readValue(in);
+      if (isCounter)       value=helper.maybeClearCounterValue(value);
+    }
+  }
+  return new BufferCell(column,timestamp,ttl,localDeletionTime,value,path);
+}

@@ -1,17 +1,18 @@
 {
   CFMetaData metadata=iterator.metadata();
   logger.info("[{}] Logging iterator on {}.{}, partition key={}, reversed={}, deletion={}",id,metadata.ksName,metadata.cfName,metadata.getKeyValidator().getString(iterator.partitionKey().getKey()),iterator.isReverseOrder(),iterator.partitionLevelDeletion().markedForDeleteAt());
-  return new WrappingUnfilteredRowIterator(iterator){
-    @Override public Row staticRow(){
-      Row row=super.staticRow();
+  return new AlteringUnfilteredRowIterator(iterator){
+    @Override protected Row computeNextStatic(    Row row){
       if (!row.isEmpty())       logger.info("[{}] {}",id,row.toString(metadata(),fullDetails));
       return row;
     }
-    @Override public Unfiltered next(){
-      Unfiltered next=super.next();
-      if (next.kind() == Unfiltered.Kind.ROW)       logger.info("[{}] {}",id,((Row)next).toString(metadata(),fullDetails));
- else       logger.info("[{}] {}",id,((RangeTombstoneMarker)next).toString(metadata()));
-      return next;
+    @Override protected Row computeNext(    Row row){
+      logger.info("[{}] {}",id,row.toString(metadata(),fullDetails));
+      return row;
+    }
+    @Override protected RangeTombstoneMarker computeNext(    RangeTombstoneMarker marker){
+      logger.info("[{}] {}",id,marker.toString(metadata()));
+      return marker;
     }
   }
 ;

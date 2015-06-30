@@ -1,14 +1,14 @@
 {
   final Slices.InOrderTester tester=slices.inOrderTester(reversed);
-  return new FilteringRowIterator(iterator){
-    @Override public FilteringRow makeRowFilter(){
-      return FilteringRow.columnsFilteringRow(columnFilter);
-    }
-    @Override protected boolean includeRow(    Row row){
-      return tester.includes(row.clustering());
-    }
+  return new AlteringUnfilteredRowIterator(iterator){
     @Override public boolean hasNext(){
       return !tester.isDone() && super.hasNext();
+    }
+    @Override public Row computeNextStatic(    Row row){
+      return columnFilter.fetchedColumns().statics.isEmpty() ? null : row.filter(columnFilter,iterator.metadata());
+    }
+    @Override public Row computeNext(    Row row){
+      return tester.includes(row.clustering()) ? row.filter(columnFilter,iterator.metadata()) : null;
     }
   }
 ;

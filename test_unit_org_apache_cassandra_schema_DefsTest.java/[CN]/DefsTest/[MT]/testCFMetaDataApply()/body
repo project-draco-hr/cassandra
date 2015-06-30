@@ -2,14 +2,14 @@
   CFMetaData cfm=CFMetaData.Builder.create(KEYSPACE1,"TestApplyCFM_CF").addPartitionKey("keys",BytesType.instance).addClusteringColumn("col",BytesType.instance).build();
   for (int i=0; i < 5; i++) {
     ByteBuffer name=ByteBuffer.wrap(new byte[]{(byte)i});
-    cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm,name,BytesType.instance,null).setIndex(Integer.toString(i),IndexType.KEYS,null));
+    cfm.addColumnDefinition(ColumnDefinition.regularDef(cfm,name,BytesType.instance).setIndex(Integer.toString(i),IndexType.KEYS,null));
   }
   cfm.comment("No comment").readRepairChance(0.5).gcGraceSeconds(100000).minCompactionThreshold(500).maxCompactionThreshold(500);
   assertNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{5})));
   CFMetaData cfNew=cfm.copy();
-  ColumnDefinition addIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{5}),BytesType.instance,null).setIndex("5",IndexType.KEYS,null);
+  ColumnDefinition addIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{5}),BytesType.instance).setIndex("5",IndexType.KEYS,null);
   cfNew.addColumnDefinition(addIndexDef);
-  ColumnDefinition removeIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{0}),BytesType.instance,null).setIndex("0",IndexType.KEYS,null);
+  ColumnDefinition removeIndexDef=ColumnDefinition.regularDef(cfm,ByteBuffer.wrap(new byte[]{0}),BytesType.instance).setIndex("0",IndexType.KEYS,null);
   assertTrue(cfNew.removeColumnDefinition(removeIndexDef));
   cfm.apply(cfNew);
   for (int i=1; i < cfm.allColumns().size(); i++)   assertNotNull(cfm.getColumnDefinition(ByteBuffer.wrap(new byte[]{1})));
