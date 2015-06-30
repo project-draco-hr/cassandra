@@ -4,5 +4,7 @@
   if (name.length() > Schema.NAME_LENGTH)   throw new InvalidRequestException(String.format("Keyspace names shouldn't be more than %s characters long (got \"%s\")",Schema.NAME_LENGTH,name));
   attrs.validate();
   if (attrs.getReplicationStrategyClass() == null)   throw new ConfigurationException("Missing mandatory replication strategy class");
-  AbstractReplicationStrategy.validateReplicationStrategy(name,AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),StorageService.instance.getTokenMetadata(),DatabaseDescriptor.getEndpointSnitch(),attrs.getReplicationOptions());
+  KeyspaceParams params=attrs.asNewKeyspaceParams();
+  params.validate(name);
+  if (params.replication.klass.equals(LocalStrategy.class))   throw new ConfigurationException("Unable to use given strategy class: LocalStrategy is reserved for internal use.");
 }

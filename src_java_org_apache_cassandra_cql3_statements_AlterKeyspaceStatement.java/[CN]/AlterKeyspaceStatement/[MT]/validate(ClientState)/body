@@ -3,10 +3,10 @@
   if (ksm == null)   throw new InvalidRequestException("Unknown keyspace " + name);
   if (ksm.name.equalsIgnoreCase(SystemKeyspace.NAME))   throw new InvalidRequestException("Cannot alter system keyspace");
   attrs.validate();
-  if (attrs.getReplicationStrategyClass() == null && !attrs.getReplicationOptions().isEmpty()) {
-    throw new ConfigurationException("Missing replication strategy class");
-  }
- else   if (attrs.getReplicationStrategyClass() != null) {
-    AbstractReplicationStrategy.validateReplicationStrategy(name,AbstractReplicationStrategy.getClass(attrs.getReplicationStrategyClass()),StorageService.instance.getTokenMetadata(),DatabaseDescriptor.getEndpointSnitch(),attrs.getReplicationOptions());
+  if (attrs.getReplicationStrategyClass() == null && !attrs.getReplicationOptions().isEmpty())   throw new ConfigurationException("Missing replication strategy class");
+  if (attrs.getReplicationStrategyClass() != null) {
+    KeyspaceParams params=attrs.asAlteredKeyspaceParams(ksm.params);
+    params.validate(name);
+    if (params.replication.klass.equals(LocalStrategy.class))     throw new ConfigurationException("Unable to use given strategy class: LocalStrategy is reserved for internal use.");
   }
 }

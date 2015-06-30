@@ -1,5 +1,8 @@
 {
   Class<? extends AbstractReplicationStrategy> cls=AbstractReplicationStrategy.getClass(ksd.strategy_class);
   if (cls.equals(LocalStrategy.class))   throw new ConfigurationException("Unable to use given strategy class: LocalStrategy is reserved for internal use.");
-  return new KSMetaData(ksd.name,cls,ksd.strategy_options == null ? Collections.<String,String>emptyMap() : ksd.strategy_options,ksd.durable_writes,Tables.of(cfDefs));
+  Map<String,String> replicationMap=new HashMap<>();
+  if (ksd.strategy_options != null)   replicationMap.putAll(ksd.strategy_options);
+  replicationMap.put(KeyspaceParams.Replication.CLASS,cls.getName());
+  return KSMetaData.create(ksd.name,KeyspaceParams.create(ksd.durable_writes,replicationMap),Tables.of(cfDefs));
 }

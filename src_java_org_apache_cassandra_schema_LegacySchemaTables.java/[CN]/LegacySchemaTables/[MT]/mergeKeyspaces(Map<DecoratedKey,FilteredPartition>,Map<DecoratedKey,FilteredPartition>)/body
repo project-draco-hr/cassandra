@@ -1,13 +1,10 @@
 {
   for (  FilteredPartition newPartition : after.values()) {
+    String name=AsciiType.instance.compose(newPartition.partitionKey().getKey());
+    KeyspaceParams params=createKeyspaceParamsFromSchemaPartition(newPartition.rowIterator());
     FilteredPartition oldPartition=before.remove(newPartition.partitionKey());
-    if (oldPartition == null || oldPartition.isEmpty()) {
-      Schema.instance.addKeyspace(createKeyspaceFromSchemaPartition(newPartition.rowIterator()));
-    }
- else {
-      String name=AsciiType.instance.compose(newPartition.partitionKey().getKey());
-      Schema.instance.updateKeyspace(name);
-    }
+    if (oldPartition == null || oldPartition.isEmpty())     Schema.instance.addKeyspace(KSMetaData.create(name,params));
+ else     Schema.instance.updateKeyspace(name,params);
   }
   return asKeyspaceNamesSet(before.keySet());
 }
