@@ -2,15 +2,10 @@
   this.metadata=metadata;
   String cfId=ByteBufferUtil.bytesToHex(ByteBufferUtil.bytes(metadata.cfId));
   int idx=metadata.cfName.indexOf(SECONDARY_INDEX_NAME_SEPARATOR);
-  String directoryName;
-  if (idx >= 0) {
-    directoryName=metadata.cfName.substring(0,idx) + "-" + cfId+ File.separator+ metadata.cfName.substring(idx);
-  }
- else {
-    directoryName=metadata.cfName + "-" + cfId;
-  }
+  String cfName=idx >= 0 ? metadata.cfName.substring(0,idx) : metadata.cfName;
+  String indexNameWithDot=idx >= 0 ? metadata.cfName.substring(idx) : null;
   this.dataPaths=new File[dataDirectories.length];
-  String oldSSTableRelativePath=join(metadata.ksName,idx > 0 ? metadata.cfName.substring(0,idx) : metadata.cfName);
+  String oldSSTableRelativePath=join(metadata.ksName,cfName);
   for (int i=0; i < dataDirectories.length; ++i) {
     dataPaths[i]=new File(dataDirectories[i].location,oldSSTableRelativePath);
   }
@@ -21,8 +16,11 @@
   }
 );
   if (!olderDirectoryExists) {
-    String newSSTableRelativePath=join(metadata.ksName,directoryName);
+    String newSSTableRelativePath=join(metadata.ksName,cfName + '-' + cfId);
     for (int i=0; i < dataDirectories.length; ++i)     dataPaths[i]=new File(dataDirectories[i].location,newSSTableRelativePath);
+  }
+  if (indexNameWithDot != null) {
+    for (int i=0; i < dataDirectories.length; ++i)     dataPaths[i]=new File(dataPaths[i],indexNameWithDot);
   }
   for (  File dir : dataPaths) {
     try {
@@ -31,6 +29,23 @@
  catch (    FSError e) {
       logger.error("Failed to create {} directory",dir);
       FileUtils.handleFSError(e);
+    }
+  }
+  if (indexNameWithDot != null) {
+    for (    File dataPath : dataPaths) {
+      File[] indexFiles=dataPath.getParentFile().listFiles(new FileFilter(){
+        @Override public boolean accept(        File file){
+          if (file.isDirectory())           return false;
+          Pair<Descriptor,Component> pair=SSTable.tryComponentFromFilename(file.getParentFile(),file.getName());
+          return pair != null && pair.left.ksname.equals(metadata.ksName) && pair.left.cfname.equals(metadata.cfName);
+        }
+      }
+);
+      for (      File indexFile : indexFiles) {
+        File destFile=new File(dataPath,indexFile.getName());
+        logger.debug("Moving index file {} to {}",indexFile,destFile);
+        FileUtils.renameWithConfirm(indexFile,destFile);
+      }
     }
   }
 }
