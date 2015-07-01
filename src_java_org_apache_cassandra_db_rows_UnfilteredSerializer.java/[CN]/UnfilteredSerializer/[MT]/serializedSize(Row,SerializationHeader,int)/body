@@ -1,0 +1,22 @@
+{
+  long size=1;
+  boolean isStatic=row.isStatic();
+  LivenessInfo pkLiveness=row.primaryKeyLivenessInfo();
+  DeletionTime deletion=row.deletion();
+  boolean hasComplexDeletion=row.hasComplexDeletion();
+  if (!isStatic)   size+=Clustering.serializer.serializedSize(row.clustering(),version,header.clusteringTypes());
+  if (pkLiveness.hasTimestamp())   size+=TypeSizes.sizeof(header.encodeTimestamp(pkLiveness.timestamp()));
+  if (pkLiveness.hasTTL()) {
+    size+=TypeSizes.sizeof(header.encodeTTL(pkLiveness.ttl()));
+    size+=TypeSizes.sizeof(header.encodeDeletionTime(pkLiveness.localDeletionTime()));
+  }
+  if (!deletion.isLive())   size+=UnfilteredRowIteratorSerializer.delTimeSerializedSize(deletion,header);
+  Columns columns=header.columns(isStatic);
+  int simpleCount=columns.simpleColumnCount();
+  boolean useSparse=header.useSparseColumnLayout(isStatic);
+  SearchIterator<ColumnDefinition,ColumnData> cells=row.searchIterator();
+  for (int i=0; i < simpleCount; i++)   size+=sizeOfSimpleColumn(i,cells.next(columns.getSimple(i)),header,pkLiveness,useSparse);
+  for (int i=simpleCount; i < columns.columnCount(); i++)   size+=sizeOfComplexColumn(i,cells.next(columns.getComplex(i - simpleCount)),hasComplexDeletion,header,pkLiveness,useSparse);
+  if (useSparse)   size+=TypeSizes.sizeof((short)-1);
+  return size;
+}
