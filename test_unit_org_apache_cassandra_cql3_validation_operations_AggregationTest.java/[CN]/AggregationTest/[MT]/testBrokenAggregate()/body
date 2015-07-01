@@ -3,9 +3,9 @@
   execute("INSERT INTO %s (key, val) VALUES (?, ?)",1,1);
   String fState=createFunction(KEYSPACE,"int, int","CREATE FUNCTION %s(a int, b int) " + "CALLED ON NULL INPUT " + "RETURNS int "+ "LANGUAGE javascript "+ "AS 'a + b;'");
   String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + " "+ "STYPE int ");
-  KSMetaData ksm=Schema.instance.getKSMetaData(keyspace());
+  KeyspaceMetadata ksm=Schema.instance.getKSMetaData(keyspace());
   UDAggregate f=(UDAggregate)ksm.functions.get(parseFunctionName(a)).iterator().next();
   UDAggregate broken=UDAggregate.createBroken(f.name(),f.argTypes(),f.returnType(),null,new InvalidRequestException("foo bar is broken"));
-  Schema.instance.setKeyspaceDefinition(ksm.withSwapped(ksm.functions.without(f.name(),f.argTypes()).with(broken)));
+  Schema.instance.setKeyspaceMetadata(ksm.withSwapped(ksm.functions.without(f.name(),f.argTypes()).with(broken)));
   assertInvalidThrowMessage("foo bar is broken",InvalidRequestException.class,"SELECT " + a + "(val) FROM %s");
 }

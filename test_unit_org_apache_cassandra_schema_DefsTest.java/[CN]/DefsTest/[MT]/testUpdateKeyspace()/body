@@ -1,10 +1,10 @@
 {
   CFMetaData cf=addTestTable("UpdatedKeyspace","AddedStandard1","A new cf for a new ks");
-  KSMetaData oldKs=KSMetaData.create(cf.ksName,KeyspaceParams.simple(5),Tables.of(cf));
+  KeyspaceMetadata oldKs=KeyspaceMetadata.create(cf.ksName,KeyspaceParams.simple(5),Tables.of(cf));
   MigrationManager.announceNewKeyspace(oldKs);
   assertNotNull(Schema.instance.getKSMetaData(cf.ksName));
   assertEquals(Schema.instance.getKSMetaData(cf.ksName),oldKs);
-  KSMetaData newBadKs2=KSMetaData.create(cf.ksName + "trash",KeyspaceParams.simple(4));
+  KeyspaceMetadata newBadKs2=KeyspaceMetadata.create(cf.ksName + "trash",KeyspaceParams.simple(4));
   try {
     MigrationManager.announceKeyspaceUpdate(newBadKs2);
     throw new AssertionError("Should not have been able to update a KS with an invalid KS name.");
@@ -14,9 +14,9 @@
   Map<String,String> replicationMap=new HashMap<>();
   replicationMap.put(KeyspaceParams.Replication.CLASS,OldNetworkTopologyStrategy.class.getName());
   replicationMap.put("replication_factor","1");
-  KSMetaData newKs=KSMetaData.create(cf.ksName,KeyspaceParams.create(true,replicationMap));
+  KeyspaceMetadata newKs=KeyspaceMetadata.create(cf.ksName,KeyspaceParams.create(true,replicationMap));
   MigrationManager.announceKeyspaceUpdate(newKs);
-  KSMetaData newFetchedKs=Schema.instance.getKSMetaData(newKs.name);
+  KeyspaceMetadata newFetchedKs=Schema.instance.getKSMetaData(newKs.name);
   assertEquals(newFetchedKs.params.replication.klass,newKs.params.replication.klass);
   assertFalse(newFetchedKs.params.replication.klass.equals(oldKs.params.replication.klass));
 }
