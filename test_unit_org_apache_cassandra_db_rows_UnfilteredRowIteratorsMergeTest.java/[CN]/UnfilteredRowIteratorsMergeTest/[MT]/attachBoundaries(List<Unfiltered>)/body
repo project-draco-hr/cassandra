@@ -1,0 +1,18 @@
+{
+  int di=0;
+  RangeTombstoneMarker prev=null;
+  for (int si=0; si < content.size(); ++si) {
+    Unfiltered currUnfiltered=content.get(si);
+    RangeTombstoneMarker curr=currUnfiltered.kind() == Kind.RANGE_TOMBSTONE_MARKER ? (RangeTombstoneMarker)currUnfiltered : null;
+    if (prev != null && curr != null && prev.isClose(false) && curr.isOpen(false) && prev.clustering().invert().equals(curr.clustering())) {
+      RangeTombstone.Bound b=prev.clustering();
+      b=b.withNewKind(b.isInclusive() ? RangeTombstone.Bound.Kind.INCL_END_EXCL_START_BOUNDARY : RangeTombstone.Bound.Kind.EXCL_END_INCL_START_BOUNDARY);
+      prev=new RangeTombstoneBoundaryMarker(b,prev.closeDeletionTime(false),curr.openDeletionTime(false));
+      currUnfiltered=prev;
+      --di;
+    }
+    content.set(di++,currUnfiltered);
+    prev=curr;
+  }
+  for (int pos=content.size() - 1; pos >= di; --pos)   content.remove(pos);
+}
