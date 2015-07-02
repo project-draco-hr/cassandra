@@ -1,18 +1,16 @@
 {
   ColumnSpecification count=columnSpecification("count",LongType.instance);
-  SelectionColumnMapping expected=SelectionColumnMapping.newMapping().addMapping(count,null);
-  SelectionColumns actual=extractColumnMappingFromSelect("SELECT COUNT(*) FROM %s");
-  assertEquals(expected,actual);
-  assertEquals(Collections.singletonList(count),actual.getColumnSpecifications());
-  assertTrue(actual.getMappings().isEmpty());
-  actual=extractColumnMappingFromSelect("SELECT COUNT(1) FROM %s");
-  assertEquals(expected,actual);
-  assertEquals(Collections.singletonList(count),actual.getColumnSpecifications());
-  assertTrue(actual.getMappings().isEmpty());
+  SelectionColumnMapping expected=SelectionColumnMapping.newMapping().addMapping(count,NULL_DEF);
+  verify(expected,"SELECT COUNT(*) FROM %s");
+  verify(expected,"SELECT COUNT(1) FROM %s");
+  ColumnSpecification aliased=columnSpecification("count_alias",LongType.instance);
+  expected=SelectionColumnMapping.newMapping().addMapping(aliased,NULL_DEF);
+  verify(expected,"SELECT COUNT(*) AS count_alias FROM %s");
+  verify(expected,"SELECT COUNT(1) AS count_alias FROM %s");
   ColumnSpecification countV1=columnSpecification("system.count(v1)",LongType.instance);
   expected=SelectionColumnMapping.newMapping().addMapping(countV1,columnDefinition("v1"));
-  actual=extractColumnMappingFromSelect("SELECT COUNT(v1) FROM %s");
-  assertEquals(expected,actual);
-  assertEquals(Collections.singletonList(countV1),actual.getColumnSpecifications());
-  assertFalse(actual.getMappings().isEmpty());
+  verify(expected,"SELECT COUNT(v1) FROM %s");
+  ColumnSpecification countV1Alias=columnSpecification("count_v1",LongType.instance);
+  expected=SelectionColumnMapping.newMapping().addMapping(countV1Alias,columnDefinition("v1"));
+  verify(expected,"SELECT COUNT(v1) AS count_v1 FROM %s");
 }
