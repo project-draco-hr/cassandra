@@ -22,26 +22,19 @@
     logger.debug("Syncing log with a period of {}",conf.commitlog_sync_period_in_ms);
   }
   if (conf.commitlog_total_space_in_mb == null)   conf.commitlog_total_space_in_mb=8192;
-  if (FBUtilities.isWindows()) {
-    conf.disk_access_mode=Config.DiskAccessMode.standard;
+  if (conf.disk_access_mode == Config.DiskAccessMode.auto) {
+    conf.disk_access_mode=hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
     indexAccessMode=conf.disk_access_mode;
-    logger.info("Windows environment detected.  DiskAccessMode set to {}, indexAccessMode {}",conf.disk_access_mode,indexAccessMode);
+    logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
+  }
+ else   if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only) {
+    conf.disk_access_mode=Config.DiskAccessMode.standard;
+    indexAccessMode=Config.DiskAccessMode.mmap;
+    logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
   }
  else {
-    if (conf.disk_access_mode == Config.DiskAccessMode.auto) {
-      conf.disk_access_mode=hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
-      indexAccessMode=conf.disk_access_mode;
-      logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
-    }
- else     if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only) {
-      conf.disk_access_mode=Config.DiskAccessMode.standard;
-      indexAccessMode=Config.DiskAccessMode.mmap;
-      logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
-    }
- else {
-      indexAccessMode=conf.disk_access_mode;
-      logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
-    }
+    indexAccessMode=conf.disk_access_mode;
+    logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
   }
   if (conf.authenticator != null)   authenticator=FBUtilities.newAuthenticator(conf.authenticator);
   if (conf.authorizer != null)   authorizer=FBUtilities.newAuthorizer(conf.authorizer);

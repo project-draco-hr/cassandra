@@ -1,15 +1,17 @@
 {
   for (  ColumnFamilyStore cfs : Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStores())   cfs.clearUnsafe();
   Keyspace.clearSnapshot(null,SystemKeyspace.NAME);
+  int baseline=getDeferredDeletionCount();
   SystemKeyspace.snapshotOnVersionChange();
-  assertTrue(getSystemSnapshotFiles().isEmpty());
+  assertDeletedOrDeferred(baseline);
   setupReleaseVersion(getOlderVersionString());
   Keyspace.clearSnapshot(null,SystemKeyspace.NAME);
-  assertTrue(getSystemSnapshotFiles().isEmpty());
+  assertDeletedOrDeferred(baseline);
   SystemKeyspace.snapshotOnVersionChange();
   assertEquals(SystemKeyspace.metadata().tables.size(),getSystemSnapshotFiles().size());
   Keyspace.clearSnapshot(null,SystemKeyspace.NAME);
   setupReleaseVersion(FBUtilities.getReleaseVersionString());
   SystemKeyspace.snapshotOnVersionChange();
-  assertTrue(getSystemSnapshotFiles().isEmpty());
+  assertDeletedOrDeferred(baseline + 10);
+  Keyspace.clearSnapshot(null,SystemKeyspace.NAME);
 }
