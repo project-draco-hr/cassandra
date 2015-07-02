@@ -1,6 +1,7 @@
 {
   float largestRatio=0f;
   Memtable largest=null;
+  float liveOnHeap=0, liveOffHeap=0;
   for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
     Memtable current=cfs.getTracker().getView().getCurrentMemtable();
     float onHeap=0f, offHeap=0f;
@@ -18,6 +19,17 @@
       largest=current;
       largestRatio=ratio;
     }
+    liveOnHeap+=onHeap;
+    liveOffHeap+=offHeap;
   }
-  if (largest != null)   largest.cfs.switchMemtableIfCurrent(largest);
+  if (largest != null) {
+    float usedOnHeap=Memtable.MEMORY_POOL.onHeap.usedRatio();
+    float usedOffHeap=Memtable.MEMORY_POOL.offHeap.usedRatio();
+    float flushingOnHeap=Memtable.MEMORY_POOL.onHeap.reclaimingRatio();
+    float flushingOffHeap=Memtable.MEMORY_POOL.offHeap.reclaimingRatio();
+    float thisOnHeap=largest.getAllocator().onHeap().ownershipRatio();
+    float thisOffHeap=largest.getAllocator().onHeap().ownershipRatio();
+    logger.info("Flushing largest {} to free up room. Used total: {}, live: {}, flushing: {}, this: {}",largest.cfs,ratio(usedOnHeap,usedOffHeap),ratio(liveOnHeap,liveOffHeap),ratio(flushingOnHeap,flushingOffHeap),ratio(thisOnHeap,thisOffHeap));
+    largest.cfs.switchMemtableIfCurrent(largest);
+  }
 }
