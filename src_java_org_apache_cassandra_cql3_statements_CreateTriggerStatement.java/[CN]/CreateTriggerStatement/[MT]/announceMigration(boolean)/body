@@ -1,11 +1,12 @@
 {
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).copy();
-  TriggerDefinition triggerDefinition=TriggerDefinition.create(triggerName,triggerClass);
-  if (!ifNotExists || !cfm.containsTriggerDefinition(triggerDefinition)) {
-    cfm.addTriggerDefinition(triggerDefinition);
-    logger.info("Adding trigger with name {} and class {}",triggerName,triggerClass);
-    MigrationManager.announceColumnFamilyUpdate(cfm,false,isLocalOnly);
-    return true;
+  Triggers triggers=cfm.getTriggers();
+  if (triggers.get(triggerName).isPresent()) {
+    if (ifNotExists)     return false;
+ else     throw new InvalidRequestException(String.format("Trigger %s already exists",triggerName));
   }
-  return false;
+  cfm.triggers(triggers.with(TriggerMetadata.create(triggerName,triggerClass)));
+  logger.info("Adding trigger with name {} and class {}",triggerName,triggerClass);
+  MigrationManager.announceColumnFamilyUpdate(cfm,false,isLocalOnly);
+  return true;
 }

@@ -1,2 +1,41 @@
 {
+  String ksName=tableRow.getString("keyspace_name");
+  String cfName=tableRow.getString("columnfamily_name");
+  AbstractType<?> rawComparator=TypeParser.parse(tableRow.getString("comparator"));
+  AbstractType<?> subComparator=tableRow.has("subcomparator") ? TypeParser.parse(tableRow.getString("subcomparator")) : null;
+  boolean isSuper="super".equals(tableRow.getString("type").toLowerCase());
+  boolean isDense=tableRow.getBoolean("is_dense");
+  boolean isCompound=rawComparator instanceof CompositeType;
+  AbstractType<?> defaultValidator=TypeParser.parse(tableRow.getString("default_validator"));
+  boolean isCounter=defaultValidator instanceof CounterColumnType;
+  UUID cfId=tableRow.has("cf_id") ? tableRow.getUUID("cf_id") : CFMetaData.generateLegacyCfId(ksName,cfName);
+  boolean isCQLTable=!isSuper && !isDense && isCompound;
+  boolean isStaticCompactTable=!isDense && !isCompound;
+  boolean needsUpgrade=!isCQLTable && checkNeedsUpgrade(columnRows,isSuper,isStaticCompactTable);
+  List<ColumnDefinition> columnDefs=createColumnsFromColumnRows(columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
+  if (needsUpgrade)   addDefinitionForUpgrade(columnDefs,ksName,cfName,isStaticCompactTable,isSuper,rawComparator,subComparator,defaultValidator);
+  CFMetaData cfm=CFMetaData.create(ksName,cfName,cfId,isDense,isCompound,isSuper,isCounter,columnDefs);
+  cfm.readRepairChance(tableRow.getDouble("read_repair_chance"));
+  cfm.dcLocalReadRepairChance(tableRow.getDouble("local_read_repair_chance"));
+  cfm.gcGraceSeconds(tableRow.getInt("gc_grace_seconds"));
+  cfm.minCompactionThreshold(tableRow.getInt("min_compaction_threshold"));
+  cfm.maxCompactionThreshold(tableRow.getInt("max_compaction_threshold"));
+  if (tableRow.has("comment"))   cfm.comment(tableRow.getString("comment"));
+  if (tableRow.has("memtable_flush_period_in_ms"))   cfm.memtableFlushPeriod(tableRow.getInt("memtable_flush_period_in_ms"));
+  cfm.caching(CachingOptions.fromString(tableRow.getString("caching")));
+  if (tableRow.has("default_time_to_live"))   cfm.defaultTimeToLive(tableRow.getInt("default_time_to_live"));
+  if (tableRow.has("speculative_retry"))   cfm.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(tableRow.getString("speculative_retry")));
+  cfm.compactionStrategyClass(CFMetaData.createCompactionStrategy(tableRow.getString("compaction_strategy_class")));
+  cfm.compressionParameters(CompressionParameters.create(fromJsonMap(tableRow.getString("compression_parameters"))));
+  cfm.compactionStrategyOptions(fromJsonMap(tableRow.getString("compaction_strategy_options")));
+  if (tableRow.has("min_index_interval"))   cfm.minIndexInterval(tableRow.getInt("min_index_interval"));
+  if (tableRow.has("max_index_interval"))   cfm.maxIndexInterval(tableRow.getInt("max_index_interval"));
+  if (tableRow.has("bloom_filter_fp_chance"))   cfm.bloomFilterFpChance(tableRow.getDouble("bloom_filter_fp_chance"));
+ else   cfm.bloomFilterFpChance(cfm.getBloomFilterFpChance());
+  if (tableRow.has("dropped_columns")) {
+    Map<String,String> types=tableRow.has("dropped_columns_types") ? tableRow.getMap("dropped_columns_types",UTF8Type.instance,UTF8Type.instance) : Collections.<String,String>emptyMap();
+    addDroppedColumns(cfm,tableRow.getMap("dropped_columns",UTF8Type.instance,LongType.instance),types);
+  }
+  cfm.triggers(createTriggersFromTriggerRows(triggerRows));
+  return cfm;
 }

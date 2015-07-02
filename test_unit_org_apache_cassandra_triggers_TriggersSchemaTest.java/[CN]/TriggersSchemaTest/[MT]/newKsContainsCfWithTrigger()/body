@@ -1,11 +1,11 @@
 {
-  TriggerDefinition td=TriggerDefinition.create(triggerName,triggerClass);
+  TriggerMetadata td=TriggerMetadata.create(triggerName,triggerClass);
   CFMetaData cfm1=CFMetaData.compile(String.format("CREATE TABLE %s (k int PRIMARY KEY, v int)",cfName),ksName);
-  cfm1.addTriggerDefinition(td);
+  cfm1.triggers(cfm1.getTriggers().with(td));
   KeyspaceMetadata ksm=KeyspaceMetadata.create(ksName,KeyspaceParams.simple(1),Tables.of(cfm1));
   MigrationManager.announceNewKeyspace(ksm);
   CFMetaData cfm2=Schema.instance.getCFMetaData(ksName,cfName);
   assertFalse(cfm2.getTriggers().isEmpty());
   assertEquals(1,cfm2.getTriggers().size());
-  assertEquals(td,cfm2.getTriggers().get(triggerName));
+  assertEquals(td,cfm2.getTriggers().get(triggerName).get());
 }
