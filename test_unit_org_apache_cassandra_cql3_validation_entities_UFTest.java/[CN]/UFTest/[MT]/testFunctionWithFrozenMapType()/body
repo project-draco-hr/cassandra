@@ -8,7 +8,10 @@
   assertInvalidMessage("The function arguments should not be frozen","CREATE OR REPLACE FUNCTION " + KEYSPACE + ".withFrozenArg(values frozen<map<int, int>>) "+ "CALLED ON NULL INPUT "+ "RETURNS int "+ "LANGUAGE java\n"+ "AS 'int sum = 0; for (Object value : values.values()) {sum += value;} return sum;';");
   assertInvalidMessage("The function return type should not be frozen","CREATE OR REPLACE FUNCTION " + KEYSPACE + ".frozenReturnType(values map<int, int>) "+ "CALLED ON NULL INPUT "+ "RETURNS frozen<map<int, int>> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String functionName=createFunction(KEYSPACE,"map<int, int>","CREATE FUNCTION %s (values map<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS int "+ "LANGUAGE java\n"+ "AS 'int sum = 0; for (Object value : values.values()) {sum += ((Integer) value);} return sum;';");
-  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s"),row(0,0),row(1,6),row(2,15),row(3,24));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 0"),row(0,0));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 1"),row(1,6));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 2"),row(2,15));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 3"),row(3,24));
   functionName=createFunction(KEYSPACE,"map<int, int>","CREATE FUNCTION %s (values map<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS map<int, int> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   assertRows(execute("SELECT a FROM %s WHERE b = " + functionName + "(?)",map(1,1,2,2,3,3)),row(1));
   assertInvalidMessage("The function arguments should not be frozen","DROP FUNCTION " + functionName + "(frozen<map<int, int>>);");

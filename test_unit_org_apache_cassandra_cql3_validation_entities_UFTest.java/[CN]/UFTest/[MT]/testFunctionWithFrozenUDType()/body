@@ -9,7 +9,10 @@
   assertInvalidMessage("The function arguments should not be frozen","CREATE OR REPLACE FUNCTION " + KEYSPACE + ".withFrozenArg(values frozen<"+ myType+ ">) "+ "CALLED ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS 'return values.toString();';");
   assertInvalidMessage("The function return type should not be frozen","CREATE OR REPLACE FUNCTION " + KEYSPACE + ".frozenReturnType(values "+ myType+ ") "+ "CALLED ON NULL INPUT "+ "RETURNS frozen<"+ myType+ "> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String functionName=createFunction(KEYSPACE,myType,"CREATE FUNCTION %s (values " + myType + ") "+ "CALLED ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS 'return values.toString();';");
-  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s"),row(0,"{f:0}"),row(1,"{f:1}"),row(2,"{f:4}"),row(3,"{f:7}"));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 0"),row(0,"{f:0}"));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 1"),row(1,"{f:1}"));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 2"),row(2,"{f:4}"));
+  assertRows(execute("SELECT a, " + functionName + "(b) FROM %s WHERE a = 3"),row(3,"{f:7}"));
   functionName=createFunction(KEYSPACE,myType,"CREATE FUNCTION %s (values " + myType + ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java\n"+ "AS 'return values;';");
   assertRows(execute("SELECT a FROM %s WHERE b = " + functionName + "({f: ?})",1),row(1));
   assertInvalidMessage("The function arguments should not be frozen","DROP FUNCTION " + functionName + "(frozen<"+ myType+ ">);");
