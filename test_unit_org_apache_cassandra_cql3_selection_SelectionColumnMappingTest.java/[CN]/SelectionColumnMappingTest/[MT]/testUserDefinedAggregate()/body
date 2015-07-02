@@ -1,0 +1,12 @@
+{
+  String sFunc=createFunction(KEYSPACE,"int"," CREATE FUNCTION %s (a int, b int)" + " RETURNS NULL ON NULL INPUT" + " RETURNS int"+ " LANGUAGE javascript"+ " AS 'a + b'");
+  String aFunc=createAggregate(KEYSPACE,"int, int"," CREATE AGGREGATE %s (int)" + " SFUNC " + sFunc + " STYPE int"+ " INITCOND 0");
+  String plusOne=createFunction(KEYSPACE,"int"," CREATE FUNCTION %s (a int)" + " RETURNS NULL ON NULL INPUT" + " RETURNS int"+ " LANGUAGE javascript"+ " AS 'a+1'");
+  String sqFunc=createFunction(KEYSPACE,"int"," CREATE FUNCTION %s (a int)" + " RETURNS NULL ON NULL INPUT" + " RETURNS int"+ " LANGUAGE javascript"+ " AS 'a*a'");
+  ColumnDefinition v1=columnDefinition("v1");
+  SelectionColumns expected=SelectionColumnMapping.newMapping().addMapping(columnSpecification(aFunc + "(v1)",Int32Type.instance),v1);
+  verify(expected,String.format("SELECT %s(v1) FROM %%s",aFunc));
+  String specName=String.format("%s(%s(%s(v1)))",aFunc,sqFunc,plusOne);
+  expected=SelectionColumnMapping.newMapping().addMapping(columnSpecification(specName,Int32Type.instance),v1);
+  verify(expected,String.format("SELECT %s FROM %%s",specName));
+}
