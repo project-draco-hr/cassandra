@@ -1,0 +1,25 @@
+{
+  ColumnFamilyStore baseCfs=Keyspace.openAndGetStore(command.metadata());
+  ColumnFamilyStore indexCfs=maybeGetIndexCfs(baseCfs,command);
+  if (indexCfs == null) {
+    return new ReadExecutionController(baseCfs.readOrdering.start(),null,null);
+  }
+ else {
+    OpOrder.Group baseOp=null, indexOp=null, writeOp;
+    try {
+      baseOp=baseCfs.readOrdering.start();
+      indexOp=indexCfs.readOrdering.start();
+      writeOp=baseCfs.keyspace.writeOrder.start();
+      return new ReadExecutionController(baseOp,indexOp,writeOp);
+    }
+ catch (    RuntimeException e) {
+      try {
+        if (baseOp != null)         baseOp.close();
+      }
+  finally {
+        if (indexOp != null)         indexOp.close();
+      }
+      throw e;
+    }
+  }
+}

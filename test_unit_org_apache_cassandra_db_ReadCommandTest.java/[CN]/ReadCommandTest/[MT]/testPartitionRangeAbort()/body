@@ -1,0 +1,10 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(CF1);
+  new RowUpdateBuilder(cfs.metadata,0,ByteBufferUtil.bytes("key1")).clustering("Column1").add("val",ByteBufferUtil.bytes("abcd")).build().apply();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,0,ByteBufferUtil.bytes("key2")).clustering("Column1").add("val",ByteBufferUtil.bytes("abcd")).build().apply();
+  ReadCommand readCommand=Util.cmd(cfs).build();
+  assertEquals(2,Util.getAll(readCommand).size());
+  readCommand.abort();
+  assertEquals(0,Util.getAll(readCommand).size());
+}

@@ -1,0 +1,12 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(CF2);
+  new RowUpdateBuilder(cfs.metadata,0,ByteBufferUtil.bytes("key")).clustering("cc").add("a",ByteBufferUtil.bytes("abcd")).build().apply();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,0,ByteBufferUtil.bytes("key")).clustering("dd").add("a",ByteBufferUtil.bytes("abcd")).build().apply();
+  ReadCommand readCommand=Util.cmd(cfs,Util.dk("key")).build();
+  List<FilteredPartition> partitions=Util.getAll(readCommand);
+  assertEquals(1,partitions.size());
+  assertEquals(2,partitions.get(0).rowCount());
+  readCommand.abort();
+  assertEquals(0,Util.getAll(readCommand).size());
+}

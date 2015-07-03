@@ -1,9 +1,18 @@
 {
   try {
-    try (ReadOrderGroup orderGroup=command.startOrderGroup();UnfilteredPartitionIterator iterator=command.executeLocally(orderGroup)){
-      handler.response(command.createResponse(iterator,command.columnFilter()));
+    command.setMonitoringTime(new ConstructionTime(constructionTime),timeout);
+    ReadResponse response;
+    try (ReadExecutionController executionController=command.executionController();UnfilteredPartitionIterator iterator=command.executeLocally(executionController)){
+      response=command.createResponse(iterator,command.columnFilter());
     }
-     MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+     if (command.complete()) {
+      handler.response(response);
+    }
+ else {
+      MessagingService.instance().incrementDroppedMessages(verb);
+      handler.onFailure(FBUtilities.getBroadcastAddress());
+    }
+    MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
   }
  catch (  Throwable t) {
     handler.onFailure(FBUtilities.getBroadcastAddress());
