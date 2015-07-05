@@ -1,0 +1,19 @@
+{
+  Murmur3Partitioner partitioner=new Murmur3Partitioner();
+  try (DataInputStream in=new DataInputStream(new FileInputStream(new File(file)));IFilter filter=FilterFactory.deserialize(in,true,oldBfHashOrder)){
+    for (int i=1; i <= 10; i++) {
+      DecoratedKey decoratedKey=partitioner.decorateKey(Int32Type.instance.decompose(i));
+      boolean present=filter.isPresent(decoratedKey);
+      Assert.assertTrue(present);
+    }
+    int positives=0;
+    for (int i=11; i <= 1000010; i++) {
+      DecoratedKey decoratedKey=partitioner.decorateKey(Int32Type.instance.decompose(i));
+      boolean present=filter.isPresent(decoratedKey);
+      if (present)       positives++;
+    }
+    double fpr=positives;
+    fpr/=1000000;
+    Assert.assertTrue(fpr <= 0.011d);
+  }
+ }

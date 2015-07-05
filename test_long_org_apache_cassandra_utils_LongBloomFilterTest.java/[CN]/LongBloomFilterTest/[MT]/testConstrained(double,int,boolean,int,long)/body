@@ -1,0 +1,21 @@
+{
+  for (  long bits : staticBits) {
+    try (IFilter bf=getFilter(elements,targetFp,false,oldBfHashOrder)){
+      SequentialHashGenerator gen=new SequentialHashGenerator(staticBitCount,bits);
+      long[] hash=new long[2];
+      for (int i=0; i < elements; i++) {
+        gen.nextHash(hash);
+        bf.add(filterKey(hash[0],hash[1]));
+      }
+      int falsePositiveCount=0;
+      for (int i=0; i < elements; i++) {
+        gen.nextHash(hash);
+        if (bf.isPresent(filterKey(hash[0],hash[1])))         falsePositiveCount++;
+      }
+      double fp=falsePositiveCount / (double)elements;
+      double ratio=fp / targetFp;
+      System.out.printf("%.2f, ",ratio);
+    }
+   }
+  System.out.printf("%d elements, %d static bits, %.2f target\n",elements,staticBitCount,targetFp);
+}

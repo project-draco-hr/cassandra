@@ -1,0 +1,16 @@
+{
+  int MAX_HASH_COUNT=128;
+  Set<Long> hashes=new HashSet<>();
+  long collisions=0;
+  while (keys.hasNext()) {
+    hashes.clear();
+    FilterKey buf=FilterTestHelper.wrap(keys.next());
+    BloomFilter bf=(BloomFilter)FilterFactory.getFilter(10,1,false,oldBfHashOrder);
+    for (    long hashIndex : bf.getHashBuckets(buf,MAX_HASH_COUNT,1024 * 1024)) {
+      hashes.add(hashIndex);
+    }
+    collisions+=(MAX_HASH_COUNT - hashes.size());
+    bf.close();
+  }
+  Assert.assertTrue("collisions=" + collisions,collisions <= 100);
+}
