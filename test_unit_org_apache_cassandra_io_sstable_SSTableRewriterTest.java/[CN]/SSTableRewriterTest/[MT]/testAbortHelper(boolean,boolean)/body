@@ -1,7 +1,7 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   SSTableReader s=writeFile(cfs,1000);
   if (!offline)   cfs.addSSTable(s);
   Set<SSTableReader> compacting=Sets.newHashSet(s);
@@ -33,10 +33,10 @@
     assertEquals(1,cfs.getSSTables().size());
     validateCFS(cfs);
   }
-  cfs.truncateBlocking();
-  Thread.sleep(1000);
+  truncate(cfs);
   filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   if (offline) {
+    s.selfRef().release();
     assertEquals(1,filecount);
     for (    File f : s.descriptor.directory.listFiles()) {
       f.delete();
@@ -44,4 +44,5 @@
     filecount=assertFileCounts(s.descriptor.directory.list(),0,0);
   }
   assertEquals(0,filecount);
+  truncate(cfs);
 }

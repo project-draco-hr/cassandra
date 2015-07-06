@@ -1,7 +1,7 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   SSTableReader s=writeFile(cfs,1000);
   cfs.addSSTable(s);
   Set<SSTableReader> sstables=Sets.newHashSet(cfs.markAllCompacting());
@@ -27,7 +27,5 @@
    writer.abort();
   writer2.abort();
   cfs.getDataTracker().unmarkCompacting(sstables);
-  cfs.truncateBlocking();
-  SSTableDeletingTask.waitForDeletions();
-  validateCFS(cfs);
+  truncate(cfs);
 }

@@ -1,7 +1,7 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
-  cfs.truncateBlocking();
+  truncate(cfs);
   cfs.disableAutoCompaction();
   SSTableReader s=writeFile(cfs,1000);
   cfs.getDataTracker().markCompacting(Arrays.asList(s),true,false);
@@ -9,7 +9,9 @@
   splitter.split();
   Thread.sleep(1000);
   assertFileCounts(s.descriptor.directory.list(),0,0);
+  s.selfRef().release();
   for (  File f : s.descriptor.directory.listFiles()) {
     f.delete();
   }
+  truncate(cfs);
 }
