@@ -11,11 +11,15 @@
   if (destination == null)   throw new IOException("disk full");
   this.controller=isOffline ? new ScrubController(cfs) : new CompactionController(cfs,Collections.singleton(sstable),CompactionManager.getDefaultGcBefore(cfs));
   this.isCommutative=cfs.metadata.isCounter();
+  boolean hasIndexFile=(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX))).exists();
   this.isIndex=cfs.isIndex();
+  if (!hasIndexFile) {
+    outputHandler.warn("Missing component: " + sstable.descriptor.filenameFor(Component.PRIMARY_INDEX));
+  }
   this.checkData=checkData && !this.isIndex;
-  this.expectedBloomFilterSize=Math.max(cfs.metadata.getMinIndexInterval(),(int)(SSTableReader.getApproximateKeyCount(toScrub)));
+  this.expectedBloomFilterSize=Math.max(cfs.metadata.getMinIndexInterval(),hasIndexFile ? (int)(SSTableReader.getApproximateKeyCount(toScrub)) : 0);
   this.dataFile=isOffline ? sstable.openDataReader() : sstable.openDataReader(CompactionManager.instance.getRateLimiter());
-  this.indexFile=RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX)));
+  this.indexFile=hasIndexFile ? RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX))) : null;
   this.scrubInfo=new ScrubInfo(dataFile,sstable);
   this.currentRowPositionFromIndex=0;
   this.nextRowPositionFromIndex=0;
