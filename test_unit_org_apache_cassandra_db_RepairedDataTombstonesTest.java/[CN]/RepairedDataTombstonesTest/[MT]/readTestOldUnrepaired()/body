@@ -1,0 +1,23 @@
+{
+  createTable("create table %s (id int, id2 int, t text, t2 text, primary key (id, id2)) with gc_grace_seconds=0 and compaction = {'class':'SizeTieredCompactionStrategy', 'only_purge_repaired_tombstones':true}");
+  getCurrentColumnFamilyStore().disableAutoCompaction();
+  for (int i=0; i < 10; i++) {
+    execute("delete from %s where id=1 and id2=?",i);
+  }
+  flush();
+  SSTableReader oldSSTable=getCurrentColumnFamilyStore().getLiveSSTables().iterator().next();
+  Thread.sleep(2000);
+  for (int i=10; i < 20; i++) {
+    execute("delete from %s where id=1 and id2=?",i);
+  }
+  flush();
+  for (  SSTableReader sstable : getCurrentColumnFamilyStore().getLiveSSTables())   if (sstable != oldSSTable)   repair(getCurrentColumnFamilyStore(),sstable);
+  Thread.sleep(2000);
+  for (int i=20; i < 30; i++) {
+    execute("delete from %s where id=1 and id2=?",i);
+  }
+  flush();
+  Thread.sleep(2000);
+  verify(30,0,30);
+  verify2(1,30,0,30);
+}

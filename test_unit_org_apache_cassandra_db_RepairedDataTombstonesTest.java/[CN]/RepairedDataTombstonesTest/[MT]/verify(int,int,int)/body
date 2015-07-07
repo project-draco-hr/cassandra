@@ -1,0 +1,20 @@
+{
+  ReadCommand cmd=Util.cmd(getCurrentColumnFamilyStore()).build();
+  int foundRows=0;
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iterator=cmd.executeLocally(orderGroup)){
+    while (iterator.hasNext()) {
+      UnfilteredRowIterator rowIter=iterator.next();
+      if (!rowIter.partitionKey().equals(Util.dk(ByteBufferUtil.bytes(999)))) {
+        while (rowIter.hasNext()) {
+          AbstractRow row=(AbstractRow)rowIter.next();
+          for (int i=0; i < row.clustering().size(); i++) {
+            foundRows++;
+            int val=ByteBufferUtil.toInt(row.clustering().get(i));
+            assertTrue("val=" + val,val >= minVal && val < maxVal);
+          }
+        }
+      }
+    }
+  }
+   assertEquals(expectedRows,foundRows);
+}

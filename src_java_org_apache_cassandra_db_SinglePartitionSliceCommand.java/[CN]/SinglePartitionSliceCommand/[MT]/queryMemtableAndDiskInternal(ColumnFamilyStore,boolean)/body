@@ -9,6 +9,7 @@
       if (partition == null)       continue;
       @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition);
       @SuppressWarnings("resource") UnfilteredRowIterator maybeCopied=copyOnHeap ? UnfilteredRowIterators.cloningIterator(iter,HeapAllocator.instance) : iter;
+      oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,partition.stats().minLocalDeletionTime);
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(maybeCopied,nowInSec()) : maybeCopied);
     }
     int sstablesIterated=0;
@@ -30,6 +31,7 @@
       }
       sstable.incrementReadCount();
       @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
+      if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter);
       mostRecentPartitionTombstone=Math.max(mostRecentPartitionTombstone,iter.partitionLevelDeletion().markedForDeleteAt());
       sstablesIterated++;
@@ -42,6 +44,7 @@
         @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
         if (iter.partitionLevelDeletion().markedForDeleteAt() > minTimestamp) {
           iterators.add(iter);
+          if (!sstable.isRepaired())           oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
           includedDueToTombstones++;
           sstablesIterated++;
         }
