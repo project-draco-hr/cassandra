@@ -35,6 +35,7 @@
     if (!options.manifestCheckOnly) {
       for (      SSTableReader sstable : sstables) {
         try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable)){
+          txn.obsoleteOriginals();
           try (Scrubber scrubber=new Scrubber(cfs,txn,options.skipCorrupted,handler,true,!options.noValidate)){
             scrubber.scrub();
           }
@@ -44,8 +45,6 @@
               throw t;
             }
           }
-          sstable.markObsolete(null);
-          sstable.selfRef().release();
         }
  catch (        Exception e) {
           System.err.println(String.format("Error scrubbing %s: %s",sstable,e.getMessage()));
