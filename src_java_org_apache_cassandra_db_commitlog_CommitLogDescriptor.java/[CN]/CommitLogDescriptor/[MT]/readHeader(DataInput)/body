@@ -1,19 +1,19 @@
 {
-  ICRC32 checkcrc=CRC32Factory.instance.create();
+  CRC32 checkcrc=new CRC32();
   int version=input.readInt();
-  checkcrc.updateInt(version);
+  updateChecksumInt(checkcrc,version);
   long id=input.readLong();
-  checkcrc.updateInt((int)(id & 0xFFFFFFFFL));
-  checkcrc.updateInt((int)(id >>> 32));
+  updateChecksumInt(checkcrc,(int)(id & 0xFFFFFFFFL));
+  updateChecksumInt(checkcrc,(int)(id >>> 32));
   int parametersLength=0;
   if (version >= VERSION_22) {
     parametersLength=input.readShort() & 0xFFFF;
-    checkcrc.updateInt(parametersLength);
+    updateChecksumInt(checkcrc,parametersLength);
   }
   byte[] parametersBytes=new byte[parametersLength];
   input.readFully(parametersBytes);
   checkcrc.update(parametersBytes,0,parametersBytes.length);
   int crc=input.readInt();
-  if (crc == checkcrc.getCrc())   return new CommitLogDescriptor(version,id,parseCompression((Map<?,?>)JSONValue.parse(new String(parametersBytes,StandardCharsets.UTF_8))));
+  if (crc == (int)checkcrc.getValue())   return new CommitLogDescriptor(version,id,parseCompression((Map<?,?>)JSONValue.parse(new String(parametersBytes,StandardCharsets.UTF_8))));
   return null;
 }
