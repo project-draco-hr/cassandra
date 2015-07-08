@@ -1,0 +1,22 @@
+{
+  Iterator<Row> rowIterator=createRowIterator();
+  int delTime=nowInSeconds + 1;
+  long timestamp=delTime * 1000;
+  Iterator<RangeTombstone> rangeTombstoneIterator=createRangeTombstoneIterator(greaterThan(2,timestamp,delTime));
+  RowAndTombstoneMergeIterator iterator=new RowAndTombstoneMergeIterator(cfm.comparator,false).setTo(rowIterator,rangeTombstoneIterator);
+  assertTrue(iterator.hasNext());
+  assertRow(iterator.next(),0);
+  assertTrue(iterator.hasNext());
+  assertRow(iterator.next(),1);
+  assertTrue(iterator.hasNext());
+  assertRow(iterator.next(),2);
+  assertTrue(iterator.hasNext());
+  assertRtMarker(iterator.next(),ClusteringPrefix.Kind.EXCL_START_BOUND,2);
+  assertTrue(iterator.hasNext());
+  assertRow(iterator.next(),3);
+  assertTrue(iterator.hasNext());
+  assertRow(iterator.next(),4);
+  assertTrue(iterator.hasNext());
+  assertRtMarker(iterator.next(),Bound.TOP);
+  assertFalse(iterator.hasNext());
+}
