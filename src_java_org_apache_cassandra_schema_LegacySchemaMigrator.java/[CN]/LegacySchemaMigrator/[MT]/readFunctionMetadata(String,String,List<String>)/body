@@ -1,0 +1,19 @@
+{
+  String query=format("SELECT * FROM %s.%s WHERE keyspace_name = ? AND function_name = ? AND signature = ?",SystemKeyspace.NAME,SystemKeyspace.LEGACY_FUNCTIONS);
+  UntypedResultSet.Row row=query(query,keyspaceName,functionName,signature).one();
+  FunctionName name=new FunctionName(keyspaceName,functionName);
+  List<ColumnIdentifier> argNames=new ArrayList<>();
+  if (row.has("argument_names"))   for (  String arg : row.getList("argument_names",UTF8Type.instance))   argNames.add(new ColumnIdentifier(arg,true));
+  List<AbstractType<?>> argTypes=new ArrayList<>();
+  if (row.has("argument_types"))   for (  String type : row.getList("argument_types",UTF8Type.instance))   argTypes.add(parseType(type));
+  AbstractType<?> returnType=parseType(row.getString("return_type"));
+  String language=row.getString("language");
+  String body=row.getString("body");
+  boolean calledOnNullInput=row.getBoolean("called_on_null_input");
+  try {
+    return UDFunction.create(name,argNames,argTypes,returnType,calledOnNullInput,language,body);
+  }
+ catch (  InvalidRequestException e) {
+    return UDFunction.createBrokenFunction(name,argNames,argTypes,returnType,calledOnNullInput,language,body,e);
+  }
+}

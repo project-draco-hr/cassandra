@@ -1,8 +1,8 @@
 {
   Map<String,CFMetaData> tables=new HashMap<>();
-  String query=String.format("SELECT columnfamily_name, cf_id, type, comparator, subcomparator, is_dense, default_validator FROM %s.%s WHERE keyspace_name = '%s'",SystemKeyspace.NAME,LegacySchemaTables.COLUMNFAMILIES,keyspace);
+  String query=String.format("SELECT table_name, cf_id, type, comparator, subcomparator, is_dense, default_validator FROM %s.%s WHERE keyspace_name = '%s'",SchemaKeyspace.NAME,SchemaKeyspace.TABLES,keyspace);
   for (  Row row : session.execute(query)) {
-    String name=row.getString("columnfamily_name");
+    String name=row.getString("table_name");
     UUID id=row.getUUID("cf_id");
     boolean isSuper=row.getString("type").toLowerCase().equals("super");
     AbstractType rawComparator=TypeParser.parse(row.getString("comparator"));
@@ -12,7 +12,7 @@
     AbstractType<?> defaultValidator=TypeParser.parse(row.getString("default_validator"));
     boolean isCounter=defaultValidator instanceof CounterColumnType;
     boolean isCQLTable=!isSuper && !isDense && isCompound;
-    String columnsQuery=String.format("SELECT column_name, component_index, type, validator FROM %s.%s WHERE keyspace_name='%s' AND columnfamily_name='%s'",SystemKeyspace.NAME,LegacySchemaTables.COLUMNS,keyspace,name);
+    String columnsQuery=String.format("SELECT column_name, component_index, type, validator FROM %s.%s WHERE keyspace_name='%s' AND table_name='%s'",SchemaKeyspace.NAME,SchemaKeyspace.COLUMNS,keyspace,name);
     List<ColumnDefinition> defs=new ArrayList<>();
     for (    Row colRow : session.execute(columnsQuery))     defs.add(createDefinitionFromRow(colRow,keyspace,name,rawComparator,subComparator,isSuper,isCQLTable));
     tables.put(name,CFMetaData.create(keyspace,name,id,isDense,isCompound,isSuper,isCounter,defs));

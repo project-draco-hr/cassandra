@@ -1,0 +1,9 @@
+{
+  String query=format("SELECT * FROM %s.%s WHERE keyspace_name = ?",SystemKeyspace.NAME,SystemKeyspace.LEGACY_KEYSPACES);
+  UntypedResultSet.Row row=query(query,keyspaceName).one();
+  boolean durableWrites=row.getBoolean("durable_writes");
+  Map<String,String> replication=new HashMap<>();
+  replication.putAll(fromJsonMap(row.getString("strategy_options")));
+  replication.put(KeyspaceParams.Replication.CLASS,row.getString("strategy_class"));
+  return KeyspaceParams.create(durableWrites,replication);
+}

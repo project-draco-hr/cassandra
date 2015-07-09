@@ -1,0 +1,17 @@
+{
+  ReadCommand cmd=getReadCommandForTableSchema(schemaTableName);
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iter=cmd.executeLocally(orderGroup)){
+    while (iter.hasNext()) {
+      try (UnfilteredRowIterator partition=iter.next()){
+        if (isSystemKeyspaceSchemaPartition(partition.partitionKey()))         continue;
+        DecoratedKey key=partition.partitionKey();
+        Mutation mutation=mutationMap.get(key);
+        if (mutation == null) {
+          mutation=new Mutation(NAME,key);
+          mutationMap.put(key,mutation);
+        }
+        mutation.add(UnfilteredRowIterators.toUpdate(partition));
+      }
+     }
+  }
+ }

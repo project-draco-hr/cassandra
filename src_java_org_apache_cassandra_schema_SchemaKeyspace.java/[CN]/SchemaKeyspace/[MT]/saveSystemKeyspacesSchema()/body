@@ -1,0 +1,11 @@
+{
+  KeyspaceMetadata system=Schema.instance.getKSMetaData(SystemKeyspace.NAME);
+  KeyspaceMetadata schema=Schema.instance.getKSMetaData(NAME);
+  long timestamp=FBUtilities.timestampMicros();
+  for (  String schemaTable : ALL) {
+    String query=String.format("DELETE FROM %s.%s USING TIMESTAMP ? WHERE keyspace_name = ?",NAME,schemaTable);
+    for (    String systemKeyspace : Schema.SYSTEM_KEYSPACE_NAMES)     executeOnceInternal(query,timestamp,systemKeyspace);
+  }
+  makeCreateKeyspaceMutation(system,timestamp + 1).apply();
+  makeCreateKeyspaceMutation(schema,timestamp + 1).apply();
+}

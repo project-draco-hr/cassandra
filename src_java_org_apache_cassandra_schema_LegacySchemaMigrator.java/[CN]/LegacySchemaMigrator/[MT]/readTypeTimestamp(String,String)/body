@@ -1,0 +1,11 @@
+{
+  ColumnFamilyStore store=org.apache.cassandra.db.Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.LEGACY_USERTYPES);
+  ClusteringComparator comparator=store.metadata.comparator;
+  Slices slices=Slices.with(comparator,Slice.make(comparator,typeName));
+  int nowInSec=FBUtilities.nowInSeconds();
+  DecoratedKey key=StorageService.getPartitioner().decorateKey(AsciiType.instance.fromString(keyspaceName));
+  SinglePartitionReadCommand command=SinglePartitionSliceCommand.create(store.metadata,nowInSec,key,slices);
+  try (OpOrder.Group op=store.readOrdering.start();RowIterator partition=UnfilteredRowIterators.filter(command.queryMemtableAndDisk(store,op),nowInSec)){
+    return partition.next().primaryKeyLivenessInfo().timestamp();
+  }
+ }
