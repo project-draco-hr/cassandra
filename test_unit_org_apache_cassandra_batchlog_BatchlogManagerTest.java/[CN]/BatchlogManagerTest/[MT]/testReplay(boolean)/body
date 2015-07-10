@@ -1,0 +1,47 @@
+{
+  long initialAllBatches=BatchlogManager.instance.countAllBatches();
+  long initialReplayedBatches=BatchlogManager.instance.getTotalBatchesReplayed();
+  CFMetaData cfm=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1).metadata;
+  for (int i=0; i < 100; i++) {
+    List<Mutation> mutations=new ArrayList<>(10);
+    for (int j=0; j < 10; j++) {
+      mutations.add(new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),ByteBufferUtil.bytes(i)).clustering("name" + j).add("val","val" + j).build());
+    }
+    long timestamp=i < 50 ? (System.currentTimeMillis() - BatchlogManager.getBatchlogTimeout()) : (System.currentTimeMillis() + BatchlogManager.getBatchlogTimeout());
+    if (legacy)     LegacyBatchlogMigrator.store(Batch.createLocal(UUIDGen.getTimeUUID(timestamp,i),timestamp * 1000,mutations),MessagingService.current_version);
+ else     BatchlogManager.store(Batch.createLocal(UUIDGen.getTimeUUID(timestamp,i),timestamp * 1000,mutations));
+  }
+  if (legacy) {
+    Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.LEGACY_BATCHLOG).forceBlockingFlush();
+    LegacyBatchlogMigrator.migrate();
+  }
+  Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.BATCHES).forceBlockingFlush();
+  assertEquals(100,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+  BatchlogManager.instance.startBatchlogReplay().get();
+  assertEquals(50,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(50,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+  for (int i=0; i < 100; i++) {
+    String query=String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)",KEYSPACE1,CF_STANDARD1,i);
+    UntypedResultSet result=executeInternal(query);
+    assertNotNull(result);
+    if (i < 50) {
+      Iterator<UntypedResultSet.Row> it=result.iterator();
+      assertNotNull(it);
+      for (int j=0; j < 10; j++) {
+        assertTrue(it.hasNext());
+        UntypedResultSet.Row row=it.next();
+        assertEquals(ByteBufferUtil.bytes(i),row.getBytes("key"));
+        assertEquals("name" + j,row.getString("name"));
+        assertEquals("val" + j,row.getString("val"));
+      }
+      assertFalse(it.hasNext());
+    }
+ else {
+      assertTrue(result.isEmpty());
+    }
+  }
+  UntypedResultSet result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",KEYSPACE1,CF_STANDARD1));
+  assertNotNull(result);
+  assertEquals(500,result.one().getLong("count"));
+}

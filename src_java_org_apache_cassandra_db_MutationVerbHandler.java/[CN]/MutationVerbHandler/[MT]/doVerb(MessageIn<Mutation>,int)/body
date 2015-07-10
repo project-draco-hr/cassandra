@@ -10,10 +10,10 @@
     replyTo=InetAddress.getByAddress(from);
   }
   try {
-    message.payload.apply();
-    WriteResponse response=new WriteResponse();
+    if (message.version < MessagingService.VERSION_30 && LegacyBatchlogMigrator.isLegacyBatchlogMutation(message.payload))     LegacyBatchlogMigrator.handleLegacyMutation(message.payload);
+ else     message.payload.apply();
     Tracing.trace("Enqueuing response to {}",replyTo);
-    MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
+    MessagingService.instance().sendReply(WriteResponse.createMessage(),id,replyTo);
   }
  catch (  WriteTimeoutException wto) {
     Tracing.trace("Payload application resulted in WriteTimeout, not replying");

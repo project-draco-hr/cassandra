@@ -1,0 +1,50 @@
+{
+  long initialAllBatches=BatchlogManager.instance.countAllBatches();
+  long initialReplayedBatches=BatchlogManager.instance.getTotalBatchesReplayed();
+  CFMetaData cfm=Schema.instance.getCFMetaData(KEYSPACE1,CF_STANDARD4);
+  for (int i=0; i < 1400; i++) {
+    Mutation mutation=new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),ByteBufferUtil.bytes(i)).clustering("name" + i).add("val","val" + i).build();
+    long timestamp=i < 700 ? (System.currentTimeMillis() - BatchlogManager.getBatchlogTimeout()) : (System.currentTimeMillis() + BatchlogManager.getBatchlogTimeout());
+    Mutation batchMutation=LegacyBatchlogMigrator.getStoreMutation(Batch.createLocal(UUIDGen.getTimeUUID(timestamp,i),TimeUnit.MILLISECONDS.toMicros(timestamp),Collections.singleton(mutation)),MessagingService.VERSION_20);
+    assertTrue(LegacyBatchlogMigrator.isLegacyBatchlogMutation(batchMutation));
+    LegacyBatchlogMigrator.handleLegacyMutation(batchMutation);
+  }
+  for (int i=1400; i < 1500; i++) {
+    Mutation mutation=new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),ByteBufferUtil.bytes(i)).clustering("name" + i).add("val","val" + i).build();
+    long timestamp=i < 1450 ? (System.currentTimeMillis() - BatchlogManager.getBatchlogTimeout()) : (System.currentTimeMillis() + BatchlogManager.getBatchlogTimeout());
+    BatchlogManager.store(Batch.createLocal(UUIDGen.getTimeUUID(timestamp,i),FBUtilities.timestampMicros(),Collections.singleton(mutation)));
+  }
+  Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.BATCHES).forceBlockingFlush();
+  assertEquals(1500,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+  UntypedResultSet result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",SystemKeyspace.NAME,SystemKeyspace.LEGACY_BATCHLOG));
+  assertNotNull(result);
+  assertEquals("Count in blog legacy",0,result.one().getLong("count"));
+  result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",SystemKeyspace.NAME,SystemKeyspace.BATCHES));
+  assertNotNull(result);
+  assertEquals("Count in blog",1500,result.one().getLong("count"));
+  BatchlogManager.instance.performInitialReplay();
+  assertEquals(750,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(750,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+  for (int i=0; i < 1500; i++) {
+    result=executeInternal(String.format("SELECT * FROM \"%s\".\"%s\" WHERE key = intAsBlob(%d)",KEYSPACE1,CF_STANDARD4,i));
+    assertNotNull(result);
+    if (i < 700 || i >= 1400 && i < 1450) {
+      assertEquals(ByteBufferUtil.bytes(i),result.one().getBytes("key"));
+      assertEquals("name" + i,result.one().getString("name"));
+      assertEquals("val" + i,result.one().getString("val"));
+    }
+ else {
+      assertTrue("Present at " + i,result.isEmpty());
+    }
+  }
+  result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",KEYSPACE1,CF_STANDARD4));
+  assertNotNull(result);
+  assertEquals(750,result.one().getLong("count"));
+  result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",SystemKeyspace.NAME,SystemKeyspace.BATCHES));
+  assertNotNull(result);
+  assertEquals("Count in blog after initial replay",750,result.one().getLong("count"));
+  result=executeInternal(String.format("SELECT count(*) FROM \"%s\".\"%s\"",SystemKeyspace.NAME,SystemKeyspace.LEGACY_BATCHLOG));
+  assertNotNull(result);
+  assertEquals("Count in blog legacy after initial replay ",0,result.one().getLong("count"));
+}
