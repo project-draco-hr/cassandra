@@ -1,0 +1,24 @@
+@contextmanager
+def prepare_loop(self):
+    readline = None
+    if (self.tty and self.completekey):
+        try:
+            import readline
+        except ImportError:
+            if (platform.system() == 'Windows'):
+                print 'WARNING: pyreadline dependency missing.  Install to enable tab completion.'
+            pass
+        else:
+            old_completer = readline.get_completer()
+            readline.set_completer(self.complete)
+            if ((readline.__doc__ is not None) and ('libedit' in readline.__doc__)):
+                readline.parse_and_bind('bind -e')
+                readline.parse_and_bind((("bind '" + self.completekey) + "' rl_complete"))
+                readline.parse_and_bind('bind ^R em-inc-search-prev')
+            else:
+                readline.parse_and_bind((self.completekey + ': complete'))
+    try:
+        yield
+    finally:
+        if (readline is not None):
+            readline.set_completer(old_completer)

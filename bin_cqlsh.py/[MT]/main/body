@@ -1,0 +1,32 @@
+def main(options, hostname, port):
+    setup_cqlruleset(options.cqlmodule)
+    setup_cqldocs(options.cqlmodule)
+    init_history()
+    csv.field_size_limit(options.field_size_limit)
+    if (options.file is None):
+        stdin = None
+    else:
+        try:
+            (encoding, bom_size) = get_file_encoding_bomsize(options.file)
+            stdin = codecs.open(options.file, 'r', encoding)
+            stdin.seek(bom_size)
+        except IOError as e:
+            sys.exit(("Can't open %r: %s" % (options.file, e)))
+    if options.debug:
+        sys.stderr.write('Using CQL driver: {}\n'.format(cassandra))
+        sys.stderr.write('Using connect timeout: {} seconds\n'.format(options.connect_timeout))
+    try:
+        shell = Shell(hostname, port, color=options.color, username=options.username, password=options.password, stdin=stdin, tty=options.tty, completekey=options.completekey, cqlver=options.cqlversion, keyspace=options.keyspace, display_timestamp_format=options.time_format, display_nanotime_format=options.nanotime_format, display_date_format=options.date_format, display_float_precision=options.float_precision, max_trace_wait=options.max_trace_wait, ssl=options.ssl, single_statement=options.execute, client_timeout=options.client_timeout, connect_timeout=options.connect_timeout)
+    except KeyboardInterrupt:
+        sys.exit('Connection aborted.')
+    except CQL_ERRORS as e:
+        sys.exit(('Connection error: %s' % (e,)))
+    except VersionNotSupported as e:
+        sys.exit(('Unsupported CQL version: %s' % (e,)))
+    if options.debug:
+        shell.debug = True
+    shell.cmdloop()
+    save_history()
+    batch_mode = (options.file or options.execute)
+    if (batch_mode and shell.statement_error):
+        sys.exit(2)

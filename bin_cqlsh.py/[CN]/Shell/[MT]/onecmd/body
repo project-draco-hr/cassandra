@@ -1,0 +1,29 @@
+def onecmd(self, statementtext):
+    '\n        Returns true if the statement is complete and was handled (meaning it\n        can be reset).\n        '
+    try:
+        (statements, in_batch) = cqlruleset.cql_split_statements(statementtext)
+    except pylexotron.LexingError as e:
+        if self.show_line_nums:
+            self.printerr(('Invalid syntax at char %d' % (e.charnum,)))
+        else:
+            self.printerr(('Invalid syntax at line %d, char %d' % (e.linenum, e.charnum)))
+        statementline = statementtext.split('\n')[(e.linenum - 1)]
+        self.printerr(('  %s' % statementline))
+        self.printerr((' %s^' % (' ' * e.charnum)))
+        return True
+    while (statements and (not statements[(-1)])):
+        statements = statements[:(-1)]
+    if (not statements):
+        return True
+    if (in_batch or (statements[(-1)][(-1)][0] != 'endtoken')):
+        self.set_continue_prompt()
+        return
+    for st in statements:
+        try:
+            self.handle_statement(st, statementtext)
+        except Exception as e:
+            if self.debug:
+                traceback.print_exc()
+            else:
+                self.printerr(e)
+    return True
