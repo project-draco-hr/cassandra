@@ -1,10 +1,10 @@
 {
   createTable("CREATE TABLE %s (" + "pk text," + "ck text,"+ "l1 list<int>,"+ "l2 list<int>,"+ "PRIMARY KEY ((pk), ck))");
   long timestamp=FBUtilities.timestampMicros();
-  Mutation mutation=new Mutation(keyspace(),StorageService.getPartitioner().decorateKey(AsciiType.instance.fromString("test")));
+  Mutation mutation=new Mutation(keyspace(),Util.dk("test"));
   addToMutation("row1",timestamp,mutation);
   addToMutation("row2",timestamp,mutation);
-  for (  PartitionUpdate update : mutation.getPartitionUpdates())   update.iterator();
-  mutation.apply();
+  if (skipCommitLog)   mutation.applyUnsafe();
+ else   mutation.apply();
   assertRowCount(execute("SELECT ck FROM %s"),2);
 }
