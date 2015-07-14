@@ -5,12 +5,12 @@
   DeletionTime deletion=row.deletion();
   boolean hasComplexDeletion=row.hasComplexDeletion();
   if (!isStatic)   size+=Clustering.serializer.serializedSize(row.clustering(),version,header.clusteringTypes());
-  if (!pkLiveness.isEmpty())   size+=TypeSizes.sizeof(header.encodeTimestamp(pkLiveness.timestamp()));
+  if (!pkLiveness.isEmpty())   size+=header.timestampSerializedSize(pkLiveness.timestamp());
   if (pkLiveness.isExpiring()) {
-    size+=TypeSizes.sizeof(header.encodeTTL(pkLiveness.ttl()));
-    size+=TypeSizes.sizeof(header.encodeDeletionTime(pkLiveness.localExpirationTime()));
+    size+=header.ttlSerializedSize(pkLiveness.ttl());
+    size+=header.localDeletionTimeSerializedSize(pkLiveness.localExpirationTime());
   }
-  if (!deletion.isLive())   size+=UnfilteredRowIteratorSerializer.delTimeSerializedSize(deletion,header);
+  if (!deletion.isLive())   size+=header.deletionTimeSerializedSize(deletion);
   Columns columns=header.columns(isStatic);
   int simpleCount=columns.simpleColumnCount();
   boolean useSparse=header.useSparseColumnLayout(isStatic);

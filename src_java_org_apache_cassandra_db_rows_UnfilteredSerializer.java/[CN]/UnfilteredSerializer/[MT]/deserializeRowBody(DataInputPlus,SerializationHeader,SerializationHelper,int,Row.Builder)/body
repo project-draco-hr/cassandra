@@ -7,13 +7,13 @@
     boolean hasComplexDeletion=(flags & HAS_COMPLEX_DELETION) != 0;
     LivenessInfo rowLiveness=LivenessInfo.EMPTY;
     if (hasTimestamp) {
-      long timestamp=header.decodeTimestamp(in.readLong());
-      int ttl=hasTTL ? header.decodeTTL(in.readInt()) : LivenessInfo.NO_TTL;
-      int localDeletionTime=hasTTL ? header.decodeDeletionTime(in.readInt()) : LivenessInfo.NO_EXPIRATION_TIME;
+      long timestamp=header.readTimestamp(in);
+      int ttl=hasTTL ? header.readTTL(in) : LivenessInfo.NO_TTL;
+      int localDeletionTime=hasTTL ? header.readLocalDeletionTime(in) : LivenessInfo.NO_EXPIRATION_TIME;
       rowLiveness=LivenessInfo.create(timestamp,ttl,localDeletionTime);
     }
     builder.addPrimaryKeyLivenessInfo(rowLiveness);
-    builder.addRowDeletion(hasDeletion ? UnfilteredRowIteratorSerializer.readDelTime(in,header) : DeletionTime.LIVE);
+    builder.addRowDeletion(hasDeletion ? header.readDeletionTime(in) : DeletionTime.LIVE);
     Columns columns=header.columns(isStatic);
     if (header.useSparseColumnLayout(isStatic)) {
       int count=columns.columnCount();

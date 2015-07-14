@@ -6,9 +6,9 @@
   boolean isExpiring=(flags & IS_EXPIRING_MASK) != 0;
   boolean useRowTimestamp=(flags & USE_ROW_TIMESTAMP_MASK) != 0;
   boolean useRowTTL=(flags & USE_ROW_TTL_MASK) != 0;
-  long timestamp=useRowTimestamp ? rowLiveness.timestamp() : header.decodeTimestamp(in.readVInt());
-  int localDeletionTime=useRowTTL ? rowLiveness.localExpirationTime() : (isDeleted || isExpiring ? header.decodeDeletionTime((int)in.readVInt()) : NO_DELETION_TIME);
-  int ttl=useRowTTL ? rowLiveness.ttl() : (isExpiring ? header.decodeTTL((int)in.readVInt()) : NO_TTL);
+  long timestamp=useRowTimestamp ? rowLiveness.timestamp() : header.readTimestamp(in);
+  int localDeletionTime=useRowTTL ? rowLiveness.localExpirationTime() : (isDeleted || isExpiring ? header.readLocalDeletionTime(in) : NO_DELETION_TIME);
+  int ttl=useRowTTL ? rowLiveness.ttl() : (isExpiring ? header.readTTL(in) : NO_TTL);
   CellPath path=column.isComplex() ? column.cellPathSerializer().deserialize(in) : null;
   boolean isCounter=localDeletionTime == NO_DELETION_TIME && column.type.isCounter();
   ByteBuffer value=ByteBufferUtil.EMPTY_BYTE_BUFFER;

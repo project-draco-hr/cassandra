@@ -11,12 +11,12 @@
   if (hasComplexDeletion)   flags|=HAS_COMPLEX_DELETION;
   out.writeByte((byte)flags);
   if (!isStatic)   Clustering.serializer.serialize(row.clustering(),out,version,header.clusteringTypes());
-  if ((flags & HAS_TIMESTAMP) != 0)   out.writeLong(header.encodeTimestamp(pkLiveness.timestamp()));
+  if ((flags & HAS_TIMESTAMP) != 0)   header.writeTimestamp(pkLiveness.timestamp(),out);
   if ((flags & HAS_TTL) != 0) {
-    out.writeInt(header.encodeTTL(pkLiveness.ttl()));
-    out.writeInt(header.encodeDeletionTime(pkLiveness.localExpirationTime()));
+    header.writeTTL(pkLiveness.ttl(),out);
+    header.writeLocalDeletionTime(pkLiveness.localExpirationTime(),out);
   }
-  if ((flags & HAS_DELETION) != 0)   UnfilteredRowIteratorSerializer.writeDelTime(deletion,header,out);
+  if ((flags & HAS_DELETION) != 0)   header.writeDeletionTime(deletion,out);
   Columns columns=header.columns(isStatic);
   int simpleCount=columns.simpleColumnCount();
   boolean useSparse=header.useSparseColumnLayout(isStatic);
