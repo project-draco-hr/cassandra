@@ -1,0 +1,14 @@
+{
+  ByteBuffer key=bytes("key");
+  ColumnFamily cf=ArrayBackedSortedColumns.factory.create(KEYSPACE,TABLE);
+  cf.addColumn(column("c1","v1",0));
+  Row[] expected=new Row[2];
+  for (int i=0; i < expected.length; i++)   expected[i]=new Row(key,cf);
+  List<InetAddress> sources=new ArrayList<>(3);
+  sources.add(InetAddress.getByName("127.0.0.1"));
+  sources.add(InetAddress.getByName("127.0.0.2"));
+  sources.add(InetAddress.getByName("127.0.0.3"));
+  RangeSliceResponseResolver resolver=new RangeSliceResponseResolver(KEYSPACE,System.currentTimeMillis());
+  resolver.setSources(sources);
+  testRangeSlices(resolver,expected,makeRangeSlice("127.0.0.1",expected),makeRangeSlice("127.0.0.2",expected),makeRangeSlice("127.0.0.3",expected));
+}
