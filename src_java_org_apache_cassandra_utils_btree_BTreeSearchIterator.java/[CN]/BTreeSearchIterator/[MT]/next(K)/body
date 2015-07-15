@@ -1,41 +1,21 @@
 {
-  if (forwards) {
-    while (depth > 0) {
-      byte successorParentDepth=findSuccessorParentDepth();
-      if (successorParentDepth < 0)       break;
-      int successorParentIndex=indexes[successorParentDepth] + 1;
-      Object[] successParentNode=path[successorParentDepth];
-      Object successorParentKey=successParentNode[successorParentIndex];
-      int c=BTree.compare(comparator,target,successorParentKey);
-      if (c < 0)       break;
-      if (c == 0) {
-        depth=successorParentDepth;
-        indexes[successorParentDepth]++;
-        return (V)successorParentKey;
-      }
-      depth=successorParentDepth;
-      indexes[successorParentDepth]++;
+  if (!hasNext())   return null;
+  int state=this.state;
+  int index=seekTo(target,forwards,(state & (ON_ITEM | BEFORE_FIRST)) != 0);
+  boolean found=index >= 0;
+  if (!found)   index=-1 - index;
+  V next=null;
+  if (state == BEFORE_FIRST && compareToFirst(index) < 0)   return null;
+  int compareToLast=compareToLast(index);
+  if ((compareToLast <= 0)) {
+    state=compareToLast < 0 ? MIDDLE : LAST;
+    if (found) {
+      state|=ON_ITEM;
+      next=(V)currentValue();
     }
-    if (find(comparator,target,Op.CEIL,true))     return (V)currentKey();
   }
- else {
-    while (depth > 0) {
-      byte predecessorParentDepth=findPredecessorParentDepth();
-      if (predecessorParentDepth < 0)       break;
-      int predecessorParentIndex=indexes[predecessorParentDepth] - 1;
-      Object[] predecessParentNode=path[predecessorParentDepth];
-      Object predecessorParentKey=predecessParentNode[predecessorParentIndex];
-      int c=BTree.compare(comparator,target,predecessorParentKey);
-      if (c > 0)       break;
-      if (c == 0) {
-        depth=predecessorParentDepth;
-        indexes[predecessorParentDepth]--;
-        return (V)predecessorParentKey;
-      }
-      depth=predecessorParentDepth;
-      indexes[predecessorParentDepth]--;
-    }
-    if (find(comparator,target,Op.FLOOR,false))     return (V)currentKey();
-  }
-  return null;
+ else   state=END;
+  this.state=(byte)state;
+  this.index=index;
+  return next;
 }

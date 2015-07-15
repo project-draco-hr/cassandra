@@ -9,7 +9,7 @@
   PartitionColumns.Builder builder=PartitionColumns.builder();
   for (  Operation op : allOperations())   if (op.requiresRead())   builder.add(op.column);
   PartitionColumns toRead=builder.build();
-  NavigableSet<Clustering> clusterings=FBUtilities.singleton(cbuilder.build(),cfm.comparator);
+  NavigableSet<Clustering> clusterings=BTreeSet.of(cfm.comparator,cbuilder.build());
   List<SinglePartitionReadCommand<?>> commands=new ArrayList<>(partitionKeys.size());
   int nowInSec=FBUtilities.nowInSeconds();
   for (  ByteBuffer key : partitionKeys)   commands.add(new SinglePartitionNamesCommand(cfm,nowInSec,ColumnFilter.selection(toRead),RowFilter.NONE,DataLimits.NONE,StorageService.getPartitioner().decorateKey(key),new ClusteringIndexNamesFilter(clusterings,false)));

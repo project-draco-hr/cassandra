@@ -1,0 +1,83 @@
+{
+  ThreadLocalRandom random=ThreadLocalRandom.current();
+  NavigableSet<Integer> canonicalSet=this.canonical;
+  BTreeSet<Integer> testAsSet=this.test;
+  List<Integer> canonicalList=new ArrayList<>(canonicalSet);
+  BTreeSet<Integer> testAsList=this.test;
+  Assert.assertEquals(canonicalSet.size(),testAsSet.size());
+  Assert.assertEquals(canonicalList.size(),testAsList.size());
+  List<Integer> allKeys=randomKeys(canonical);
+  List<Integer> keys=allKeys;
+  int narrow=random.nextInt(3);
+  while (canonicalList.size() > 10 && keys.size() > 10 && narrow-- > 0) {
+    boolean useLb=random.nextBoolean();
+    boolean useUb=random.nextBoolean();
+    if (!(useLb | useUb))     continue;
+    int indexRange=keys.size() / (narrow + 1);
+    boolean lbInclusive=true;
+    Integer lbKey=canonicalList.get(0);
+    int lbKeyIndex=0, lbIndex=0;
+    boolean ubInclusive=true;
+    Integer ubKey=canonicalList.get(canonicalList.size() - 1);
+    int ubKeyIndex=keys.size(), ubIndex=canonicalList.size();
+    if (useLb) {
+      lbKeyIndex=random.nextInt(0,indexRange - 1);
+      Integer candidate=keys.get(lbKeyIndex);
+      if (useLb=(candidate > lbKey && candidate <= ubKey)) {
+        lbInclusive=random.nextBoolean();
+        lbKey=keys.get(lbKeyIndex);
+        lbIndex=Collections.binarySearch(canonicalList,lbKey);
+        if (lbIndex >= 0 && !lbInclusive)         lbIndex++;
+ else         if (lbIndex < 0)         lbIndex=-1 - lbIndex;
+      }
+    }
+    if (useUb) {
+      ubKeyIndex=random.nextInt(Math.max(lbKeyIndex,keys.size() - indexRange),keys.size() - 1);
+      Integer candidate=keys.get(ubKeyIndex);
+      if (useUb=(candidate < ubKey && candidate >= lbKey)) {
+        ubInclusive=random.nextBoolean();
+        ubKey=keys.get(ubKeyIndex);
+        ubIndex=Collections.binarySearch(canonicalList,ubKey);
+        if (ubIndex >= 0 && ubInclusive) {
+          ubIndex++;
+        }
+ else         if (ubIndex < 0)         ubIndex=-1 - ubIndex;
+      }
+    }
+    if (ubIndex < lbIndex) {
+      ubIndex=lbIndex;
+      ubKey=lbKey;
+      ubInclusive=false;
+    }
+    canonicalSet=!useLb ? canonicalSet.headSet(ubKey,ubInclusive) : !useUb ? canonicalSet.tailSet(lbKey,lbInclusive) : canonicalSet.subSet(lbKey,lbInclusive,ubKey,ubInclusive);
+    testAsSet=!useLb ? testAsSet.headSet(ubKey,ubInclusive) : !useUb ? testAsSet.tailSet(lbKey,lbInclusive) : testAsSet.subSet(lbKey,lbInclusive,ubKey,ubInclusive);
+    keys=keys.subList(lbKeyIndex,ubKeyIndex);
+    canonicalList=canonicalList.subList(lbIndex,ubIndex);
+    testAsList=testAsList.subList(lbIndex,ubIndex);
+    Assert.assertEquals(canonicalSet.size(),testAsSet.size());
+    Assert.assertEquals(canonicalList.size(),testAsList.size());
+  }
+  if (keys != allKeys && random.nextBoolean())   keys=allKeys;
+  Comparator<Integer> comparator=naturalOrder();
+  if (random.nextBoolean()) {
+    if (allKeys != keys)     keys=new ArrayList<>(keys);
+    if (canonicalSet != canonical)     canonicalList=new ArrayList<>(canonicalList);
+    Collections.reverse(keys);
+    Collections.reverse(canonicalList);
+    testAsList=testAsList.descendingSet();
+    canonicalSet=canonicalSet.descendingSet();
+    testAsSet=testAsSet.descendingSet();
+    comparator=reverseOrder();
+  }
+  Assert.assertEquals(canonicalSet.size(),testAsSet.size());
+  Assert.assertEquals(canonicalList.size(),testAsList.size());
+  if (!canonicalSet.isEmpty()) {
+    Assert.assertEquals(canonicalSet.first(),canonicalList.get(0));
+    Assert.assertEquals(canonicalSet.last(),canonicalList.get(canonicalList.size() - 1));
+    Assert.assertEquals(canonicalSet.first(),testAsSet.first());
+    Assert.assertEquals(canonicalSet.last(),testAsSet.last());
+    Assert.assertEquals(canonicalSet.first(),testAsList.get(0));
+    Assert.assertEquals(canonicalSet.last(),testAsList.get(testAsList.size() - 1));
+  }
+  return new RandomSelection(keys,canonicalSet,testAsSet,canonicalList,testAsList,comparator);
+}
