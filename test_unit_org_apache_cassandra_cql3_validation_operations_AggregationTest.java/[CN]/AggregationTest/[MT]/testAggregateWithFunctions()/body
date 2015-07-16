@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (a int, b double, c double, primary key(a, b))");
+  String copySign=createFunction(KEYSPACE,"double, double","CREATE OR REPLACE FUNCTION %s(magnitude double, sign double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVA "+ "AS 'return Double.valueOf(Math.copySign(magnitude, sign));';");
+  assertColumnNames(execute("SELECT count(b), max(b) as max, " + copySign + "(b, c), "+ copySign+ "(c, b) as first FROM %s"),"system.count(b)","max",copySign + "(b, c)","first");
+  assertRows(execute("SELECT count(b), max(b) as max, " + copySign + "(b, c), "+ copySign+ "(c, b) as first FROM %s"),row(0L,null,null,null));
+  execute("INSERT INTO %s (a, b, c) VALUES (0, -1.2, 2.1)");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 1.3, -3.4)");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 1.4, 1.2)");
+  assertRows(execute("SELECT count(b), max(b) as max, " + copySign + "(b, c), "+ copySign+ "(c, b) as first FROM %s"),row(3L,1.4,1.2,-2.1));
+  execute("INSERT INTO %s (a, b, c) VALUES (1, -1.2, null)");
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 1.3, -3.4)");
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 1.4, 1.2)");
+  assertRows(execute("SELECT count(b), max(b) as max, " + copySign + "(b, c), "+ copySign+ "(c, b) as first FROM %s WHERE a = 1"),row(3L,1.4,null,null));
+}

@@ -1,0 +1,21 @@
+{
+  createTable("CREATE TABLE %s (a int primary key, b int, c int)");
+  assertColumnNames(execute("SELECT count(writetime(b)), min(ttl(b)) as min, writetime(b), ttl(c) as first FROM %s"),"system.count(writetime(b))","min","writetime(b)","first");
+  assertRows(execute("SELECT count(writetime(b)), min(ttl(b)) as min, writetime(b), ttl(c) as first FROM %s"),row(0L,null,null,null));
+  long today=System.currentTimeMillis() * 1000;
+  long yesterday=today - (DateUtils.MILLIS_PER_DAY * 1000);
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 2, null) USING TTL 5;");
+  execute("INSERT INTO %s (a, b, c) VALUES (2, 4, 6) USING TTL 2;");
+  execute("INSERT INTO %s (a, b, c) VALUES (4, 8, 12) USING TIMESTAMP " + yesterday);
+  assertRows(execute("SELECT count(writetime(b)), count(ttl(b)) FROM %s"),row(3L,2L));
+  UntypedResultSet resultSet=execute("SELECT min(ttl(b)), ttl(b) FROM %s");
+  assertEquals(1,resultSet.size());
+  Row row=resultSet.one();
+  assertTrue(row.getInt("ttl(b)") > 4);
+  assertTrue(row.getInt("system.min(ttl(b))") <= 2);
+  resultSet=execute("SELECT min(writetime(b)), writetime(b) FROM %s");
+  assertEquals(1,resultSet.size());
+  row=resultSet.one();
+  assertTrue(row.getLong("writetime(b)") >= today);
+  assertTrue(row.getLong("system.min(writetime(b))") == yesterday);
+}
