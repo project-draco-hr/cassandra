@@ -1,0 +1,22 @@
+{
+  double badness=DatabaseDescriptor.getDynamicBadnessThreshold();
+  DatabaseDescriptor.setDynamicBadnessThreshold(0.0);
+  try {
+    final int ITERATIONS=10000;
+    StorageService.instance.unsafeInitialize();
+    SimpleSnitch ss=new SimpleSnitch();
+    DynamicEndpointSnitch dsnitch=new DynamicEndpointSnitch(ss,String.valueOf(ss.hashCode()));
+    InetAddress self=FBUtilities.getBroadcastAddress();
+    List<InetAddress> hosts=new ArrayList<>();
+    for (int i=0; i < 100; i++)     for (int j=0; j < 256; j++)     hosts.add(InetAddress.getByAddress(new byte[]{127,0,(byte)i,(byte)j}));
+    ScoreUpdater updater=new ScoreUpdater(dsnitch,hosts);
+    updater.start();
+    List<InetAddress> result=null;
+    for (int i=0; i < ITERATIONS; i++)     result=dsnitch.getSortedListByProximity(self,hosts);
+    updater.stopped=true;
+    updater.join();
+  }
+  finally {
+    DatabaseDescriptor.setDynamicBadnessThreshold(badness);
+  }
+}
