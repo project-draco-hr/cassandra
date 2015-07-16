@@ -1,0 +1,16 @@
+{
+  Counter cfCounter=Metrics.counter(factory.createMetricName(name),aliasFactory.createMetricName(alias));
+  if (register(name,alias,cfCounter)) {
+    Metrics.register(globalFactory.createMetricName(name),globalAliasFactory.createMetricName(alias),new Gauge<Long>(){
+      public Long getValue(){
+        long total=0;
+        for (        Metric cfGauge : allTableMetrics.get(name)) {
+          total+=((Counter)cfGauge).getCount();
+        }
+        return total;
+      }
+    }
+);
+  }
+  return cfCounter;
+}
