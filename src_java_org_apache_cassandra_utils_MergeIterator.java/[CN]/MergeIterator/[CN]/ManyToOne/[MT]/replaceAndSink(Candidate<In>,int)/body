@@ -1,0 +1,59 @@
+{
+  if (candidate == null) {
+    candidate=heap[--size];
+    heap[size]=null;
+  }
+  candidate.equalParent=false;
+  final int size=this.size;
+  final int sortedSectionSize=Math.min(size - 1,SORTED_SECTION_SIZE);
+  int nextIdx;
+  while ((nextIdx=currIdx + 1) <= sortedSectionSize) {
+    if (!heap[nextIdx].equalParent) {
+      int cmp=candidate.compareTo(heap[nextIdx]);
+      if (cmp <= 0) {
+        heap[nextIdx].equalParent=cmp == 0;
+        heap[currIdx]=candidate;
+        return;
+      }
+    }
+    heap[currIdx]=heap[nextIdx];
+    currIdx=nextIdx;
+  }
+  while ((nextIdx=(currIdx * 2) - (sortedSectionSize - 1)) + 1 < size) {
+    if (!heap[nextIdx].equalParent) {
+      if (!heap[nextIdx + 1].equalParent) {
+        int siblingCmp=heap[nextIdx + 1].compareTo(heap[nextIdx]);
+        if (siblingCmp < 0)         ++nextIdx;
+        int cmp=candidate.compareTo(heap[nextIdx]);
+        if (cmp <= 0) {
+          if (cmp == 0) {
+            heap[nextIdx].equalParent=true;
+            if (siblingCmp == 0)             heap[nextIdx + 1].equalParent=true;
+          }
+          heap[currIdx]=candidate;
+          return;
+        }
+        if (siblingCmp == 0) {
+          heap[nextIdx + 1].equalParent=true;
+        }
+      }
+ else       ++nextIdx;
+    }
+    heap[currIdx]=heap[nextIdx];
+    currIdx=nextIdx;
+  }
+  if (nextIdx >= size) {
+    heap[currIdx]=candidate;
+    return;
+  }
+  if (!heap[nextIdx].equalParent) {
+    int cmp=candidate.compareTo(heap[nextIdx]);
+    if (cmp <= 0) {
+      heap[nextIdx].equalParent=cmp == 0;
+      heap[currIdx]=candidate;
+      return;
+    }
+  }
+  heap[currIdx]=heap[nextIdx];
+  heap[nextIdx]=candidate;
+}
