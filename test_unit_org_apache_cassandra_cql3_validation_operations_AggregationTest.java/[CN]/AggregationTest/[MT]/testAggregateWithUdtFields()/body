@@ -1,0 +1,11 @@
+{
+  String myType=createType("CREATE TYPE %s (x int)");
+  createTable("CREATE TABLE %s (a int primary key, b frozen<" + myType + ">, c frozen<"+ myType+ ">)");
+  assertColumnNames(execute("SELECT count(b.x), max(b.x) as max, b.x, c.x as first FROM %s"),"system.count(b.x)","max","b.x","first");
+  assertRows(execute("SELECT count(b.x), max(b.x) as max, b.x, c.x as first FROM %s"),row(0L,null,null,null));
+  execute("INSERT INTO %s (a, b, c) VALUES (1, {x:2}, null)");
+  execute("INSERT INTO %s (a, b, c) VALUES (2, {x:4}, {x:6})");
+  execute("INSERT INTO %s (a, b, c) VALUES (4, {x:8}, {x:12})");
+  assertRows(execute("SELECT count(b.x), max(b.x) as max, b.x, c.x as first FROM %s"),row(3L,8,2,null));
+  assertInvalidMessage("Invalid field selection: max(b) of type blob is not a user type","SELECT max(b).x as max FROM %s");
+}
