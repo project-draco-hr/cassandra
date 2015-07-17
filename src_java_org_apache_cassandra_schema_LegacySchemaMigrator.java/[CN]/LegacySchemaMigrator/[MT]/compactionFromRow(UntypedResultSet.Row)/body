@@ -1,0 +1,17 @@
+{
+  Class<? extends AbstractCompactionStrategy> klass=CFMetaData.createCompactionStrategy(row.getString("compaction_strategy_class"));
+  Map<String,String> options=fromJsonMap(row.getString("compaction_strategy_options"));
+  int minThreshold=row.getInt("min_compaction_threshold");
+  int maxThreshold=row.getInt("max_compaction_threshold");
+  Map<String,String> optionsWithThresholds=new HashMap<>(options);
+  optionsWithThresholds.putIfAbsent(CompactionParams.Option.MIN_THRESHOLD.toString(),Integer.toString(minThreshold));
+  optionsWithThresholds.putIfAbsent(CompactionParams.Option.MAX_THRESHOLD.toString(),Integer.toString(maxThreshold));
+  try {
+    Map<String,String> unrecognizedOptions=(Map<String,String>)klass.getMethod("validateOptions",Map.class).invoke(null,optionsWithThresholds);
+    if (unrecognizedOptions.isEmpty())     options=optionsWithThresholds;
+  }
+ catch (  Exception e) {
+    throw new RuntimeException(e);
+  }
+  return CompactionParams.create(klass,options);
+}

@@ -8,18 +8,18 @@
   createSSTables(ksname,cfname,numSSTables,numRows);
   List<SSTableReader> sstables=new ArrayList<>(cfs.getLiveSSTables());
   for (  SSTableReader sstable : sstables)   sstable.overrideReadMeter(new RestorableMeter(100.0,100.0));
-  for (  SSTableReader sstable : sstables)   assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+  for (  SSTableReader sstable : sstables)   assertEquals(cfs.metadata.params.minIndexInterval,sstable.getEffectiveIndexInterval(),0.001);
   cfs.metadata.minIndexInterval(originalMinIndexInterval * 2);
   IndexSummaryManager.instance.redistributeSummaries();
   for (  SSTableReader sstable : cfs.getLiveSSTables()) {
-    assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
-    assertEquals(numRows / cfs.metadata.getMinIndexInterval(),sstable.getIndexSummarySize());
+    assertEquals(cfs.metadata.params.minIndexInterval,sstable.getEffectiveIndexInterval(),0.001);
+    assertEquals(numRows / cfs.metadata.params.minIndexInterval,sstable.getIndexSummarySize());
   }
   cfs.metadata.minIndexInterval(originalMinIndexInterval);
   IndexSummaryManager.instance.redistributeSummaries();
   for (  SSTableReader sstable : cfs.getLiveSSTables()) {
-    assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
-    assertEquals(numRows / cfs.metadata.getMinIndexInterval(),sstable.getIndexSummarySize());
+    assertEquals(cfs.metadata.params.minIndexInterval,sstable.getEffectiveIndexInterval(),0.001);
+    assertEquals(numRows / cfs.metadata.params.minIndexInterval,sstable.getIndexSummarySize());
   }
   cfs.metadata.minIndexInterval(originalMinIndexInterval / 2);
   SSTableReader sstable=cfs.getLiveSSTables().iterator().next();
@@ -51,5 +51,5 @@
     redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),10);
   }
    sstable=cfs.getLiveSSTables().iterator().next();
-  assertEquals(cfs.metadata.getMinIndexInterval(),sstable.getEffectiveIndexInterval(),0.001);
+  assertEquals(cfs.metadata.params.minIndexInterval,sstable.getEffectiveIndexInterval(),0.001);
 }

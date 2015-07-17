@@ -1,0 +1,24 @@
+{
+  if (value.toLowerCase().endsWith("ms")) {
+    try {
+      return custom(Double.parseDouble(value.substring(0,value.length() - "ms".length())));
+    }
+ catch (    IllegalArgumentException e) {
+      throw new ConfigurationException(format("Invalid value %s for option '%s'",value,TableParams.Option.SPECULATIVE_RETRY));
+    }
+  }
+  if (value.toUpperCase().endsWith(Kind.PERCENTILE.toString())) {
+    double threshold;
+    try {
+      threshold=Double.parseDouble(value.substring(0,value.length() - Kind.PERCENTILE.toString().length()));
+    }
+ catch (    IllegalArgumentException e) {
+      throw new ConfigurationException(format("Invalid value %s for option '%s'",value,TableParams.Option.SPECULATIVE_RETRY));
+    }
+    if (threshold >= 0.0 && threshold <= 100.0)     return percentile(threshold);
+    throw new ConfigurationException(format("Invalid value %s for PERCENTILE option '%s': must be between 0.0 and 100.0",value,TableParams.Option.SPECULATIVE_RETRY));
+  }
+  if (value.equals(Kind.NONE.toString()))   return NONE;
+  if (value.equals(Kind.ALWAYS.toString()))   return ALWAYS;
+  throw new ConfigurationException(format("Invalid value %s for option '%s'",value,TableParams.Option.SPECULATIVE_RETRY));
+}

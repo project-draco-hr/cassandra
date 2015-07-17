@@ -17,24 +17,6 @@
     addDefinitionForUpgrade(columnDefs,ksName,cfName,isStaticCompactTable,isSuper,rawComparator,subComparator,defaultValidator);
   }
   CFMetaData cfm=CFMetaData.create(ksName,cfName,cfId,isDense,isCompound,isSuper,isCounter,false,columnDefs,DatabaseDescriptor.getPartitioner());
-  cfm.readRepairChance(tableRow.getDouble("read_repair_chance"));
-  cfm.dcLocalReadRepairChance(tableRow.getDouble("local_read_repair_chance"));
-  cfm.gcGraceSeconds(tableRow.getInt("gc_grace_seconds"));
-  cfm.minCompactionThreshold(tableRow.getInt("min_compaction_threshold"));
-  cfm.maxCompactionThreshold(tableRow.getInt("max_compaction_threshold"));
-  if (tableRow.has("comment"))   cfm.comment(tableRow.getString("comment"));
-  if (tableRow.has("memtable_flush_period_in_ms"))   cfm.memtableFlushPeriod(tableRow.getInt("memtable_flush_period_in_ms"));
-  cfm.caching(CachingOptions.fromString(tableRow.getString("caching")));
-  if (tableRow.has("default_time_to_live"))   cfm.defaultTimeToLive(tableRow.getInt("default_time_to_live"));
-  if (tableRow.has("speculative_retry"))   cfm.speculativeRetry(CFMetaData.SpeculativeRetry.fromString(tableRow.getString("speculative_retry")));
-  cfm.compactionStrategyClass(CFMetaData.createCompactionStrategy(tableRow.getString("compaction_strategy_class")));
-  cfm.compressionParameters(CompressionParameters.fromMap(fromJsonMap(tableRow.getString("compression_parameters"))));
-  cfm.compactionStrategyOptions(fromJsonMap(tableRow.getString("compaction_strategy_options")));
-  if (tableRow.has("min_index_interval"))   cfm.minIndexInterval(tableRow.getInt("min_index_interval"));
-  if (tableRow.has("max_index_interval"))   cfm.maxIndexInterval(tableRow.getInt("max_index_interval"));
-  if (tableRow.has("bloom_filter_fp_chance"))   cfm.bloomFilterFpChance(tableRow.getDouble("bloom_filter_fp_chance"));
- else   cfm.bloomFilterFpChance(cfm.getBloomFilterFpChance());
   if (tableRow.has("dropped_columns"))   addDroppedColumns(cfm,rawComparator,tableRow.getMap("dropped_columns",UTF8Type.instance,LongType.instance));
-  cfm.triggers(createTriggersFromTriggerRows(triggerRows));
-  return cfm;
+  return cfm.params(decodeTableParams(tableRow)).triggers(createTriggersFromTriggerRows(triggerRows));
 }
