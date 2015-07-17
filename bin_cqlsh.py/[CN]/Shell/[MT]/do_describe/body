@@ -1,0 +1,55 @@
+def do_describe(self, parsed):
+    '\n        DESCRIBE [cqlsh only]\n\n        (DESC may be used as a shorthand.)\n\n          Outputs information about the connected Cassandra cluster, or about\n          the data stored on it. Use in one of the following ways:\n\n        DESCRIBE KEYSPACES\n\n          Output the names of all keyspaces.\n\n        DESCRIBE KEYSPACE [<keyspacename>]\n\n          Output CQL commands that could be used to recreate the given\n          keyspace, and the tables in it. In some cases, as the CQL interface\n          matures, there will be some metadata about a keyspace that is not\n          representable with CQL. That metadata will not be shown.\n\n          The \'<keyspacename>\' argument may be omitted when using a non-system\n          keyspace; in that case, the current keyspace will be described.\n\n        DESCRIBE TABLES\n\n          Output the names of all tables in the current keyspace, or in all\n          keyspaces if there is no current keyspace.\n\n        DESCRIBE TABLE <tablename>\n\n          Output CQL commands that could be used to recreate the given table.\n          In some cases, as above, there may be table metadata which is not\n          representable and which will not be shown.\n\n        DESCRIBE INDEX <indexname>\n\n          Output CQL commands that could be used to recreate the given index.\n          In some cases, there may be index metadata which is not representable\n          and which will not be shown.\n\n        DESCRIBE CLUSTER\n\n          Output information about the connected Cassandra cluster, such as the\n          cluster name, and the partitioner and snitch in use. When you are\n          connected to a non-system keyspace, also shows endpoint-range\n          ownership information for the Cassandra ring.\n\n        DESCRIBE [FULL] SCHEMA\n\n          Output CQL commands that could be used to recreate the entire (non-system) schema.\n          Works as though "DESCRIBE KEYSPACE k" was invoked for each non-system keyspace\n          k. Use DESCRIBE FULL SCHEMA to include the system keyspaces.\n\n        DESCRIBE FUNCTIONS <keyspace>\n\n          Output the names of all user defined functions in the given keyspace.\n\n        DESCRIBE FUNCTION [<keyspace>.]<function>\n\n          Describe the given user defined function.\n\n        DESCRIBE AGGREGATES <keyspace>\n\n          Output the names of all user defined aggregates in the given keyspace.\n\n        DESCRIBE AGGREGATE [<keyspace>.]<aggregate>\n\n          Describe the given user defined aggregate.\n\n        DESCRIBE <objname>\n\n          Output CQL commands that could be used to recreate the entire object schema,\n          where object can be either a keyspace or a table or an index (in this order).\n\t'
+    what = parsed.matched[1][1].lower()
+    if (what == 'functions'):
+        ksname = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        self.describe_functions(ksname)
+    elif (what == 'function'):
+        ksname = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        functionname = self.cql_unprotect_name(parsed.get_binding('udfname'))
+        self.describe_function(ksname, functionname)
+    elif (what == 'aggregates'):
+        ksname = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        self.describe_aggregates(ksname)
+    elif (what == 'aggregate'):
+        ksname = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        aggregatename = self.cql_unprotect_name(parsed.get_binding('udaname'))
+        self.describe_aggregate(ksname, aggregatename)
+    elif (what == 'keyspaces'):
+        self.describe_keyspaces()
+    elif (what == 'keyspace'):
+        ksname = self.cql_unprotect_name(parsed.get_binding('ksname', ''))
+        if (not ksname):
+            ksname = self.current_keyspace
+            if (ksname is None):
+                self.printerr('Not in any keyspace.')
+                return
+        self.describe_keyspace(ksname)
+    elif (what in ('columnfamily', 'table')):
+        ks = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        cf = self.cql_unprotect_name(parsed.get_binding('cfname'))
+        self.describe_columnfamily(ks, cf)
+    elif (what == 'index'):
+        ks = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        idx = self.cql_unprotect_name(parsed.get_binding('idxname', None))
+        self.describe_index(ks, idx)
+    elif (what in ('columnfamilies', 'tables')):
+        self.describe_columnfamilies(self.current_keyspace)
+    elif (what == 'types'):
+        self.describe_usertypes(self.current_keyspace)
+    elif (what == 'type'):
+        ks = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        ut = self.cql_unprotect_name(parsed.get_binding('utname'))
+        self.describe_usertype(ks, ut)
+    elif (what == 'cluster'):
+        self.describe_cluster()
+    elif (what == 'schema'):
+        self.describe_schema(False)
+    elif ((what == 'full') and (parsed.matched[2][1].lower() == 'schema')):
+        self.describe_schema(True)
+    elif what:
+        ks = self.cql_unprotect_name(parsed.get_binding('ksname', None))
+        name = self.cql_unprotect_name(parsed.get_binding('cfname'))
+        if (not name):
+            name = self.cql_unprotect_name(parsed.get_binding('idxname', None))
+        self.describe_object(ks, name)
