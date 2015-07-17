@@ -1,15 +1,15 @@
 {
   createTable("CREATE TABLE %s (a text, b int, c int, primary key (a, b))");
-  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"64\",\"class\":\"org.apache.cassandra.io.compress.LZ4Compressor\"}"));
+  assertRows(execute(format("SELECT compression FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row(map("chunk_length_in_kb","64","class","org.apache.cassandra.io.compress.LZ4Compressor")));
   execute("ALTER TABLE %s WITH compression = { 'class' : 'SnappyCompressor', 'chunk_length_in_kb' : 32 };");
-  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"32\",\"class\":\"org.apache.cassandra.io.compress.SnappyCompressor\"}"));
+  assertRows(execute(format("SELECT compression FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row(map("chunk_length_in_kb","32","class","org.apache.cassandra.io.compress.SnappyCompressor")));
   execute("ALTER TABLE %s WITH compression = { 'sstable_compression' : 'LZ4Compressor', 'chunk_length_kb' : 64 };");
-  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"chunk_length_in_kb\":\"64\",\"class\":\"org.apache.cassandra.io.compress.LZ4Compressor\"}"));
+  assertRows(execute(format("SELECT compression FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row(map("chunk_length_in_kb","64","class","org.apache.cassandra.io.compress.LZ4Compressor")));
   execute("ALTER TABLE %s WITH compression = { 'sstable_compression' : '', 'chunk_length_kb' : 32 };");
-  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"enabled\":\"false\"}"));
+  assertRows(execute(format("SELECT compression FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row(map("enabled","false")));
   execute("ALTER TABLE %s WITH compression = { 'class' : 'SnappyCompressor', 'chunk_length_in_kb' : 32 };");
   execute("ALTER TABLE %s WITH compression = { 'enabled' : 'false'};");
-  assertRows(execute(format("SELECT compression_parameters FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row("{\"enabled\":\"false\"}"));
+  assertRows(execute(format("SELECT compression FROM %s.%s WHERE keyspace_name = ? and table_name = ?;",SchemaKeyspace.NAME,SchemaKeyspace.TABLES),KEYSPACE,currentTable()),row(map("enabled","false")));
   assertThrowsConfigurationException("Missing sub-option 'class' for the 'compression' option.","ALTER TABLE %s WITH  compression = {'chunk_length_in_kb' : 32};");
   assertThrowsConfigurationException("The 'class' option must not be empty. To disable compression use 'enabled' : false","ALTER TABLE %s WITH  compression = { 'class' : ''};");
   assertThrowsConfigurationException("If the 'enabled' option is set to false no other options must be specified","ALTER TABLE %s WITH compression = { 'enabled' : 'false', 'class' : 'SnappyCompressor'};");
