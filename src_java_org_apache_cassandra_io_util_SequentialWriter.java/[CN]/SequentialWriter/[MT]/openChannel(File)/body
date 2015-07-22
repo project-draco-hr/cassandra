@@ -1,0 +1,25 @@
+{
+  try {
+    if (file.exists()) {
+      return FileChannel.open(file.toPath(),StandardOpenOption.READ,StandardOpenOption.WRITE);
+    }
+ else {
+      FileChannel channel=FileChannel.open(file.toPath(),StandardOpenOption.READ,StandardOpenOption.WRITE,StandardOpenOption.CREATE_NEW);
+      try {
+        SyncUtil.trySyncDir(file.getParentFile());
+      }
+ catch (      Throwable t) {
+        try {
+          channel.close();
+        }
+ catch (        Throwable t2) {
+          t.addSuppressed(t2);
+        }
+      }
+      return channel;
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+}
