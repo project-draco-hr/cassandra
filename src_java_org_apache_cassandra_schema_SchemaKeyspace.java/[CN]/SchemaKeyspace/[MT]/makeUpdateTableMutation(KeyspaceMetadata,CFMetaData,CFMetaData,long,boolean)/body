@@ -3,8 +3,9 @@
   addTableToSchemaMutation(newTable,timestamp,false,mutation);
   MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(oldTable.getColumnMetadata(),newTable.getColumnMetadata());
   for (  ColumnDefinition column : columnDiff.entriesOnlyOnLeft().values()) {
-    if (fromThrift && column.kind != ColumnDefinition.Kind.REGULAR)     continue;
-    dropColumnFromSchemaMutation(oldTable,column,timestamp,mutation);
+    if (!fromThrift || column.kind == ColumnDefinition.Kind.REGULAR || (newTable.isStaticCompactTable() && column.kind == ColumnDefinition.Kind.STATIC)) {
+      dropColumnFromSchemaMutation(oldTable,column,timestamp,mutation);
+    }
   }
   for (  ColumnDefinition column : columnDiff.entriesOnlyOnRight().values())   addColumnToSchemaMutation(newTable,column,timestamp,mutation);
   for (  ByteBuffer name : columnDiff.entriesDiffering().keySet())   addColumnToSchemaMutation(newTable,newTable.getColumnDefinition(name),timestamp,mutation);
