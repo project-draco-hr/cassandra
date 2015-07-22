@@ -1,13 +1,12 @@
 {
-  byte firstByte=readByte();
+  if (buf.remaining() < 9)   return VIntCoding.readUnsignedVInt(this);
+  byte firstByte=buf.get();
   if (firstByte >= 0)   return firstByte;
-  int limitToSet=prepareReadPaddedPrimitive(8);
-  int position=buf.position();
   int extraBytes=VIntCoding.numberOfExtraBytesToRead(firstByte);
+  int position=buf.position();
   int extraBits=extraBytes * 8;
   long retval=buf.getLong(position);
   buf.position(position + extraBytes);
-  buf.limit(limitToSet);
   retval>>>=64 - extraBits;
   firstByte&=VIntCoding.firstByteValueMask(extraBytes);
   retval|=(long)firstByte << extraBits;
