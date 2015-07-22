@@ -1,0 +1,22 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_INDEX1);
+  cfs.clearSnapshot("");
+  int numRows=1000;
+  long[] colValues=new long[numRows * 2];
+  for (int i=0; i < colValues.length; i+=2) {
+    colValues[i]=(i % 4 == 0 ? 1L : 2L);
+    colValues[i + 1]=3L;
+  }
+  ScrubTest.fillIndexCF(cfs,false,colValues);
+  cfs.snapshot("nonEphemeralSnapshot",null,false);
+  cfs.snapshot("ephemeralSnapshot",null,true);
+  Map<String,Pair<Long,Long>> snapshotDetails=cfs.getSnapshotDetails();
+  assertEquals(2,snapshotDetails.size());
+  assertTrue(snapshotDetails.containsKey("ephemeralSnapshot"));
+  assertTrue(snapshotDetails.containsKey("nonEphemeralSnapshot"));
+  ColumnFamilyStore.clearEphemeralSnapshots(cfs.directories);
+  snapshotDetails=cfs.getSnapshotDetails();
+  assertEquals(1,snapshotDetails.size());
+  assertTrue(snapshotDetails.containsKey("nonEphemeralSnapshot"));
+  cfs.clearSnapshot("");
+}
