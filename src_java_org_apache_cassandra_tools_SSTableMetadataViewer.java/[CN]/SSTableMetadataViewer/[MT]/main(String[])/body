@@ -12,6 +12,9 @@
       ValidationMetadata validation=(ValidationMetadata)metadata.get(MetadataType.VALIDATION);
       StatsMetadata stats=(StatsMetadata)metadata.get(MetadataType.STATS);
       CompactionMetadata compaction=(CompactionMetadata)metadata.get(MetadataType.COMPACTION);
+      CompressionMetadata compression=null;
+      File compressionFile=new File(descriptor.filenameFor(Component.COMPRESSION_INFO));
+      if (compressionFile.exists())       compression=CompressionMetadata.create(fname);
       out.printf("SSTable: %s%n",descriptor);
       if (validation != null) {
         out.printf("Partitioner: %s%n",validation.partitioner);
@@ -21,7 +24,8 @@
         out.printf("Minimum timestamp: %s%n",stats.minTimestamp);
         out.printf("Maximum timestamp: %s%n",stats.maxTimestamp);
         out.printf("SSTable max local deletion time: %s%n",stats.maxLocalDeletionTime);
-        out.printf("Compression ratio: %s%n",stats.compressionRatio);
+        out.printf("Compressor: %s%n",compression != null ? compression.compressor().getClass().getName() : "-");
+        if (compression != null)         out.printf("Compression ratio: %s%n",stats.compressionRatio);
         out.printf("Estimated droppable tombstones: %s%n",stats.getEstimatedDroppableTombstoneRatio((int)(System.currentTimeMillis() / 1000)));
         out.printf("SSTable Level: %d%n",stats.sstableLevel);
         out.printf("Repaired at: %d%n",stats.repairedAt);
