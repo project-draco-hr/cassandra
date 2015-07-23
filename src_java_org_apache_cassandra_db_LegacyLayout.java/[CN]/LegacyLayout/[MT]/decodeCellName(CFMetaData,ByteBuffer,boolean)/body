@@ -3,7 +3,10 @@
   if (metadata.isSuper())   return decodeForSuperColumn(metadata,clustering,CompositeType.extractComponent(cellname,1));
   if (metadata.isDense() || (metadata.isCompactTable() && readAllAsDynamic))   return new LegacyCellName(clustering,metadata.compactValueColumn(),null);
   ByteBuffer column=metadata.isCompound() ? CompositeType.extractComponent(cellname,metadata.comparator.size()) : cellname;
-  if (column == null)   throw new IllegalArgumentException("No column name component found in cell name");
+  if (column == null) {
+    if (metadata.partitionColumns().isEmpty())     return new LegacyCellName(clustering,null,null);
+    throw new IllegalArgumentException("No column name component found in cell name");
+  }
   if (!column.hasRemaining())   return new LegacyCellName(clustering,null,null);
   ColumnDefinition def=metadata.getColumnDefinition(column);
   if (def == null) {
