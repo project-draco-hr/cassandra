@@ -2,7 +2,18 @@
   if (!DatabaseDescriptor.enableUserDefinedFunctions())   throw new InvalidRequestException("User-defined-functions are disabled in cassandra.yaml - set enable_user_defined_functions=true to enable if you are aware of the security risks");
   if (!isCallableWrtNullable(parameters))   return null;
   long tStart=System.nanoTime();
-  ByteBuffer result=executeUserDefined(protocolVersion,parameters);
-  Tracing.trace("Executed UDF {} in {}\u03bcs",name(),(System.nanoTime() - tStart) / 1000);
-  return result;
+  parameters=makeEmptyParametersNull(parameters);
+  try {
+    ByteBuffer result=DatabaseDescriptor.enableUserDefinedFunctionsThreads() ? executeAsync(protocolVersion,parameters) : executeUserDefined(protocolVersion,parameters);
+    Tracing.trace("Executed UDF {} in {}\u03bcs",name(),(System.nanoTime() - tStart) / 1000);
+    return result;
+  }
+ catch (  InvalidRequestException e) {
+    throw e;
+  }
+catch (  Throwable t) {
+    logger.debug("Invocation of user-defined function '{}' failed",this,t);
+    if (t instanceof VirtualMachineError)     throw (VirtualMachineError)t;
+    throw FunctionExecutionException.create(this,t);
+  }
 }

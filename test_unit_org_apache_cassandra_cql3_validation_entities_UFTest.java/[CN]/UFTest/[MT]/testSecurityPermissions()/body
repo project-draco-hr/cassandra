@@ -1,0 +1,35 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, dval double)");
+  execute("INSERT INTO %s (key, dval) VALUES (?, ?)",1,1d);
+  try {
+    String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVA\n"+ "AS 'System.getProperty(\"foo.bar.baz\"); return 0d;';");
+    execute("SELECT " + fName + "(dval) FROM %s WHERE key=1");
+    Assert.fail();
+  }
+ catch (  FunctionExecutionException e) {
+    assertAccessControlException("System.getProperty(\"foo.bar.baz\"); return 0d;",e);
+  }
+  String[][] typesAndSources={{"","try { Class.forName(\"" + UDHelper.class.getName() + "\"); } catch (Exception e) { throw new RuntimeException(e); } return 0d;"},{"sun.misc.Unsafe","sun.misc.Unsafe.getUnsafe(); return 0d;"},{"","try { Class.forName(\"sun.misc.Unsafe\"); } catch (Exception e) { throw new RuntimeException(e); } return 0d;"},{"java.nio.file.FileSystems","try {" + "     java.nio.file.FileSystems.getDefault(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.nio.channels.FileChannel","try {" + "     java.nio.channels.FileChannel.open(java.nio.file.FileSystems.getDefault().getPath(\"/etc/passwd\")).close(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.nio.channels.SocketChannel","try {" + "     java.nio.channels.SocketChannel.open().close(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.io.FileInputStream","try {" + "     new java.io.FileInputStream(\"./foobar\").close(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.lang.Runtime","try {" + "     java.lang.Runtime.getRuntime(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"org.apache.cassandra.service.StorageService","try {" + "     org.apache.cassandra.service.StorageService v = org.apache.cassandra.service.StorageService.instance; v.isInShutdownHook(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.net.ServerSocket","try {" + "     new java.net.ServerSocket().bind(); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.io.FileOutputStream","try {" + "     new java.io.FileOutputStream(\".foo\"); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'},{"java.lang.Runtime","try {" + "     java.lang.Runtime.getRuntime().exec(\"/tmp/foo\"); return 0d;" + "} catch (Exception t) {"+ "     throw new RuntimeException(t);"+ '}'}};
+  for (  String[] typeAndSource : typesAndSources) {
+    assertInvalidMessage(typeAndSource[0] + " cannot be resolved","CREATE OR REPLACE FUNCTION " + KEYSPACE + ".invalid_class_access(val double) "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS double "+ "LANGUAGE JAVA\n"+ "AS '"+ typeAndSource[1]+ "';");
+  }
+  try {
+    String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE javascript\n"+ "AS 'org.apache.cassandra.service.StorageService.instance.isInShutdownHook(); 0;';");
+    execute("SELECT " + fName + "(dval) FROM %s WHERE key=1");
+    Assert.fail("Javascript security check failed");
+  }
+ catch (  FunctionExecutionException e) {
+    assertAccessControlException("",e);
+  }
+  String[] javascript={"java.lang.management.ManagmentFactory.getThreadMXBean(); 0;","new java.io.FileInputStream(\"/tmp/foo\"); 0;","new java.io.FileOutputStream(\"/tmp/foo\"); 0;","java.nio.file.FileSystems.getDefault().createFileExclusively(\"./foo_bar_baz\"); 0;","java.nio.channels.FileChannel.open(java.nio.file.FileSystems.getDefault().getPath(\"/etc/passwd\")); 0;","java.nio.channels.SocketChannel.open(); 0;","new java.net.ServerSocket().bind(null); 0;","var thread = new java.lang.Thread(); thread.start(); 0;","java.lang.System.getProperty(\"foo.bar.baz\"); 0;","java.lang.Class.forName(\"java.lang.System\"); 0;","java.lang.Runtime.getRuntime().exec(\"/tmp/foo\"); 0;","java.lang.Runtime.getRuntime().loadLibrary(\"foobar\"); 0;","java.lang.Runtime.getRuntime().loadLibrary(\"foobar\"); 0;"};
+  for (  String script : javascript) {
+    try {
+      String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE javascript\n"+ "AS '" + script + "';");
+      execute("SELECT " + fName + "(dval) FROM %s WHERE key=1");
+      Assert.fail("Javascript security check failed: " + script);
+    }
+ catch (    FunctionExecutionException e) {
+      assertAccessControlException(script,e);
+    }
+  }
+}
