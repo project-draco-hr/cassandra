@@ -1,21 +1,2 @@
 {
-  Keyspace table=Keyspace.open(KSNAME);
-  ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
-  ByteBuffer key=ByteBufferUtil.bytes("k6");
-  ByteBuffer indexedColumnName=ByteBufferUtil.bytes("val");
-  cfs.truncateBlocking();
-  cfs.disableAutoCompaction();
-  ColumnDefinition cd=cfs.metadata.getColumnDefinition(indexedColumnName).copy();
-  IndexMetadata indexDef=IndexMetadata.legacyIndex(cd,"test_index",IndexMetadata.IndexType.CUSTOM,ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,TestIndex.class.getName()));
-  if (!cfs.metadata.getIndexes().get("test_index").isPresent())   cfs.metadata.indexes(cfs.metadata.getIndexes().with(indexDef));
-  Future<?> rebuild=cfs.indexManager.addIndexedColumn(indexDef);
-  if (rebuild != null)   rebuild.get();
-  TestIndex index=((TestIndex)cfs.indexManager.getIndexForColumn(cd));
-  index.resetCounts();
-  UpdateBuilder.create(cfs.metadata,key).withTimestamp(0).newRow(1).add("val",1).applyUnsafe();
-  new RowUpdateBuilder(cfs.metadata,1,key).addRangeTombstone(0,1).build().applyUnsafe();
-  UpdateBuilder.create(cfs.metadata,key).withTimestamp(2).newRow(1).add("val",1).applyUnsafe();
-  cfs.forceBlockingFlush();
-  assertEquals(1,index.inserts.size());
-  assertEquals(1,index.updates.size());
 }

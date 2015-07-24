@@ -6,14 +6,12 @@
   offHeapRatio+=memtable.getAllocator().offHeap().ownershipRatio();
   onHeapTotal+=memtable.getAllocator().onHeap().owns();
   offHeapTotal+=memtable.getAllocator().offHeap().owns();
-  for (  SecondaryIndex index : indexManager.getIndexes()) {
-    if (index.getIndexCfs() != null) {
-      MemtableAllocator allocator=index.getIndexCfs().getTracker().getView().getCurrentMemtable().getAllocator();
-      onHeapRatio+=allocator.onHeap().ownershipRatio();
-      offHeapRatio+=allocator.offHeap().ownershipRatio();
-      onHeapTotal+=allocator.onHeap().owns();
-      offHeapTotal+=allocator.offHeap().owns();
-    }
+  for (  ColumnFamilyStore indexCfs : indexManager.getAllIndexColumnFamilyStores()) {
+    MemtableAllocator allocator=indexCfs.getTracker().getView().getCurrentMemtable().getAllocator();
+    onHeapRatio+=allocator.onHeap().ownershipRatio();
+    offHeapRatio+=allocator.offHeap().ownershipRatio();
+    onHeapTotal+=allocator.onHeap().owns();
+    offHeapTotal+=allocator.offHeap().owns();
   }
   logger.info("Enqueuing flush of {}: {}",name,String.format("%d (%.0f%%) on-heap, %d (%.0f%%) off-heap",onHeapTotal,onHeapRatio * 100,offHeapTotal,offHeapRatio * 100));
 }

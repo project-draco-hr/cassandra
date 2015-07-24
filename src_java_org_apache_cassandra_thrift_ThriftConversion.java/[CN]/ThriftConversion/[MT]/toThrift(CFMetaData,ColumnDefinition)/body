@@ -1,2 +1,15 @@
 {
+  ColumnDef cd=new ColumnDef();
+  cd.setName(ByteBufferUtil.clone(column.name.bytes));
+  cd.setValidation_class(column.type.toString());
+  Collection<IndexMetadata> indexes=cfMetaData.getIndexes().get(column);
+  if (indexes.size() == 1) {
+    IndexMetadata index=indexes.iterator().next();
+    if (index.columns.size() == 1) {
+      cd.setIndex_type(org.apache.cassandra.thrift.IndexType.valueOf(index.indexType.name()));
+      cd.setIndex_name(index.name);
+      cd.setIndex_options(index.options == null || index.options.isEmpty() ? null : Maps.newHashMap(index.options));
+    }
+  }
+  return cd;
 }

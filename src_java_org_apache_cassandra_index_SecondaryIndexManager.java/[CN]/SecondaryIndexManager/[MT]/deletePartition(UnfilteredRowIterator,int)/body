@@ -1,0 +1,14 @@
+{
+  CleanupTransaction indexTransaction=newCleanupTransaction(partition.partitionKey(),partition.columns(),nowInSec);
+  indexTransaction.start();
+  indexTransaction.onPartitionDeletion(partition.partitionLevelDeletion());
+  indexTransaction.commit();
+  while (partition.hasNext()) {
+    Unfiltered unfiltered=partition.next();
+    if (unfiltered.kind() != Unfiltered.Kind.ROW)     continue;
+    indexTransaction=newCleanupTransaction(partition.partitionKey(),partition.columns(),nowInSec);
+    indexTransaction.start();
+    indexTransaction.onRowDelete((Row)unfiltered);
+    indexTransaction.commit();
+  }
+}

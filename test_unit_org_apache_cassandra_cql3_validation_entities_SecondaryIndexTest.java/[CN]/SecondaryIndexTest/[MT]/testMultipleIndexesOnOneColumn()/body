@@ -1,0 +1,28 @@
+{
+  String indexClassName=StubIndex.class.getName();
+  createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY ((a), b))");
+  createIndex(String.format("CREATE CUSTOM INDEX c_idx_1 ON %%s(c) USING '%s' WITH OPTIONS = {'foo':'a'}",indexClassName));
+  createIndex(String.format("CREATE CUSTOM INDEX c_idx_2 ON %%s(c) USING '%s' WITH OPTIONS = {'foo':'b'}",indexClassName));
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  CFMetaData cfm=cfs.metadata;
+  StubIndex index1=(StubIndex)cfs.indexManager.getIndex(cfm.getIndexes().get("c_idx_1").orElseThrow(throwAssert("index not found")));
+  StubIndex index2=(StubIndex)cfs.indexManager.getIndex(cfm.getIndexes().get("c_idx_2").orElseThrow(throwAssert("index not found")));
+  Object[] row1a=row(0,0,0);
+  Object[] row1b=row(0,0,1);
+  Object[] row2=row(2,2,2);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",row1a);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",row1b);
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",row2);
+  assertEquals(2,index1.rowsInserted.size());
+  assertColumnValue(0,"c",index1.rowsInserted.get(0),cfm);
+  assertColumnValue(2,"c",index1.rowsInserted.get(1),cfm);
+  assertEquals(2,index2.rowsInserted.size());
+  assertColumnValue(0,"c",index2.rowsInserted.get(0),cfm);
+  assertColumnValue(2,"c",index2.rowsInserted.get(1),cfm);
+  assertEquals(1,index1.rowsUpdated.size());
+  assertColumnValue(0,"c",index1.rowsUpdated.get(0).left,cfm);
+  assertColumnValue(1,"c",index1.rowsUpdated.get(0).right,cfm);
+  assertEquals(1,index2.rowsUpdated.size());
+  assertColumnValue(0,"c",index2.rowsUpdated.get(0).left,cfm);
+  assertColumnValue(1,"c",index2.rowsUpdated.get(0).right,cfm);
+}
