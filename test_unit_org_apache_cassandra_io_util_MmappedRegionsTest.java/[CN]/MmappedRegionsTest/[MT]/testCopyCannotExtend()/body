@@ -1,0 +1,17 @@
+{
+  ByteBuffer buffer=allocateBuffer(128 * 1024);
+  MmappedRegions snapshot;
+  ChannelProxy channelCopy;
+  try (ChannelProxy channel=new ChannelProxy(writeFile("testSnapshotCannotExtend",buffer));MmappedRegions regions=MmappedRegions.empty(channel)){
+    regions.extend(buffer.capacity() / 2);
+    snapshot=regions.sharedCopy();
+    channelCopy=channel.sharedCopy();
+  }
+   try {
+    snapshot.extend(buffer.capacity());
+  }
+  finally {
+    assertNull(snapshot.close(null));
+    assertNull(channelCopy.close(null));
+  }
+}

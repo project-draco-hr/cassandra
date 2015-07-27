@@ -1,0 +1,19 @@
+{
+  long offset=0;
+  long lastSegmentOffset=0;
+  long segmentSize=0;
+  while (offset < metadata.dataLength) {
+    CompressionMetadata.Chunk chunk=metadata.chunkFor(offset);
+    if (segmentSize + chunk.length + 4 > MAX_SEGMENT_SIZE) {
+      if (segmentSize > 0) {
+        state.add(lastSegmentOffset,segmentSize);
+        lastSegmentOffset+=segmentSize;
+        segmentSize=0;
+      }
+    }
+    segmentSize+=chunk.length + 4;
+    offset+=metadata.chunkLength();
+  }
+  if (segmentSize > 0)   state.add(lastSegmentOffset,segmentSize);
+  state.length=lastSegmentOffset + segmentSize;
+}

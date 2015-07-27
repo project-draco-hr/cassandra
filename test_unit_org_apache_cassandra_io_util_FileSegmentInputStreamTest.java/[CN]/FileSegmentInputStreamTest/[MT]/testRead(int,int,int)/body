@@ -1,0 +1,22 @@
+{
+  final ByteBuffer buffer=allocateBuffer(size);
+  final String path=buffer.toString();
+  FileSegmentInputStream reader=new FileSegmentInputStream(buffer.duplicate(),path,offset);
+  assertEquals(path,reader.getPath());
+  for (int i=offset; i < (size + offset); i+=checkInterval) {
+    reader.seek(i);
+    assertFalse(reader.isEOF());
+    assertEquals(i,reader.getFilePointer());
+    buffer.position(i - offset);
+    int remaining=buffer.remaining();
+    assertEquals(remaining,reader.bytesRemaining());
+    byte[] expected=new byte[buffer.remaining()];
+    buffer.get(expected);
+    assertTrue(Arrays.equals(expected,ByteBufferUtil.read(reader,remaining).array()));
+    assertTrue(reader.isEOF());
+    assertEquals(0,reader.bytesRemaining());
+    assertEquals(buffer.capacity() + offset,reader.getFilePointer());
+  }
+  reader.close();
+  reader.close();
+}

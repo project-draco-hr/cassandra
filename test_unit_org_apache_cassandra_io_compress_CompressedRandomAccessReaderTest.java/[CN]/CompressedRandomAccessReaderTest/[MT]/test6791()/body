@@ -1,24 +1,24 @@
 {
   File f=File.createTempFile("compressed6791_","3");
   String filename=f.getAbsolutePath();
-  ChannelProxy channel=new ChannelProxy(f);
-  try {
+  try (ChannelProxy channel=new ChannelProxy(f)){
     MetadataCollector sstableMetadataCollector=new MetadataCollector(new ClusteringComparator(BytesType.instance));
-    CompressedSequentialWriter writer=new CompressedSequentialWriter(f,filename + ".metadata",CompressionParams.snappy(32),sstableMetadataCollector);
-    for (int i=0; i < 20; i++)     writer.write("x".getBytes());
-    FileMark mark=writer.mark();
-    for (int i=0; i < 40; ++i)     writer.write("y".getBytes());
-    writer.resetAndTruncate(mark);
-    for (int i=0; i < 20; i++)     writer.write("x".getBytes());
-    writer.finish();
-    CompressedRandomAccessReader reader=CompressedRandomAccessReader.open(channel,new CompressionMetadata(filename + ".metadata",f.length(),ChecksumType.CRC32));
-    String res=reader.readLine();
-    assertEquals(res,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    assertEquals(40,res.length());
-  }
+    try (CompressedSequentialWriter writer=new CompressedSequentialWriter(f,filename + ".metadata",CompressionParams.snappy(32),sstableMetadataCollector)){
+      for (int i=0; i < 20; i++)       writer.write("x".getBytes());
+      FileMark mark=writer.mark();
+      for (int i=0; i < 40; ++i)       writer.write("y".getBytes());
+      writer.resetAndTruncate(mark);
+      for (int i=0; i < 20; i++)       writer.write("x".getBytes());
+      writer.finish();
+    }
+     try (RandomAccessReader reader=new CompressedRandomAccessReader.Builder(channel,new CompressionMetadata(filename + ".metadata",f.length(),ChecksumType.CRC32)).build()){
+      String res=reader.readLine();
+      assertEquals(res,"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+      assertEquals(40,res.length());
+    }
+   }
   finally {
-    channel.close();
-    if (f.exists())     f.delete();
+    if (f.exists())     assertTrue(f.delete());
     File metadata=new File(filename + ".metadata");
     if (metadata.exists())     metadata.delete();
   }

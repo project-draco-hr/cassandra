@@ -1,0 +1,15 @@
+{
+  if (buffer.remaining() < 9)   return VIntCoding.readUnsignedVInt(this);
+  byte firstByte=buffer.get();
+  if (firstByte >= 0)   return firstByte;
+  int extraBytes=VIntCoding.numberOfExtraBytesToRead(firstByte);
+  int position=buffer.position();
+  int extraBits=extraBytes * 8;
+  long retval=buffer.getLong(position);
+  if (buffer.order() == ByteOrder.LITTLE_ENDIAN)   retval=Long.reverseBytes(retval);
+  buffer.position(position + extraBytes);
+  retval>>>=64 - extraBits;
+  firstByte&=VIntCoding.firstByteValueMask(extraBytes);
+  retval|=(long)firstByte << extraBits;
+  return retval;
+}

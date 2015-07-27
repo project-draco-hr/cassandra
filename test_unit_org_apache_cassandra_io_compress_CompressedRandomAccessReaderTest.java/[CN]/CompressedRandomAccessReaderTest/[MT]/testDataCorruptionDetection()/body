@@ -4,47 +4,50 @@
   file.deleteOnExit();
   File metadata=new File(file.getPath() + ".meta");
   metadata.deleteOnExit();
+  assertTrue(file.createNewFile());
+  assertTrue(metadata.createNewFile());
   MetadataCollector sstableMetadataCollector=new MetadataCollector(new ClusteringComparator(BytesType.instance)).replayPosition(null);
   try (SequentialWriter writer=new CompressedSequentialWriter(file,metadata.getPath(),CompressionParams.snappy(),sstableMetadataCollector)){
     writer.write(CONTENT.getBytes());
     writer.finish();
   }
-   ChannelProxy channel=new ChannelProxy(file);
-  CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length(),ChecksumType.CRC32);
-  CompressionMetadata.Chunk chunk=meta.chunkFor(0);
-  RandomAccessReader reader=CompressedRandomAccessReader.open(channel,meta);
-  assertEquals(CONTENT,reader.readLine());
-  Random random=new Random();
-  RandomAccessFile checksumModifier=null;
-  try {
-    checksumModifier=new RandomAccessFile(file,"rw");
-    byte[] checksum=new byte[4];
-    checksumModifier.seek(chunk.length);
-    checksumModifier.read(checksum);
-    checksumModifier.seek(chunk.length);
-    for (int i=0; i < checksum.length; i++) {
-      checksumModifier.write(random.nextInt());
-      SyncUtil.sync(checksumModifier);
-      final RandomAccessReader r=CompressedRandomAccessReader.open(channel,meta);
-      Throwable exception=null;
+   try (ChannelProxy channel=new ChannelProxy(file)){
+    CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length(),ChecksumType.CRC32);
+    CompressionMetadata.Chunk chunk=meta.chunkFor(0);
+    try (RandomAccessReader reader=new CompressedRandomAccessReader.Builder(channel,meta).build()){
+      assertEquals(CONTENT,reader.readLine());
+      Random random=new Random();
+      RandomAccessFile checksumModifier=null;
       try {
-        r.readLine();
-      }
- catch (      Throwable t) {
-        exception=t;
-      }
-      assertNotNull(exception);
-      assertEquals(exception.getClass(),CorruptSSTableException.class);
-      assertEquals(exception.getCause().getClass(),CorruptBlockException.class);
-      r.close();
-    }
-    updateChecksum(checksumModifier,chunk.length,checksum);
-    reader=CompressedRandomAccessReader.open(channel,meta);
-    assertEquals(CONTENT,reader.readLine());
-    reader.close();
-  }
+        checksumModifier=new RandomAccessFile(file,"rw");
+        byte[] checksum=new byte[4];
+        checksumModifier.seek(chunk.length);
+        checksumModifier.read(checksum);
+        checksumModifier.seek(chunk.length);
+        for (int i=0; i < checksum.length; i++) {
+          checksumModifier.write(random.nextInt());
+          SyncUtil.sync(checksumModifier);
+          try (final RandomAccessReader r=new CompressedRandomAccessReader.Builder(channel,meta).build()){
+            Throwable exception=null;
+            try {
+              r.readLine();
+            }
+ catch (            Throwable t) {
+              exception=t;
+            }
+            assertNotNull(exception);
+            assertSame(exception.getClass(),CorruptSSTableException.class);
+            assertSame(exception.getCause().getClass(),CorruptBlockException.class);
+          }
+         }
+        updateChecksum(checksumModifier,chunk.length,checksum);
+        try (RandomAccessReader cr=new CompressedRandomAccessReader.Builder(channel,meta).build()){
+          assertEquals(CONTENT,cr.readLine());
+        }
+       }
   finally {
-    channel.close();
-    if (checksumModifier != null)     checksumModifier.close();
-  }
-}
+        if (checksumModifier != null)         checksumModifier.close();
+      }
+    }
+   }
+ }

@@ -1,0 +1,32 @@
+{
+  CRC32 crc=new CRC32();
+  ByteBuffer buffer;
+  try (DataOutputBuffer out=new DataOutputBuffer()){
+    out.write(127);
+    out.writeBoolean(false);
+    out.writeByte(10);
+    out.writeChar('t');
+    buffer=out.buffer();
+    FBUtilities.updateChecksum(crc,buffer);
+    FBUtilities.updateChecksum(crc,buffer);
+    out.writeInt((int)crc.getValue());
+    buffer=out.buffer();
+  }
+   File file=File.createTempFile("testFailedCrc","1");
+  file.deleteOnExit();
+  try (SequentialWriter writer=SequentialWriter.open(file)){
+    writer.write(buffer);
+    writer.finish();
+  }
+   assertTrue(file.exists());
+  assertEquals(buffer.remaining(),file.length());
+  try (ChecksummedDataInput reader=ChecksummedDataInput.open(file)){
+    reader.limit(buffer.remaining());
+    assertEquals(127,reader.read());
+    assertEquals(false,reader.readBoolean());
+    assertEquals(10,reader.readByte());
+    assertEquals('t',reader.readChar());
+    assertFalse(reader.checkCrc());
+    assertEquals(0,reader.bytesRemaining());
+  }
+ }

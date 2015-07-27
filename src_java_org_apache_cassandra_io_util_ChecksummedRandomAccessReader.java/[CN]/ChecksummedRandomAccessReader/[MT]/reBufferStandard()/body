@@ -1,0 +1,19 @@
+{
+  long desiredPosition=current();
+  bufferOffset=(desiredPosition / buffer.capacity()) * buffer.capacity();
+  buffer.clear();
+  long position=bufferOffset;
+  while (buffer.hasRemaining()) {
+    int n=channel.read(buffer,position);
+    if (n < 0)     break;
+    position+=n;
+  }
+  buffer.flip();
+  try {
+    validator.validate(ByteBufferUtil.getArray(buffer),0,buffer.remaining());
+  }
+ catch (  IOException e) {
+    throw new CorruptFileException(e,channel.filePath());
+  }
+  buffer.position((int)(desiredPosition - bufferOffset));
+}
