@@ -1,0 +1,22 @@
+{
+  super(desc,components,metadata,partitioner);
+  this.sstableMetadata=sstableMetadata;
+  this.maxDataAge=maxDataAge;
+  deletingTask=new SSTableDeletingTask(this);
+  if (trackHotness) {
+    readMeter=SystemKeyspace.getSSTableReadMeter(desc.ksname,desc.cfname,desc.generation);
+    readMeterSyncFuture=syncExecutor.scheduleAtFixedRate(new Runnable(){
+      public void run(){
+        if (!isCompacted.get()) {
+          meterSyncThrottle.acquire();
+          SystemKeyspace.persistSSTableReadMeter(desc.ksname,desc.cfname,desc.generation,readMeter);
+        }
+      }
+    }
+,1,5,TimeUnit.MINUTES);
+  }
+ else {
+    readMeter=null;
+    readMeterSyncFuture=null;
+  }
+}
