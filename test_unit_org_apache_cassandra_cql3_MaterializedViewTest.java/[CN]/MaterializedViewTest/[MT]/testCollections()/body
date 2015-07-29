@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (" + "k int, " + "intval int, "+ "listval list<int>, "+ "PRIMARY KEY (k))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE k IS NOT NULL AND intval IS NOT NULL PRIMARY KEY (intval, k)");
+  updateMV("INSERT INTO %s (k, intval, listval) VALUES (?, ?, fromJson(?))",0,0,"[1, 2, 3]");
+  assertRows(execute("SELECT k, listval FROM %s WHERE k = ?",0),row(0,list(1,2,3)));
+  assertRows(execute("SELECT k, listval from mv WHERE intval = ?",0),row(0,list(1,2,3)));
+  updateMV("INSERT INTO %s (k, intval) VALUES (?, ?)",1,1);
+  updateMV("INSERT INTO %s (k, listval) VALUES (?, fromJson(?))",1,"[1, 2, 3]");
+  assertRows(execute("SELECT k, listval FROM %s WHERE k = ?",1),row(1,list(1,2,3)));
+  assertRows(execute("SELECT k, listval from mv WHERE intval = ?",1),row(1,list(1,2,3)));
+}

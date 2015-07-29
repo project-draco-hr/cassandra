@@ -1,0 +1,47 @@
+{
+  Tracing.trace("Determining replicas for atomic batch");
+  long startTime=System.nanoTime();
+  List<WriteResponseHandlerWrapper> wrappers=new ArrayList<WriteResponseHandlerWrapper>(mutations.size());
+  String localDataCenter=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+  try {
+    ConsistencyLevel batchConsistencyLevel=requireQuorumForRemove ? ConsistencyLevel.QUORUM : consistency_level;
+switch (consistency_level) {
+case ALL:
+case EACH_QUORUM:
+      batchConsistencyLevel=consistency_level;
+  }
+  final Collection<InetAddress> batchlogEndpoints=getBatchlogEndpoints(localDataCenter,batchConsistencyLevel);
+  final UUID batchUUID=UUIDGen.getTimeUUID();
+  BatchlogResponseHandler.BatchlogCleanup cleanup=new BatchlogResponseHandler.BatchlogCleanup(mutations.size(),new BatchlogResponseHandler.BatchlogCleanupCallback(){
+    public void invoke(){
+      asyncRemoveFromBatchlog(batchlogEndpoints,batchUUID);
+    }
+  }
+);
+  for (  Mutation mutation : mutations) {
+    WriteResponseHandlerWrapper wrapper=wrapBatchResponseHandler(mutation,consistency_level,batchConsistencyLevel,WriteType.BATCH,cleanup);
+    wrapper.handler.assureSufficientLiveNodes();
+    wrappers.add(wrapper);
+  }
+  syncWriteToBatchlog(mutations,batchlogEndpoints,batchUUID);
+  syncWriteBatchedMutations(wrappers,localDataCenter,Stage.MUTATION);
+}
+ catch (UnavailableException e) {
+  writeMetrics.unavailables.mark();
+  Tracing.trace("Unavailable");
+  throw e;
+}
+catch (WriteTimeoutException e) {
+  writeMetrics.timeouts.mark();
+  Tracing.trace("Write timeout; received {} of {} required replies",e.received,e.blockFor);
+  throw e;
+}
+catch (WriteFailureException e) {
+  writeMetrics.failures.mark();
+  Tracing.trace("Write failure; received {} of {} required replies",e.received,e.blockFor);
+  throw e;
+}
+ finally {
+  writeMetrics.addNano(System.nanoTime() - startTime);
+}
+}

@@ -1,0 +1,28 @@
+{
+  if (!updateAffectsView(partition))   return null;
+  TemporalRow.Set rowSet=separateRows(key,partition);
+  if (!isBuilding)   readLocalRows(rowSet);
+  Collection<Mutation> mutations=null;
+  for (  TemporalRow temporalRow : rowSet) {
+    if (!isBuilding) {
+      PartitionUpdate partitionTombstone=createRangeTombstoneForRow(temporalRow);
+      if (partitionTombstone != null) {
+        if (mutations == null)         mutations=new LinkedList<>();
+        mutations.add(new Mutation(partitionTombstone));
+      }
+    }
+    PartitionUpdate insert=createUpdatesForInserts(temporalRow);
+    if (insert != null) {
+      if (mutations == null)       mutations=new LinkedList<>();
+      mutations.add(new Mutation(insert));
+    }
+  }
+  if (!isBuilding) {
+    Collection<Mutation> deletion=createForDeletionInfo(rowSet,partition);
+    if (deletion != null && !deletion.isEmpty()) {
+      if (mutations == null)       mutations=new LinkedList<>();
+      mutations.addAll(deletion);
+    }
+  }
+  return mutations;
+}

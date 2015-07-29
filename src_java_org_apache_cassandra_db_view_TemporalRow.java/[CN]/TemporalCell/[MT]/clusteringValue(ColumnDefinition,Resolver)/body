@@ -1,0 +1,18 @@
+{
+  ColumnDefinition baseDefinition=definition.cfName.equals(baseCfs.name) ? definition : baseCfs.metadata.getColumnDefinition(definition.name);
+  if (baseDefinition.isPartitionKey()) {
+    if (baseDefinition.isOnAllComponents())     return basePartitionKey;
+ else {
+      CompositeType keyComparator=(CompositeType)baseCfs.metadata.getKeyValidator();
+      ByteBuffer[] components=keyComparator.split(basePartitionKey);
+      return components[baseDefinition.position()];
+    }
+  }
+ else {
+    ColumnIdentifier columnIdentifier=baseDefinition.name;
+    if (clusteringColumns.containsKey(columnIdentifier))     return clusteringColumns.get(columnIdentifier);
+    Collection<org.apache.cassandra.db.rows.Cell> val=values(definition,resolver);
+    if (val != null && val.size() == 1)     return Iterables.getOnlyElement(val).value();
+  }
+  return null;
+}

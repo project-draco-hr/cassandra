@@ -1,0 +1,14 @@
+{
+  List<ColumnDefinition> partitionDefs=new ArrayList<>(definition.partitionColumns.size());
+  List<ColumnDefinition> primaryKeyDefs=new ArrayList<>(definition.partitionColumns.size() + definition.clusteringColumns.size());
+  List<ColumnDefinition> baseComplexColumns=new ArrayList<>();
+  boolean partitionAllPrimaryKeyColumns=resolveAndAddColumns(definition.partitionColumns,primaryKeyDefs,partitionDefs);
+  boolean clusteringAllPrimaryKeyColumns=resolveAndAddColumns(definition.clusteringColumns,primaryKeyDefs);
+  for (  ColumnDefinition cdef : baseCfs.metadata.allColumns()) {
+    if (cdef.isComplex()) {
+      baseComplexColumns.add(cdef);
+    }
+  }
+  this.columns=new MVColumns(partitionDefs,primaryKeyDefs,baseComplexColumns);
+  return partitionAllPrimaryKeyColumns && clusteringAllPrimaryKeyColumns;
+}
