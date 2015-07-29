@@ -1,0 +1,22 @@
+{
+  Holder holder=ImmutableBTreePartition.build(iterator,initialRowCapacity);
+  int cachedLiveRows=0;
+  int rowsWithNonExpiringCells=0;
+  int nonTombstoneCellCount=0;
+  int nonExpiringLiveCells=0;
+  for (  Row row : BTree.<Row>iterable(holder.tree)) {
+    if (row.hasLiveData(nowInSec))     ++cachedLiveRows;
+    int nonExpiringLiveCellsThisRow=0;
+    for (    Cell cell : row.cells()) {
+      if (!cell.isTombstone()) {
+        ++nonTombstoneCellCount;
+        if (!cell.isExpiring())         ++nonExpiringLiveCellsThisRow;
+      }
+    }
+    if (nonExpiringLiveCellsThisRow > 0) {
+      ++rowsWithNonExpiringCells;
+      nonExpiringLiveCells+=nonExpiringLiveCellsThisRow;
+    }
+  }
+  return new CachedBTreePartition(iterator.metadata(),iterator.partitionKey(),iterator.columns(),holder,nowInSec,cachedLiveRows,rowsWithNonExpiringCells,nonTombstoneCellCount,nonExpiringLiveCells);
+}

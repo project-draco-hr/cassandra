@@ -1,13 +1,5 @@
 {
-  CFMetaData metadata=iterator.metadata();
-  boolean reversed=iterator.isReverseOrder();
-  List<Row> rows=new ArrayList<>();
-  EncodingStats.Collector collector=new EncodingStats.Collector();
-  while (iterator.hasNext()) {
-    Row row=iterator.next();
-    rows.add(row);
-    Rows.collectStats(row,collector);
-  }
-  if (reversed)   Collections.reverse(rows);
-  return new PartitionUpdate(metadata,iterator.partitionKey(),iterator.columns(),iterator.staticRow(),rows,MutableDeletionInfo.live(),collector.get(),true,false);
+  MutableDeletionInfo deletionInfo=MutableDeletionInfo.live();
+  Holder holder=build(iterator,deletionInfo,true,16);
+  return new PartitionUpdate(iterator.metadata(),iterator.partitionKey(),iterator.columns(),holder,deletionInfo,false);
 }

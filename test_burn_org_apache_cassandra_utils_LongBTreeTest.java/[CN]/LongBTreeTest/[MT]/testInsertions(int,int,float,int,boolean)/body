@@ -1,0 +1,34 @@
+{
+  int batchesPerTest=perTestCount / modificationBatchSize;
+  int testKeyRange=(int)(perTestCount * testKeyRatio);
+  long totalCount=(long)perTestCount * tests;
+  log("Performing %d tests of %d operations, with %.2f max size/key-range ratio in batches of ~%d ops",tests,perTestCount,1 / testKeyRatio,modificationBatchSize);
+  int chunkSize=quickEquality ? tests : (int)(100000 / Math.pow(perTestCount,2));
+  for (int chunk=0; chunk < tests; chunk+=chunkSize) {
+    final List<ListenableFutureTask<List<ListenableFuture<?>>>> outer=new ArrayList<>();
+    for (int i=0; i < chunkSize; i++) {
+      int maxRunLength=modificationBatchSize == 1 ? 1 : ThreadLocalRandom.current().nextInt(1,modificationBatchSize);
+      outer.add(doOneTestInsertions(testKeyRange,maxRunLength,modificationBatchSize,batchesPerTest,quickEquality));
+    }
+    final List<ListenableFuture<?>> inner=new ArrayList<>();
+    long complete=0;
+    int reportInterval=Math.max(1000,(int)(totalCount / 10000));
+    long lastReportAt=0;
+    for (    ListenableFutureTask<List<ListenableFuture<?>>> f : outer) {
+      inner.addAll(f.get());
+      complete+=perTestCount;
+      if (complete - lastReportAt >= reportInterval) {
+        long done=(chunk * perTestCount) + complete;
+        float ratio=done / (float)totalCount;
+        log("Completed %.1f%% (%d of %d operations)",ratio * 100,done,totalCount);
+        lastReportAt=complete;
+      }
+    }
+    Futures.allAsList(inner).get();
+  }
+  Snapshot snap=BTREE_TIMER.getSnapshot();
+  log("btree: %.2fns, %.2fns, %.2fns",snap.getMedian(),snap.get95thPercentile(),snap.get999thPercentile());
+  snap=TREE_TIMER.getSnapshot();
+  log("java: %.2fns, %.2fns, %.2fns",snap.getMedian(),snap.get95thPercentile(),snap.get999thPercentile());
+  log("Done");
+}
