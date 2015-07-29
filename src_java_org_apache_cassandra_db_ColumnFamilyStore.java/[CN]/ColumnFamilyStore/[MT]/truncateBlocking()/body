@@ -2,12 +2,14 @@
   logger.debug("truncating {}",name);
   if (keyspace.getMetadata().params.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
     forceBlockingFlush();
-    materializedViewManager.forceBlockingFlush();
     Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
   }
  else {
-    dumpMemtable();
-    materializedViewManager.dumpMemtables();
+synchronized (data) {
+      final Flush flush=new Flush(true);
+      flushExecutor.execute(flush);
+      postFlushExecutor.submit(flush.postFlush);
+    }
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
@@ -17,13 +19,12 @@
       if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Keyspace.getTimestampedSnapshotName(name));
       ReplayPosition replayAfter=discardSSTables(truncatedAt);
       for (      SecondaryIndex index : indexManager.getIndexes())       index.truncateBlocking(truncatedAt);
-      materializedViewManager.truncateBlocking(truncatedAt);
       SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
       logger.debug("cleaning out row cache");
       invalidateCaches();
     }
   }
 ;
-  runWithCompactionsDisabled(Executors.callable(truncateRunnable),true,true);
+  runWithCompactionsDisabled(Executors.callable(truncateRunnable),true);
   logger.debug("truncate complete");
 }

@@ -7,42 +7,13 @@
     return;
   }
   ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-  boolean hasMaterializedViews=cfs.materializedViewManager.allViews().iterator().hasNext();
-  try {
-    List<SSTableReader> readers=new ArrayList<>();
-    for (    SSTableWriter writer : task.sstables) {
-      SSTableReader reader=writer.finish(true);
-      readers.add(reader);
-      task.txn.update(reader,false);
-    }
-    task.sstables.clear();
-    try (Refs<SSTableReader> refs=Refs.ref(readers)){
-      if (hasMaterializedViews) {
-        for (        SSTableReader reader : readers) {
-          try (ISSTableScanner scanner=reader.getScanner()){
-            while (scanner.hasNext()) {
-              try (UnfilteredRowIterator rowIterator=scanner.next()){
-                new Mutation(PartitionUpdate.fromIterator(rowIterator)).apply();
-              }
-             }
-          }
-         }
-      }
- else {
-        task.txn.finish();
-        cfs.addSSTables(readers);
-        cfs.indexManager.maybeBuildSecondaryIndexes(readers,cfs.indexManager.allIndexesNames());
-      }
-    }
- catch (    Throwable t) {
-      logger.error("Error applying streamed sstable: ",t);
-      JVMStabilityInspector.inspectThrowable(t);
-    }
- finally {
-      if (hasMaterializedViews)       task.txn.abort();
-    }
+  List<SSTableReader> readers=new ArrayList<>();
+  for (  SSTableWriter writer : task.sstables)   readers.add(writer.finish(true));
+  task.txn.finish();
+  task.sstables.clear();
+  try (Refs<SSTableReader> refs=Refs.ref(readers)){
+    cfs.addSSTables(readers);
+    cfs.indexManager.maybeBuildSecondaryIndexes(readers,cfs.indexManager.allIndexesNames());
   }
-  finally {
-    task.session.taskCompleted(task);
-  }
+   task.session.taskCompleted(task);
 }

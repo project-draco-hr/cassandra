@@ -1,2 +1,21 @@
 {
-}
+  if (TEST_FAIL_WRITES && metadata.name.equals(TEST_FAIL_WRITES_KS))   throw new RuntimeException("Testing write failures");
+  int nowInSec=FBUtilities.nowInSeconds();
+  try (OpOrder.Group opGroup=writeOrder.start()){
+    ReplayPosition replayPosition=null;
+    if (writeCommitLog) {
+      Tracing.trace("Appending to commitlog");
+      replayPosition=CommitLog.instance.add(mutation);
+    }
+    for (    PartitionUpdate upd : mutation.getPartitionUpdates()) {
+      ColumnFamilyStore cfs=columnFamilyStores.get(upd.metadata().cfId);
+      if (cfs == null) {
+        logger.error("Attempting to mutate non-existant table {}",upd.metadata().cfId);
+        continue;
+      }
+      Tracing.trace("Adding to {} memtable",upd.metadata().cfName);
+      SecondaryIndexManager.Updater updater=updateIndexes ? cfs.indexManager.updaterFor(upd,opGroup,nowInSec) : SecondaryIndexManager.nullUpdater;
+      cfs.apply(upd,updater,opGroup,replayPosition);
+    }
+  }
+ }

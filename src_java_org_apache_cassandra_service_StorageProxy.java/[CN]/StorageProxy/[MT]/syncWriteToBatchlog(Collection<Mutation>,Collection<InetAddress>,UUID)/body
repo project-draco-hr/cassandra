@@ -1,16 +1,16 @@
 {
   AbstractWriteResponseHandler<IMutation> handler=new WriteResponseHandler<>(endpoints,Collections.<InetAddress>emptyList(),ConsistencyLevel.ONE,Keyspace.open(SystemKeyspace.NAME),null,WriteType.BATCH_LOG);
-  MessageOut<Mutation> message=BatchlogManager.getBatchlogMutationFor(mutations,uuid,MessagingService.current_version).createMessage(MessagingService.Verb.BATCHLOG_MUTATION);
+  MessageOut<Mutation> message=BatchlogManager.getBatchlogMutationFor(mutations,uuid,MessagingService.current_version).createMessage();
   for (  InetAddress target : endpoints) {
     int targetVersion=MessagingService.instance().getVersion(target);
     if (canDoLocalRequest(target)) {
-      insertLocal(Stage.BATCHLOG_MUTATION,message.payload,handler);
+      insertLocal(message.payload,handler);
     }
  else     if (targetVersion == MessagingService.current_version) {
       MessagingService.instance().sendRR(message,target,handler,false);
     }
  else {
-      MessagingService.instance().sendRR(BatchlogManager.getBatchlogMutationFor(mutations,uuid,targetVersion).createMessage(MessagingService.Verb.BATCHLOG_MUTATION),target,handler,false);
+      MessagingService.instance().sendRR(BatchlogManager.getBatchlogMutationFor(mutations,uuid,targetVersion).createMessage(),target,handler,false);
     }
   }
   handler.get();
