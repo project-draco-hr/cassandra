@@ -1,0 +1,13 @@
+{
+  ColumnFamilyStore cfs=MockSchema.newCFS(KEYSPACE);
+  SSTableReader sstableNew=sstable(cfs,1,128);
+  TransactionLog transactionLog=new TransactionLog(OperationType.COMPACTION,cfs.metadata);
+  assertNotNull(transactionLog);
+  transactionLog.trackNew(sstableNew);
+  transactionLog.untrackNew(sstableNew);
+  transactionLog.finish();
+  sstableNew.selfRef().release();
+  Thread.sleep(1);
+  TransactionLog.waitForDeletions();
+  assertFiles(transactionLog.getDataFolder(),Collections.<String>emptySet());
+}
