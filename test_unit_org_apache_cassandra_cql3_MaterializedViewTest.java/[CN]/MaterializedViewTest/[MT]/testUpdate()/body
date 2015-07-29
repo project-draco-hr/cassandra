@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (" + "k int, " + "intval int, "+ "PRIMARY KEY (k))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE k IS NOT NULL AND intval IS NOT NULL PRIMARY KEY (intval, k)");
+  updateMV("INSERT INTO %s (k, intval) VALUES (?, ?)",0,0);
+  assertRows(execute("SELECT k, intval FROM %s WHERE k = ?",0),row(0,0));
+  assertRows(execute("SELECT k, intval from mv WHERE intval = ?",0),row(0,0));
+  updateMV("INSERT INTO %s (k, intval) VALUES (?, ?)",0,1);
+  assertRows(execute("SELECT k, intval FROM %s WHERE k = ?",0),row(0,1));
+  assertRows(execute("SELECT k, intval from mv WHERE intval = ?",1),row(0,1));
+}

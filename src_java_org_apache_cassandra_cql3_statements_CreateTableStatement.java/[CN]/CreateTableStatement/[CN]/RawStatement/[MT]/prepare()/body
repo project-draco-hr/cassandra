@@ -3,7 +3,7 @@
   if (columnFamily().length() > Schema.NAME_LENGTH)   throw new InvalidRequestException(String.format("Table names shouldn't be more than %s characters long (got \"%s\")",Schema.NAME_LENGTH,columnFamily()));
   for (  Multiset.Entry<ColumnIdentifier> entry : definedNames.entrySet())   if (entry.getCount() > 1)   throw new InvalidRequestException(String.format("Multiple definition of identifier %s",entry.getElement()));
   properties.validate();
-  CreateTableStatement stmt=new CreateTableStatement(cfName,properties,ifNotExists,staticColumns);
+  CreateTableStatement stmt=new CreateTableStatement(cfName,properties.properties,ifNotExists,staticColumns);
   for (  Map.Entry<ColumnIdentifier,CQL3Type.Raw> entry : definitions.entrySet()) {
     ColumnIdentifier id=entry.getKey();
     CQL3Type pt=entry.getValue().prepare(keyspace());
@@ -13,7 +13,7 @@
   }
   if (keyAliases.isEmpty())   throw new InvalidRequestException("No PRIMARY KEY specifed (exactly one required)");
   if (keyAliases.size() > 1)   throw new InvalidRequestException("Multiple PRIMARY KEYs specifed (exactly one required)");
-  if (stmt.hasCounters && properties.getDefaultTimeToLive() > 0)   throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
+  if (stmt.hasCounters && properties.properties.getDefaultTimeToLive() > 0)   throw new InvalidRequestException("Cannot set default_time_to_live on a table with counters");
   List<ColumnIdentifier> kAliases=keyAliases.get(0);
   stmt.keyTypes=new ArrayList<AbstractType<?>>(kAliases.size());
   for (  ColumnIdentifier alias : kAliases) {
@@ -34,6 +34,7 @@
   if (stmt.hasCounters) {
     for (    AbstractType<?> type : stmt.columns.values())     if (!type.isCounter())     throw new InvalidRequestException("Cannot mix counter and non counter columns in the same table");
   }
+  boolean useCompactStorage=properties.useCompactStorage;
   stmt.isDense=useCompactStorage && !stmt.clusteringTypes.isEmpty();
   stmt.isCompound=!(useCompactStorage && stmt.clusteringTypes.size() <= 1);
   if (useCompactStorage) {
@@ -54,13 +55,13 @@
       if (columnAliases.isEmpty())       throw new InvalidRequestException("Static columns are only useful (and thus allowed) if the table has at least one clustering column");
     }
   }
-  if (!definedOrdering.isEmpty()) {
-    if (definedOrdering.size() > columnAliases.size())     throw new InvalidRequestException("Only clustering key columns can be defined in CLUSTERING ORDER directive");
+  if (!properties.definedOrdering.isEmpty()) {
+    if (properties.definedOrdering.size() > columnAliases.size())     throw new InvalidRequestException("Only clustering key columns can be defined in CLUSTERING ORDER directive");
     int i=0;
-    for (    ColumnIdentifier id : definedOrdering.keySet()) {
+    for (    ColumnIdentifier id : properties.definedOrdering.keySet()) {
       ColumnIdentifier c=columnAliases.get(i);
       if (!id.equals(c)) {
-        if (definedOrdering.containsKey(c))         throw new InvalidRequestException(String.format("The order of columns in the CLUSTERING ORDER directive must be the one of the clustering key (%s must appear before %s)",c,id));
+        if (properties.definedOrdering.containsKey(c))         throw new InvalidRequestException(String.format("The order of columns in the CLUSTERING ORDER directive must be the one of the clustering key (%s must appear before %s)",c,id));
  else         throw new InvalidRequestException(String.format("Missing CLUSTERING ORDER for column %s",c));
       }
       ++i;

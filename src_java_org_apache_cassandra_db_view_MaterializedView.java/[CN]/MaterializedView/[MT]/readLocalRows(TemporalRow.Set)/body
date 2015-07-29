@@ -1,0 +1,16 @@
+{
+  SinglePartitionSliceBuilder builder=new SinglePartitionSliceBuilder(baseCfs,rowSet.dk);
+  for (  TemporalRow temporalRow : rowSet)   builder.addSlice(temporalRow.baseSlice());
+  QueryPager pager=builder.build().getPager(null);
+  while (!pager.isExhausted()) {
+    try (ReadOrderGroup orderGroup=pager.startOrderGroup();PartitionIterator iter=pager.fetchPageInternal(128,orderGroup)){
+      while (iter.hasNext()) {
+        try (RowIterator rows=iter.next()){
+          while (rows.hasNext()) {
+            rowSet.addRow(rows.next(),false);
+          }
+        }
+       }
+    }
+   }
+}

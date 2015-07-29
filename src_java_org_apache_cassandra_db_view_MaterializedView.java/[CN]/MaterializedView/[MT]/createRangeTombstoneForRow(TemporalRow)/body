@@ -1,0 +1,11 @@
+{
+  if (viewHasAllPrimaryKeys)   return null;
+  boolean hasUpdate=false;
+  List<ColumnDefinition> primaryKeyDefs=this.columns.primaryKeyDefs;
+  for (  ColumnDefinition viewPartitionKeys : primaryKeyDefs) {
+    if (!viewPartitionKeys.isPrimaryKeyColumn() && temporalRow.clusteringValue(viewPartitionKeys,TemporalRow.oldValueIfUpdated) != null)     hasUpdate=true;
+  }
+  if (!hasUpdate)   return null;
+  TemporalRow.Resolver resolver=TemporalRow.earliest;
+  return createTombstone(temporalRow,viewPartitionKey(temporalRow,resolver),new DeletionTime(temporalRow.viewClusteringTimestamp(),temporalRow.nowInSec),resolver,temporalRow.nowInSec);
+}

@@ -1,0 +1,10 @@
+{
+  Keyspace keyspace=Keyspace.open(mutation.getKeyspaceName());
+  AbstractReplicationStrategy rs=keyspace.getReplicationStrategy();
+  String keyspaceName=mutation.getKeyspaceName();
+  Token tk=mutation.key().getToken();
+  Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,keyspaceName);
+  AbstractWriteResponseHandler<IMutation> writeHandler=rs.getWriteResponseHandler(naturalEndpoints,pendingEndpoints,consistency_level,null,writeType);
+  BatchlogResponseHandler<IMutation> batchHandler=new MVWriteMetricsWrapped(writeHandler,batchConsistencyLevel.blockFor(keyspace),cleanup);
+  return new WriteResponseHandlerWrapper(batchHandler,mutation);
+}

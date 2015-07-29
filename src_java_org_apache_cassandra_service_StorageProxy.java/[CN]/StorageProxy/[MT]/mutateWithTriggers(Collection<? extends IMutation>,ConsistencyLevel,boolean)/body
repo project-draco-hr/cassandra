@@ -1,6 +1,9 @@
 {
   Collection<Mutation> augmented=TriggerExecutor.instance.execute(mutations);
-  if (augmented != null)   mutateAtomically(augmented,consistencyLevel);
- else   if (mutateAtomically)   mutateAtomically((Collection<Mutation>)mutations,consistencyLevel);
- else   mutate(mutations,consistencyLevel);
+  boolean updatesView=MaterializedViewManager.updatesAffectView(mutations,true);
+  if (augmented != null)   mutateAtomically(augmented,consistencyLevel,updatesView);
+ else {
+    if (mutateAtomically || updatesView)     mutateAtomically((Collection<Mutation>)mutations,consistencyLevel,updatesView);
+ else     mutate(mutations,consistencyLevel);
+  }
 }

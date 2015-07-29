@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (" + "k int, " + "decimalval decimal, "+ "asciival ascii, "+ "PRIMARY KEY (k))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE k IS NOT NULL AND decimalval IS NOT NULL PRIMARY KEY (decimalval, k)");
+  updateMV("INSERT INTO %s (k, asciival) VALUES (?, ?)",0,"ascii text");
+  updateMV("INSERT INTO %s (k, decimalval) VALUES (?, fromJson(?))",0,"123123");
+  assertRows(execute("SELECT k, decimalval FROM %s WHERE k = ?",0),row(0,new BigDecimal("123123")));
+  assertRows(execute("SELECT k, asciival from mv WHERE decimalval = fromJson(?)","123123.123123"));
+  assertRows(execute("SELECT k, asciival from mv WHERE decimalval = fromJson(?)","123123"),row(0,"ascii text"));
+  updateMV("INSERT INTO %s (k, decimalval) VALUES (?, fromJson(?))",0,"\"123123.123123\"");
+  assertRows(execute("SELECT k, decimalval, asciival FROM %s WHERE k = ?",0),row(0,new BigDecimal("123123.123123"),"ascii text"));
+  assertRows(execute("SELECT k, asciival from mv WHERE decimalval = fromJson(?)","\"123123.123123\""),row(0,"ascii text"));
+}

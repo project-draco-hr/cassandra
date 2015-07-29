@@ -9,8 +9,13 @@
  else {
     replyTo=InetAddress.getByAddress(from);
   }
-  message.payload.apply();
-  WriteResponse response=new WriteResponse();
-  Tracing.trace("Enqueuing response to {}",replyTo);
-  MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
+  try {
+    message.payload.apply();
+    WriteResponse response=new WriteResponse();
+    Tracing.trace("Enqueuing response to {}",replyTo);
+    MessagingService.instance().sendReply(response.createMessage(),id,replyTo);
+  }
+ catch (  WriteTimeoutException wto) {
+    Tracing.trace("Payload application resulted in WriteTimeout, not replying");
+  }
 }

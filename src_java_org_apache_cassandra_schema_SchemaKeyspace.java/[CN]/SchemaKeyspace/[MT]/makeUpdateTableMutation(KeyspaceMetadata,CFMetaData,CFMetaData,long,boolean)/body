@@ -15,5 +15,11 @@
   MapDifference<String,TriggerMetadata> triggerDiff=triggersDiff(oldTable.getTriggers(),newTable.getTriggers());
   for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnLeft().values())   dropTriggerFromSchemaMutation(oldTable,trigger,timestamp,mutation);
   for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnRight().values())   addTriggerToSchemaMutation(newTable,trigger,timestamp,mutation);
+  MapDifference<String,MaterializedViewDefinition> materializedViewDiff=materializedViewsDiff(oldTable.getMaterializedViews(),newTable.getMaterializedViews());
+  for (  MaterializedViewDefinition materializedView : materializedViewDiff.entriesOnlyOnLeft().values())   dropMaterializedViewFromSchemaMutation(oldTable,materializedView,timestamp,mutation);
+  for (  MaterializedViewDefinition materializedView : materializedViewDiff.entriesOnlyOnRight().values())   addMaterializedViewToSchemaMutation(oldTable,materializedView,timestamp,mutation);
+  for (  MapDifference.ValueDifference<MaterializedViewDefinition> diff : materializedViewDiff.entriesDiffering().values()) {
+    addUpdatedMaterializedViewDefinitionToSchemaMutation(oldTable,diff.rightValue(),timestamp,mutation);
+  }
   return mutation;
 }

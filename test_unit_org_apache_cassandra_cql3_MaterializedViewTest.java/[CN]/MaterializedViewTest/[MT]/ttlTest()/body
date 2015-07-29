@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (" + "a int," + "b int,"+ "c int,"+ "d int,"+ "PRIMARY KEY (a, b))");
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE c IS NOT NULL AND a IS NOT NULL AND b IS NOT NULL PRIMARY KEY (c, a, b)");
+  updateMV("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?) USING TTL 5",1,1,1,1);
+  Thread.sleep(TimeUnit.SECONDS.toMillis(3));
+  updateMV("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",1,1,2);
+  Thread.sleep(TimeUnit.SECONDS.toMillis(3));
+  List<Row> results=executeNet(protocolVersion,"SELECT d FROM mv WHERE c = 2 AND a = 1 AND b = 1").all();
+  Assert.assertEquals(1,results.size());
+  Assert.assertTrue("There should be a null result given back due to ttl expiry",results.get(0).isNull(0));
+}
