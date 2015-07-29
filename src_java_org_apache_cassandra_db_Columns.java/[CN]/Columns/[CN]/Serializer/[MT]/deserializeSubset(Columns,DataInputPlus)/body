@@ -1,0 +1,21 @@
+{
+  long encoded=in.readUnsignedVInt();
+  if (encoded == -1L) {
+    return deserializeLargeSubset(in,superset);
+  }
+ else   if (encoded == 0L) {
+    return superset;
+  }
+ else {
+    BTree.Builder<ColumnDefinition> builder=BTree.builder(Comparator.naturalOrder());
+    int firstComplexIdx=0;
+    for (    ColumnDefinition column : superset) {
+      if ((encoded & 1) == 0) {
+        builder.add(column);
+        if (column.isSimple())         ++firstComplexIdx;
+      }
+      encoded>>>=1;
+    }
+    return new Columns(builder.build(),firstComplexIdx);
+  }
+}
