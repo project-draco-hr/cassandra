@@ -1,2 +1,50 @@
 {
+  IPartitioner oldPartitioner=DatabaseDescriptor.getPartitioner();
+  DatabaseDescriptor.setPartitioner(new ByteOrderedPartitioner());
+  File tempDir=File.createTempFile("ScrubTest.testScrubOutOfOrder","").getParentFile();
+  File tempDataDir=new File(tempDir,String.join(File.separator,KEYSPACE,CF3));
+  tempDataDir.mkdirs();
+  try {
+    CompactionManager.instance.disableAutoCompaction();
+    Keyspace keyspace=Keyspace.open(KEYSPACE);
+    String columnFamily=CF3;
+    ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(columnFamily);
+    cfs.clearUnsafe();
+    List<String> keys=Arrays.asList("t","a","b","z","c","y","d");
+    String filename=cfs.getSSTablePath(tempDataDir);
+    Descriptor desc=Descriptor.fromFilename(filename);
+    try (SSTableTxnWriter writer=SSTableTxnWriter.create(desc,keys.size(),0L,0,SerializationHeader.make(cfs.metadata,Collections.emptyList()))){
+      for (      String k : keys) {
+        PartitionUpdate update=UpdateBuilder.create(cfs.metadata,Util.dk(k)).newRow("someName").add("val","someValue").build();
+        writer.append(update.unfilteredIterator());
+      }
+      writer.finish(false);
+    }
+     try {
+      SSTableReader.open(desc,cfs.metadata);
+      fail("SSTR validation should have caught the out-of-order rows");
+    }
+ catch (    IllegalStateException ise) {
+    }
+    Set<Component> components=new HashSet<>();
+    if (new File(desc.filenameFor(Component.COMPRESSION_INFO)).exists())     components.add(Component.COMPRESSION_INFO);
+    components.add(Component.DATA);
+    components.add(Component.PRIMARY_INDEX);
+    components.add(Component.FILTER);
+    components.add(Component.STATS);
+    components.add(Component.SUMMARY);
+    components.add(Component.TOC);
+    SSTableReader sstable=SSTableReader.openNoValidation(desc,components,cfs);
+    if (sstable.last.compareTo(sstable.first) < 0)     sstable.last=sstable.first;
+    try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable);Scrubber scrubber=new Scrubber(cfs,txn,false,true,true)){
+      scrubber.scrub();
+    }
+     cfs.loadNewSSTables();
+    assertOrderedAll(cfs,7);
+    sstable.selfRef().release();
+  }
+  finally {
+    FileUtils.deleteRecursive(tempDataDir);
+    DatabaseDescriptor.setPartitioner(oldPartitioner);
+  }
 }
