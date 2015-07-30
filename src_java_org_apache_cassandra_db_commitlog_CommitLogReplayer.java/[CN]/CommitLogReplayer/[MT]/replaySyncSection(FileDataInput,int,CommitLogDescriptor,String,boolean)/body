@@ -1,0 +1,44 @@
+{
+  while (reader.getFilePointer() < end && !reader.isEOF()) {
+    long mutationStart=reader.getFilePointer();
+    if (logger.isDebugEnabled())     logger.trace("Reading mutation at {}",mutationStart);
+    long claimedCRC32;
+    int serializedSize;
+    try {
+      serializedSize=reader.readInt();
+      if (serializedSize == LEGACY_END_OF_SEGMENT_MARKER) {
+        logger.debug("Encountered end of segment marker at {}",reader.getFilePointer());
+        return false;
+      }
+      if (serializedSize < 10) {
+        handleReplayError(tolerateErrors,"Invalid mutation size %d at %d in %s",serializedSize,mutationStart,errorContext);
+        return false;
+      }
+      long claimedSizeChecksum;
+      if (desc.version < CommitLogDescriptor.VERSION_21)       claimedSizeChecksum=reader.readLong();
+ else       claimedSizeChecksum=reader.readInt() & 0xffffffffL;
+      checksum.reset();
+      if (desc.version < CommitLogDescriptor.VERSION_20)       checksum.update(serializedSize);
+ else       updateChecksumInt(checksum,serializedSize);
+      if (checksum.getValue() != claimedSizeChecksum) {
+        handleReplayError(tolerateErrors,"Mutation size checksum failure at %d in %s",mutationStart,errorContext);
+        return false;
+      }
+      if (serializedSize > buffer.length)       buffer=new byte[(int)(1.2 * serializedSize)];
+      reader.readFully(buffer,0,serializedSize);
+      if (desc.version < CommitLogDescriptor.VERSION_21)       claimedCRC32=reader.readLong();
+ else       claimedCRC32=reader.readInt() & 0xffffffffL;
+    }
+ catch (    EOFException eof) {
+      handleReplayError(tolerateErrors,"Unexpected end of segment",mutationStart,errorContext);
+      return false;
+    }
+    checksum.update(buffer,0,serializedSize);
+    if (claimedCRC32 != checksum.getValue()) {
+      handleReplayError(tolerateErrors,"Mutation checksum failure at %d in %s",mutationStart,errorContext);
+      continue;
+    }
+    replayMutation(buffer,serializedSize,reader.getFilePointer(),desc);
+  }
+  return true;
+}
