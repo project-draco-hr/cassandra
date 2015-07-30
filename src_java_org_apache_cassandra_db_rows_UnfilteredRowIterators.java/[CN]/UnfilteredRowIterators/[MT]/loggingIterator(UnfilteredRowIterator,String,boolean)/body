@@ -1,19 +1,19 @@
 {
   CFMetaData metadata=iterator.metadata();
   logger.info("[{}] Logging iterator on {}.{}, partition key={}, reversed={}, deletion={}",id,metadata.ksName,metadata.cfName,metadata.getKeyValidator().getString(iterator.partitionKey().getKey()),iterator.isReverseOrder(),iterator.partitionLevelDeletion().markedForDeleteAt());
-  return new AlteringUnfilteredRowIterator(iterator){
-    @Override protected Row computeNextStatic(    Row row){
-      if (!row.isEmpty())       logger.info("[{}] {}",id,row.toString(metadata(),fullDetails));
+class Logger extends Transformation {
+    @Override public Row applyToStatic(    Row row){
+      if (!row.isEmpty())       logger.info("[{}] {}",id,row.toString(metadata,fullDetails));
       return row;
     }
-    @Override protected Row computeNext(    Row row){
-      logger.info("[{}] {}",id,row.toString(metadata(),fullDetails));
+    @Override public Row applyToRow(    Row row){
+      logger.info("[{}] {}",id,row.toString(metadata,fullDetails));
       return row;
     }
-    @Override protected RangeTombstoneMarker computeNext(    RangeTombstoneMarker marker){
-      logger.info("[{}] {}",id,marker.toString(metadata()));
+    @Override public RangeTombstoneMarker applyToMarker(    RangeTombstoneMarker marker){
+      logger.info("[{}] {}",id,marker.toString(metadata));
       return marker;
     }
   }
-;
+  return Transformation.apply(iterator,new Logger());
 }

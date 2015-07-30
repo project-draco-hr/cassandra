@@ -1,0 +1,17 @@
+{
+  updateProgress();
+  boolean reversed=isReverseOrder;
+  if (marker.isBoundary()) {
+    RangeTombstoneBoundaryMarker boundary=(RangeTombstoneBoundaryMarker)marker;
+    boolean shouldPurgeClose=purger.shouldPurge(boundary.closeDeletionTime(reversed));
+    boolean shouldPurgeOpen=purger.shouldPurge(boundary.openDeletionTime(reversed));
+    if (shouldPurgeClose) {
+      if (shouldPurgeOpen)       return null;
+      return boundary.createCorrespondingOpenMarker(reversed);
+    }
+    return shouldPurgeOpen ? boundary.createCorrespondingCloseMarker(reversed) : marker;
+  }
+ else {
+    return purger.shouldPurge(((RangeTombstoneBoundMarker)marker).deletionTime()) ? null : marker;
+  }
+}

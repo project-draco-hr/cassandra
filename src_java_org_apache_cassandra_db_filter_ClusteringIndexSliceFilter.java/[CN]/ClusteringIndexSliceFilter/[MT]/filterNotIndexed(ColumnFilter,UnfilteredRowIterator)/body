@@ -1,15 +1,15 @@
 {
   final Slices.InOrderTester tester=slices.inOrderTester(reversed);
-  return new AlteringUnfilteredRowIterator(iterator){
-    @Override public boolean hasNext(){
-      return !tester.isDone() && super.hasNext();
+class FilterNotIndexed extends Transformation {
+    public boolean isDoneForPartition(){
+      return tester.isDone();
     }
-    @Override public Row computeNextStatic(    Row row){
-      return columnFilter.fetchedColumns().statics.isEmpty() ? null : row.filter(columnFilter,iterator.metadata());
-    }
-    @Override public Row computeNext(    Row row){
+    @Override public Row applyToRow(    Row row){
       return tester.includes(row.clustering()) ? row.filter(columnFilter,iterator.metadata()) : null;
     }
+    @Override public Row applyToStatic(    Row row){
+      return columnFilter.fetchedColumns().statics.isEmpty() ? Rows.EMPTY_STATIC_ROW : row.filter(columnFilter,iterator.metadata());
+    }
   }
-;
+  return Transformation.apply(iterator,new FilterNotIndexed());
 }

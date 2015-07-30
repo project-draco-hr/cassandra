@@ -3,9 +3,10 @@
   final SinglePartitionPager pager=new SinglePartitionPager(command,null,Server.CURRENT_VERSION);
   int count=0;
   while (!pager.isExhausted()) {
-    try (CountingPartitionIterator iter=new CountingPartitionIterator(pager.fetchPage(pageSize,consistencyLevel,state),limits,nowInSec)){
-      PartitionIterators.consume(iter);
-      count+=iter.counter().counted();
+    try (PartitionIterator iter=pager.fetchPage(pageSize,consistencyLevel,state)){
+      DataLimits.Counter counter=limits.newCounter(nowInSec,true);
+      PartitionIterators.consume(counter.applyTo(iter));
+      count+=counter.counted();
     }
    }
   return count;

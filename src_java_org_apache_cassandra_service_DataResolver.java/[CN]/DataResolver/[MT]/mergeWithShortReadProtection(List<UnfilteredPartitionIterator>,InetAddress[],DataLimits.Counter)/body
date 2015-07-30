@@ -1,7 +1,8 @@
 {
   if (results.size() == 1)   return UnfilteredPartitionIterators.filter(results.get(0),command.nowInSec());
   UnfilteredPartitionIterators.MergeListener listener=new RepairMergeListener(sources);
-  if (command.limits().isUnlimited())   return UnfilteredPartitionIterators.mergeAndFilter(results,command.nowInSec(),listener);
-  for (int i=0; i < results.size(); i++)   results.set(i,new ShortReadProtectedIterator(sources[i],results.get(i),resultCounter));
+  if (!command.limits().isUnlimited()) {
+    for (int i=0; i < results.size(); i++)     results.set(i,Transformation.apply(results.get(i),new ShortReadProtection(sources[i],resultCounter)));
+  }
   return UnfilteredPartitionIterators.mergeAndFilter(results,command.nowInSec(),listener);
 }
