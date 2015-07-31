@@ -5,6 +5,7 @@
   int nowInSec=FBUtilities.nowInSeconds();
   for (  Map.Entry<ByteBuffer,Map<String,List<Mutation>>> mutationEntry : mutation_map.entrySet()) {
     ByteBuffer key=mutationEntry.getKey();
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
     org.apache.cassandra.db.Mutation standardMutation=null;
     org.apache.cassandra.db.Mutation counterMutation=null;
     Map<String,List<Mutation>> columnFamilyToMutations=mutationEntry.getValue();
@@ -28,7 +29,6 @@
         }
       }
       sortAndMerge(metadata,cells,nowInSec);
-      DecoratedKey dk=metadata.decorateKey(key);
       PartitionUpdate update=PartitionUpdate.fromIterator(LegacyLayout.toUnfilteredRowIterator(metadata,dk,delInfo,cells.iterator()));
       org.apache.cassandra.db.Mutation mutation;
       if (metadata.isCounter()) {

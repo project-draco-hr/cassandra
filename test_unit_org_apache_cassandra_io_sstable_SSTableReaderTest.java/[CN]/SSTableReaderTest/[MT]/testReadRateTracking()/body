@@ -1,14 +1,13 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore store=keyspace.getColumnFamilyStore("Standard1");
-  partitioner=store.getPartitioner();
   for (int j=0; j < 10; j++) {
     new RowUpdateBuilder(store.metadata,j,String.valueOf(j)).clustering("0").add("val",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
   }
   store.forceBlockingFlush();
   SSTableReader sstable=store.getLiveSSTables().iterator().next();
   assertEquals(0,sstable.getReadMeter().count());
-  DecoratedKey key=sstable.decorateKey(ByteBufferUtil.bytes("4"));
+  DecoratedKey key=sstable.partitioner.decorateKey(ByteBufferUtil.bytes("4"));
   Util.getAll(Util.cmd(store,key).build());
   assertEquals(1,sstable.getReadMeter().count());
   Util.getAll(Util.cmd(store,key).includeRow("0").build());

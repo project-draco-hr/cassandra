@@ -4,8 +4,9 @@
   if (username != null && password != null)   builder=builder.withCredentials(username,password);
   try (Cluster cluster=builder.build();Session session=cluster.connect()){
     Metadata metadata=cluster.getMetadata();
+    setPartitioner(metadata.getPartitioner());
     Set<TokenRange> tokenRanges=metadata.getTokenRanges();
-    TokenFactory tokenFactory=FBUtilities.newPartitioner(metadata.getPartitioner()).getTokenFactory();
+    Token.TokenFactory tokenFactory=getPartitioner().getTokenFactory();
     for (    TokenRange tokenRange : tokenRanges) {
       Set<Host> endpoints=metadata.getReplicas(keyspace,tokenRange);
       Range<Token> range=new Range<>(tokenFactory.fromString(tokenRange.getStart().getValue().toString()),tokenFactory.fromString(tokenRange.getEnd().getValue().toString()));

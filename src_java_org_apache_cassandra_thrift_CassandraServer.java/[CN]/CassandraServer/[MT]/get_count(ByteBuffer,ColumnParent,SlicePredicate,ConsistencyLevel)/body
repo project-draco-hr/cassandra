@@ -27,18 +27,17 @@
     SliceRange sliceRange=predicate.slice_range == null ? new SliceRange(ByteBufferUtil.EMPTY_BYTE_BUFFER,ByteBufferUtil.EMPTY_BYTE_BUFFER,false,Integer.MAX_VALUE) : predicate.slice_range;
     ColumnFilter columnFilter;
     ClusteringIndexFilter filter;
-    CFMetaData metadata=cfs.metadata;
-    if (metadata.isSuper() && !column_parent.isSetSuper_column()) {
-      columnFilter=ColumnFilter.all(metadata);
-      filter=new ClusteringIndexSliceFilter(makeSlices(metadata,sliceRange),sliceRange.reversed);
+    if (cfs.metadata.isSuper() && !column_parent.isSetSuper_column()) {
+      columnFilter=ColumnFilter.all(cfs.metadata);
+      filter=new ClusteringIndexSliceFilter(makeSlices(cfs.metadata,sliceRange),sliceRange.reversed);
     }
  else {
-      columnFilter=makeColumnFilter(metadata,column_parent,sliceRange);
-      filter=toInternalFilter(metadata,column_parent,sliceRange);
+      columnFilter=makeColumnFilter(cfs.metadata,column_parent,sliceRange);
+      filter=toInternalFilter(cfs.metadata,column_parent,sliceRange);
     }
-    DataLimits limits=getLimits(1,metadata.isSuper() && !column_parent.isSetSuper_column(),predicate);
-    DecoratedKey dk=metadata.decorateKey(key);
-    return QueryPagers.countPaged(metadata,dk,columnFilter,filter,limits,ThriftConversion.fromThrift(consistency_level),cState,pageSize,nowInSec,true);
+    DataLimits limits=getLimits(1,cfs.metadata.isSuper() && !column_parent.isSetSuper_column(),predicate);
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
+    return QueryPagers.countPaged(cfs.metadata,dk,columnFilter,filter,limits,ThriftConversion.fromThrift(consistency_level),cState,pageSize,nowInSec,true);
   }
  catch (  IllegalArgumentException e) {
     throw new InvalidRequestException(e.getMessage());

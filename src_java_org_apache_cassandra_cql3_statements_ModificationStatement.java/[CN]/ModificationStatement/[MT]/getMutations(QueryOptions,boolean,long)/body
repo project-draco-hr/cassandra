@@ -5,7 +5,8 @@
   Collection<IMutation> mutations=new ArrayList<IMutation>(keys.size());
   for (  ByteBuffer key : keys) {
     ThriftValidation.validateKey(cfm,key);
-    PartitionUpdate upd=new PartitionUpdate(cfm,key,updatedColumns(),1);
+    DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
+    PartitionUpdate upd=new PartitionUpdate(cfm,dk,updatedColumns(),1);
     addUpdateForKey(upd,clustering,params);
     Mutation mut=new Mutation(upd);
     mutations.add(isCounter() ? new CounterMutation(mut,options.getConsistency()) : mut);

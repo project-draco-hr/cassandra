@@ -3,7 +3,7 @@
   final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),keyspace,columnFamily,range);
   final SimpleCondition lock=new SimpleCondition();
   MessagingService.instance().addMessageSink(new IMessageSink(){
-    public boolean allowOutgoingMessage(    MessageOut message,    int id,    InetAddress to){
+    @SuppressWarnings("unchecked") public boolean allowOutgoingMessage(    MessageOut message,    int id,    InetAddress to){
       try {
         if (message.verb == MessagingService.Verb.REPAIR_MESSAGE) {
           RepairMessage m=(RepairMessage)message.payload;
@@ -26,7 +26,7 @@
   InetAddress remote=InetAddress.getByName("127.0.0.2");
   ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(columnFamily);
   Validator validator=new Validator(desc,remote,0);
-  MerkleTree tree=new MerkleTree(partitioner,validator.desc.range,MerkleTree.RECOMMENDED_DEPTH,(int)Math.pow(2,15));
+  MerkleTree tree=new MerkleTree(cfs.partitioner,validator.desc.range,MerkleTree.RECOMMENDED_DEPTH,(int)Math.pow(2,15));
   validator.prepare(cfs,tree);
   assertTrue(tree.size() > 1);
   Token mid=partitioner.midpoint(range.left,range.right);

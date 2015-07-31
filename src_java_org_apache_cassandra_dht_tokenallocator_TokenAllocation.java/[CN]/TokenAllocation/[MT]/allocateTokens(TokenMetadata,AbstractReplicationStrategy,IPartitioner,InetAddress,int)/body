@@ -1,0 +1,16 @@
+{
+  StrategyAdapter strategy=getStrategy(tokenMetadata,rs,endpoint);
+  Collection<Token> tokens=create(tokenMetadata,strategy,partitioner).addUnit(endpoint,numTokens);
+  tokens=adjustForCrossDatacenterClashes(tokenMetadata,strategy,tokens);
+  if (logger.isWarnEnabled()) {
+    logger.warn("Selected tokens {}",tokens);
+    SummaryStatistics os=replicatedOwnershipStats(tokenMetadata,rs,endpoint);
+    TokenMetadata tokenMetadataCopy=tokenMetadata.cloneOnlyTokenMap();
+    tokenMetadataCopy.updateNormalTokens(tokens,endpoint);
+    SummaryStatistics ns=replicatedOwnershipStats(tokenMetadataCopy,rs,endpoint);
+    logger.warn("Replicated node load in datacentre before allocation " + statToString(os));
+    logger.warn("Replicated node load in datacentre after allocation " + statToString(ns));
+    if (ns.getStandardDeviation() > os.getStandardDeviation())     logger.warn("Unexpected growth in standard deviation after allocation.");
+  }
+  return tokens;
+}
