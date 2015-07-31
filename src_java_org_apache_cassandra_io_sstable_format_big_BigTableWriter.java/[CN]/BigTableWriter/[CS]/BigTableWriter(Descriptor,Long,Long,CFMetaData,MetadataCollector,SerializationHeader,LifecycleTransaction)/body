@@ -1,0 +1,15 @@
+{
+  super(descriptor,keyCount,repairedAt,metadata,metadataCollector,header);
+  txn.trackNew(this);
+  if (compression) {
+    dataFile=SequentialWriter.open(getFilename(),descriptor.filenameFor(Component.COMPRESSION_INFO),metadata.compressionParameters(),metadataCollector);
+    dbuilder=SegmentedFile.getCompressedBuilder((CompressedSequentialWriter)dataFile);
+  }
+ else {
+    dataFile=SequentialWriter.open(new File(getFilename()),new File(descriptor.filenameFor(Component.CRC)));
+    dbuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode(),false);
+  }
+  iwriter=new IndexWriter(keyCount,dataFile);
+  iwriter.indexFile.deleteFile(false);
+  dataFile.deleteFile(false);
+}

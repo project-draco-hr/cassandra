@@ -19,11 +19,10 @@
     ThriftValidation.validateColumnNames(metadata,column_parent,Arrays.asList(column.name));
     try {
       LegacyLayout.LegacyCellName name=LegacyLayout.decodeCellName(metadata,column_parent.super_column,column.name);
-      DecoratedKey dk=StorageService.getPartitioner().decorateKey(key);
       ByteBuffer value=CounterContext.instance().createLocal(column.value);
       CellPath path=name.collectionElement == null ? null : CellPath.create(name.collectionElement);
       Cell cell=BufferCell.live(metadata,name.column,FBUtilities.timestampMicros(),value,path);
-      PartitionUpdate update=PartitionUpdate.singleRowUpdate(metadata,dk,BTreeBackedRow.singleCellRow(name.clustering,cell));
+      PartitionUpdate update=PartitionUpdate.singleRowUpdate(metadata,key,BTreeBackedRow.singleCellRow(name.clustering,cell));
       org.apache.cassandra.db.Mutation mutation=new org.apache.cassandra.db.Mutation(update);
       doInsert(consistency_level,Arrays.asList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))));
     }
