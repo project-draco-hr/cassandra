@@ -1,0 +1,19 @@
+{
+  logger.debug("Started convertOldBatchEntries");
+  String query=String.format("SELECT id, data, written_at, version FROM %s.%s",SystemKeyspace.NAME,SystemKeyspace.LEGACY_BATCHLOG);
+  UntypedResultSet batches=executeInternalWithPaging(query,DEFAULT_PAGE_SIZE);
+  int convertedBatches=0;
+  for (  UntypedResultSet.Row row : batches) {
+    UUID id=row.getUUID("id");
+    long timestamp=row.getLong("written_at");
+    int version=row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
+    logger.debug("Converting mutation at " + timestamp);
+    UUID newId=id;
+    if (id.version() != 1 || timestamp != UUIDGen.unixTimestamp(id))     newId=UUIDGen.getTimeUUID(timestamp,convertedBatches);
+    ++convertedBatches;
+    Mutation addRow=new RowUpdateBuilder(SystemKeyspace.Batches,FBUtilities.timestampMicros(),newId).clustering().add("data",row.getBytes("data")).add("version",version).build();
+    addRow.apply();
+  }
+  if (convertedBatches > 0)   Keyspace.openAndGetStore(SystemKeyspace.LegacyBatchlog).truncateBlocking();
+  logger.debug("Finished convertOldBatchEntries");
+}

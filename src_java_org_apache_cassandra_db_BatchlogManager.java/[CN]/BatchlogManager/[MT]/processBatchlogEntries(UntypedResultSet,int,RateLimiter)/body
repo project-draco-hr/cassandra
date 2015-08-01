@@ -1,0 +1,27 @@
+{
+  int positionInPage=0;
+  ArrayList<Batch> unfinishedBatches=new ArrayList<>(pageSize);
+  for (  UntypedResultSet.Row row : batches) {
+    UUID id=row.getUUID("id");
+    int version=row.getInt("version");
+    Batch batch=new Batch(id,row.getBytes("data"),version);
+    try {
+      if (batch.replay(rateLimiter) > 0) {
+        unfinishedBatches.add(batch);
+      }
+ else {
+        deleteBatch(id);
+        ++totalBatchesReplayed;
+      }
+    }
+ catch (    IOException e) {
+      logger.warn("Skipped batch replay of {} due to {}",id,e);
+      deleteBatch(id);
+    }
+    if (++positionInPage == pageSize) {
+      finishAndClearBatches(unfinishedBatches);
+      positionInPage=0;
+    }
+  }
+  finishAndClearBatches(unfinishedBatches);
+}

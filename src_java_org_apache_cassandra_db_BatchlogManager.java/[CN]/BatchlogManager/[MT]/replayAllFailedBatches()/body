@@ -2,12 +2,11 @@
   logger.debug("Started replayAllFailedBatches");
   int throttleInKB=DatabaseDescriptor.getBatchlogReplayThrottleInKB() / StorageService.instance.getTokenMetadata().getAllEndpoints().size();
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
-  UntypedResultSet page=executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s LIMIT %d",SystemKeyspace.NAME,SystemKeyspace.BATCHLOG,PAGE_SIZE));
-  while (!page.isEmpty()) {
-    UUID id=processBatchlogPage(page,rateLimiter);
-    if (page.size() < PAGE_SIZE)     break;
-    page=executeInternal(String.format("SELECT id, data, written_at, version FROM %s.%s WHERE token(id) > token(?) LIMIT %d",SystemKeyspace.NAME,SystemKeyspace.BATCHLOG,PAGE_SIZE),id);
-  }
-  cleanup();
+  UUID limitUuid=UUIDGen.maxTimeUUID(System.currentTimeMillis() - getBatchlogTimeout());
+  int pageSize=calculatePageSize();
+  String query=String.format("SELECT id, data, version FROM %s.%s WHERE token(id) > token(?) AND token(id) <= token(?)",SystemKeyspace.NAME,SystemKeyspace.BATCHES);
+  UntypedResultSet batches=executeInternalWithPaging(query,pageSize,lastReplayedUuid,limitUuid);
+  processBatchlogEntries(batches,pageSize,rateLimiter);
+  lastReplayedUuid=limitUuid;
   logger.debug("Finished replayAllFailedBatches");
 }
