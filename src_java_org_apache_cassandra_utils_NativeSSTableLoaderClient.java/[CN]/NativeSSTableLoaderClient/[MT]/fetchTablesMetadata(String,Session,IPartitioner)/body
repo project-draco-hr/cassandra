@@ -4,7 +4,7 @@
   for (  Row row : session.execute(query,keyspace)) {
     String name=row.getString("table_name");
     UUID id=row.getUUID("id");
-    Set<CFMetaData.Flag> flags=row.isNull("flags") ? Collections.emptySet() : SchemaKeyspace.flagsFromStrings(row.getSet("flags",String.class));
+    Set<CFMetaData.Flag> flags=row.isNull("flags") ? Collections.emptySet() : CFMetaData.flagsFromStrings(row.getSet("flags",String.class));
     boolean isSuper=flags.contains(CFMetaData.Flag.SUPER);
     boolean isCounter=flags.contains(CFMetaData.Flag.COUNTER);
     boolean isDense=flags.contains(CFMetaData.Flag.DENSE);
@@ -13,7 +13,7 @@
     String columnsQuery=String.format("SELECT * FROM %s.%s WHERE keyspace_name = ? AND table_name = ?",SchemaKeyspace.NAME,SchemaKeyspace.COLUMNS);
     List<ColumnDefinition> defs=new ArrayList<>();
     for (    Row colRow : session.execute(columnsQuery,keyspace,name))     defs.add(createDefinitionFromRow(colRow,keyspace,name));
-    tables.put(name,CFMetaData.create(keyspace,name,id,isDense,isCompound,isSuper,isCounter,isMaterializedView,defs,DatabaseDescriptor.getPartitioner()));
+    tables.put(name,CFMetaData.create(keyspace,name,id,isDense,isCompound,isSuper,isCounter,isMaterializedView,defs,partitioner));
   }
   return tables;
 }
