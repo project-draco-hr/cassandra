@@ -1,0 +1,14 @@
+{
+  if (!cfs.getPartitioner().splitter().isPresent())   return null;
+  Collection<Range<Token>> lr;
+  if (StorageService.instance.isBootstrapMode()) {
+    lr=StorageService.instance.getTokenMetadata().getPendingRanges(cfs.keyspace.getName(),FBUtilities.getBroadcastAddress());
+  }
+ else {
+    TokenMetadata tmd=StorageService.instance.getTokenMetadata().cloneAfterAllSettled();
+    lr=cfs.keyspace.getReplicationStrategy().getAddressRanges(tmd).get(FBUtilities.getBroadcastAddress());
+  }
+  if (lr == null || lr.isEmpty())   return null;
+  List<Range<Token>> localRanges=Range.sort(lr);
+  return getDiskBoundaries(localRanges,cfs.getPartitioner(),directories);
+}

@@ -17,8 +17,53 @@
   }
   metric.memtableSwitchCount.inc();
   for (  Memtable memtable : memtables) {
-    MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
+    List<Future<SSTableMultiWriter>> futures=new ArrayList<>();
+    long totalBytesOnDisk=0;
+    long maxBytesOnDisk=0;
+    long minBytesOnDisk=Long.MAX_VALUE;
+    List<SSTableReader> sstables=new ArrayList<>();
+    try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.FLUSH)){
+      List<Memtable.FlushRunnable> flushRunnables=memtable.flushRunnables(txn);
+      for (int i=0; i < flushRunnables.size(); i++)       futures.add(perDiskflushExecutors[i].submit(flushRunnables.get(i)));
+      List<SSTableMultiWriter> flushResults=Lists.newArrayList(FBUtilities.waitOnFutures(futures));
+      try {
+        Iterator<SSTableMultiWriter> writerIterator=flushResults.iterator();
+        while (writerIterator.hasNext()) {
+          SSTableMultiWriter writer=writerIterator.next();
+          if (writer.getFilePointer() > 0) {
+            writer.setOpenResult(true).prepareToCommit();
+          }
+ else {
+            maybeFail(writer.abort(null));
+            writerIterator.remove();
+          }
+        }
+      }
+ catch (      Throwable t) {
+        for (        SSTableMultiWriter writer : flushResults)         t=writer.abort(t);
+        t=txn.abort(t);
+        Throwables.propagate(t);
+      }
+      txn.prepareToCommit();
+      Throwable accumulate=null;
+      for (      SSTableMultiWriter writer : flushResults)       accumulate=writer.commit(accumulate);
+      maybeFail(txn.commit(accumulate));
+      for (      SSTableMultiWriter writer : flushResults) {
+        Collection<SSTableReader> flushedSSTables=writer.finished();
+        for (        SSTableReader sstable : flushedSSTables) {
+          if (sstable != null) {
+            sstables.add(sstable);
+            long size=sstable.bytesOnDisk();
+            totalBytesOnDisk+=size;
+            maxBytesOnDisk=Math.max(maxBytesOnDisk,size);
+            minBytesOnDisk=Math.min(minBytesOnDisk,size);
+          }
+        }
+      }
+    }
+     memtable.cfs.replaceFlushed(memtable,sstables);
     reclaim(memtable);
+    logger.debug("Flushed to {} ({} sstables, {} bytes), biggest {} bytes, smallest {} bytes",sstables,sstables.size(),totalBytesOnDisk,maxBytesOnDisk,minBytesOnDisk);
   }
   postFlush.latch.countDown();
 }

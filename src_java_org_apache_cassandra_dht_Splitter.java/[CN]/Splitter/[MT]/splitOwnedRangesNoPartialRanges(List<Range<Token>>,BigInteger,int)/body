@@ -1,0 +1,25 @@
+{
+  List<Token> boundaries=new ArrayList<>(parts);
+  BigInteger sum=BigInteger.ZERO;
+  int i=0;
+  while (boundaries.size() < parts - 1) {
+    Range<Token> r=localRanges.get(i);
+    Range<Token> nextRange=localRanges.get(i + 1);
+    Token right=token(r.right);
+    Token nextRight=token(nextRange.right);
+    BigInteger currentRangeWidth=valueForToken(right).subtract(valueForToken(r.left));
+    BigInteger nextRangeWidth=valueForToken(nextRight).subtract(valueForToken(nextRange.left));
+    sum=sum.add(currentRangeWidth);
+    if (sum.compareTo(perPart) > 0 || sum.add(nextRangeWidth).compareTo(perPart) > 0) {
+      BigInteger diffCurrent=sum.subtract(perPart).abs();
+      BigInteger diffNext=sum.add(nextRangeWidth).subtract(perPart).abs();
+      if (diffNext.compareTo(diffCurrent) >= 0) {
+        sum=BigInteger.ZERO;
+        boundaries.add(right);
+      }
+    }
+    i++;
+  }
+  boundaries.add(partitioner.getMaximumToken());
+  return boundaries;
+}
