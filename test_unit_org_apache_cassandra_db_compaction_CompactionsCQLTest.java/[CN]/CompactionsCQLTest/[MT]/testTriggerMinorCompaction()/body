@@ -1,0 +1,19 @@
+{
+  createTable("CREATE TABLE %s (id text PRIMARY KEY);");
+  assertTrue(Keyspace.open(KEYSPACE).getColumnFamilyStore(currentTable()).getCompactionStrategy().isEnabled());
+  execute("insert into %s (id) values ('1')");
+  flush();
+  execute("insert into %s (id) values ('1')");
+  flush();
+  execute("insert into %s (id) values ('1')");
+  flush();
+  execute("insert into %s (id) values ('1')");
+  flush();
+  Thread.sleep(1000);
+  UntypedResultSet res=execute("SELECT * FROM system.compaction_history");
+  boolean minorWasTriggered=false;
+  for (  UntypedResultSet.Row r : res) {
+    if (r.getString("keyspace_name").equals(KEYSPACE) && r.getString("columnfamily_name").equals(currentTable()))     minorWasTriggered=true;
+  }
+  assertTrue(minorWasTriggered);
+}
