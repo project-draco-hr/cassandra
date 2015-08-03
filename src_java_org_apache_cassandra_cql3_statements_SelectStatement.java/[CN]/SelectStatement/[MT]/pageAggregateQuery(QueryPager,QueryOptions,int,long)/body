@@ -1,7 +1,15 @@
 {
+  if (!restrictions.hasPartitionKeyRestrictions()) {
+    logger.warn("Aggregation query used without partition key");
+    ClientWarn.warn("Aggregation query used without partition key");
+  }
+ else   if (restrictions.keyIsInRelation()) {
+    logger.warn("Aggregation query used on multiple partition keys (IN restriction)");
+    ClientWarn.warn("Aggregation query used on multiple partition keys (IN restriction)");
+  }
   Selection.ResultSetBuilder result=selection.resultSetBuilder(now,parameters.isJson);
   while (!pager.isExhausted()) {
-    for (    org.apache.cassandra.db.Row row : pager.fetchPage(pageSize)) {
+    for (    Row row : pager.fetchPage(pageSize)) {
       if (row.cf == null)       continue;
       processColumnFamily(row.key.getKey(),row.cf,options,now,result);
     }
