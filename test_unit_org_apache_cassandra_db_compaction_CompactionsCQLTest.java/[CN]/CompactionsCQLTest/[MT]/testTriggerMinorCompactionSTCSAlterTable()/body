@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (id text PRIMARY KEY)  WITH compaction = {'class':'SizeTieredCompactionStrategy', 'min_threshold':2, 'enabled':false};");
+  assertFalse(getCurrentColumnFamilyStore().getCompactionStrategy().isEnabled());
+  execute("ALTER TABLE %s WITH compaction = {'class': 'SizeTieredCompactionStrategy', 'min_threshold': 2, 'enabled': true}");
+  assertTrue(getCurrentColumnFamilyStore().getCompactionStrategy().isEnabled());
+  execute("insert into %s (id) values ('1')");
+  flush();
+  execute("insert into %s (id) values ('1')");
+  flush();
+  Thread.sleep(1000);
+  assertTrue(minorWasTriggered(KEYSPACE,currentTable()));
+}
