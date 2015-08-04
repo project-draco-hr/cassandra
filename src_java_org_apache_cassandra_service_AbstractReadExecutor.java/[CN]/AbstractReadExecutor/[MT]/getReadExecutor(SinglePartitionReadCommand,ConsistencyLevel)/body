@@ -9,8 +9,8 @@
     ReadRepairMetrics.attempted.mark();
   }
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(command.metadata().cfId);
-  RetryType retryType=cfs.metadata.getSpeculativeRetry().type;
-  if (retryType == RetryType.NONE || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(keyspace,command,consistencyLevel,targetReplicas);
+  SpeculativeRetryParam retry=cfs.metadata.params.speculativeRetry;
+  if (retry.equals(SpeculativeRetryParam.NONE) || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(keyspace,command,consistencyLevel,targetReplicas);
   if (targetReplicas.size() == allReplicas.size()) {
     return new AlwaysSpeculatingReadExecutor(keyspace,cfs,command,consistencyLevel,targetReplicas);
   }
@@ -24,6 +24,6 @@
     }
   }
   targetReplicas.add(extraReplica);
-  if (retryType == RetryType.ALWAYS)   return new AlwaysSpeculatingReadExecutor(keyspace,cfs,command,consistencyLevel,targetReplicas);
+  if (retry.equals(SpeculativeRetryParam.ALWAYS))   return new AlwaysSpeculatingReadExecutor(keyspace,cfs,command,consistencyLevel,targetReplicas);
  else   return new SpeculatingReadExecutor(keyspace,cfs,command,consistencyLevel,targetReplicas);
 }

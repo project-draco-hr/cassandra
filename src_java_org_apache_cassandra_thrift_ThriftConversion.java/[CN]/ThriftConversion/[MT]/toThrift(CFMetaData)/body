@@ -8,27 +8,27 @@
  else {
     def.setComparator_type(LegacyLayout.makeLegacyComparator(cfm).toString());
   }
-  def.setComment(Strings.nullToEmpty(cfm.getComment()));
-  def.setRead_repair_chance(cfm.getReadRepairChance());
-  def.setDclocal_read_repair_chance(cfm.getDcLocalReadRepairChance());
-  def.setGc_grace_seconds(cfm.getGcGraceSeconds());
+  def.setComment(cfm.params.comment);
+  def.setRead_repair_chance(cfm.params.readRepairChance);
+  def.setDclocal_read_repair_chance(cfm.params.dcLocalReadRepairChance);
+  def.setGc_grace_seconds(cfm.params.gcGraceSeconds);
   def.setDefault_validation_class(cfm.makeLegacyDefaultValidator().toString());
   def.setKey_validation_class(cfm.getKeyValidator().toString());
-  def.setMin_compaction_threshold(cfm.getMinCompactionThreshold());
-  def.setMax_compaction_threshold(cfm.getMaxCompactionThreshold());
+  def.setMin_compaction_threshold(cfm.params.compaction.minCompactionThreshold());
+  def.setMax_compaction_threshold(cfm.params.compaction.maxCompactionThreshold());
   if (cfm.partitionKeyColumns().size() == 1)   def.setKey_alias(cfm.partitionKeyColumns().get(0).name.bytes);
   def.setColumn_metadata(columnDefinitionsToThrift(cfm,cfm.allColumns()));
-  def.setCompaction_strategy(cfm.compactionStrategyClass.getName());
-  def.setCompaction_strategy_options(new HashMap<>(cfm.compactionStrategyOptions));
-  def.setCompression_options(compressionParametersToThrift(cfm.compressionParameters));
-  def.setBloom_filter_fp_chance(cfm.getBloomFilterFpChance());
-  def.setMin_index_interval(cfm.getMinIndexInterval());
-  def.setMax_index_interval(cfm.getMaxIndexInterval());
-  def.setMemtable_flush_period_in_ms(cfm.getMemtableFlushPeriod());
-  def.setCaching(cfm.getCaching().toThriftCaching());
-  def.setCells_per_row_to_cache(cfm.getCaching().toThriftCellsPerRow());
-  def.setDefault_time_to_live(cfm.getDefaultTimeToLive());
-  def.setSpeculative_retry(cfm.getSpeculativeRetry().toString());
+  def.setCompaction_strategy(cfm.params.compaction.klass().getName());
+  def.setCompaction_strategy_options(cfm.params.compaction.options());
+  def.setCompression_options(compressionParametersToThrift(cfm.params.compression));
+  def.setBloom_filter_fp_chance(cfm.params.bloomFilterFpChance);
+  def.setMin_index_interval(cfm.params.minIndexInterval);
+  def.setMax_index_interval(cfm.params.maxIndexInterval);
+  def.setMemtable_flush_period_in_ms(cfm.params.memtableFlushPeriodInMs);
+  def.setCaching(toThrift(cfm.params.caching));
+  def.setCells_per_row_to_cache(toThriftCellsPerRow(cfm.params.caching));
+  def.setDefault_time_to_live(cfm.params.defaultTimeToLive);
+  def.setSpeculative_retry(cfm.params.speculativeRetry.toString());
   def.setTriggers(triggerDefinitionsToThrift(cfm.getTriggers()));
   return def;
 }

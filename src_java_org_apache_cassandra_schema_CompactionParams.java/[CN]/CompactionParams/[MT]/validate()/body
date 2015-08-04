@@ -1,0 +1,36 @@
+{
+  try {
+    Map<?,?> unknownOptions=(Map)klass.getMethod("validateOptions",Map.class).invoke(null,options);
+    if (!unknownOptions.isEmpty()) {
+      throw new ConfigurationException(format("Properties specified %s are not understood by %s",unknownOptions.keySet(),klass.getSimpleName()));
+    }
+  }
+ catch (  NoSuchMethodException e) {
+    logger.warn("Compaction strategy {} does not have a static validateOptions method. Validation ignored",klass.getName());
+  }
+catch (  InvocationTargetException e) {
+    if (e.getTargetException() instanceof ConfigurationException)     throw (ConfigurationException)e.getTargetException();
+    Throwable cause=e.getCause() == null ? e : e.getCause();
+    throw new ConfigurationException(format("%s.validateOptions() threw an error: %s %s",klass.getName(),cause.getClass().getName(),cause.getMessage()),e);
+  }
+catch (  IllegalAccessException e) {
+    throw new ConfigurationException("Cannot access method validateOptions in " + klass.getName(),e);
+  }
+  String minThreshold=options.get(Option.MIN_THRESHOLD.toString());
+  if (minThreshold != null && !StringUtils.isNumeric(minThreshold)) {
+    throw new ConfigurationException(format("Invalid value %s for '%s' compaction sub-option - must be an integer",minThreshold,Option.MIN_THRESHOLD));
+  }
+  String maxThreshold=options.get(Option.MAX_THRESHOLD.toString());
+  if (maxThreshold != null && !StringUtils.isNumeric(maxThreshold)) {
+    throw new ConfigurationException(format("Invalid value %s for '%s' compaction sub-option - must be an integer",maxThreshold,Option.MAX_THRESHOLD));
+  }
+  if (minCompactionThreshold() <= 0 || maxCompactionThreshold() <= 0) {
+    throw new ConfigurationException("Disabling compaction by setting compaction thresholds to 0 has been removed," + " set the compaction option 'enabled' to false instead.");
+  }
+  if (minCompactionThreshold() <= 1) {
+    throw new ConfigurationException(format("Min compaction threshold cannot be less than 2 (got %d)",minCompactionThreshold()));
+  }
+  if (minCompactionThreshold() > maxCompactionThreshold()) {
+    throw new ConfigurationException(format("Min compaction threshold (got %d) cannot be greater than max compaction threshold (got %d)",minCompactionThreshold(),maxCompactionThreshold()));
+  }
+}
