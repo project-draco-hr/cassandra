@@ -1,0 +1,18 @@
+{
+  List<List<ColumnDefinition>> removeGroups=shuffleAndGroup(Lists.newArrayList(definitions));
+  for (  List<ColumnDefinition> defs : removeGroups) {
+    Columns subset=columns;
+    for (    ColumnDefinition def : defs)     subset=subset.without(def);
+    Assert.assertEquals(columns.columnCount() - defs.size(),subset.columnCount());
+    List<ColumnDefinition> remainingDefs=Lists.newArrayList(columns);
+    remainingDefs.removeAll(defs);
+    assertContents(subset,remainingDefs);
+    assertSubset(columns,subset);
+    Columns otherSubset=columns;
+    for (    ColumnDefinition def : remainingDefs) {
+      otherSubset=otherSubset.without(def);
+      assertContents(otherSubset.mergeTo(subset),definitions);
+    }
+    testContainsWithoutAndMergeTo(subset,remainingDefs);
+  }
+}

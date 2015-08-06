@@ -1,42 +1,8 @@
 {
   if (this == other || other == NONE)   return this;
   if (this == NONE)   return other;
-  int i=0, j=0;
-  int size=0;
-  while (i < columns.length && j < other.columns.length) {
-    ++size;
-    int cmp=columns[i].compareTo(other.columns[j]);
-    if (cmp == 0) {
-      ++i;
-      ++j;
-    }
- else     if (cmp < 0) {
-      ++i;
-    }
- else {
-      ++j;
-    }
-  }
-  if (i == size && j == size) {
-    return i == columns.length ? other : this;
-  }
-  size+=i == columns.length ? other.columns.length - j : columns.length - i;
-  ColumnDefinition[] result=new ColumnDefinition[size];
-  i=0;
-  j=0;
-  for (int k=0; k < size; k++) {
-    int cmp=i >= columns.length ? 1 : (j >= other.columns.length ? -1 : columns[i].compareTo(other.columns[j]));
-    if (cmp == 0) {
-      result[k]=columns[i];
-      ++i;
-      ++j;
-    }
- else     if (cmp < 0) {
-      result[k]=columns[i++];
-    }
- else {
-      result[k]=other.columns[j++];
-    }
-  }
-  return new Columns(result,findFirstComplexIdx(result));
+  Object[] tree=BTree.<ColumnDefinition>merge(this.columns,other.columns,Comparator.naturalOrder());
+  if (tree == this.columns)   return this;
+  if (tree == other.columns)   return other;
+  return new Columns(tree,findFirstComplexIdx(tree));
 }
