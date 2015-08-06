@@ -1,0 +1,17 @@
+{
+  List<SSTableReader> repairedSSTables=new ArrayList<>();
+  List<SSTableReader> unrepairedSSTables=new ArrayList<>();
+  for (  SSTableReader sstable : sstables) {
+    if (sstable.isRepaired())     repairedSSTables.add(sstable);
+ else     unrepairedSSTables.add(sstable);
+  }
+  Set<ISSTableScanner> scanners=new HashSet<>(sstables.size());
+  for (  Range<Token> range : ranges) {
+    AbstractCompactionStrategy.ScannerList repairedScanners=repaired.getScanners(repairedSSTables,range);
+    AbstractCompactionStrategy.ScannerList unrepairedScanners=unrepaired.getScanners(unrepairedSSTables,range);
+    for (    ISSTableScanner scanner : Iterables.concat(repairedScanners.scanners,unrepairedScanners.scanners)) {
+      if (!scanners.add(scanner))       scanner.close();
+    }
+  }
+  return new AbstractCompactionStrategy.ScannerList(new ArrayList<>(scanners));
+}

@@ -25,11 +25,11 @@
     traceState=null;
   }
   final Set<InetAddress> allNeighbors=new HashSet<>();
-  Map<Range,Set<InetAddress>> rangeToNeighbors=new HashMap<>();
+  List<Pair<Set<InetAddress>,? extends Collection<Range<Token>>>> commonRanges=new ArrayList<>();
   try {
     for (    Range<Token> range : options.getRanges()) {
       Set<InetAddress> neighbors=ActiveRepairService.getNeighbors(keyspace,range,options.getDataCenters(),options.getHosts());
-      rangeToNeighbors.put(range,neighbors);
+      addRangeToNeighbors(commonRanges,range,neighbors);
       allNeighbors.addAll(neighbors);
     }
     progress.incrementAndGet();
@@ -67,17 +67,17 @@
   }
   final ListeningExecutorService executor=MoreExecutors.listeningDecorator(new JMXConfigurableThreadPoolExecutor(options.getJobThreads(),Integer.MAX_VALUE,TimeUnit.SECONDS,new LinkedBlockingQueue<Runnable>(),new NamedThreadFactory("Repair#" + cmd),"internal"));
   List<ListenableFuture<RepairSessionResult>> futures=new ArrayList<>(options.getRanges().size());
-  for (  Range<Token> range : options.getRanges()) {
-    final RepairSession session=ActiveRepairService.instance.submitRepairSession(parentSession,range,keyspace,options.getParallelism(),rangeToNeighbors.get(range),repairedAt,executor,cfnames);
+  for (  Pair<Set<InetAddress>,? extends Collection<Range<Token>>> p : commonRanges) {
+    final RepairSession session=ActiveRepairService.instance.submitRepairSession(parentSession,p.right,keyspace,options.getParallelism(),p.left,repairedAt,executor,cfnames);
     if (session == null)     continue;
     Futures.addCallback(session,new FutureCallback<RepairSessionResult>(){
       public void onSuccess(      RepairSessionResult result){
-        String message=String.format("Repair session %s for range %s finished",session.getId(),session.getRange().toString());
+        String message=String.format("Repair session %s for range %s finished",session.getId(),session.getRanges().toString());
         logger.info(message);
         fireProgressEvent(tag,new ProgressEvent(ProgressEventType.PROGRESS,progress.incrementAndGet(),totalProgress,message));
       }
       public void onFailure(      Throwable t){
-        String message=String.format("Repair session %s for range %s failed with error %s",session.getId(),session.getRange().toString(),t.getMessage());
+        String message=String.format("Repair session %s for range %s failed with error %s",session.getId(),session.getRanges().toString(),t.getMessage());
         logger.error(message,t);
         fireProgressEvent(tag,new ProgressEvent(ProgressEventType.PROGRESS,progress.incrementAndGet(),totalProgress,message));
       }
@@ -92,7 +92,7 @@
     @SuppressWarnings("unchecked") public ListenableFuture apply(    List<RepairSessionResult> results) throws Exception {
       for (      RepairSessionResult sessionResult : results) {
         if (sessionResult != null) {
-          successfulRanges.add(sessionResult.range);
+          successfulRanges.addAll(sessionResult.ranges);
         }
  else {
           hasFailure.compareAndSet(false,true);

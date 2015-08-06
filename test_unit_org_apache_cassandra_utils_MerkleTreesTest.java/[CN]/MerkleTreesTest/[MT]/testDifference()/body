@@ -1,0 +1,23 @@
+{
+  int maxsize=16;
+  mts=new MerkleTrees(partitioner);
+  mts.addMerkleTree(32,fullRange());
+  MerkleTrees mts2=new MerkleTrees(partitioner);
+  mts2.addMerkleTree(32,fullRange());
+  mts.init();
+  mts2.init();
+  for (  TreeRange range : mts.invalids())   range.addAll(new HIterator(range.right));
+  for (  TreeRange range : mts2.invalids())   range.addAll(new HIterator(range.right));
+  TreeRange leftmost=null;
+  TreeRange middle=null;
+  mts.maxsize(fullRange(),maxsize + 2);
+  Iterator<TreeRange> ranges=mts.invalids();
+  leftmost=ranges.next();
+  mts.split(leftmost.right);
+  middle=mts.get(leftmost.right);
+  middle.hash("arbitrary!".getBytes());
+  mts.get(partitioner.midpoint(leftmost.left,leftmost.right)).hash("even more arbitrary!".getBytes());
+  List<Range<Token>> diffs=MerkleTrees.difference(mts,mts2);
+  assertEquals(diffs + " contains wrong number of differences:",1,diffs.size());
+  assertTrue(diffs.contains(new Range<>(leftmost.left,middle.right)));
+}

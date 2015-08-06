@@ -1,6 +1,6 @@
 {
   Range<Token> range=new Range<>(partitioner.getMinimumToken(),partitioner.getRandomToken());
-  final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),keyspace,columnFamily,range);
+  final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),keyspace,columnFamily,Arrays.asList(range));
   final SimpleCondition lock=new SimpleCondition();
   MessagingService.instance().addMessageSink(new IMessageSink(){
     public boolean allowOutgoingMessage(    MessageOut message,    int id,    InetAddress to){
@@ -9,8 +9,8 @@
           RepairMessage m=(RepairMessage)message.payload;
           assertEquals(RepairMessage.Type.VALIDATION_COMPLETE,m.messageType);
           assertEquals(desc,m.desc);
-          assertFalse(((ValidationComplete)m).success);
-          assertNull(((ValidationComplete)m).tree);
+          assertFalse(((ValidationComplete)m).success());
+          assertNull(((ValidationComplete)m).trees);
         }
       }
   finally {
