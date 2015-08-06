@@ -1,13 +1,13 @@
 {
   String message;
   if (terminated)   return;
-  logger.info(String.format("[repair #%s] new session: will sync %s on range %s for %s.%s",getId(),repairedNodes(),range,keyspace,Arrays.toString(cfnames)));
-  Tracing.traceRepair("Syncing range {}",range);
-  SystemDistributedKeyspace.startRepairs(getId(),parentRepairSession,keyspace,cfnames,range,endpoints);
+  logger.info(String.format("[repair #%s] new session: will sync %s on range %s for %s.%s",getId(),repairedNodes(),ranges,keyspace,Arrays.toString(cfnames)));
+  Tracing.traceRepair("Syncing range {}",ranges);
+  SystemDistributedKeyspace.startRepairs(getId(),parentRepairSession,keyspace,cfnames,ranges,endpoints);
   if (endpoints.isEmpty()) {
-    logger.info("[repair #{}] {}",getId(),message=String.format("No neighbors to repair with on range %s: session completed",range));
+    logger.info("[repair #{}] {}",getId(),message=String.format("No neighbors to repair with on range %s: session completed",ranges));
     Tracing.traceRepair(message);
-    set(new RepairSessionResult(id,keyspace,range,Lists.<RepairResult>newArrayList()));
+    set(new RepairSessionResult(id,keyspace,ranges,Lists.<RepairResult>newArrayList()));
     SystemDistributedKeyspace.failRepairs(getId(),keyspace,cfnames,new RuntimeException(message));
     return;
   }
@@ -23,15 +23,15 @@
   }
   List<ListenableFuture<RepairResult>> jobs=new ArrayList<>(cfnames.length);
   for (  String cfname : cfnames) {
-    RepairJob job=new RepairJob(this,cfname,parallelismDegree,repairedAt,taskExecutor);
+    RepairJob job=new RepairJob(this,cfname);
     executor.execute(job);
     jobs.add(job);
   }
   Futures.addCallback(Futures.allAsList(jobs),new FutureCallback<List<RepairResult>>(){
     public void onSuccess(    List<RepairResult> results){
       logger.info("[repair #{}] {}",getId(),"Session completed successfully");
-      Tracing.traceRepair("Completed sync of range {}",range);
-      set(new RepairSessionResult(id,keyspace,range,results));
+      Tracing.traceRepair("Completed sync of range {}",ranges);
+      set(new RepairSessionResult(id,keyspace,ranges,results));
       taskExecutor.shutdown();
       terminate();
     }

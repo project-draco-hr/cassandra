@@ -6,6 +6,12 @@
   UUID sessionId=UUIDSerializer.serializer.deserialize(in,version);
   String keyspace=in.readUTF();
   String columnFamily=in.readUTF();
-  Range<Token> range=(Range<Token>)AbstractBounds.tokenSerializer.deserialize(in,MessagingService.globalPartitioner(),version);
-  return new RepairJobDesc(parentSessionId,sessionId,keyspace,columnFamily,range);
+  int nRanges=in.readInt();
+  Collection<Range<Token>> ranges=new ArrayList<>();
+  Range<Token> range;
+  for (int i=0; i < nRanges; i++) {
+    range=(Range<Token>)AbstractBounds.tokenSerializer.deserialize(in,MessagingService.globalPartitioner(),version);
+    ranges.add(range);
+  }
+  return new RepairJobDesc(parentSessionId,sessionId,keyspace,columnFamily,ranges);
 }

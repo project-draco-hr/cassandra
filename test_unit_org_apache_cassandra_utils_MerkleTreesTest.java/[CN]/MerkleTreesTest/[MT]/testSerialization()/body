@@ -1,0 +1,19 @@
+{
+  Range<Token> first=new Range<>(tok(3),tok(4));
+  Collection<Range<Token>> ranges=new ArrayList<>();
+  ranges.add(first);
+  ranges.add(new Range<Token>(tok(5),tok(2)));
+  mts=new MerkleTrees(partitioner);
+  mts.addMerkleTrees(256,ranges);
+  mts.init();
+  for (  TreeRange range : mts.invalids())   range.addAll(new HIterator(range.right));
+  byte[] initialhash=mts.hash(first);
+  long serializedSize=MerkleTrees.serializer.serializedSize(mts,MessagingService.current_version);
+  DataOutputBuffer out=new DataOutputBuffer();
+  MerkleTrees.serializer.serialize(mts,out,MessagingService.current_version);
+  byte[] serialized=out.toByteArray();
+  assertEquals(serializedSize,serialized.length);
+  DataInputBuffer in=new DataInputBuffer(serialized);
+  MerkleTrees restored=MerkleTrees.serializer.deserialize(in,MessagingService.current_version);
+  assertHashEquals(initialhash,restored.hash(first));
+}
