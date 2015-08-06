@@ -1,12 +1,13 @@
 {
   int count=0;
   long start=System.nanoTime();
-  File path=getCachePath(cfs.metadata.cfId,CURRENT_VERSION);
-  if (path.exists()) {
+  File dataPath=getCacheDataPath(cfs.metadata.cfId,CURRENT_VERSION);
+  File crcPath=getCacheCrcPath(cfs.metadata.cfId,CURRENT_VERSION);
+  if (dataPath.exists() && crcPath.exists()) {
     DataInputStreamPlus in=null;
     try {
-      logger.info(String.format("reading saved cache %s",path));
-      in=new DataInputStreamPlus(new LengthAvailableInputStream(new BufferedInputStream(streamFactory.getInputStream(path)),path.length()));
+      logger.info(String.format("reading saved cache %s",dataPath));
+      in=new DataInputStreamPlus(new LengthAvailableInputStream(new BufferedInputStream(streamFactory.getInputStream(dataPath,crcPath)),dataPath.length()));
       List<Future<Pair<K,V>>> futures=new ArrayList<Future<Pair<K,V>>>();
       while (in.available() > 0) {
         Future<Pair<K,V>> entry=cacheLoader.deserialize(in,cfs);
@@ -19,14 +20,18 @@
         if (entry != null && entry.right != null)         put(entry.left,entry.right);
       }
     }
- catch (    Exception e) {
+ catch (    CorruptFileException e) {
       JVMStabilityInspector.inspectThrowable(e);
-      logger.debug(String.format("harmless error reading saved cache %s",path.getAbsolutePath()),e);
+      logger.warn(String.format("Non-fatal checksum error reading saved cache %s",dataPath.getAbsolutePath()),e);
+    }
+catch (    Exception e) {
+      JVMStabilityInspector.inspectThrowable(e);
+      logger.debug(String.format("harmless error reading saved cache %s",dataPath.getAbsolutePath()),e);
     }
  finally {
       FileUtils.closeQuietly(in);
     }
   }
-  if (logger.isDebugEnabled())   logger.debug("completed reading ({} ms; {} keys) saved cache {}",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),count,path);
+  if (logger.isDebugEnabled())   logger.debug("completed reading ({} ms; {} keys) saved cache {}",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),count,dataPath);
   return count;
 }
