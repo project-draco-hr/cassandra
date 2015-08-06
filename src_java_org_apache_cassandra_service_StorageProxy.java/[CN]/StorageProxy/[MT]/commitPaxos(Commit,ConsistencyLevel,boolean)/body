@@ -12,8 +12,11 @@
   MessageOut<Commit> message=new MessageOut<Commit>(MessagingService.Verb.PAXOS_COMMIT,proposal,Commit.serializer);
   for (  InetAddress destination : Iterables.concat(naturalEndpoints,pendingEndpoints)) {
     if (FailureDetector.instance.isAlive(destination)) {
-      if (shouldBlock)       MessagingService.instance().sendRR(message,destination,responseHandler);
+      if (shouldBlock)       MessagingService.instance().sendRR(message,destination,responseHandler,shouldHint);
  else       MessagingService.instance().sendOneWay(message,destination);
+    }
+ else     if (shouldHint) {
+      submitHint(proposal.makeMutation(),destination,null);
     }
   }
   if (shouldBlock)   responseHandler.get();
