@@ -1,0 +1,23 @@
+{
+  super(cfs,directories,txn,nonExpiredSSTables,false,false);
+  this.allSSTables=txn.originals();
+  totalSize=cfs.getExpectedCompactedFileSize(nonExpiredSSTables,txn.opType());
+  double[] potentialRatios=new double[20];
+  double currentRatio=1;
+  for (int i=0; i < potentialRatios.length; i++) {
+    currentRatio/=2;
+    potentialRatios[i]=currentRatio;
+  }
+  int noPointIndex=0;
+  for (  double ratio : potentialRatios) {
+    noPointIndex++;
+    if (ratio * totalSize < smallestSSTable) {
+      break;
+    }
+  }
+  ratios=Arrays.copyOfRange(potentialRatios,0,noPointIndex);
+  long currentPartitionsToWrite=Math.round(estimatedTotalKeys * ratios[currentRatioIndex]);
+  currentBytesToWrite=Math.round(totalSize * ratios[currentRatioIndex]);
+  switchCompactionLocation(getWriteDirectory(currentBytesToWrite));
+  logger.debug("Ratios={}, expectedKeys = {}, totalSize = {}, currentPartitionsToWrite = {}, currentBytesToWrite = {}",ratios,estimatedTotalKeys,totalSize,currentPartitionsToWrite,currentBytesToWrite);
+}
