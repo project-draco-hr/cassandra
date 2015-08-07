@@ -1,12 +1,22 @@
 {
-  return new AbstractIterator<LegacyCell>(){
-    private Iterator<LegacyCell> currentRow=staticRow.isEmpty() ? Collections.<LegacyLayout.LegacyCell>emptyIterator() : fromRow(metadata,staticRow);
+  LegacyRangeTombstoneList deletions=new LegacyRangeTombstoneList(new LegacyBoundComparator(metadata.comparator),10);
+  Iterator<LegacyCell> cells=new AbstractIterator<LegacyCell>(){
+    private Iterator<LegacyCell> currentRow=initializeRow();
+    private Iterator<LegacyCell> initializeRow(){
+      if (staticRow == null || staticRow.isEmpty())       return Collections.<LegacyLayout.LegacyCell>emptyIterator();
+      Pair<LegacyRangeTombstoneList,Iterator<LegacyCell>> row=fromRow(metadata,staticRow);
+      deletions.addAll(row.left);
+      return row.right;
+    }
     protected LegacyCell computeNext(){
       if (currentRow.hasNext())       return currentRow.next();
       if (!iterator.hasNext())       return endOfData();
-      currentRow=fromRow(metadata,iterator.next());
+      Pair<LegacyRangeTombstoneList,Iterator<LegacyCell>> row=fromRow(metadata,iterator.next());
+      deletions.addAll(row.left);
+      currentRow=row.right;
       return computeNext();
     }
   }
 ;
+  return Pair.create(deletions,cells);
 }

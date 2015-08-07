@@ -1,0 +1,15 @@
+{
+  SortedSet<Clustering> requestedRows=filter.requestedRows();
+  long size=0;
+  if (requestedRows.isEmpty()) {
+    size+=TypeSizes.sizeof(fetchedColumns.size());
+    for (    ColumnDefinition column : fetchedColumns)     size+=ByteBufferUtil.serializedSizeWithShortLength(column.name.bytes);
+  }
+ else {
+    size+=TypeSizes.sizeof(requestedRows.size() * fetchedColumns.size());
+    for (    Clustering clustering : requestedRows) {
+      for (      ColumnDefinition column : fetchedColumns)       size+=ByteBufferUtil.serializedSizeWithShortLength(LegacyLayout.encodeCellName(metadata,clustering,column.name.bytes,null));
+    }
+  }
+  return size + TypeSizes.sizeof(true);
+}

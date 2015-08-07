@@ -1,3 +1,11 @@
 {
-  throw new UnsupportedOperationException();
+  int partitionCount=in.readInt();
+  ArrayList<ArrayBackedPartition> partitions=new ArrayList<>(partitionCount);
+  for (int i=0; i < partitionCount; i++) {
+    ByteBuffer key=ByteBufferUtil.readWithShortLength(in);
+    try (UnfilteredRowIterator partition=LegacyLayout.deserializeLegacyPartition(in,version,SerializationHelper.Flag.FROM_REMOTE,key)){
+      partitions.add(ArrayBackedPartition.create(partition));
+    }
+   }
+  return new LegacyRemoteDataResponse(partitions);
 }

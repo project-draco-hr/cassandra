@@ -1,0 +1,9 @@
+{
+  if (!command.dataRange().isNamesQuery())   return command;
+  CFMetaData metadata=command.metadata();
+  if (!LegacyReadCommandSerializer.shouldConvertNamesToSlice(metadata,command.columnFilter().fetchedColumns()))   return command;
+  ClusteringIndexNamesFilter filter=(ClusteringIndexNamesFilter)command.dataRange().clusteringIndexFilter;
+  ClusteringIndexSliceFilter sliceFilter=LegacyReadCommandSerializer.convertNamesFilterToSliceFilter(filter,metadata);
+  DataRange newRange=new DataRange(command.dataRange().keyRange(),sliceFilter);
+  return new PartitionRangeReadCommand(command.isDigestQuery(),command.isForThrift(),metadata,command.nowInSec(),command.columnFilter(),command.rowFilter(),command.limits(),newRange);
+}
