@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (userid text PRIMARY KEY, properties map<int, text>) with compression = {}");
+  final int numKeys=100;
+  for (int i=0; i < numKeys; i++)   execute("UPDATE %s SET properties[?] = ? WHERE userid = 'user'",i,"prop_" + Integer.toString(i));
+  flush();
+  for (int i=numKeys; i < 2 * numKeys; i++)   execute("UPDATE %s SET properties[?] = ? WHERE userid = 'user'",i,"prop_" + Integer.toString(i));
+  flush();
+  Object[][] rows=getRows(execute("SELECT properties from %s where userid = 'user'"));
+  assertEquals(1,rows.length);
+  assertEquals(numKeys * 2,((Map)rows[0][0]).size());
+}
