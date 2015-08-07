@@ -1,0 +1,8 @@
+{
+  if (command.clusteringIndexFilter().kind() != ClusteringIndexFilter.Kind.NAMES)   return command;
+  CFMetaData metadata=command.metadata();
+  if (!shouldConvertNamesToSlice(metadata,command.columnFilter().fetchedColumns()))   return command;
+  ClusteringIndexNamesFilter filter=((SinglePartitionNamesCommand)command).clusteringIndexFilter();
+  ClusteringIndexSliceFilter sliceFilter=convertNamesFilterToSliceFilter(filter,metadata);
+  return new SinglePartitionSliceCommand(command.isDigestQuery(),command.isForThrift(),metadata,command.nowInSec(),command.columnFilter(),command.rowFilter(),command.limits(),command.partitionKey(),sliceFilter);
+}

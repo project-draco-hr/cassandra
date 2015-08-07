@@ -1,0 +1,17 @@
+{
+  PartitionColumns columns=command.columnFilter().fetchedColumns();
+  CFMetaData metadata=command.metadata();
+  SortedSet<Clustering> requestedRows=filter.requestedRows();
+  if (requestedRows.isEmpty()) {
+    out.writeInt(columns.size());
+    for (    ColumnDefinition column : columns)     ByteBufferUtil.writeWithShortLength(column.name.bytes,out);
+  }
+ else {
+    out.writeInt(requestedRows.size() * columns.size());
+    for (    Clustering clustering : requestedRows) {
+      for (      ColumnDefinition column : columns)       ByteBufferUtil.writeWithShortLength(LegacyLayout.encodeCellName(metadata,clustering,column.name.bytes,null),out);
+    }
+  }
+  if (command.isForThrift() || (command.limits().kind() == DataLimits.Kind.CQL_LIMIT && command.limits().perPartitionCount() == 1))   out.writeBoolean(false);
+ else   out.writeBoolean(true);
+}

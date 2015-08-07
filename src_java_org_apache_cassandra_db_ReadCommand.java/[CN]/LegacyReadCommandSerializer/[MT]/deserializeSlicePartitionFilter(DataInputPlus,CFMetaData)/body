@@ -1,0 +1,24 @@
+{
+  int numSlices=in.readInt();
+  ByteBuffer[] startBuffers=new ByteBuffer[numSlices];
+  ByteBuffer[] finishBuffers=new ByteBuffer[numSlices];
+  for (int i=0; i < numSlices; i++) {
+    startBuffers[i]=ByteBufferUtil.readWithShortLength(in);
+    finishBuffers[i]=ByteBufferUtil.readWithShortLength(in);
+  }
+  boolean reversed=in.readBoolean();
+  Slices.Builder slicesBuilder=new Slices.Builder(metadata.comparator);
+  for (int i=0; i < numSlices; i++) {
+    Slice.Bound start, finish;
+    if (!reversed) {
+      start=LegacyLayout.decodeBound(metadata,startBuffers[i],true).bound;
+      finish=LegacyLayout.decodeBound(metadata,finishBuffers[i],false).bound;
+    }
+ else {
+      finish=LegacyLayout.decodeBound(metadata,startBuffers[i],false).bound;
+      start=LegacyLayout.decodeBound(metadata,finishBuffers[i],true).bound;
+    }
+    slicesBuilder.add(Slice.make(start,finish));
+  }
+  return new ClusteringIndexSliceFilter(slicesBuilder.build(),reversed);
+}

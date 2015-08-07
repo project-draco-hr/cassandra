@@ -8,8 +8,8 @@
     Keyspace keyspace=Keyspace.open(command.metadata().ksName);
     DataResolver resolver=new DataResolver(keyspace,command,ConsistencyLevel.ALL,executor.handler.endpoints.size());
     repairHandler=new ReadCallback(resolver,ConsistencyLevel.ALL,executor.getContactedReplicas().size(),command,keyspace,executor.handler.endpoints);
-    MessageOut<ReadCommand> message=command.createMessage();
     for (    InetAddress endpoint : executor.getContactedReplicas()) {
+      MessageOut<ReadCommand> message=command.createMessage(MessagingService.instance().getVersion(endpoint));
       Tracing.trace("Enqueuing full data read to {}",endpoint);
       MessagingService.instance().sendRRWithFailure(message,endpoint,repairHandler);
     }

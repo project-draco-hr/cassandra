@@ -1,6 +1,18 @@
 {
   final ArrayBackedPartition partition=ArrayBackedPartition.create(iterator);
   DeletionInfo info=partition.deletionInfo();
-  Iterator<LegacyCell> cells=fromRowIterator(partition.metadata(),partition.iterator(),partition.staticRow());
-  return Pair.create(info,cells);
+  Pair<LegacyRangeTombstoneList,Iterator<LegacyCell>> pair=fromRowIterator(partition.metadata(),partition.iterator(),partition.staticRow());
+  LegacyLayout.LegacyRangeTombstoneList rtl=pair.left;
+  List<LegacyLayout.LegacyCell> cells=Lists.newArrayList(pair.right);
+  if (info.hasRanges()) {
+    Iterator<RangeTombstone> rangeTombstoneIterator=info.rangeIterator(false);
+    while (rangeTombstoneIterator.hasNext()) {
+      RangeTombstone rt=rangeTombstoneIterator.next();
+      Slice slice=rt.deletedSlice();
+      LegacyLayout.LegacyBound start=new LegacyLayout.LegacyBound(slice.start(),false,null);
+      LegacyLayout.LegacyBound end=new LegacyLayout.LegacyBound(slice.end(),false,null);
+      rtl.add(start,end,rt.deletionTime().markedForDeleteAt(),rt.deletionTime().localDeletionTime());
+    }
+  }
+  return new LegacyUnfilteredPartition(info.getPartitionDeletion(),rtl,cells);
 }

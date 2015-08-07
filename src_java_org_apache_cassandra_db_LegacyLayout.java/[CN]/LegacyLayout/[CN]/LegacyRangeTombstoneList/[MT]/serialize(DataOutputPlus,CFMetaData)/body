@@ -1,0 +1,23 @@
+{
+  out.writeInt(size);
+  if (size == 0)   return;
+  List<AbstractType<?>> types=new ArrayList<>(comparator.clusteringComparator.subtypes());
+  if (!metadata.isDense())   types.add(UTF8Type.instance);
+  CompositeType type=CompositeType.getInstance(types);
+  for (int i=0; i < size; i++) {
+    LegacyBound start=starts[i];
+    LegacyBound end=ends[i];
+    CompositeType.Builder startBuilder=type.builder();
+    CompositeType.Builder endBuilder=type.builder();
+    for (int j=0; j < start.bound.clustering().size(); j++) {
+      startBuilder.add(start.bound.get(j));
+      endBuilder.add(end.bound.get(j));
+    }
+    if (start.collectionName != null)     startBuilder.add(start.collectionName.name.bytes);
+    if (end.collectionName != null)     endBuilder.add(end.collectionName.name.bytes);
+    ByteBufferUtil.writeWithShortLength(startBuilder.build(),out);
+    ByteBufferUtil.writeWithShortLength(endBuilder.buildAsEndOfRange(),out);
+    out.writeInt(delTimes[i]);
+    out.writeLong(markedAts[i]);
+  }
+}
