@@ -1,0 +1,18 @@
+{
+  Random r=new Random();
+  long seed=System.nanoTime();
+  System.out.println("Seed " + seed);
+  r.setSeed(seed);
+  int len=(1024 * 1024) / 100;
+  createTable("CREATE TABLE %s (userid text PRIMARY KEY, properties map<int, text>) with compression = {}");
+  final int numKeys=200;
+  for (int i=0; i < numKeys; i++) {
+    byte[] b=new byte[len];
+    r.nextBytes(b);
+    execute("UPDATE %s SET properties[?] = ? WHERE userid = 'user'",i,new String(b));
+  }
+  flush();
+  Object[][] rows=getRows(execute("SELECT properties from %s where userid = 'user'"));
+  assertEquals(1,rows.length);
+  assertEquals(numKeys,((Map)rows[0][0]).size());
+}
