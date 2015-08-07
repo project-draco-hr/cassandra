@@ -1,4 +1,10 @@
 {
-  state.hasColumnFamilyAccess(keyspace(),columnFamily(),Permission.SELECT);
+  if (cfm.isMaterializedView()) {
+    CFMetaData baseTable=MaterializedView.findBaseTable(keyspace(),columnFamily());
+    if (baseTable != null)     state.hasColumnFamilyAccess(keyspace(),baseTable.cfName,Permission.SELECT);
+  }
+ else {
+    state.hasColumnFamilyAccess(keyspace(),columnFamily(),Permission.SELECT);
+  }
   for (  Function function : getFunctions())   state.ensureHasPermission(Permission.EXECUTE,function);
 }

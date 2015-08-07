@@ -3,8 +3,11 @@
     CFMetaData viewCfm=Schema.instance.getCFMetaData(keyspace(),columnFamily());
     if (viewCfm == null)     throw new ConfigurationException(String.format("Cannot drop non existing materialized view '%s' in keyspace '%s'.",columnFamily(),keyspace()));
     if (!viewCfm.isMaterializedView())     throw new ConfigurationException(String.format("Cannot drop non materialized view '%s' in keyspace '%s'",columnFamily(),keyspace()));
-    CFMetaData baseCfm=findBaseCf();
-    if (baseCfm == null)     throw new ConfigurationException(String.format("Cannot drop materialized view '%s' in keyspace '%s' without base CF.",columnFamily(),keyspace()));
+    CFMetaData baseCfm=MaterializedView.findBaseTable(keyspace(),columnFamily());
+    if (baseCfm == null) {
+      if (ifExists)       throw new ConfigurationException(String.format("Cannot drop materialized view '%s' in keyspace '%s' without base CF.",columnFamily(),keyspace()));
+ else       throw new InvalidRequestException(String.format("View '%s' could not be found in any of the tables of keyspace '%s'",cfName,keyspace()));
+    }
     CFMetaData updatedCfm=baseCfm.copy();
     updatedCfm.materializedViews(updatedCfm.getMaterializedViews().without(columnFamily()));
     MigrationManager.announceColumnFamilyUpdate(updatedCfm,false,isLocalOnly);
