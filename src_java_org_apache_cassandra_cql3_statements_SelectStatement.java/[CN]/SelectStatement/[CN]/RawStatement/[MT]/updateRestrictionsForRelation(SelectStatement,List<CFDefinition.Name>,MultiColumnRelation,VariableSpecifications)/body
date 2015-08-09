@@ -24,13 +24,10 @@
         throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by an equality relation and an inequality relation",name));
       }
  else {
-        if (!existing.isMultiColumn()) {
-          throw new InvalidRequestException(String.format("Column \"%s\" cannot have both tuple-notation inequalities and single-column inequalities: %s",name,relation));
-        }
         boolean existingRestrictionStartBefore=(i == 0 && name.position != 0 && stmt.columnRestrictions[name.position - 1] == existing);
         boolean existingRestrictionStartAfter=(i != 0 && previous != existing);
         if (existingRestrictionStartBefore || existingRestrictionStartAfter) {
-          throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by two tuple-notation inequalities not starting with the same column: %s",name,relation));
+          throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by inequalities not starting with the same column: %s",name,relation));
         }
         checkBound(existing,name,operator);
       }
@@ -76,8 +73,18 @@ case GTE:
 {
   Term t=relation.getValue().prepare(names);
   t.collectMarkerSpecification(boundNames);
-  Restriction.Slice restriction=(Restriction.Slice)getExistingRestriction(stmt,names.get(0));
-  if (restriction == null)   restriction=new MultiColumnRestriction.Slice(false);
+  Restriction.Slice existingRestriction=(Restriction.Slice)getExistingRestriction(stmt,names.get(0));
+  Restriction.Slice restriction;
+  if (existingRestriction == null) {
+    restriction=new MultiColumnRestriction.Slice(false);
+  }
+ else   if (!existingRestriction.isMultiColumn()) {
+    restriction=new MultiColumnRestriction.Slice(false);
+    restriction.setBound(existingRestriction);
+  }
+ else {
+    restriction=existingRestriction;
+  }
   restriction.setBound(relation.operator(),t);
   for (  CFDefinition.Name name : names) {
     stmt.columnRestrictions[name.position]=restriction;

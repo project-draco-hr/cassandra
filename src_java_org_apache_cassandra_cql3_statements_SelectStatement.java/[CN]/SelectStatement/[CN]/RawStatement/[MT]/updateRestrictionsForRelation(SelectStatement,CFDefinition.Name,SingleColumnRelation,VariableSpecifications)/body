@@ -1,16 +1,24 @@
 {
 switch (name.kind) {
 case KEY_ALIAS:
-    stmt.keyRestrictions[name.position]=updateSingleColumnRestriction(name,stmt.keyRestrictions[name.position],relation,names);
-  break;
+{
+      Restriction existingRestriction=stmt.keyRestrictions[name.position];
+      Restriction previousRestriction=name.position == 0 ? null : stmt.keyRestrictions[name.position - 1];
+      stmt.keyRestrictions[name.position]=updateSingleColumnRestriction(name,existingRestriction,previousRestriction,relation,names);
+      break;
+    }
 case COLUMN_ALIAS:
-stmt.columnRestrictions[name.position]=updateSingleColumnRestriction(name,stmt.columnRestrictions[name.position],relation,names);
-break;
+{
+    Restriction existingRestriction=stmt.columnRestrictions[name.position];
+    Restriction previousRestriction=name.position == 0 ? null : stmt.columnRestrictions[name.position - 1];
+    stmt.columnRestrictions[name.position]=updateSingleColumnRestriction(name,existingRestriction,previousRestriction,relation,names);
+    break;
+  }
 case VALUE_ALIAS:
 throw new InvalidRequestException(String.format("Predicates on the non-primary-key column (%s) of a COMPACT table are not yet supported",name.name));
 case COLUMN_METADATA:
 case STATIC:
-Restriction r=updateSingleColumnRestriction(name,stmt.metadataRestrictions.get(name),relation,names);
+Restriction r=updateSingleColumnRestriction(name,stmt.metadataRestrictions.get(name),null,relation,names);
 if (r.isIN() && !((Restriction.IN)r).canHaveOnlyOneValue()) throw new InvalidRequestException(String.format("IN predicates on non-primary-key columns (%s) is not yet supported",name));
 stmt.metadataRestrictions.put(name,r);
 break;
