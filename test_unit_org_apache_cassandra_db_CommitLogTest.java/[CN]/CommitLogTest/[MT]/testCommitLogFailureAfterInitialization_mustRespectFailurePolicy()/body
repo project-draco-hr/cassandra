@@ -1,0 +1,21 @@
+{
+  CassandraDaemon daemon=new CassandraDaemon();
+  daemon.completeSetup();
+  StorageService.instance.registerDaemon(daemon);
+  File commitLogDir=new File(DatabaseDescriptor.getCommitLogLocation());
+  commitLogDir.setWritable(false);
+  KillerForTests killerForTests=new KillerForTests();
+  JVMStabilityInspector.Killer originalKiller=JVMStabilityInspector.replaceKiller(killerForTests);
+  Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
+  try {
+    DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.ignore);
+    new CommitLogSegmentManager(CommitLog.instance);
+    Thread.sleep(50);
+    Assert.assertFalse(killerForTests.wasKilled());
+  }
+  finally {
+    DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
+    JVMStabilityInspector.replaceKiller(originalKiller);
+    commitLogDir.setWritable(true);
+  }
+}
