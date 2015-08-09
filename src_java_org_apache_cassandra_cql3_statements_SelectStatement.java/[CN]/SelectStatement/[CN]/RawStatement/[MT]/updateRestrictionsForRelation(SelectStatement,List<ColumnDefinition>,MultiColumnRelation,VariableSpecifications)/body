@@ -24,13 +24,10 @@
         throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by an equality relation and an inequality relation",def.name));
       }
  else {
-        if (!existing.isMultiColumn()) {
-          throw new InvalidRequestException(String.format("Column \"%s\" cannot have both tuple-notation inequalities and single-column inequalities: %s",def.name,relation));
-        }
         boolean existingRestrictionStartBefore=(i == 0 && def.position() != 0 && stmt.columnRestrictions[def.position() - 1] == existing);
         boolean existingRestrictionStartAfter=(i != 0 && previous != existing);
         if (existingRestrictionStartBefore || existingRestrictionStartAfter) {
-          throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by two tuple-notation inequalities not starting with the same column: %s",def.name,relation));
+          throw new InvalidRequestException(String.format("Column \"%s\" cannot be restricted by two inequalities not starting with the same column: %s",def.name,relation));
         }
         checkBound(existing,def,operator);
       }
@@ -75,8 +72,18 @@ case GTE:
 {
   Term t=relation.getValue().prepare(keyspace(),defs);
   t.collectMarkerSpecification(boundNames);
-  Restriction.Slice restriction=(Restriction.Slice)getExistingRestriction(stmt,defs.get(0));
-  if (restriction == null)   restriction=new MultiColumnRestriction.Slice(false);
+  Restriction.Slice existingRestriction=(Restriction.Slice)getExistingRestriction(stmt,defs.get(0));
+  Restriction.Slice restriction;
+  if (existingRestriction == null) {
+    restriction=new MultiColumnRestriction.Slice(false);
+  }
+ else   if (!existingRestriction.isMultiColumn()) {
+    restriction=new MultiColumnRestriction.Slice(false);
+    restriction.setBound(existingRestriction);
+  }
+ else {
+    restriction=existingRestriction;
+  }
   restriction.setBound(relation.operator(),t);
   for (  ColumnDefinition def : defs) {
     stmt.columnRestrictions[def.position()]=restriction;
