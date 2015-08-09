@@ -1,0 +1,16 @@
+{
+  CassandraDaemon daemon=new CassandraDaemon();
+  daemon.completeSetup();
+  StorageService.instance.registerDaemon(daemon);
+  StorageService.instance.initServer();
+  Assert.assertTrue(Gossiper.instance.isEnabled());
+  Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
+  try {
+    DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.stop);
+    CommitLog.handleCommitError("Test stop error",new Throwable());
+    Assert.assertFalse(Gossiper.instance.isEnabled());
+  }
+  finally {
+    DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
+  }
+}
