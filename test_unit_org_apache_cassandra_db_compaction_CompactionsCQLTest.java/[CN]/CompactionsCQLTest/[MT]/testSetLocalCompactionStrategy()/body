@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (id text PRIMARY KEY)");
+  Map<String,String> localOptions=new HashMap<>();
+  localOptions.put("class","DateTieredCompactionStrategy");
+  getCurrentColumnFamilyStore().setLocalCompactionStrategy(localOptions);
+  WrappingCompactionStrategy wrappingCompactionStrategy=(WrappingCompactionStrategy)getCurrentColumnFamilyStore().getCompactionStrategy();
+  assertTrue(verifyStrategies(wrappingCompactionStrategy,DateTieredCompactionStrategy.class));
+  execute("ALTER TABLE %s WITH gc_grace_seconds = 1000");
+  assertTrue(verifyStrategies(wrappingCompactionStrategy,DateTieredCompactionStrategy.class));
+  execute("ALTER TABLE %s WITH compaction = {'class':'SizeTieredCompactionStrategy', 'min_threshold':3}");
+  assertTrue(verifyStrategies(wrappingCompactionStrategy,SizeTieredCompactionStrategy.class));
+}
