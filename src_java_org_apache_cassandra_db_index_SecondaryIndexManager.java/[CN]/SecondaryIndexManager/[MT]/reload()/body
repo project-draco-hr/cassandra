@@ -2,8 +2,10 @@
   Collection<ByteBuffer> indexedColumnNames=indexesByColumn.keySet();
   for (  ByteBuffer indexedColumn : indexedColumnNames) {
     ColumnDefinition def=baseCfs.metadata.getColumnDefinition(indexedColumn);
-    if (def == null || def.getIndexType() == null)     removeIndexedColumn(indexedColumn);
+    if (def == null || !baseCfs.metadata.getIndexes().get(def).isPresent())     removeIndexedColumn(indexedColumn);
   }
-  for (  ColumnDefinition cdef : baseCfs.metadata.allColumns())   if (cdef.getIndexType() != null && !indexedColumnNames.contains(cdef.name.bytes))   addIndexedColumn(cdef);
+  for (  IndexMetadata indexDef : baseCfs.metadata.getIndexes()) {
+    if (!indexedColumnNames.contains(indexDef.indexedColumn(baseCfs.metadata).name.bytes))     addIndexedColumn(indexDef);
+  }
   for (  SecondaryIndex index : allIndexes)   index.reload();
 }

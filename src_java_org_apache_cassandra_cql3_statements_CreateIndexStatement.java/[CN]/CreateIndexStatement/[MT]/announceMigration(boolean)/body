@@ -1,22 +1,30 @@
 {
   CFMetaData cfm=Schema.instance.getCFMetaData(keyspace(),columnFamily()).copy();
   IndexTarget target=rawTarget.prepare(cfm);
-  logger.debug("Updating column {} definition for index {}",target.column,indexName);
   ColumnDefinition cd=cfm.getColumnDefinition(target.column);
-  if (cd.getIndexType() != null && ifNotExists)   return false;
+  String acceptedName=indexName;
+  if (Strings.isNullOrEmpty(acceptedName))   acceptedName=Indexes.getAvailableIndexName(keyspace(),columnFamily(),cd.name);
+  for (  IndexMetadata existing : cfm.getIndexes())   if (existing.indexedColumn(cfm).equals(cd) || existing.name.equals(acceptedName))   if (ifNotExists)   return false;
+ else   throw new InvalidRequestException("Index already exists");
+  IndexMetadata.IndexType indexType;
+  Map<String,String> indexOptions;
   if (properties.isCustom) {
-    cd.setIndexType(IndexType.CUSTOM,properties.getOptions());
+    indexType=IndexMetadata.IndexType.CUSTOM;
+    indexOptions=properties.getOptions();
   }
  else   if (cfm.isCompound()) {
     Map<String,String> options=Collections.emptyMap();
     if (cd.type.isCollection() && cd.type.isMultiCell())     options=ImmutableMap.of(target.type.indexOption(),"");
-    cd.setIndexType(IndexType.COMPOSITES,options);
+    indexType=IndexMetadata.IndexType.COMPOSITES;
+    indexOptions=options;
   }
  else {
-    cd.setIndexType(IndexType.KEYS,Collections.<String,String>emptyMap());
+    indexType=IndexMetadata.IndexType.KEYS;
+    indexOptions=Collections.emptyMap();
   }
-  cd.setIndexName(indexName);
-  cfm.addDefaultIndexNames();
+  logger.debug("Updating index definition for {}",indexName);
+  IndexMetadata index=IndexMetadata.legacyIndex(cd,acceptedName,indexType,indexOptions);
+  cfm.indexes(cfm.getIndexes().with(index));
   MigrationManager.announceColumnFamilyUpdate(cfm,false,isLocalOnly);
   return true;
 }

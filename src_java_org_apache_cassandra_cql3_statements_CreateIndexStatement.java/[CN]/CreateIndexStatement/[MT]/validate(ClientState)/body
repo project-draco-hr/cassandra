@@ -14,14 +14,20 @@
     validateIsValuesIndexIfTargetColumnNotCollection(cd,target);
     validateTargetColumnIsMapIfIndexInvolvesKeys(isMap,target);
   }
-  if (cd.getIndexType() != null) {
-    IndexTarget.TargetType prevType=IndexTarget.TargetType.fromColumnDefinition(cd);
-    if (isMap && target.type != prevType) {
-      String msg="Cannot create index on %s(%s): an index on %s(%s) already exists and indexing " + "a map on more than one dimension at the same time is not currently supported";
-      throw new InvalidRequestException(String.format(msg,target.type,target.column,prevType,target.column));
+  Indexes existingIndexes=cfm.getIndexes();
+  for (  IndexMetadata index : existingIndexes) {
+    if (index.indexedColumn(cfm).equals(cd)) {
+      IndexTarget.TargetType prevType=IndexTarget.TargetType.fromIndexMetadata(index,cfm);
+      if (isMap && target.type != prevType) {
+        String msg="Cannot create index on %s(%s): an index on %s(%s) already exists and indexing " + "a map on more than one dimension at the same time is not currently supported";
+        throw new InvalidRequestException(String.format(msg,target.type,target.column,prevType,target.column));
+      }
+      if (ifNotExists)       return;
+ else       throw new InvalidRequestException("Index already existss");
     }
-    if (ifNotExists)     return;
- else     throw new InvalidRequestException("Index already exists");
+  }
+  if (!Strings.isNullOrEmpty(indexName)) {
+    if (Schema.instance.getKSMetaData(keyspace()).existingIndexNames(null).contains(indexName))     throw new InvalidRequestException("Index already exists");
   }
   properties.validate();
   if (cfm.isCompactTable()) {
