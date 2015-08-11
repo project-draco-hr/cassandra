@@ -1,0 +1,38 @@
+{
+  PrintStream out=System.out;
+  if (args.length < 2) {
+    out.println("Usage: sstableexpiredblockers <keyspace> <table>");
+    System.exit(1);
+  }
+  String keyspace=args[args.length - 2];
+  String columnfamily=args[args.length - 1];
+  Schema.instance.loadFromDisk(false);
+  CFMetaData metadata=Schema.instance.getCFMetaData(keyspace,columnfamily);
+  if (metadata == null)   throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",keyspace,columnfamily));
+  Keyspace ks=Keyspace.openWithoutSSTables(keyspace);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(columnfamily);
+  Directories.SSTableLister lister=cfs.directories.sstableLister().skipTemporary(true);
+  Set<SSTableReader> sstables=new HashSet<>();
+  for (  Map.Entry<Descriptor,Set<Component>> sstable : lister.list().entrySet()) {
+    if (sstable.getKey() != null) {
+      try {
+        SSTableReader reader=SSTableReader.open(sstable.getKey());
+        sstables.add(reader);
+      }
+ catch (      Throwable t) {
+        out.println("Couldn't open sstable: " + sstable.getKey().filenameFor(Component.DATA));
+        Throwables.propagate(t);
+      }
+    }
+  }
+  if (sstables.isEmpty()) {
+    out.println("No sstables for " + keyspace + "."+ columnfamily);
+    System.exit(1);
+  }
+  int gcBefore=(int)(System.currentTimeMillis() / 1000) - metadata.params.gcGraceSeconds;
+  Multimap<SSTableReader,SSTableReader> blockers=checkForExpiredSSTableBlockers(sstables,gcBefore);
+  for (  SSTableReader blocker : blockers.keySet()) {
+    out.println(String.format("%s blocks %d expired sstables from getting dropped: %s%n",formatForExpiryTracing(Collections.singleton(blocker)),blockers.get(blocker).size(),formatForExpiryTracing(blockers.get(blocker))));
+  }
+  System.exit(0);
+}
