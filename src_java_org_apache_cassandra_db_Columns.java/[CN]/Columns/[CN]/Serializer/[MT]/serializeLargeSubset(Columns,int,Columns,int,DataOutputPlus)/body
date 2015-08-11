@@ -1,0 +1,20 @@
+{
+  out.writeUnsignedVInt(-1L);
+  out.writeUnsignedVInt(supersetCount - columnCount);
+  BTreeSearchIterator<ColumnDefinition,ColumnDefinition> iter=superset.iterator();
+  if (columnCount < supersetCount / 2) {
+    for (    ColumnDefinition column : columns) {
+      if (iter.next(column) == null)       throw new IllegalStateException();
+      out.writeUnsignedVInt(iter.indexOfCurrent());
+    }
+  }
+ else {
+    int prev=-1;
+    for (    ColumnDefinition column : columns) {
+      if (iter.next(column) == null)       throw new IllegalStateException();
+      int cur=iter.indexOfCurrent();
+      while (++prev != cur)       out.writeUnsignedVInt(prev);
+    }
+    while (++prev != supersetCount)     out.writeUnsignedVInt(prev);
+  }
+}

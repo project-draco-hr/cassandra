@@ -1,0 +1,18 @@
+{
+  DecoratedKey key=metadata.decorateKey(ByteBufferUtil.readWithVIntLength(in));
+  int flags=in.readUnsignedByte();
+  boolean isReversed=(flags & IS_REVERSED) != 0;
+  if ((flags & IS_EMPTY) != 0) {
+    SerializationHeader sh=new SerializationHeader(metadata,PartitionColumns.NONE,EncodingStats.NO_STATS);
+    return new Header(sh,key,isReversed,true,null,null,0);
+  }
+  boolean hasPartitionDeletion=(flags & HAS_PARTITION_DELETION) != 0;
+  boolean hasStatic=(flags & HAS_STATIC_ROW) != 0;
+  boolean hasRowEstimate=(flags & HAS_ROW_ESTIMATE) != 0;
+  SerializationHeader header=SerializationHeader.serializer.deserializeForMessaging(in,metadata,selection,hasStatic);
+  DeletionTime partitionDeletion=hasPartitionDeletion ? header.readDeletionTime(in) : DeletionTime.LIVE;
+  Row staticRow=Rows.EMPTY_STATIC_ROW;
+  if (hasStatic)   staticRow=UnfilteredSerializer.serializer.deserializeStaticRow(in,header,new SerializationHelper(metadata,version,flag));
+  int rowEstimate=hasRowEstimate ? (int)in.readVInt() : -1;
+  return new Header(header,key,isReversed,false,partitionDeletion,staticRow,rowEstimate);
+}
