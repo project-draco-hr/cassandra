@@ -1,9 +1,13 @@
 {
   state.hasColumnFamilyAccess(keyspace(),columnFamily(),Permission.MODIFY);
   if (hasConditions())   state.hasColumnFamilyAccess(keyspace(),columnFamily(),Permission.SELECT);
-  if (hasMaterializedViews()) {
+  Iterator<ViewDefinition> views=View.findAll(keyspace(),columnFamily()).iterator();
+  if (views.hasNext()) {
     state.hasColumnFamilyAccess(keyspace(),columnFamily(),Permission.SELECT);
-    for (    MaterializedViewDefinition view : cfm.getMaterializedViews())     state.hasColumnFamilyAccess(keyspace(),view.viewName,Permission.MODIFY);
+    do {
+      state.hasColumnFamilyAccess(keyspace(),views.next().viewName,Permission.MODIFY);
+    }
+ while (views.hasNext());
   }
   for (  Function function : getFunctions())   state.ensureHasPermission(Permission.EXECUTE,function);
 }

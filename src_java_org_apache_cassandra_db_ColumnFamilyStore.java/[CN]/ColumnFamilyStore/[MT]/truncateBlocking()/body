@@ -2,12 +2,12 @@
   logger.debug("truncating {}",name);
   if (keyspace.getMetadata().params.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
     forceBlockingFlush();
-    materializedViewManager.forceBlockingFlush();
+    viewManager.forceBlockingFlush();
     Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
   }
  else {
     dumpMemtable();
-    materializedViewManager.dumpMemtables();
+    viewManager.dumpMemtables();
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
@@ -17,7 +17,7 @@
       if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Keyspace.getTimestampedSnapshotName(name));
       ReplayPosition replayAfter=discardSSTables(truncatedAt);
       indexManager.truncateAllIndexesBlocking(truncatedAt);
-      materializedViewManager.truncateBlocking(truncatedAt);
+      viewManager.truncateBlocking(truncatedAt);
       SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
       logger.debug("cleaning out row cache");
       invalidateCaches();

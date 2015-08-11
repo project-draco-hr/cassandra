@@ -1,0 +1,22 @@
+{
+  TemporalRow.Resolver resolver=TemporalRow.latest;
+  DecoratedKey partitionKey=viewPartitionKey(temporalRow,resolver);
+  CFMetaData viewCfm=definition.metadata;
+  if (partitionKey == null) {
+    return null;
+  }
+  Row.Builder regularBuilder=BTreeRow.unsortedBuilder(temporalRow.nowInSec);
+  CBuilder clustering=CBuilder.create(viewCfm.comparator);
+  for (int i=0; i < viewCfm.clusteringColumns().size(); i++) {
+    clustering.add(temporalRow.clusteringValue(viewCfm.clusteringColumns().get(i),resolver));
+  }
+  regularBuilder.newRow(clustering.build());
+  regularBuilder.addPrimaryKeyLivenessInfo(LivenessInfo.create(viewCfm,temporalRow.viewClusteringTimestamp(),temporalRow.viewClusteringTtl(),temporalRow.viewClusteringLocalDeletionTime()));
+  for (  ColumnDefinition columnDefinition : viewCfm.allColumns()) {
+    if (columnDefinition.isPrimaryKeyColumn())     continue;
+    for (    Cell cell : temporalRow.values(columnDefinition,resolver)) {
+      regularBuilder.addCell(cell);
+    }
+  }
+  return PartitionUpdate.singleRowUpdate(viewCfm,partitionKey,regularBuilder.build());
+}
