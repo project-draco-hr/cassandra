@@ -7,8 +7,8 @@
   execute("INSERT INTO %s (a, b) VALUES (?, ?)",3,list(7,8,9));
   String fState=createFunction(KEYSPACE,"list<int>","CREATE FUNCTION %s (state list<int>, values list<int>) " + "CALLED ON NULL INPUT " + "RETURNS list<int> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String fFinal=createFunction(KEYSPACE,"list<int>","CREATE FUNCTION %s(state list<int>) " + "CALLED ON NULL INPUT " + "RETURNS list<int> "+ "LANGUAGE java "+ "AS 'return state;'");
-  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(list<int>) " + "SFUNC " + fState + " "+ "STYPE frozen<list<int>> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
-  String aggregation=createAggregate(KEYSPACE,"list<int>","CREATE AGGREGATE %s(list<int>) " + "SFUNC " + fState + " "+ "STYPE list<int> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(list<int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE frozen<list<int>> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ " "+ "INITCOND null");
+  String aggregation=createAggregate(KEYSPACE,"list<int>","CREATE AGGREGATE %s(list<int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE list<int> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
   assertRows(execute("SELECT " + aggregation + "(b) FROM %s"),row(list(7,8,9)));
   assertInvalidMessage("The function arguments should not be frozen","DROP AGGREGATE %s (frozen<list<int>>);");
 }
