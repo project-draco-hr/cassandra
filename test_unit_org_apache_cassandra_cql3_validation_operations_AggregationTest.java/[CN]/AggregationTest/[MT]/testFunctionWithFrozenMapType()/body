@@ -7,8 +7,8 @@
   execute("INSERT INTO %s (a, b) VALUES (?, ?)",3,map(7,8,9,10));
   String fState=createFunction(KEYSPACE,"map<int, int>","CREATE FUNCTION %s (state map<int, int>, values map<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS map<int, int> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String fFinal=createFunction(KEYSPACE,"map<int, int>","CREATE FUNCTION %s(state map<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS map<int, int> "+ "LANGUAGE java "+ "AS 'return state;'");
-  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(map<int, int>) " + "SFUNC " + fState + " "+ "STYPE frozen<map<int, int>> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
-  String aggregation=createAggregate(KEYSPACE,"map<int, int>","CREATE AGGREGATE %s(map<int, int>) " + "SFUNC " + fState + " "+ "STYPE map<int, int> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(map<int, int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE frozen<map<int, int>> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
+  String aggregation=createAggregate(KEYSPACE,"map<int, int>","CREATE AGGREGATE %s(map<int, int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE map<int, int> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
   assertRows(execute("SELECT " + aggregation + "(b) FROM %s"),row(map(7,8,9,10)));
   assertInvalidMessage("The function arguments should not be frozen","DROP AGGREGATE %s (frozen<map<int, int>>);");
 }

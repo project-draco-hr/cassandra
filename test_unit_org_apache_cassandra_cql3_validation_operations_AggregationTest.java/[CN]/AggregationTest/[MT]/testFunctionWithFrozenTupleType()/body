@@ -7,8 +7,8 @@
   execute("INSERT INTO %s (a, b) VALUES (?, ?)",3,tuple(7,8));
   String fState=createFunction(KEYSPACE,"tuple<int, int>","CREATE FUNCTION %s (state tuple<int, int>, values tuple<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS tuple<int, int> "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String fFinal=createFunction(KEYSPACE,"tuple<int, int>","CREATE FUNCTION %s(state tuple<int, int>) " + "CALLED ON NULL INPUT " + "RETURNS tuple<int, int> "+ "LANGUAGE java "+ "AS 'return state;'");
-  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(tuple<int, int>) " + "SFUNC " + fState + " "+ "STYPE frozen<tuple<int, int>> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
-  String aggregation=createAggregate(KEYSPACE,"tuple<int, int>","CREATE AGGREGATE %s(tuple<int, int>) " + "SFUNC " + fState + " "+ "STYPE tuple<int, int> "+ "FINALFUNC "+ fFinal+ " "+ "INITCOND null");
+  assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(tuple<int, int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE frozen<tuple<int, int>> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
+  String aggregation=createAggregate(KEYSPACE,"tuple<int, int>","CREATE AGGREGATE %s(tuple<int, int>) " + "SFUNC " + parseFunctionName(fState).name + ' '+ "STYPE tuple<int, int> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
   assertRows(execute("SELECT " + aggregation + "(b) FROM %s"),row(tuple(7,8)));
   assertInvalidMessage("The function arguments should not be frozen","DROP AGGREGATE %s (frozen<tuple<int, int>>);");
 }
