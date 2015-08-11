@@ -1,0 +1,11 @@
+{
+  Multimap<SSTableReader,SSTableReader> blockers=ArrayListMultimap.create();
+  for (  SSTableReader sstable : sstables) {
+    if (sstable.getSSTableMetadata().maxLocalDeletionTime < gcBefore) {
+      for (      SSTableReader potentialBlocker : sstables) {
+        if (!potentialBlocker.equals(sstable) && potentialBlocker.getMinTimestamp() <= sstable.getMaxTimestamp() && potentialBlocker.getSSTableMetadata().maxLocalDeletionTime > gcBefore)         blockers.put(potentialBlocker,sstable);
+      }
+    }
+  }
+  return blockers;
+}
