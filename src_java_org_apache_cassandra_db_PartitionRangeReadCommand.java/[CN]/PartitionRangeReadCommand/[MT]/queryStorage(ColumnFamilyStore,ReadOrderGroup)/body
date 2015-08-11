@@ -4,12 +4,14 @@
   final List<UnfilteredPartitionIterator> iterators=new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
   try {
     for (    Memtable memtable : view.memtables) {
-      @SuppressWarnings("resource") UnfilteredPartitionIterator iter=memtable.makePartitionIterator(columnFilter(),dataRange(),isForThrift());
+      @SuppressWarnings("resource") Memtable.MemtableUnfilteredPartitionIterator iter=memtable.makePartitionIterator(columnFilter(),dataRange(),isForThrift());
+      oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,iter.getMinLocalDeletionTime());
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,metadata(),nowInSec()) : iter);
     }
     for (    SSTableReader sstable : view.sstables) {
       @SuppressWarnings("resource") UnfilteredPartitionIterator iter=sstable.getScanner(columnFilter(),dataRange(),isForThrift());
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,metadata(),nowInSec()) : iter);
+      if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
     }
     return checkCacheFilter(UnfilteredPartitionIterators.mergeLazily(iterators,nowInSec()),cfs);
   }

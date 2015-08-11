@@ -10,7 +10,7 @@
     try (UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition)){
       if (iter.isEmpty())       continue;
       UnfilteredRowIterator clonedFilter=copyOnHeap ? UnfilteredRowIterators.cloningIterator(iter,HeapAllocator.instance) : iter;
-      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(clonedFilter,nowInSec()) : clonedFilter,result);
+      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(clonedFilter,nowInSec()) : clonedFilter,result,false);
     }
    }
   Collections.sort(view.sstables,SSTableReader.maxTimestampComparator);
@@ -25,7 +25,7 @@
     try (UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()))){
       if (iter.isEmpty())       continue;
       sstablesIterated++;
-      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter,result);
+      result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter,result,sstable.isRepaired());
     }
    }
   cfs.metric.updateSSTableIterated(sstablesIterated);
