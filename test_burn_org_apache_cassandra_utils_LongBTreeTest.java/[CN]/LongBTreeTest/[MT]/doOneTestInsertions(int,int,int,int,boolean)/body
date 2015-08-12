@@ -5,10 +5,10 @@
       NavigableMap<Integer,Integer> canon=new TreeMap<>();
       Object[] btree=BTree.empty();
       final TreeMap<Integer,Integer> buffer=new TreeMap<>();
-      final Random rnd=new Random();
+      ThreadLocalRandom rnd=ThreadLocalRandom.current();
       for (int i=0; i < iterations; i++) {
         buffer.clear();
-        int mods=(averageModsPerIteration >> 1) + 1 + rnd.nextInt(averageModsPerIteration);
+        int mods=rnd.nextInt(1,averageModsPerIteration * 2);
         while (mods > 0) {
           int v=rnd.nextInt(upperBound);
           int rc=Math.max(0,Math.min(mods,maxRunLength) - 1);
@@ -29,7 +29,7 @@
         btree=next;
         ctxt.stop();
         if (!BTree.isWellFormed(btree,naturalOrder())) {
-          System.out.println("ERROR: Not well formed");
+          log("ERROR: Not well formed");
           throw new AssertionError("Not well formed!");
         }
         if (quickEquality)         testEqual("",BTree.iterator(btree),canon.keySet().iterator());

@@ -1,0 +1,14 @@
+{
+  CFMetaData metadata=iterator.metadata();
+  boolean reversed=iterator.isReverseOrder();
+  BTree.Builder<Row> builder=BTree.builder(metadata.comparator,initialRowCapacity);
+  builder.auto(false);
+  MutableDeletionInfo.Builder deletionBuilder=MutableDeletionInfo.builder(iterator.partitionLevelDeletion(),metadata.comparator,reversed);
+  while (iterator.hasNext()) {
+    Unfiltered unfiltered=iterator.next();
+    if (unfiltered.kind() == Unfiltered.Kind.ROW)     builder.add((Row)unfiltered);
+ else     deletionBuilder.add((RangeTombstoneMarker)unfiltered);
+  }
+  if (reversed)   builder.reverse();
+  return new Holder(builder.build(),deletionBuilder.build(),iterator.staticRow(),iterator.stats());
+}
