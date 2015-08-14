@@ -1,6 +1,5 @@
 {
   CassandraDaemon daemon=new CassandraDaemon();
-  daemon.completeSetup();
   StorageService.instance.registerDaemon(daemon);
   File commitLogDir=new File(DatabaseDescriptor.getCommitLogLocation());
   commitLogDir.setWritable(false);
@@ -9,9 +8,11 @@
   Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
   try {
     DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.ignore);
-    new CommitLogSegmentManager(CommitLog.instance).start();
-    Thread.sleep(50);
-    Assert.assertFalse(killerForTests.wasKilled());
+    new CommitLogSegmentManager(CommitLog.instance);
+    int retries=0;
+    while (!killerForTests.wasKilled() && retries++ < 5)     Thread.sleep(10);
+    Assert.assertTrue(killerForTests.wasKilled());
+    Assert.assertTrue(killerForTests.wasKilledQuietly());
   }
   finally {
     DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
