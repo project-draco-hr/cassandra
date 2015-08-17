@@ -1,12 +1,34 @@
 {
   logger.debug("Checking for sstables overlapping {}",sstables);
   if (sstables.isEmpty())   return ImmutableSet.of();
-  DataTracker.SSTableIntervalTree tree=data.getView().intervalTree;
-  Set<SSTableReader> results=null;
-  for (  SSTableReader sstable : sstables) {
-    Set<SSTableReader> overlaps=ImmutableSet.copyOf(tree.search(Interval.<RowPosition,SSTableReader>create(sstable.first,sstable.last)));
-    results=results == null ? overlaps : Sets.union(results,overlaps).immutableCopy();
+  List<SSTableReader> sortedByFirst=new ArrayList<>(sstables);
+  Collections.sort(sortedByFirst,new Comparator<SSTableReader>(){
+    @Override public int compare(    SSTableReader o1,    SSTableReader o2){
+      return o1.first.compareTo(o2.first);
+    }
   }
-  results=Sets.difference(results,ImmutableSet.copyOf(sstables));
-  return results;
+);
+  List<Interval<RowPosition,SSTableReader>> intervals=new ArrayList<>();
+  DecoratedKey first=null, last=null;
+  for (  SSTableReader sstable : sortedByFirst) {
+    if (first == null) {
+      first=sstable.first;
+      last=sstable.last;
+    }
+ else {
+      if (sstable.first.compareTo(last) <= 0) {
+        if (sstable.last.compareTo(last) > 0)         last=sstable.last;
+      }
+ else {
+        intervals.add(Interval.<RowPosition,SSTableReader>create(first,last));
+        first=sstable.first;
+        last=sstable.last;
+      }
+    }
+  }
+  intervals.add(Interval.<RowPosition,SSTableReader>create(first,last));
+  DataTracker.SSTableIntervalTree tree=data.getView().intervalTree;
+  Set<SSTableReader> results=new HashSet<>();
+  for (  Interval<RowPosition,SSTableReader> interval : intervals)   results.addAll(tree.search(interval));
+  return Sets.difference(results,ImmutableSet.copyOf(sstables));
 }
