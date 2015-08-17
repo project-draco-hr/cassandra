@@ -1,14 +1,14 @@
 {
   CassandraDaemon daemon=new CassandraDaemon();
+  daemon.completeSetup();
   StorageService.instance.registerDaemon(daemon);
   KillerForTests killerForTests=new KillerForTests();
   JVMStabilityInspector.Killer originalKiller=JVMStabilityInspector.replaceKiller(killerForTests);
   Config.CommitFailurePolicy oldPolicy=DatabaseDescriptor.getCommitFailurePolicy();
   try {
     DatabaseDescriptor.setCommitFailurePolicy(Config.CommitFailurePolicy.ignore);
-    CommitLog.handleCommitError("Testing die policy",new Throwable());
-    Assert.assertTrue(killerForTests.wasKilled());
-    Assert.assertTrue(killerForTests.wasKilledQuietly());
+    CommitLog.handleCommitError("Testing ignore policy",new Throwable());
+    Assert.assertFalse(killerForTests.wasKilled());
   }
   finally {
     DatabaseDescriptor.setCommitFailurePolicy(oldPolicy);
