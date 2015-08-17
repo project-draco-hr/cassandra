@@ -1,7 +1,11 @@
 {
   if (cfs.getSSTables().isEmpty())   return Collections.emptyList();
   Set<SSTableReader> uncompacting=Sets.intersection(sstables,cfs.getUncompactingSSTables());
-  Set<SSTableReader> expired=CompactionController.getFullyExpiredSSTables(cfs,uncompacting,cfs.getOverlappingSSTables(uncompacting),gcBefore);
+  Set<SSTableReader> expired=Collections.emptySet();
+  if (System.currentTimeMillis() - lastExpiredCheck > TimeUnit.MINUTES.toMillis(10)) {
+    expired=CompactionController.getFullyExpiredSSTables(cfs,uncompacting,cfs.getOverlappingSSTables(uncompacting),gcBefore);
+    lastExpiredCheck=System.currentTimeMillis();
+  }
   Set<SSTableReader> candidates=Sets.newHashSet(filterSuspectSSTables(uncompacting));
   List<SSTableReader> compactionCandidates=new ArrayList<>(getNextNonExpiredSSTables(Sets.difference(candidates,expired),gcBefore));
   if (!expired.isEmpty()) {
