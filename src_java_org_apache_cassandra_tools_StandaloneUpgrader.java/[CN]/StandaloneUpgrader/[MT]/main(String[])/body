@@ -6,7 +6,7 @@
     Keyspace keyspace=Keyspace.openWithoutSSTables(options.keyspace);
     ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(options.cf);
     OutputHandler handler=new OutputHandler.SystemOutput(false,options.debug);
-    Directories.SSTableLister lister=cfs.directories.sstableLister();
+    Directories.SSTableLister lister=cfs.directories.sstableLister(Directories.OnTxnErr.THROW);
     if (options.snapshot != null)     lister.onlyBackups(true).snapshots(options.snapshot);
  else     lister.includeBackups(false);
     Collection<SSTableReader> readers=new ArrayList<>();
@@ -41,7 +41,7 @@
       }
     }
     CompactionManager.instance.finishCompactionsAndShutdown(5,TimeUnit.MINUTES);
-    TransactionLogs.waitForDeletions();
+    TransactionLog.waitForDeletions();
     System.exit(0);
   }
  catch (  Exception e) {

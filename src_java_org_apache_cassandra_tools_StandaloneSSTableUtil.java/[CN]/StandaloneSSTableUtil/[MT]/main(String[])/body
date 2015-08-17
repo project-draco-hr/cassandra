@@ -1,0 +1,23 @@
+{
+  Options options=Options.parseArgs(args);
+  try {
+    Schema.instance.loadFromDisk(false);
+    CFMetaData metadata=Schema.instance.getCFMetaData(options.keyspaceName,options.cfName);
+    if (metadata == null)     throw new IllegalArgumentException(String.format("Unknown keyspace/table %s.%s",options.keyspaceName,options.cfName));
+    OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
+    if (options.cleanup) {
+      handler.output("Cleanuping up...");
+      LifecycleTransaction.removeUnfinishedLeftovers(metadata);
+    }
+ else {
+      handler.output("Listing files...");
+      listFiles(options,metadata,handler);
+    }
+    System.exit(0);
+  }
+ catch (  Exception e) {
+    System.err.println(e.getMessage());
+    if (options.debug)     e.printStackTrace(System.err);
+    System.exit(1);
+  }
+}

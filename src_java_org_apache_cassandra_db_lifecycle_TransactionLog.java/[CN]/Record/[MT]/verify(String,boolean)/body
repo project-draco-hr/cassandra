@@ -1,0 +1,14 @@
+{
+  if (type != RecordType.REMOVE)   return true;
+  List<File> files=getTrackedFiles(parentFolder);
+  Record currentRecord=Record.makeOld(files,relativeFilePath);
+  if (updateTime != currentRecord.updateTime) {
+    logger.error("Possible disk corruption detected for sstable [{}], record [{}]: last update time [{}] should have been [{}]",relativeFilePath,record,new Date(currentRecord.updateTime),new Date(updateTime));
+    return false;
+  }
+  if (lastRecordIsCorrupt && currentRecord.numFiles < numFiles) {
+    logger.error("Possible disk corruption detected for sstable [{}], record [{}]: number of files [{}] should have been [{}]",relativeFilePath,record,currentRecord.numFiles,numFiles);
+    return false;
+  }
+  return true;
+}

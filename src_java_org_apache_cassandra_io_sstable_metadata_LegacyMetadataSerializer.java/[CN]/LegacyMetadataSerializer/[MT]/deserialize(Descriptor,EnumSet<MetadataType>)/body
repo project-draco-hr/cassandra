@@ -16,8 +16,7 @@
       double compressionRatio=in.readDouble();
       String partitioner=in.readUTF();
       int nbAncestors=in.readInt();
-      Set<Integer> ancestors=new HashSet<>(nbAncestors);
-      for (int i=0; i < nbAncestors; i++)       ancestors.add(in.readInt());
+      in.skipBytes(nbAncestors * TypeSizes.sizeof(nbAncestors));
       StreamingHistogram tombstoneHistogram=StreamingHistogram.serializer.deserialize(in);
       int sstableLevel=0;
       if (in.available() > 0)       sstableLevel=in.readInt();
@@ -29,7 +28,7 @@
       for (int i=0; i < colCount; i++)       maxColumnNames.add(ByteBufferUtil.readWithShortLength(in));
       if (types.contains(MetadataType.VALIDATION))       components.put(MetadataType.VALIDATION,new ValidationMetadata(partitioner,bloomFilterFPChance));
       if (types.contains(MetadataType.STATS))       components.put(MetadataType.STATS,new StatsMetadata(partitionSizes,columnCounts,replayPosition,minTimestamp,maxTimestamp,Integer.MAX_VALUE,maxLocalDeletionTime,0,Integer.MAX_VALUE,compressionRatio,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames,true,ActiveRepairService.UNREPAIRED_SSTABLE,-1,-1));
-      if (types.contains(MetadataType.COMPACTION))       components.put(MetadataType.COMPACTION,new CompactionMetadata(ancestors,null));
+      if (types.contains(MetadataType.COMPACTION))       components.put(MetadataType.COMPACTION,new CompactionMetadata(null));
     }
    }
   return components;

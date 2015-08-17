@@ -18,10 +18,7 @@
   boolean noEarlyOpen=DatabaseDescriptor.getSSTablePreempiveOpenIntervalInMB() < 0;
   assertKeyCacheSize(noEarlyOpen ? 2 : 4,KEYSPACE1,COLUMN_FAMILY1);
   refs.release();
-  while (ScheduledExecutors.nonPeriodicTasks.getActiveCount() + ScheduledExecutors.nonPeriodicTasks.getQueue().size() > 0) {
-    Uninterruptibles.sleepUninterruptibly(100,TimeUnit.MILLISECONDS);
-    ;
-  }
+  TransactionLog.waitForDeletions();
   assertKeyCacheSize(2,KEYSPACE1,COLUMN_FAMILY1);
   Util.getAll(Util.cmd(cfs,"key1").build());
   Util.getAll(Util.cmd(cfs,"key2").build());
