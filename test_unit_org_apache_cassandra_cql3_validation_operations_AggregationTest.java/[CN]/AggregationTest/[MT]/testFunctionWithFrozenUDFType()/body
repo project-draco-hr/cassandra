@@ -6,7 +6,7 @@
   execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",1,2);
   execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",2,4);
   execute("INSERT INTO %s (a, b) VALUES (?, {f : ?})",3,7);
-  String fState=createFunction(KEYSPACE,"tuple<int, int>","CREATE FUNCTION %s (state " + myType + ", values "+ myType+ ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java\n"+ "AS 'return values;';");
+  String fState=createFunction(KEYSPACE,myType + ',' + myType,"CREATE FUNCTION %s (state " + myType + ", values "+ myType+ ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java\n"+ "AS 'return values;';");
   String fFinal=createFunction(KEYSPACE,myType,"CREATE FUNCTION %s(state " + myType + ") "+ "CALLED ON NULL INPUT "+ "RETURNS "+ myType+ " "+ "LANGUAGE java "+ "AS 'return state;'");
   assertInvalidMessage("The function state type should not be frozen","CREATE AGGREGATE %s(" + myType + ") "+ "SFUNC "+ parseFunctionName(fState).name+ ' '+ "STYPE frozen<"+ myType+ "> "+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
   String aggregation=createAggregate(KEYSPACE,myType,"CREATE AGGREGATE %s(" + myType + ") "+ "SFUNC "+ parseFunctionName(fState).name+ ' '+ "STYPE "+ myType+ ' '+ "FINALFUNC "+ parseFunctionName(fFinal).name+ ' '+ "INITCOND null");
