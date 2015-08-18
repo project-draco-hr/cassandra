@@ -1,3 +1,25 @@
 {
-  runCompactionWithRangeTombstoneAndCheckSecondaryIndex();
+  Keyspace table=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
+  ByteBuffer key=ByteBufferUtil.bytes("k5");
+  ByteBuffer indexedColumnName=ByteBufferUtil.bytes("val");
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ColumnDefinition cd=cfs.metadata.getColumnDefinition(indexedColumnName).copy();
+  IndexMetadata indexDef=IndexMetadata.legacyIndex(cd,"test_index",IndexMetadata.IndexType.CUSTOM,ImmutableMap.of(SecondaryIndex.CUSTOM_INDEX_OPTION_NAME,TestIndex.class.getName()));
+  if (!cfs.metadata.getIndexes().get("test_index").isPresent())   cfs.metadata.indexes(cfs.metadata.getIndexes().with(indexDef));
+  Future<?> rebuild=cfs.indexManager.addIndexedColumn(indexDef);
+  if (rebuild != null)   rebuild.get();
+  TestIndex index=((TestIndex)cfs.indexManager.getIndexForColumn(cd));
+  index.resetCounts();
+  UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,key).withTimestamp(0);
+  for (int i=0; i < 10; i++)   builder.newRow(i).add("val",i);
+  builder.applyUnsafe();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,0,key).addRangeTombstone(0,7).build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  assertEquals(10,index.inserts.size());
+  CompactionManager.instance.performMaximal(cfs,false);
+  assertEquals(1,cfs.getLiveSSTables().size());
+  assertEquals(8,index.deletes.size());
 }

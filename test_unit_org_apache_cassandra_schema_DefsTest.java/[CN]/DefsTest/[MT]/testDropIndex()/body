@@ -3,12 +3,13 @@
   ColumnFamilyStore cfs=Keyspace.open(KEYSPACE6).getColumnFamilyStore(TABLE1i);
   QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, c1, birthdate, notbirthdate) VALUES (?, ?, ?, ?)",KEYSPACE6,TABLE1i),"key0","col0",1L,1L);
   cfs.forceBlockingFlush();
-  ColumnFamilyStore indexedCfs=cfs.indexManager.getIndexForColumn(cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("birthdate"))).getIndexCfs();
+  ColumnDefinition indexedColumn=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("birthdate"));
+  SecondaryIndex index=cfs.indexManager.getIndexForColumn(indexedColumn);
+  ColumnFamilyStore indexedCfs=index.getIndexCfs();
   Descriptor desc=indexedCfs.getLiveSSTables().iterator().next().descriptor;
   CFMetaData meta=cfs.metadata.copy();
-  ColumnDefinition cdOld=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("birthdate"));
-  ColumnDefinition cdNew=ColumnDefinition.regularDef(meta,cdOld.name.bytes,cdOld.type);
-  meta.addOrReplaceColumnDefinition(cdNew);
+  IndexMetadata existing=meta.getIndexes().iterator().next();
+  meta.indexes(meta.getIndexes().without(existing.name));
   MigrationManager.announceColumnFamilyUpdate(meta,false);
   assertTrue(cfs.indexManager.getIndexes().isEmpty());
   TransactionLog.waitForDeletions();

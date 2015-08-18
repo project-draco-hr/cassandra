@@ -17,9 +17,15 @@
   for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnRight().values())   addTriggerToSchemaMutation(newTable,trigger,timestamp,mutation);
   MapDifference<String,MaterializedViewDefinition> materializedViewDiff=materializedViewsDiff(oldTable.getMaterializedViews(),newTable.getMaterializedViews());
   for (  MaterializedViewDefinition materializedView : materializedViewDiff.entriesOnlyOnLeft().values())   dropMaterializedViewFromSchemaMutation(oldTable,materializedView,timestamp,mutation);
-  for (  MaterializedViewDefinition materializedView : materializedViewDiff.entriesOnlyOnRight().values())   addMaterializedViewToSchemaMutation(oldTable,materializedView,timestamp,mutation);
+  for (  MaterializedViewDefinition materializedView : materializedViewDiff.entriesOnlyOnRight().values())   addMaterializedViewToSchemaMutation(newTable,materializedView,timestamp,mutation);
   for (  MapDifference.ValueDifference<MaterializedViewDefinition> diff : materializedViewDiff.entriesDiffering().values()) {
-    addUpdatedMaterializedViewDefinitionToSchemaMutation(oldTable,diff.rightValue(),timestamp,mutation);
+    addUpdatedMaterializedViewDefinitionToSchemaMutation(newTable,diff.rightValue(),timestamp,mutation);
+  }
+  MapDifference<String,IndexMetadata> indexesDiff=indexesDiff(oldTable.getIndexes(),newTable.getIndexes());
+  for (  IndexMetadata index : indexesDiff.entriesOnlyOnLeft().values())   dropIndexFromSchemaMutation(oldTable,index,timestamp,mutation);
+  for (  IndexMetadata index : indexesDiff.entriesOnlyOnRight().values())   addIndexToSchemaMutation(newTable,index,timestamp,mutation);
+  for (  MapDifference.ValueDifference<IndexMetadata> diff : indexesDiff.entriesDiffering().values()) {
+    addUpdatedIndexToSchemaMutation(newTable,diff.rightValue(),timestamp,mutation);
   }
   return mutation;
 }
