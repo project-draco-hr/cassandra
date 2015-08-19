@@ -1,0 +1,19 @@
+{
+  UUID hostId=UUID.randomUUID();
+  int version=HintsDescriptor.CURRENT_VERSION;
+  long timestamp=System.currentTimeMillis();
+  ImmutableMap<String,Object> parameters=ImmutableMap.of();
+  HintsDescriptor descriptor=new HintsDescriptor(hostId,version,timestamp,parameters);
+  byte[] bytes=serializeDescriptor(descriptor);
+  bytes[28]=(byte)0xFF;
+  bytes[29]=(byte)0xFF;
+  bytes[30]=(byte)0xFF;
+  bytes[31]=(byte)0x7F;
+  try {
+    deserializeDescriptor(bytes);
+    fail("Deserializing the descriptor should but didn't");
+  }
+ catch (  IOException e) {
+    assertEquals("Hints Descriptor CRC Mismatch",e.getMessage());
+  }
+}

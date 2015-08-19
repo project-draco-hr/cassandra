@@ -130,6 +130,11 @@ catch (    Exception e) {
     if (conf.commitlog_directory == null)     throw new ConfigurationException("commitlog_directory is missing and -Dcassandra.storagedir is not set",false);
     conf.commitlog_directory+=File.separator + "commitlog";
   }
+  if (conf.hints_directory == null) {
+    conf.hints_directory=System.getProperty("cassandra.storagedir",null);
+    if (conf.hints_directory == null)     throw new ConfigurationException("hints_directory is missing and -Dcassandra.storagedir is not set",false);
+    conf.hints_directory+=File.separator + "hints";
+  }
   if (conf.saved_caches_directory == null) {
     conf.saved_caches_directory=System.getProperty("cassandra.storagedir",null);
     if (conf.saved_caches_directory == null)     throw new ConfigurationException("saved_caches_directory is missing and -Dcassandra.storagedir is not set",false);
@@ -142,9 +147,12 @@ catch (    Exception e) {
   }
   for (  String datadir : conf.data_file_directories) {
     if (datadir.equals(conf.commitlog_directory))     throw new ConfigurationException("commitlog_directory must not be the same as any data_file_directories",false);
+    if (datadir.equals(conf.hints_directory))     throw new ConfigurationException("hints_directory must not be the same as any data_file_directories",false);
     if (datadir.equals(conf.saved_caches_directory))     throw new ConfigurationException("saved_caches_directory must not be the same as any data_file_directories",false);
   }
   if (conf.commitlog_directory.equals(conf.saved_caches_directory))   throw new ConfigurationException("saved_caches_directory must not be the same as the commitlog_directory",false);
+  if (conf.commitlog_directory.equals(conf.hints_directory))   throw new ConfigurationException("hints_directory must not be the same as the commitlog_directory",false);
+  if (conf.hints_directory.equals(conf.saved_caches_directory))   throw new ConfigurationException("saved_caches_directory must not be the same as the hints_directory",false);
   if (conf.memtable_flush_writers == null)   conf.memtable_flush_writers=Math.min(8,Math.max(2,Math.min(FBUtilities.getAvailableProcessors(),conf.data_file_directories.length)));
   if (conf.memtable_flush_writers < 1)   throw new ConfigurationException("memtable_flush_writers must be at least 1, but was " + conf.memtable_flush_writers,false);
   if (conf.memtable_cleanup_threshold == null)   conf.memtable_cleanup_threshold=(float)(1.0 / (1 + conf.memtable_flush_writers));
@@ -191,4 +199,6 @@ catch (    Exception e) {
   if (conf.user_defined_function_warn_timeout < 0)   throw new ConfigurationException("user_defined_function_warn_timeout must not be negative",false);
   if (conf.user_defined_function_fail_timeout < conf.user_defined_function_warn_timeout)   throw new ConfigurationException("user_defined_function_warn_timeout must less than user_defined_function_fail_timeout",false);
   encryptionContext=new EncryptionContext(config.transparent_data_encryption_options);
+  if (conf.max_mutation_size_in_kb == null)   conf.max_mutation_size_in_kb=conf.commitlog_segment_size_in_mb * 1024 / 2;
+ else   if (conf.commitlog_segment_size_in_mb * 1024 < 2 * conf.max_mutation_size_in_kb)   throw new ConfigurationException("commitlog_segment_size_in_mb must be at least twice the size of max_mutation_size_in_kb / 1024",false);
 }

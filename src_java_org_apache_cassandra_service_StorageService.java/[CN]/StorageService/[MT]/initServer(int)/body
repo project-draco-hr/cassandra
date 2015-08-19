@@ -38,6 +38,7 @@
       MessagingService.instance().shutdown();
       materializedViewMutationStage.shutdown();
       batchlogMutationStage.shutdown();
+      HintsService.instance.pauseDispatch();
       counterMutationStage.shutdown();
       mutationStage.shutdown();
       materializedViewMutationStage.awaitTermination(3600,TimeUnit.SECONDS);
@@ -59,6 +60,7 @@
       }
       CommitLog.instance.shutdownBlocking();
       if (FBUtilities.isWindows())       WindowsTimer.endTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
+      HintsService.instance.shutdownBlocking();
       ScheduledExecutors.nonPeriodicTasks.shutdown();
       if (!ScheduledExecutors.nonPeriodicTasks.awaitTermination(1,TimeUnit.MINUTES))       logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
     }

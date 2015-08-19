@@ -1,0 +1,18 @@
+{
+  File file=new File(directory,descriptor.fileName());
+  FileChannel channel=FileChannel.open(file.toPath(),StandardOpenOption.WRITE,StandardOpenOption.CREATE_NEW);
+  int fd=CLibrary.getfd(channel);
+  CRC32 crc=new CRC32();
+  try {
+    DataOutputBuffer dob=new DataOutputBuffer();
+    descriptor.serialize(dob);
+    ByteBuffer descriptorBytes=dob.buffer();
+    updateChecksum(crc,descriptorBytes);
+    channel.write(descriptorBytes);
+  }
+ catch (  Throwable e) {
+    channel.close();
+    throw e;
+  }
+  return new HintsWriter(directory,descriptor,file,channel,fd,crc);
+}

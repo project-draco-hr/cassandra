@@ -1,0 +1,10 @@
+{
+  logger.debug("Replaying batch {}",id);
+  List<Mutation> mutations=replayingMutations();
+  if (mutations.isEmpty())   return 0;
+  int gcgs=gcgs(mutations);
+  if (TimeUnit.MILLISECONDS.toSeconds(writtenAt) + gcgs <= FBUtilities.nowInSeconds())   return 0;
+  replayHandlers=sendReplays(mutations,writtenAt,hintedNodes);
+  rateLimiter.acquire(data.remaining());
+  return replayHandlers.size();
+}

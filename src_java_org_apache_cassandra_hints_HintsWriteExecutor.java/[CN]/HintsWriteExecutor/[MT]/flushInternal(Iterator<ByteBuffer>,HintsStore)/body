@@ -1,0 +1,13 @@
+{
+  long maxHintsFileSize=DatabaseDescriptor.getMaxHintsFileSize();
+  @SuppressWarnings("resource") HintsWriter writer=store.getOrOpenWriter();
+  try (HintsWriter.Session session=writer.newSession(writeBuffer)){
+    while (iterator.hasNext()) {
+      session.append(iterator.next());
+      if (session.position() >= maxHintsFileSize)       break;
+    }
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,writer.descriptor().fileName());
+  }
+}

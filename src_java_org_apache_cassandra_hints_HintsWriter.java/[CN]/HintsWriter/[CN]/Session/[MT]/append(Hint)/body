@@ -1,0 +1,17 @@
+{
+  int hintSize=(int)Hint.serializer.serializedSize(hint,descriptor.messagingVersion());
+  int totalSize=hintSize + HintsBuffer.ENTRY_OVERHEAD_SIZE;
+  if (totalSize > buffer.remaining())   flushBuffer();
+  ByteBuffer hintBuffer=totalSize <= buffer.remaining() ? buffer : ByteBuffer.allocate(totalSize);
+  CRC32 crc=new CRC32();
+  try (DataOutputBufferFixed out=new DataOutputBufferFixed(hintBuffer)){
+    out.writeInt(hintSize);
+    updateChecksumInt(crc,hintSize);
+    out.writeInt((int)crc.getValue());
+    Hint.serializer.serialize(hint,out,descriptor.messagingVersion());
+    updateChecksum(crc,hintBuffer,hintBuffer.position() - hintSize,hintSize);
+    out.writeInt((int)crc.getValue());
+  }
+   if (hintBuffer == buffer)   bytesWritten+=totalSize;
+ else   append((ByteBuffer)hintBuffer.flip());
+}

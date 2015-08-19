@@ -1,12 +1,4 @@
 {
-  for (  IMutation mutation : mutations) {
-    if (mutation instanceof CounterMutation)     continue;
-    Token tk=mutation.key().getToken();
-    List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(mutation.getKeyspaceName(),tk);
-    Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,mutation.getKeyspaceName());
-    for (    InetAddress target : Iterables.concat(naturalEndpoints,pendingEndpoints)) {
-      if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))       submitHint((Mutation)mutation,target,null);
-    }
-  }
-  Tracing.trace("Wrote hint to satisfy CL.ANY after no replicas acknowledged the write");
+  for (  IMutation mutation : mutations)   if (!(mutation instanceof CounterMutation))   hintMutation((Mutation)mutation);
+  Tracing.trace("Wrote hints to satisfy CL.ANY after no replicas acknowledged the write");
 }

@@ -1,0 +1,9 @@
+{
+  Token tk=DatabaseDescriptor.getPartitioner().getToken(mutation.key().getKey());
+  List<InetAddress> naturalEndpoints=StorageService.instance.getNaturalEndpoints(mutation.getKeyspaceName(),tk);
+  Collection<InetAddress> pendingEndpoints=StorageService.instance.getTokenMetadata().pendingEndpointsFor(tk,mutation.getKeyspaceName());
+  Iterable<InetAddress> endpoints=Iterables.concat(naturalEndpoints,pendingEndpoints);
+  ArrayList<InetAddress> endpointsToHint=new ArrayList<>(Iterables.size(endpoints));
+  for (  InetAddress target : endpoints)   if (!target.equals(FBUtilities.getBroadcastAddress()) && shouldHint(target))   endpointsToHint.add(target);
+  submitHint(mutation,endpointsToHint,null);
+}

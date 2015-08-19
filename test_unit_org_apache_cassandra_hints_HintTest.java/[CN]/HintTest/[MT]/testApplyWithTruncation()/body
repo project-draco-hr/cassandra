@@ -1,0 +1,13 @@
+{
+  long now=FBUtilities.timestampMicros();
+  String key="testApplyWithTruncation";
+  Mutation mutation=createMutation(key,now);
+  assertNoPartitions(key,TABLE0);
+  assertNoPartitions(key,TABLE1);
+  assertNoPartitions(key,TABLE2);
+  Keyspace.open(KEYSPACE).getColumnFamilyStore(TABLE1).truncateBlocking();
+  Hint.create(mutation,now / 1000 - 1).apply();
+  assertNoPartitions(key,TABLE1);
+  assertPartitionsEqual(mutation.getPartitionUpdate(Schema.instance.getId(KEYSPACE,TABLE0)),readPartition(key,TABLE0));
+  assertPartitionsEqual(mutation.getPartitionUpdate(Schema.instance.getId(KEYSPACE,TABLE2)),readPartition(key,TABLE2));
+}

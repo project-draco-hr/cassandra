@@ -1,0 +1,10 @@
+{
+  int version=MessagingService.VERSION_21;
+  int ttl=mutation.smallestGCGS();
+  UUID hintId=UUIDGen.getTimeUUID();
+  ByteBuffer key=UUIDType.instance.decompose(targetId);
+  Clustering clustering=SystemKeyspace.LegacyHints.comparator.make(hintId,version);
+  ByteBuffer value=ByteBuffer.wrap(FBUtilities.serialize(mutation,Mutation.serializer,version));
+  Cell cell=BufferCell.expiring(SystemKeyspace.LegacyHints.compactValueColumn(),now,ttl,FBUtilities.nowInSeconds(),value);
+  return new Mutation(PartitionUpdate.singleRowUpdate(SystemKeyspace.LegacyHints,key,BTreeRow.singleCellRow(clustering,cell)));
+}
