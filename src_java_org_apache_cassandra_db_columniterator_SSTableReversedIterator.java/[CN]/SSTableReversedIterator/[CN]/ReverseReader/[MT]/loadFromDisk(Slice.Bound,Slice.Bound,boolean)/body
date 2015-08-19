@@ -1,7 +1,9 @@
 {
   buffer.reset();
+  boolean isFirst=true;
   if (start != null) {
     while (deserializer.hasNext() && deserializer.compareNextTo(start) <= 0 && !stopReadingDisk()) {
+      isFirst=false;
       if (deserializer.nextIsRow())       deserializer.skipNext();
  else       updateOpenMarker((RangeTombstoneMarker)deserializer.readNext());
     }
@@ -12,7 +14,8 @@
   }
   while (deserializer.hasNext() && (end == null || deserializer.compareNextTo(end) <= 0) && !stopReadingDisk()) {
     Unfiltered unfiltered=deserializer.readNext();
-    buffer.add(unfiltered);
+    if (!isFirst || includeFirst)     buffer.add(unfiltered);
+    isFirst=false;
     if (unfiltered.isRangeTombstoneMarker())     updateOpenMarker((RangeTombstoneMarker)unfiltered);
   }
   if (openMarker != null) {
