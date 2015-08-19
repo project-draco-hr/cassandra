@@ -1,10 +1,20 @@
 {
+  Set<String> tablesWithZeroGcGs=null;
   Map<String,Map<ByteBuffer,IMutation>> mutations=new HashMap<>();
   for (int i=0; i < statements.size(); i++) {
     ModificationStatement statement=statements.get(i);
+    if (isLogged() && statement.cfm.params.gcGraceSeconds == 0) {
+      if (tablesWithZeroGcGs == null)       tablesWithZeroGcGs=new HashSet<>();
+      tablesWithZeroGcGs.add(String.format("%s.%s",statement.cfm.ksName,statement.cfm.cfName));
+    }
     QueryOptions statementOptions=options.forStatement(i);
     long timestamp=attrs.getTimestamp(now,statementOptions);
     addStatementMutations(statement,statementOptions,local,timestamp,mutations);
+  }
+  if (tablesWithZeroGcGs != null) {
+    String suffix=tablesWithZeroGcGs.size() == 1 ? "" : "s";
+    NoSpamLogger.log(logger,NoSpamLogger.Level.WARN,1,TimeUnit.MINUTES,LOGGED_BATCH_LOW_GCGS_WARNING,suffix,tablesWithZeroGcGs);
+    ClientWarn.warn(MessageFormatter.arrayFormat(LOGGED_BATCH_LOW_GCGS_WARNING,new Object[]{suffix,tablesWithZeroGcGs}).getMessage());
   }
   return unzipMutations(mutations);
 }
