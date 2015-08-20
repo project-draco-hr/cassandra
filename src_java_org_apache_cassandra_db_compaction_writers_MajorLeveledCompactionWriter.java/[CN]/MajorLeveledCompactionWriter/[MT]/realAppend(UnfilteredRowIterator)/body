@@ -1,0 +1,17 @@
+{
+  long posBefore=sstableWriter.currentWriter().getOnDiskFilePointer();
+  RowIndexEntry rie=sstableWriter.append(partition);
+  totalWrittenInLevel+=sstableWriter.currentWriter().getOnDiskFilePointer() - posBefore;
+  partitionsWritten++;
+  if (sstableWriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize) {
+    if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel,maxSSTableSize)) {
+      totalWrittenInLevel=0;
+      currentLevel++;
+    }
+    averageEstimatedKeysPerSSTable=Math.round(((double)averageEstimatedKeysPerSSTable * sstablesWritten + partitionsWritten) / (sstablesWritten + 1));
+    switchCompactionLocation(getWriteDirectory(expectedWriteSize));
+    partitionsWritten=0;
+    sstablesWritten++;
+  }
+  return rie != null;
+}

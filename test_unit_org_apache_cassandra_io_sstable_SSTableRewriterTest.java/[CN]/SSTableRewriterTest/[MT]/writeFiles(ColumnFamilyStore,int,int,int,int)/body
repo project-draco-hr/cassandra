@@ -2,16 +2,16 @@
   int i=0;
   Set<SSTableReader> result=new LinkedHashSet<>();
   for (int f=0; f < fileCount; f++) {
-    File dir=cfs.directories.getDirectoryForNewSSTables();
+    File dir=cfs.getDirectories().getDirectoryForNewSSTables();
     String filename=cfs.getSSTablePath(dir);
-    try (SSTableTxnWriter writer=SSTableTxnWriter.create(filename,0,0,new SerializationHeader(cfs.metadata,cfs.metadata.partitionColumns(),EncodingStats.NO_STATS))){
+    try (SSTableTxnWriter writer=SSTableTxnWriter.create(cfs,filename,0,0,new SerializationHeader(cfs.metadata,cfs.metadata.partitionColumns(),EncodingStats.NO_STATS))){
       int end=f == fileCount - 1 ? partitionCount : ((f + 1) * partitionCount) / fileCount;
       for (; i < end; i++) {
         UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,ByteBufferUtil.bytes(i));
         for (int j=0; j < cellCount; j++)         builder.newRow(Integer.toString(i)).add("val",random(0,1000));
         writer.append(builder.build().unfilteredIterator());
       }
-      result.add(writer.finish(true));
+      result.addAll(writer.finish(true));
     }
    }
   return result;
