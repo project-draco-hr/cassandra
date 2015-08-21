@@ -1,0 +1,23 @@
+{
+  final Row.Builder[] builders=new Row.Builder[versions.length];
+  RowDiffListener diffListener=new RowDiffListener(){
+    public void onPrimaryKeyLivenessInfo(    int i,    Clustering clustering,    LivenessInfo merged,    LivenessInfo original){
+    }
+    public void onDeletion(    int i,    Clustering clustering,    DeletionTime merged,    DeletionTime original){
+    }
+    public void onComplexDeletion(    int i,    Clustering clustering,    ColumnDefinition column,    DeletionTime merged,    DeletionTime original){
+    }
+    public void onCell(    int i,    Clustering clustering,    Cell merged,    Cell original){
+      if (original != null && merged == null) {
+        if (builders[i] == null) {
+          builders[i]=BTreeRow.sortedBuilder(columns);
+          builders[i].newRow(clustering);
+        }
+        builders[i].addCell(original);
+      }
+    }
+  }
+;
+  Rows.diff(diffListener,merged,columns,versions);
+  for (int i=0; i < builders.length; i++)   if (builders[i] != null)   rows[i]=builders[i].build();
+}

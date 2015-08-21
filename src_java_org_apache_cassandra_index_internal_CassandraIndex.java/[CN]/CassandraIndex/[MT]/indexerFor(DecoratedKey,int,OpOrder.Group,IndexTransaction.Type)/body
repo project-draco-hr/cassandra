@@ -1,0 +1,72 @@
+{
+  return new Indexer(){
+    public void begin(){
+    }
+    public void partitionDelete(    DeletionTime deletionTime){
+    }
+    public void rangeTombstone(    RangeTombstone tombstone){
+    }
+    public void insertRow(    Row row){
+      if (isPrimaryKeyIndex()) {
+        indexPrimaryKey(row.clustering(),getPrimaryKeyIndexLiveness(row),row.deletion());
+      }
+ else {
+        if (indexedColumn.isComplex())         indexCells(row.clustering(),row.getComplexColumnData(indexedColumn));
+ else         indexCell(row.clustering(),row.getCell(indexedColumn));
+      }
+    }
+    public void removeRow(    Row row){
+      if (isPrimaryKeyIndex())       indexPrimaryKey(row.clustering(),row.primaryKeyLivenessInfo(),row.deletion());
+      if (indexedColumn.isComplex())       removeCells(row.clustering(),row.getComplexColumnData(indexedColumn));
+ else       removeCell(row.clustering(),row.getCell(indexedColumn));
+    }
+    public void updateRow(    Row oldRow,    Row newRow){
+      if (isPrimaryKeyIndex())       indexPrimaryKey(newRow.clustering(),newRow.primaryKeyLivenessInfo(),newRow.deletion());
+      if (indexedColumn.isComplex()) {
+        indexCells(newRow.clustering(),newRow.getComplexColumnData(indexedColumn));
+        removeCells(oldRow.clustering(),oldRow.getComplexColumnData(indexedColumn));
+      }
+ else {
+        indexCell(newRow.clustering(),newRow.getCell(indexedColumn));
+        removeCell(oldRow.clustering(),oldRow.getCell(indexedColumn));
+      }
+    }
+    public void finish(){
+    }
+    private void indexCells(    Clustering clustering,    Iterable<Cell> cells){
+      if (cells == null)       return;
+      for (      Cell cell : cells)       indexCell(clustering,cell);
+    }
+    private void indexCell(    Clustering clustering,    Cell cell){
+      if (cell == null || !cell.isLive(nowInSec))       return;
+      insert(key.getKey(),clustering,cell,LivenessInfo.create(cell.timestamp(),cell.ttl(),cell.localDeletionTime()),opGroup);
+    }
+    private void removeCells(    Clustering clustering,    Iterable<Cell> cells){
+      if (cells == null)       return;
+      for (      Cell cell : cells)       removeCell(clustering,cell);
+    }
+    private void removeCell(    Clustering clustering,    Cell cell){
+      if (cell == null || !cell.isLive(nowInSec))       return;
+      delete(key.getKey(),clustering,cell,opGroup,nowInSec);
+    }
+    private void indexPrimaryKey(    final Clustering clustering,    final LivenessInfo liveness,    final DeletionTime deletion){
+      if (liveness.timestamp() != LivenessInfo.NO_TIMESTAMP)       insert(key.getKey(),clustering,null,liveness,opGroup);
+      if (!deletion.isLive())       delete(key.getKey(),clustering,deletion,opGroup);
+    }
+    private LivenessInfo getPrimaryKeyIndexLiveness(    Row row){
+      long timestamp=row.primaryKeyLivenessInfo().timestamp();
+      int ttl=row.primaryKeyLivenessInfo().ttl();
+      for (      Cell cell : row.cells()) {
+        long cellTimestamp=cell.timestamp();
+        if (cell.isLive(nowInSec)) {
+          if (cellTimestamp > timestamp) {
+            timestamp=cellTimestamp;
+            ttl=cell.ttl();
+          }
+        }
+      }
+      return LivenessInfo.create(baseCfs.metadata,timestamp,ttl,nowInSec);
+    }
+  }
+;
+}

@@ -1,0 +1,13 @@
+{
+  DecoratedKey indexKey=indexCfs.decorateKey(ByteBufferUtil.bytes(indexedValue));
+  ClusteringIndexFilter filter=new ClusteringIndexSliceFilter(Slices.with(indexCfs.metadata.comparator,Slice.ALL),false);
+  SinglePartitionReadCommand command=SinglePartitionReadCommand.create(indexCfs.metadata,FBUtilities.nowInSeconds(),indexKey,ColumnFilter.all(indexCfs.metadata),filter);
+  try (ReadOrderGroup orderGroup=ReadOrderGroup.forCommand(command);UnfilteredRowIterator iter=command.queryMemtableAndDisk(indexCfs,orderGroup.indexReadOpOrderGroup())){
+    while (iter.hasNext()) {
+      Unfiltered unfiltered=iter.next();
+      assert(unfiltered.isRow());
+      Row indexRow=(Row)unfiltered;
+      assertEquals(ttl,indexRow.primaryKeyLivenessInfo().ttl());
+    }
+  }
+ }
