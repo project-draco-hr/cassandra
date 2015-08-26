@@ -1,0 +1,17 @@
+{
+  final int NODES=100;
+  final int VNODES=64;
+  final int RUNS=10;
+  StorageService.instance.setPartitionerUnsafe(Murmur3Partitioner.instance);
+  Map<String,Integer> datacenters=ImmutableMap.of("rf1",1,"rf3",3,"rf5_1",5,"rf5_2",5,"rf5_3",5);
+  List<InetAddress> nodes=new ArrayList<>(NODES);
+  for (byte i=0; i < NODES; ++i)   nodes.add(InetAddress.getByAddress(new byte[]{127,0,0,i}));
+  for (int run=0; run < RUNS; ++run) {
+    Random rand=new Random();
+    IEndpointSnitch snitch=generateSnitch(datacenters,nodes,rand);
+    DatabaseDescriptor.setEndpointSnitch(snitch);
+    TokenMetadata meta=new TokenMetadata();
+    for (int i=0; i < NODES; ++i)     for (int j=0; j < VNODES; ++j)     meta.updateNormalToken(Murmur3Partitioner.instance.getRandomToken(rand),nodes.get(i));
+    testEquivalence(meta,snitch,datacenters,rand);
+  }
+}
