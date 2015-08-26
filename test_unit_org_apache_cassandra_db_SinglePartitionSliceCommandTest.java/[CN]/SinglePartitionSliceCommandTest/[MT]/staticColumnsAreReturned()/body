@@ -1,32 +1,36 @@
 {
-  DecoratedKey key=cfm.decorateKey(ByteBufferUtil.bytes("k"));
-  QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, s) VALUES ('k', 's')");
-  Assert.assertFalse(QueryProcessor.executeInternal("SELECT s FROM ks.tbl WHERE k='k'").isEmpty());
+  DecoratedKey key=cfm.decorateKey(ByteBufferUtil.bytes("k1"));
+  QueryProcessor.executeInternal("INSERT INTO ks.tbl (k, s) VALUES ('k1', 's')");
+  Assert.assertFalse(QueryProcessor.executeInternal("SELECT s FROM ks.tbl WHERE k='k1'").isEmpty());
   ColumnFilter columnFilter=ColumnFilter.selection(PartitionColumns.of(s));
   ClusteringIndexSliceFilter sliceFilter=new ClusteringIndexSliceFilter(Slices.NONE,false);
   ReadCommand cmd=new SinglePartitionSliceCommand(false,MessagingService.VERSION_30,true,cfm,FBUtilities.nowInSeconds(),columnFilter,RowFilter.NONE,DataLimits.NONE,key,sliceFilter);
-  UnfilteredPartitionIterator pi;
-  pi=cmd.executeLocally(ReadOrderGroup.emptyGroup());
-  checkForS(pi);
-  ReadResponse response;
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator pi=cmd.executeLocally(orderGroup)){
+    checkForS(pi);
+  }
+   ReadResponse response;
   DataOutputBuffer out;
   DataInputPlus in;
   ReadResponse dst;
-  pi=cmd.executeLocally(ReadOrderGroup.emptyGroup());
-  response=ReadResponse.createDataResponse(pi,cmd.columnFilter());
-  out=new DataOutputBuffer((int)ReadResponse.serializer.serializedSize(response,MessagingService.VERSION_30));
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator pi=cmd.executeLocally(orderGroup)){
+    response=ReadResponse.createDataResponse(pi,cmd.columnFilter());
+  }
+   out=new DataOutputBuffer((int)ReadResponse.serializer.serializedSize(response,MessagingService.VERSION_30));
   ReadResponse.serializer.serialize(response,out,MessagingService.VERSION_30);
   in=new DataInputBuffer(out.buffer(),true);
   dst=ReadResponse.serializer.deserialize(in,MessagingService.VERSION_30);
-  pi=dst.makeIterator(cfm,cmd);
-  checkForS(pi);
-  Schema.instance.getColumnFamilyStoreInstance(cfm.cfId).forceBlockingFlush();
-  pi=cmd.executeLocally(ReadOrderGroup.emptyGroup());
-  response=ReadResponse.createDataResponse(pi,cmd.columnFilter());
-  out=new DataOutputBuffer((int)ReadResponse.serializer.serializedSize(response,MessagingService.VERSION_30));
+  try (UnfilteredPartitionIterator pi=dst.makeIterator(cfm,cmd)){
+    checkForS(pi);
+  }
+   Schema.instance.getColumnFamilyStoreInstance(cfm.cfId).forceBlockingFlush();
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator pi=cmd.executeLocally(orderGroup)){
+    response=ReadResponse.createDataResponse(pi,cmd.columnFilter());
+  }
+   out=new DataOutputBuffer((int)ReadResponse.serializer.serializedSize(response,MessagingService.VERSION_30));
   ReadResponse.serializer.serialize(response,out,MessagingService.VERSION_30);
   in=new DataInputBuffer(out.buffer(),true);
   dst=ReadResponse.serializer.deserialize(in,MessagingService.VERSION_30);
-  pi=dst.makeIterator(cfm,cmd);
-  checkForS(pi);
-}
+  try (UnfilteredPartitionIterator pi=dst.makeIterator(cfm,cmd)){
+    checkForS(pi);
+  }
+ }

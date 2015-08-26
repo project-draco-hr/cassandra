@@ -1,13 +1,32 @@
 {
-  long position=in.readLong();
-  int size=in.readInt();
+  if (!version.storeRows()) {
+    long position=in.readLong();
+    int size=in.readInt();
+    if (size > 0) {
+      DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+      int entries=in.readInt();
+      List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<>(entries);
+      ClusteringPrefix firstName=idxSerializer.clusteringSerializer.deserialize(in);
+      ClusteringPrefix lastName=idxSerializer.clusteringSerializer.deserialize(in);
+      long headerLength=in.readLong();
+      long width=in.readLong();
+      columnsIndex.add(new IndexHelper.IndexInfo(firstName,lastName,width,null));
+      for (int i=1; i < entries; i++)       columnsIndex.add(idxSerializer.deserialize(in));
+      return new IndexedEntry(position,deletionTime,headerLength,columnsIndex);
+    }
+ else {
+      return new RowIndexEntry<>(position);
+    }
+  }
+  long position=in.readUnsignedVInt();
+  int size=(int)in.readUnsignedVInt();
   if (size > 0) {
+    long headerLength=in.readUnsignedVInt();
     DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
-    int entries=in.readInt();
-    IndexHelper.IndexInfo.Serializer idxSerializer=metadata.serializers().indexSerializer(version);
+    int entries=(int)in.readUnsignedVInt();
     List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<>(entries);
-    for (int i=0; i < entries; i++)     columnsIndex.add(idxSerializer.deserialize(in,header));
-    return new IndexedEntry(position,deletionTime,columnsIndex);
+    for (int i=0; i < entries; i++)     columnsIndex.add(idxSerializer.deserialize(in));
+    return new IndexedEntry(position,deletionTime,headerLength,columnsIndex);
   }
  else {
     return new RowIndexEntry<>(position);
