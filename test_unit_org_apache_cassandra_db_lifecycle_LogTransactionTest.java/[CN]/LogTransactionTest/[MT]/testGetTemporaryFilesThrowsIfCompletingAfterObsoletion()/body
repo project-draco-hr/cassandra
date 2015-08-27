@@ -1,0 +1,18 @@
+{
+  ColumnFamilyStore cfs=MockSchema.newCFS(KEYSPACE);
+  SSTableReader sstable=sstable(cfs,0,128);
+  File dataFolder=sstable.descriptor.directory;
+  LogTransaction logs=new LogTransaction(OperationType.COMPACTION,cfs.metadata);
+  assertNotNull(logs);
+  LogTransaction.SSTableTidier tidier=logs.obsoleted(sstable);
+  sstable.markObsolete(tidier);
+  sstable.selfRef().release();
+  LogTransaction.waitForDeletions();
+  try {
+    LogAwareFileLister.getTemporaryFiles(dataFolder);
+    fail("Expected runtime exception");
+  }
+ catch (  RuntimeException e) {
+  }
+  logs.finish();
+}

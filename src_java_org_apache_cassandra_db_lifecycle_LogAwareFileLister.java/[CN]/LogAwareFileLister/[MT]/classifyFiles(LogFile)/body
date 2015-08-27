@@ -1,0 +1,19 @@
+{
+  Map<LogRecord,Set<File>> oldFiles=txnFile.getFilesOfType(files.navigableKeySet(),LogRecord.Type.REMOVE);
+  Map<LogRecord,Set<File>> newFiles=txnFile.getFilesOfType(files.navigableKeySet(),LogRecord.Type.ADD);
+  if (txnFile.completed()) {
+    setTemporary(txnFile,oldFiles.values(),newFiles.values());
+    return;
+  }
+  if (allFilesPresent(txnFile,oldFiles,newFiles)) {
+    setTemporary(txnFile,oldFiles.values(),newFiles.values());
+    return;
+  }
+  if (!txnFile.exists())   return;
+  readTxnLog(txnFile);
+  if (txnFile.completed()) {
+    setTemporary(txnFile,oldFiles.values(),newFiles.values());
+    return;
+  }
+  throw new RuntimeException(String.format("Failed to list directory files in %s, inconsistent disk state for transaction %s",folder,txnFile));
+}
