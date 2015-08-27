@@ -3,7 +3,12 @@
   FBUtilities.waitOnFutures(futures);
   logger.debug("Finished waiting on mutations from recovery");
   futures.clear();
-  for (  Keyspace keyspace : keyspacesRecovered)   futures.addAll(keyspace.flush());
+  boolean flushingSystem=false;
+  for (  Keyspace keyspace : keyspacesRecovered) {
+    if (keyspace.getName().equals(SystemKeyspace.NAME))     flushingSystem=true;
+    futures.addAll(keyspace.flush());
+  }
+  if (!flushingSystem)   futures.add(Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.BATCHES).forceFlush());
   FBUtilities.waitOnFutures(futures);
   return replayedCount.get();
 }
