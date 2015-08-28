@@ -1,22 +1,2 @@
 {
-  long size=1;
-  boolean isStatic=row.isStatic();
-  LivenessInfo pkLiveness=row.primaryKeyLivenessInfo();
-  DeletionTime deletion=row.deletion();
-  boolean hasComplexDeletion=row.hasComplexDeletion();
-  if (!isStatic)   size+=Clustering.serializer.serializedSize(row.clustering(),version,header.clusteringTypes());
-  if (!pkLiveness.isEmpty())   size+=header.timestampSerializedSize(pkLiveness.timestamp());
-  if (pkLiveness.isExpiring()) {
-    size+=header.ttlSerializedSize(pkLiveness.ttl());
-    size+=header.localDeletionTimeSerializedSize(pkLiveness.localExpirationTime());
-  }
-  if (!deletion.isLive())   size+=header.deletionTimeSerializedSize(deletion);
-  Columns columns=header.columns(isStatic);
-  int simpleCount=columns.simpleColumnCount();
-  boolean useSparse=header.useSparseColumnLayout(isStatic);
-  SearchIterator<ColumnDefinition,ColumnData> cells=row.searchIterator();
-  for (int i=0; i < simpleCount; i++)   size+=sizeOfSimpleColumn(i,(Cell)cells.next(columns.getSimple(i)),pkLiveness,header,useSparse);
-  for (int i=simpleCount; i < columns.columnCount(); i++)   size+=sizeOfComplexColumn(i,(ComplexColumnData)cells.next(columns.getComplex(i - simpleCount)),hasComplexDeletion,pkLiveness,header,useSparse);
-  if (useSparse)   size+=TypeSizes.sizeofVInt(-1);
-  return size;
 }
