@@ -1,7 +1,18 @@
 {
-  checkArgument(args.size() == 2,"tablehistograms requires keyspace and table name arguments");
-  String keyspace=args.get(0);
-  String table=args.get(1);
+  String keyspace=null, table=null;
+  if (args.size() == 2) {
+    keyspace=args.get(0);
+    table=args.get(1);
+  }
+ else   if (args.size() == 1) {
+    String[] input=args.get(0).split("\\.");
+    checkArgument(input.length == 2,"tablehistograms requires keyspace and table name arguments");
+    keyspace=input[0];
+    table=input[1];
+  }
+ else {
+    checkArgument(false,"tablehistograms requires keyspace and table name arguments");
+  }
   long[] estimatedPartitionSize=(long[])probe.getColumnFamilyMetric(keyspace,table,"EstimatedPartitionSizeHistogram");
   long[] estimatedColumnCount=(long[])probe.getColumnFamilyMetric(keyspace,table,"EstimatedColumnCountHistogram");
   double[] estimatedRowSizePercentiles=new double[7];
