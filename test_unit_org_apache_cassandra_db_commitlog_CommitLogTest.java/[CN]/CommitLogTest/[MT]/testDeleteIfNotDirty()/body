@@ -1,2 +1,22 @@
 {
+  DatabaseDescriptor.getCommitLogSegmentSize();
+  CommitLog.instance.resetUnsafe(true);
+  ColumnFamilyStore cfs1=Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
+  ColumnFamilyStore cfs2=Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD2);
+  Mutation rm=new RowUpdateBuilder(cfs1.metadata,0,"k").clustering("bytes").add("val",ByteBuffer.allocate((DatabaseDescriptor.getCommitLogSegmentSize() / 4) - 1)).build();
+  CommitLog.instance.add(rm);
+  CommitLog.instance.add(rm);
+  assertEquals(1,CommitLog.instance.activeSegments());
+  UUID cfid1=rm.getColumnFamilyIds().iterator().next();
+  CommitLog.instance.sync(true);
+  CommitLog.instance.discardCompletedSegments(cfid1,CommitLog.instance.getContext());
+  assertEquals(1,CommitLog.instance.activeSegments());
+  Mutation rm2=new RowUpdateBuilder(cfs2.metadata,0,"k").clustering("bytes").add("val",ByteBuffer.allocate(DatabaseDescriptor.getMaxMutationSize() - 200)).build();
+  CommitLog.instance.add(rm2);
+  CommitLog.instance.add(rm2);
+  CommitLog.instance.add(rm2);
+  assertEquals(3,CommitLog.instance.activeSegments());
+  UUID cfid2=rm2.getColumnFamilyIds().iterator().next();
+  CommitLog.instance.discardCompletedSegments(cfid2,CommitLog.instance.getContext());
+  assertEquals(1,CommitLog.instance.activeSegments());
 }

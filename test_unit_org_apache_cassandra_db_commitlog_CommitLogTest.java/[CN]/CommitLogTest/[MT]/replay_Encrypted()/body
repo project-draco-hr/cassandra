@@ -1,0 +1,12 @@
+{
+  DatabaseDescriptor.setCommitLogCompression(null);
+  DatabaseDescriptor.setEncryptionContext(EncryptionContextGenerator.createContext(true));
+  CommitLog commitLog=new CommitLog(logDirectory,CommitLogArchiver.disabled()).start();
+  try {
+    replaySimple(commitLog);
+    replayWithDiscard(commitLog);
+  }
+  finally {
+    for (    String file : commitLog.getActiveSegmentNames())     FileUtils.delete(new File(commitLog.location,file));
+  }
+}

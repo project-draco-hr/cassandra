@@ -1,7 +1,7 @@
 {
-  System.out.format("\nTesting commit log size %.0fmb, compressor %s, sync %s%s%s\n",mb(DatabaseDescriptor.getCommitLogSegmentSize()),commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.executor.getClass().getSimpleName(),randomSize ? " random size" : "",discardedRun ? " with discarded run" : "");
+  System.out.format("\nTesting commit log size %.0fmb, compressor: %s, encryption enabled: %b, sync %s%s%s\n",mb(DatabaseDescriptor.getCommitLogSegmentSize()),commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.encryptionContext.isEnabled(),commitLog.executor.getClass().getSimpleName(),randomSize ? " random size" : "",discardedRun ? " with discarded run" : "");
   commitLog.allocator.enableReserveSegmentCreation();
-  final List<CommitlogExecutor> threads=new ArrayList<>();
+  final List<CommitlogThread> threads=new ArrayList<>();
   ScheduledExecutorService scheduled=startThreads(commitLog,threads);
   discardedPos=ReplayPosition.NONE;
   if (discardedRun) {
@@ -9,7 +9,7 @@
     stop=true;
     scheduled.shutdown();
     scheduled.awaitTermination(2,TimeUnit.SECONDS);
-    for (    CommitlogExecutor t : threads) {
+    for (    CommitlogThread t : threads) {
       t.join();
       if (t.rp.compareTo(discardedPos) > 0)       discardedPos=t.rp;
     }
@@ -26,22 +26,22 @@
   scheduled.awaitTermination(2,TimeUnit.SECONDS);
   int hash=0;
   int cells=0;
-  for (  CommitlogExecutor t : threads) {
+  for (  CommitlogThread t : threads) {
     t.join();
     hash+=t.hash;
     cells+=t.cells;
   }
   verifySizes(commitLog);
   commitLog.shutdownBlocking();
-  System.out.print("Stopped. Replaying... ");
+  System.out.println("Stopped. Replaying... ");
   System.out.flush();
   Replayer repl=new Replayer(commitLog);
   File[] files=new File(location).listFiles();
   repl.recover(files);
   for (  File f : files)   if (!f.delete())   Assert.fail("Failed to delete " + f);
-  if (hash == repl.hash && cells == repl.cells)   System.out.println("Test success.");
+  if (hash == repl.hash && cells == repl.cells)   System.out.format("Test success. compressor = %s, encryption enabled = %b; discarded = %d, skipped = %d\n",commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.encryptionContext.isEnabled(),repl.discarded,repl.skipped);
  else {
-    System.out.format("Test failed. Cells %d expected %d, hash %d expected %d.\n",repl.cells,cells,repl.hash,hash);
+    System.out.format("Test failed (compressor = %s, encryption enabled = %b). Cells %d, expected %d, diff %d; discarded = %d, skipped = %d -  hash %d expected %d.\n",commitLog.compressor != null ? commitLog.compressor.getClass().getSimpleName() : "none",commitLog.encryptionContext.isEnabled(),repl.cells,cells,cells - repl.cells,repl.discarded,repl.skipped,repl.hash,hash);
     failed=true;
   }
 }

@@ -1,0 +1,25 @@
+{
+  ByteBuffer metadataBuffer=reusableBuffers.get();
+  if (metadataBuffer.capacity() < ENCRYPTED_BLOCK_HEADER_SIZE) {
+    metadataBuffer=ByteBufferUtil.ensureCapacity(metadataBuffer,ENCRYPTED_BLOCK_HEADER_SIZE,true);
+    reusableBuffers.set(metadataBuffer);
+  }
+  metadataBuffer.position(0).limit(ENCRYPTED_BLOCK_HEADER_SIZE);
+  channel.read(metadataBuffer);
+  if (metadataBuffer.remaining() < ENCRYPTED_BLOCK_HEADER_SIZE)   throw new IllegalStateException("could not read encrypted blocked metadata header");
+  int encryptedLength=metadataBuffer.getInt();
+  int plainTextLength=metadataBuffer.getInt();
+  outputBuffer=ByteBufferUtil.ensureCapacity(outputBuffer,Math.max(plainTextLength,encryptedLength),allowBufferResize);
+  outputBuffer.position(0).limit(encryptedLength);
+  channel.read(outputBuffer);
+  ByteBuffer dupe=outputBuffer.duplicate();
+  dupe.clear();
+  try {
+    cipher.doFinal(outputBuffer,dupe);
+  }
+ catch (  ShortBufferException|IllegalBlockSizeException|BadPaddingException e) {
+    throw new IOException("failed to decrypt commit log block",e);
+  }
+  dupe.position(0).limit(plainTextLength);
+  return dupe;
+}

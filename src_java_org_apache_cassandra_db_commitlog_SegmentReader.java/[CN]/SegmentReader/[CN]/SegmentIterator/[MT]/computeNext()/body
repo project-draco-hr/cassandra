@@ -1,0 +1,32 @@
+{
+  while (true) {
+    try {
+      final int currentStart=end;
+      end=readSyncMarker(descriptor,currentStart,reader);
+      if (end == -1) {
+        return endOfData();
+      }
+      if (end > reader.length()) {
+        end=(int)reader.length();
+      }
+      return segmenter.nextSegment(currentStart + SYNC_MARKER_SIZE,end);
+    }
+ catch (    SegmentReader.SegmentReadException e) {
+      try {
+        CommitLogReplayer.handleReplayError(!e.invalidCrc && tolerateTruncation,e.getMessage());
+      }
+ catch (      IOException ioe) {
+        throw new RuntimeException(ioe);
+      }
+    }
+catch (    IOException e) {
+      try {
+        boolean tolerateErrorsInSection=tolerateTruncation & segmenter.tolerateSegmentErrors(end,reader.length());
+        CommitLogReplayer.handleReplayError(tolerateErrorsInSection,e.getMessage());
+      }
+ catch (      IOException ioe) {
+        throw new RuntimeException(ioe);
+      }
+    }
+  }
+}

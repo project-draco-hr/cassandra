@@ -1,0 +1,15 @@
+{
+  byte[] buf=new byte[(1 << 12) - 7];
+  random.nextBytes(buf);
+  ByteBuffer compressedBuffer=EncryptionUtils.compress(ByteBuffer.wrap(buf),ByteBuffer.allocate(0),true,compressor);
+  CipherFactory cipherFactory=new CipherFactory(tdeOptions);
+  Cipher encryptor=cipherFactory.getEncryptor(tdeOptions.cipher,tdeOptions.key_alias);
+  File f=File.createTempFile("commitlog-enc-utils-",".tmp");
+  f.deleteOnExit();
+  FileChannel channel=new RandomAccessFile(f,"rw").getChannel();
+  EncryptionUtils.encryptAndWrite(compressedBuffer,channel,true,encryptor);
+  Cipher decryptor=cipherFactory.getDecryptor(tdeOptions.cipher,tdeOptions.key_alias,encryptor.getIV());
+  ByteBuffer decryptedBuffer=EncryptionUtils.decrypt(RandomAccessReader.open(f),ByteBuffer.allocate(0),true,decryptor);
+  ByteBuffer uncompressedBuffer=EncryptionUtils.uncompress(decryptedBuffer,ByteBuffer.allocate(0),true,compressor);
+  Assert.assertArrayEquals(buf,uncompressedBuffer.array());
+}

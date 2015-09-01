@@ -1,7 +1,7 @@
 {
   this.commitLog=commitLog;
   id=getNextId();
-  descriptor=new CommitLogDescriptor(id,commitLog.compressorClass);
+  descriptor=new CommitLogDescriptor(id,commitLog.compressorClass,commitLog.encryptionContext);
   logFile=new File(commitLog.location,descriptor.fileName());
   try {
     channel=FileChannel.open(logFile.toPath(),StandardOpenOption.WRITE,StandardOpenOption.READ,StandardOpenOption.CREATE);
@@ -11,8 +11,4 @@
     throw new FSWriteError(e,logFile);
   }
   buffer=createBuffer(commitLog);
-  CommitLogDescriptor.writeHeader(buffer,descriptor);
-  endOfBuffer=buffer.capacity();
-  lastSyncedOffset=buffer.position();
-  allocatePosition.set(lastSyncedOffset + SYNC_MARKER_SIZE);
 }

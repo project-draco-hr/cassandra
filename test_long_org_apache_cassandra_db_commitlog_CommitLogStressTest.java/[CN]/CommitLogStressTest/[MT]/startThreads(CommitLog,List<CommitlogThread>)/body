@@ -1,0 +1,32 @@
+{
+  stop=false;
+  for (int ii=0; ii < NUM_THREADS; ii++) {
+    final CommitlogThread t=new CommitlogThread(commitLog,new Random(ii));
+    threads.add(t);
+    t.start();
+  }
+  final long start=System.currentTimeMillis();
+  Runnable printRunnable=new Runnable(){
+    long lastUpdate=0;
+    public void run(){
+      Runtime runtime=Runtime.getRuntime();
+      long maxMemory=runtime.maxMemory();
+      long allocatedMemory=runtime.totalMemory();
+      long freeMemory=runtime.freeMemory();
+      long temp=0;
+      long sz=0;
+      for (      CommitlogThread clt : threads) {
+        temp+=clt.counter.get();
+        sz+=clt.dataSize;
+      }
+      double time=(System.currentTimeMillis() - start) / 1000.0;
+      double avg=(temp / time);
+      System.out.println(String.format("second %d mem max %.0fmb allocated %.0fmb free %.0fmb mutations %d since start %d avg %.3f content %.1fmb ondisk %.1fmb transfer %.3fmb",((System.currentTimeMillis() - start) / 1000),mb(maxMemory),mb(allocatedMemory),mb(freeMemory),(temp - lastUpdate),lastUpdate,avg,mb(commitLog.getActiveContentSize()),mb(commitLog.getActiveOnDiskSize()),mb(sz / time)));
+      lastUpdate=temp;
+    }
+  }
+;
+  ScheduledExecutorService scheduled=Executors.newScheduledThreadPool(1);
+  scheduled.scheduleAtFixedRate(printRunnable,1,1,TimeUnit.SECONDS);
+  return scheduled;
+}

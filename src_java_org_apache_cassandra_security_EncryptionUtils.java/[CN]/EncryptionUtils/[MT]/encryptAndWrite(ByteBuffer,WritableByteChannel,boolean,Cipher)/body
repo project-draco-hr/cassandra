@@ -1,0 +1,20 @@
+{
+  final int plainTextLength=inputBuffer.remaining();
+  final int encryptLength=cipher.getOutputSize(plainTextLength);
+  ByteBuffer outputBuffer=inputBuffer.duplicate();
+  outputBuffer=ByteBufferUtil.ensureCapacity(outputBuffer,encryptLength,allowBufferResize);
+  ByteBuffer intBuf=ByteBuffer.allocate(ENCRYPTED_BLOCK_HEADER_SIZE);
+  intBuf.putInt(0,encryptLength);
+  intBuf.putInt(4,plainTextLength);
+  channel.write(intBuf);
+  try {
+    cipher.doFinal(inputBuffer,outputBuffer);
+  }
+ catch (  ShortBufferException|IllegalBlockSizeException|BadPaddingException e) {
+    throw new IOException("failed to encrypt commit log block",e);
+  }
+  outputBuffer.position(0).limit(encryptLength);
+  channel.write(outputBuffer);
+  outputBuffer.position(0).limit(encryptLength);
+  return outputBuffer;
+}

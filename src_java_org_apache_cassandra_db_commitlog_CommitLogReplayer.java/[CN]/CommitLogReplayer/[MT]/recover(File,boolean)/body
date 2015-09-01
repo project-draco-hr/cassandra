@@ -1,2 +1,48 @@
 {
-}
+  CommitLogDescriptor desc=CommitLogDescriptor.fromFileName(file.getName());
+  try (ChannelProxy channel=new ChannelProxy(file);RandomAccessReader reader=RandomAccessReader.open(channel)){
+    if (desc.version < CommitLogDescriptor.VERSION_21) {
+      if (logAndCheckIfShouldSkip(file,desc))       return;
+      if (globalPosition.segment == desc.id)       reader.seek(globalPosition.position);
+      replaySyncSection(reader,(int)reader.length(),desc,desc.fileName(),tolerateTruncation);
+      return;
+    }
+    final long segmentId=desc.id;
+    try {
+      desc=CommitLogDescriptor.readHeader(reader,DatabaseDescriptor.getEncryptionContext());
+    }
+ catch (    Exception e) {
+      desc=null;
+    }
+    if (desc == null) {
+      handleReplayError(false,"Could not read commit log descriptor in file %s",file);
+      return;
+    }
+    if (segmentId != desc.id) {
+      handleReplayError(false,"Segment id mismatch (filename %d, descriptor %d) in file %s",segmentId,desc.id,file);
+    }
+    if (logAndCheckIfShouldSkip(file,desc))     return;
+    SegmentReader segmentReader;
+    try {
+      segmentReader=new SegmentReader(desc,reader,tolerateTruncation);
+    }
+ catch (    Exception e) {
+      handleReplayError(false,"unable to create segment reader for commit log file: %s",e);
+      return;
+    }
+    try {
+      boolean tolerateErrorsInSection=tolerateTruncation;
+      for (      SyncSegment syncSegment : segmentReader) {
+        tolerateErrorsInSection&=syncSegment.toleratesErrorsInSection;
+        if (desc.id == globalPosition.segment && syncSegment.endPosition < globalPosition.position)         continue;
+        String errorContext=String.format("next section at %d in %s",syncSegment.fileStartPosition,desc.fileName());
+        if (!replaySyncSection(syncSegment.input,syncSegment.endPosition,desc,errorContext,tolerateErrorsInSection))         break;
+      }
+    }
+ catch (    RuntimeException re) {
+      if (re.getCause() instanceof IOException)       throw (IOException)re.getCause();
+      throw re;
+    }
+    logger.debug("Finished reading {}",file);
+  }
+ }

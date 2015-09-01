@@ -1,0 +1,20 @@
+{
+  EncryptionContext encryptionContext=DatabaseDescriptor.getEncryptionContext();
+  CommitLogDescriptor desc=new CommitLogDescriptor(CommitLogDescriptor.current_version,CommitLogSegment.getNextId(),DatabaseDescriptor.getCommitLogCompression(),encryptionContext);
+  Map<String,String> additionalHeaders=new HashMap<>();
+  if (encryptionContext.isEnabled()) {
+    byte[] buf=new byte[16];
+    new Random().nextBytes(buf);
+    additionalHeaders.put(EncryptionContext.ENCRYPTION_IV,Hex.bytesToHex(buf));
+  }
+  ByteBuffer buf=ByteBuffer.allocate(1024);
+  CommitLogDescriptor.writeHeader(buf,desc,additionalHeaders);
+  buf.flip();
+  int positionAfterHeader=buf.limit() + 1;
+  File logFile=new File(logDirectory,desc.fileName());
+  logFile.deleteOnExit();
+  try (OutputStream lout=new FileOutputStream(logFile)){
+    lout.write(buf.array(),0,buf.limit());
+  }
+   return Pair.create(logFile,positionAfterHeader);
+}

@@ -1,0 +1,13 @@
+{
+  reader.seek(startPosition);
+  int uncompressedLength=reader.readInt();
+  int compressedLength=nextSectionStartPosition - (int)reader.getPosition();
+  if (compressedLength > compressedBuffer.length)   compressedBuffer=new byte[(int)(1.2 * compressedLength)];
+  reader.readFully(compressedBuffer,0,compressedLength);
+  if (uncompressedLength > uncompressedBuffer.length)   uncompressedBuffer=new byte[(int)(1.2 * uncompressedLength)];
+  int count=compressor.uncompress(compressedBuffer,0,compressedLength,uncompressedBuffer,0);
+  nextLogicalStart+=SYNC_MARKER_SIZE;
+  FileDataInput input=new FileSegmentInputStream(ByteBuffer.wrap(uncompressedBuffer,0,count),reader.getPath(),nextLogicalStart);
+  nextLogicalStart+=uncompressedLength;
+  return new SyncSegment(input,startPosition,nextSectionStartPosition,(int)nextLogicalStart,tolerateSegmentErrors(nextSectionStartPosition,reader.length()));
+}
