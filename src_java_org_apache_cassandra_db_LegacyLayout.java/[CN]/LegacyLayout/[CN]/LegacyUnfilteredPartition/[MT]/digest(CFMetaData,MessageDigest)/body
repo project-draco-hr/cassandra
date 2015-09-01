@@ -1,0 +1,15 @@
+{
+  for (  LegacyCell cell : cells) {
+    digest.update(cell.name.encode(metadata).duplicate());
+    if (cell.isCounter())     CounterContext.instance().updateDigest(digest,cell.value);
+ else     digest.update(cell.value.duplicate());
+    FBUtilities.updateWithLong(digest,cell.timestamp);
+    FBUtilities.updateWithByte(digest,cell.serializationFlags());
+    if (cell.isExpiring())     FBUtilities.updateWithInt(digest,cell.ttl);
+    if (cell.isCounter()) {
+      FBUtilities.updateWithLong(digest,Long.MIN_VALUE);
+    }
+  }
+  if (partitionDeletion.markedForDeleteAt() != Long.MIN_VALUE)   digest.update(ByteBufferUtil.bytes(partitionDeletion.markedForDeleteAt()));
+  if (!rangeTombstones.isEmpty())   rangeTombstones.updateDigest(digest);
+}
