@@ -1,11 +1,15 @@
 {
   ByteBuffer buff=ByteBuffer.allocate(1);
-  if (in.read(buff) > 0) {
+  int readBytes=in.read(buff);
+  if (readBytes > 0) {
     buff.flip();
     Type type=Type.get(buff.get());
     return type.inSerializer.deserialize(in,version,session);
   }
- else {
+ else   if (readBytes == 0) {
     return null;
+  }
+ else {
+    throw new SocketException("End-of-stream reached");
   }
 }
