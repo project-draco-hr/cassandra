@@ -4,7 +4,8 @@
   if (!isPk && hasNonPKColumn) {
     throw new InvalidRequestException(String.format("Cannot include more than one non-primary key column '%s' in materialized view partition key",identifier));
   }
-  if (!allowedPKColumns.contains(identifier)) {
+  boolean isSinglePartitionKey=cfm.getColumnDefinition(identifier).isPartitionKey() && cfm.partitionKeyColumns().size() == 1;
+  if (!allowedPKColumns.remove(identifier) && !isSinglePartitionKey) {
     throw new InvalidRequestException(String.format("Primary key column '%s' is required to be filtered by 'IS NOT NULL'",identifier));
   }
   columns.add(identifier);
