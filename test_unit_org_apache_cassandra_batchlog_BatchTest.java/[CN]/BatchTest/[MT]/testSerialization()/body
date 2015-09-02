@@ -1,0 +1,29 @@
+{
+  CFMetaData cfm=Keyspace.open(KEYSPACE).getColumnFamilyStore(CF_STANDARD).metadata;
+  long now=FBUtilities.timestampMicros();
+  int version=MessagingService.current_version;
+  UUID uuid=UUIDGen.getTimeUUID();
+  List<Mutation> mutations=new ArrayList<>(10);
+  for (int i=0; i < 10; i++) {
+    mutations.add(new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),bytes(i)).clustering("name" + i).add("val","val" + i).build());
+  }
+  Batch batch1=Batch.createLocal(uuid,now,mutations);
+  assertEquals(uuid,batch1.id);
+  assertEquals(now,batch1.creationTime);
+  assertEquals(mutations,batch1.decodedMutations);
+  DataOutputBuffer out=new DataOutputBuffer();
+  Batch.serializer.serialize(batch1,out,version);
+  assertEquals(out.getLength(),Batch.serializer.serializedSize(batch1,version));
+  DataInputPlus dis=new DataInputBuffer(out.getData());
+  Batch batch2=Batch.serializer.deserialize(dis,version);
+  assertEquals(batch1.id,batch2.id);
+  assertEquals(batch1.creationTime,batch2.creationTime);
+  assertEquals(batch1.decodedMutations.size(),batch2.encodedMutations.size());
+  Iterator<Mutation> it1=batch1.decodedMutations.iterator();
+  Iterator<ByteBuffer> it2=batch2.encodedMutations.iterator();
+  while (it1.hasNext()) {
+    try (DataInputBuffer in=new DataInputBuffer(it2.next().array())){
+      assertEquals(it1.next().toString(),Mutation.serializer.deserialize(in,version).toString());
+    }
+   }
+}

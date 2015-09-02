@@ -1,0 +1,7 @@
+{
+  WriteResponseHandler<?> handler=new WriteResponseHandler<>(endpoints.all,Collections.<InetAddress>emptyList(),endpoints.all.size() == 1 ? ConsistencyLevel.ONE : ConsistencyLevel.TWO,Keyspace.open(SystemKeyspace.NAME),null,WriteType.BATCH_LOG);
+  Batch batch=Batch.createLocal(uuid,FBUtilities.timestampMicros(),mutations);
+  if (!endpoints.current.isEmpty())   syncWriteToBatchlog(handler,batch,endpoints.current);
+  if (!endpoints.legacy.isEmpty())   LegacyBatchlogMigrator.syncWriteToBatchlog(handler,batch,endpoints.legacy);
+  handler.get();
+}

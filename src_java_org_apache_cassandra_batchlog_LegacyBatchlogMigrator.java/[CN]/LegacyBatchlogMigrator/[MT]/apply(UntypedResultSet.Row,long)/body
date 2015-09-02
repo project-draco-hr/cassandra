@@ -1,0 +1,18 @@
+{
+  UUID id=row.getUUID("id");
+  long timestamp=id.version() == 1 ? UUIDGen.unixTimestamp(id) : row.getLong("written_at");
+  int version=row.has("version") ? row.getInt("version") : MessagingService.VERSION_12;
+  if (id.version() != 1)   id=UUIDGen.getTimeUUID(timestamp,counter);
+  logger.debug("Converting mutation at {}",timestamp);
+  try (DataInputBuffer in=new DataInputBuffer(row.getBytes("data"),false)){
+    int numMutations=in.readInt();
+    List<Mutation> mutations=new ArrayList<>(numMutations);
+    for (int i=0; i < numMutations; i++)     mutations.add(Mutation.serializer.deserialize(in,version));
+    BatchlogManager.store(Batch.createLocal(id,TimeUnit.MILLISECONDS.toMicros(timestamp),mutations));
+    return true;
+  }
+ catch (  Throwable t) {
+    logger.error("Failed to convert mutation {} at timestamp {}",id,timestamp,t);
+    return false;
+  }
+}

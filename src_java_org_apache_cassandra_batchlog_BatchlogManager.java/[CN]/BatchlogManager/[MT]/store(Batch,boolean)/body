@@ -1,0 +1,14 @@
+{
+  RowUpdateBuilder builder=new RowUpdateBuilder(SystemKeyspace.Batches,batch.creationTime,batch.id).clustering().add("version",MessagingService.current_version);
+  for (  ByteBuffer mutation : batch.encodedMutations)   builder.addListEntry("mutations",mutation);
+  for (  Mutation mutation : batch.decodedMutations) {
+    try (DataOutputBuffer buffer=new DataOutputBuffer()){
+      Mutation.serializer.serialize(mutation,buffer,MessagingService.current_version);
+      builder.addListEntry("mutations",buffer.buffer());
+    }
+ catch (    IOException e) {
+      throw new AssertionError(e);
+    }
+  }
+  builder.build().apply(durableWrites);
+}
