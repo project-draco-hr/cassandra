@@ -1,0 +1,19 @@
+{
+  Assume.assumeTrue(FBUtilities.isWindows());
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF_STANDARD1);
+  store.clearUnsafe();
+  populate(10000);
+  store.snapshot("snapshot1");
+  Thread.sleep(500);
+  store.clearSnapshot("snapshot1");
+  assertEquals(1,SnapshotDeletingTask.pendingDeletionCount());
+  populate(20000);
+  store.forceBlockingFlush();
+  store.forceMajorCompaction();
+  long start=System.currentTimeMillis();
+  while (System.currentTimeMillis() - start < 1000 && SnapshotDeletingTask.pendingDeletionCount() > 0) {
+    Thread.yield();
+  }
+  assertEquals(0,SnapshotDeletingTask.pendingDeletionCount());
+}
