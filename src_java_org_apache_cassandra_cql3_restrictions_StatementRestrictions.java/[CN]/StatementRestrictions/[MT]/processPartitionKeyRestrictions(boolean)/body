@@ -1,10 +1,16 @@
 {
-  if (partitionKeyRestrictions.isOnToken())   isKeyRange=true;
-  if (hasPartitionKeyUnrestrictedComponents()) {
-    if (!partitionKeyRestrictions.isEmpty()) {
-      if (!hasQueriableIndex)       throw invalidRequest("Partition key parts: %s must be restricted as other parts are",Joiner.on(", ").join(getPartitionKeyUnrestrictedComponents()));
+  if (!type.allowPartitionKeyRanges()) {
+    checkFalse(partitionKeyRestrictions.isOnToken(),"The token function cannot be used in WHERE clauses for %s statements",type);
+    if (hasUnrestrictedPartitionKeyComponents())     throw invalidRequest("Some partition key parts are missing: %s",Joiner.on(", ").join(getPartitionKeyUnrestrictedComponents()));
+  }
+ else {
+    if (partitionKeyRestrictions.isOnToken())     isKeyRange=true;
+    if (hasUnrestrictedPartitionKeyComponents()) {
+      if (!partitionKeyRestrictions.isEmpty()) {
+        if (!hasQueriableIndex)         throw invalidRequest("Partition key parts: %s must be restricted as other parts are",Joiner.on(", ").join(getPartitionKeyUnrestrictedComponents()));
+      }
+      isKeyRange=true;
+      usesSecondaryIndexing=hasQueriableIndex;
     }
-    isKeyRange=true;
-    usesSecondaryIndexing=hasQueriableIndex;
   }
 }

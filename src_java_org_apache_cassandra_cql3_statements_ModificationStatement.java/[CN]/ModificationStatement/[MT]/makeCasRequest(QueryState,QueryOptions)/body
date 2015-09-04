@@ -1,11 +1,13 @@
 {
   List<ByteBuffer> keys=buildPartitionKeyNames(options);
-  if (keys.size() > 1)   throw new InvalidRequestException("IN on the partition key is not supported with conditional updates");
+  checkFalse(keys.size() > 1,"IN on the partition key is not supported with conditional %s",type.isUpdate() ? "updates" : "deletions");
   DecoratedKey key=cfm.decorateKey(keys.get(0));
   long now=options.getTimestamp(queryState);
-  CBuilder cbuilder=createClustering(options);
+  SortedSet<Clustering> clusterings=createClustering(options);
+  checkFalse(clusterings.size() > 1,"IN on the clustering key columns is not supported with conditional %s",type.isUpdate() ? "updates" : "deletions");
+  Clustering clustering=Iterables.getOnlyElement(clusterings);
   CQL3CasRequest request=new CQL3CasRequest(cfm,key,false,conditionColumns(),updatesRegularRows(),updatesStaticRow());
-  addConditions(cbuilder.build(),request,options);
-  request.addRowUpdate(cbuilder,this,options,now);
+  addConditions(clustering,request,options);
+  request.addRowUpdate(clustering,this,options,now);
   return request;
 }

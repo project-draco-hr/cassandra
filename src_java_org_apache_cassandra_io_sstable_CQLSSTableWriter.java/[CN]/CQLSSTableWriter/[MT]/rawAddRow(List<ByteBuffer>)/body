@@ -2,11 +2,13 @@
   if (values.size() != boundNames.size())   throw new InvalidRequestException(String.format("Invalid number of arguments, expecting %d values but got %d",boundNames.size(),values.size()));
   QueryOptions options=QueryOptions.forInternalCalls(null,values);
   List<ByteBuffer> keys=insert.buildPartitionKeyNames(options);
-  CBuilder clustering=insert.createClustering(options);
+  SortedSet<Clustering> clusterings=insert.createClustering(options);
   long now=System.currentTimeMillis() * 1000;
   UpdateParameters params=new UpdateParameters(insert.cfm,insert.updatedColumns(),options,insert.getTimestamp(now,options),insert.getTimeToLive(options),Collections.<DecoratedKey,Partition>emptyMap(),false);
   try {
-    for (    ByteBuffer key : keys)     insert.addUpdateForKey(writer.getUpdateFor(key),clustering,params);
+    for (    ByteBuffer key : keys) {
+      for (      Clustering clustering : clusterings)       insert.addUpdateForKey(writer.getUpdateFor(key),clustering,params);
+    }
     return this;
   }
  catch (  SSTableSimpleUnsortedWriter.SyncException e) {

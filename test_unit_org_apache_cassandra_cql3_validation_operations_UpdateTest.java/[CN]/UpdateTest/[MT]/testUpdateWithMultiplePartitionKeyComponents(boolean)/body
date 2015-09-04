@@ -1,0 +1,21 @@
+{
+  for (  String compactOption : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (partitionKey_1 int," + "partitionKey_2 int," + "clustering_1 int,"+ "clustering_2 int,"+ "value int,"+ " PRIMARY KEY ((partitionKey_1, partitionKey_2), clustering_1, clustering_2))"+ compactOption);
+    execute("INSERT INTO %s (partitionKey_1, partitionKey_2, clustering_1, clustering_2, value) VALUES (0, 0, 0, 0, 0)");
+    execute("INSERT INTO %s (partitionKey_1, partitionKey_2, clustering_1, clustering_2, value) VALUES (0, 1, 0, 1, 1)");
+    execute("INSERT INTO %s (partitionKey_1, partitionKey_2, clustering_1, clustering_2, value) VALUES (0, 1, 1, 1, 2)");
+    execute("INSERT INTO %s (partitionKey_1, partitionKey_2, clustering_1, clustering_2, value) VALUES (1, 0, 0, 1, 3)");
+    execute("INSERT INTO %s (partitionKey_1, partitionKey_2, clustering_1, clustering_2, value) VALUES (1, 1, 0, 1, 3)");
+    flush(forceFlush);
+    execute("UPDATE %s SET value = ? WHERE partitionKey_1 = ? AND partitionKey_2 = ? AND clustering_1 = ? AND clustering_2 = ?",7,0,0,0,0);
+    flush(forceFlush);
+    assertRows(execute("SELECT value FROM %s WHERE partitionKey_1 = ? AND partitionKey_2 = ? AND clustering_1 = ? AND clustering_2 = ?",0,0,0,0),row(7));
+    execute("UPDATE %s SET value = ? WHERE partitionKey_1 IN (?, ?) AND partitionKey_2 = ? AND clustering_1 = ? AND clustering_2 = ?",9,0,1,1,0,1);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey_1 IN (?, ?) AND partitionKey_2 = ? AND clustering_1 = ? AND clustering_2 = ?",0,1,1,0,1),row(0,1,0,1,9),row(1,1,0,1,9));
+    execute("UPDATE %s SET value = ? WHERE partitionKey_1 IN (?, ?) AND partitionKey_2 IN (?, ?) AND clustering_1 = ? AND clustering_2 = ?",10,0,1,0,1,0,1);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s"),row(0,0,0,0,7),row(0,0,0,1,10),row(0,1,0,1,10),row(0,1,1,1,2),row(1,0,0,1,10),row(1,1,0,1,10));
+    assertInvalidMessage("Some partition key parts are missing: partitionkey_2","UPDATE %s SET value = ? WHERE partitionKey_1 = ? AND clustering_1 = ? AND clustering_2 = ?",7,1,1);
+  }
+}

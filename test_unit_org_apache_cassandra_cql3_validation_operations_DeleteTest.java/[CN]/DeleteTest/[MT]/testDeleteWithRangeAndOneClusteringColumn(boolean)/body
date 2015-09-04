@@ -1,0 +1,42 @@
+{
+  for (  String compactOption : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (partitionKey int," + "clustering int," + "value int,"+ " PRIMARY KEY (partitionKey, clustering))"+ compactOption);
+    int value=0;
+    for (int partitionKey=0; partitionKey < 5; partitionKey++)     for (int clustering1=0; clustering1 < 5; clustering1++)     execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (?, ?, ?)",partitionKey,clustering1,value++);
+    flush(forceFlush);
+    execute("DELETE FROM %s WHERE partitionKey = ?",1);
+    flush(forceFlush);
+    assertEmpty(execute("SELECT * FROM %s WHERE partitionKey = ?",1));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND  clustering >= ?",0,4);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",0),row(0,0,0),row(0,1,1),row(0,2,2),row(0,3,3));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND  clustering > ?",0,2);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",0),row(0,0,0),row(0,1,1),row(0,2,2));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND clustering <= ?",0,0);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",0),row(0,1,1),row(0,2,2));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND clustering < ?",0,2);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",0),row(0,2,2));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND clustering >= ? AND clustering < ?",2,0,3);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",2),row(2,3,13),row(2,4,14));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND clustering > ? AND clustering <= ?",2,3,5);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",2),row(2,3,13));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND clustering < ? AND clustering > ?",2,3,5);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",2),row(2,3,13));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND (clustering) > (?)",3,2);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",3),row(3,0,15),row(3,1,16),row(3,2,17));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND (clustering) < (?)",3,1);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",3),row(3,1,16),row(3,2,17));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND (clustering) >= (?) AND (clustering) <= (?)",3,0,1);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",3),row(3,2,17));
+    assertInvalidMessage("Range deletions are not supported for specific columns","DELETE value FROM %s WHERE partitionKey = ? AND clustering >= ?",2,1);
+  }
+}

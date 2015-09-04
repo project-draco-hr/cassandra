@@ -1,0 +1,28 @@
+{
+  for (  String compactOption : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (partitionKey int PRIMARY KEY," + "value int)" + compactOption);
+    execute("INSERT INTO %s (partitionKey, value) VALUES (0, 0)");
+    execute("INSERT INTO %s (partitionKey, value) VALUES (1, 1)");
+    execute("INSERT INTO %s (partitionKey, value) VALUES (2, 2)");
+    execute("INSERT INTO %s (partitionKey, value) VALUES (3, 3)");
+    flush(forceFlush);
+    execute("DELETE value FROM %s WHERE partitionKey = ?",0);
+    flush(forceFlush);
+    if (isEmpty(compactOption)) {
+      assertRows(execute("SELECT * FROM %s WHERE partitionKey = ?",0),row(0,null));
+    }
+ else {
+      assertEmpty(execute("SELECT * FROM %s WHERE partitionKey = ?",0));
+    }
+    execute("DELETE FROM %s WHERE partitionKey IN (?, ?)",0,1);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s"),row(2,2),row(3,3));
+    assertInvalidMessage("The token function cannot be used in WHERE clauses for DELETE statements","DELETE FROM %s WHERE token(partitionKey) = token(?)",0);
+    assertInvalidMessage("partitionkey cannot be restricted by more than one relation if it includes an Equal","DELETE FROM %s WHERE partitionKey = ? AND partitionKey = ?",0,1);
+    assertInvalidMessage("Unknown identifier unknown","DELETE unknown FROM %s WHERE partitionKey = ?",0);
+    assertInvalidMessage("Undefined name partitionkey1 in where clause ('partitionkey1 = ?')","DELETE FROM %s WHERE partitionKey1 = ?",0);
+    assertInvalidMessage("Only EQ and IN relation are supported on the partition key (unless you use the token() function)","DELETE FROM %s WHERE partitionKey > ? ",0);
+    assertInvalidMessage("Cannot use CONTAINS on non-collection column partitionkey","DELETE FROM %s WHERE partitionKey CONTAINS ?",0);
+    assertInvalidMessage("Non PRIMARY KEY columns found in where clause: value","DELETE FROM %s WHERE partitionKey = ? AND value = ?",0,1);
+  }
+}

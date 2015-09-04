@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (partitionKey int," + "clustering_1 int," + "clustering_2 int,"+ "value int,"+ "staticValue text static,"+ " PRIMARY KEY (partitionKey, clustering_1, clustering_2))");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, staticValue) VALUES (0, 0, 0, 'A')");
+  execute("INSERT INTO %s (partitionKey, staticValue) VALUES (1, 'B')");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(1,null,null,"B",null),row(0,0,0,"A",null));
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, value) VALUES (1, 0, 0, 0)");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(1,0,0,"B",0),row(0,0,0,"A",null));
+  assertInvalidMessage("Some partition key parts are missing: partitionkey","INSERT INTO %s (clustering_1, clustering_2, staticValue) VALUES (0, 0, 'A')");
+  assertInvalidMessage("Some clustering keys are missing: clustering_1","INSERT INTO %s (partitionKey, clustering_2, staticValue) VALUES (0, 0, 'A')");
+}

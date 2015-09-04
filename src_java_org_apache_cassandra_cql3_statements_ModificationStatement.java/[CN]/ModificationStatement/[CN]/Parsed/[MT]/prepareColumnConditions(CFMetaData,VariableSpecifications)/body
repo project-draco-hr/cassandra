@@ -1,0 +1,14 @@
+{
+  checkNull(attrs.timestamp,"Cannot provide custom timestamp for conditional updates");
+  ColumnConditions.Builder builder=ColumnConditions.newBuilder();
+  for (  Pair<ColumnIdentifier.Raw,ColumnCondition.Raw> entry : conditions) {
+    ColumnIdentifier id=entry.left.prepare(metadata);
+    ColumnDefinition def=metadata.getColumnDefinition(id);
+    checkNotNull(metadata.getColumnDefinition(id),"Unknown identifier %s in IF conditions",id);
+    ColumnCondition condition=entry.right.prepare(keyspace(),def);
+    condition.collectMarkerSpecification(boundNames);
+    checkFalse(def.isPrimaryKeyColumn(),"PRIMARY KEY column '%s' cannot have IF conditions",id);
+    builder.add(condition);
+  }
+  return builder.build();
+}

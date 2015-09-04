@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (partitionKey int," + "clustering_1 int," + "clustering_2 int,"+ "value int,"+ "staticValue text static,"+ " PRIMARY KEY (partitionKey, clustering_1, clustering_2))");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, value, staticValue) VALUES (0, 0, 0, 0, 'A')");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, value) VALUES (0, 0, 1, 1)");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, value, staticValue) VALUES (1, 0, 0, 6, 'B')");
+  flush(forceFlush);
+  execute("UPDATE %s SET staticValue = ? WHERE partitionKey = ?","A2",0);
+  flush(forceFlush);
+  assertRows(execute("SELECT DISTINCT staticValue FROM %s WHERE partitionKey = ?",0),row("A2"));
+  assertInvalidMessage("Some clustering keys are missing: clustering_1, clustering_2","UPDATE %s SET staticValue = ?, value = ? WHERE partitionKey = ?","A2",7,0);
+  execute("UPDATE %s SET staticValue = ?, value = ?  WHERE partitionKey = ? AND clustering_1 = ? AND clustering_2 = ?","A3",7,0,0,1);
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s WHERE partitionKey = ? AND clustering_1 = ? AND clustering_2 = ?",0,0,1),row(0,0,1,"A3",7));
+  assertInvalidMessage("Invalid restrictions on clustering columns since the UPDATE statement modifies only static columns","UPDATE %s SET staticValue = ? WHERE partitionKey = ? AND clustering_1 = ? AND clustering_2 = ?","A3",0,0,1);
+}

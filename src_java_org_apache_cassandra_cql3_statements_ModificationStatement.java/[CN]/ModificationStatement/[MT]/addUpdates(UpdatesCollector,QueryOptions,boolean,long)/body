@@ -1,0 +1,29 @@
+{
+  List<ByteBuffer> keys=buildPartitionKeyNames(options);
+  if (type.allowClusteringColumnSlices() && restrictions.hasClusteringColumnsRestriction() && restrictions.isColumnRange()) {
+    Slices slices=createSlice(options);
+    if (slices.isEmpty())     return;
+    UpdateParameters params=makeUpdateParameters(keys,new ClusteringIndexSliceFilter(slices,false),options,DataLimits.NONE,local,now);
+    for (    ByteBuffer key : keys) {
+      ThriftValidation.validateKey(cfm,key);
+      DecoratedKey dk=cfm.decorateKey(key);
+      PartitionUpdate upd=collector.getPartitionUpdate(cfm,dk,options.getConsistency());
+      for (      Slice slice : slices)       addUpdateForKey(upd,slice,params);
+    }
+  }
+ else {
+    NavigableSet<Clustering> clusterings=createClustering(options);
+    UpdateParameters params=makeUpdateParameters(keys,clusterings,options,local,now);
+    for (    ByteBuffer key : keys) {
+      ThriftValidation.validateKey(cfm,key);
+      DecoratedKey dk=cfm.decorateKey(key);
+      PartitionUpdate upd=collector.getPartitionUpdate(cfm,dk,options.getConsistency());
+      if (clusterings.isEmpty()) {
+        addUpdateForKey(upd,Clustering.EMPTY,params);
+      }
+ else {
+        for (        Clustering clustering : clusterings)         addUpdateForKey(upd,clustering,params);
+      }
+    }
+  }
+}
