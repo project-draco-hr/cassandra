@@ -1,0 +1,26 @@
+{
+  checkFalse(cfm.isCounter(),"INSERT statements are not allowed on counter tables, use UPDATE instead");
+  checkFalse(columnNames == null,"Column names for INSERT must be provided when using VALUES");
+  checkFalse(columnNames.isEmpty(),"No columns provided to INSERT");
+  checkFalse(columnNames.size() != columnValues.size(),"Unmatched column names/values");
+  checkContainsNoDuplicates(columnNames,"The column names contains duplicates");
+  List<Relation> relations=new ArrayList<>();
+  Operations operations=new Operations();
+  boolean hasClusteringColumnsSet=false;
+  for (int i=0; i < columnNames.size(); i++) {
+    ColumnDefinition def=getColumnDefinition(cfm,columnNames.get(i));
+    if (def.isClusteringColumn())     hasClusteringColumnsSet=true;
+    Term.Raw value=columnValues.get(i);
+    if (def.isPrimaryKeyColumn()) {
+      relations.add(new SingleColumnRelation(columnNames.get(i),Operator.EQ,value));
+    }
+ else {
+      Operation operation=new Operation.SetValue(value).prepare(keyspace(),def);
+      operation.collectMarkerSpecification(boundNames);
+      operations.add(operation);
+    }
+  }
+  boolean applyOnlyToStaticColumns=appliesOnlyToStaticColumns(operations,conditions) && !hasClusteringColumnsSet;
+  StatementRestrictions restrictions=new StatementRestrictions(StatementType.INSERT,cfm,relations,boundNames,applyOnlyToStaticColumns,false,false);
+  return new UpdateStatement(StatementType.INSERT,boundNames.size(),cfm,operations,restrictions,conditions,attrs);
+}

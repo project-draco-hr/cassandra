@@ -1,14 +1,5 @@
 {
-  List<ByteBuffer> keys=buildPartitionKeyNames(options);
-  CBuilder clustering=createClustering(options);
-  UpdateParameters params=makeUpdateParameters(keys,clustering,options,local,now);
-  Collection<IMutation> mutations=new ArrayList<IMutation>(keys.size());
-  for (  ByteBuffer key : keys) {
-    ThriftValidation.validateKey(cfm,key);
-    PartitionUpdate upd=new PartitionUpdate(cfm,key,updatedColumns(),1);
-    addUpdateForKey(upd,clustering,params);
-    Mutation mut=new Mutation(upd);
-    mutations.add(isCounter() ? new CounterMutation(mut,options.getConsistency()) : mut);
-  }
-  return mutations;
+  UpdatesCollector collector=new UpdatesCollector(updatedColumns,1);
+  addUpdates(collector,options,local,now);
+  return collector.toMutations();
 }

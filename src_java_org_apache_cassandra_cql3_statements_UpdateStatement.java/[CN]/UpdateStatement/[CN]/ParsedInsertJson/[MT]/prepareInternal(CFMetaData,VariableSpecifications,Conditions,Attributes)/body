@@ -1,0 +1,23 @@
+{
+  checkFalse(cfm.isCounter(),"INSERT statements are not allowed on counter tables, use UPDATE instead");
+  Collection<ColumnDefinition> defs=cfm.allColumns();
+  Json.Prepared prepared=jsonValue.prepareAndCollectMarkers(cfm,defs,boundNames);
+  List<Relation> relations=new ArrayList<>();
+  Operations operations=new Operations();
+  boolean hasClusteringColumnsSet=false;
+  for (  ColumnDefinition def : defs) {
+    if (def.isClusteringColumn())     hasClusteringColumnsSet=true;
+    Term.Raw raw=prepared.getRawTermForColumn(def);
+    if (def.isPrimaryKeyColumn()) {
+      relations.add(new SingleColumnRelation(new ColumnIdentifier.ColumnIdentifierValue(def.name),Operator.EQ,raw));
+    }
+ else {
+      Operation operation=new Operation.SetValue(raw).prepare(keyspace(),def);
+      operation.collectMarkerSpecification(boundNames);
+      operations.add(operation);
+    }
+  }
+  boolean applyOnlyToStaticColumns=appliesOnlyToStaticColumns(operations,conditions) && !hasClusteringColumnsSet;
+  StatementRestrictions restrictions=new StatementRestrictions(StatementType.INSERT,cfm,relations,boundNames,applyOnlyToStaticColumns,false,false);
+  return new UpdateStatement(StatementType.INSERT,boundNames.size(),cfm,operations,restrictions,conditions,attrs);
+}

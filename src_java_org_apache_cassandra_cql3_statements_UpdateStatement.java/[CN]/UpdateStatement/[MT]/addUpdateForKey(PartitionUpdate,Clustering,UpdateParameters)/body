@@ -1,0 +1,19 @@
+{
+  if (updatesRegularRows()) {
+    params.newRow(clustering);
+    if (type.isInsert() && cfm.isCQLTable())     params.addPrimaryKeyLivenessInfo();
+    List<Operation> updates=getRegularOperations();
+    if (cfm.isCompactTable() && updates.isEmpty()) {
+      checkTrue(CompactTables.hasEmptyCompactValue(cfm),"Column %s is mandatory for this COMPACT STORAGE table",cfm.compactValueColumn().name);
+      updates=Collections.<Operation>singletonList(new Constants.Setter(cfm.compactValueColumn(),EMPTY));
+    }
+    for (    Operation op : updates)     op.execute(update.partitionKey(),params);
+    update.add(params.buildRow());
+  }
+  if (updatesStaticRow()) {
+    params.newRow(Clustering.STATIC_CLUSTERING);
+    for (    Operation op : getStaticOperations())     op.execute(update.partitionKey(),params);
+    update.add(params.buildRow());
+  }
+  params.validateIndexedColumns(update);
+}

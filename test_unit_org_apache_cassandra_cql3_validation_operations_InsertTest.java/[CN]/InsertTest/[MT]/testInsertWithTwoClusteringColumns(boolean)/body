@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (partitionKey int," + "clustering_1 int," + "clustering_2 int,"+ "value int,"+ " PRIMARY KEY (partitionKey, clustering_1, clustering_2))");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2) VALUES (0, 0, 0)");
+  execute("INSERT INTO %s (partitionKey, clustering_1, clustering_2, value) VALUES (0, 0, 1, 1)");
+  flush(forceFlush);
+  assertRows(execute("SELECT * FROM %s"),row(0,0,0,null),row(0,0,1,1));
+  assertInvalidMessage("Some partition key parts are missing: partitionkey","INSERT INTO %s (clustering_1, clustering_2, value) VALUES (0, 0, 1)");
+  assertInvalidMessage("Some clustering keys are missing: clustering_1","INSERT INTO %s (partitionKey, clustering_2, value) VALUES (0, 0, 2)");
+  assertInvalidMessage("The column names contains duplicates","INSERT INTO %s (partitionKey, clustering_1, value, clustering_2, value) VALUES (0, 0, 2, 0, 2)");
+  assertInvalidMessage("The column names contains duplicates","INSERT INTO %s (partitionKey, clustering_1, clustering_1, clustering_2, value) VALUES (0, 0, 0, 0, 2)");
+  assertInvalidMessage("Unknown identifier clustering_1x","INSERT INTO %s (partitionKey, clustering_1x, clustering_2, value) VALUES (0, 0, 0, 2)");
+  assertInvalidMessage("Unknown identifier valuex","INSERT INTO %s (partitionKey, clustering_1, clustering_2, valuex) VALUES (0, 0, 0, 2)");
+}

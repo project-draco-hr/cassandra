@@ -1,0 +1,30 @@
+{
+  List<Operation> regularDeletions=getRegularOperations();
+  List<Operation> staticDeletions=getStaticOperations();
+  if (regularDeletions.isEmpty() && staticDeletions.isEmpty()) {
+    if (clustering.size() == 0) {
+      update.addPartitionDeletion(params.deletionTime());
+    }
+ else     if (clustering.size() == cfm.clusteringColumns().size()) {
+      params.newRow(clustering);
+      params.addRowDeletion();
+      update.add(params.buildRow());
+    }
+ else {
+      update.add(params.makeRangeTombstone(cfm.comparator,clustering));
+    }
+  }
+ else {
+    if (!regularDeletions.isEmpty()) {
+      params.newRow(clustering);
+      for (      Operation op : regularDeletions)       op.execute(update.partitionKey(),params);
+      update.add(params.buildRow());
+    }
+    if (!staticDeletions.isEmpty()) {
+      params.newRow(Clustering.STATIC_CLUSTERING);
+      for (      Operation op : staticDeletions)       op.execute(update.partitionKey(),params);
+      update.add(params.buildRow());
+    }
+  }
+  params.validateIndexedColumns(update);
+}

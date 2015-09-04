@@ -1,0 +1,40 @@
+{
+  for (  String compactOption : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (partitionKey int," + "clustering int," + "value int,"+ " PRIMARY KEY (partitionKey, clustering))"+ compactOption);
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 0, 0)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 1, 1)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 2, 2)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 3, 3)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 4, 4)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (0, 5, 5)");
+    execute("INSERT INTO %s (partitionKey, clustering, value) VALUES (1, 0, 6)");
+    flush(forceFlush);
+    execute("DELETE value FROM %s WHERE partitionKey = ? AND clustering = ?",0,1);
+    flush(forceFlush);
+    if (isEmpty(compactOption)) {
+      assertRows(execute("SELECT * FROM %s WHERE partitionKey = ? AND clustering = ?",0,1),row(0,1,null));
+    }
+ else {
+      assertEmpty(execute("SELECT * FROM %s WHERE partitionKey = ? AND clustering = ?",0,1));
+    }
+    execute("DELETE FROM %s WHERE partitionKey = ? AND (clustering) = (?)",0,1);
+    flush(forceFlush);
+    assertEmpty(execute("SELECT value FROM %s WHERE partitionKey = ? AND clustering = ?",0,1));
+    execute("DELETE FROM %s WHERE partitionKey IN (?, ?) AND clustering = ?",0,1,0);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey IN (?, ?)",0,1),row(0,2,2),row(0,3,3),row(0,4,4),row(0,5,5));
+    execute("DELETE FROM %s WHERE partitionKey = ? AND (clustering) IN ((?), (?))",0,4,5);
+    flush(forceFlush);
+    assertRows(execute("SELECT * FROM %s WHERE partitionKey IN (?, ?)",0,1),row(0,2,2),row(0,3,3));
+    assertInvalidMessage("Some partition key parts are missing: partitionkey","DELETE FROM %s WHERE clustering = ?",1);
+    assertInvalidMessage("The token function cannot be used in WHERE clauses for DELETE statements","DELETE FROM %s WHERE token(partitionKey) = token(?) AND clustering = ? ",0,1);
+    assertInvalidMessage("clustering cannot be restricted by more than one relation if it includes an Equal","DELETE FROM %s WHERE partitionKey = ? AND clustering = ? AND clustering = ?",0,1,1);
+    assertInvalidMessage("Unknown identifier value1","DELETE value1 FROM %s WHERE partitionKey = ? AND clustering = ?",0,1);
+    assertInvalidMessage("Undefined name partitionkey1 in where clause ('partitionkey1 = ?')","DELETE FROM %s WHERE partitionKey1 = ? AND clustering = ?",0,1);
+    assertInvalidMessage("Undefined name clustering_3 in where clause ('clustering_3 = ?')","DELETE FROM %s WHERE partitionKey = ? AND clustering_3 = ?",0,1);
+    assertInvalidMessage("Only EQ and IN relation are supported on the partition key (unless you use the token() function)","DELETE FROM %s WHERE partitionKey > ? AND clustering = ?",0,1);
+    assertInvalidMessage("Cannot use CONTAINS on non-collection column partitionkey","DELETE FROM %s WHERE partitionKey CONTAINS ? AND clustering = ?",0,1);
+    String errorMsg=isEmpty(compactOption) ? "Non PRIMARY KEY columns found in where clause: value" : "Predicates on the non-primary-key column (value) of a COMPACT table are not yet supported";
+    assertInvalidMessage(errorMsg,"DELETE FROM %s WHERE partitionKey = ? AND clustering = ? AND value = ?",0,1,3);
+  }
+}

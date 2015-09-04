@@ -1,0 +1,14 @@
+{
+  Operations operations=new Operations();
+  for (  Operation.RawDeletion deletion : deletions) {
+    ColumnDefinition def=getColumnDefinition(cfm,deletion.affectedColumn());
+    checkFalse(def.isPrimaryKeyColumn(),"Invalid identifier %s for deletion (should not be a PRIMARY KEY part)",def.name);
+    Operation op=deletion.prepare(cfm.ksName,def);
+    op.collectMarkerSpecification(boundNames);
+    operations.add(op);
+  }
+  StatementRestrictions restrictions=newRestrictions(StatementType.DELETE,cfm,boundNames,operations,whereClause,conditions);
+  DeleteStatement stmt=new DeleteStatement(boundNames.size(),cfm,operations,restrictions,conditions,attrs);
+  if (stmt.hasConditions())   checkTrue(restrictions.hasAllPKColumnsRestrictedByEqualities(),"DELETE statements must restrict all PRIMARY KEY columns with equality relations" + " in order to use IF conditions");
+  return stmt;
+}

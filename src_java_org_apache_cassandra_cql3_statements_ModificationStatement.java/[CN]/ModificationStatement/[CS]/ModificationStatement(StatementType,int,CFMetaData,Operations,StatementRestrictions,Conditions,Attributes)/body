@@ -1,0 +1,30 @@
+{
+  this.type=type;
+  this.boundTerms=boundTerms;
+  this.cfm=cfm;
+  this.restrictions=restrictions;
+  this.operations=operations;
+  this.conditions=conditions;
+  this.attrs=attrs;
+  if (!conditions.isEmpty()) {
+    checkFalse(cfm.isCounter(),"Conditional updates are not supported on counter tables");
+    checkFalse(attrs.isTimestampSet(),"Cannot provide custom timestamp for conditional updates");
+  }
+  PartitionColumns.Builder conditionColumnsBuilder=PartitionColumns.builder();
+  Iterable<ColumnDefinition> columns=conditions.getColumns();
+  if (columns != null)   conditionColumnsBuilder.addAll(columns);
+  PartitionColumns.Builder updatedColumnsBuilder=PartitionColumns.builder();
+  PartitionColumns.Builder requiresReadBuilder=PartitionColumns.builder();
+  for (  Operation operation : operations) {
+    updatedColumnsBuilder.add(operation.column);
+    if (operation.requiresRead()) {
+      conditionColumnsBuilder.add(operation.column);
+      requiresReadBuilder.add(operation.column);
+    }
+  }
+  PartitionColumns modifiedColumns=updatedColumnsBuilder.build();
+  if (cfm.isCompactTable() && modifiedColumns.isEmpty() && updatesRegularRows())   modifiedColumns=cfm.partitionColumns();
+  this.updatedColumns=modifiedColumns;
+  this.conditionColumns=conditionColumnsBuilder.build();
+  this.requiresRead=requiresReadBuilder.build();
+}
