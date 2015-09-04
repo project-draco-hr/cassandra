@@ -28,14 +28,7 @@ def __init__(self, hostname, port, color=False, username=None, password=None, en
     self.display_date_format = display_date_format
     self.display_float_precision = display_float_precision
     if (not self.conn.metadata.keyspaces):
-        self.printerr('Warning: schema version mismatch detected; check the schema versions of your nodes in system.local and system.peers.')
-        original_method = self.conn.control_connection._get_schema_mismatches
-        try:
-            self.conn.control_connection._get_schema_mismatches = (lambda *args, **kwargs: None)
-            future = self.conn.submit_schema_refresh()
-            future.result(timeout=10)
-        finally:
-            self.conn.control_connection._get_schema_mismatches = original_method
+        self.refresh_schema_metadata_best_effort()
     self.session.default_timeout = client_timeout
     self.session.row_factory = ordered_dict_factory
     self.get_connection_versions()
