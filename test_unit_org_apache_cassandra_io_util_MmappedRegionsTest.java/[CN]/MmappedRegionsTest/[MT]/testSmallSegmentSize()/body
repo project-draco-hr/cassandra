@@ -1,0 +1,20 @@
+{
+  int OLD_MAX_SEGMENT_SIZE=MmappedRegions.MAX_SEGMENT_SIZE;
+  MmappedRegions.MAX_SEGMENT_SIZE=1024;
+  ByteBuffer buffer=allocateBuffer(4096);
+  try (ChannelProxy channel=new ChannelProxy(writeFile("testSmallSegmentSize",buffer));MmappedRegions regions=MmappedRegions.empty(channel)){
+    regions.extend(1024);
+    regions.extend(2048);
+    regions.extend(4096);
+    final int SIZE=MmappedRegions.MAX_SEGMENT_SIZE;
+    for (int i=0; i < buffer.capacity(); i++) {
+      MmappedRegions.Region region=regions.floor(i);
+      assertNotNull(region);
+      assertEquals(SIZE * (i / SIZE),region.bottom());
+      assertEquals(SIZE + (SIZE * (i / SIZE)),region.top());
+    }
+  }
+  finally {
+    MmappedRegions.MAX_SEGMENT_SIZE=OLD_MAX_SEGMENT_SIZE;
+  }
+}

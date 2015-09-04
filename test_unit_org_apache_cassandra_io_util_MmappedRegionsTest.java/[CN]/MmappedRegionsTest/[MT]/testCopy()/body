@@ -1,0 +1,24 @@
+{
+  ByteBuffer buffer=allocateBuffer(128 * 1024);
+  MmappedRegions snapshot;
+  ChannelProxy channelCopy;
+  try (ChannelProxy channel=new ChannelProxy(writeFile("testSnapshot",buffer));MmappedRegions regions=MmappedRegions.map(channel,buffer.capacity() / 4)){
+    regions.extend(buffer.capacity() / 2);
+    regions.extend(3 * buffer.capacity() / 4);
+    regions.extend(buffer.capacity());
+    snapshot=regions.sharedCopy();
+    channelCopy=channel.sharedCopy();
+  }
+   assertFalse(snapshot.isCleanedUp());
+  final int SIZE=buffer.capacity() / 4;
+  for (int i=0; i < buffer.capacity(); i++) {
+    MmappedRegions.Region region=snapshot.floor(i);
+    assertNotNull(region);
+    assertEquals(SIZE * (i / SIZE),region.bottom());
+    assertEquals(SIZE + (SIZE * (i / SIZE)),region.top());
+    assertNotNull(region.buffer.duplicate().getInt());
+  }
+  assertNull(snapshot.close(null));
+  assertNull(channelCopy.close(null));
+  assertTrue(snapshot.isCleanedUp());
+}

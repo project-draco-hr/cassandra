@@ -1,0 +1,34 @@
+{
+  int OLD_MAX_SEGMENT_SIZE=MmappedRegions.MAX_SEGMENT_SIZE;
+  MmappedRegions.MAX_SEGMENT_SIZE=1024;
+  ByteBuffer buffer=allocateBuffer(128 * 1024);
+  File f=File.createTempFile("testMapForCompressionMetadata","1");
+  f.deleteOnExit();
+  File cf=File.createTempFile(f.getName() + ".metadata","1");
+  cf.deleteOnExit();
+  MetadataCollector sstableMetadataCollector=new MetadataCollector(new ClusteringComparator(BytesType.instance)).replayPosition(null);
+  try (SequentialWriter writer=new CompressedSequentialWriter(f,cf.getAbsolutePath(),CompressionParams.snappy(),sstableMetadataCollector)){
+    writer.write(buffer);
+    writer.finish();
+  }
+   CompressionMetadata metadata=new CompressionMetadata(cf.getAbsolutePath(),f.length(),ChecksumType.CRC32);
+  try (ChannelProxy channel=new ChannelProxy(f);MmappedRegions regions=MmappedRegions.map(channel,metadata)){
+    assertFalse(regions.isEmpty());
+    int i=0;
+    while (i < buffer.capacity()) {
+      CompressionMetadata.Chunk chunk=metadata.chunkFor(i);
+      MmappedRegions.Region region=regions.floor(chunk.offset);
+      assertNotNull(region);
+      ByteBuffer compressedChunk=region.buffer.duplicate();
+      assertNotNull(compressedChunk);
+      assertEquals(chunk.length + 4,compressedChunk.capacity());
+      assertEquals(chunk.offset,region.bottom());
+      assertEquals(chunk.offset + chunk.length + 4,region.top());
+      i+=metadata.chunkLength();
+    }
+  }
+  finally {
+    MmappedRegions.MAX_SEGMENT_SIZE=OLD_MAX_SEGMENT_SIZE;
+    metadata.close();
+  }
+}

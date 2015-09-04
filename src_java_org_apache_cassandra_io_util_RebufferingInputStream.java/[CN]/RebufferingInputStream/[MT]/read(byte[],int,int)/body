@@ -1,0 +1,20 @@
+{
+  if (off < 0 || off > b.length || len < 0 || len > b.length - off)   throw new IndexOutOfBoundsException();
+  if (len == 0)   return 0;
+  int copied=0;
+  while (copied < len) {
+    int position=buffer.position();
+    int remaining=buffer.limit() - position;
+    if (remaining == 0) {
+      reBuffer();
+      position=buffer.position();
+      remaining=buffer.limit() - position;
+      if (remaining == 0)       return copied == 0 ? -1 : copied;
+    }
+    int toCopy=Math.min(len - copied,remaining);
+    FastByteOperations.copy(buffer,position,b,off + copied,toCopy);
+    buffer.position(position + toCopy);
+    copied+=toCopy;
+  }
+  return copied;
+}
