@@ -1,4 +1,19 @@
 {
+  boolean skipFirst=false;
+  boolean skipLast=false;
+  if (!partitions.isEmpty() && command instanceof PartitionRangeReadCommand) {
+    AbstractBounds<PartitionPosition> keyRange=((PartitionRangeReadCommand)command).dataRange().keyRange();
+    boolean isExcludingBounds=keyRange instanceof ExcludingBounds;
+    skipFirst=isExcludingBounds && !keyRange.contains(partitions.get(0).partitionKey());
+    skipLast=(isExcludingBounds || keyRange instanceof IncludingExcludingBounds) && !keyRange.contains(partitions.get(partitions.size() - 1).partitionKey());
+  }
+  final List<ImmutableBTreePartition> toReturn;
+  if (skipFirst || skipLast) {
+    toReturn=partitions.size() == 1 ? Collections.emptyList() : partitions.subList(skipFirst ? 1 : 0,skipLast ? partitions.size() - 1 : partitions.size());
+  }
+ else {
+    toReturn=partitions;
+  }
   return new AbstractUnfilteredPartitionIterator(){
     private int idx;
     public boolean isForThrift(){
@@ -8,10 +23,10 @@
       return metadata;
     }
     public boolean hasNext(){
-      return idx < partitions.size();
+      return idx < toReturn.size();
     }
     public UnfilteredRowIterator next(){
-      ImmutableBTreePartition partition=partitions.get(idx++);
+      ImmutableBTreePartition partition=toReturn.get(idx++);
       ClusteringIndexFilter filter=command.clusteringIndexFilter(partition.partitionKey());
       if (!command.metadata().isCompound())       return filter.filter(partition.sliceableUnfilteredIterator(command.columnFilter(),filter.isReversed()));
       return partition.unfilteredIterator(command.columnFilter(),Slices.ALL,filter.isReversed());
