@@ -1,5 +1,19 @@
 {
-  if (!isRunning()) {
-    run();
+  if (isRunning())   return;
+  ServerBootstrap bootstrap=new ServerBootstrap().channel(useEpoll ? EpollServerSocketChannel.class : NioServerSocketChannel.class).childOption(ChannelOption.TCP_NODELAY,true).childOption(ChannelOption.SO_LINGER,0).childOption(ChannelOption.SO_KEEPALIVE,DatabaseDescriptor.getRpcKeepAlive()).childOption(ChannelOption.ALLOCATOR,CBUtil.allocator).childOption(ChannelOption.WRITE_BUFFER_HIGH_WATER_MARK,32 * 1024).childOption(ChannelOption.WRITE_BUFFER_LOW_WATER_MARK,8 * 1024);
+  if (workerGroup != null)   bootstrap=bootstrap.group(workerGroup);
+  final EncryptionOptions.ClientEncryptionOptions clientEnc=DatabaseDescriptor.getClientEncryptionOptions();
+  if (this.useSSL) {
+    logger.info("Enabling encrypted CQL connections between client and server");
+    bootstrap.childHandler(new SecureInitializer(this,clientEnc));
   }
+ else {
+    bootstrap.childHandler(new Initializer(this));
+  }
+  logger.info("Using Netty Version: {}",Version.identify().entrySet());
+  logger.info("Starting listening for CQL clients on {} ({})...",socket,this.useSSL ? "encrypted" : "unencrypted");
+  ChannelFuture bindFuture=bootstrap.bind(socket);
+  if (!bindFuture.awaitUninterruptibly().isSuccess())   throw new IllegalStateException(String.format("Failed to bind port %d on %s.",socket.getPort(),socket.getAddress().getHostAddress()));
+  connectionTracker.allChannels.add(bindFuture.channel());
+  isRunning.set(true);
 }
