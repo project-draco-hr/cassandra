@@ -4,7 +4,7 @@
   checkFalse(columnNames.isEmpty(),"No columns provided to INSERT");
   checkFalse(columnNames.size() != columnValues.size(),"Unmatched column names/values");
   checkContainsNoDuplicates(columnNames,"The column names contains duplicates");
-  List<Relation> relations=new ArrayList<>();
+  WhereClause.Builder whereClause=new WhereClause.Builder();
   Operations operations=new Operations();
   boolean hasClusteringColumnsSet=false;
   for (int i=0; i < columnNames.size(); i++) {
@@ -12,7 +12,7 @@
     if (def.isClusteringColumn())     hasClusteringColumnsSet=true;
     Term.Raw value=columnValues.get(i);
     if (def.isPrimaryKeyColumn()) {
-      relations.add(new SingleColumnRelation(columnNames.get(i),Operator.EQ,value));
+      whereClause.add(new SingleColumnRelation(columnNames.get(i),Operator.EQ,value));
     }
  else {
       Operation operation=new Operation.SetValue(value).prepare(keyspace(),def);
@@ -21,6 +21,6 @@
     }
   }
   boolean applyOnlyToStaticColumns=appliesOnlyToStaticColumns(operations,conditions) && !hasClusteringColumnsSet;
-  StatementRestrictions restrictions=new StatementRestrictions(StatementType.INSERT,cfm,relations,boundNames,applyOnlyToStaticColumns,false,false);
+  StatementRestrictions restrictions=new StatementRestrictions(StatementType.INSERT,cfm,whereClause.build(),boundNames,applyOnlyToStaticColumns,false,false);
   return new UpdateStatement(StatementType.INSERT,boundNames.size(),cfm,operations,restrictions,conditions,attrs);
 }

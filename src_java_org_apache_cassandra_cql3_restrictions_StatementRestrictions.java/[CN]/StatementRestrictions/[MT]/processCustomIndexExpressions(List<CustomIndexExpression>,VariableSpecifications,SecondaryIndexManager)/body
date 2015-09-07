@@ -1,0 +1,14 @@
+{
+  if (!MessagingService.instance().areAllNodesAtLeast30())   throw new InvalidRequestException("Please upgrade all nodes to at least 3.0 before using custom index expressions");
+  if (expressions.size() > 1)   throw new InvalidRequestException(IndexRestrictions.MULTIPLE_EXPRESSIONS);
+  CustomIndexExpression expression=expressions.get(0);
+  expression.prepareValue(cfm,boundNames);
+  CFName cfName=expression.targetIndex.getCfName();
+  if (cfName.hasKeyspace() && !expression.targetIndex.getKeyspace().equals(cfm.ksName))   throw IndexRestrictions.invalidIndex(expression.targetIndex,cfm);
+  if (cfName.getColumnFamily() != null && !cfName.getColumnFamily().equals(cfm.cfName))   throw IndexRestrictions.invalidIndex(expression.targetIndex,cfm);
+  if (!cfm.getIndexes().has(expression.targetIndex.getIdx()))   throw IndexRestrictions.indexNotFound(expression.targetIndex,cfm);
+  Index index=indexManager.getIndex(cfm.getIndexes().get(expression.targetIndex.getIdx()).get());
+  if (!index.getIndexMetadata().isCustom())   throw IndexRestrictions.nonCustomIndexInExpression(expression.targetIndex);
+  if (index.customExpressionValueType() == null)   throw IndexRestrictions.customExpressionNotSupported(expression.targetIndex);
+  indexRestrictions.add(expression);
+}
