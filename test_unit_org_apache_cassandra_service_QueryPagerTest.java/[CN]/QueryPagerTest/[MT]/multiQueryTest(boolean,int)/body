@@ -1,0 +1,25 @@
+{
+  ReadQuery command=new SinglePartitionReadCommand.Group(new ArrayList<SinglePartitionReadCommand<?>>(){
+{
+      add(sliceQuery("k1","c2","c6",10));
+      add(sliceQuery("k4","c3","c5",10));
+    }
+  }
+,DataLimits.NONE);
+  QueryPager pager=command.getPager(null,protocolVersion);
+  assertFalse(pager.isExhausted());
+  List<FilteredPartition> partition=query(pager,3);
+  assertRow(partition.get(0),"k1","c2","c3","c4");
+  assertFalse(pager.isExhausted());
+  pager=maybeRecreate(pager,command,testPagingState,protocolVersion);
+  assertFalse(pager.isExhausted());
+  partition=query(pager,4);
+  assertRow(partition.get(0),"k1","c5","c6");
+  assertRow(partition.get(1),"k4","c3","c4");
+  assertFalse(pager.isExhausted());
+  pager=maybeRecreate(pager,command,testPagingState,protocolVersion);
+  assertFalse(pager.isExhausted());
+  partition=query(pager,3,1);
+  assertRow(partition.get(0),"k4","c5");
+  assertTrue(pager.isExhausted());
+}

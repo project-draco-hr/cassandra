@@ -1,0 +1,17 @@
+{
+  ByteBuffer mark;
+  if (protocolVersion <= Server.VERSION_3) {
+    Iterator<Cell> cells=row.cellsInLegacyOrder(metadata,true).iterator();
+    if (!cells.hasNext()) {
+      mark=LegacyLayout.encodeClustering(metadata,row.clustering());
+    }
+ else {
+      Cell cell=cells.next();
+      mark=LegacyLayout.encodeCellName(metadata,row.clustering(),cell.column().name.bytes,cell.column().isComplex() ? cell.path().get(0) : null);
+    }
+  }
+ else {
+    mark=Clustering.serializer.serialize(row.clustering(),MessagingService.VERSION_30,makeClusteringTypes(metadata));
+  }
+  return new RowMark(mark,protocolVersion);
+}
