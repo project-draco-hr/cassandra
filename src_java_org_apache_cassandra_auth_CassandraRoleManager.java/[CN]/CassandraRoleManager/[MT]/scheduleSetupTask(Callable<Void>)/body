@@ -1,0 +1,20 @@
+{
+  ScheduledExecutors.optionalTasks.schedule(new Runnable(){
+    public void run(){
+      if (!MessagingService.instance().areAllNodesAtLeast22()) {
+        logger.debug("Not all nodes are upgraded to a version that supports Roles yet, rescheduling setup task");
+        scheduleSetupTask(setupTask);
+        return;
+      }
+      isClusterReady=true;
+      try {
+        setupTask.call();
+      }
+ catch (      Exception e) {
+        logger.info("Setup task failed with error, rescheduling");
+        scheduleSetupTask(setupTask);
+      }
+    }
+  }
+,AuthKeyspace.SUPERUSER_SETUP_DELAY,TimeUnit.MILLISECONDS);
+}
