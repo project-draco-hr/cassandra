@@ -1,6 +1,18 @@
 {
   this(columnNameComparator);
-  replayPosition(ReplayPosition.getReplayPosition(sstables));
+  ReplayPosition min=null, max=null;
+  for (  SSTableReader sstable : sstables) {
+    if (min == null) {
+      min=sstable.getSSTableMetadata().commitLogLowerBound;
+      max=sstable.getSSTableMetadata().commitLogUpperBound;
+    }
+ else {
+      min=Ordering.natural().min(min,sstable.getSSTableMetadata().commitLogLowerBound);
+      max=Ordering.natural().max(max,sstable.getSSTableMetadata().commitLogUpperBound);
+    }
+  }
+  commitLogLowerBound(min);
+  commitLogUpperBound(max);
   sstableLevel(level);
   if (!skipAncestors) {
     for (    SSTableReader sstable : sstables) {

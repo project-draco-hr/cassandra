@@ -6,7 +6,8 @@
     Memtable memtable=iter.next();
     memtable.cfs.data.markFlushing(memtable);
     if (memtable.isClean() || truncate) {
-      memtable.cfs.replaceFlushed(memtable,null);
+      memtable.cfs.data.replaceFlushed(memtable,null);
+      memtable.cfs.compactionStrategyWrapper.replaceFlushed(memtable,null);
       reclaim(memtable);
       iter.remove();
     }
@@ -18,8 +19,10 @@
   metric.memtableSwitchCount.inc();
   try {
     for (    Memtable memtable : memtables) {
-      MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
+      SSTableReader reader=memtable.flush();
+      memtable.cfs.data.replaceFlushed(memtable,reader);
       reclaim(memtable);
+      readers.add(reader);
     }
   }
  catch (  FSWriteError e) {

@@ -1,9 +1,8 @@
 {
-  Map<UUID,ReplayPosition> cfPositions=new HashMap<UUID,ReplayPosition>();
-  Ordering<ReplayPosition> replayPositionOrdering=Ordering.from(ReplayPosition.comparator);
+  Map<UUID,ReplayPosition.ReplayFilter> cfPersisted=new HashMap<>();
   ReplayFilter replayFilter=ReplayFilter.create();
+  ReplayPosition globalPosition=null;
   for (  ColumnFamilyStore cfs : ColumnFamilyStore.all()) {
-    ReplayPosition rp=ReplayPosition.getReplayPosition(cfs.getSSTables());
     ReplayPosition truncatedAt=SystemKeyspace.getTruncatedPosition(cfs.metadata.cfId);
     if (truncatedAt != null) {
       long restoreTime=commitLog.archiver.restorePointInTime;
@@ -12,15 +11,15 @@
         if (replayFilter.includes(cfs.metadata)) {
           logger.info("Restore point in time is before latest truncation of table {}.{}. Clearing truncation record.",cfs.metadata.ksName,cfs.metadata.cfName);
           SystemKeyspace.removeTruncationRecord(cfs.metadata.cfId);
+          truncatedAt=null;
         }
       }
- else {
-        rp=replayPositionOrdering.max(Arrays.asList(rp,truncatedAt));
-      }
     }
-    cfPositions.put(cfs.metadata.cfId,rp);
+    ReplayPosition.ReplayFilter filter=new ReplayPosition.ReplayFilter(cfs.getSSTables(),truncatedAt);
+    if (!filter.isEmpty())     cfPersisted.put(cfs.metadata.cfId,filter);
+ else     globalPosition=ReplayPosition.NONE;
   }
-  ReplayPosition globalPosition=replayPositionOrdering.min(cfPositions.values());
-  logger.trace("Global replay position is {} from columnfamilies {}",globalPosition,FBUtilities.toString(cfPositions));
-  return new CommitLogReplayer(commitLog,globalPosition,cfPositions,replayFilter);
+  if (globalPosition == null)   globalPosition=ReplayPosition.firstNotCovered(cfPersisted.values());
+  logger.debug("Global replay position is {} from columnfamilies {}",globalPosition,FBUtilities.toString(cfPersisted));
+  return new CommitLogReplayer(commitLog,globalPosition,cfPersisted,replayFilter);
 }

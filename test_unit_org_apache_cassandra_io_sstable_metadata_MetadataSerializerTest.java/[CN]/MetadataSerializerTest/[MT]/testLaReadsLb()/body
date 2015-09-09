@@ -1,0 +1,17 @@
+{
+  Map<MetadataType,MetadataComponent> originalMetadata=constructMetadata();
+  MetadataSerializer serializer=new MetadataSerializer();
+  File statsFileLb=serialize(originalMetadata,serializer,BigFormat.instance.getVersion("lb"));
+  File statsFileLa=serialize(originalMetadata,serializer,BigFormat.instance.getVersion("la"));
+  Descriptor desc=new Descriptor("la",statsFileLb.getParentFile(),"","",0,Descriptor.Type.FINAL,DatabaseDescriptor.getSSTableFormat());
+  try (RandomAccessReader inLb=RandomAccessReader.open(statsFileLb);RandomAccessReader inLa=RandomAccessReader.open(statsFileLa)){
+    Map<MetadataType,MetadataComponent> deserializedLb=serializer.deserialize(desc,inLb,EnumSet.allOf(MetadataType.class));
+    Map<MetadataType,MetadataComponent> deserializedLa=serializer.deserialize(desc,inLa,EnumSet.allOf(MetadataType.class));
+    for (    MetadataType type : MetadataType.values()) {
+      assertEquals(deserializedLa.get(type),deserializedLb.get(type));
+      if (!originalMetadata.get(type).equals(deserializedLb.get(type))) {
+        assertEquals(MetadataType.STATS,type);
+      }
+    }
+  }
+ }

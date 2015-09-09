@@ -1,7 +1,8 @@
 {
   EstimatedHistogram rowSizes=EstimatedHistogram.serializer.deserialize(in);
   EstimatedHistogram columnCounts=EstimatedHistogram.serializer.deserialize(in);
-  ReplayPosition replayPosition=ReplayPosition.serializer.deserialize(in);
+  ReplayPosition commitLogLowerBound=ReplayPosition.NONE, commitLogUpperBound;
+  commitLogUpperBound=ReplayPosition.serializer.deserialize(in);
   long minTimestamp=in.readLong();
   long maxTimestamp=in.readLong();
   int maxLocalDeletionTime=in.readInt();
@@ -18,5 +19,6 @@
   for (int i=0; i < colCount; i++)   maxColumnNames.add(ByteBufferUtil.readWithShortLength(in));
   boolean hasLegacyCounterShards=true;
   if (version.tracksLegacyCounterShards())   hasLegacyCounterShards=in.readBoolean();
-  return new StatsMetadata(rowSizes,columnCounts,replayPosition,minTimestamp,maxTimestamp,maxLocalDeletionTime,compressionRatio,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames,hasLegacyCounterShards,repairedAt);
+  if (version.hasCommitLogLowerBound())   commitLogLowerBound=ReplayPosition.serializer.deserialize(in);
+  return new StatsMetadata(rowSizes,columnCounts,commitLogLowerBound,commitLogUpperBound,minTimestamp,maxTimestamp,maxLocalDeletionTime,compressionRatio,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames,hasLegacyCounterShards,repairedAt);
 }

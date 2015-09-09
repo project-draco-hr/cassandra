@@ -1,23 +1,26 @@
 {
   logger.trace("truncating {}",name);
-  if (keyspace.getMetadata().durableWrites || takeSnapshot) {
-    forceBlockingFlush();
-    Uninterruptibles.sleepUninterruptibly(1,TimeUnit.MILLISECONDS);
-  }
- else {
+  final long truncatedAt;
+  final ReplayPosition replayAfter;
 synchronized (data) {
+    if (keyspace.getMetadata().durableWrites || takeSnapshot) {
+      replayAfter=forceBlockingFlush();
+    }
+ else {
       final Flush flush=new Flush(true);
       flushExecutor.execute(flush);
-      postFlushExecutor.submit(flush.postFlush);
+      replayAfter=FBUtilities.waitOnFuture(postFlushExecutor.submit(flush.postFlush));
     }
+    long now=System.currentTimeMillis();
+    for (    ColumnFamilyStore cfs : concatWithIndexes())     for (    SSTableReader sstable : cfs.data.getSSTables())     now=Math.max(now,sstable.maxDataAge);
+    truncatedAt=now;
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
-      logger.trace("Discarding sstable data for truncated CF + indexes");
-      final long truncatedAt=System.currentTimeMillis();
+      logger.debug("Discarding sstable data for truncated CF + indexes");
       data.notifyTruncated(truncatedAt);
       if (takeSnapshot)       snapshot(Keyspace.getTimestampedSnapshotName(name));
-      ReplayPosition replayAfter=discardSSTables(truncatedAt);
+      discardSSTables(truncatedAt);
       for (      SecondaryIndex index : indexManager.getIndexes())       index.truncateBlocking(truncatedAt);
       SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
       logger.trace("cleaning out row cache");
