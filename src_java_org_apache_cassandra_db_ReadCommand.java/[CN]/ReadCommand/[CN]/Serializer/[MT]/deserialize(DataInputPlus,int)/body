@@ -4,11 +4,13 @@
   int flags=in.readByte();
   boolean isDigest=isDigest(flags);
   boolean isForThrift=isForThrift(flags);
+  boolean hasIndex=hasIndex(flags);
   int digestVersion=isDigest ? (int)in.readVInt() : 0;
   CFMetaData metadata=CFMetaData.serializer.deserialize(in,version);
   int nowInSec=in.readInt();
   ColumnFilter columnFilter=ColumnFilter.serializer.deserialize(in,version,metadata);
   RowFilter rowFilter=RowFilter.serializer.deserialize(in,version,metadata);
   DataLimits limits=DataLimits.serializer.deserialize(in,version);
-  return kind.selectionDeserializer.deserialize(in,version,isDigest,digestVersion,isForThrift,metadata,nowInSec,columnFilter,rowFilter,limits);
+  Optional<IndexMetadata> index=hasIndex ? deserializeIndexMetadata(in,version,metadata) : Optional.empty();
+  return kind.selectionDeserializer.deserialize(in,version,isDigest,digestVersion,isForThrift,metadata,nowInSec,columnFilter,rowFilter,limits,index);
 }
