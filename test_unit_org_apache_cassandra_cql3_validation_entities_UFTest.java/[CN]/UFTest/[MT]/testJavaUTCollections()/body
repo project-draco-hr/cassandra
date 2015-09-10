@@ -6,5 +6,5 @@
   String fName3=createFunction(KEYSPACE,"map<int, frozen<" + type + ">>","CREATE FUNCTION %s( mp map<int, frozen<" + type + ">> ) "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS text "+ "LANGUAGE java\n"+ "AS $$"+ "     com.datastax.driver.core.UDTValue udtVal = (com.datastax.driver.core.UDTValue)mp.get(Integer.valueOf(3));"+ "     return udtVal.getString(\"txt\");$$;");
   execute("INSERT INTO %s (key, lst, st, mp) values (1, " + "[ {txt: 'one', i:1}, {txt: 'three', i:1}, {txt: 'one', i:1} ] , " + "{ {txt: 'one', i:1}, {txt: 'three', i:3}, {txt: 'two', i:2} }, "+ "{ 1: {txt: 'one', i:1}, 2: {txt: 'one', i:3}, 3: {txt: 'two', i:2} })");
   assertRows(execute("SELECT " + fName1 + "(lst), "+ fName2+ "(st), "+ fName3+ "(mp) FROM %s WHERE key = 1"),row("three","one","two"));
-  for (int version=Server.VERSION_2; version <= maxProtocolVersion; version++)   assertRowsNet(version,executeNet(version,"SELECT " + fName1 + "(lst), "+ fName2+ "(st), "+ fName3+ "(mp) FROM %s WHERE key = 1"),row("three","one","two"));
+  for (  int version : PROTOCOL_VERSIONS)   assertRowsNet(version,executeNet(version,"SELECT " + fName1 + "(lst), "+ fName2+ "(st), "+ fName3+ "(mp) FROM %s WHERE key = 1"),row("three","one","two"));
 }

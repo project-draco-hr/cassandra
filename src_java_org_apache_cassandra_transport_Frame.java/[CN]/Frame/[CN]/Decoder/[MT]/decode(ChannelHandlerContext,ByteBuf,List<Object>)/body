@@ -4,25 +4,15 @@
     if (bytesToDiscard <= 0)     fail();
     return;
   }
-  if (buffer.readableBytes() < Header.LEGACY_LENGTH)   return;
+  if (buffer.readableBytes() < Header.LENGTH)   return;
   int idx=buffer.readerIndex();
   int firstByte=buffer.getByte(idx++);
   Message.Direction direction=Message.Direction.extractFromVersion(firstByte);
   int version=firstByte & PROTOCOL_VERSION_MASK;
-  if (version > Server.CURRENT_VERSION)   throw new ProtocolException(String.format("Invalid or unsupported protocol version (%d); highest supported is %d ",version,Server.CURRENT_VERSION));
-  if (version >= Server.VERSION_3 && buffer.readableBytes() < Header.MODERN_LENGTH)   return;
+  if (version < Server.MIN_SUPPORTED_VERSION || version > Server.CURRENT_VERSION)   throw new ProtocolException(String.format("Invalid or unsupported protocol version (%d); the lowest supported version is %d and the greatest is %d",version,Server.MIN_SUPPORTED_VERSION,Server.CURRENT_VERSION));
   int flags=buffer.getByte(idx++);
-  int streamId, headerLength;
-  if (version >= Server.VERSION_3) {
-    streamId=buffer.getShort(idx);
-    idx+=2;
-    headerLength=Header.MODERN_LENGTH;
-  }
- else {
-    streamId=buffer.getByte(idx);
-    idx++;
-    headerLength=Header.LEGACY_LENGTH;
-  }
+  int streamId=buffer.getShort(idx);
+  idx+=2;
   Message.Type type;
   try {
     type=Message.Type.fromOpcode(buffer.getByte(idx++),direction);
@@ -32,11 +22,7 @@
   }
   long bodyLength=buffer.getUnsignedInt(idx);
   idx+=Header.BODY_LENGTH_SIZE;
-  if (bodyLength < 0) {
-    buffer.skipBytes(headerLength);
-    throw ErrorMessage.wrap(new ProtocolException("Invalid frame body length: " + bodyLength),streamId);
-  }
-  long frameLength=bodyLength + headerLength;
+  long frameLength=bodyLength + Header.LENGTH;
   if (frameLength > MAX_FRAME_LENGTH) {
     discardingTooLongFrame=true;
     tooLongStreamId=streamId;

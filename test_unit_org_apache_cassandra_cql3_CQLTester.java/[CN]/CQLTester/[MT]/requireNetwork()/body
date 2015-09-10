@@ -5,10 +5,11 @@
   SchemaLoader.startGossiper();
   server=new Server.Builder().withHost(nativeAddr).withPort(nativePort).build();
   server.start();
-  for (int version=1; version <= maxProtocolVersion; version++) {
-    if (cluster[version - 1] != null)     continue;
-    cluster[version - 1]=Cluster.builder().addContactPoints(nativeAddr).withClusterName("Test Cluster").withPort(nativePort).withProtocolVersion(ProtocolVersion.fromInt(version)).build();
-    session[version - 1]=cluster[version - 1].connect();
+  for (  int version : PROTOCOL_VERSIONS) {
+    if (clusters.containsKey(version))     continue;
+    Cluster cluster=Cluster.builder().addContactPoints(nativeAddr).withClusterName("Test Cluster").withPort(nativePort).withProtocolVersion(ProtocolVersion.fromInt(version)).build();
+    clusters.put(version,cluster);
+    sessions.put(version,cluster.connect());
     logger.info("Started Java Driver instance for protocol version {}",version);
   }
 }
