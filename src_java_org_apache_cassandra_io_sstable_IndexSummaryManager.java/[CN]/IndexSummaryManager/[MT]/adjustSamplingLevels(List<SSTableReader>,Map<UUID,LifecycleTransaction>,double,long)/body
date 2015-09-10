@@ -53,6 +53,7 @@
       logger.trace("SSTable {} is within thresholds of ideal sampling",sstable);
       remainingSpace-=sstable.getIndexSummaryOffHeapSize();
       newSSTables.add(sstable);
+      transactions.get(sstable.metadata.cfId).cancel(sstable);
     }
     totalReadsPerSec-=readsPerSec;
   }
@@ -60,6 +61,7 @@
     Pair<List<SSTableReader>,List<ResampleEntry>> result=distributeRemainingSpace(toDownsample,remainingSpace);
     toDownsample=result.right;
     newSSTables.addAll(result.left);
+    for (    SSTableReader sstable : result.left)     transactions.get(sstable.metadata.cfId).cancel(sstable);
   }
   toDownsample.addAll(forceResample);
   toDownsample.addAll(toUpsample);
