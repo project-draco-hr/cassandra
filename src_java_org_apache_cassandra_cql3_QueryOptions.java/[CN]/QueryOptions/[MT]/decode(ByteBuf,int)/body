@@ -1,2 +1,34 @@
 {
+  ConsistencyLevel consistency=CBUtil.readConsistencyLevel(body);
+  EnumSet<Flag> flags=Flag.deserialize((int)body.readByte());
+  List<ByteBuffer> values=Collections.<ByteBuffer>emptyList();
+  List<String> names=null;
+  if (flags.contains(Flag.VALUES)) {
+    if (flags.contains(Flag.NAMES_FOR_VALUES)) {
+      Pair<List<String>,List<ByteBuffer>> namesAndValues=CBUtil.readNameAndValueList(body,version);
+      names=namesAndValues.left;
+      values=namesAndValues.right;
+    }
+ else {
+      values=CBUtil.readValueList(body,version);
+    }
+  }
+  boolean skipMetadata=flags.contains(Flag.SKIP_METADATA);
+  flags.remove(Flag.VALUES);
+  flags.remove(Flag.SKIP_METADATA);
+  SpecificOptions options=SpecificOptions.DEFAULT;
+  if (!flags.isEmpty()) {
+    int pageSize=flags.contains(Flag.PAGE_SIZE) ? body.readInt() : -1;
+    PagingState pagingState=flags.contains(Flag.PAGING_STATE) ? PagingState.deserialize(CBUtil.readValue(body)) : null;
+    ConsistencyLevel serialConsistency=flags.contains(Flag.SERIAL_CONSISTENCY) ? CBUtil.readConsistencyLevel(body) : ConsistencyLevel.SERIAL;
+    long timestamp=Long.MIN_VALUE;
+    if (flags.contains(Flag.TIMESTAMP)) {
+      long ts=body.readLong();
+      if (ts == Long.MIN_VALUE)       throw new ProtocolException(String.format("Out of bound timestamp, must be in [%d, %d] (got %d)",Long.MIN_VALUE + 1,Long.MAX_VALUE,ts));
+      timestamp=ts;
+    }
+    options=new SpecificOptions(pageSize,pagingState,serialConsistency,timestamp);
+  }
+  DefaultQueryOptions opts=new DefaultQueryOptions(consistency,values,skipMetadata,options,version);
+  return names == null ? opts : new OptionsWithNames(opts,names);
 }
