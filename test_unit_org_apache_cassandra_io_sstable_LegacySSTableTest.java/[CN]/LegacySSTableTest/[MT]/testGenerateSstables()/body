@@ -1,0 +1,27 @@
+{
+  createKeyspace();
+  createTables(BigFormat.latestVersion.getVersion());
+  Random rand=new Random();
+  StringBuilder sb=new StringBuilder();
+  for (int i=0; i < 128; i++) {
+    sb.append((char)('a' + rand.nextInt(26)));
+  }
+  String randomString=sb.toString();
+  for (int pk=0; pk < 5; pk++) {
+    String valPk=Integer.toString(pk);
+    QueryProcessor.executeInternal(String.format("INSERT INTO legacy_tables.legacy_%s_simple (pk, val) VALUES ('%s', '%s')",BigFormat.latestVersion,valPk,"foo bar baz"));
+    QueryProcessor.executeInternal(String.format("UPDATE legacy_tables.legacy_%s_simple_counter SET val = val + 1 WHERE pk = '%s'",BigFormat.latestVersion,valPk));
+    for (int ck=0; ck < 50; ck++) {
+      String valCk=Integer.toString(ck);
+      QueryProcessor.executeInternal(String.format("INSERT INTO legacy_tables.legacy_%s_clust (pk, ck, val) VALUES ('%s', '%s', '%s')",BigFormat.latestVersion,valPk,valCk + longString,randomString));
+      QueryProcessor.executeInternal(String.format("UPDATE legacy_tables.legacy_%s_clust_counter SET val = val + 1 WHERE pk = '%s' AND ck='%s'",BigFormat.latestVersion,valPk,valCk + longString));
+    }
+  }
+  StorageService.instance.forceKeyspaceFlush("legacy_tables");
+  File ksDir=new File(LEGACY_SSTABLE_ROOT,String.format("%s/legacy_tables",BigFormat.latestVersion));
+  ksDir.mkdirs();
+  copySstablesFromTestData(String.format("legacy_%s_simple",BigFormat.latestVersion),ksDir);
+  copySstablesFromTestData(String.format("legacy_%s_simple_counter",BigFormat.latestVersion),ksDir);
+  copySstablesFromTestData(String.format("legacy_%s_clust",BigFormat.latestVersion),ksDir);
+  copySstablesFromTestData(String.format("legacy_%s_clust_counter",BigFormat.latestVersion),ksDir);
+}
