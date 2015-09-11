@@ -1,25 +1,26 @@
 ':"\n# bash code here; finds a suitable python interpreter and execs this file.\n# prefer unqualified "python" if suitable:\npython -c \'import sys; sys.exit(not (0x020500b0 < sys.hexversion < 0x03000000))\' 2>/dev/null     && exec python "$0" "$@"\nfor pyver in 2.6 2.7 2.5; do\n    which python$pyver > /dev/null 2>&1 && exec python$pyver "$0" "$@"\ndone\necho "No appropriate python interpreter found." >&2\nexit 1\n":'
 from __future__ import with_statement
+import cmd
+import codecs
+import ConfigParser
+import csv
+import getpass
+import locale
+import multiprocessing
+import optparse
+import os
+import platform
+import sys
+import time
+import traceback
+import warnings
+from contextlib import contextmanager
+from functools import partial
+from glob import glob
+from StringIO import StringIO
 from uuid import UUID
 description = 'CQL Shell for Apache Cassandra'
 version = '5.0.1'
-from StringIO import StringIO
-from contextlib import contextmanager
-from glob import glob
-import cmd
-import sys
-import os
-import time
-import optparse
-import ConfigParser
-import codecs
-import locale
-import platform
-import warnings
-import csv
-import getpass
-from functools import partial
-import traceback
 readline = None
 try:
     if sys.stdin.isatty():
@@ -48,24 +49,20 @@ try:
     import cassandra
 except ImportError as e:
     sys.exit(('\nPython Cassandra driver not installed, or not on PYTHONPATH.\nYou might try "pip install cassandra-driver".\n\nPython: %s\nModule load path: %r\n\nError: %s\n' % (sys.executable, sys.path, e)))
+from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import Cluster, PagedResult
-from cassandra.query import SimpleStatement, ordered_dict_factory
+from cassandra.metadata import ColumnMetadata, KeyspaceMetadata, TableMetadata, protect_name, protect_names, protect_value
 from cassandra.policies import WhiteListRoundRobinPolicy
 from cassandra.protocol import QueryMessage, ResultMessage
-from cassandra.metadata import protect_name, protect_names, protect_value, KeyspaceMetadata, TableMetadata, ColumnMetadata
-from cassandra.auth import PlainTextAuthProvider
+from cassandra.query import SimpleStatement, ordered_dict_factory
 cqlshlibdir = os.path.join(CASSANDRA_PATH, 'pylib')
 if os.path.isdir(cqlshlibdir):
     sys.path.insert(0, cqlshlibdir)
-from cqlshlib import cqlhandling, cql3handling, pylexotron, sslhandling
-from cqlshlib.displaying import RED, BLUE, CYAN, ANSI_RESET, COLUMN_NAME_COLORS, FormattedValue, colorme
-from cqlshlib.formatting import format_by_type, formatter_for, format_value_utype
-from cqlshlib.util import trim_if_present, get_file_encoding_bomsize
-from cqlshlib.formatting import DateTimeFormat
-from cqlshlib.formatting import DEFAULT_TIMESTAMP_FORMAT
-from cqlshlib.formatting import DEFAULT_DATE_FORMAT
-from cqlshlib.formatting import DEFAULT_NANOTIME_FORMAT
-from cqlshlib.tracing import print_trace_session, print_trace
+from cqlshlib import cql3handling, cqlhandling, pylexotron, sslhandling
+from cqlshlib.displaying import ANSI_RESET, BLUE, COLUMN_NAME_COLORS, CYAN, RED, FormattedValue, colorme
+from cqlshlib.formatting import DEFAULT_DATE_FORMAT, DEFAULT_NANOTIME_FORMAT, DEFAULT_TIMESTAMP_FORMAT, DateTimeFormat, format_by_type, format_value_utype, formatter_for
+from cqlshlib.tracing import print_trace, print_trace_session
+from cqlshlib.util import get_file_encoding_bomsize, trim_if_present
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 9042
 DEFAULT_CQLVER = '3.3.0'
@@ -129,6 +126,5 @@ cqlsh_syntax_completer('captureCommand', 'fname')(complete_source_quoted_filenam
 COPY_OPTIONS = ('DELIMITER', 'QUOTE', 'ESCAPE', 'HEADER', 'ENCODING', 'NULL')
 warnings.showwarning = show_warning_without_quoting_line
 warnings.filterwarnings('always', category=cql3handling.UnexpectedTableStructure)
-import multiprocessing
 if (__name__ == '__main__'):
     main(*read_options(sys.argv[1:], os.environ))
