@@ -1,0 +1,9 @@
+{
+  String myType=KEYSPACE + '.' + createType("CREATE TYPE %s (a int, b int)");
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v1 int, v2 frozen<" + myType + ">)");
+  testCreateIndex("udt_idx","v1","v2");
+  Indexes indexes=getCurrentColumnFamilyStore().metadata.getIndexes();
+  IndexMetadata expected=IndexMetadata.fromIndexTargets(getCurrentColumnFamilyStore().metadata,ImmutableList.of(indexTarget("v1",IndexTarget.Type.VALUES),indexTarget("v2",IndexTarget.Type.VALUES)),"udt_idx",IndexMetadata.Kind.CUSTOM,ImmutableMap.of(CUSTOM_INDEX_OPTION_NAME,StubIndex.class.getName()));
+  IndexMetadata actual=indexes.get("udt_idx").orElseThrow(throwAssert("Index udt_idx not found"));
+  assertEquals(expected,actual);
+}
