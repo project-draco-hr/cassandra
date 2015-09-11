@@ -1,0 +1,47 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, e int, PRIMARY KEY (a, b))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  Keyspace ks=Keyspace.open(keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE a IS NOT NULL AND b IS NOT NULL AND c IS NOT NULL PRIMARY KEY (c, a, b)");
+  ks.getColumnFamilyStore("mv").disableAutoCompaction();
+  executeNet(protocolVersion,"INSERT INTO %s (a, b, c, d) VALUES (0, 0, 1, 0) USING TIMESTAMP 0");
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(0));
+  if (flush)   FBUtilities.waitOnFutures(ks.flush());
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 2 SET c = ? WHERE a = ? and b = ? ",1,0,0);
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(0));
+  if (flush)   FBUtilities.waitOnFutures(ks.flush());
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 3 SET c = ? WHERE a = ? and b = ? ",0,0,0);
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0));
+  if (flush) {
+    ks.getColumnFamilyStore("mv").forceMajorCompaction();
+    FBUtilities.waitOnFutures(ks.flush());
+  }
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 4 SET c = ? WHERE a = ? and b = ? ",1,0,0);
+  if (flush) {
+    ks.getColumnFamilyStore("mv").forceMajorCompaction();
+    FBUtilities.waitOnFutures(ks.flush());
+  }
+  assertRows(execute("SELECT d,e from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(0,null));
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 1 SET e = ? WHERE a = ? and b = ? ",1,0,0);
+  assertRows(execute("SELECT d,e from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(0,1));
+  if (flush)   FBUtilities.waitOnFutures(ks.flush());
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 2 SET d = ? WHERE a = ? and b = ? ",2,0,0);
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(2));
+  if (flush)   FBUtilities.waitOnFutures(ks.flush());
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 3 SET d = ? WHERE a = ? and b = ? ",1,0,0);
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0),row(1));
+  executeNet(protocolVersion,"DELETE FROM %s WHERE a = ? and b = ?",0,0);
+  assertRows(execute("SELECT d from mv"));
+  executeNet(protocolVersion,"INSERT INTO %s (a, b, c) VALUES (0, 0, 1)");
+  assertRows(execute("SELECT d from mv WHERE c = ? and a = ? and b = ?",1,0,0),row((Object)null));
+  executeNet(protocolVersion,"INSERT INTO %s (a, b, c, d, e) VALUES (?, ?, ?, ?, ?) USING TIMESTAMP 0",1,0,0,0,0);
+  executeNet(protocolVersion,"INSERT INTO %s (a, b, c, e) VALUES (?, ?, ?, ?) USING TIMESTAMP 1",1,0,0,0);
+  executeNet(protocolVersion,"DELETE FROM %s USING TIMESTAMP 0 WHERE a = ? AND b = ?",1,0);
+  assertRows(execute("SELECT a, b, c, d, e from mv WHERE c = ? and a = ? and b = ?",0,1,0),row(1,0,0,null,0));
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 2 SET c = ? WHERE a = ? AND b = ?",1,1,0);
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 3 SET c = ? WHERE a = ? AND b = ?",0,1,0);
+  assertRows(execute("SELECT a, b, c, d, e from mv WHERE c = ? and a = ? and b = ?",0,1,0),row(1,0,0,null,0));
+  executeNet(protocolVersion,"UPDATE %s USING TIMESTAMP 3 SET d = ? WHERE a = ? AND b = ?",0,1,0);
+  assertRows(execute("SELECT a, b, c, d, e from mv WHERE c = ? and a = ? and b = ?",0,1,0),row(1,0,0,0,0));
+}
