@@ -31,7 +31,7 @@
         continue;
       }
       sstable.incrementReadCount();
-      @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
+      @SuppressWarnings("resource") UnfilteredRowIterator iter=sstable.iterator(partitionKey(),filter.getSlices(metadata()),columnFilter(),filter.isReversed(),isForThrift());
       if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter);
       mostRecentPartitionTombstone=Math.max(mostRecentPartitionTombstone,iter.partitionLevelDeletion().markedForDeleteAt());
@@ -42,7 +42,7 @@
       for (      SSTableReader sstable : skippedSSTables) {
         if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
         sstable.incrementReadCount();
-        @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
+        @SuppressWarnings("resource") UnfilteredRowIterator iter=sstable.iterator(partitionKey(),filter.getSlices(metadata()),columnFilter(),filter.isReversed(),isForThrift());
         if (iter.partitionLevelDeletion().markedForDeleteAt() > minTimestamp) {
           iterators.add(iter);
           if (!sstable.isRepaired())           oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());

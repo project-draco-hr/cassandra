@@ -22,7 +22,7 @@
     if (!shouldInclude(sstable)) {
       if (sstable.getSSTableMetadata().maxLocalDeletionTime == Integer.MAX_VALUE)       continue;
       sstable.incrementReadCount();
-      try (UnfilteredRowIterator iter=sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift())){
+      try (UnfilteredRowIterator iter=sstable.iterator(partitionKey(),Slices.ALL,columnFilter(),filter.isReversed(),isForThrift())){
         if (iter.partitionLevelDeletion().isLive()) {
           sstablesIterated++;
           result=add(UnfilteredRowIterators.noRowsIterator(iter.metadata(),iter.partitionKey(),Rows.EMPTY_STATIC_ROW,iter.partitionLevelDeletion(),filter.isReversed()),result,filter,sstable.isRepaired());
@@ -32,7 +32,7 @@
     }
     Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
     sstable.incrementReadCount();
-    try (UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()))){
+    try (UnfilteredRowIterator iter=sstable.iterator(partitionKey(),filter.getSlices(metadata()),columnFilter(),filter.isReversed(),isForThrift())){
       if (iter.isEmpty())       continue;
       sstablesIterated++;
       result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter,result,filter,sstable.isRepaired());
