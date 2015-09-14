@@ -8,14 +8,35 @@
   serializer.serialize(simple,buffer);
   assertEquals(buffer.getLength(),serializer.serializedSize(simple));
   for (int i=0; i <= DatabaseDescriptor.getColumnIndexSize() / 4; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,"" + i,i);
-  buffer=new DataOutputBuffer();
   ImmutableBTreePartition partition=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs).build());
   File tempFile=File.createTempFile("row_index_entry_test",null);
   tempFile.deleteOnExit();
   SequentialWriter writer=SequentialWriter.open(tempFile);
   ColumnIndex columnIndex=ColumnIndex.writeAndBuildIndex(partition.unfilteredIterator(),writer,header,BigFormat.latestVersion);
   RowIndexEntry<IndexHelper.IndexInfo> withIndex=RowIndexEntry.create(0xdeadbeef,DeletionTime.LIVE,columnIndex);
+  IndexHelper.IndexInfo.Serializer indexSerializer=new IndexHelper.IndexInfo.Serializer(cfs.metadata,BigFormat.latestVersion,header);
   assertTrue(columnIndex.columnsIndex.size() >= 3);
+  buffer=new DataOutputBuffer();
   serializer.serialize(withIndex,buffer);
   assertEquals(buffer.getLength(),serializer.serializedSize(withIndex));
+  ByteBuffer bb=buffer.buffer();
+  DataInputBuffer input=new DataInputBuffer(bb,false);
+  serializationCheck(withIndex,indexSerializer,bb,input);
+  buffer=new DataOutputBuffer(){
+    public boolean hasFilePointer(){
+      return false;
+    }
+    public long getFilePointer(){
+      throw new UnsupportedOperationException();
+    }
+  }
+;
+  serializer.serialize(withIndex,buffer);
+  bb=buffer.buffer();
+  input=new DataInputBuffer(bb,false);
+  serializationCheck(withIndex,indexSerializer,bb,input);
+  bb=buffer.buffer();
+  input=new DataInputBuffer(bb,false);
+  RowIndexEntry.Serializer.skip(input,BigFormat.latestVersion);
+  Assert.assertEquals(0,bb.remaining());
 }

@@ -6,12 +6,12 @@
       DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
       int entries=in.readInt();
       List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<>(entries);
-      ClusteringPrefix firstName=idxSerializer.clusteringSerializer.deserialize(in);
-      ClusteringPrefix lastName=idxSerializer.clusteringSerializer.deserialize(in);
-      long headerLength=in.readLong();
-      long width=in.readLong();
-      columnsIndex.add(new IndexHelper.IndexInfo(firstName,lastName,width,null));
-      for (int i=1; i < entries; i++)       columnsIndex.add(idxSerializer.deserialize(in));
+      long headerLength=0L;
+      for (int i=0; i < entries; i++) {
+        IndexHelper.IndexInfo info=idxSerializer.deserialize(in);
+        columnsIndex.add(info);
+        if (i == 0)         headerLength=info.offset;
+      }
       return new IndexedEntry(position,deletionTime,headerLength,columnsIndex);
     }
  else {
@@ -26,6 +26,7 @@
     int entries=(int)in.readUnsignedVInt();
     List<IndexHelper.IndexInfo> columnsIndex=new ArrayList<>(entries);
     for (int i=0; i < entries; i++)     columnsIndex.add(idxSerializer.deserialize(in));
+    FileUtils.skipBytesFully(in,entries * TypeSizes.sizeof(0));
     return new IndexedEntry(position,deletionTime,headerLength,columnsIndex);
   }
  else {

@@ -1,0 +1,40 @@
+{
+  String table=createTable("CREATE TABLE %s (" + commonColumnsDef + "PRIMARY KEY ((part_key_a, part_key_b),clust_key_a,clust_key_b,clust_key_c))");
+  insertData(table,null,true);
+  clearCache();
+  for (int i=0; i < 10; i++) {
+    assertEquals(50,execute("SELECT col_text FROM %s WHERE part_key_a = ? AND part_key_b = ?",i,Integer.toOctalString(i)).size());
+  }
+  CacheMetrics metrics=CacheService.instance.keyCache.getMetrics();
+  long hits=metrics.hits.getCount();
+  long requests=metrics.requests.getCount();
+  assertEquals(0,hits);
+  assertEquals(10,requests);
+  for (int i=0; i < 10; i++) {
+    assertEquals(50,execute("SELECT col_text FROM %s WHERE part_key_a = ? AND part_key_b = ?",i,Integer.toOctalString(i)).size());
+  }
+  metrics=CacheService.instance.keyCache.getMetrics();
+  hits=metrics.hits.getCount();
+  requests=metrics.requests.getCount();
+  assertEquals(10,hits);
+  assertEquals(10 + 10,requests);
+  for (int i=0; i < 10; i++) {
+    for (int c=0; c < 10; c++) {
+      assertRows(execute("SELECT col_text, col_long FROM %s WHERE part_key_a = ? AND part_key_b = ? and clust_key_a = ?",i,Integer.toOctalString(i),c),new Object[]{String.valueOf(i) + '-' + String.valueOf(c),(long)c});
+    }
+  }
+  metrics=CacheService.instance.keyCache.getMetrics();
+  hits=metrics.hits.getCount();
+  requests=metrics.requests.getCount();
+  assertEquals(10 + 100,hits);
+  assertEquals(20 + 100,requests);
+  for (int i=0; i < 100; i++) {
+    for (int c=0; c < 50; c++) {
+      assertRows(execute("SELECT col_text, col_long FROM %s WHERE part_key_a = ? AND part_key_b = ? and clust_key_a = ?",i,Integer.toOctalString(i),c),new Object[]{String.valueOf(i) + '-' + String.valueOf(c),(long)c});
+    }
+  }
+  hits=metrics.hits.getCount();
+  requests=metrics.requests.getCount();
+  assertEquals(110 + 4910,hits);
+  assertEquals(120 + 5500,requests);
+}

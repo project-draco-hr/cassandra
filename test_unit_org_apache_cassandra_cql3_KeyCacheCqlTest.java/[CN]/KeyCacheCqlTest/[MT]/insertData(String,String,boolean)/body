@@ -1,0 +1,24 @@
+{
+  prepareTable(table);
+  if (index != null) {
+    StorageService.instance.disableAutoCompaction(KEYSPACE,table + '.' + index);
+    Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index).getBlockingFlushTask().call();
+  }
+  for (int i=0; i < 100; i++) {
+    int partKeyA=i;
+    String partKeyB=Integer.toOctalString(i);
+    for (int c=0; c < (withClustering ? 50 : 1); c++) {
+      int clustKeyA=c;
+      String clustKeyB=Integer.toOctalString(c);
+      List<String> clustKeyC=makeList(clustKeyB);
+      String colText=String.valueOf(i) + '-' + String.valueOf(c);
+      int colInt=i % 10;
+      long colLong=c;
+      execute("INSERT INTO %s (" + commonColumns + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",partKeyA,partKeyB,clustKeyA,clustKeyB,clustKeyC,colText,colInt,colLong);
+    }
+    if (i % 10 == 9) {
+      Keyspace.open(KEYSPACE).getColumnFamilyStore(table).forceFlush().get();
+      if (index != null)       Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index).getBlockingFlushTask().call();
+    }
+  }
+}

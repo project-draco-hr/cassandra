@@ -1,0 +1,20 @@
+{
+  String table=createTable("CREATE TABLE %s (" + commonColumnsDef + "PRIMARY KEY ((part_key_a, part_key_b)))");
+  insertData(table,null,false);
+  clearCache();
+  for (int i=0; i < 10; i++) {
+    assertRows(execute("SELECT col_text FROM %s WHERE part_key_a = ? AND part_key_b = ?",i,Integer.toOctalString(i)),new Object[]{String.valueOf(i) + '-' + String.valueOf(0)});
+  }
+  CacheMetrics metrics=CacheService.instance.keyCache.getMetrics();
+  long hits=metrics.hits.getCount();
+  long requests=metrics.requests.getCount();
+  assertEquals(0,hits);
+  assertEquals(10,requests);
+  for (int i=0; i < 100; i++) {
+    assertRows(execute("SELECT col_text FROM %s WHERE part_key_a = ? AND part_key_b = ?",i,Integer.toOctalString(i)),new Object[]{String.valueOf(i) + '-' + String.valueOf(0)});
+  }
+  hits=metrics.hits.getCount();
+  requests=metrics.requests.getCount();
+  assertEquals(10,hits);
+  assertEquals(120,requests);
+}
