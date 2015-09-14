@@ -1,0 +1,23 @@
+{
+  Assert.assertEquals(0xdeadbeef,input.readUnsignedVInt());
+  Assert.assertEquals(withIndex.promotedSize(indexSerializer),input.readUnsignedVInt());
+  Assert.assertEquals(withIndex.headerLength(),input.readUnsignedVInt());
+  Assert.assertEquals(withIndex.deletionTime(),DeletionTime.serializer.deserialize(input));
+  Assert.assertEquals(withIndex.columnsIndex().size(),input.readUnsignedVInt());
+  int offset=bb.position();
+  int[] offsets=new int[withIndex.columnsIndex().size()];
+  for (int i=0; i < withIndex.columnsIndex().size(); i++) {
+    int pos=bb.position();
+    offsets[i]=pos - offset;
+    IndexHelper.IndexInfo info=indexSerializer.deserialize(input);
+    int end=bb.position();
+    Assert.assertEquals(indexSerializer.serializedSize(info),end - pos);
+    Assert.assertEquals(withIndex.columnsIndex().get(i).offset,info.offset);
+    Assert.assertEquals(withIndex.columnsIndex().get(i).width,info.width);
+    Assert.assertEquals(withIndex.columnsIndex().get(i).endOpenMarker,info.endOpenMarker);
+    Assert.assertEquals(withIndex.columnsIndex().get(i).firstName,info.firstName);
+    Assert.assertEquals(withIndex.columnsIndex().get(i).lastName,info.lastName);
+  }
+  for (int i=0; i < withIndex.columnsIndex().size(); i++)   Assert.assertEquals(offsets[i],input.readInt());
+  Assert.assertEquals(0,bb.remaining());
+}

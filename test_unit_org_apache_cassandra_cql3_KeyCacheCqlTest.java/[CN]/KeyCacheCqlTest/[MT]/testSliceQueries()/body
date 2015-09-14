@@ -1,0 +1,30 @@
+{
+  createTable("CREATE TABLE %s (pk text, ck1 int, ck2 int, val text, vpk text, vck1 int, vck2 int, PRIMARY KEY (pk, ck1, ck2))");
+  for (int pkInt=0; pkInt < 20; pkInt++) {
+    String pk=Integer.toString(pkInt);
+    for (int ck1=0; ck1 < 10; ck1++) {
+      for (int ck2=0; ck2 < 10; ck2++) {
+        execute("INSERT INTO %s (pk, ck1, ck2, val, vpk, vck1, vck2) VALUES (?, ?, ?, ?, ?, ?, ?)",pk,ck1,ck2,makeStringValue(pk,ck1,ck2),pk,ck1,ck2);
+      }
+    }
+  }
+  StorageService.instance.forceKeyspaceFlush(KEYSPACE);
+  for (int pkInt=0; pkInt < 20; pkInt++) {
+    String pk=Integer.toString(pkInt);
+    assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=?",pk),pk,0,10,0,10);
+    for (int ck1=0; ck1 < 10; ck1++) {
+      assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=?",pk,ck1),pk,ck1,ck1 + 1,0,10);
+      assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1<?",pk,ck1),pk,0,ck1,0,10);
+      assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1>?",pk,ck1),pk,ck1 + 1,10,0,10);
+      assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1<=?",pk,ck1),pk,0,ck1 + 1,0,10);
+      assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1>=?",pk,ck1),pk,ck1,10,0,10);
+      for (int ck2=0; ck2 < 10; ck2++) {
+        assertRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=? AND ck2=?",pk,ck1,ck2),new Object[]{makeStringValue(pk,ck1,ck2),pk,ck1,ck2});
+        assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=? AND ck2<?",pk,ck1,ck2),pk,ck1,ck1 + 1,0,ck2);
+        assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=? AND ck2>?",pk,ck1,ck2),pk,ck1,ck1 + 1,ck2 + 1,10);
+        assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=? AND ck2<=?",pk,ck1,ck2),pk,ck1,ck1 + 1,0,ck2 + 1);
+        assertClusterRows(execute("SELECT val, vpk, vck1, vck2 FROM %s WHERE pk=? AND ck1=? AND ck2>=?",pk,ck1,ck2),pk,ck1,ck1 + 1,ck2,10);
+      }
+    }
+  }
+}
