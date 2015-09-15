@@ -1,0 +1,19 @@
+{
+  Set<InetAddress> hosts=new HashSet<InetAddress>();
+  String outputAddress=ConfigHelper.getOutputInitialAddress(conf);
+  if (outputAddress == null)   outputAddress="localhost";
+  String[] nodes=outputAddress.split(",");
+  for (  String node : nodes) {
+    try {
+      hosts.add(InetAddress.getByName(node));
+    }
+ catch (    UnknownHostException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  int rpcPort=ConfigHelper.getOutputRpcPort(conf);
+  String username=ConfigHelper.getOutputKeyspaceUserName(conf);
+  String password=ConfigHelper.getOutputKeyspacePassword(conf);
+  ITransportFactory transportFactory=ConfigHelper.getClientTransportFactory(conf);
+  return new BulkLoader.ExternalClient(hosts,rpcPort,username,password,transportFactory,CqlBulkOutputFormat.getStoragePort(conf),CqlBulkOutputFormat.getSSLStoragePort(conf),getServerEncryptOpt(conf));
+}
