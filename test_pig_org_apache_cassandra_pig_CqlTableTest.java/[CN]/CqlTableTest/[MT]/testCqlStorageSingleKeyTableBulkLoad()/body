@@ -1,0 +1,16 @@
+{
+  pig.setBatchOn();
+  pig.registerQuery("moretestvalues= LOAD 'cql://cql3ks/moredata?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20moredata%20where%20token(x)%20%3E%20%3F%20and%20token(x)%20%3C%3D%20%3F' USING CqlNativeStorage();");
+  pig.registerQuery("insertformat= FOREACH moretestvalues GENERATE TOTUPLE(x, y);");
+  pig.registerQuery("STORE insertformat INTO 'cql://cql3ks/test_bulk?" + defaultParameters + nativeParameters+ "&bulk_output_format=true&bulk_cf_schema=CREATE%20TABLE%20cql3ks.test_bulk%20(a%20int%20PRIMARY%20KEY%2C%20b%20int)&bulk_insert_statement=Insert%20into%20cql3ks.test_bulk(a%2C%20b)%20values(%3F%2C%3F)' USING CqlNativeStorage();");
+  pig.executeBatch();
+  pig.registerQuery("result= LOAD 'cql://cql3ks/test_bulk?" + defaultParameters + nativeParameters+ "&input_cql=select%20*%20from%20test_bulk%20where%20token(a)%20%3E%20%3F%20and%20token(a)%20%3C%3D%20%3F' USING CqlNativeStorage();");
+  Iterator<Tuple> it=pig.openIterator("result");
+  int count=0;
+  while (it.hasNext()) {
+    Tuple t=it.next();
+    Assert.assertEquals(t.get(0),t.get(1));
+    count++;
+  }
+  Assert.assertEquals(6,count);
+}
