@@ -14,6 +14,20 @@
   }
   ConfigHelper.setOutputColumnFamily(conf,keyspace,column_family);
   CqlConfigHelper.setOutputCql(conf,outputQuery);
+  if (bulkOutputFormat) {
+    DEFAULT_OUTPUT_FORMAT=BULK_OUTPUT_FORMAT;
+    if (bulkCfSchema != null)     CqlBulkOutputFormat.setTableSchema(conf,column_family,bulkCfSchema);
+ else     throw new IOException("bulk_cf_schema is missing in input url parameter");
+    if (bulkInsertStatement != null)     CqlBulkOutputFormat.setTableInsertStatement(conf,column_family,bulkInsertStatement);
+ else     throw new IOException("bulk_insert_statement is missing in input url parameter");
+    if (bulkTableAlias != null)     CqlBulkOutputFormat.setTableAlias(conf,bulkTableAlias,column_family);
+    CqlBulkOutputFormat.setDeleteSourceOnSuccess(conf,bulkDeleteSourceOnSuccess);
+    if (bulkOutputLocation != null)     conf.set(CqlBulkRecordWriter.OUTPUT_LOCATION,bulkOutputLocation);
+    if (bulkBuffSize > 0)     conf.set(CqlBulkRecordWriter.BUFFER_SIZE_IN_MB,String.valueOf(bulkBuffSize));
+    if (bulkStreamThrottle > 0)     conf.set(CqlBulkRecordWriter.STREAM_THROTTLE_MBITS,String.valueOf(bulkStreamThrottle));
+    if (bulkMaxFailedHosts > 0)     conf.set(CqlBulkRecordWriter.MAX_FAILED_HOSTS,String.valueOf(bulkMaxFailedHosts));
+    if (partitionerClass != null)     ConfigHelper.setInputPartitioner(conf,partitionerClass);
+  }
   setConnectionInformation();
   if (ConfigHelper.getOutputRpcPort(conf) == 0)   throw new IOException("PIG_OUTPUT_RPC_PORT or PIG_RPC_PORT environment variable not set");
   if (ConfigHelper.getOutputInitialAddress(conf) == null)   throw new IOException("PIG_OUTPUT_INITIAL_ADDRESS or PIG_INITIAL_ADDRESS environment variable not set");
