@@ -1,0 +1,21 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, PRIMARY KEY (a))");
+  String toInclude="include";
+  String toExclude="exclude";
+  createIndex(String.format("CREATE CUSTOM INDEX %s ON %%s(b) USING '%s'",toInclude,IndexIncludedInBuild.class.getName()));
+  createIndex(String.format("CREATE CUSTOM INDEX %s ON %%s(b) USING '%s'",toExclude,IndexExcludedFromBuild.class.getName()));
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",0,0);
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",1,1);
+  execute("INSERT INTO %s (a, b) VALUES (?, ?)",2,2);
+  flush();
+  SecondaryIndexManager indexManager=getCurrentColumnFamilyStore().indexManager;
+  IndexIncludedInBuild included=(IndexIncludedInBuild)indexManager.getIndexByName(toInclude);
+  included.reset();
+  assertTrue(included.rowsInserted.isEmpty());
+  IndexExcludedFromBuild excluded=(IndexExcludedFromBuild)indexManager.getIndexByName(toExclude);
+  excluded.reset();
+  assertTrue(excluded.rowsInserted.isEmpty());
+  indexManager.buildAllIndexesBlocking(getCurrentColumnFamilyStore().getLiveSSTables());
+  assertEquals(3,included.rowsInserted.size());
+  assertTrue(excluded.rowsInserted.isEmpty());
+}
