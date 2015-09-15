@@ -1,0 +1,29 @@
+{
+  ReadCommand cmd=Util.cmd(cfs2,dk).withNowInSeconds(nowInSec).build();
+  DataResolver resolver=new DataResolver(ks,cmd,ConsistencyLevel.ALL,2);
+  long[] ts={100,200};
+  Row.Builder builder=BTreeRow.unsortedBuilder(nowInSec);
+  builder.newRow(Clustering.EMPTY);
+  builder.addComplexDeletion(m,new DeletionTime(ts[0] - 1,nowInSec));
+  builder.addCell(mapCell(0,0,ts[0]));
+  InetAddress peer1=peer();
+  resolver.preprocess(readResponseMessage(peer1,iter(PartitionUpdate.singleRowUpdate(cfm2,dk,builder.build())),cmd));
+  builder.newRow(Clustering.EMPTY);
+  DeletionTime expectedCmplxDelete=new DeletionTime(ts[1] - 1,nowInSec);
+  builder.addComplexDeletion(m,expectedCmplxDelete);
+  InetAddress peer2=peer();
+  resolver.preprocess(readResponseMessage(peer2,iter(PartitionUpdate.singleRowUpdate(cfm2,dk,builder.build())),cmd));
+  try (PartitionIterator data=resolver.resolve()){
+    assertFalse(data.hasNext());
+  }
+   MessageOut<Mutation> msg;
+  msg=getSentMessage(peer1);
+  Iterator<Row> rowIter=msg.payload.getPartitionUpdate(cfm2.cfId).iterator();
+  assertTrue(rowIter.hasNext());
+  Row row=rowIter.next();
+  assertFalse(rowIter.hasNext());
+  ComplexColumnData cd=row.getComplexColumnData(m);
+  assertEquals(Collections.emptySet(),Sets.newHashSet(cd));
+  assertEquals(expectedCmplxDelete,cd.complexDeletion());
+  Assert.assertNull(messageRecorder.sent.get(peer2));
+}
