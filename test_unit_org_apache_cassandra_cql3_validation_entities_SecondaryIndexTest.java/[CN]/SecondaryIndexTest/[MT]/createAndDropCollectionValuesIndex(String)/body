@@ -1,0 +1,12 @@
+{
+  String indexName=columnName + "_idx";
+  SecondaryIndexManager indexManager=getCurrentColumnFamilyStore().indexManager;
+  createIndex(String.format("CREATE INDEX %s on %%s(%s)",indexName,columnName));
+  IndexMetadata indexDef=indexManager.getIndexByName(indexName).getIndexMetadata();
+  assertEquals(String.format("values(%s)",columnName),indexDef.options.get(IndexTarget.TARGET_OPTION_NAME));
+  dropIndex(String.format("DROP INDEX %s.%s",KEYSPACE,indexName));
+  assertFalse(indexManager.hasIndexes());
+  createIndex(String.format("CREATE INDEX %s on %%s(values(%s))",indexName,columnName));
+  assertEquals(indexDef,indexManager.getIndexByName(indexName).getIndexMetadata());
+  dropIndex(String.format("DROP INDEX %s.%s",KEYSPACE,indexName));
+}

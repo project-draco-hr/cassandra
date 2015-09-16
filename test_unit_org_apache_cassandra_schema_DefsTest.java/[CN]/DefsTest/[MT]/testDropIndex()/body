@@ -1,2 +1,16 @@
 {
+  SchemaKeyspace.makeCreateKeyspaceMutation(Schema.instance.getKSMetaData(KEYSPACE6),FBUtilities.timestampMicros()).applyUnsafe();
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE6).getColumnFamilyStore(TABLE1i);
+  String indexName="birthdate_key_index";
+  QueryProcessor.executeInternal(String.format("INSERT INTO %s.%s (key, c1, birthdate, notbirthdate) VALUES (?, ?, ?, ?)",KEYSPACE6,TABLE1i),"key0","col0",1L,1L);
+  cfs.forceBlockingFlush();
+  ColumnFamilyStore indexCfs=cfs.indexManager.getIndexByName(indexName).getBackingTable().orElseThrow(throwAssert("Cannot access index cfs"));
+  Descriptor desc=indexCfs.getLiveSSTables().iterator().next().descriptor;
+  CFMetaData meta=cfs.metadata.copy();
+  IndexMetadata existing=cfs.metadata.getIndexes().get(indexName).orElseThrow(throwAssert("Index not found"));
+  meta.indexes(meta.getIndexes().without(existing.name));
+  MigrationManager.announceColumnFamilyUpdate(meta,false);
+  assertTrue(cfs.indexManager.listIndexes().isEmpty());
+  LifecycleTransaction.waitForDeletions();
+  assertFalse(new File(desc.filenameFor(Component.DATA)).exists());
 }

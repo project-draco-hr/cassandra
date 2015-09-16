@@ -1,0 +1,15 @@
+{
+  Indexes.Builder indexes=Indexes.builder();
+  for (  UntypedResultSet.Row row : rows) {
+    IndexMetadata.Kind kind=null;
+    if (row.has("index_type"))     kind=IndexMetadata.Kind.valueOf(row.getString("index_type"));
+    if (kind == null)     continue;
+    Map<String,String> indexOptions=null;
+    if (row.has("index_options"))     indexOptions=fromJsonMap(row.getString("index_options"));
+    String indexName=null;
+    if (row.has("index_name"))     indexName=row.getString("index_name");
+    ColumnDefinition column=createColumnFromColumnRow(row,keyspace,table,rawComparator,rawSubComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
+    indexes.add(IndexMetadata.fromLegacyMetadata(cfm,column,indexName,kind,indexOptions));
+  }
+  return indexes.build();
+}

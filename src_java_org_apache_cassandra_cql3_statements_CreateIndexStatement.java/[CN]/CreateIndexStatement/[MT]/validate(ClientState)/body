@@ -3,7 +3,6 @@
   if (cfm.isCounter())   throw new InvalidRequestException("Secondary indexes are not supported on counter tables");
   IndexTarget target=rawTarget.prepare(cfm);
   ColumnDefinition cd=cfm.getColumnDefinition(target.column);
-  if (cd == null)   throw new InvalidRequestException("No column definition found for column " + target.column);
   boolean isMap=cd.type instanceof MapType;
   boolean isFrozenCollection=cd.type.isCollection() && !cd.type.isMultiCell();
   if (isFrozenCollection) {
@@ -11,7 +10,7 @@
   }
  else {
     validateNotFullIndex(target);
-    validateIsValuesIndexIfTargetColumnNotCollection(cd,target);
+    validateIsSimpleIndexIfTargetColumnNotCollection(cd,target);
     validateTargetColumnIsMapIfIndexInvolvesKeys(isMap,target);
   }
   if (!Strings.isNullOrEmpty(indexName)) {
