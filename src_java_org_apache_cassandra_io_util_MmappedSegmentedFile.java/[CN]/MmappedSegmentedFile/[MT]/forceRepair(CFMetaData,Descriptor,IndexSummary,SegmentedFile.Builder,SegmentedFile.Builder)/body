@@ -1,0 +1,30 @@
+{
+  if (ibuilder instanceof Builder)   ((Builder)ibuilder).boundaries.clear();
+  if (dbuilder instanceof Builder)   ((Builder)dbuilder).boundaries.clear();
+  try (RandomAccessFile raf=new RandomAccessFile(descriptor.filenameFor(Component.PRIMARY_INDEX),"r")){
+    long iprev=0, dprev=0;
+    for (int i=0; i < indexSummary.size(); i++) {
+      long icur=indexSummary.getPosition(i);
+      raf.seek(icur);
+      ByteBufferUtil.readWithShortLength(raf);
+      RowIndexEntry rie=metadata.comparator.rowIndexEntrySerializer().deserialize(raf,descriptor.version);
+      long dcur=rie.position;
+      if (Math.max(icur - iprev,dcur - dprev) > MAX_SEGMENT_SIZE) {
+        raf.seek(iprev);
+        while (raf.getFilePointer() < icur) {
+          ibuilder.addPotentialBoundary(raf.getFilePointer());
+          ByteBufferUtil.readWithShortLength(raf);
+          rie=metadata.comparator.rowIndexEntrySerializer().deserialize(raf,descriptor.version);
+          dbuilder.addPotentialBoundary(rie.position);
+        }
+      }
+      ibuilder.addPotentialBoundary(icur);
+      dbuilder.addPotentialBoundary(dcur);
+      iprev=icur;
+      dprev=dcur;
+    }
+  }
+ catch (  IOException e) {
+    logger.error("Failed to recalculate boundaries for {}; mmap access may degrade to buffered for this file",descriptor);
+  }
+}

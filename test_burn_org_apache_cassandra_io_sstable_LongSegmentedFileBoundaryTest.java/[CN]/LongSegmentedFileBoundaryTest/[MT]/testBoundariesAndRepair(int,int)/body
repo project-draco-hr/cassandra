@@ -1,0 +1,42 @@
+{
+  String KS="cql_keyspace";
+  String TABLE="table1";
+  File tempdir=Files.createTempDir();
+  try {
+    Assert.assertTrue(DatabaseDescriptor.getColumnIndexSize() < rowSize);
+    Assert.assertTrue(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap);
+    Assert.assertTrue(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap);
+    Assert.assertTrue(StorageService.getPartitioner() instanceof ByteOrderedPartitioner);
+    File dataDir=new File(tempdir.getAbsolutePath() + File.separator + KS+ File.separator+ TABLE);
+    Assert.assertTrue(dataDir.mkdirs());
+    String schema="CREATE TABLE cql_keyspace.table" + (rows > 1 ? "2" : "1") + " (k bigint, v1 blob, v2 blob, v3 blob, v4 blob, v5 blob, PRIMARY KEY (k"+ (rows > 1 ? ", v1" : "")+ ")) WITH compression = { 'sstable_compression':'' };";
+    String insert="INSERT INTO cql_keyspace.table" + (rows > 1 ? "2" : "1") + " (k, v1, v2, v3, v4, v5) VALUES (?, ?, ?, ?, ?, ?)";
+    CQLSSTableWriter.Builder builder=CQLSSTableWriter.builder().inDirectory(dataDir).forTable(schema).withPartitioner(StorageService.getPartitioner()).using(insert).sorted();
+    CQLSSTableWriter writer=builder.build();
+    ByteBuffer[] value=new ByteBuffer[rows];
+    for (int row=0; row < rows; row++) {
+      value[row]=ByteBuffer.allocate(rowSize / (rows > 1 ? 8 : 5));
+      value[row].putInt(0,row);
+    }
+    long targetSize=8L << 30;
+    long dk=0;
+    long size=0;
+    long dkSize=rowSize * rows;
+    while (size < targetSize) {
+      for (int row=0; row < rows; row++)       writer.addRow(dk,value[row],value[row],value[row],value[row],value[row]);
+      size+=dkSize;
+      dk++;
+    }
+    Descriptor descriptor=writer.getCurrentDescriptor().asType(Descriptor.Type.FINAL);
+    writer.close();
+    SSTableReader reader=SSTableReader.open(descriptor);
+    reader.selfRef().release();
+    checkThenCorruptBoundaries(descriptor,rows * rowSize < Integer.MAX_VALUE);
+    reader=SSTableReader.open(descriptor);
+    reader.selfRef().release();
+    checkThenCorruptBoundaries(descriptor,rows * rowSize < Integer.MAX_VALUE);
+  }
+  finally {
+    FileUtils.deleteRecursive(tempdir);
+  }
+}
