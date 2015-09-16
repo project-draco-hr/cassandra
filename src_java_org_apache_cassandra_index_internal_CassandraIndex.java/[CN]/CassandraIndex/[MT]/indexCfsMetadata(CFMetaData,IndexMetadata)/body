@@ -1,6 +1,7 @@
 {
-  CassandraIndexFunctions utils=getFunctions(baseCfsMetadata,indexMetadata);
-  ColumnDefinition indexedColumn=indexMetadata.indexedColumn(baseCfsMetadata);
+  Pair<ColumnDefinition,IndexTarget.Type> target=parseTarget(baseCfsMetadata,indexMetadata);
+  CassandraIndexFunctions utils=getFunctions(indexMetadata,target);
+  ColumnDefinition indexedColumn=target.left;
   AbstractType<?> indexedValueType=utils.getIndexedValueType(indexedColumn);
   CFMetaData.Builder builder=CFMetaData.Builder.create(baseCfsMetadata.ksName,baseCfsMetadata.indexColumnFamilyName(indexMetadata)).withId(baseCfsMetadata.cfId).withPartitioner(new LocalPartitioner(indexedValueType)).addPartitionKey(indexedColumn.name,indexedColumn.type);
   builder.addClusteringColumn("partition_key",baseCfsMetadata.partitioner.partitionOrdering());

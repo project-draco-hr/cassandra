@@ -13,11 +13,11 @@
   boolean isStaticCompactTable=!isDense && !isCompound;
   boolean needsUpgrade=!isCQLTable && checkNeedsUpgrade(columnRows,isSuper,isStaticCompactTable);
   List<ColumnDefinition> columnDefs=createColumnsFromColumnRows(columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
-  Indexes indexes=createIndexesFromColumnRows(columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
   if (needsUpgrade) {
     addDefinitionForUpgrade(columnDefs,ksName,cfName,isStaticCompactTable,isSuper,rawComparator,subComparator,defaultValidator);
   }
   CFMetaData cfm=CFMetaData.create(ksName,cfName,cfId,isDense,isCompound,isSuper,isCounter,false,columnDefs,DatabaseDescriptor.getPartitioner());
+  Indexes indexes=createIndexesFromColumnRows(cfm,columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
   cfm.indexes(indexes);
   if (tableRow.has("dropped_columns"))   addDroppedColumns(cfm,rawComparator,tableRow.getMap("dropped_columns",UTF8Type.instance,LongType.instance));
   return cfm.params(decodeTableParams(tableRow)).triggers(createTriggersFromTriggerRows(triggerRows));

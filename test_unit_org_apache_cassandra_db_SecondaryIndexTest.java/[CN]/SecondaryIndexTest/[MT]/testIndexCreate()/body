@@ -2,18 +2,15 @@
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(COMPOSITE_INDEX_TO_BE_ADDED);
   new RowUpdateBuilder(cfs.metadata,0,"k1").clustering("c").add("birthdate",1L).build().applyUnsafe();
+  String indexName="birthdate_index";
   ColumnDefinition old=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("birthdate"));
-  IndexMetadata indexDef=IndexMetadata.singleColumnIndex(old,"birthdate_index",IndexMetadata.IndexType.COMPOSITES,Collections.EMPTY_MAP);
+  IndexMetadata indexDef=IndexMetadata.singleTargetIndex(cfs.metadata,new IndexTarget(old.name,IndexTarget.Type.VALUES),indexName,IndexMetadata.Kind.COMPOSITES,Collections.EMPTY_MAP);
   cfs.metadata.indexes(cfs.metadata.getIndexes().with(indexDef));
   Future<?> future=cfs.indexManager.addIndex(indexDef);
   future.get();
-  ColumnDefinition cDef=cfs.metadata.getColumnDefinition(ByteBufferUtil.bytes("birthdate"));
-  String indexName=getIndexNameForColumn(cfs,cDef);
-  assertNotNull(indexName);
   boolean flushed=false;
-  for (  ColumnFamilyStore indexCfs : cfs.indexManager.getAllIndexColumnFamilyStores()) {
-    if (SecondaryIndexManager.getIndexName(indexCfs).equals(indexName))     flushed=indexCfs.getLiveSSTables().size() > 0;
-  }
+  ColumnFamilyStore indexCfs=cfs.indexManager.getIndex(indexDef).getBackingTable().orElseThrow(throwAssert("Index not found"));
+  flushed=!indexCfs.getLiveSSTables().isEmpty();
   assertTrue(flushed);
   assertIndexedOne(cfs,ByteBufferUtil.bytes("birthdate"),1L);
   assertTrue(cfs.getBuiltIndexes().contains(indexName));
