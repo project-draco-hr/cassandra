@@ -1,11 +1,13 @@
 {
   final ByteBuffer buffer=ByteBufferUtil.readWithLength(in);
+  if (cfs == null || !cfs.isRowCacheEnabled())   return null;
+  assert(!cfs.isIndex());
   return StageManager.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey,IRowCacheEntry>>(){
     public Pair<RowCacheKey,IRowCacheEntry> call() throws Exception {
       DecoratedKey key=cfs.partitioner.decorateKey(buffer);
       QueryFilter cacheFilter=new QueryFilter(key,cfs.getColumnFamilyName(),cfs.readFilterForCache(),Integer.MIN_VALUE);
       ColumnFamily data=cfs.getTopLevelColumns(cacheFilter,Integer.MIN_VALUE);
-      return Pair.create(new RowCacheKey(cfs.metadata.cfId,key),(IRowCacheEntry)data);
+      return Pair.create(new RowCacheKey(cfs.metadata.ksAndCFName,key),(IRowCacheEntry)data);
     }
   }
 );

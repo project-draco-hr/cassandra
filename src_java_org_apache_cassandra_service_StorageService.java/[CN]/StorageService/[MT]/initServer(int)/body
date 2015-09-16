@@ -64,7 +64,13 @@
   Runtime.getRuntime().addShutdownHook(drainOnShutdown);
   replacing=DatabaseDescriptor.isReplacing();
   prepareToJoin();
-  for (  ColumnFamilyStore cfs : ColumnFamilyStore.all())   if (cfs.metadata.isCounter())   cfs.initCounterCache();
+  try {
+    CacheService.instance.counterCache.loadSavedAsync().get();
+  }
+ catch (  Throwable t) {
+    JVMStabilityInspector.inspectThrowable(t);
+    logger.warn("Error loading counter cache",t);
+  }
   if (Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))) {
     joinTokenRing(delay);
   }
