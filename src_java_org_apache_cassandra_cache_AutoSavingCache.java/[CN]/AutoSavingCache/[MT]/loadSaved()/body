@@ -1,0 +1,45 @@
+{
+  int count=0;
+  long start=System.nanoTime();
+  File path=getCachePath(CURRENT_VERSION);
+  if (path.exists()) {
+    DataInputStream in=null;
+    try {
+      logger.info(String.format("reading saved cache %s",path));
+      in=new DataInputStream(new LengthAvailableInputStream(new BufferedInputStream(streamFactory.getInputStream(path)),path.length()));
+      ArrayDeque<Future<Pair<K,V>>> futures=new ArrayDeque<Future<Pair<K,V>>>();
+      while (in.available() > 0) {
+        String ksname=in.readUTF();
+        String cfname=in.readUTF();
+        ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreIncludingIndexes(Pair.create(ksname,cfname));
+        Future<Pair<K,V>> entryFuture=cacheLoader.deserialize(in,cfs);
+        if (entryFuture == null)         continue;
+        futures.offer(entryFuture);
+        count++;
+        do {
+          while (futures.peek() != null && futures.peek().isDone()) {
+            Future<Pair<K,V>> future=futures.poll();
+            Pair<K,V> entry=future.get();
+            if (entry != null && entry.right != null)             put(entry.left,entry.right);
+          }
+          if (futures.size() > 1000)           Thread.yield();
+        }
+ while (futures.size() > 1000);
+      }
+      Future<Pair<K,V>> future=null;
+      while ((future=futures.poll()) != null) {
+        Pair<K,V> entry=future.get();
+        if (entry != null && entry.right != null)         put(entry.left,entry.right);
+      }
+    }
+ catch (    Throwable t) {
+      JVMStabilityInspector.inspectThrowable(t);
+      logger.info(String.format("Harmless error reading saved cache %s",path.getAbsolutePath()),t);
+    }
+ finally {
+      FileUtils.closeQuietly(in);
+    }
+  }
+  if (logger.isDebugEnabled())   logger.debug("completed reading ({} ms; {} keys) saved cache {}",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),count,path);
+  return count;
+}

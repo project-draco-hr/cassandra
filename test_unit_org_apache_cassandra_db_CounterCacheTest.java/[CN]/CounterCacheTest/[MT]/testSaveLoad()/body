@@ -1,5 +1,6 @@
 {
   ColumnFamilyStore cfs=Keyspace.open(KS).getColumnFamilyStore(CF);
+  cfs.truncateBlocking();
   CacheService.instance.invalidateCounterCache();
   ColumnFamily cells=ArrayBackedSortedColumns.factory.create(cfs.metadata);
   cells.addColumn(new BufferCounterUpdateCell(cellname(1),1L,FBUtilities.timestampMicros()));
@@ -9,7 +10,7 @@
   CacheService.instance.counterCache.submitWrite(Integer.MAX_VALUE).get();
   CacheService.instance.invalidateCounterCache();
   assertEquals(0,CacheService.instance.counterCache.size());
-  CacheService.instance.counterCache.loadSaved(cfs);
+  CacheService.instance.counterCache.loadSaved();
   assertEquals(4,CacheService.instance.counterCache.size());
   assertEquals(ClockAndCount.create(1L,1L),cfs.getCachedCounter(bytes(1),cellname(1)));
   assertEquals(ClockAndCount.create(1L,2L),cfs.getCachedCounter(bytes(1),cellname(2)));

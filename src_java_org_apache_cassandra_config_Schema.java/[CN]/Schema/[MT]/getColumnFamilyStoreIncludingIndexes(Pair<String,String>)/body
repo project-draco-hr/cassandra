@@ -1,0 +1,18 @@
+{
+  String ksName=ksNameAndCFName.left;
+  String cfName=ksNameAndCFName.right;
+  Pair<String,String> baseTable;
+  int indexOfSeparator=cfName.indexOf('.');
+  if (indexOfSeparator > -1)   baseTable=Pair.create(ksName,cfName.substring(0,indexOfSeparator));
+ else   baseTable=ksNameAndCFName;
+  UUID cfId=cfIdMap.get(baseTable);
+  if (cfId == null)   return null;
+  Keyspace ks=keyspaceInstances.get(ksName);
+  if (ks == null)   return null;
+  ColumnFamilyStore baseCFS=ks.getColumnFamilyStore(cfId);
+  if (indexOfSeparator == -1)   return baseCFS;
+  if (baseCFS == null)   return null;
+  SecondaryIndex index=baseCFS.indexManager.getIndexByName(cfName);
+  if (index == null)   return null;
+  return index.getIndexCfs();
+}

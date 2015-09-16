@@ -5,12 +5,12 @@
   }
   ByteBuffer key=ByteBufferUtil.read(input,keyLength);
   int generation=input.readInt();
-  SSTableReader reader=findDesc(generation,cfs.getSSTables());
   input.readBoolean();
-  if (reader == null) {
-    RowIndexEntry.Serializer.skipPromotedIndex(input);
+  SSTableReader reader=null;
+  if (cfs == null || !cfs.isKeyCacheEnabled() || (reader=findDesc(generation,cfs.getSSTables())) == null) {
+    RowIndexEntry.Serializer.skip(input);
     return null;
   }
   RowIndexEntry entry=reader.metadata.comparator.rowIndexEntrySerializer().deserialize(input,reader.descriptor.version);
-  return Futures.immediateFuture(Pair.create(new KeyCacheKey(cfs.metadata.cfId,reader.descriptor,key),entry));
+  return Futures.immediateFuture(Pair.create(new KeyCacheKey(cfs.metadata.ksAndCFName,reader.descriptor,key),entry));
 }
