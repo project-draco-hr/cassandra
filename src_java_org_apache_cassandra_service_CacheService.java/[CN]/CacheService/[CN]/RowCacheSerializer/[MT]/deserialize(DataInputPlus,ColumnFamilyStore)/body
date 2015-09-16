@@ -1,13 +1,15 @@
 {
   final ByteBuffer buffer=ByteBufferUtil.readWithLength(in);
   final int rowsToCache=cfs.metadata.params.caching.rowsPerPartitionToCache();
+  if (cfs == null || !cfs.isRowCacheEnabled())   return null;
+  assert(!cfs.isIndex());
   return StageManager.getStage(Stage.READ).submit(new Callable<Pair<RowCacheKey,IRowCacheEntry>>(){
     public Pair<RowCacheKey,IRowCacheEntry> call() throws Exception {
       DecoratedKey key=cfs.decorateKey(buffer);
       int nowInSec=FBUtilities.nowInSeconds();
       try (OpOrder.Group op=cfs.readOrdering.start();UnfilteredRowIterator iter=SinglePartitionReadCommand.fullPartitionRead(cfs.metadata,nowInSec,key).queryMemtableAndDisk(cfs,op)){
         CachedPartition toCache=CachedBTreePartition.create(DataLimits.cqlLimits(rowsToCache).filter(iter,nowInSec),nowInSec);
-        return Pair.create(new RowCacheKey(cfs.metadata.cfId,key),(IRowCacheEntry)toCache);
+        return Pair.create(new RowCacheKey(cfs.metadata.ksAndCFName,key),(IRowCacheEntry)toCache);
       }
      }
   }

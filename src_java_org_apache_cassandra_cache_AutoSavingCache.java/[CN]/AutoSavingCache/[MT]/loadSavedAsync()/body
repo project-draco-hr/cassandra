@@ -1,0 +1,18 @@
+{
+  final ListeningExecutorService es=MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor());
+  final long start=System.nanoTime();
+  ListenableFuture<Integer> cacheLoad=es.submit(new Callable<Integer>(){
+    @Override public Integer call() throws Exception {
+      return loadSaved();
+    }
+  }
+);
+  cacheLoad.addListener(new Runnable(){
+    @Override public void run(){
+      if (size() > 0)       logger.info("Completed loading ({} ms; {} keys) {} cache",TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start),CacheService.instance.keyCache.size(),cacheType);
+      es.shutdown();
+    }
+  }
+,MoreExecutors.directExecutor());
+  return cacheLoad;
+}

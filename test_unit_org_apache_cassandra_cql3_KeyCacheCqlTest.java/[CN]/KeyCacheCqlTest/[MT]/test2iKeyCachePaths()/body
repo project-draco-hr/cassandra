@@ -3,11 +3,11 @@
   createIndex("CREATE INDEX some_index ON %s (col_int)");
   insertData(table,"some_index",true);
   clearCache();
+  CacheMetrics metrics=CacheService.instance.keyCache.getMetrics();
   for (int i=0; i < 10; i++) {
     UntypedResultSet result=execute("SELECT part_key_a FROM %s WHERE col_int = ?",i);
     assertEquals(500,result.size());
   }
-  CacheMetrics metrics=CacheService.instance.keyCache.getMetrics();
   long hits=metrics.hits.getCount();
   long requests=metrics.requests.getCount();
   assertEquals(0,hits);
@@ -21,4 +21,20 @@
   requests=metrics.requests.getCount();
   assertEquals(200,hits);
   assertEquals(420,requests);
+  CacheService.instance.keyCache.submitWrite(Integer.MAX_VALUE).get();
+  int beforeSize=CacheService.instance.keyCache.size();
+  CacheService.instance.keyCache.clear();
+  Assert.assertEquals(0,CacheService.instance.keyCache.size());
+  CacheService.instance.keyCache.loadSaved();
+  assertEquals(beforeSize,CacheService.instance.keyCache.size());
+  for (int i=0; i < 10; i++) {
+    UntypedResultSet result=execute("SELECT part_key_a FROM %s WHERE col_int = ?",i);
+    assertEquals(500,result.size());
+  }
+  assertNull(Schema.instance.getColumnFamilyStoreIncludingIndexes(Pair.create("foo","bar")));
+  assertNull(Schema.instance.getColumnFamilyStoreIncludingIndexes(Pair.create(KEYSPACE,"bar")));
+  dropTable("DROP TABLE %s");
+  CacheService.instance.keyCache.clear();
+  CacheService.instance.keyCache.loadSaved();
+  assertEquals(0,CacheService.instance.keyCache.size());
 }
