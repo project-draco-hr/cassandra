@@ -15,16 +15,23 @@
  catch (    FileNotFoundException e) {
       throw new RuntimeException(e);
     }
-    for (    K key : keys) {
-      ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreIncludingIndexes(key.ksAndCFName);
-      if (cfs == null)       continue;
-      try {
+    try {
+      UUID schemaVersion=Schema.instance.getVersion();
+      if (schemaVersion == null) {
+        Schema.instance.updateVersion();
+        schemaVersion=Schema.instance.getVersion();
+      }
+      writer.writeLong(schemaVersion.getMostSignificantBits());
+      writer.writeLong(schemaVersion.getLeastSignificantBits());
+      for (      K key : keys) {
+        ColumnFamilyStore cfs=Schema.instance.getColumnFamilyStoreIncludingIndexes(key.ksAndCFName);
+        if (cfs == null)         continue;
         cacheLoader.serialize(key,writer,cfs);
+        keysWritten++;
       }
- catch (      IOException e) {
-        throw new FSWriteError(e,tempCacheFile);
-      }
-      keysWritten++;
+    }
+ catch (    IOException e) {
+      throw new FSWriteError(e,tempCacheFile);
     }
   }
   finally {
