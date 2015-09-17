@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (" + "a int," + "b int,"+ "c int,"+ "d int,"+ "PRIMARY KEY (a, b, c))");
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView(keyspace() + ".mv1","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE b IS NOT NULL AND c IS NOT NULL PRIMARY KEY (a, b, c)");
+  try {
+    executeNet(protocolVersion,"DROP TABLE " + keyspace() + ".mv1");
+    Assert.fail();
+  }
+ catch (  InvalidQueryException e) {
+    Assert.assertEquals("Cannot use DROP TABLE on Materialized View",e.getMessage());
+  }
+}
