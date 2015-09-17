@@ -1,0 +1,8 @@
+{
+  createTable("CREATE TABLE %s (" + "a int," + "b int,"+ "PRIMARY KEY ((a, b)))");
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv1","CREATE MATERIALIZED VIEW %s AS SELECT a, b FROM %%s WHERE a IS NOT NULL AND b IS NOT NULL PRIMARY KEY (b, a)");
+  updateView("INSERT INTO %s (a, b) VALUES (?, ?)",1,1);
+  ResultSet mvRows=executeNet(protocolVersion,"SELECT a, b FROM mv1");
+  assertRowsNet(protocolVersion,mvRows,row(1,1));
+}
