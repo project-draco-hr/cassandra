@@ -8,6 +8,8 @@
     try {
       logger.info(String.format("reading saved cache %s",dataPath));
       in=new DataInputStream(new LengthAvailableInputStream(new BufferedInputStream(streamFactory.getInputStream(dataPath,crcPath)),dataPath.length()));
+      UUID schemaVersion=new UUID(in.readLong(),in.readLong());
+      if (!schemaVersion.equals(Schema.instance.getVersion()))       throw new RuntimeException("Cache schema version " + schemaVersion.toString() + " does not match current schema version "+ Schema.instance.getVersion());
       ArrayDeque<Future<Pair<K,V>>> futures=new ArrayDeque<Future<Pair<K,V>>>();
       while (in.available() > 0) {
         String ksname=in.readUTF();
