@@ -1,10 +1,10 @@
 {
-  ClusteringIndexSliceFilter filter=deserializeSlicePartitionFilter(in,metadata);
+  Pair<ClusteringIndexSliceFilter,Boolean> p=deserializeSlicePartitionFilter(in,metadata);
+  ClusteringIndexSliceFilter filter=p.left;
+  boolean selectsStatics=p.right;
   int count=in.readInt();
   int compositesToGroup=in.readInt();
-  boolean selectsStatics=filter.selects(Clustering.STATIC_CLUSTERING);
-  PartitionColumns columns=selectsStatics ? metadata.partitionColumns() : metadata.partitionColumns().withoutStatics();
-  ColumnFilter columnFilter=ColumnFilter.selectionBuilder().addAll(columns).build();
+  ColumnFilter columnFilter=LegacyRangeSliceCommandSerializer.getColumnSelectionForSlice(selectsStatics,compositesToGroup,metadata);
   boolean isDistinct=compositesToGroup == -2 || (count == 1 && selectsStatics);
   DataLimits limits;
   if (compositesToGroup == -2 || isDistinct)   limits=DataLimits.distinctLimits(count);
