@@ -1,0 +1,13 @@
+{
+  ReadCommand command=rangeNamesQuery("k0","k5",100,"c1","c4","c8");
+  QueryPager pager=command.getPager(null,protocolVersion);
+  assertFalse(pager.isExhausted());
+  List<FilteredPartition> partitions=query(pager,3 * 3);
+  for (int i=1; i <= 3; i++)   assertRow(partitions.get(i - 1),"k" + i,"c1","c4","c8");
+  assertFalse(pager.isExhausted());
+  pager=maybeRecreate(pager,command,testPagingState,protocolVersion);
+  assertFalse(pager.isExhausted());
+  partitions=query(pager,3 * 3,2 * 3);
+  for (int i=4; i <= 5; i++)   assertRow(partitions.get(i - 4),"k" + i,"c1","c4","c8");
+  assertTrue(pager.isExhausted());
+}

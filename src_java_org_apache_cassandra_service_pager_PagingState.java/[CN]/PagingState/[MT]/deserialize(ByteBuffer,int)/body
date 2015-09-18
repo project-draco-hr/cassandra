@@ -1,0 +1,25 @@
+{
+  if (bytes == null)   return null;
+  try {
+    DataInputBuffer in=new DataInputBuffer(bytes,true);
+    ByteBuffer pk;
+    RowMark mark;
+    int remaining, remainingInPartition;
+    if (protocolVersion <= Server.VERSION_3) {
+      pk=ByteBufferUtil.readWithShortLength(in);
+      mark=new RowMark(ByteBufferUtil.readWithShortLength(in),protocolVersion);
+      remaining=in.readInt();
+      remainingInPartition=in.available() > 0 ? in.readInt() : Integer.MAX_VALUE;
+    }
+ else {
+      pk=ByteBufferUtil.readWithVIntLength(in);
+      mark=new RowMark(ByteBufferUtil.readWithVIntLength(in),protocolVersion);
+      remaining=(int)in.readUnsignedVInt();
+      remainingInPartition=(int)in.readUnsignedVInt();
+    }
+    return new PagingState(pk.hasRemaining() ? pk : null,mark.mark.hasRemaining() ? mark : null,remaining,remainingInPartition);
+  }
+ catch (  IOException e) {
+    throw new ProtocolException("Invalid value for the paging state");
+  }
+}
