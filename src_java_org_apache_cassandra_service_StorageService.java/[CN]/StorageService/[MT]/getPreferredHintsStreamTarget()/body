@@ -1,0 +1,18 @@
+{
+  List<InetAddress> candidates=new ArrayList<>(StorageService.instance.getTokenMetadata().cloneAfterAllLeft().getAllEndpoints());
+  candidates.remove(FBUtilities.getBroadcastAddress());
+  for (Iterator<InetAddress> iter=candidates.iterator(); iter.hasNext(); ) {
+    InetAddress address=iter.next();
+    if (!FailureDetector.instance.isAlive(address))     iter.remove();
+  }
+  if (candidates.isEmpty()) {
+    logger.warn("Unable to stream hints since no live endpoints seen");
+    throw new RuntimeException("Unable to stream hints since no live endpoints seen");
+  }
+ else {
+    DatabaseDescriptor.getEndpointSnitch().sortByProximity(FBUtilities.getBroadcastAddress(),candidates);
+    InetAddress hintsDestinationHost=candidates.get(0);
+    InetAddress preferred=SystemKeyspace.getPreferredIP(hintsDestinationHost);
+    return tokenMetadata.getHostId(preferred);
+  }
+}
