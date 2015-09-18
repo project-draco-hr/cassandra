@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (" + " pk1 int," + " pk2 int,"+ " c1 int,"+ " c2 int,"+ " v1 int,"+ " v2 int,"+ " mval map<text, int>,"+ " lval list<int>,"+ " sval set<int>,"+ " fmap frozen<map<text,int>>,"+ " flist frozen<list<int>>,"+ " fset frozen<set<int>>,"+ " PRIMARY KEY ((pk1, pk2), c1, c2))");
+  testCreateIndex("idx_1","pk1","pk2");
+  testCreateIndex("idx_2","pk1","c1");
+  testCreateIndex("idx_3","pk1","c2");
+  testCreateIndex("idx_4","c1","c2");
+  testCreateIndex("idx_5","c2","v1");
+  testCreateIndex("idx_6","v1","v2");
+  testCreateIndex("idx_7","pk2","c2","v2");
+  testCreateIndex("idx_8","pk1","c1","v1","mval","sval","lval");
+  createIndex(String.format("CREATE CUSTOM INDEX inc_frozen ON %%s(" + "  pk2, c2, v2, full(fmap), full(fset), full(flist)" + ") USING '%s'",StubIndex.class.getName()));
+  assertIndexCreated("inc_frozen",new HashMap<>(),ImmutableList.of(indexTarget("pk2",IndexTarget.Type.VALUES),indexTarget("c2",IndexTarget.Type.VALUES),indexTarget("v2",IndexTarget.Type.VALUES),indexTarget("fmap",IndexTarget.Type.FULL),indexTarget("fset",IndexTarget.Type.FULL),indexTarget("flist",IndexTarget.Type.FULL)));
+  createIndex(String.format("CREATE CUSTOM INDEX all_teh_things ON %%s(" + "  pk1, pk2, c1, c2, v1, v2, keys(mval), lval, sval, full(fmap), full(fset), full(flist)" + ") USING '%s'",StubIndex.class.getName()));
+  assertIndexCreated("all_teh_things",new HashMap<>(),ImmutableList.of(indexTarget("pk1",IndexTarget.Type.VALUES),indexTarget("pk2",IndexTarget.Type.VALUES),indexTarget("c1",IndexTarget.Type.VALUES),indexTarget("c2",IndexTarget.Type.VALUES),indexTarget("v1",IndexTarget.Type.VALUES),indexTarget("v2",IndexTarget.Type.VALUES),indexTarget("mval",IndexTarget.Type.KEYS),indexTarget("lval",IndexTarget.Type.VALUES),indexTarget("sval",IndexTarget.Type.VALUES),indexTarget("fmap",IndexTarget.Type.FULL),indexTarget("fset",IndexTarget.Type.FULL),indexTarget("flist",IndexTarget.Type.FULL)));
+}
