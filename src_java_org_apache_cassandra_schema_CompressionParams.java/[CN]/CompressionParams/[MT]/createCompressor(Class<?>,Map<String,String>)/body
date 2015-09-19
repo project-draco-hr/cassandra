@@ -3,11 +3,17 @@
     if (!compressionOptions.isEmpty())     throw new ConfigurationException("Unknown compression options (" + compressionOptions.keySet() + ") since no compression class found");
     return null;
   }
+  if (compressionOptions.containsKey(CRC_CHECK_CHANCE)) {
+    if (!hasLoggedCrcCheckChanceWarning) {
+      logger.warn(CRC_CHECK_CHANCE_WARNING);
+      hasLoggedCrcCheckChanceWarning=true;
+    }
+    compressionOptions.remove(CRC_CHECK_CHANCE);
+  }
   try {
     Method method=compressorClass.getMethod("create",Map.class);
     ICompressor compressor=(ICompressor)method.invoke(null,compressionOptions);
-    AbstractSet<String> supportedOpts=Sets.union(compressor.supportedOptions(),GLOBAL_OPTIONS);
-    for (    String provided : compressionOptions.keySet())     if (!supportedOpts.contains(provided))     throw new ConfigurationException("Unknown compression options " + provided);
+    for (    String provided : compressionOptions.keySet())     if (!compressor.supportedOptions().contains(provided))     throw new ConfigurationException("Unknown compression options " + provided);
     return compressor;
   }
  catch (  NoSuchMethodException e) {
