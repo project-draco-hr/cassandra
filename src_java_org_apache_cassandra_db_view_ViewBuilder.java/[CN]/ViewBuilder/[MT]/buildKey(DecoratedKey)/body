@@ -1,5 +1,7 @@
 {
-  QueryPager pager=SinglePartitionReadCommand.fullPartitionRead(baseCfs.metadata,FBUtilities.nowInSeconds(),key).getPager(null,Server.CURRENT_VERSION);
+  ReadQuery selectQuery=view.getReadQuery();
+  if (!selectQuery.selectsKey(key))   return;
+  QueryPager pager=view.getSelectStatement().internalReadForView(key,FBUtilities.nowInSeconds()).getPager(null,Server.CURRENT_VERSION);
   while (!pager.isExhausted()) {
     try (ReadOrderGroup orderGroup=pager.startOrderGroup();PartitionIterator partitionIterator=pager.fetchPageInternal(128,orderGroup)){
       if (!partitionIterator.hasNext())       return;

@@ -1,0 +1,37 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY ((a, b), c))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,0,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,1,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,1,1,0);
+  createView("mv_test","CREATE MATERIALIZED VIEW %s AS SELECT a, b, c FROM %%s WHERE a = 1 AND b = 1 AND c IS NOT NULL PRIMARY KEY ((a, b), c)");
+  while (!SystemKeyspace.isViewBuilt(keyspace(),"mv_test"))   Thread.sleep(10);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1));
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",2,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",2,1,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,2,0,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1));
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,1,2,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1),row(1,1,2));
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ? AND c = ?",1,0,0,0);
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ? AND c = ?",1,1,0,0);
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ? AND c = ?",1,0,1,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1),row(1,1,2));
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ? AND c = ?",1,1,1,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1),row(1,1,2));
+  execute("DELETE FROM %s WHERE a = ? AND b = ? AND c = ?",0,0,0);
+  execute("DELETE FROM %s WHERE a = ? AND b = ? AND c = ?",1,0,0);
+  execute("DELETE FROM %s WHERE a = ? AND b = ? AND c = ?",0,1,0);
+  execute("DELETE FROM %s WHERE a = ? AND b = ?",0,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,0),row(1,1,1),row(1,1,2));
+  execute("DELETE FROM %s WHERE a = ? AND b = ? AND c = ?",1,1,0);
+  assertRows(execute("SELECT * FROM mv_test"),row(1,1,1),row(1,1,2));
+  execute("DELETE FROM %s WHERE a = ? AND b = ?",1,1);
+  assertEmpty(execute("SELECT * FROM mv_test"));
+}

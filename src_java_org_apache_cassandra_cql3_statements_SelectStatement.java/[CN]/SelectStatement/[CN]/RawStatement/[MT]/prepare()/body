@@ -1,18 +1,3 @@
 {
-  CFMetaData cfm=ThriftValidation.validateColumnFamily(keyspace(),columnFamily());
-  VariableSpecifications boundNames=getBoundVariables();
-  Selection selection=selectClause.isEmpty() ? Selection.wildcard(cfm) : Selection.fromSelectors(cfm,selectClause);
-  StatementRestrictions restrictions=prepareRestrictions(cfm,boundNames,selection);
-  if (parameters.isDistinct)   validateDistinctSelection(cfm,selection,restrictions);
-  Comparator<List<ByteBuffer>> orderingComparator=null;
-  boolean isReversed=false;
-  if (!parameters.orderings.isEmpty()) {
-    verifyOrderingIsAllowed(restrictions);
-    orderingComparator=getOrderingComparator(cfm,selection,restrictions);
-    isReversed=isReversed(cfm);
-    if (isReversed)     orderingComparator=Collections.reverseOrder(orderingComparator);
-  }
-  checkNeedsFiltering(restrictions);
-  SelectStatement stmt=new SelectStatement(cfm,boundNames.size(),parameters,selection,restrictions,isReversed,orderingComparator,prepareLimit(boundNames));
-  return new ParsedStatement.Prepared(stmt,boundNames,boundNames.getPartitionKeyBindIndexes(cfm));
+  return prepare(false);
 }
