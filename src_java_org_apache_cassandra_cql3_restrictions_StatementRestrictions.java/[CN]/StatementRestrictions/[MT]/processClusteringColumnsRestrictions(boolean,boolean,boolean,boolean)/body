@@ -1,0 +1,24 @@
+{
+  checkFalse(!type.allowClusteringColumnSlices() && clusteringColumnsRestrictions.isSlice(),"Slice restrictions are not supported on the clustering columns in %s statements",type);
+  if (!type.allowClusteringColumnSlices() && (!cfm.isCompactTable() || (cfm.isCompactTable() && !hasClusteringColumnsRestriction()))) {
+    if (!selectsOnlyStaticColumns && hasUnrestrictedClusteringColumns())     throw invalidRequest("Some clustering keys are missing: %s",Joiner.on(", ").join(getUnrestrictedClusteringColumns()));
+  }
+ else {
+    checkFalse(clusteringColumnsRestrictions.isIN() && selectACollection,"Cannot restrict clustering columns by IN relations when a collection is selected by the query");
+    checkFalse(clusteringColumnsRestrictions.isContains() && !hasQueriableIndex,"Cannot restrict clustering columns by a CONTAINS relation without a secondary index");
+    if (hasClusteringColumnsRestriction()) {
+      List<ColumnDefinition> clusteringColumns=cfm.clusteringColumns();
+      List<ColumnDefinition> restrictedColumns=new LinkedList<>(clusteringColumnsRestrictions.getColumnDefs());
+      for (int i=0, m=restrictedColumns.size(); i < m; i++) {
+        ColumnDefinition clusteringColumn=clusteringColumns.get(i);
+        ColumnDefinition restrictedColumn=restrictedColumns.get(i);
+        if (!clusteringColumn.equals(restrictedColumn)) {
+          checkTrue(hasQueriableIndex || forView,"PRIMARY KEY column \"%s\" cannot be restricted as preceding column \"%s\" is not restricted",restrictedColumn.name,clusteringColumn.name);
+          usesSecondaryIndexing=true;
+          break;
+        }
+      }
+    }
+  }
+  if (clusteringColumnsRestrictions.isContains())   usesSecondaryIndexing=true;
+}

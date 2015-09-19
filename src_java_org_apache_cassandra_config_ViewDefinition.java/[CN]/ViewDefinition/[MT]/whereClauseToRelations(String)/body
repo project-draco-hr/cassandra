@@ -1,0 +1,17 @@
+{
+  ErrorCollector errorCollector=new ErrorCollector(whereClause);
+  CharStream stream=new ANTLRStringStream(whereClause);
+  CqlLexer lexer=new CqlLexer(stream);
+  lexer.addErrorListener(errorCollector);
+  TokenStream tokenStream=new CommonTokenStream(lexer);
+  CqlParser parser=new CqlParser(tokenStream);
+  parser.addErrorListener(errorCollector);
+  try {
+    List<Relation> relations=parser.whereClause().build().relations;
+    errorCollector.throwFirstSyntaxError();
+    return relations;
+  }
+ catch (  RecognitionException|SyntaxException exc) {
+    throw new RuntimeException("Unexpected error parsing materialized view's where clause while handling column rename: ",exc);
+  }
+}
