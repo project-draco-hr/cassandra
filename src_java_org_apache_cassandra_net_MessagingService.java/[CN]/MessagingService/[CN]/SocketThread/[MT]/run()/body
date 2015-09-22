@@ -4,7 +4,7 @@
     try {
       socket=server.accept();
       if (!authenticate(socket)) {
-        logger.debug("remote failed to authenticate");
+        logger.trace("remote failed to authenticate");
         socket.close();
         continue;
       }
@@ -15,22 +15,22 @@
       int header=in.readInt();
       boolean isStream=MessagingService.getBits(header,3,1) == 1;
       int version=MessagingService.getBits(header,15,8);
-      logger.debug("Connection version {} from {}",version,socket.getInetAddress());
+      logger.trace("Connection version {} from {}",version,socket.getInetAddress());
       socket.setSoTimeout(0);
       Thread thread=isStream ? new IncomingStreamingConnection(version,socket,connections) : new IncomingTcpConnection(version,MessagingService.getBits(header,2,1) == 1,socket,connections);
       thread.start();
       connections.add((Closeable)thread);
     }
  catch (    AsynchronousCloseException e) {
-      logger.debug("Asynchronous close seen by server thread");
+      logger.trace("Asynchronous close seen by server thread");
       break;
     }
 catch (    ClosedChannelException e) {
-      logger.debug("MessagingService server thread already closed");
+      logger.trace("MessagingService server thread already closed");
       break;
     }
 catch (    IOException e) {
-      logger.debug("Error reading the socket " + socket,e);
+      logger.trace("Error reading the socket " + socket,e);
       FileUtils.closeQuietly(socket);
     }
   }
