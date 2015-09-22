@@ -1,5 +1,5 @@
 {
-  if (logger.isDebugEnabled())   logger.debug("attempting to connect to {}",poolReference.endPoint());
+  if (logger.isTraceEnabled())   logger.trace("attempting to connect to {}",poolReference.endPoint());
   long start=System.nanoTime();
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getRpcTimeout());
   while (System.nanoTime() - start < timeout) {
@@ -29,7 +29,7 @@
       DataInputStream in=new DataInputStream(socket.getInputStream());
       int maxTargetVersion=handshakeVersion(in);
       if (maxTargetVersion == NO_VERSION) {
-        logger.debug("Target max version is {}; no version information yet, will retry",maxTargetVersion);
+        logger.trace("Target max version is {}; no version information yet, will retry",maxTargetVersion);
         if (DatabaseDescriptor.getSeeds().contains(poolReference.endPoint()))         logger.warn("Seed gossip version is {}; will not connect with that version",maxTargetVersion);
         disconnect();
         continue;
@@ -38,7 +38,7 @@
         MessagingService.instance().setVersion(poolReference.endPoint(),maxTargetVersion);
       }
       if (targetVersion > maxTargetVersion) {
-        logger.debug("Target max version is {}; will reconnect with that version",maxTargetVersion);
+        logger.trace("Target max version is {}; will reconnect with that version",maxTargetVersion);
         disconnect();
         return false;
       }

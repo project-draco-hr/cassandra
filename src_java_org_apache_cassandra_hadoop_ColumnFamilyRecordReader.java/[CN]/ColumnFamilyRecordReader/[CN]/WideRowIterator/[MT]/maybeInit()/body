@@ -7,14 +7,14 @@
   }
  else {
     KeySlice lastRow=Iterables.getLast(rows);
-    logger.debug("Starting with last-seen row {}",lastRow.key);
+    logger.trace("Starting with last-seen row {}",lastRow.key);
     keyRange=new KeyRange(batchSize).setStart_key(lastRow.key).setEnd_token(split.getEndToken()).setRow_filter(filter);
   }
   try {
     rows=client.get_paged_slice(cfName,keyRange,lastColumn,consistencyLevel);
     int n=0;
     for (    KeySlice row : rows)     n+=row.columns.size();
-    logger.debug("read {} columns in {} rows for {} starting with {}",new Object[]{n,rows.size(),keyRange,lastColumn});
+    logger.trace("read {} columns in {} rows for {} starting with {}",new Object[]{n,rows.size(),keyRange,lastColumn});
     wideColumns=Iterators.peekingIterator(new WideColumnIterator(rows));
     if (wideColumns.hasNext() && wideColumns.peek().right.keySet().iterator().next().equals(lastColumn))     wideColumns.next();
     if (!wideColumns.hasNext())     rows=null;

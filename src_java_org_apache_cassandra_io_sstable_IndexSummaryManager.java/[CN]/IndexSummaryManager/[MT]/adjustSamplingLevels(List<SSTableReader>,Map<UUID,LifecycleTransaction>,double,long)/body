@@ -26,13 +26,13 @@
     double effectiveIndexInterval=sstable.getEffectiveIndexInterval();
     logger.trace("{} has {} reads/sec; ideal space for index summary: {} bytes ({} entries); considering moving " + "from level {} ({} entries, {} bytes) to level {} ({} entries, {} bytes)",sstable.getFilename(),readsPerSec,idealSpace,targetNumEntries,currentSamplingLevel,currentNumEntries,currentNumEntries * avgEntrySize,newSamplingLevel,numEntriesAtNewSamplingLevel,numEntriesAtNewSamplingLevel * avgEntrySize);
     if (effectiveIndexInterval < minIndexInterval) {
-      logger.debug("Forcing resample of {} because the current index interval ({}) is below min_index_interval ({})",sstable,effectiveIndexInterval,minIndexInterval);
+      logger.trace("Forcing resample of {} because the current index interval ({}) is below min_index_interval ({})",sstable,effectiveIndexInterval,minIndexInterval);
       long spaceUsed=(long)Math.ceil(avgEntrySize * numEntriesAtNewSamplingLevel);
       forceResample.add(new ResampleEntry(sstable,spaceUsed,newSamplingLevel));
       remainingSpace-=spaceUsed;
     }
  else     if (effectiveIndexInterval > maxIndexInterval) {
-      logger.debug("Forcing upsample of {} because the current index interval ({}) is above max_index_interval ({})",sstable,effectiveIndexInterval,maxIndexInterval);
+      logger.trace("Forcing upsample of {} because the current index interval ({}) is above max_index_interval ({})",sstable,effectiveIndexInterval,maxIndexInterval);
       newSamplingLevel=Math.max(1,(BASE_SAMPLING_LEVEL * minIndexInterval) / maxIndexInterval);
       numEntriesAtNewSamplingLevel=IndexSummaryBuilder.entriesAtSamplingLevel(newSamplingLevel,sstable.getMaxIndexSummarySize());
       long spaceUsed=(long)Math.ceil(avgEntrySize * numEntriesAtNewSamplingLevel);
@@ -68,7 +68,7 @@
   toDownsample.addAll(forceUpsample);
   for (  ResampleEntry entry : toDownsample) {
     SSTableReader sstable=entry.sstable;
-    logger.debug("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",sstable,sstable.getIndexSummarySamplingLevel(),Downsampling.BASE_SAMPLING_LEVEL,entry.newSamplingLevel,Downsampling.BASE_SAMPLING_LEVEL);
+    logger.trace("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",sstable,sstable.getIndexSummarySamplingLevel(),Downsampling.BASE_SAMPLING_LEVEL,entry.newSamplingLevel,Downsampling.BASE_SAMPLING_LEVEL);
     ColumnFamilyStore cfs=Keyspace.open(sstable.metadata.ksName).getColumnFamilyStore(sstable.metadata.cfId);
     SSTableReader replacement=sstable.cloneWithNewSummarySamplingLevel(cfs,entry.newSamplingLevel);
     newSSTables.add(replacement);

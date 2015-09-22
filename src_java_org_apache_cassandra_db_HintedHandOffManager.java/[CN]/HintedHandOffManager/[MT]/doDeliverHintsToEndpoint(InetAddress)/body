@@ -6,7 +6,7 @@
   final AtomicInteger rowsReplayed=new AtomicInteger(0);
   Composite startColumn=Composites.EMPTY;
   int pageSize=calculatePageSize();
-  logger.debug("Using pageSize of {}",pageSize);
+  logger.trace("Using pageSize of {}",pageSize);
   int throttleInKB=DatabaseDescriptor.getHintedHandoffThrottleInKB() / (StorageService.instance.getTokenMetadata().getAllEndpoints().size() - 1);
   RateLimiter rateLimiter=RateLimiter.create(throttleInKB == 0 ? Double.MAX_VALUE : throttleInKB * 1024);
   delivery:   while (true) {
@@ -24,7 +24,7 @@
     List<WriteResponseHandler<Mutation>> responseHandlers=Lists.newArrayList();
     for (    final Cell hint : hintsPage) {
       if (hintedHandOffPaused) {
-        logger.debug("Hints delivery process is paused, aborting");
+        logger.trace("Hints delivery process is paused, aborting");
         break delivery;
       }
       if (!hint.isLive())       continue;
@@ -36,7 +36,7 @@
         mutation=Mutation.serializer.deserialize(in,version);
       }
  catch (      UnknownColumnFamilyException e) {
-        logger.debug("Skipping delivery of hint for deleted table",e);
+        logger.trace("Skipping delivery of hint for deleted table",e);
         deleteHint(hostIdBytes,hint.name(),hint.timestamp());
         continue;
       }
@@ -45,7 +45,7 @@ catch (      IOException e) {
       }
       for (      UUID cfId : mutation.getColumnFamilyIds()) {
         if (hint.timestamp() <= SystemKeyspace.getTruncatedAt(cfId)) {
-          logger.debug("Skipping delivery of hint for truncated table {}",cfId);
+          logger.trace("Skipping delivery of hint for truncated table {}",cfId);
           mutation=mutation.without(cfId);
         }
       }
