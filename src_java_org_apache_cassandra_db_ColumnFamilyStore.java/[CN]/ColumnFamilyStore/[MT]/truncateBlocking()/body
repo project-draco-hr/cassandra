@@ -1,5 +1,5 @@
 {
-  logger.debug("truncating {}",name);
+  logger.trace("truncating {}",name);
   if (keyspace.getMetadata().params.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
     forceBlockingFlush();
     viewManager.forceBlockingFlush();
@@ -11,7 +11,7 @@
   }
   Runnable truncateRunnable=new Runnable(){
     public void run(){
-      logger.debug("Discarding sstable data for truncated CF + indexes");
+      logger.trace("Discarding sstable data for truncated CF + indexes");
       final long truncatedAt=System.currentTimeMillis();
       data.notifyTruncated(truncatedAt);
       if (DatabaseDescriptor.isAutoSnapshot())       snapshot(Keyspace.getTimestampedSnapshotName(name));
@@ -19,11 +19,11 @@
       indexManager.truncateAllIndexesBlocking(truncatedAt);
       viewManager.truncateBlocking(truncatedAt);
       SystemKeyspace.saveTruncationRecord(ColumnFamilyStore.this,truncatedAt,replayAfter);
-      logger.debug("cleaning out row cache");
+      logger.trace("cleaning out row cache");
       invalidateCaches();
     }
   }
 ;
   runWithCompactionsDisabled(Executors.callable(truncateRunnable),true,true);
-  logger.debug("truncate complete");
+  logger.trace("truncate complete");
 }

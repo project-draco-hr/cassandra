@@ -13,12 +13,12 @@
     Set<SSTableReader> sstablesInLevel=Sets.newHashSet(sstables);
     Set<SSTableReader> remaining=Sets.difference(sstablesInLevel,cfs.getTracker().getCompacting());
     double score=(double)SSTableReader.getTotalBytes(remaining) / (double)maxBytesForLevel(i,maxSSTableSizeInBytes);
-    logger.debug("Compaction score for level {} is {}",i,score);
+    logger.trace("Compaction score for level {} is {}",i,score);
     if (score > 1.001) {
       if (!DatabaseDescriptor.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0) {
         List<SSTableReader> mostInteresting=getSSTablesForSTCS(getLevel(0));
         if (!mostInteresting.isEmpty()) {
-          logger.debug("L0 is too far behind, performing size-tiering there first");
+          logger.trace("L0 is too far behind, performing size-tiering there first");
           return new CompactionCandidate(mostInteresting,0,Long.MAX_VALUE);
         }
       }
@@ -26,11 +26,11 @@
       if (!candidates.isEmpty()) {
         int nextLevel=getNextLevel(candidates);
         candidates=getOverlappingStarvedSSTables(nextLevel,candidates);
-        if (logger.isDebugEnabled())         logger.debug("Compaction candidates for L{} are {}",i,toString(candidates));
+        if (logger.isTraceEnabled())         logger.trace("Compaction candidates for L{} are {}",i,toString(candidates));
         return new CompactionCandidate(candidates,nextLevel,cfs.getCompactionStrategyManager().getMaxSSTableBytes());
       }
  else {
-        logger.debug("No compaction candidates for L{}",i);
+        logger.trace("No compaction candidates for L{}",i);
       }
     }
   }
