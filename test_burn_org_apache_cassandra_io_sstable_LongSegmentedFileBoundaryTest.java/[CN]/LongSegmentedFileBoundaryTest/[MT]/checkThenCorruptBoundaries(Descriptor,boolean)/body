@@ -1,0 +1,22 @@
+{
+  File summaryFile=new File(descriptor.filenameFor(Component.SUMMARY));
+  DataInputStream iStream=new DataInputStream(new FileInputStream(summaryFile));
+  IndexSummary indexSummary=IndexSummary.serializer.deserialize(iStream,StorageService.getPartitioner(),true,CFMetaData.DEFAULT_MIN_INDEX_INTERVAL,CFMetaData.DEFAULT_MAX_INDEX_INTERVAL);
+  ByteBuffer first=ByteBufferUtil.readWithLength(iStream);
+  ByteBuffer last=ByteBufferUtil.readWithLength(iStream);
+  MmappedSegmentedFile.Builder ibuilder=new MmappedSegmentedFile.Builder();
+  MmappedSegmentedFile.Builder dbuilder=new MmappedSegmentedFile.Builder();
+  ibuilder.deserializeBounds(iStream);
+  dbuilder.deserializeBounds(iStream);
+  iStream.close();
+  assertBoundaries(descriptor.filenameFor(Component.PRIMARY_INDEX),true,ibuilder.boundaries());
+  assertBoundaries(descriptor.filenameFor(Component.DATA),expectDataMmappable,dbuilder.boundaries());
+  DataOutputStreamPlus oStream=new WrappedDataOutputStreamPlus(new FileOutputStream(summaryFile));
+  IndexSummary.serializer.serialize(indexSummary,oStream,true);
+  ByteBufferUtil.writeWithLength(first,oStream);
+  ByteBufferUtil.writeWithLength(last,oStream);
+  oStream.writeInt(1);
+  oStream.writeLong(new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length());
+  oStream.writeLong(new File(descriptor.filenameFor(Component.DATA)).length());
+  oStream.close();
+}

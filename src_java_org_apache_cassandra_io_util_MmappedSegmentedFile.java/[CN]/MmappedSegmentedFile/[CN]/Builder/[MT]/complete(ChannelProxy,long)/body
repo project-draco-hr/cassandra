@@ -1,4 +1,13 @@
 {
   long length=overrideLength > 0 ? overrideLength : channel.size();
-  return new MmappedSegmentedFile(channel,length,createSegments(channel,length));
+  long[] boundaries=this.boundaries.finish(length,overrideLength <= 0);
+  int segcount=boundaries.length - 1;
+  Segment[] segments=new Segment[segcount];
+  for (int i=0; i < segcount; i++) {
+    long start=boundaries[i];
+    long size=boundaries[i + 1] - start;
+    MappedByteBuffer segment=size <= MAX_SEGMENT_SIZE ? channel.map(FileChannel.MapMode.READ_ONLY,start,size) : null;
+    segments[i]=new Segment(start,segment);
+  }
+  return new MmappedSegmentedFile(channel,length,segments);
 }

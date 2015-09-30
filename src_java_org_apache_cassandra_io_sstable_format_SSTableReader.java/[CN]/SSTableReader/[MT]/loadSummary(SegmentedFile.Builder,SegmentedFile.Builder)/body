@@ -9,6 +9,14 @@
     last=partitioner.decorateKey(ByteBufferUtil.readWithLength(iStream));
     ibuilder.deserializeBounds(iStream);
     dbuilder.deserializeBounds(iStream);
+    boolean checkForRepair=true;
+    try {
+      int v=iStream.readInt();
+      checkForRepair=v != ACCURATE_BOUNDARIES_MAGIC_NUMBER;
+    }
+ catch (    Throwable t) {
+    }
+    if (checkForRepair && MmappedSegmentedFile.maybeRepair(metadata,descriptor,indexSummary,ibuilder,dbuilder))     saveSummary(ibuilder,dbuilder);
   }
  catch (  IOException e) {
     if (indexSummary != null)     indexSummary.close();
