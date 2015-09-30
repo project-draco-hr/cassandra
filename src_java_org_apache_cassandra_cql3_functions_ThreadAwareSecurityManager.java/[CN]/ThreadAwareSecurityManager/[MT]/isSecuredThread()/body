@@ -1,3 +1,12 @@
 {
-  return Thread.currentThread().getThreadGroup() instanceof SecurityThreadGroup;
+  ThreadGroup tg=Thread.currentThread().getThreadGroup();
+  if (!(tg instanceof SecurityThreadGroup))   return false;
+  Boolean threadInitialized=initializedThread.get();
+  if (threadInitialized == null) {
+    initializedThread.set(false);
+    ((SecurityThreadGroup)tg).initializeThread();
+    initializedThread.set(true);
+    threadInitialized=true;
+  }
+  return threadInitialized;
 }
