@@ -92,15 +92,6 @@
 ;
   ScheduledExecutors.optionalTasks.schedule(viewRebuild,StorageService.RING_DELAY,TimeUnit.MILLISECONDS);
   SystemKeyspace.finishStartup();
-  StorageService.instance.registerDaemon(this);
-  try {
-    StorageService.instance.initServer();
-  }
- catch (  ConfigurationException e) {
-    System.err.println(e.getMessage() + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
-    exitOrFail(1,"Fatal configuration error",e);
-  }
-  Mx4jTool.maybeLoad();
   String metricsReporterConfigFile=System.getProperty("cassandra.metricsReporterConfigFile");
   if (metricsReporterConfigFile != null) {
     logger.info("Trying to load metrics-reporter-config from file: {}",metricsReporterConfigFile);
@@ -112,6 +103,15 @@
       logger.warn("Failed to load metrics-reporter-config, metric sinks will not be activated",e);
     }
   }
+  StorageService.instance.registerDaemon(this);
+  try {
+    StorageService.instance.initServer();
+  }
+ catch (  ConfigurationException e) {
+    System.err.println(e.getMessage() + "\nFatal configuration error; unable to start server.  See log for stacktrace.");
+    exitOrFail(1,"Fatal configuration error",e);
+  }
+  Mx4jTool.maybeLoad();
   if (!FBUtilities.getBroadcastAddress().equals(InetAddress.getLoopbackAddress()))   waitForGossipToSettle();
   ScheduledExecutors.optionalTasks.scheduleWithFixedDelay(ColumnFamilyStore.getBackgroundCompactionTaskSubmitter(),5,1,TimeUnit.MINUTES);
   int sizeRecorderInterval=Integer.getInteger("cassandra.size_recorder_interval",5 * 60);
