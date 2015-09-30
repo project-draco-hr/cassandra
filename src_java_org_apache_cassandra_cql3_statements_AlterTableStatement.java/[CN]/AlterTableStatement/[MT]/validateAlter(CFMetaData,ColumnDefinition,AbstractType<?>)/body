@@ -1,0 +1,19 @@
+{
+switch (def.kind) {
+case PARTITION_KEY:
+    if (validatorType instanceof CounterColumnType)     throw new InvalidRequestException(String.format("counter type is not supported for PRIMARY KEY part %s",def.name));
+  AbstractType<?> currentType=cfm.getKeyValidatorAsClusteringComparator().subtype(def.position());
+if (!validatorType.isValueCompatibleWith(currentType)) throw new ConfigurationException(String.format("Cannot change %s from type %s to type %s: types are incompatible.",def.name,currentType.asCQL3Type(),validatorType.asCQL3Type()));
+break;
+case CLUSTERING:
+AbstractType<?> oldType=cfm.comparator.subtype(def.position());
+if (!validatorType.isCompatibleWith(oldType)) {
+throw new ConfigurationException(String.format("Cannot change %s from type %s to type %s: types are not order-compatible.",def.name,oldType.asCQL3Type(),validatorType.asCQL3Type()));
+}
+break;
+case REGULAR:
+case STATIC:
+if (!validatorType.isValueCompatibleWith(def.type)) throw new ConfigurationException(String.format("Cannot change %s from type %s to type %s: types are incompatible.",def.name,def.type.asCQL3Type(),validatorType.asCQL3Type()));
+break;
+}
+}
