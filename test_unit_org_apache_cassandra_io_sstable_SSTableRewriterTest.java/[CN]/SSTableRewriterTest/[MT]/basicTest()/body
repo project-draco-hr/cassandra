@@ -10,7 +10,7 @@
   assertEquals(1,sstables.size());
   assertEquals(sstables.iterator().next().bytesOnDisk(),cfs.metric.liveDiskSpaceUsed.getCount());
   int nowInSec=FBUtilities.nowInSeconds();
-  try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables);LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN);SSTableRewriter writer=new SSTableRewriter(cfs,txn,1000,false);CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(nowInSec));CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID())){
+  try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables);LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN);SSTableRewriter writer=new SSTableRewriter(txn,1000,false);CompactionController controller=new CompactionController(cfs,sstables,cfs.gcBefore(nowInSec));CompactionIterator ci=new CompactionIterator(OperationType.COMPACTION,scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID())){
     writer.switchWriter(getWriter(cfs,sstables.iterator().next().descriptor.directory,txn));
     while (ci.hasNext()) {
       writer.append(ci.next());

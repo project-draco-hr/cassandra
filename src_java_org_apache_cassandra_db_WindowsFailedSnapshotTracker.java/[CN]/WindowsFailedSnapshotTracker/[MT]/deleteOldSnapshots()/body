@@ -1,23 +1,23 @@
 {
   if (new File(TODELETEFILE).exists()) {
     try {
-      BufferedReader reader=new BufferedReader(new FileReader(TODELETEFILE));
-      String snapshotDirectory;
-      while ((snapshotDirectory=reader.readLine()) != null) {
-        File f=new File(snapshotDirectory);
-        boolean validFolder=FileUtils.isSubDirectory(new File(System.getenv("TEMP")),f);
-        for (        String s : DatabaseDescriptor.getAllDataFileLocations())         validFolder|=FileUtils.isSubDirectory(new File(s),f);
-        if (!validFolder) {
-          logger.warn("Skipping invalid directory found in .toDelete: {}. Only %TEMP% or data file subdirectories are valid.",f);
-          continue;
-        }
-        if (f.exists()) {
-          logger.warn("Discovered obsolete snapshot. Deleting directory [{}]",snapshotDirectory);
-          FileUtils.deleteRecursive(new File(snapshotDirectory));
+      try (BufferedReader reader=new BufferedReader(new FileReader(TODELETEFILE))){
+        String snapshotDirectory;
+        while ((snapshotDirectory=reader.readLine()) != null) {
+          File f=new File(snapshotDirectory);
+          boolean validFolder=FileUtils.isSubDirectory(new File(System.getenv("TEMP")),f);
+          for (          String s : DatabaseDescriptor.getAllDataFileLocations())           validFolder|=FileUtils.isSubDirectory(new File(s),f);
+          if (!validFolder) {
+            logger.warn("Skipping invalid directory found in .toDelete: {}. Only %TEMP% or data file subdirectories are valid.",f);
+            continue;
+          }
+          if (f.exists()) {
+            logger.warn("Discovered obsolete snapshot. Deleting directory [{}]",snapshotDirectory);
+            FileUtils.deleteRecursive(new File(snapshotDirectory));
+          }
         }
       }
-      reader.close();
-      Files.delete(Paths.get(TODELETEFILE));
+       Files.delete(Paths.get(TODELETEFILE));
     }
  catch (    IOException e) {
       logger.warn("Failed to open {}. Obsolete snapshots from previous runs will not be deleted.",TODELETEFILE);
