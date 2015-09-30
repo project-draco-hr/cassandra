@@ -1,7 +1,7 @@
 {
   outputHandler.output("Upgrading " + sstable);
   int nowInSec=FBUtilities.nowInSeconds();
-  try (SSTableRewriter writer=new SSTableRewriter(cfs,transaction,CompactionTask.getMaxDataAge(transaction.originals()),true).keepOriginals(keepOriginals);AbstractCompactionStrategy.ScannerList scanners=strategyManager.getScanners(transaction.originals());CompactionIterator iter=new CompactionIterator(transaction.opType(),scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID())){
+  try (SSTableRewriter writer=SSTableRewriter.constructKeepingOriginals(transaction,keepOriginals,CompactionTask.getMaxDataAge(transaction.originals()),true);AbstractCompactionStrategy.ScannerList scanners=strategyManager.getScanners(transaction.originals());CompactionIterator iter=new CompactionIterator(transaction.opType(),scanners.scanners,controller,nowInSec,UUIDGen.getTimeUUID())){
     writer.switchWriter(createCompactionWriter(sstable.getSSTableMetadata().repairedAt));
     while (iter.hasNext())     writer.append(iter.next());
     writer.finish();

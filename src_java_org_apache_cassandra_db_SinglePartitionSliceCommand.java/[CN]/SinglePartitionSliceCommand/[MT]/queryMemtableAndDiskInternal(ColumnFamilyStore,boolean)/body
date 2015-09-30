@@ -7,8 +7,8 @@
     for (    Memtable memtable : view.memtables) {
       Partition partition=memtable.getPartition(partitionKey());
       if (partition == null)       continue;
-      @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition);
-      @SuppressWarnings("resource") UnfilteredRowIterator maybeCopied=copyOnHeap ? UnfilteredRowIterators.cloningIterator(iter,HeapAllocator.instance) : iter;
+      UnfilteredRowIterator iter=filter.getUnfilteredRowIterator(columnFilter(),partition);
+      UnfilteredRowIterator maybeCopied=copyOnHeap ? UnfilteredRowIterators.cloningIterator(iter,HeapAllocator.instance) : iter;
       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,partition.stats().minLocalDeletionTime);
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(maybeCopied,nowInSec()) : maybeCopied);
     }
@@ -30,7 +30,7 @@
         continue;
       }
       sstable.incrementReadCount();
-      @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
+      UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
       if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
       iterators.add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter);
       mostRecentPartitionTombstone=Math.max(mostRecentPartitionTombstone,iter.partitionLevelDeletion().markedForDeleteAt());
@@ -41,7 +41,7 @@
       for (      SSTableReader sstable : skippedSSTables) {
         if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
         sstable.incrementReadCount();
-        @SuppressWarnings("resource") UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
+        UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()));
         if (iter.partitionLevelDeletion().markedForDeleteAt() > minTimestamp) {
           iterators.add(iter);
           if (!sstable.isRepaired())           oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
@@ -57,7 +57,7 @@
     cfs.metric.updateSSTableIterated(sstablesIterated);
     if (iterators.isEmpty())     return UnfilteredRowIterators.emptyIterator(cfs.metadata,partitionKey(),filter.isReversed());
     Tracing.trace("Merging data from memtables and {} sstables",sstablesIterated);
-    @SuppressWarnings("resource") UnfilteredRowIterator merged=UnfilteredRowIterators.merge(iterators,nowInSec());
+    UnfilteredRowIterator merged=UnfilteredRowIterators.merge(iterators,nowInSec());
     if (!merged.isEmpty()) {
       DecoratedKey key=merged.partitionKey();
       cfs.metric.samplers.get(TableMetrics.Sampler.READS).addSample(key.getKey(),key.hashCode(),1);
