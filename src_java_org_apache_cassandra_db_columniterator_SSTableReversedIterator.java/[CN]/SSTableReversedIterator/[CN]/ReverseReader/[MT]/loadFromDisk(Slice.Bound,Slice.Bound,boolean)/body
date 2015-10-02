@@ -1,20 +1,23 @@
 {
   buffer.reset();
   boolean isFirst=true;
+  boolean isDone=false;
   if (start != null) {
-    while (deserializer.hasNext() && deserializer.compareNextTo(start) <= 0 && !stopReadingDisk()) {
+    while (!isDone && deserializer.hasNext() && deserializer.compareNextTo(start) <= 0) {
       isFirst=false;
       if (deserializer.nextIsRow())       deserializer.skipNext();
  else       updateOpenMarker((RangeTombstoneMarker)deserializer.readNext());
+      if (stopReadingDisk())       isDone=true;
     }
   }
   if (openMarker != null) {
     RangeTombstone.Bound markerStart=start == null ? RangeTombstone.Bound.BOTTOM : RangeTombstone.Bound.fromSliceBound(start);
     buffer.add(new RangeTombstoneBoundMarker(markerStart,openMarker));
   }
-  while (deserializer.hasNext() && (end == null || deserializer.compareNextTo(end) <= 0) && !stopReadingDisk()) {
+  while (!isDone && deserializer.hasNext() && (end == null || deserializer.compareNextTo(end) <= 0)) {
     Unfiltered unfiltered=deserializer.readNext();
     if (!isFirst || includeFirst)     buffer.add(unfiltered);
+    if (stopReadingDisk())     isDone=true;
     isFirst=false;
     if (unfiltered.isRangeTombstoneMarker())     updateOpenMarker((RangeTombstoneMarker)unfiltered);
   }
