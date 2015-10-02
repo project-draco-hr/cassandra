@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s(a int, b int, c int, PRIMARY KEY (a))");
+  createIndex(String.format("CREATE CUSTOM INDEX more_selective ON %%s(b) USING '%s'",SettableSelectivityIndex.class.getName()));
+  createIndex(String.format("CREATE CUSTOM INDEX less_selective ON %%s(c) USING '%s'",SettableSelectivityIndex.class.getName()));
+  SettableSelectivityIndex moreSelective=(SettableSelectivityIndex)getCurrentColumnFamilyStore().indexManager.getIndexByName("more_selective");
+  SettableSelectivityIndex lessSelective=(SettableSelectivityIndex)getCurrentColumnFamilyStore().indexManager.getIndexByName("less_selective");
+  assertEquals(0,moreSelective.searchersProvided);
+  assertEquals(0,lessSelective.searchersProvided);
+  moreSelective.setEstimatedResultRows(1);
+  lessSelective.setEstimatedResultRows(1000);
+  execute("SELECT * FROM %s WHERE b=0 AND c=0 ALLOW FILTERING");
+  assertEquals(1,moreSelective.searchersProvided);
+  assertEquals(0,lessSelective.searchersProvided);
+  execute("SELECT * FROM %s WHERE b=0 AND expr(less_selective, 'expression') ALLOW FILTERING");
+  assertEquals(1,moreSelective.searchersProvided);
+  assertEquals(1,lessSelective.searchersProvided);
+}

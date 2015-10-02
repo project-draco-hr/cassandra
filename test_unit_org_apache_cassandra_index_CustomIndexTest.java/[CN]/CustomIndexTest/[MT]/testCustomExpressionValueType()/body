@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (k int, v1 uuid, v2 blob, PRIMARY KEY(k))");
+  createIndex(String.format("CREATE CUSTOM INDEX int_index ON %%s() USING '%s'",Int32ExpressionIndex.class.getName()));
+  createIndex(String.format("CREATE CUSTOM INDEX text_index ON %%s() USING '%s'",UTF8ExpressionIndex.class.getName()));
+  execute("SELECT * FROM %s WHERE expr(text_index, 'foo')");
+  assertInvalidMessage("Invalid INTEGER constant (99) for \"custom index expression\" of type text","SELECT * FROM %s WHERE expr(text_index, 99)");
+  execute("SELECT * FROM %s WHERE expr(int_index, 99)");
+  assertInvalidMessage("Invalid STRING constant (foo) for \"custom index expression\" of type int","SELECT * FROM %s WHERE expr(int_index, 'foo')");
+}
