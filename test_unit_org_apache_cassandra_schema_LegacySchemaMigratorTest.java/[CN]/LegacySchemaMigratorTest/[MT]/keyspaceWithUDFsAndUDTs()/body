@@ -1,0 +1,33 @@
+{
+  String keyspace=KEYSPACE_PREFIX + "UDFUDTs";
+  UserType udt1=new UserType(keyspace,bytes("udt1"),new ArrayList<ByteBuffer>(){
+{
+      add(bytes("col1"));
+      add(bytes("col2"));
+    }
+  }
+,new ArrayList<AbstractType<?>>(){
+{
+      add(UTF8Type.instance);
+      add(Int32Type.instance);
+    }
+  }
+);
+  UserType udt2=new UserType(keyspace,bytes("udt2"),new ArrayList<ByteBuffer>(){
+{
+      add(bytes("col1"));
+      add(bytes("col2"));
+    }
+  }
+,new ArrayList<AbstractType<?>>(){
+{
+      add(ListType.getInstance(udt1,false));
+      add(Int32Type.instance);
+    }
+  }
+);
+  UDFunction udf1=UDFunction.create(new FunctionName(keyspace,"udf"),ImmutableList.of(new ColumnIdentifier("col1",false),new ColumnIdentifier("col2",false)),ImmutableList.of(udt1,udt2),LongType.instance,false,"java","return 42L;");
+  UDFunction udf2=UDFunction.create(new FunctionName(keyspace,"udf"),ImmutableList.of(new ColumnIdentifier("col3",false),new ColumnIdentifier("col4",false)),ImmutableList.of(AsciiType.instance,LongType.instance),Int32Type.instance,true,"java","return 42;");
+  UDFunction udf3=UDFunction.create(new FunctionName(keyspace,"udf3"),ImmutableList.of(new ColumnIdentifier("col4",false)),ImmutableList.of(new TupleType(Arrays.asList(udt1,udt2))),BooleanType.instance,false,"java","return true;");
+  return KeyspaceMetadata.create(keyspace,KeyspaceParams.simple(1),Tables.none(),Views.none(),Types.of(udt1,udt2),Functions.of(udf1,udf2,udf3));
+}

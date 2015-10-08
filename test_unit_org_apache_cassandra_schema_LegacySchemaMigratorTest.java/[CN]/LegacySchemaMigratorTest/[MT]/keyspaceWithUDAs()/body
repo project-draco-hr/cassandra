@@ -1,4 +1,10 @@
 {
   String keyspace=KEYSPACE_PREFIX + "UDAs";
-  return KeyspaceMetadata.create(keyspace,KeyspaceParams.simple(1),Tables.none(),Views.none(),Types.none(),Functions.of());
+  UDFunction udf1=UDFunction.create(new FunctionName(keyspace,"udf1"),ImmutableList.of(new ColumnIdentifier("col1",false),new ColumnIdentifier("col2",false)),ImmutableList.of(Int32Type.instance,Int32Type.instance),Int32Type.instance,false,"java","return 42;");
+  UDFunction udf2=UDFunction.create(new FunctionName(keyspace,"udf2"),ImmutableList.of(new ColumnIdentifier("col1",false),new ColumnIdentifier("col2",false)),ImmutableList.of(LongType.instance,Int32Type.instance),LongType.instance,false,"java","return 42L;");
+  UDFunction udf3=UDFunction.create(new FunctionName(keyspace,"udf3"),ImmutableList.of(new ColumnIdentifier("col1",false)),ImmutableList.of(LongType.instance),DoubleType.instance,false,"java","return 42d;");
+  Functions udfs=Functions.builder().add(udf1).add(udf2).add(udf3).build();
+  UDAggregate uda1=UDAggregate.create(udfs,new FunctionName(keyspace,"uda1"),ImmutableList.of(udf1.argTypes().get(1)),udf1.returnType(),udf1.name(),null,udf1.argTypes().get(0),null);
+  UDAggregate uda2=UDAggregate.create(udfs,new FunctionName(keyspace,"uda2"),ImmutableList.of(udf2.argTypes().get(1)),udf3.returnType(),udf2.name(),udf3.name(),udf2.argTypes().get(0),LongType.instance.decompose(0L));
+  return KeyspaceMetadata.create(keyspace,KeyspaceParams.simple(1),Tables.none(),Views.none(),Types.none(),Functions.of(udf1,udf2,udf3,uda1,uda2));
 }
