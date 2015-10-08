@@ -1,25 +1,3 @@
 {
-  String ksName=row.getString("keyspace_name");
-  String functionName=row.getString("aggregate_name");
-  FunctionName name=new FunctionName(ksName,functionName);
-  List<String> types=row.getFrozenList("argument_types",UTF8Type.instance);
-  List<AbstractType<?>> argTypes;
-  if (types == null) {
-    argTypes=Collections.emptyList();
-  }
- else {
-    argTypes=new ArrayList<>(types.size());
-    for (    String type : types)     argTypes.add(parseType(type));
-  }
-  AbstractType<?> returnType=parseType(row.getString("return_type"));
-  FunctionName stateFunc=new FunctionName(ksName,(row.getString("state_func")));
-  FunctionName finalFunc=row.has("final_func") ? new FunctionName(ksName,row.getString("final_func")) : null;
-  AbstractType<?> stateType=row.has("state_type") ? parseType(row.getString("state_type")) : null;
-  ByteBuffer initcond=row.has("initcond") ? row.getBytes("initcond") : null;
-  try {
-    return UDAggregate.create(name,argTypes,returnType,stateFunc,finalFunc,stateType,initcond);
-  }
- catch (  InvalidRequestException reason) {
-    return UDAggregate.createBroken(name,argTypes,returnType,initcond,reason);
-  }
+  return createAggregateFromAggregateRow(Schema.instance.getKSMetaData(row.getString("keyspace_name")).functions,row);
 }
