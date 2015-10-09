@@ -1,0 +1,25 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  ColumnFamilyStore store=Keyspace.open(KEYSPACE1).getColumnFamilyStore(COLUMN_FAMILY3);
+  CacheService.instance.invalidateKeyCache();
+  assertKeyCacheSize(0,KEYSPACE1,COLUMN_FAMILY3);
+  SchemaLoader.insertData(KEYSPACE1,COLUMN_FAMILY3,0,100);
+  store.forceBlockingFlush();
+  Collection<SSTableReader> firstFlushTables=ImmutableList.copyOf(store.getLiveSSTables());
+  readData(KEYSPACE1,COLUMN_FAMILY3,0,100);
+  assertKeyCacheSize(100,KEYSPACE1,COLUMN_FAMILY3);
+  SchemaLoader.insertData(KEYSPACE1,COLUMN_FAMILY3,100,50);
+  store.forceBlockingFlush();
+  readData(KEYSPACE1,COLUMN_FAMILY3,100,50);
+  assertKeyCacheSize(150,KEYSPACE1,COLUMN_FAMILY3);
+  CacheService.instance.keyCache.submitWrite(Integer.MAX_VALUE).get();
+  CacheService.instance.invalidateKeyCache();
+  assertKeyCacheSize(0,KEYSPACE1,COLUMN_FAMILY3);
+  CacheService.instance.keyCache.loadSaved();
+  assertKeyCacheSize(150,KEYSPACE1,COLUMN_FAMILY3);
+  CacheService.instance.invalidateKeyCache();
+  assertKeyCacheSize(0,KEYSPACE1,COLUMN_FAMILY3);
+  store.markObsolete(firstFlushTables,OperationType.UNKNOWN);
+  CacheService.instance.keyCache.loadSaved();
+  assertKeyCacheSize(50,KEYSPACE1,COLUMN_FAMILY3);
+}
