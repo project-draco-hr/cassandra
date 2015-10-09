@@ -1,6 +1,10 @@
 {
   out.writeByte((byte)IS_MARKER);
   RangeTombstone.Bound.serializer.serialize(marker.clustering(),out,version,header.clusteringTypes());
+  if (header.isForSSTable()) {
+    out.writeUnsignedVInt(serializedMarkerBodySize(marker,header,previousUnfilteredSize,version));
+    out.writeUnsignedVInt(previousUnfilteredSize);
+  }
   if (marker.isBoundary()) {
     RangeTombstoneBoundaryMarker bm=(RangeTombstoneBoundaryMarker)marker;
     header.writeDeletionTime(bm.endDeletionTime(),out);
