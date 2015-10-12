@@ -9,14 +9,28 @@
     throw ex;
   }
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(LOCAL_CF);
-  String req="SELECT cluster_name FROM system.%s WHERE key='%s'";
-  UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
-  if (result.isEmpty() || !result.one().has("cluster_name")) {
-    if (!cfs.getSSTables().isEmpty())     throw new ConfigurationException("Found system keyspace files, but they couldn't be loaded!");
-    req="INSERT INTO system.%s (key, cluster_name) VALUES ('%s', ?)";
-    executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY),DatabaseDescriptor.getClusterName());
-    return;
+{
+    String req="SELECT cluster_name FROM system.%s WHERE key='%s'";
+    UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+    if (result.isEmpty() || !result.one().has("cluster_name")) {
+      if (!cfs.getSSTables().isEmpty())       throw new ConfigurationException("Found system keyspace files, but they couldn't be loaded!");
+      req="INSERT INTO system.%s (key, cluster_name) VALUES ('%s', ?)";
+      executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY),DatabaseDescriptor.getClusterName());
+    }
+ else {
+      String savedClusterName=result.one().getString("cluster_name");
+      if (!DatabaseDescriptor.getClusterName().equals(savedClusterName))       throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name "+ DatabaseDescriptor.getClusterName());
+    }
   }
-  String savedClusterName=result.one().getString("cluster_name");
-  if (!DatabaseDescriptor.getClusterName().equals(savedClusterName))   throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name "+ DatabaseDescriptor.getClusterName());
+  if (!Boolean.getBoolean("cassandra.ignore_rack")) {
+    String req="SELECT rack FROM system.%s WHERE key='%s'";
+    UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+    if (!result.isEmpty() && result.one().has("rack")) {
+      String storedRack=result.one().getString("rack");
+      String currentRack=DatabaseDescriptor.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
+      if (!storedRack.equals(currentRack)) {
+        throw new ConfigurationException("Cannot start node if snitch's rack (" + currentRack + ") differs from previous rack ("+ storedRack+ "). "+ "Please fix the snitch or wipe and rebootstrap this node.");
+      }
+    }
+  }
 }
