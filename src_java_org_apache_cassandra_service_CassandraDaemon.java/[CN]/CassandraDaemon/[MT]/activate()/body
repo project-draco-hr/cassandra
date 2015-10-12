@@ -1,9 +1,11 @@
 {
-  String pidFile=System.getProperty("cassandra-pidfile");
-  if (FBUtilities.isWindows()) {
-    WindowsTimer.startTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
-  }
   try {
+    try {
+      DatabaseDescriptor.forceStaticInitialization();
+    }
+ catch (    ExceptionInInitializerError e) {
+      throw e.getCause();
+    }
     try {
       MBeanServer mbs=ManagementFactory.getPlatformMBeanServer();
       mbs.registerMBean(new StandardMBean(new NativeAccess(),NativeAccessMBean.class),new ObjectName(MBEAN_NAME));
@@ -11,13 +13,11 @@
  catch (    Exception e) {
       logger.error("error registering MBean {}",MBEAN_NAME,e);
     }
-    try {
-      DatabaseDescriptor.forceStaticInitialization();
-    }
- catch (    ExceptionInInitializerError e) {
-      throw e.getCause();
+    if (FBUtilities.isWindows()) {
+      WindowsTimer.startTimerPeriod(DatabaseDescriptor.getWindowsTimerInterval());
     }
     setup();
+    String pidFile=System.getProperty("cassandra-pidfile");
     if (pidFile != null) {
       new File(pidFile).deleteOnExit();
     }
