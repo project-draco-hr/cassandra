@@ -1,0 +1,11 @@
+{
+  assertRows(execute("SELECT column FROM %s"),row("1"));
+  assertAllRows(row("1","1","1",null));
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(currentTable());
+  ColumnFamily cf=cfs.getColumnFamily(Util.dk("1"),Composites.EMPTY,Composites.EMPTY,false,100,System.currentTimeMillis());
+  assertTrue(cf.deletionInfo().hasRanges());
+  assertEquals(1,cf.deletionInfo().rangeCount());
+  assertEquals(1,cfs.getSSTables().size());
+  SSTableReader reader=Iterables.get(cfs.getSSTables(),0);
+  assertEquals(1,countTombstones(reader));
+}

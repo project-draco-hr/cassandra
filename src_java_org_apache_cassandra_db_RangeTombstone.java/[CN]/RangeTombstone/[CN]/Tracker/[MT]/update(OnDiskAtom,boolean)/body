@@ -12,21 +12,33 @@
   }
   if (atom instanceof RangeTombstone) {
     RangeTombstone toAdd=(RangeTombstone)atom;
-    if (isExpired)     toAdd=new ExpiredRangeTombstone(toAdd);
     while (iterator.hasNext()) {
       RangeTombstone existing=iterator.next();
       int cmp=comparator.compare(toAdd.max,existing.max);
       if (cmp > 0) {
-        if (toAdd.data.supersedes(existing.data))         iterator.remove();
+        if (!existing.data.supersedes(toAdd.data)) {
+          iterator.remove();
+          if (comparator.compare(toAdd.min,existing.min) == 0)           unwrittenTombstones.remove(existing);
+        }
       }
  else {
-        if (toAdd.data.supersedes(existing.data)) {
-          if (cmp == 0)           iterator.set(toAdd);
- else           insertBefore(toAdd,iterator);
+        if (!toAdd.data.supersedes(existing.data))         return false;
+        if (cmp == 0) {
+          iterator.remove();
+          if (comparator.compare(toAdd.min,existing.min) == 0)           unwrittenTombstones.remove(existing);
         }
-        return;
+ else {
+          iterator.previous();
+        }
+        break;
       }
     }
-    iterator.add(toAdd);
+    if (isExpired)     iterator.add(new ExpiredRangeTombstone(toAdd));
+ else {
+      iterator.add(toAdd);
+      unwrittenTombstones.add(toAdd);
+    }
+    return false;
   }
+  return true;
 }

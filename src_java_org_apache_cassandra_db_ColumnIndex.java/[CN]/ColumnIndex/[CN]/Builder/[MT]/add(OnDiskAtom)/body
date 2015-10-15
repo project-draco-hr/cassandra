@@ -3,20 +3,22 @@
   if (firstColumn == null) {
     firstColumn=column;
     startPosition=endPosition;
-    endPosition+=tombstoneTracker.writeOpenedMarker(firstColumn,output,atomSerializer);
+    endPosition+=tombstoneTracker.writeOpenedMarkers(firstColumn.name(),output,atomSerializer);
     blockSize=0;
+    maybeWriteRowHeader();
   }
-  long size=atomSerializer.serializedSizeForSSTable(column);
-  endPosition+=size;
-  blockSize+=size;
+  if (tombstoneTracker.update(column,false)) {
+    long size=tombstoneTracker.writeUnwrittenTombstones(output,atomSerializer);
+    size+=atomSerializer.serializedSizeForSSTable(column);
+    endPosition+=size;
+    blockSize+=size;
+    atomSerializer.serializeForSSTable(column,output);
+  }
+  lastColumn=column;
   if (blockSize >= DatabaseDescriptor.getColumnIndexSize()) {
     IndexHelper.IndexInfo cIndexInfo=new IndexHelper.IndexInfo(firstColumn.name(),column.name(),indexOffset + startPosition,endPosition - startPosition);
     result.columnsIndex.add(cIndexInfo);
     firstColumn=null;
     lastBlockClosing=column;
   }
-  maybeWriteRowHeader();
-  atomSerializer.serializeForSSTable(column,output);
-  tombstoneTracker.update(column,false);
-  lastColumn=column;
 }
