@@ -1,0 +1,18 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY (a, b))");
+  createIndex("CREATE INDEX ON %s(c)");
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 0, 0) IF NOT EXISTS");
+  assertRows(execute("SELECT * FROM %s WHERE c = 0"),row(0,0,0));
+  execute("INSERT INTO %s (a, b, c) VALUES (0, 0, 1) IF NOT EXISTS");
+  assertEmpty(execute("SELECT * FROM %s WHERE c = 1"));
+  execute("UPDATE %s SET c = 1 WHERE a = 0 AND b =0 IF c = 0");
+  assertRows(execute("SELECT * FROM %s WHERE c = 1"),row(0,0,1));
+  assertEmpty(execute("SELECT * FROM %s WHERE c = 0"));
+  execute("DELETE FROM %s WHERE a = 0 AND b = 0 IF c = 0");
+  assertRows(execute("SELECT * FROM %s WHERE c = 1"),row(0,0,1));
+  execute("DELETE FROM %s WHERE a = 0 AND b = 0 IF c = 1");
+  assertEmpty(execute("SELECT * FROM %s WHERE c = 1"));
+  execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, c) VALUES (2, 2, 2) IF NOT EXISTS;\n" + "INSERT INTO %1$s (a, b, c) VALUES (2, 3, 3)\n"+ "APPLY BATCH");
+  assertRows(execute("SELECT * FROM %s WHERE c = 2"),row(2,2,2));
+  assertRows(execute("SELECT * FROM %s WHERE c = 3"),row(2,3,3));
+}

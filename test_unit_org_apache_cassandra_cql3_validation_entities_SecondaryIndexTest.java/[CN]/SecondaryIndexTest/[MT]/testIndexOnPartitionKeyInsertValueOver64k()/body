@@ -1,5 +1,15 @@
 {
   createTable("CREATE TABLE %s(a int, b int, c blob, PRIMARY KEY ((a, b)))");
   createIndex("CREATE INDEX ON %s(a)");
+  succeedInsert("INSERT INTO %s (a, b, c) VALUES (0, 0, ?) IF NOT EXISTS",ByteBuffer.allocate(TOO_BIG));
   succeedInsert("INSERT INTO %s (a, b, c) VALUES (0, 0, ?)",ByteBuffer.allocate(TOO_BIG));
+  succeedInsert("BEGIN BATCH\n" + "INSERT INTO %s (a, b, c) VALUES (0, 0, ?);\n" + "APPLY BATCH",ByteBuffer.allocate(TOO_BIG));
+  long batchSizeThreshold=DatabaseDescriptor.getBatchSizeFailThreshold();
+  try {
+    DatabaseDescriptor.setBatchSizeFailThresholdInKB((TOO_BIG / 1024) * 2);
+    succeedInsert("BEGIN BATCH\n" + "INSERT INTO %s (a, b, c) VALUES (1, 1, ?) IF NOT EXISTS;\n" + "APPLY BATCH",ByteBuffer.allocate(TOO_BIG));
+  }
+  finally {
+    DatabaseDescriptor.setBatchSizeFailThresholdInKB((int)(batchSizeThreshold / 1024));
+  }
 }
