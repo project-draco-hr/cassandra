@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY (a, b))");
+  createIndex("CREATE INDEX ON %s(c)");
+  execute("BEGIN BATCH\n" + "UPDATE %1$s SET c = 0 WHERE a = 0 AND b = 0;\n" + "UPDATE %1$s SET c = 1 WHERE a = 1 AND b = 1;\n"+ "APPLY BATCH");
+  assertRows(execute("SELECT * FROM %s WHERE c = 0"),row(0,0,0));
+  assertRows(execute("SELECT * FROM %s WHERE c = 1"),row(1,1,1));
+  execute("BEGIN BATCH\n" + "UPDATE %1$s SET c = 2 WHERE a = 2 AND b = 0;\n" + "UPDATE %1$s SET c = 3 WHERE a = 2 AND b = 1;\n"+ "APPLY BATCH");
+  assertRows(execute("SELECT * FROM %s WHERE c = 2"),row(2,0,2));
+  assertRows(execute("SELECT * FROM %s WHERE c = 3"),row(2,1,3));
+}
