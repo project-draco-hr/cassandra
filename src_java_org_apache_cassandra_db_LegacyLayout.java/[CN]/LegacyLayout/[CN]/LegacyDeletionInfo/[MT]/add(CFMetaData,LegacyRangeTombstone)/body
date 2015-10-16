@@ -1,4 +1,18 @@
 {
+  if (metadata.hasStaticColumns()) {
+    if (tombstone.stop.isStatic) {
+      if (tombstone.start == LegacyBound.BOTTOM)       tombstone=tombstone.withNewStart(new LegacyBound(staticBound(metadata,true),true,null));
+      inRowTombstones.add(tombstone);
+      return;
+    }
+    if (tombstone.start.isStatic) {
+      if (tombstone.start.bound.isInclusive())       inRowTombstones.add(tombstone.withNewEnd(new LegacyBound(staticBound(metadata,false),true,null)));
+      tombstone=tombstone.withNewStart(LegacyBound.BOTTOM);
+    }
+ else     if (tombstone.start == LegacyBound.BOTTOM) {
+      inRowTombstones.add(new LegacyRangeTombstone(new LegacyBound(staticBound(metadata,true),true,null),new LegacyBound(staticBound(metadata,false),true,null),tombstone.deletionTime));
+    }
+  }
   if (tombstone.isCollectionTombstone() || tombstone.isRowDeletion(metadata))   inRowTombstones.add(tombstone);
  else   add(metadata,new RangeTombstone(Slice.make(tombstone.start.bound,tombstone.stop.bound),tombstone.deletionTime));
 }
