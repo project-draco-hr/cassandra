@@ -47,4 +47,13 @@
   Assert.assertEquals(0.03,cfs.getLiveSSTables().iterator().next().getCrcCheckChance());
   Assert.assertEquals(0.03,indexCfs.getCrcCheckChance());
   Assert.assertEquals(0.03,indexCfs.getLiveSSTables().iterator().next().getCrcCheckChance());
-}
+  SSTableReader baseSSTable=cfs.getLiveSSTables().iterator().next();
+  SSTableReader idxSSTable=indexCfs.getLiveSSTables().iterator().next();
+  try (CompressedRandomAccessReader baseDataReader=(CompressedRandomAccessReader)baseSSTable.openDataReader();CompressedRandomAccessReader idxDataReader=(CompressedRandomAccessReader)idxSSTable.openDataReader()){
+    Assert.assertEquals(0.03,baseDataReader.getCrcCheckChance());
+    Assert.assertEquals(0.03,idxDataReader.getCrcCheckChance());
+    cfs.setCrcCheckChance(0.31);
+    Assert.assertEquals(0.31,baseDataReader.getCrcCheckChance());
+    Assert.assertEquals(0.31,idxDataReader.getCrcCheckChance());
+  }
+ }
