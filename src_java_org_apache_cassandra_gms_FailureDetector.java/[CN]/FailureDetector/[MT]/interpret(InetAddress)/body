@@ -18,10 +18,16 @@
   double phi=hbWnd.phi(now);
   if (logger.isTraceEnabled())   logger.trace("PHI for {} : {}",ep,phi);
   if (PHI_FACTOR * phi > getPhiConvictThreshold()) {
-    logger.trace("notifying listeners that {} is down",ep);
-    logger.trace("intervals: {} mean: {}",hbWnd,hbWnd.mean());
+    if (logger.isTraceEnabled())     logger.trace("Node {} phi {} > {}; intervals: {} mean: {}",new Object[]{ep,PHI_FACTOR * phi,getPhiConvictThreshold(),hbWnd,hbWnd.mean()});
     for (    IFailureDetectionEventListener listener : fdEvntListeners) {
       listener.convict(ep,phi);
     }
+  }
+ else   if (logger.isDebugEnabled() && (PHI_FACTOR * phi * DEBUG_PERCENTAGE / 100.0 > getPhiConvictThreshold())) {
+    logger.debug("PHI for {} : {}",ep,phi);
+  }
+ else   if (logger.isTraceEnabled()) {
+    logger.trace("PHI for {} : {}",ep,phi);
+    logger.trace("mean for {} : {}",ep,hbWnd.mean());
   }
 }

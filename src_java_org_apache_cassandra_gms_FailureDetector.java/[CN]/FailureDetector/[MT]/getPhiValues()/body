@@ -1,0 +1,15 @@
+{
+  final CompositeType ct=new CompositeType("Node","Node",new String[]{"Endpoint","PHI"},new String[]{"IP of the endpoint","PHI value"},new OpenType[]{SimpleType.STRING,SimpleType.DOUBLE});
+  final TabularDataSupport results=new TabularDataSupport(new TabularType("PhiList","PhiList",ct,new String[]{"Endpoint"}));
+  for (  final Map.Entry<InetAddress,ArrivalWindow> entry : arrivalSamples.entrySet()) {
+    final ArrivalWindow window=entry.getValue();
+    if (window.mean() > 0) {
+      final double phi=window.getLastReportedPhi();
+      if (phi != Double.MIN_VALUE) {
+        final CompositeData data=new CompositeDataSupport(ct,new String[]{"Endpoint","PHI"},new Object[]{entry.getKey().toString(),phi * PHI_FACTOR});
+        results.put(data);
+      }
+    }
+  }
+  return results;
+}
