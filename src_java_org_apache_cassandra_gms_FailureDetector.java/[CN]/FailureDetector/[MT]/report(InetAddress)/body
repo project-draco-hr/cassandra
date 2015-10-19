@@ -1,13 +1,14 @@
 {
-  if (logger.isTraceEnabled())   logger.trace("reporting {}",ep);
   long now=System.nanoTime();
   ArrivalWindow heartbeatWindow=arrivalSamples.get(ep);
   if (heartbeatWindow == null) {
     heartbeatWindow=new ArrivalWindow(SAMPLE_SIZE);
     heartbeatWindow.add(now,ep);
-    arrivalSamples.put(ep,heartbeatWindow);
+    heartbeatWindow=arrivalSamples.putIfAbsent(ep,heartbeatWindow);
+    if (heartbeatWindow != null)     heartbeatWindow.add(now,ep);
   }
  else {
     heartbeatWindow.add(now,ep);
   }
+  if (logger.isTraceEnabled() && heartbeatWindow != null)   logger.info("Average for {} is {}",ep,heartbeatWindow.mean());
 }
