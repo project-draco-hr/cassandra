@@ -6,10 +6,11 @@
     throw new IOException("CF " + cfId + " was dropped during streaming");
   }
   ColumnFamilyStore cfs=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
-  SSTableWriter writer=createWriter(cfs,totalSize,repairedAt);
   CompressedInputStream cis=new CompressedInputStream(Channels.newInputStream(channel),compressionInfo,inputVersion.hasPostCompressionAdlerChecksums);
   BytesReadTracker in=new BytesReadTracker(new DataInputStream(cis));
+  SSTableWriter writer=null;
   try {
+    writer=createWriter(cfs,totalSize,repairedAt);
     for (    Pair<Long,Long> section : sections) {
       long length=section.right - section.left;
       cis.position(section.left);
@@ -22,7 +23,14 @@
     return writer;
   }
  catch (  Throwable e) {
-    writer.abort();
+    if (writer != null) {
+      try {
+        writer.abort();
+      }
+ catch (      Throwable e2) {
+        e.addSuppressed(e2);
+      }
+    }
     drain(cis,in.getBytesRead());
     if (e instanceof IOException)     throw (IOException)e;
  else     throw Throwables.propagate(e);
