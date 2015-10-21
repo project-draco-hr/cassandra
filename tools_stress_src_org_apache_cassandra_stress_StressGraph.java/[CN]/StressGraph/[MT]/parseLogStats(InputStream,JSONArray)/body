@@ -1,0 +1,75 @@
+{
+  BufferedReader reader=new BufferedReader(new InputStreamReader(log));
+  JSONObject json=new JSONObject();
+  JSONArray intervals=new JSONArray();
+  boolean runningMultipleThreadCounts=false;
+  String currentThreadCount=null;
+  Pattern threadCountMessage=Pattern.compile("Running ([A-Z]+) with ([0-9]+) threads .*");
+  ReadingMode mode=ReadingMode.START;
+  try {
+    String line;
+    while ((line=reader.readLine()) != null) {
+      if (line.startsWith("Thread count was not specified"))       runningMultipleThreadCounts=true;
+      Matcher tc=threadCountMessage.matcher(line);
+      if (tc.matches()) {
+        if (runningMultipleThreadCounts) {
+          currentThreadCount=tc.group(2);
+        }
+      }
+      if (line.equals(StressMetrics.HEAD)) {
+        mode=ReadingMode.METRICS;
+        continue;
+      }
+ else       if (line.equals("Results:")) {
+        mode=ReadingMode.AGGREGATES;
+        continue;
+      }
+ else       if (mode == ReadingMode.AGGREGATES && line.equals("")) {
+        mode=ReadingMode.NEXTITERATION;
+      }
+ else       if (line.equals("END") || line.equals("FAILURE")) {
+        break;
+      }
+      if (mode == ReadingMode.METRICS) {
+        JSONArray metrics=new JSONArray();
+        String[] parts=line.split(",");
+        if (parts.length != StressMetrics.HEADMETRICS.length) {
+          continue;
+        }
+        for (        String m : parts) {
+          try {
+            metrics.add(new BigDecimal(m.trim()));
+          }
+ catch (          NumberFormatException e) {
+            metrics.add(null);
+          }
+        }
+        intervals.add(metrics);
+      }
+ else       if (mode == ReadingMode.AGGREGATES) {
+        String[] parts=line.split(":",2);
+        if (parts.length != 2) {
+          continue;
+        }
+        json.put(parts[0].trim(),parts[1].trim());
+      }
+ else       if (mode == ReadingMode.NEXTITERATION) {
+        json.put("metrics",Arrays.asList(StressMetrics.HEADMETRICS));
+        json.put("test",stressSettings.graph.operation);
+        if (currentThreadCount == null)         json.put("revision",stressSettings.graph.revision);
+ else         json.put("revision",String.format("%s - %s threads",stressSettings.graph.revision,currentThreadCount));
+        json.put("command",StringUtils.join(stressArguments," "));
+        json.put("intervals",intervals);
+        stats.add(json);
+        json=new JSONObject();
+        intervals=new JSONArray();
+        mode=ReadingMode.START;
+      }
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException("Couldn't read from temporary stress log file");
+  }
+  stats.add(json);
+  return stats;
+}

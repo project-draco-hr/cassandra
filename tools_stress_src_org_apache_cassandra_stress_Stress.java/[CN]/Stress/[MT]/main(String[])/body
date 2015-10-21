@@ -10,7 +10,10 @@
       e.printStackTrace();
       return;
     }
-    PrintStream logout=settings.log.getOutput();
+    MultiPrintStream logout=settings.log.getOutput();
+    if (settings.graph.inGraphMode()) {
+      logout.addStream(new PrintStream(settings.graph.temporaryLogFile));
+    }
     if (settings.sendToDaemon != null) {
       Socket socket=new Socket(settings.sendToDaemon,2159);
       ObjectOutputStream out=new ObjectOutputStream(socket.getOutputStream());
@@ -37,6 +40,8 @@
  else {
       StressAction stressAction=new StressAction(settings,logout);
       stressAction.run();
+      logout.flush();
+      if (settings.graph.inGraphMode())       new StressGraph(settings,arguments).generateGraph();
     }
   }
  catch (  Throwable t) {
