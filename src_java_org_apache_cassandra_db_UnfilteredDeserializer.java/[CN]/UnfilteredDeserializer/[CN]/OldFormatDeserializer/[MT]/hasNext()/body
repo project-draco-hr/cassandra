@@ -1,3 +1,20 @@
 {
-  return nextAtom != null || (!isDone && deserializeNextAtom());
+  try {
+    while (next == null) {
+      if (saved == null && !iterator.hasNext())       return false;
+      next=saved == null ? iterator.next() : saved;
+      saved=null;
+      if (isFirst && iterator.hasNext() && isStatic(iterator.peek())) {
+        saved=next;
+        next=iterator.next();
+      }
+      isFirst=false;
+      if (skipStatic && isStatic(next))       next=null;
+    }
+    return true;
+  }
+ catch (  IOError e) {
+    if (e.getCause() != null && e.getCause() instanceof IOException)     throw (IOException)e.getCause();
+    throw e;
+  }
 }
