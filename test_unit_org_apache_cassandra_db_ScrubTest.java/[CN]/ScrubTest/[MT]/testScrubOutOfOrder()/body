@@ -13,7 +13,8 @@
     List<String> keys=Arrays.asList("t","a","b","z","c","y","d");
     String filename=cfs.getSSTablePath(tempDataDir);
     Descriptor desc=Descriptor.fromFilename(filename);
-    try (SSTableTxnWriter writer=SSTableTxnWriter.create(cfs,desc,keys.size(),0L,0,new SerializationHeader(true,cfs.metadata,cfs.metadata.partitionColumns(),EncodingStats.NO_STATS))){
+    LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.WRITE,desc.directory);
+    try (SSTableTxnWriter writer=new SSTableTxnWriter(txn,createTestWriter(desc,(long)keys.size(),cfs.metadata,txn))){
       for (      String k : keys) {
         PartitionUpdate update=UpdateBuilder.create(cfs.metadata,Util.dk(k)).newRow("someName").add("val","someValue").build();
         writer.append(update.unfilteredIterator());
@@ -36,7 +37,7 @@
     components.add(Component.TOC);
     SSTableReader sstable=SSTableReader.openNoValidation(desc,components,cfs);
     if (sstable.last.compareTo(sstable.first) < 0)     sstable.last=sstable.first;
-    try (LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.SCRUB,sstable);Scrubber scrubber=new Scrubber(cfs,txn,false,true,true)){
+    try (LifecycleTransaction scrubTxn=LifecycleTransaction.offline(OperationType.SCRUB,sstable);Scrubber scrubber=new Scrubber(cfs,scrubTxn,false,true,true)){
       scrubber.scrub();
     }
      LifecycleTransaction.waitForDeletions();
