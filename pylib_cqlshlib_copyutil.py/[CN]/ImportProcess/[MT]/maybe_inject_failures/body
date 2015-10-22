@@ -1,0 +1,14 @@
+def maybe_inject_failures(self, batch):
+    '\n        Examine self.test_failures and see if token_range is either a token range\n        supposed to cause a failure (failing_range) or to terminate the worker process\n        (exit_range). If not then call prepare_export_query(), which implements the\n        normal behavior.\n        '
+    if ('failing_batch' in self.test_failures):
+        failing_batch = self.test_failures['failing_batch']
+        if (failing_batch['id'] == batch['id']):
+            if (batch['attempts'] < failing_batch['failures']):
+                statement = SimpleStatement('INSERT INTO badtable (a, b) VALUES (1, 2)', consistency_level=self.consistency_level)
+                self.execute_statement(statement, batch)
+                return True
+    if ('exit_batch' in self.test_failures):
+        exit_batch = self.test_failures['exit_batch']
+        if (exit_batch['id'] == batch['id']):
+            sys.exit(1)
+    return False
