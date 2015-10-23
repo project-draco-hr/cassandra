@@ -1,0 +1,18 @@
+{
+  super.initChannel(channel);
+  channel.pipeline().addFirst("sslDetectionHandler",new ByteToMessageDecoder(){
+    @Override protected void decode(    ChannelHandlerContext channelHandlerContext,    ByteBuf byteBuf,    List<Object> list) throws Exception {
+      if (byteBuf.readableBytes() < 5) {
+        return;
+      }
+      if (SslHandler.isEncrypted(byteBuf)) {
+        SslHandler sslHandler=createSslHandler();
+        channelHandlerContext.pipeline().replace(this,"ssl",sslHandler);
+      }
+ else {
+        channelHandlerContext.pipeline().remove(this);
+      }
+    }
+  }
+);
+}
