@@ -1,17 +1,18 @@
 {
   ColumnFamilyStore cfs=MockSchema.newCFS(KEYSPACE);
-  SSTableReader sstableOld=sstable(cfs,0,128);
-  SSTableReader sstableNew=sstable(cfs,1,128);
-  LogTransaction log=new LogTransaction(OperationType.COMPACTION,cfs.metadata);
+  File dataFolder=new Directories(cfs.metadata).getDirectoryForNewSSTables();
+  SSTableReader sstableOld=sstable(dataFolder,cfs,0,128);
+  SSTableReader sstableNew=sstable(dataFolder,cfs,1,128);
+  LogTransaction log=new LogTransaction(OperationType.COMPACTION);
   assertNotNull(log);
   log.trackNew(sstableNew);
   log.obsoleted(sstableOld);
   modifier.accept(sstableOld);
-  log.getLogFile().commit();
+  log.txnFile().commit();
   LogTransaction.removeUnfinishedLeftovers(cfs.metadata);
-  assertFiles(log.getDataFolder(),Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),sstableOld.getAllFilePaths(),Collections.singleton(log.getLogFile().file.getPath()))));
+  assertFiles(dataFolder.getPath(),Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),sstableOld.getAllFilePaths(),log.logFilePaths())));
   sstableOld.selfRef().release();
   sstableNew.selfRef().release();
   assertNull(log.complete(null));
-  assertFiles(log.getDataFolder(),Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),sstableOld.getAllFilePaths(),Collections.singleton(log.getLogFile().file.getPath()))));
+  assertFiles(dataFolder.getPath(),Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),sstableOld.getAllFilePaths(),log.logFilePaths())));
 }

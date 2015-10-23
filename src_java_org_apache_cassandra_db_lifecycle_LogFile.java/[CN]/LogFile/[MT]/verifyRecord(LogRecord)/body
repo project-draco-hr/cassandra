@@ -1,0 +1,11 @@
+{
+  if (record.checksum != record.computeChecksum()) {
+    record.setError(String.format("Invalid checksum for sstable [%s], record [%s]: [%d] should have been [%d]",record.fileName(),record,record.checksum,record.computeChecksum()));
+    return;
+  }
+  if (record.type != Type.REMOVE)   return;
+  record.status.onDiskRecord=record.withExistingFiles();
+  if (record.updateTime != record.status.onDiskRecord.updateTime && record.status.onDiskRecord.numFiles > 0) {
+    record.setError(String.format("Unexpected files detected for sstable [%s], " + "record [%s]: last update time [%tT] should have been [%tT]",record.fileName(),record,record.status.onDiskRecord.updateTime,record.updateTime));
+  }
+}
