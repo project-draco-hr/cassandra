@@ -19,6 +19,17 @@
     long currentMaxTs=sstable.getMaxTimestamp();
     filter=reduceFilter(filter,result,currentMaxTs);
     if (filter == null)     break;
+    if (!filter.shouldInclude(sstable)) {
+      if (sstable.getSSTableMetadata().maxLocalDeletionTime == Integer.MAX_VALUE)       continue;
+      sstable.incrementReadCount();
+      try (UnfilteredRowIterator iter=sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift())){
+        if (iter.partitionLevelDeletion().isLive()) {
+          sstablesIterated++;
+          result=add(UnfilteredRowIterators.noRowsIterator(iter.metadata(),iter.partitionKey(),Rows.EMPTY_STATIC_ROW,iter.partitionLevelDeletion(),filter.isReversed()),result,filter,sstable.isRepaired());
+        }
+      }
+       continue;
+    }
     Tracing.trace("Merging data from sstable {}",sstable.descriptor.generation);
     sstable.incrementReadCount();
     try (UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()))){
