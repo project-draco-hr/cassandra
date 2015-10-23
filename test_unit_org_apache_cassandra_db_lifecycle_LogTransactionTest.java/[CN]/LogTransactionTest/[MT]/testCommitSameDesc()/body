@@ -1,9 +1,10 @@
 {
   ColumnFamilyStore cfs=MockSchema.newCFS(KEYSPACE);
-  SSTableReader sstableOld1=sstable(cfs,0,128);
-  SSTableReader sstableOld2=sstable(cfs,0,256);
-  SSTableReader sstableNew=sstable(cfs,1,128);
-  LogTransaction log=new LogTransaction(OperationType.COMPACTION,cfs.metadata);
+  File dataFolder=new Directories(cfs.metadata).getDirectoryForNewSSTables();
+  SSTableReader sstableOld1=sstable(dataFolder,cfs,0,128);
+  SSTableReader sstableOld2=sstable(dataFolder,cfs,0,256);
+  SSTableReader sstableNew=sstable(dataFolder,cfs,1,128);
+  LogTransaction log=new LogTransaction(OperationType.COMPACTION);
   assertNotNull(log);
   log.trackNew(sstableNew);
   sstableOld1.setReplaced();
@@ -13,6 +14,6 @@
   sstableOld2.markObsolete(tidier);
   sstableOld1.selfRef().release();
   sstableOld2.selfRef().release();
-  assertFiles(log.getDataFolder(),new HashSet<>(sstableNew.getAllFilePaths()));
+  assertFiles(dataFolder.getPath(),new HashSet<>(sstableNew.getAllFilePaths()));
   sstableNew.selfRef().release();
 }

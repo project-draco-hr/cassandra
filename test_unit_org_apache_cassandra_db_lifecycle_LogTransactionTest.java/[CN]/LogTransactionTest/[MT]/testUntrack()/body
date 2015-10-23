@@ -1,7 +1,8 @@
 {
   ColumnFamilyStore cfs=MockSchema.newCFS(KEYSPACE);
-  SSTableReader sstableNew=sstable(cfs,1,128);
-  LogTransaction log=new LogTransaction(OperationType.COMPACTION,cfs.metadata);
+  File dataFolder=new Directories(cfs.metadata).getDirectoryForNewSSTables();
+  SSTableReader sstableNew=sstable(dataFolder,cfs,1,128);
+  LogTransaction log=new LogTransaction(OperationType.COMPACTION);
   assertNotNull(log);
   log.trackNew(sstableNew);
   log.untrackNew(sstableNew);
@@ -9,5 +10,5 @@
   sstableNew.selfRef().release();
   Thread.sleep(1);
   LogTransaction.waitForDeletions();
-  assertFiles(log.getDataFolder(),Collections.<String>emptySet());
+  assertFiles(dataFolder.getPath(),Collections.<String>emptySet());
 }

@@ -1,11 +1,12 @@
 {
   this.cfs=cfs;
   this.txnLogs=txnLogs;
-  this.sstableOld=sstable(cfs,0,128);
-  this.sstableNew=sstable(cfs,1,128);
+  this.dataFolder=new Directories(cfs.metadata).getDirectoryForNewSSTables();
+  this.sstableOld=sstable(dataFolder,cfs,0,128);
+  this.sstableNew=sstable(dataFolder,cfs,1,128);
   assertNotNull(txnLogs);
-  assertNotNull(txnLogs.getId());
-  Assert.assertEquals(OperationType.COMPACTION,txnLogs.getType());
+  assertNotNull(txnLogs.id());
+  Assert.assertEquals(OperationType.COMPACTION,txnLogs.type());
   txnLogs.trackNew(sstableNew);
   tidier=txnLogs.obsoleted(sstableOld);
   assertNotNull(tidier);
