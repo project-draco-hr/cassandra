@@ -1,8 +1,9 @@
 {
   if (cached.nonExpiringLiveCells() >= cellPerPartitionLimit)   return true;
   if (cached.nonTombstoneCellCount() < cellPerPartitionLimit)   return false;
-  try (UnfilteredRowIterator cacheIter=cached.unfilteredIterator(ColumnFilter.selection(cached.columns()),Slices.ALL,false);CountingUnfilteredRowIterator iter=new CountingUnfilteredRowIterator(cacheIter,newCounter(nowInSec,false))){
-    while (iter.hasNext() && !iter.counter().isDone())     iter.next();
-    return iter.counter().isDone();
+  DataLimits.Counter counter=newCounter(nowInSec,false);
+  try (UnfilteredRowIterator cacheIter=cached.unfilteredIterator(ColumnFilter.selection(cached.columns()),Slices.ALL,false);UnfilteredRowIterator iter=counter.applyTo(cacheIter)){
+    while (iter.hasNext())     iter.next();
+    return counter.isDone();
   }
  }

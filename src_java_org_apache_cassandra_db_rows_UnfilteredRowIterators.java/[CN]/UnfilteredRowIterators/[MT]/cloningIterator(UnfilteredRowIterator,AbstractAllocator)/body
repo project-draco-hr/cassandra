@@ -1,17 +1,15 @@
 {
-  return new AlteringUnfilteredRowIterator(iterator){
-    private Row.Builder regularBuilder;
-    @Override protected Row computeNextStatic(    Row row){
-      Row.Builder staticBuilder=allocator.cloningBTreeRowBuilder();
-      return Rows.copy(row,staticBuilder).build();
+class Cloner extends Transformation {
+    private final Row.Builder builder=allocator.cloningBTreeRowBuilder();
+    public Row applyToStatic(    Row row){
+      return Rows.copy(row,builder).build();
     }
-    @Override protected Row computeNext(    Row row){
-      if (regularBuilder == null)       regularBuilder=allocator.cloningBTreeRowBuilder();
-      return Rows.copy(row,regularBuilder).build();
+    @Override public Row applyToRow(    Row row){
+      return Rows.copy(row,builder).build();
     }
-    @Override protected RangeTombstoneMarker computeNext(    RangeTombstoneMarker marker){
+    @Override public RangeTombstoneMarker applyToMarker(    RangeTombstoneMarker marker){
       return marker.copy(allocator);
     }
   }
-;
+  return Transformation.apply(iterator,new Cloner());
 }

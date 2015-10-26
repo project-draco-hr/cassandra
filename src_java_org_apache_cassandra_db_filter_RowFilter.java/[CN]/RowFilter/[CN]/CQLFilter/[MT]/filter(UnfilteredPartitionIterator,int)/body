@@ -1,10 +1,17 @@
 {
   if (expressions.isEmpty())   return iter;
-  return new AlteringUnfilteredPartitionIterator(iter){
-    protected Row computeNext(    DecoratedKey partitionKey,    Row row){
+class IsSatisfiedFilter extends Transformation<UnfilteredRowIterator> {
+    DecoratedKey pk;
+    public UnfilteredRowIterator applyToPartition(    UnfilteredRowIterator partition){
+      pk=partition.partitionKey();
+      return Transformation.apply(partition,this);
+    }
+    public Row applyToRow(    Row row){
       Row purged=row.purge(DeletionPurger.PURGE_ALL,nowInSec);
-      return purged != null && CQLFilter.this.isSatisfiedBy(partitionKey,purged) ? row : null;
+      if (purged == null)       return null;
+      for (      Expression e : expressions)       if (!e.isSatisfiedBy(pk,purged))       return null;
+      return row;
     }
   }
-;
+  return Transformation.apply(iter,new IsSatisfiedFilter());
 }
