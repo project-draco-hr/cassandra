@@ -1,9 +1,5 @@
 {
-  IndexMetadata registered=indexes.get(indexDef.name).getIndexMetadata();
-  if (!registered.equals(indexDef)) {
-    Index index=indexes.remove(registered.name);
-    index.register(this);
-    return blockingExecutor.submit(index.getMetadataReloadTask(indexDef));
-  }
-  return Futures.immediateFuture(null);
+  Index index=indexes.get(indexDef.name);
+  Callable<?> reloadTask=index.getMetadataReloadTask(indexDef);
+  return reloadTask == null ? Futures.immediateFuture(null) : blockingExecutor.submit(index.getMetadataReloadTask(indexDef));
 }

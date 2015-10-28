@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (k int, v1 int, PRIMARY KEY(k))");
+  createIndex(String.format("CREATE CUSTOM INDEX reload_counter ON %%s() USING '%s'",CountMetadataReloadsIndex.class.getName()));
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  CountMetadataReloadsIndex index=(CountMetadataReloadsIndex)cfs.indexManager.getIndexByName("reload_counter");
+  assertEquals(0,index.reloads.get());
+  cfs.reload();
+  assertEquals(1,index.reloads.get());
+}
