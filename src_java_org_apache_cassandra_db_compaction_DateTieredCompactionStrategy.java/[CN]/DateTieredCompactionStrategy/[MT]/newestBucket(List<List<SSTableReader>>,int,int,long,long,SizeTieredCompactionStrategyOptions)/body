@@ -1,0 +1,11 @@
+{
+  Target incomingWindow=getInitialTarget(now,baseTime);
+  for (  List<SSTableReader> bucket : buckets) {
+    boolean inFirstWindow=incomingWindow.onTarget(bucket.get(0).getMinTimestamp());
+    if (bucket.size() >= minThreshold || (bucket.size() >= 2 && !inFirstWindow)) {
+      List<SSTableReader> stcsSSTables=getSSTablesForSTCS(bucket,inFirstWindow ? minThreshold : 2,maxThreshold,stcsOptions);
+      if (!stcsSSTables.isEmpty())       return stcsSSTables;
+    }
+  }
+  return Collections.emptyList();
+}

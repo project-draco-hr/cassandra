@@ -1,0 +1,29 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF_STANDARD1);
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  ByteBuffer bigValue=ByteBuffer.wrap(new byte[10000]);
+  ByteBuffer value=ByteBuffer.wrap(new byte[100]);
+  int numSSTables=40;
+  long timestamp=System.currentTimeMillis();
+  for (int r=0; r < numSSTables / 2; r++) {
+    for (int i=0; i < 10; i++) {
+      DecoratedKey key=Util.dk(String.valueOf(r));
+      new RowUpdateBuilder(cfs.metadata,timestamp,key.getKey()).clustering("column").add("val",bigValue).build().applyUnsafe();
+    }
+    cfs.forceBlockingFlush();
+  }
+  for (int r=0; r < numSSTables / 2; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    new RowUpdateBuilder(cfs.metadata,timestamp,key.getKey()).clustering("column").add("val",value).build().applyUnsafe();
+    cfs.forceBlockingFlush();
+  }
+  Map<String,String> options=new HashMap<>();
+  options.put(SizeTieredCompactionStrategyOptions.MIN_SSTABLE_SIZE_KEY,"1");
+  DateTieredCompactionStrategy dtcs=new DateTieredCompactionStrategy(cfs,options);
+  for (  SSTableReader sstable : cfs.getSSTables(SSTableSet.CANONICAL))   dtcs.addSSTable(sstable);
+  AbstractCompactionTask task=dtcs.getNextBackgroundTask(0);
+  assertEquals(20,task.transaction.originals().size());
+  task.transaction.abort();
+}
