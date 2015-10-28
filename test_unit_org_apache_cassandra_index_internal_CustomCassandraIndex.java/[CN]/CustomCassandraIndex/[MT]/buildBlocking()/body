@@ -3,7 +3,7 @@
   try (ColumnFamilyStore.RefViewFragment viewFragment=baseCfs.selectAndReference(View.select(SSTableSet.CANONICAL));Refs<SSTableReader> sstables=viewFragment.refs){
     if (sstables.isEmpty()) {
       logger.info("No SSTable data for {}.{} to build index {} from, marking empty index as built",baseCfs.metadata.ksName,baseCfs.metadata.cfName,metadata.name);
-      markBuilt();
+      baseCfs.indexManager.markIndexBuilt(metadata.name);
       return;
     }
     logger.info("Submitting index build of {} for data in {}",metadata.name,getSSTableNames(sstables));
@@ -11,7 +11,7 @@
     Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
     FBUtilities.waitOnFuture(future);
     indexCfs.forceBlockingFlush();
-    markBuilt();
+    baseCfs.indexManager.markIndexBuilt(metadata.name);
   }
    logger.info("Index build of {} complete",metadata.name);
 }

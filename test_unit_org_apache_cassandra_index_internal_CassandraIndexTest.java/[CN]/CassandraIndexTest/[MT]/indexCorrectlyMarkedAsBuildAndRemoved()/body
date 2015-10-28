@@ -1,0 +1,10 @@
+{
+  String indexName="build_remove_test_idx";
+  String tableName=createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY (a, b))");
+  createIndex(String.format("CREATE INDEX %s ON %%s(c)",indexName));
+  waitForIndex(KEYSPACE,tableName,indexName);
+  assertRows(execute(String.format("SELECT * FROM %s.\"%s\"",SystemKeyspace.NAME,SystemKeyspace.BUILT_INDEXES)),row(KEYSPACE,indexName));
+  getCurrentColumnFamilyStore().rebuildSecondaryIndex(indexName);
+  waitForIndex(KEYSPACE,tableName,indexName);
+  assertRows(execute(String.format("SELECT * FROM %s.\"%s\"",SystemKeyspace.NAME,SystemKeyspace.BUILT_INDEXES)),row(KEYSPACE,indexName));
+}
