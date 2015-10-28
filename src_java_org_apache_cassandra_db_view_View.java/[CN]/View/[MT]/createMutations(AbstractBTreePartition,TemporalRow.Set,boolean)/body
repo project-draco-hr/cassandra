@@ -1,7 +1,9 @@
 {
   if (!updateAffectsView(partition))   return null;
+  ReadQuery selectQuery=getReadQuery();
   Collection<Mutation> mutations=null;
   for (  TemporalRow temporalRow : rowSet) {
+    if (partition.rowCount() != 1 && !selectQuery.selectsClustering(partition.partitionKey(),temporalRow.baseClustering()))     continue;
     if (!isBuilding) {
       PartitionUpdate partitionTombstone=createRangeTombstoneForRow(temporalRow);
       if (partitionTombstone != null) {
