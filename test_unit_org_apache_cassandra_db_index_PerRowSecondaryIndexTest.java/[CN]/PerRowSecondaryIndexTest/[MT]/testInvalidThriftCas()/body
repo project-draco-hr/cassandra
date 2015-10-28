@@ -1,0 +1,22 @@
+{
+  ByteBuffer key=ByteBufferUtil.bytes("valid");
+  Column column=new Column(key).setValue(ByteBufferUtil.bytes("valid")).setTimestamp(System.currentTimeMillis());
+  server.cas(key,CF_INDEXED,Collections.<Column>emptyList(),Collections.singletonList(column),ConsistencyLevel.LOCAL_SERIAL,ConsistencyLevel.ONE);
+  try {
+    key=ByteBufferUtil.bytes("invalid");
+    server.cas(key,CF_INDEXED,Collections.<Column>emptyList(),Collections.singletonList(column),ConsistencyLevel.LOCAL_SERIAL,ConsistencyLevel.ONE);
+    fail("Query should have been invalid!");
+  }
+ catch (  Exception e) {
+    assertTrue(e instanceof org.apache.cassandra.thrift.InvalidRequestException);
+  }
+  try {
+    key=ByteBufferUtil.bytes("valid");
+    column.setValue(ByteBufferUtil.bytes("invalid"));
+    server.cas(key,CF_INDEXED,Collections.<Column>emptyList(),Collections.singletonList(column),ConsistencyLevel.LOCAL_SERIAL,ConsistencyLevel.ONE);
+    fail("Query should have been invalid!");
+  }
+ catch (  Exception e) {
+    assertTrue(e instanceof org.apache.cassandra.thrift.InvalidRequestException);
+  }
+}
