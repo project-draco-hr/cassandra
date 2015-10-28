@@ -2,16 +2,16 @@
   baseCfs.forceBlockingFlush();
   try (ColumnFamilyStore.RefViewFragment viewFragment=baseCfs.selectAndReference(View.select(SSTableSet.CANONICAL));Refs<SSTableReader> sstables=viewFragment.refs){
     if (sstables.isEmpty()) {
-      logger.info("No SSTable data for {}.{} to build index {} from, marking empty index as built",baseCfs.metadata.ksName,baseCfs.metadata.cfName,getIndexName());
+      logger.info("No SSTable data for {}.{} to build index {} from, marking empty index as built",baseCfs.metadata.ksName,baseCfs.metadata.cfName,metadata.name);
       markBuilt();
       return;
     }
-    logger.info("Submitting index build of {} for data in {}",getIndexName(),getSSTableNames(sstables));
+    logger.info("Submitting index build of {} for data in {}",metadata.name,getSSTableNames(sstables));
     SecondaryIndexBuilder builder=new SecondaryIndexBuilder(baseCfs,Collections.singleton(this),new ReducingKeyIterator(sstables));
     Future<?> future=CompactionManager.instance.submitIndexBuild(builder);
     FBUtilities.waitOnFuture(future);
     indexCfs.forceBlockingFlush();
     markBuilt();
   }
-   logger.info("Index build of {} complete",getIndexName());
+   logger.info("Index build of {} complete",metadata.name);
 }
