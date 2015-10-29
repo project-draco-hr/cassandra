@@ -1,0 +1,24 @@
+{
+  long timestamp=System.currentTimeMillis();
+  ColumnPath cp=new ColumnPath(CF_INDEXED);
+  ColumnParent par=new ColumnParent(CF_INDEXED);
+  cp.column=ByteBufferUtil.bytes(INDEXED_COLUMN);
+  ByteBuffer key=ByteBufferUtil.bytes("valid");
+  server.insert(key,par,new Column(key).setValue(ByteBufferUtil.bytes("valid")).setTimestamp(timestamp),ConsistencyLevel.ONE);
+  try {
+    key=ByteBufferUtil.bytes("invalid");
+    server.insert(key,par,new Column(key).setValue(ByteBufferUtil.bytes("valid")).setTimestamp(timestamp),ConsistencyLevel.ONE);
+    fail("Query should have been invalid!");
+  }
+ catch (  Exception e) {
+    assertTrue(e instanceof org.apache.cassandra.thrift.InvalidRequestException);
+  }
+  try {
+    key=ByteBufferUtil.bytes("valid");
+    server.insert(key,par,new Column(key).setValue(ByteBufferUtil.bytes("invalid")).setTimestamp(timestamp),ConsistencyLevel.ONE);
+    fail("Query should have been invalid!");
+  }
+ catch (  Exception e) {
+    assertTrue(e instanceof org.apache.cassandra.thrift.InvalidRequestException);
+  }
+}
