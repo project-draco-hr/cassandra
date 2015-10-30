@@ -5,7 +5,7 @@ def perform_simple_statement(self, statement):
     while True:
         try:
             future = self.session.execute_async(statement, trace=self.tracing_enabled)
-            rows = future.result(self.session.default_timeout)
+            result = future.result()
             break
         except cassandra.OperationTimedOut as err:
             self.refresh_schema_metadata_best_effort()
@@ -19,13 +19,13 @@ def perform_simple_statement(self, statement):
             self.printerr(traceback.format_exc())
             return (False, None)
     if (statement.query_string[:6].lower() == 'select'):
-        self.print_result(rows, self.parse_for_select_meta(statement.query_string))
+        self.print_result(result, self.parse_for_select_meta(statement.query_string))
     elif (statement.query_string.lower().startswith('list users') or statement.query_string.lower().startswith('list roles')):
-        self.print_result(rows, self.get_table_meta('system_auth', 'roles'))
+        self.print_result(result, self.get_table_meta('system_auth', 'roles'))
     elif statement.query_string.lower().startswith('list'):
-        self.print_result(rows, self.get_table_meta('system_auth', 'role_permissions'))
-    elif rows:
+        self.print_result(result, self.get_table_meta('system_auth', 'role_permissions'))
+    elif result:
         self.writeresult('')
-        self.print_static_result(rows, self.parse_for_update_meta(statement.query_string))
+        self.print_static_result(list(result), self.parse_for_update_meta(statement.query_string))
     self.flush_output()
     return (True, future)
