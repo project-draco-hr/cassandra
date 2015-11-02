@@ -1,0 +1,20 @@
+{
+  Random rand=ThreadLocalRandom.current();
+  for (  Name test : TESTS) {
+    byte[] bytes=new byte[16];
+    rand.nextBytes(bytes);
+    Cell buf, nat;
+    buf=new BufferCell(test.name,ByteBuffer.wrap(bytes),rand.nextLong());
+    nat=buf.localCopy(metadata,nativeAllocator,group);
+    test(test,buf,nat);
+    buf=new BufferDeletedCell(test.name,rand.nextInt(100000),rand.nextLong());
+    nat=buf.localCopy(metadata,nativeAllocator,group);
+    test(test,buf,nat);
+    buf=new BufferExpiringCell(test.name,ByteBuffer.wrap(bytes),rand.nextLong(),rand.nextInt(100000));
+    nat=buf.localCopy(metadata,nativeAllocator,group);
+    test(test,buf,nat);
+    buf=new BufferCounterCell(test.name,CounterContext.instance().createLocal(rand.nextLong()),rand.nextLong(),rand.nextInt(100000));
+    nat=buf.localCopy(metadata,nativeAllocator,group);
+    test(test,buf,nat);
+  }
+}

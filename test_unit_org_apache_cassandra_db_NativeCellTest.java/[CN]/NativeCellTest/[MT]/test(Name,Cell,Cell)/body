@@ -1,0 +1,24 @@
+{
+  Assert.assertTrue(buf.equals(nat));
+  Assert.assertTrue(nat.equals(buf));
+  Assert.assertTrue(buf.equals(buf));
+  Assert.assertTrue(nat.equals(nat));
+  try {
+    MessageDigest d1=MessageDigest.getInstance("MD5");
+    MessageDigest d2=MessageDigest.getInstance("MD5");
+    buf.updateDigest(d1);
+    nat.updateDigest(d2);
+    Assert.assertArrayEquals(d1.digest(),d2.digest());
+  }
+ catch (  NoSuchAlgorithmException e) {
+    throw new IllegalStateException(e);
+  }
+  byte[] serialized;
+  try (DataOutputBuffer bufOut=new DataOutputBuffer()){
+    test.type.columnSerializer().serialize(nat,bufOut);
+    serialized=bufOut.getData();
+  }
+   ByteArrayInputStream bufIn=new ByteArrayInputStream(serialized,0,serialized.length);
+  Cell deserialized=test.type.columnSerializer().deserialize(new DataInputStream(bufIn));
+  Assert.assertTrue(buf.equals(deserialized));
+}
