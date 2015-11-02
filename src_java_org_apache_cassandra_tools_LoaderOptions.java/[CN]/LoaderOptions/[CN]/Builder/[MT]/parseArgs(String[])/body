@@ -1,0 +1,129 @@
+{
+  CommandLineParser parser=new GnuParser();
+  CmdLineOptions options=getCmdLineOptions();
+  try {
+    CommandLine cmd=parser.parse(options,cmdArgs,false);
+    if (cmd.hasOption(HELP_OPTION)) {
+      printUsage(options);
+      System.exit(0);
+    }
+    String[] args=cmd.getArgs();
+    if (args.length == 0) {
+      System.err.println("Missing sstable directory argument");
+      printUsage(options);
+      System.exit(1);
+    }
+    if (args.length > 1) {
+      System.err.println("Too many arguments");
+      printUsage(options);
+      System.exit(1);
+    }
+    String dirname=args[0];
+    File dir=new File(dirname);
+    if (!dir.exists()) {
+      errorMsg("Unknown directory: " + dirname,options);
+    }
+    if (!dir.isDirectory()) {
+      errorMsg(dirname + " is not a directory",options);
+    }
+    directory=dir;
+    verbose=cmd.hasOption(VERBOSE_OPTION);
+    noProgress=cmd.hasOption(NOPROGRESS_OPTION);
+    if (cmd.hasOption(NATIVE_PORT_OPTION)) {
+      nativePort=Integer.parseInt(cmd.getOptionValue(NATIVE_PORT_OPTION));
+    }
+    if (cmd.hasOption(USER_OPTION)) {
+      user=cmd.getOptionValue(USER_OPTION);
+    }
+    if (cmd.hasOption(PASSWD_OPTION)) {
+      passwd=cmd.getOptionValue(PASSWD_OPTION);
+    }
+    if (cmd.hasOption(AUTH_PROVIDER_OPTION)) {
+      authProviderName=cmd.getOptionValue(AUTH_PROVIDER_OPTION);
+    }
+    if (cmd.hasOption(INITIAL_HOST_ADDRESS_OPTION)) {
+      String[] nodes=cmd.getOptionValue(INITIAL_HOST_ADDRESS_OPTION).split(",");
+      try {
+        for (        String node : nodes) {
+          hosts.add(InetAddress.getByName(node.trim()));
+        }
+      }
+ catch (      UnknownHostException e) {
+        errorMsg("Unknown host: " + e.getMessage(),options);
+      }
+    }
+ else {
+      System.err.println("Initial hosts must be specified (-d)");
+      printUsage(options);
+      System.exit(1);
+    }
+    if (cmd.hasOption(IGNORE_NODES_OPTION)) {
+      String[] nodes=cmd.getOptionValue(IGNORE_NODES_OPTION).split(",");
+      try {
+        for (        String node : nodes) {
+          ignores.add(InetAddress.getByName(node.trim()));
+        }
+      }
+ catch (      UnknownHostException e) {
+        errorMsg("Unknown host: " + e.getMessage(),options);
+      }
+    }
+    if (cmd.hasOption(CONNECTIONS_PER_HOST)) {
+      connectionsPerHost=Integer.parseInt(cmd.getOptionValue(CONNECTIONS_PER_HOST));
+    }
+    Config config;
+    if (cmd.hasOption(CONFIG_PATH)) {
+      File configFile=new File(cmd.getOptionValue(CONFIG_PATH));
+      if (!configFile.exists()) {
+        errorMsg("Config file not found",options);
+      }
+      config=new YamlConfigurationLoader().loadConfig(configFile.toURI().toURL());
+    }
+ else {
+      config=new Config();
+      config.stream_throughput_outbound_megabits_per_sec=0;
+      config.inter_dc_stream_throughput_outbound_megabits_per_sec=0;
+    }
+    storagePort=config.storage_port;
+    sslStoragePort=config.ssl_storage_port;
+    throttle=config.stream_throughput_outbound_megabits_per_sec;
+    encOptions=config.client_encryption_options;
+    serverEncOptions=config.server_encryption_options;
+    if (cmd.hasOption(THROTTLE_MBITS)) {
+      throttle=Integer.parseInt(cmd.getOptionValue(THROTTLE_MBITS));
+    }
+    if (cmd.hasOption(INTER_DC_THROTTLE_MBITS)) {
+      interDcThrottle=Integer.parseInt(cmd.getOptionValue(INTER_DC_THROTTLE_MBITS));
+    }
+    if (cmd.hasOption(SSL_TRUSTSTORE)) {
+      encOptions.truststore=cmd.getOptionValue(SSL_TRUSTSTORE);
+    }
+    if (cmd.hasOption(SSL_TRUSTSTORE_PW)) {
+      encOptions.truststore_password=cmd.getOptionValue(SSL_TRUSTSTORE_PW);
+    }
+    if (cmd.hasOption(SSL_KEYSTORE)) {
+      encOptions.keystore=cmd.getOptionValue(SSL_KEYSTORE);
+      encOptions.require_client_auth=true;
+    }
+    if (cmd.hasOption(SSL_KEYSTORE_PW)) {
+      encOptions.keystore_password=cmd.getOptionValue(SSL_KEYSTORE_PW);
+    }
+    if (cmd.hasOption(SSL_PROTOCOL)) {
+      encOptions.protocol=cmd.getOptionValue(SSL_PROTOCOL);
+    }
+    if (cmd.hasOption(SSL_ALGORITHM)) {
+      encOptions.algorithm=cmd.getOptionValue(SSL_ALGORITHM);
+    }
+    if (cmd.hasOption(SSL_STORE_TYPE)) {
+      encOptions.store_type=cmd.getOptionValue(SSL_STORE_TYPE);
+    }
+    if (cmd.hasOption(SSL_CIPHER_SUITES)) {
+      encOptions.cipher_suites=cmd.getOptionValue(SSL_CIPHER_SUITES).split(",");
+    }
+    return this;
+  }
+ catch (  ParseException|ConfigurationException|MalformedURLException e) {
+    errorMsg(e.getMessage(),options);
+    return null;
+  }
+}

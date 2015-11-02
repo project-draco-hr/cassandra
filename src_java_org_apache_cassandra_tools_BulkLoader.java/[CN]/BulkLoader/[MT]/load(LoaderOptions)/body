@@ -1,0 +1,39 @@
+{
+  Config.setClientMode(true);
+  OutputHandler handler=new OutputHandler.SystemOutput(options.verbose,options.debug);
+  SSTableLoader loader=new SSTableLoader(options.directory,new ExternalClient(options.hosts,options.nativePort,options.authProvider,options.storagePort,options.sslStoragePort,options.serverEncOptions,buildSSLOptions((EncryptionOptions.ClientEncryptionOptions)options.encOptions)),handler,options.connectionsPerHost);
+  DatabaseDescriptor.setStreamThroughputOutboundMegabitsPerSec(options.throttle);
+  DatabaseDescriptor.setInterDCStreamThroughputOutboundMegabitsPerSec(options.interDcThrottle);
+  StreamResultFuture future=null;
+  ProgressIndicator indicator=new ProgressIndicator();
+  try {
+    if (options.noProgress) {
+      future=loader.stream(options.ignores);
+    }
+ else {
+      future=loader.stream(options.ignores,indicator);
+    }
+  }
+ catch (  Exception e) {
+    JVMStabilityInspector.inspectThrowable(e);
+    System.err.println(e.getMessage());
+    if (e.getCause() != null) {
+      System.err.println(e.getCause());
+    }
+    e.printStackTrace(System.err);
+    throw new BulkLoadException(e);
+  }
+  try {
+    future.get();
+    if (!options.noProgress) {
+      indicator.printSummary(options.connectionsPerHost);
+    }
+    Thread.sleep(1000);
+  }
+ catch (  Exception e) {
+    System.err.println("Streaming to the following hosts failed:");
+    System.err.println(loader.getFailedHosts());
+    e.printStackTrace(System.err);
+    throw new BulkLoadException(e);
+  }
+}
