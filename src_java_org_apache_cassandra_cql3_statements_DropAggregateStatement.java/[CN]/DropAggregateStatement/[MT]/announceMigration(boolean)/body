@@ -7,7 +7,7 @@
   if (argsPresent) {
     old=Schema.instance.findFunction(functionName,argTypes).orElse(null);
     if (old == null || !(old instanceof AggregateFunction)) {
-      if (ifExists)       return false;
+      if (ifExists)       return null;
       StringBuilder sb=new StringBuilder();
       for (      CQL3Type.Raw rawType : argRawTypes) {
         if (sb.length() > 0)         sb.append(", ");
@@ -18,13 +18,12 @@
   }
  else {
     if (olds == null || olds.isEmpty() || !(olds.iterator().next() instanceof AggregateFunction)) {
-      if (ifExists)       return false;
+      if (ifExists)       return null;
       throw new InvalidRequestException(String.format("Cannot drop non existing aggregate '%s'",functionName));
     }
     old=olds.iterator().next();
   }
   if (old.isNative())   throw new InvalidRequestException(String.format("Cannot drop aggregate '%s' because it is a " + "native (built-in) function",functionName));
-  this.old=old;
   MigrationManager.announceAggregateDrop((UDAggregate)old,isLocalOnly);
-  return true;
+  return new Event.SchemaChange(Event.SchemaChange.Change.DROPPED,Event.SchemaChange.Target.AGGREGATE,old.name().keyspace,old.name().name,AbstractType.asCQLTypeStringList(old.argTypes()));
 }
