@@ -3,7 +3,13 @@
   UntypedResultSet rs;
   if (usePrepared) {
     logger.info("Executing: {} with values {}",query,formatAllValues(values));
-    rs=QueryProcessor.executeOnceInternal(query,transformValues(values));
+    if (reusePrepared) {
+      rs=QueryProcessor.executeInternal(query,transformValues(values));
+      if (query.startsWith("USE"))       QueryProcessor.clearInternalStatementsCache();
+    }
+ else {
+      rs=QueryProcessor.executeOnceInternal(query,transformValues(values));
+    }
   }
  else {
     query=replaceValues(query,values);
