@@ -1,25 +1,20 @@
-def print_result(self, rows, table_meta):
+def print_result(self, result, table_meta):
     self.decoding_errors = []
     self.writeresult('')
-    if (isinstance(rows, PagedResult) and self.tty):
+    if (result.has_more_pages and self.tty):
         num_rows = 0
         while True:
-            page = list(rows.current_response)
-            if (not page):
-                break
-            num_rows += len(page)
-            self.print_static_result(page, table_meta)
-            if (not rows.response_future.has_more_pages):
-                break
-            raw_input('---MORE---')
-            rows.response_future.start_fetching_next_page()
-            result = rows.response_future.result()
-            if rows.response_future.has_more_pages:
-                rows.current_response = result.current_response
+            page = result.current_rows
+            if page:
+                num_rows += len(page)
+                self.print_static_result(page, table_meta)
+            if result.has_more_pages:
+                raw_input('---MORE---')
+                result.fetch_next_page()
             else:
-                rows.current_response = iter(result)
+                break
     else:
-        rows = list((rows or []))
+        rows = list(result)
         num_rows = len(rows)
         self.print_static_result(rows, table_meta)
     self.writeresult(('(%d rows)' % num_rows))
