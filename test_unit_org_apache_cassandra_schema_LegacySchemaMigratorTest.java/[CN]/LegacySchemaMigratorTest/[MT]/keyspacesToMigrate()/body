@@ -1,0 +1,35 @@
+{
+  Keyspaces.Builder keyspaces=Keyspaces.builder();
+  String ks1=KEYSPACE_PREFIX + "Keyspace1";
+  String ks2=KEYSPACE_PREFIX + "Keyspace2";
+  String ks3=KEYSPACE_PREFIX + "Keyspace3";
+  String ks4=KEYSPACE_PREFIX + "Keyspace4";
+  String ks5=KEYSPACE_PREFIX + "Keyspace5";
+  String ks6=KEYSPACE_PREFIX + "Keyspace6";
+  String ks_rcs=KEYSPACE_PREFIX + "RowCacheSpace";
+  String ks_nocommit=KEYSPACE_PREFIX + "NoCommitlogSpace";
+  String ks_prsi=KEYSPACE_PREFIX + "PerRowSecondaryIndex";
+  String ks_cql=KEYSPACE_PREFIX + "cql_keyspace";
+  Map<String,String> compactionOptions=new HashMap<>();
+  compactionOptions.put("tombstone_compaction_interval","1");
+  Map<String,String> leveledOptions=new HashMap<>();
+  leveledOptions.put("sstable_size_in_mb","1");
+  keyspaces.add(KeyspaceMetadata.create(ks1,KeyspaceParams.simple(1),Tables.of(SchemaLoader.standardCFMD(ks1,"Standard1").compaction(CompactionParams.scts(compactionOptions)),SchemaLoader.standardCFMD(ks1,"StandardGCGS0").gcGraceSeconds(0),SchemaLoader.standardCFMD(ks1,"StandardLong1"),SchemaLoader.superCFMD(ks1,"Super1",LongType.instance),SchemaLoader.superCFMD(ks1,"Super2",UTF8Type.instance),SchemaLoader.superCFMD(ks1,"Super5",BytesType.instance),SchemaLoader.superCFMD(ks1,"Super6",LexicalUUIDType.instance,UTF8Type.instance),SchemaLoader.keysIndexCFMD(ks1,"Indexed1",true),SchemaLoader.keysIndexCFMD(ks1,"Indexed2",false),SchemaLoader.superCFMD(ks1,"SuperDirectGC",BytesType.instance).gcGraceSeconds(0),SchemaLoader.jdbcCFMD(ks1,"JdbcUtf8",UTF8Type.instance).addColumnDefinition(SchemaLoader.utf8Column(ks1,"JdbcUtf8")),SchemaLoader.jdbcCFMD(ks1,"JdbcLong",LongType.instance),SchemaLoader.jdbcCFMD(ks1,"JdbcBytes",BytesType.instance),SchemaLoader.jdbcCFMD(ks1,"JdbcAscii",AsciiType.instance),SchemaLoader.standardCFMD(ks1,"StandardLeveled").compaction(CompactionParams.lcs(leveledOptions)),SchemaLoader.standardCFMD(ks1,"legacyleveled").compaction(CompactionParams.lcs(leveledOptions)),SchemaLoader.standardCFMD(ks1,"StandardLowIndexInterval").minIndexInterval(8).maxIndexInterval(256).caching(CachingParams.CACHE_NOTHING))));
+  keyspaces.add(KeyspaceMetadata.create(ks2,KeyspaceParams.simple(1),Tables.of(SchemaLoader.standardCFMD(ks2,"Standard1"),SchemaLoader.superCFMD(ks2,"Super3",BytesType.instance),SchemaLoader.superCFMD(ks2,"Super4",TimeUUIDType.instance),SchemaLoader.keysIndexCFMD(ks2,"Indexed1",true),SchemaLoader.compositeIndexCFMD(ks2,"Indexed2",true),SchemaLoader.compositeIndexCFMD(ks2,"Indexed3",true).gcGraceSeconds(0))));
+  keyspaces.add(KeyspaceMetadata.create(ks3,KeyspaceParams.simple(5),Tables.of(SchemaLoader.standardCFMD(ks3,"Standard1"),SchemaLoader.keysIndexCFMD(ks3,"Indexed1",true))));
+  keyspaces.add(KeyspaceMetadata.create(ks4,KeyspaceParams.simple(3),Tables.of(SchemaLoader.standardCFMD(ks4,"Standard1"),SchemaLoader.superCFMD(ks4,"Super3",BytesType.instance),SchemaLoader.superCFMD(ks4,"Super4",TimeUUIDType.instance),SchemaLoader.superCFMD(ks4,"Super5",TimeUUIDType.instance,BytesType.instance))));
+  keyspaces.add(KeyspaceMetadata.create(ks5,KeyspaceParams.simple(2),Tables.of(SchemaLoader.standardCFMD(ks5,"Standard1"))));
+  keyspaces.add(KeyspaceMetadata.create(ks6,KeyspaceParams.simple(1),Tables.of(SchemaLoader.keysIndexCFMD(ks6,"Indexed1",true))));
+  keyspaces.add(KeyspaceMetadata.create(ks_rcs,KeyspaceParams.simple(1),Tables.of(SchemaLoader.standardCFMD(ks_rcs,"CFWithoutCache").caching(CachingParams.CACHE_NOTHING),SchemaLoader.standardCFMD(ks_rcs,"CachedCF").caching(CachingParams.CACHE_EVERYTHING),SchemaLoader.standardCFMD(ks_rcs,"CachedIntCF").caching(new CachingParams(true,100)))));
+  keyspaces.add(KeyspaceMetadata.create(ks_nocommit,KeyspaceParams.simpleTransient(1),Tables.of(SchemaLoader.standardCFMD(ks_nocommit,"Standard1"))));
+  keyspaces.add(KeyspaceMetadata.create(ks_prsi,KeyspaceParams.simple(1),Tables.of(SchemaLoader.perRowIndexedCFMD(ks_prsi,"Indexed1"))));
+  keyspaces.add(KeyspaceMetadata.create(ks_cql,KeyspaceParams.simple(1),Tables.of(CFMetaData.compile("CREATE TABLE table1 (" + "k int PRIMARY KEY," + "v1 text,"+ "v2 int"+ ')',ks_cql),CFMetaData.compile("CREATE TABLE table2 (" + "k text," + "c text,"+ "v text,"+ "PRIMARY KEY (k, c))",ks_cql),CFMetaData.compile("CREATE TABLE foo (" + "bar text, " + "baz text, "+ "qux text, "+ "PRIMARY KEY(bar, baz) ) "+ "WITH COMPACT STORAGE",ks_cql),CFMetaData.compile("CREATE TABLE compact_pkonly (" + "k int, " + "c int, "+ "PRIMARY KEY (k, c)) "+ "WITH COMPACT STORAGE",ks_cql),CFMetaData.compile("CREATE TABLE foofoo (" + "bar text, " + "baz text, "+ "qux text, "+ "quz text, "+ "foo text, "+ "PRIMARY KEY((bar, baz), qux, quz) ) "+ "WITH COMPACT STORAGE",ks_cql))));
+  keyspaces.add(keyspaceWithDroppedCollections());
+  keyspaces.add(keyspaceWithTriggers());
+  keyspaces.add(keyspaceWithUDTs());
+  keyspaces.add(keyspaceWithUDFs());
+  keyspaces.add(keyspaceWithUDFsAndUDTs());
+  keyspaces.add(keyspaceWithUDAs());
+  keyspaces.add(keyspaceWithUDAsAndUDTs());
+  return keyspaces.build();
+}

@@ -1,0 +1,17 @@
+{
+  String query=String.format("SELECT * FROM %s.%s WHERE keyspace_name = ? AND view_name = ?",NAME,VIEWS);
+  UntypedResultSet rows=query(query,keyspaceName,viewName);
+  if (rows.isEmpty())   throw new RuntimeException(String.format("%s:%s not found in the schema definitions keyspace.",keyspaceName,viewName));
+  UntypedResultSet.Row row=rows.one();
+  UUID id=row.getUUID("id");
+  UUID baseTableId=row.getUUID("base_table_id");
+  String baseTableName=row.getString("base_table_name");
+  boolean includeAll=row.getBoolean("include_all_columns");
+  String whereClause=row.getString("where_clause");
+  List<ColumnDefinition> columns=fetchColumns(keyspaceName,viewName,types);
+  Map<ByteBuffer,CFMetaData.DroppedColumn> droppedColumns=fetchDroppedColumns(keyspaceName,viewName);
+  CFMetaData cfm=CFMetaData.create(keyspaceName,viewName,id,false,true,false,false,true,columns,DatabaseDescriptor.getPartitioner()).params(createTableParamsFromRow(row)).droppedColumns(droppedColumns);
+  String rawSelect=View.buildSelectStatement(baseTableName,columns,whereClause);
+  SelectStatement.RawStatement rawStatement=(SelectStatement.RawStatement)QueryProcessor.parseStatement(rawSelect);
+  return new ViewDefinition(keyspaceName,viewName,baseTableId,baseTableName,includeAll,rawStatement,whereClause,cfm);
+}
