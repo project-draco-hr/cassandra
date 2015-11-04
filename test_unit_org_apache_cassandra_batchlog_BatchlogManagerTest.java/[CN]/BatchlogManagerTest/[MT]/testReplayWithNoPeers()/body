@@ -1,0 +1,19 @@
+{
+  StorageService.instance.getTokenMetadata().removeEndpoint(InetAddress.getByName("127.0.0.1"));
+  long initialAllBatches=BatchlogManager.instance.countAllBatches();
+  long initialReplayedBatches=BatchlogManager.instance.getTotalBatchesReplayed();
+  CFMetaData cfm=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1).metadata;
+  long timestamp=(System.currentTimeMillis() - DatabaseDescriptor.getWriteRpcTimeout() * 2) * 1000;
+  UUID uuid=UUIDGen.getTimeUUID();
+  List<Mutation> mutations=new ArrayList<>(10);
+  for (int j=0; j < 10; j++) {
+    mutations.add(new RowUpdateBuilder(cfm,FBUtilities.timestampMicros(),ByteBufferUtil.bytes(j)).clustering("name" + j).add("val","val" + j).build());
+  }
+  BatchlogManager.store(Batch.createLocal(uuid,timestamp,mutations));
+  assertEquals(1,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  Keyspace.open(SystemKeyspace.NAME).getColumnFamilyStore(SystemKeyspace.BATCHES).forceBlockingFlush();
+  assertEquals(1,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+  assertEquals(0,BatchlogManager.instance.getTotalBatchesReplayed() - initialReplayedBatches);
+  BatchlogManager.instance.startBatchlogReplay().get();
+  assertEquals(1,BatchlogManager.instance.countAllBatches() - initialAllBatches);
+}
