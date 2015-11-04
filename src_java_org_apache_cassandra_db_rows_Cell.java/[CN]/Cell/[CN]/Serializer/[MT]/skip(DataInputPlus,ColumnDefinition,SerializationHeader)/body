@@ -1,0 +1,14 @@
+{
+  int flags=in.readUnsignedByte();
+  boolean hasValue=(flags & HAS_EMPTY_VALUE_MASK) == 0;
+  boolean isDeleted=(flags & IS_DELETED_MASK) != 0;
+  boolean isExpiring=(flags & IS_EXPIRING_MASK) != 0;
+  boolean useRowTimestamp=(flags & USE_ROW_TIMESTAMP_MASK) != 0;
+  boolean useRowTTL=(flags & USE_ROW_TTL_MASK) != 0;
+  if (!useRowTimestamp)   header.skipTimestamp(in);
+  if (!useRowTTL && (isDeleted || isExpiring))   header.skipLocalDeletionTime(in);
+  if (!useRowTTL && isExpiring)   header.skipTTL(in);
+  if (column.isComplex())   column.cellPathSerializer().skip(in);
+  if (hasValue)   header.getType(column).skipValue(in);
+  return true;
+}
