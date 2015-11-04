@@ -1,0 +1,18 @@
+def do_login(self, parsed):
+    '\n        LOGIN [cqlsh only]\n\n           Changes login information without requiring restart.\n\n        LOGIN <username> (<password>)\n\n           Login using the specified username. If password is specified, it will be used\n           otherwise, you will be prompted to enter.\n        '
+    username = parsed.get_binding('username')
+    password = parsed.get_binding('password')
+    if (password is None):
+        password = getpass.getpass()
+    else:
+        password = password[1:(-1)]
+    auth_provider = PlainTextAuthProvider(username=username, password=password)
+    conn = Cluster(contact_points=(self.hostname,), port=self.port, cql_version=self.conn.cql_version, protocol_version=self.conn.protocol_version, auth_provider=auth_provider, ssl_options=self.conn.ssl_options, load_balancing_policy=WhiteListRoundRobinPolicy([self.hostname]), connect_timeout=self.conn.connect_timeout)
+    if self.current_keyspace:
+        session = conn.connect(self.current_keyspace)
+    else:
+        session = conn.connect()
+    self.conn = conn
+    self.auth_provider = auth_provider
+    self.username = username
+    self.session = session

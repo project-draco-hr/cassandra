@@ -1,0 +1,25 @@
+def print_result(self, result, table_meta):
+    self.decoding_errors = []
+    self.writeresult('')
+    if (result.has_more_pages and self.tty):
+        num_rows = 0
+        while True:
+            page = result.current_rows
+            if page:
+                num_rows += len(page)
+                self.print_static_result(page, table_meta)
+            if result.has_more_pages:
+                raw_input('---MORE---')
+                result.fetch_next_page()
+            else:
+                break
+    else:
+        rows = list(result)
+        num_rows = len(rows)
+        self.print_static_result(rows, table_meta)
+    self.writeresult(('(%d rows)' % num_rows))
+    if self.decoding_errors:
+        for err in self.decoding_errors[:2]:
+            self.writeresult(err.message(), color=RED)
+        if (len(self.decoding_errors) > 2):
+            self.writeresult(('%d more decoding errors suppressed.' % (len(self.decoding_errors) - 2)), color=RED)

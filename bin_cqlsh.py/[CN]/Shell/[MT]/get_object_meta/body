@@ -1,0 +1,19 @@
+def get_object_meta(self, ks, name):
+    if (name is None):
+        if (ks and (ks in self.conn.metadata.keyspaces)):
+            return self.conn.metadata.keyspaces[ks]
+        elif (self.current_keyspace is None):
+            raise ObjectNotFound(('%r not found in keyspaces' % ks))
+        else:
+            name = ks
+            ks = self.current_keyspace
+    if (ks is None):
+        ks = self.current_keyspace
+    ksmeta = self.get_keyspace_meta(ks)
+    if (name in ksmeta.tables):
+        return ksmeta.tables[name]
+    elif (name in ksmeta.indexes):
+        return ksmeta.indexes[name]
+    elif (name in ksmeta.views):
+        return ksmeta.views[name]
+    raise ObjectNotFound(('%r not found in keyspace %r' % (name, ks)))

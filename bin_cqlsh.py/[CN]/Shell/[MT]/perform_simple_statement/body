@@ -1,0 +1,31 @@
+def perform_simple_statement(self, statement):
+    if (not statement):
+        return (False, None)
+    rows = None
+    while True:
+        try:
+            future = self.session.execute_async(statement, trace=self.tracing_enabled)
+            result = future.result()
+            break
+        except cassandra.OperationTimedOut as err:
+            self.refresh_schema_metadata_best_effort()
+            self.printerr(((str(err.__class__.__name__) + ': ') + str(err)))
+            return (False, None)
+        except CQL_ERRORS as err:
+            self.printerr(((str(err.__class__.__name__) + ': ') + str(err)))
+            return (False, None)
+        except Exception as err:
+            import traceback
+            self.printerr(traceback.format_exc())
+            return (False, None)
+    if (statement.query_string[:6].lower() == 'select'):
+        self.print_result(result, self.parse_for_select_meta(statement.query_string))
+    elif (statement.query_string.lower().startswith('list users') or statement.query_string.lower().startswith('list roles')):
+        self.print_result(result, self.get_table_meta('system_auth', 'roles'))
+    elif statement.query_string.lower().startswith('list'):
+        self.print_result(result, self.get_table_meta('system_auth', 'role_permissions'))
+    elif result:
+        self.writeresult('')
+        self.print_static_result(list(result), self.parse_for_update_meta(statement.query_string))
+    self.flush_output()
+    return (True, future)

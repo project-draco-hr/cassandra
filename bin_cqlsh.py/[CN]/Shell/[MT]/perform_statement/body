@@ -1,0 +1,18 @@
+def perform_statement(self, statement):
+    stmt = SimpleStatement(statement, consistency_level=self.consistency_level, serial_consistency_level=self.serial_consistency_level, fetch_size=(self.page_size if self.use_paging else None))
+    (success, future) = self.perform_simple_statement(stmt)
+    if future:
+        if future.warnings:
+            self.print_warnings(future.warnings)
+        if self.tracing_enabled:
+            try:
+                for trace in future.get_all_query_traces(self.max_trace_wait):
+                    print_trace(self, trace)
+            except TraceUnavailable:
+                msg = ('Statement trace did not complete within %d seconds; trace data may be incomplete.' % (self.session.max_trace_wait,))
+                self.writeresult(msg, color=RED)
+                for trace_id in future.get_query_trace_ids():
+                    self.show_session(trace_id)
+            except Exception as err:
+                self.printerr(('Unable to fetch query trace: %s' % (str(err),)))
+    return success

@@ -1,0 +1,69 @@
+def __init__(self, hostname, port, color=False, username=None, password=None, encoding=None, stdin=None, tty=True, completekey=DEFAULT_COMPLETEKEY, use_conn=None, cqlver=DEFAULT_CQLVER, keyspace=None, tracing_enabled=False, expand_enabled=False, display_nanotime_format=DEFAULT_NANOTIME_FORMAT, display_timestamp_format=DEFAULT_TIMESTAMP_FORMAT, display_date_format=DEFAULT_DATE_FORMAT, display_float_precision=DEFAULT_FLOAT_PRECISION, max_trace_wait=DEFAULT_MAX_TRACE_WAIT, ssl=False, single_statement=None, client_timeout=10, protocol_version=DEFAULT_PROTOCOL_VERSION, connect_timeout=DEFAULT_CONNECT_TIMEOUT_SECONDS):
+    cmd.Cmd.__init__(self, completekey=completekey)
+    self.hostname = hostname
+    self.port = port
+    self.auth_provider = None
+    if username:
+        if (not password):
+            password = getpass.getpass()
+        self.auth_provider = PlainTextAuthProvider(username=username, password=password)
+    self.username = username
+    self.keyspace = keyspace
+    self.ssl = ssl
+    self.tracing_enabled = tracing_enabled
+    self.page_size = self.default_page_size
+    self.expand_enabled = expand_enabled
+    if use_conn:
+        self.conn = use_conn
+    else:
+        self.conn = Cluster(contact_points=(self.hostname,), port=self.port, cql_version=cqlver, protocol_version=protocol_version, auth_provider=self.auth_provider, ssl_options=(sslhandling.ssl_settings(hostname, CONFIG_FILE) if ssl else None), load_balancing_policy=WhiteListRoundRobinPolicy([self.hostname]), connect_timeout=connect_timeout)
+    self.owns_connection = (not use_conn)
+    self.set_expanded_cql_version(cqlver)
+    if keyspace:
+        self.session = self.conn.connect(keyspace)
+    else:
+        self.session = self.conn.connect()
+    self.color = color
+    self.display_nanotime_format = display_nanotime_format
+    self.display_timestamp_format = display_timestamp_format
+    self.display_date_format = display_date_format
+    self.display_float_precision = display_float_precision
+    if (not self.conn.metadata.keyspaces):
+        self.refresh_schema_metadata_best_effort()
+    self.session.default_timeout = client_timeout
+    self.session.row_factory = ordered_dict_factory
+    self.session.default_consistency_level = cassandra.ConsistencyLevel.ONE
+    self.get_connection_versions()
+    self.current_keyspace = keyspace
+    self.display_timestamp_format = display_timestamp_format
+    self.display_nanotime_format = display_nanotime_format
+    self.display_date_format = display_date_format
+    self.max_trace_wait = max_trace_wait
+    self.session.max_trace_wait = max_trace_wait
+    if (encoding is None):
+        encoding = locale.getpreferredencoding()
+    self.encoding = encoding
+    self.output_codec = codecs.lookup(encoding)
+    self.statement = StringIO()
+    self.lineno = 1
+    self.in_comment = False
+    self.prompt = ''
+    if (stdin is None):
+        stdin = sys.stdin
+    self.tty = tty
+    if tty:
+        self.reset_prompt()
+        self.report_connection()
+        print 'Use HELP for help.'
+    else:
+        self.show_line_nums = True
+    self.stdin = stdin
+    self.query_out = sys.stdout
+    self.consistency_level = cassandra.ConsistencyLevel.ONE
+    self.serial_consistency_level = cassandra.ConsistencyLevel.SERIAL
+    cassandra.cqltypes.BytesType.deserialize = staticmethod((lambda byts, protocol_version: bytearray(byts)))
+    cassandra.cqltypes.CassandraType.support_empty_values = True
+    auto_format_udts()
+    self.empty_lines = 0
+    self.statement_error = False
+    self.single_statement = single_statement
