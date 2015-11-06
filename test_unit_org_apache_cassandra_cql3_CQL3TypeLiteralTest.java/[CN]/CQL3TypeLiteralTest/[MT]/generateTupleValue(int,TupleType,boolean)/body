@@ -1,0 +1,28 @@
+{
+  StringBuilder expected=new StringBuilder();
+  ByteBuffer buffer;
+  if (allowNull && randBool(0.05d)) {
+    expected.append("null");
+    buffer=null;
+  }
+ else {
+    expected.append('(');
+    int fields=tupleType.size();
+    if (randBool(0.2d))     fields=randInt(fields);
+    ByteBuffer[] buffers=new ByteBuffer[fields];
+    for (int i=0; i < fields; i++) {
+      AbstractType<?> fieldType=tupleType.type(i);
+      if (i > 0)       expected.append(", ");
+      if (allowNull && randBool(.1)) {
+        expected.append("null");
+        continue;
+      }
+      Value value=generateAnyValue(version,fieldType.asCQL3Type());
+      expected.append(value.expected);
+      buffers[i]=value.value.duplicate();
+    }
+    expected.append(')');
+    buffer=TupleType.buildValue(buffers);
+  }
+  return new Value(expected.toString(),tupleType.asCQL3Type(),buffer);
+}

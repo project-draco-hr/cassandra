@@ -1,6 +1,7 @@
 {
   String f=createFunction(KEYSPACE,"list, int","CREATE FUNCTION %s(s list<text>, i int) " + "CALLED ON NULL INPUT " + "RETURNS list<text> "+ "LANGUAGE java "+ "AS 'if (i != null) s.add(String.valueOf(i)); return s;'");
   String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(f) + ' '+ "STYPE list<text> "+ "INITCOND [  ]");
+  assertRows(execute("SELECT initcond FROM system_schema.aggregates WHERE keyspace_name=? AND aggregate_name=?",KEYSPACE,shortFunctionName(a)),row("[]"));
   createTable("CREATE TABLE %s (a int primary key, b int)");
   execute("INSERT INTO %s (a, b) VALUES (1, 1)");
   execute("INSERT INTO %s (a, b) VALUES (2, null)");

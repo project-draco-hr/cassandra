@@ -1,0 +1,24 @@
+{
+  if (buffer == null) {
+    target.append("null");
+  }
+ else {
+    target.append('{');
+    for (int i=0; i < type.size(); i++) {
+      if (!buffer.hasRemaining())       break;
+      if (buffer.remaining() < 4)       throw new MarshalException(String.format("Not enough bytes to read size of %dth field %s",i,type.fieldName(i)));
+      int size=buffer.getInt();
+      if (i > 0)       target.append(", ");
+      target.append(ColumnIdentifier.maybeQuote(type.fieldNameAsString(i)));
+      target.append(": ");
+      if (size < 0) {
+        target.append("null");
+        continue;
+      }
+      if (buffer.remaining() < size)       throw new MarshalException(String.format("Not enough bytes to read %dth field %s",i,type.fieldName(i)));
+      ByteBuffer field=ByteBufferUtil.readBytes(buffer,size);
+      type.fieldType(i).asCQL3Type().toCQLLiteral(field,version,target);
+    }
+    target.append('}');
+  }
+}
