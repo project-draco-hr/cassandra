@@ -1,0 +1,67 @@
+{
+  StringBuilder expected=new StringBuilder();
+  ByteBuffer buffer;
+  if (allowNull && randBool(0.05d)) {
+    if (collectionType.isMultiCell()) {
+switch (collectionType.kind) {
+case LIST:
+        expected.append("[]");
+      break;
+case SET:
+case MAP:
+    expected.append("{}");
+  break;
+}
+}
+ else {
+expected.append("null");
+}
+buffer=null;
+}
+ else {
+int size=randInt(20);
+CQL3Type elements;
+CQL3Type values=null;
+char bracketOpen;
+char bracketClose;
+switch (collectionType.kind) {
+case LIST:
+elements=((ListType)collectionType).getElementsType().asCQL3Type();
+bracketOpen='[';
+bracketClose=']';
+break;
+case SET:
+elements=((SetType)collectionType).getElementsType().asCQL3Type();
+bracketOpen='{';
+bracketClose='}';
+break;
+case MAP:
+elements=((MapType)collectionType).getKeysType().asCQL3Type();
+values=((MapType)collectionType).getValuesType().asCQL3Type();
+bracketOpen='{';
+bracketClose='}';
+break;
+default :
+throw new AssertionError();
+}
+expected.append(bracketOpen);
+Collection<ByteBuffer> buffers=new ArrayList<>();
+Set<ByteBuffer> added=new HashSet<>();
+for (int i=0; i < size; i++) {
+Value el=generateAnyValue(version,elements);
+if (!added.add(el.value)) continue;
+buffers.add(el.value.duplicate());
+if (expected.length() > 1) expected.append(", ");
+el.cql3Type.toCQLLiteral(el.value,version,expected);
+if (collectionType.kind == CollectionType.Kind.MAP) {
+el=generateAnyValue(version,values);
+buffers.add(el.value.duplicate());
+expected.append(": ");
+el.cql3Type.toCQLLiteral(el.value,version,expected);
+}
+}
+expected.append(bracketClose);
+buffer=CollectionSerializer.pack(buffers,added.size(),version);
+}
+return new Value(expected.toString(),collectionType.asCQL3Type(),buffer);
+}
