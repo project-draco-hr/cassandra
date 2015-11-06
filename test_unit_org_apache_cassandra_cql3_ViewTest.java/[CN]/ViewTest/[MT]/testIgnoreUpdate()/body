@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (" + "a int, " + "b int, "+ "c int, "+ "d int, "+ "PRIMARY KEY (a, b))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT a, b, c FROM %%s WHERE a IS NOT NULL AND b IS NOT NULL PRIMARY KEY (b, a)");
+  updateView("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,0,0);
+  assertRows(execute("SELECT a, b, c from mv WHERE b = ?",0),row(0,0,0));
+  updateView("UPDATE %s SET d = ? WHERE a = ? AND b = ?",0,0,0);
+  assertRows(execute("SELECT a, b, c from mv WHERE b = ?",0),row(0,0,0));
+  String table=KEYSPACE + "." + currentTable();
+  updateView("BEGIN BATCH " + "INSERT INTO " + table + " (a, b, c, d) VALUES (?, ?, ?, ?); "+ "UPDATE "+ table+ " SET d = ? WHERE a = ? AND b = ?; "+ "APPLY BATCH",0,0,0,0,1,0,1);
+  assertRows(execute("SELECT a, b, c from mv WHERE b = ?",0),row(0,0,0));
+  assertEmpty(execute("SELECT a, b, c from mv WHERE b = ?",1));
+  ColumnFamilyStore cfs=Keyspace.open(keyspace()).getColumnFamilyStore("mv");
+  cfs.forceBlockingFlush();
+  Assert.assertEquals(1,cfs.getLiveSSTables().size());
+}
