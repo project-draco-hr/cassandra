@@ -1,22 +1,2 @@
 {
-  DecoratedKey key=iterator.partitionKey();
-  if (key.getKey().remaining() > FBUtilities.MAX_UNSIGNED_SHORT) {
-    logger.error("Key size {} exceeds maximum of {}, skipping row",key.getKey().remaining(),FBUtilities.MAX_UNSIGNED_SHORT);
-    return null;
-  }
-  if (iterator.isEmpty())   return null;
-  long startPosition=beforeAppend(key);
-  try (UnfilteredRowIterator collecting=Transformation.apply(iterator,new StatsCollector(metadataCollector))){
-    ColumnIndex index=ColumnIndex.writeAndBuildIndex(collecting,dataFile,header,descriptor.version);
-    RowIndexEntry entry=RowIndexEntry.create(startPosition,collecting.partitionLevelDeletion(),index);
-    long endPosition=dataFile.position();
-    long rowSize=endPosition - startPosition;
-    maybeLogLargePartitionWarning(key,rowSize);
-    metadataCollector.addPartitionSizeInBytes(rowSize);
-    afterAppend(key,endPosition,entry);
-    return entry;
-  }
- catch (  IOException e) {
-    throw new FSWriteError(e,dataFile.getPath());
-  }
 }

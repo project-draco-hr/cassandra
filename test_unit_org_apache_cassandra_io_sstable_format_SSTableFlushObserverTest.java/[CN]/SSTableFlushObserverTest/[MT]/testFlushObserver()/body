@@ -1,0 +1,43 @@
+{
+  CFMetaData cfm=CFMetaData.Builder.create(KS_NAME,CF_NAME).addPartitionKey("id",UTF8Type.instance).addRegularColumn("first_name",UTF8Type.instance).addRegularColumn("age",Int32Type.instance).addRegularColumn("height",LongType.instance).build();
+  LifecycleTransaction transaction=LifecycleTransaction.offline(OperationType.COMPACTION);
+  FlushObserver observer=new FlushObserver();
+  String sstableDirectory=DatabaseDescriptor.getAllDataFileLocations()[0];
+  File directory=new File(sstableDirectory + File.pathSeparator + KS_NAME+ File.pathSeparator+ CF_NAME);
+  directory.deleteOnExit();
+  if (!directory.exists() && !directory.mkdirs())   throw new FSWriteError(new IOException("failed to create tmp directory"),directory.getAbsolutePath());
+  SSTableFormat.Type sstableFormat=DatabaseDescriptor.getSSTableFormat();
+  BigTableWriter writer=new BigTableWriter(new Descriptor(sstableFormat.info.getLatestVersion().version,directory,KS_NAME,CF_NAME,0,sstableFormat),10L,0L,cfm,new MetadataCollector(cfm.comparator).sstableLevel(0),new SerializationHeader(true,cfm,cfm.partitionColumns(),EncodingStats.NO_STATS),Collections.singletonList(observer),transaction);
+  SSTableReader reader=null;
+  Multimap<ByteBuffer,Cell> expected=ArrayListMultimap.create();
+  try {
+    final long now=System.currentTimeMillis();
+    ByteBuffer key=UTF8Type.instance.fromString("key1");
+    expected.putAll(key,Arrays.asList(BufferCell.live(cfm,getColumn(cfm,"first_name"),now,UTF8Type.instance.fromString("jack")),BufferCell.live(cfm,getColumn(cfm,"age"),now,Int32Type.instance.decompose(27)),BufferCell.live(cfm,getColumn(cfm,"height"),now,LongType.instance.decompose(183L))));
+    writer.append(new RowIterator(cfm,key.duplicate(),Collections.singletonList(buildRow(expected.get(key)))));
+    key=UTF8Type.instance.fromString("key2");
+    expected.putAll(key,Arrays.asList(BufferCell.live(cfm,getColumn(cfm,"first_name"),now,UTF8Type.instance.fromString("jim")),BufferCell.live(cfm,getColumn(cfm,"age"),now,Int32Type.instance.decompose(30)),BufferCell.live(cfm,getColumn(cfm,"height"),now,LongType.instance.decompose(180L))));
+    writer.append(new RowIterator(cfm,key,Collections.singletonList(buildRow(expected.get(key)))));
+    key=UTF8Type.instance.fromString("key3");
+    expected.putAll(key,Arrays.asList(BufferCell.live(cfm,getColumn(cfm,"first_name"),now,UTF8Type.instance.fromString("ken")),BufferCell.live(cfm,getColumn(cfm,"age"),now,Int32Type.instance.decompose(30)),BufferCell.live(cfm,getColumn(cfm,"height"),now,LongType.instance.decompose(178L))));
+    writer.append(new RowIterator(cfm,key,Collections.singletonList(buildRow(expected.get(key)))));
+    reader=writer.finish(true);
+  }
+  finally {
+    FileUtils.closeQuietly(writer);
+  }
+  Assert.assertTrue(observer.isComplete);
+  Assert.assertEquals(expected.size(),observer.rows.size());
+  for (  Pair<ByteBuffer,Long> e : observer.rows.keySet()) {
+    ByteBuffer key=e.left;
+    Long indexPosition=e.right;
+    try (FileDataInput index=reader.ifile.createReader(indexPosition)){
+      ByteBuffer indexKey=ByteBufferUtil.readWithShortLength(index);
+      Assert.assertEquals(0,UTF8Type.instance.compare(key,indexKey));
+    }
+ catch (    IOException ex) {
+      throw new FSReadError(ex,reader.getIndexFilename());
+    }
+    Assert.assertEquals(expected.get(key),observer.rows.get(e));
+  }
+}
