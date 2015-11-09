@@ -56,7 +56,13 @@ if (fullSource) throw new InvalidRequestException("Java source compilation faile
  else throw new InvalidRequestException("Java source compilation failed:\n" + problems);
 }
 Class cls=targetClassLoader.loadClass(targetClassName);
-if (cls.getDeclaredMethods().length != 2 || cls.getDeclaredConstructors().length != 1) throw new InvalidRequestException("Check your source to not define additional Java methods or constructors");
+int nonSyntheticMethodCount=0;
+for (Method m : cls.getDeclaredMethods()) {
+if (!m.isSynthetic()) {
+nonSyntheticMethodCount+=1;
+}
+}
+if (nonSyntheticMethodCount != 2 || cls.getDeclaredConstructors().length != 1) throw new InvalidRequestException("Check your source to not define additional Java methods or constructors");
 MethodType methodType=MethodType.methodType(void.class).appendParameterTypes(FunctionName.class,List.class,List.class,DataType[].class,AbstractType.class,DataType.class,boolean.class,String.class);
 MethodHandle ctor=MethodHandles.lookup().findConstructor(cls,methodType);
 return (UDFunction)ctor.invokeWithArguments(name,argNames,argTypes,argDataTypes,returnType,returnDataType,calledOnNullInput,body);
