@@ -14,7 +14,7 @@
   String rangesStr=options.get(RANGES_KEY);
   Set<Range<Token>> ranges=new HashSet<>();
   if (rangesStr != null) {
-    if (incremental)     throw new IllegalArgumentException("Incremental repair can't be requested with subrange repair " + "because each subrange repair would generate an anti-compacted table");
+    if (incremental)     logger.warn("Incremental repair can't be requested with subrange repair " + "because each subrange repair would generate an anti-compacted table. " + "The repair will occur but without anti-compaction.");
     StringTokenizer tokenizer=new StringTokenizer(rangesStr,",");
     while (tokenizer.hasMoreTokens()) {
       String[] rangeStr=tokenizer.nextToken().split(":",2);
@@ -26,7 +26,7 @@
       ranges.add(new Range<>(parsedBeginToken,parsedEndToken));
     }
   }
-  RepairOption option=new RepairOption(parallelism,primaryRange,incremental,trace,jobThreads,ranges);
+  RepairOption option=new RepairOption(parallelism,primaryRange,incremental,trace,jobThreads,ranges,!ranges.isEmpty());
   String dataCentersStr=options.get(DATACENTERS_KEY);
   Collection<String> dataCenters=new HashSet<>();
   if (dataCentersStr != null) {
