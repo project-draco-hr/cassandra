@@ -3,23 +3,22 @@
   this.queueSize=conf.getInt(ColumnFamilyOutputFormat.QUEUE_SIZE,32 * FBUtilities.getAvailableProcessors());
   batchThreshold=conf.getLong(ColumnFamilyOutputFormat.BATCH_THRESHOLD,32);
   this.clients=new HashMap<>();
-  try {
+  try (Cluster cluster=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf)){
     String keyspace=ConfigHelper.getOutputKeyspace(conf);
-    try (Session client=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf).connect(keyspace)){
-      ringCache=new NativeRingCache(conf);
-      if (client != null) {
-        TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
-        clusterColumns=tableMetadata.getClusteringColumns();
-        partitionKeyColumns=tableMetadata.getPartitionKey();
-        String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
-        if (cqlQuery.toLowerCase().startsWith("insert"))         throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
-        cql=appendKeyWhereClauses(cqlQuery);
-      }
- else {
-        throw new IllegalArgumentException("Invalid configuration specified " + conf);
-      }
+    Session client=cluster.connect(keyspace);
+    ringCache=new NativeRingCache(conf);
+    if (client != null) {
+      TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
+      clusterColumns=tableMetadata.getClusteringColumns();
+      partitionKeyColumns=tableMetadata.getPartitionKey();
+      String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
+      if (cqlQuery.toLowerCase().startsWith("insert"))       throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
+      cql=appendKeyWhereClauses(cqlQuery);
     }
-   }
+ else {
+      throw new IllegalArgumentException("Invalid configuration specified " + conf);
+    }
+  }
  catch (  Exception e) {
     throw new RuntimeException(e);
   }
