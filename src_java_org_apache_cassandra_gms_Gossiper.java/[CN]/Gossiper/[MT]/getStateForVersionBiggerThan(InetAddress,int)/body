@@ -7,7 +7,8 @@
       reqdEndpointState=new EndpointState(epState.getHeartBeatState());
       if (logger.isTraceEnabled())       logger.trace("local heartbeat version {} greater than {} for {}",localHbVersion,version,forEndpoint);
     }
-    for (    Entry<ApplicationState,VersionedValue> entry : epState.getApplicationStateMap().entrySet()) {
+    Map<ApplicationState,VersionedValue> states=new EnumMap<>(ApplicationState.class);
+    for (    Entry<ApplicationState,VersionedValue> entry : epState.states()) {
       VersionedValue value=entry.getValue();
       if (value.version > version) {
         if (reqdEndpointState == null) {
@@ -15,9 +16,10 @@
         }
         final ApplicationState key=entry.getKey();
         if (logger.isTraceEnabled())         logger.trace("Adding state {}: {}",key,value.value);
-        reqdEndpointState.addApplicationState(key,value);
+        states.put(key,value);
       }
     }
+    reqdEndpointState.addApplicationStates(states);
   }
   return reqdEndpointState;
 }
