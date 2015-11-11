@@ -1,0 +1,18 @@
+{
+  SearchIterator<Clustering,Row> searchIter=partition.searchIterator(cf,reversed);
+  int pos=reversed ? KEY_RANGE : 0;
+  int mul=reversed ? -1 : 1;
+  boolean started=false;
+  while (searchIter.hasNext()) {
+    int skip=rand.nextInt(KEY_RANGE / 10);
+    pos+=skip * mul;
+    Clustering cl=clustering(pos);
+    Row row=searchIter.next(cl);
+    if (row == null && skip == 0 && started)     continue;
+    started=true;
+    Row expected=getRow(sortedContent,cl);
+    assertEquals(expected == null,row == null);
+    if (row == null)     continue;
+    assertRowsEqual(expected.filter(cf,cfm),row);
+  }
+}
