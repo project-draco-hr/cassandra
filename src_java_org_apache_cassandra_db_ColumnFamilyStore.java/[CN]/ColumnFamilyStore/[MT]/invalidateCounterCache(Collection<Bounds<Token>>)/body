@@ -1,0 +1,12 @@
+{
+  int invalidatedKeys=0;
+  for (Iterator<CounterCacheKey> keyIter=CacheService.instance.counterCache.keyIterator(); keyIter.hasNext(); ) {
+    CounterCacheKey key=keyIter.next();
+    DecoratedKey dk=partitioner.decorateKey(ByteBuffer.wrap(key.partitionKey));
+    if (key.ksAndCFName.equals(metadata.ksAndCFName) && Bounds.isInBounds(dk.getToken(),boundsToInvalidate)) {
+      CacheService.instance.counterCache.remove(key);
+      invalidatedKeys++;
+    }
+  }
+  return invalidatedKeys;
+}
