@@ -1,0 +1,32 @@
+{
+  final Token token=DatabaseDescriptor.getPartitioner().getRandomToken();
+  final List<Token> tokens=Collections.singletonList(token);
+  final HeartBeatState hb=new HeartBeatState(0);
+  final EndpointState state=new EndpointState(hb);
+  final AtomicInteger numFailures=new AtomicInteger();
+  Thread t1=new Thread(new Runnable(){
+    public void run(){
+      state.addApplicationState(ApplicationState.TOKENS,valueFactory.tokens(tokens));
+      state.addApplicationState(ApplicationState.STATUS,valueFactory.normal(tokens));
+    }
+  }
+);
+  Thread t2=new Thread(new Runnable(){
+    public void run(){
+      for (int i=0; i < 50; i++) {
+        Map<ApplicationState,VersionedValue> values=new EnumMap<>(ApplicationState.class);
+        for (        Map.Entry<ApplicationState,VersionedValue> entry : state.states())         values.put(entry.getKey(),entry.getValue());
+        if (values.containsKey(ApplicationState.STATUS) && !values.containsKey(ApplicationState.TOKENS)) {
+          numFailures.incrementAndGet();
+          System.out.println(String.format("Failed: %s",values));
+        }
+      }
+    }
+  }
+);
+  t1.start();
+  t2.start();
+  t1.join();
+  t2.join();
+  assertTrue(numFailures.get() == 0);
+}
