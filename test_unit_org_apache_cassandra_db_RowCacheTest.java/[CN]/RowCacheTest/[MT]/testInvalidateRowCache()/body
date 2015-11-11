@@ -1,0 +1,13 @@
+{
+  StorageService.instance.initServer(0);
+  CacheService.instance.setRowCacheCapacityInMB(1);
+  rowCacheLoad(100,Integer.MAX_VALUE,1000);
+  ColumnFamilyStore store=Keyspace.open(KEYSPACE).getColumnFamilyStore(COLUMN_FAMILY);
+  assertEquals(CacheService.instance.rowCache.getKeySet().size(),100);
+  ArrayList<Bounds<Token>> subranges=getBounds(20);
+  ArrayList<Bounds<Token>> boundsToInvalidate=Lists.newArrayList(subranges.get(0),subranges.get(2),subranges.get(4));
+  int invalidatedKeys=store.invalidateRowCache(boundsToInvalidate);
+  assertEquals(60,invalidatedKeys);
+  assertEquals(40,CacheService.instance.rowCache.getKeySet().size());
+  CacheService.instance.setRowCacheCapacityInMB(0);
+}
