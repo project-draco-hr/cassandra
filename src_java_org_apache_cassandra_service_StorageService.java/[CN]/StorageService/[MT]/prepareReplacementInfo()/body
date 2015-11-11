@@ -6,8 +6,9 @@
   if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()) == null)   throw new RuntimeException("Cannot replace_address " + DatabaseDescriptor.getReplaceAddress() + " because it doesn't exist in gossip");
   hostId=Gossiper.instance.getHostId(DatabaseDescriptor.getReplaceAddress());
   try {
-    if (Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS) == null)     throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
-    Collection<Token> tokens=TokenSerializer.deserialize(getPartitioner(),new DataInputStream(new ByteArrayInputStream(getApplicationStateValue(DatabaseDescriptor.getReplaceAddress(),ApplicationState.TOKENS))));
+    VersionedValue tokensVersionedValue=Gossiper.instance.getEndpointStateForEndpoint(DatabaseDescriptor.getReplaceAddress()).getApplicationState(ApplicationState.TOKENS);
+    if (tokensVersionedValue == null)     throw new RuntimeException("Could not find tokens for " + DatabaseDescriptor.getReplaceAddress() + " to replace");
+    Collection<Token> tokens=TokenSerializer.deserialize(getPartitioner(),new DataInputStream(new ByteArrayInputStream(tokensVersionedValue.toBytes())));
     SystemKeyspace.setLocalHostId(hostId);
     Gossiper.instance.resetEndpointStateMap();
     return tokens;
