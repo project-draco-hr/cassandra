@@ -1,0 +1,32 @@
+{
+  String indexClassName=StubIndex.class.getName();
+  createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY ((a), b))");
+  createIndex(String.format("CREATE CUSTOM INDEX c_idx ON %%s(c) USING '%s'",indexClassName));
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  CFMetaData cfm=cfs.metadata;
+  StubIndex index1=(StubIndex)cfs.indexManager.getIndex(cfm.getIndexes().get("c_idx").orElseThrow(throwAssert("index not found")));
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?) USING TIMESTAMP 1",0,0,0);
+  assertEquals(1,index1.rowsInserted.size());
+  execute("DELETE FROM %s USING TIMESTAMP 2 WHERE a = ? AND b = ?",0,0);
+  assertEquals(1,index1.rowsUpdated.size());
+  Pair<Row,Row> update=index1.rowsUpdated.get(0);
+  Row existingRow=update.left;
+  Row newRow=update.right;
+  assertTrue(existingRow.deletion().isLive());
+  assertEquals(DeletionTime.LIVE,existingRow.deletion().time());
+  assertEquals(1L,existingRow.primaryKeyLivenessInfo().timestamp());
+  assertFalse(newRow.deletion().isLive());
+  assertEquals(2L,newRow.deletion().time().markedForDeleteAt());
+  assertFalse(newRow.cells().iterator().hasNext());
+  execute("DELETE FROM %s USING TIMESTAMP 3 WHERE a = ? AND b = ?",0,0);
+  assertEquals(2,index1.rowsUpdated.size());
+  update=index1.rowsUpdated.get(1);
+  existingRow=update.left;
+  newRow=update.right;
+  assertFalse(existingRow.deletion().isLive());
+  assertEquals(2L,existingRow.deletion().time().markedForDeleteAt());
+  assertFalse(existingRow.cells().iterator().hasNext());
+  assertFalse(newRow.deletion().isLive());
+  assertEquals(3L,newRow.deletion().time().markedForDeleteAt());
+  assertFalse(newRow.cells().iterator().hasNext());
+}
