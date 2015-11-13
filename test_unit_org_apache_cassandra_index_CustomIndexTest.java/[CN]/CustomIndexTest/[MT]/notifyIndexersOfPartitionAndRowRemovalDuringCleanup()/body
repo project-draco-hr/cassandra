@@ -1,0 +1,20 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, v int, PRIMARY KEY (k,c))");
+  createIndex(String.format("CREATE CUSTOM INDEX cleanup_index ON %%s() USING '%s'",StubIndex.class.getName()));
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  StubIndex index=(StubIndex)cfs.indexManager.getIndexByName("cleanup_index");
+  execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",0,0,0);
+  execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",0,1,1);
+  execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",0,2,2);
+  execute("INSERT INTO %s (k, c, v) VALUES (?, ?, ?)",3,3,3);
+  assertEquals(4,index.rowsInserted.size());
+  assertEquals(0,index.partitionDeletions.size());
+  ReadCommand cmd=Util.cmd(cfs,0).build();
+  try (ReadExecutionController executionController=cmd.executionController();UnfilteredPartitionIterator iterator=cmd.executeLocally(executionController)){
+    assertTrue(iterator.hasNext());
+    cfs.indexManager.deletePartition(iterator.next(),FBUtilities.nowInSeconds());
+  }
+   assertEquals(1,index.partitionDeletions.size());
+  assertEquals(3,index.rowsDeleted.size());
+  for (int i=0; i < 3; i++)   assertEquals(index.rowsDeleted.get(i).clustering(),index.rowsInserted.get(i).clustering());
+}
