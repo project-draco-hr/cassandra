@@ -1,0 +1,13 @@
+{
+  SelectorFactories factories=SelectorFactories.createFactoriesAndCollectColumnDefinitions(Collections.singletonList(arg),cfm,defs);
+  Selector.Factory factory=factories.get(0);
+  if (type.getType().equals(factory.getReturnType())) {
+    return factory;
+  }
+  FunctionName name=FunctionName.nativeFunction(CastFcts.getFunctionName(type));
+  Function fun=FunctionResolver.get(cfm.ksName,name,factories.newInstances(),cfm.ksName,cfm.cfName,null);
+  if (fun == null) {
+    throw new InvalidRequestException(String.format("%s cannot be cast to %s",defs.get(0).name,type));
+  }
+  return AbstractFunctionSelector.newFactory(fun,factories);
+}

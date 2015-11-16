@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (a timeuuid primary key, b timestamp, c date, d time)");
+  DateTime dateTime=DateTimeFormat.forPattern("yyyy-MM-dd hh:mm:ss").withZone(DateTimeZone.UTC).parseDateTime("2015-05-21 11:03:02");
+  DateTime date=DateTimeFormat.forPattern("yyyy-MM-dd").withZone(DateTimeZone.UTC).parseDateTime("2015-05-21");
+  long timeInMillis=dateTime.getMillis();
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, '2015-05-21 11:03:02+00', '2015-05-21', '11:03:02')",UUIDGen.getTimeUUID(timeInMillis));
+  assertRows(execute("SELECT CAST(a AS timestamp), " + "CAST(b AS timestamp), " + "CAST(c AS timestamp) FROM %s"),row(new Date(dateTime.getMillis()),new Date(dateTime.getMillis()),new Date(date.getMillis())));
+  int timeInMillisToDay=SimpleDateSerializer.timeInMillisToDay(date.getMillis());
+  assertRows(execute("SELECT CAST(a AS date), " + "CAST(b AS date), " + "CAST(c AS date) FROM %s"),row(timeInMillisToDay,timeInMillisToDay,timeInMillisToDay));
+  assertRows(execute("SELECT CAST(b AS text), " + "CAST(c AS text), " + "CAST(d AS text) FROM %s"),row("2015-05-21T11:03:02.000Z","2015-05-21","11:03:02.000000000"));
+}

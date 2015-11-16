@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int," + " b smallint," + " c double,"+ " primary key (a, b)) WITH CLUSTERING ORDER BY (b DESC);");
+  execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",1,(short)2,6.3);
+  assertRows(execute("SELECT CAST(a AS tinyint), " + "CAST(b AS tinyint), " + "CAST(c AS tinyint) FROM %s"),row((byte)1,(byte)2,(byte)6));
+  assertRows(execute("SELECT CAST(CAST(a AS tinyint) AS smallint), " + "CAST(CAST(b AS tinyint) AS smallint), " + "CAST(CAST(c AS tinyint) AS smallint) FROM %s"),row((short)1,(short)2,(short)6));
+  assertRows(execute("SELECT CAST(CAST(CAST(a AS tinyint) AS double) AS text), " + "CAST(CAST(CAST(b AS tinyint) AS double) AS text), " + "CAST(CAST(CAST(c AS tinyint) AS double) AS text) FROM %s"),row("1.0","2.0","6.0"));
+  String f=createFunction(KEYSPACE,"int","CREATE FUNCTION %s(val int) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE java "+ "AS 'return (double)val;'");
+  assertRows(execute("SELECT " + f + "(CAST(b AS int)) FROM %s"),row((double)2));
+  assertRows(execute("SELECT CAST(" + f + "(CAST(b AS int)) AS text) FROM %s"),row("2.0"));
+}
