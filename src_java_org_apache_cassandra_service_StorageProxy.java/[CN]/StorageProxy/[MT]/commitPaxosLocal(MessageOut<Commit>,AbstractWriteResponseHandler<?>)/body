@@ -1,0 +1,18 @@
+{
+  StageManager.getStage(MessagingService.verbStages.get(MessagingService.Verb.PAXOS_COMMIT)).maybeExecuteImmediately(new LocalMutationRunnable(){
+    public void runMayThrow(){
+      try {
+        PaxosState.commit(message.payload);
+        if (responseHandler != null)         responseHandler.response(null);
+      }
+ catch (      Exception ex) {
+        if (!(ex instanceof WriteTimeoutException))         logger.error("Failed to apply paxos commit locally : {}",ex);
+        responseHandler.onFailure(FBUtilities.getBroadcastAddress());
+      }
+    }
+    @Override protected Verb verb(){
+      return MessagingService.Verb.PAXOS_COMMIT;
+    }
+  }
+);
+}
