@@ -1,8 +1,16 @@
 {
-  long length=0;
-  for (  File file : directory.listFiles()) {
-    if (file.isFile())     length+=file.length();
- else     length+=folderSize(file);
+  final long[] sizeArr={0L};
+  try {
+    Files.walkFileTree(folder.toPath(),new SimpleFileVisitor<Path>(){
+      @Override public FileVisitResult visitFile(      Path file,      BasicFileAttributes attrs){
+        sizeArr[0]+=attrs.size();
+        return FileVisitResult.CONTINUE;
+      }
+    }
+);
   }
-  return length;
+ catch (  IOException e) {
+    logger.error("Error while getting {} folder size. {}",folder,e);
+  }
+  return sizeArr[0];
 }
