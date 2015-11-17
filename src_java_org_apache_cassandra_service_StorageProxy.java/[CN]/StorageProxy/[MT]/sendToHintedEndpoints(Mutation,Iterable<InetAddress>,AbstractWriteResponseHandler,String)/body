@@ -3,11 +3,9 @@
   MessageOut<Mutation> message=null;
   boolean insertLocal=false;
   for (  InetAddress destination : targets) {
-    if (StorageMetrics.totalHintsInProgress.count() > maxHintsInProgress && (getHintsInProgressFor(destination).get() > 0 && shouldHint(destination))) {
-      throw new OverloadedException("Too many in flight hints: " + StorageMetrics.totalHintsInProgress.count());
-    }
+    checkHintOverload(destination);
     if (FailureDetector.instance.isAlive(destination)) {
-      if (destination.equals(FBUtilities.getBroadcastAddress()) && OPTIMIZE_LOCAL_REQUESTS) {
+      if (destination.equals(FBUtilities.getBroadcastAddress())) {
         insertLocal=true;
       }
  else {
