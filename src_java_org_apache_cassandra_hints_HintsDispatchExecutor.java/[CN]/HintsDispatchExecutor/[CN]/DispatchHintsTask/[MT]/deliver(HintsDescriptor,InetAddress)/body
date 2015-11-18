@@ -1,0 +1,19 @@
+{
+  File file=new File(hintsDirectory,descriptor.fileName());
+  Long offset=store.getDispatchOffset(descriptor).orElse(null);
+  try (HintsDispatcher dispatcher=HintsDispatcher.create(file,rateLimiter,address,descriptor.hostId,isPaused)){
+    if (offset != null)     dispatcher.seek(offset);
+    if (dispatcher.dispatch()) {
+      store.delete(descriptor);
+      store.cleanUp(descriptor);
+      logger.info("Finished hinted handoff of file {} to endpoint {}",descriptor.fileName(),hostId);
+      return true;
+    }
+ else {
+      store.markDispatchOffset(descriptor,dispatcher.dispatchOffset());
+      store.offerFirst(descriptor);
+      logger.info("Finished hinted handoff of file {} to endpoint {}, partially",descriptor.fileName(),hostId);
+      return false;
+    }
+  }
+ }
