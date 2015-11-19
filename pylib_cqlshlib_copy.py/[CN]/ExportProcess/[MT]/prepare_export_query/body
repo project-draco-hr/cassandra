@@ -1,0 +1,15 @@
+def prepare_export_query(self, partition_key, token_range):
+    '\n        Return a query where we select all the data for this token range\n        '
+    pk_cols = ', '.join(protect_names((col.name for col in partition_key)))
+    columnlist = ', '.join(protect_names(self.columns))
+    (start_token, end_token) = token_range
+    query = ('SELECT %s FROM %s.%s' % (columnlist, protect_name(self.ks), protect_name(self.cf)))
+    if ((start_token is not None) or (end_token is not None)):
+        query += ' WHERE'
+    if (start_token is not None):
+        query += (' token(%s) > %s' % (pk_cols, start_token))
+    if ((start_token is not None) and (end_token is not None)):
+        query += ' AND'
+    if (end_token is not None):
+        query += (' token(%s) <= %s' % (pk_cols, end_token))
+    return query
