@@ -1,0 +1,38 @@
+def check_processes(self, csvdest, ranges, inmsg, outmsg, processes):
+    '\n        Here we monitor all child processes by collecting their results\n        or any errors. We terminate when we have processed all the ranges or when there\n        are no more processes.\n        '
+    shell = self.shell
+    meter = RateMeter(10000)
+    total_jobs = len(ranges)
+    max_attempts = self.csv_options['maxattempts']
+    self.send_work(ranges, ranges.keys(), outmsg)
+    num_processes = len(processes)
+    succeeded = 0
+    failed = 0
+    while (((failed + succeeded) < total_jobs) and (self.num_live_processes(processes) == num_processes)):
+        try:
+            (token_range, result) = inmsg.get(timeout=1.0)
+            if ((token_range is None) and (result is None)):
+                succeeded += 1
+            elif isinstance(result, Exception):
+                if (token_range is None):
+                    shell.printerr(('Error from worker process: %s' % result))
+                elif ((ranges[token_range]['attempts'] < max_attempts) and (ranges[token_range]['rows'] == 0)):
+                    shell.printerr(('Error for %s: %s (will try again later attempt %d of %d)' % (token_range, result, ranges[token_range]['attempts'], max_attempts)))
+                    self.send_work(ranges, [token_range], outmsg)
+                else:
+                    shell.printerr(('Error for %s: %s (permanently given up after %d rows and %d attempts)' % (token_range, result, ranges[token_range]['rows'], ranges[token_range]['attempts'])))
+                    failed += 1
+            else:
+                (data, num) = result
+                csvdest.write(data)
+                meter.increment(n=num)
+                ranges[token_range]['rows'] += num
+        except Queue.Empty:
+            pass
+    if (self.num_live_processes(processes) < len(processes)):
+        for process in processes:
+            if (not process.is_alive()):
+                shell.printerr(('Child process %d died with exit code %d' % (process.pid, process.exitcode)))
+    if (succeeded < total_jobs):
+        shell.printerr(('Exported %d ranges out of %d total ranges, some records might be missing' % (succeeded, total_jobs)))
+    return meter.get_total_records()
