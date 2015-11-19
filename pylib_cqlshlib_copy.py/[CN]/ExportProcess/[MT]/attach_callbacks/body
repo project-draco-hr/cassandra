@@ -1,0 +1,15 @@
+def attach_callbacks(self, token_range, future, session):
+
+    def result_callback(rows):
+        if future.has_more_pages:
+            future.start_fetching_next_page()
+            self.write_rows_to_csv(token_range, rows)
+        else:
+            self.write_rows_to_csv(token_range, rows)
+            self.outmsg.put((None, None))
+            session.complete_job()
+
+    def err_callback(err):
+        self.report_error(err, token_range)
+        session.complete_job()
+    future.add_callbacks(callback=result_callback, errback=err_callback)

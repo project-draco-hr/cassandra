@@ -1,0 +1,15 @@
+def maybe_inject_failures(self, partition_key, token_range, attempts):
+    '\n        Examine self.test_failures and see if token_range is either a token range\n        supposed to cause a failure (failing_range) or to terminate the worker process\n        (exit_range). If not then call prepare_export_query(), which implements the\n        normal behavior.\n        '
+    (start_token, end_token) = token_range
+    if ((not start_token) or (not end_token)):
+        return self.prepare_export_query(partition_key, token_range)
+    if ('failing_range' in self.test_failures):
+        failing_range = self.test_failures['failing_range']
+        if ((start_token >= failing_range['start']) and (end_token <= failing_range['end'])):
+            if (attempts < failing_range['num_failures']):
+                return 'SELECT * from bad_table'
+    if ('exit_range' in self.test_failures):
+        exit_range = self.test_failures['exit_range']
+        if ((start_token >= exit_range['start']) and (end_token <= exit_range['end'])):
+            sys.exit(1)
+    return self.prepare_export_query(partition_key, token_range)
