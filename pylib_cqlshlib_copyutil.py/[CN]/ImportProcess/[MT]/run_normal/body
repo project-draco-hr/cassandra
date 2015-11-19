@@ -1,6 +1,8 @@
 def run_normal(self, table_meta):
     '\n        Main run method for normal tables, i.e. tables that do not contain counter columns.\n        '
     query = ('INSERT INTO %s.%s (%s) VALUES (%s)' % (protect_name(self.ks), protect_name(self.cf), ', '.join(protect_names(self.columns)), ', '.join(['?' for _ in self.columns])))
+    if (self.ttl >= 0):
+        query += ('USING TTL %s' % (self.ttl,))
     query_statement = self.session.prepare(query)
     conv = ImportConversion(self, table_meta, query_statement)
     while True:
