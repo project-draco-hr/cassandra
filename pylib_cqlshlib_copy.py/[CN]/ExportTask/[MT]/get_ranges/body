@@ -1,0 +1,34 @@
+def get_ranges(self):
+    '\n        return a queue of tuples, where the first tuple entry is a token range (from, to]\n        and the second entry is a list of hosts that own that range. Each host is responsible\n        for all the tokens in the rage (from, to].\n\n        The ring information comes from the driver metadata token map, which is built by\n        querying System.PEERS.\n\n        We only consider replicas that are in the local datacenter. If there are no local replicas\n        we use the cqlsh session host.\n        '
+    shell = self.shell
+    hostname = shell.hostname
+    ranges = dict()
+
+    def make_range(hosts):
+        return {'hosts': tuple(hosts), 'attempts': 0, 'rows': 0, }
+    min_token = self.get_min_token()
+    if ((shell.conn.metadata.token_map is None) or (min_token is None)):
+        ranges[(None, None)] = make_range([hostname])
+        return ranges
+    local_dc = shell.conn.metadata.get_host(hostname).datacenter
+    ring = shell.get_ring(self.ks).items()
+    ring.sort()
+    previous_previous = None
+    previous = None
+    for (token, replicas) in ring:
+        if ((previous is None) and (token.value == min_token)):
+            continue
+        hosts = []
+        for host in replicas:
+            if (host.datacenter == local_dc):
+                hosts.append(host.address)
+        if (len(hosts) == 0):
+            hosts.append(hostname)
+        ranges[(previous, token.value)] = make_range(hosts)
+        previous_previous = previous
+        previous = token.value
+    if (len(ranges) == 0):
+        ranges[(None, None)] = make_range([hostname])
+    else:
+        ranges[(previous, None)] = ranges[(previous_previous, previous)].copy()
+    return ranges

@@ -1,0 +1,35 @@
+def run(self):
+    '\n        Initiates the export by creating the processes.\n        '
+    shell = self.shell
+    fname = self.fname
+    if (fname is None):
+        do_close = False
+        csvdest = sys.stdout
+    else:
+        do_close = True
+        try:
+            csvdest = open(fname, 'wb')
+        except IOError as e:
+            shell.printerr(("Can't open %r for writing: %s" % (fname, e)))
+            return 0
+    if self.csv_options['header']:
+        writer = csv.writer(csvdest, **self.dialect_options)
+        writer.writerow(self.columns)
+    ranges = self.get_ranges()
+    num_processes = get_num_processes(cap=min(16, len(ranges)))
+    inmsg = mp.Queue()
+    outmsg = mp.Queue()
+    processes = []
+    for i in xrange(num_processes):
+        process = ExportProcess(outmsg, inmsg, self.ks, self.cf, self.columns, self.dialect_options, self.csv_options, shell.debug, shell.port, shell.conn.cql_version, shell.auth_provider, shell.ssl, self.protocol_version, self.config_file)
+        process.start()
+        processes.append(process)
+    try:
+        return self.check_processes(csvdest, ranges, inmsg, outmsg, processes)
+    finally:
+        for process in processes:
+            process.terminate()
+        inmsg.close()
+        outmsg.close()
+        if do_close:
+            csvdest.close()

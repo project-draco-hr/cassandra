@@ -6,7 +6,7 @@ import ConfigParser
 import csv
 import getpass
 import locale
-import multiprocessing
+import multiprocessing as mp
 import optparse
 import os
 import platform
@@ -60,7 +60,7 @@ from cassandra.query import SimpleStatement, ordered_dict_factory, TraceUnavaila
 cqlshlibdir = os.path.join(CASSANDRA_PATH, 'pylib')
 if os.path.isdir(cqlshlibdir):
     sys.path.insert(0, cqlshlibdir)
-from cqlshlib import cql3handling, cqlhandling, pylexotron, sslhandling
+from cqlshlib import cql3handling, cqlhandling, pylexotron, sslhandling, copy
 from cqlshlib.displaying import ANSI_RESET, BLUE, COLUMN_NAME_COLORS, CYAN, RED, FormattedValue, colorme
 from cqlshlib.formatting import DEFAULT_DATE_FORMAT, DEFAULT_NANOTIME_FORMAT, DEFAULT_TIMESTAMP_FORMAT, DateTimeFormat, format_by_type, format_value_utype, formatter_for
 from cqlshlib.tracing import print_trace, print_trace_session
@@ -125,8 +125,9 @@ cqlsh_syntax_completers = []
 cqlsh_extra_syntax_rules = '\n<cqlshCommand> ::= <CQL_Statement>\n                 | <specialCommand> ( ";" | "\\n" )\n                 ;\n\n<specialCommand> ::= <describeCommand>\n                   | <consistencyCommand>\n                   | <serialConsistencyCommand>\n                   | <showCommand>\n                   | <sourceCommand>\n                   | <captureCommand>\n                   | <copyCommand>\n                   | <loginCommand>\n                   | <debugCommand>\n                   | <helpCommand>\n                   | <tracingCommand>\n                   | <expandCommand>\n                   | <exitCommand>\n                   | <pagingCommand>\n                   | <clearCommand>\n                   ;\n\n<describeCommand> ::= ( "DESCRIBE" | "DESC" )\n                                  ( "FUNCTIONS" ksname=<keyspaceName>?\n                                  | "FUNCTION" udf=<anyFunctionName>\n                                  | "AGGREGATES" ksname=<keyspaceName>?\n                                  | "AGGREGATE" uda=<userAggregateName>\n                                  | "KEYSPACES"\n                                  | "KEYSPACE" ksname=<keyspaceName>?\n                                  | ( "COLUMNFAMILY" | "TABLE" ) cf=<columnFamilyName>\n                                  | "INDEX" idx=<indexName>\n                                  | ( "COLUMNFAMILIES" | "TABLES" )\n                                  | "FULL"? "SCHEMA"\n                                  | "CLUSTER"\n                                  | "TYPES"\n                                  | "TYPE" ut=<userTypeName>\n                                  | (ksname=<keyspaceName> | cf=<columnFamilyName> | idx=<indexName>))\n                    ;\n\n<consistencyCommand> ::= "CONSISTENCY" ( level=<consistencyLevel> )?\n                       ;\n\n<consistencyLevel> ::= "ANY"\n                     | "ONE"\n                     | "TWO"\n                     | "THREE"\n                     | "QUORUM"\n                     | "ALL"\n                     | "LOCAL_QUORUM"\n                     | "EACH_QUORUM"\n                     | "SERIAL"\n                     | "LOCAL_SERIAL"\n                     | "LOCAL_ONE"\n                     ;\n\n<serialConsistencyCommand> ::= "SERIAL" "CONSISTENCY" ( level=<serialConsistencyLevel> )?\n                             ;\n\n<serialConsistencyLevel> ::= "SERIAL"\n                           | "LOCAL_SERIAL"\n                           ;\n\n<showCommand> ::= "SHOW" what=( "VERSION" | "HOST" | "SESSION" sessionid=<uuid> )\n                ;\n\n<sourceCommand> ::= "SOURCE" fname=<stringLiteral>\n                  ;\n\n<captureCommand> ::= "CAPTURE" ( fname=( <stringLiteral> | "OFF" ) )?\n                   ;\n\n<copyCommand> ::= "COPY" cf=<columnFamilyName>\n                         ( "(" [colnames]=<colname> ( "," [colnames]=<colname> )* ")" )?\n                         ( dir="FROM" ( fname=<stringLiteral> | "STDIN" )\n                         | dir="TO"   ( fname=<stringLiteral> | "STDOUT" ) )\n                         ( "WITH" <copyOption> ( "AND" <copyOption> )* )?\n                ;\n\n<copyOption> ::= [optnames]=(<identifier>|<reserved_identifier>) "=" [optvals]=<copyOptionVal>\n               ;\n\n<copyOptionVal> ::= <identifier>\n                  | <reserved_identifier>\n                  | <stringLiteral>\n                  ;\n\n# avoiding just "DEBUG" so that this rule doesn\'t get treated as a terminal\n<debugCommand> ::= "DEBUG" "THINGS"?\n                 ;\n\n<helpCommand> ::= ( "HELP" | "?" ) [topic]=( /[a-z_]*/ )*\n                ;\n\n<tracingCommand> ::= "TRACING" ( switch=( "ON" | "OFF" ) )?\n                   ;\n\n<expandCommand> ::= "EXPAND" ( switch=( "ON" | "OFF" ) )?\n                   ;\n\n<pagingCommand> ::= "PAGING" ( switch=( "ON" | "OFF" | /[0-9]+/) )?\n                  ;\n\n<loginCommand> ::= "LOGIN" username=<username> (password=<stringLiteral>)?\n                 ;\n\n<exitCommand> ::= "exit" | "quit"\n                ;\n\n<clearCommand> ::= "CLEAR" | "CLS"\n                 ;\n\n<qmark> ::= "?" ;\n'
 cqlsh_syntax_completer('sourceCommand', 'fname')(complete_source_quoted_filename)
 cqlsh_syntax_completer('captureCommand', 'fname')(complete_source_quoted_filename)
-COPY_OPTIONS = ('DELIMITER', 'QUOTE', 'ESCAPE', 'HEADER', 'ENCODING', 'TIMEFORMAT', 'NULL')
+COPY_OPTIONS = ['DELIMITER', 'QUOTE', 'ESCAPE', 'HEADER', 'NULL', 'ENCODING', 'TIMEFORMAT', 'JOBS', 'PAGESIZE', 'PAGETIMEOUT', 'MAXATTEMPTS']
 warnings.showwarning = show_warning_without_quoting_line
 warnings.filterwarnings('always', category=cql3handling.UnexpectedTableStructure)
+insert_driver_hooks()
 if (__name__ == '__main__'):
     main(*read_options(sys.argv[1:], os.environ))
