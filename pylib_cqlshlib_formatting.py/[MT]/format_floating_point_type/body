@@ -1,11 +1,19 @@
-def format_floating_point_type(val, colormap, float_precision, **_):
+def format_floating_point_type(val, colormap, float_precision, decimal_sep=None, thousands_sep=None, **_):
     if math.isnan(val):
         bval = 'NaN'
     elif math.isinf(val):
         bval = ('Infinity' if (val > 0) else '-Infinity')
+    elif thousands_sep:
+        (dpart, ipart) = math.modf(val)
+        bval = format_integer_with_thousands_sep(ipart, thousands_sep)
+        dpart_str = ('%.*f' % (float_precision, math.fabs(dpart)))[2:].rstrip('0')
+        if dpart_str:
+            bval += ('%s%s' % (('.' if (not decimal_sep) else decimal_sep), dpart_str))
     else:
         exponent = (int(math.log10(abs(val))) if (abs(val) > sys.float_info.epsilon) else ((- sys.maxint) - 1))
         if ((-4) <= exponent < float_precision):
             float_precision = ((float_precision + exponent) + 1)
         bval = ('%.*g' % (float_precision, val))
+        if decimal_sep:
+            bval = bval.replace('.', decimal_sep)
     return colorme(bval, colormap, 'float')

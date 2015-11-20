@@ -2,10 +2,14 @@
   if (type != Type.LOGGED && mutations.size() > 1) {
     Set<String> ksCfPairs=new HashSet<>();
     Set<ByteBuffer> keySet=new HashSet<>();
+    Map<String,Collection<Range<Token>>> localTokensByKs=new HashMap<>();
+    boolean localMutationsOnly=true;
     for (    IMutation im : mutations) {
       keySet.add(im.key());
       for (      ColumnFamily cf : im.getColumnFamilies())       ksCfPairs.add(String.format("%s.%s",cf.metadata().ksName,cf.metadata().cfName));
+      if (localMutationsOnly)       localMutationsOnly&=isMutationLocal(localTokensByKs,im);
     }
+    if (localMutationsOnly)     return;
     NoSpamLogger.log(logger,NoSpamLogger.Level.WARN,1,TimeUnit.MINUTES,unloggedBatchWarning,keySet.size(),keySet.size() == 1 ? "" : "s",ksCfPairs.size() == 1 ? "" : "s",ksCfPairs);
   }
 }

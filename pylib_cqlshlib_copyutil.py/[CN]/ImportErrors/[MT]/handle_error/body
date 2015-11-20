@@ -1,0 +1,18 @@
+def handle_error(self, err, batch):
+    '\n        Handle an error by printing the appropriate error message and incrementing the correct counter.\n        Return true if we should retry this batch, false if the error is non-recoverable\n        '
+    shell = self.shell
+    err = str(err)
+    if self.is_parse_error(err):
+        self.parse_errors += len(batch['rows'])
+        self.add_failed_rows(batch['rows'])
+        shell.printerr(('Failed to import %d rows: %s -  given up without retries' % (len(batch['rows']), err)))
+        return False
+    else:
+        self.insert_errors += len(batch['rows'])
+        if (batch['attempts'] < self.max_attempts):
+            shell.printerr(('Failed to import %d rows: %s -  will retry later, attempt %d of %d' % (len(batch['rows']), err, batch['attempts'], self.max_attempts)))
+            return True
+        else:
+            self.add_failed_rows(batch['rows'])
+            shell.printerr(('Failed to import %d rows: %s -  given up after %d attempts' % (len(batch['rows']), err, batch['attempts'])))
+            return False

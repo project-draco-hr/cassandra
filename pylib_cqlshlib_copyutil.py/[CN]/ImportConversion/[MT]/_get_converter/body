@@ -8,6 +8,36 @@ def _get_converter(self, cql_type):
     def convert(t, v):
         return converters.get(t.typename, convert_unknown)(unprotect(v), ct=t)
 
+    def convert_blob(v, **_):
+        return bytearray.fromhex(v[2:])
+
+    def convert_text(v, **_):
+        return v
+
+    def convert_uuid(v, **_):
+        return UUID(v)
+
+    def convert_bool(v, **_):
+        return (True if (v.lower() == self.boolean_styles[0].lower()) else False)
+
+    def get_convert_integer_fcn(adapter=int):
+        '\n            Return a slow and a fast integer conversion function depending on self.thousands_sep\n            '
+        if self.thousands_sep:
+            return (lambda v, ct=cql_type: adapter(v.replace(self.thousands_sep, '')))
+        else:
+            return (lambda v, ct=cql_type: adapter(v))
+
+    def get_convert_decimal_fcn(adapter=float):
+        '\n            Return a slow and a fast decimal conversion function depending on self.thousands_sep and self.decimal_sep\n            '
+        if (self.thousands_sep and self.decimal_sep):
+            return (lambda v, ct=cql_type: adapter(v.replace(self.thousands_sep, '').replace(self.decimal_sep, '.')))
+        elif self.thousands_sep:
+            return (lambda v, ct=cql_type: adapter(v.replace(self.thousands_sep, '')))
+        elif self.decimal_sep:
+            return (lambda v, ct=cql_type: adapter(v.replace(self.decimal_sep, '.')))
+        else:
+            return (lambda v, ct=cql_type: adapter(v))
+
     def split(val, sep=','):
         '\n            Split into a list of values whenever we encounter a separator but\n            ignore separators inside parentheses or single quotes, except for the two\n            outermost parentheses, which will be ignored. We expect val to be at least\n            2 characters long (the two outer parentheses).\n            '
         ret = []
@@ -30,16 +60,27 @@ def _get_converter(self, cql_type):
         return ret
     p = re.compile((("(\\d{4})\\-(\\d{2})\\-(\\d{2})\\s?(?:'T')?" + '(?:(\\d{2}):(\\d{2})(?::(\\d{2}))?)?') + '(?:([+\\-])(\\d{2}):?(\\d{2}))?'))
 
-    def convert_date(val, **_):
+    def convert_datetime(val, **_):
+        try:
+            tval = time.strptime(val, self.time_format)
+            return (timegm(tval) * 1000.0)
+        except ValueError:
+            pass
         m = p.match(val)
         if (not m):
-            raise ValueError(("can't interpret %r as a date" % (val,)))
+            raise ValueError(("can't interpret %r as a date, specified time format is %s" % (val, self.time_format)))
         tval = time.struct_time((int(m.group(1)), int(m.group(2)), int(m.group(3)), (int(m.group(4)) if m.group(4) else 0), (int(m.group(5)) if m.group(5) else 0), (int(m.group(6)) if m.group(6) else 0), 0, 1, (-1)))
         if m.group(7):
             offset = (((int(m.group(8)) * 3600) + (int(m.group(9)) * 60)) * int((m.group(7) + '1')))
         else:
             offset = (- time.timezone)
         return ((timegm(tval) + offset) * 1000.0)
+
+    def convert_date(v, **_):
+        return Date(v)
+
+    def convert_time(v, **_):
+        return Time(v)
 
     def convert_tuple(val, ct=cql_type):
         return tuple((convert(t, v) for (t, v) in zip(ct.subtypes, split(val))))
@@ -72,7 +113,7 @@ def _get_converter(self, cql_type):
             return convert_user_type(val, ct=ct)
         elif issubclass(ct, ReversedType):
             return convert_single_subtype(val, ct=ct)
-        self.printmsg(('Unknown type %s (%s) for val %s' % (ct, ct.typename, val)))
+        self.printdebugmsg(('Unknown type %s (%s) for val %s' % (ct, ct.typename, val)))
         return val
-    converters = {'blob': (lambda v, ct=cql_type: bytearray.fromhex(v[2:])), 'decimal': (lambda v, ct=cql_type: Decimal(v)), 'uuid': (lambda v, ct=cql_type: UUID(v)), 'boolean': (lambda v, ct=cql_type: bool(v)), 'tinyint': (lambda v, ct=cql_type: int(v)), 'ascii': (lambda v, ct=cql_type: v), 'float': (lambda v, ct=cql_type: float(v)), 'double': (lambda v, ct=cql_type: float(v)), 'bigint': (lambda v, ct=cql_type: long(v)), 'int': (lambda v, ct=cql_type: int(v)), 'varint': (lambda v, ct=cql_type: int(v)), 'inet': (lambda v, ct=cql_type: v), 'counter': (lambda v, ct=cql_type: long(v)), 'timestamp': convert_date, 'timeuuid': (lambda v, ct=cql_type: UUID(v)), 'date': (lambda v, ct=cql_type: Date(v)), 'smallint': (lambda v, ct=cql_type: int(v)), 'time': (lambda v, ct=cql_type: Time(v)), 'text': (lambda v, ct=cql_type: v), 'varchar': (lambda v, ct=cql_type: v), 'list': convert_list, 'set': convert_set, 'map': convert_map, 'tuple': convert_tuple, 'frozen': convert_single_subtype, }
+    converters = {'blob': convert_blob, 'decimal': get_convert_decimal_fcn(adapter=Decimal), 'uuid': convert_uuid, 'boolean': convert_bool, 'tinyint': get_convert_integer_fcn(), 'ascii': convert_text, 'float': get_convert_decimal_fcn(), 'double': get_convert_decimal_fcn(), 'bigint': get_convert_integer_fcn(adapter=long), 'int': get_convert_integer_fcn(), 'varint': get_convert_integer_fcn(), 'inet': convert_text, 'counter': get_convert_integer_fcn(adapter=long), 'timestamp': convert_datetime, 'timeuuid': convert_uuid, 'date': convert_date, 'smallint': get_convert_integer_fcn(), 'time': convert_time, 'text': convert_text, 'varchar': convert_text, 'list': convert_list, 'set': convert_set, 'map': convert_map, 'tuple': convert_tuple, 'frozen': convert_single_subtype, }
     return converters.get(cql_type.typename, convert_unknown)
