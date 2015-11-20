@@ -1,7 +1,6 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF_STANDARD1);
-  cfs.truncateBlocking();
   cfs.disableAutoCompaction();
   ByteBuffer bigValue=ByteBuffer.wrap(new byte[10000]);
   ByteBuffer value=ByteBuffer.wrap(new byte[100]);
@@ -27,5 +26,7 @@
   options.put(SizeTieredCompactionStrategyOptions.MIN_SSTABLE_SIZE_KEY,"1");
   DateTieredCompactionStrategy dtcs=new DateTieredCompactionStrategy(cfs,options);
   for (  SSTableReader sstable : cfs.getSSTables())   dtcs.addSSTable(sstable);
-  assertEquals(20,dtcs.getNextBackgroundTask(0).transaction.originals().size());
+  AbstractCompactionTask task=dtcs.getNextBackgroundTask(0);
+  assertEquals(20,task.transaction.originals().size());
+  task.transaction.abort();
 }
