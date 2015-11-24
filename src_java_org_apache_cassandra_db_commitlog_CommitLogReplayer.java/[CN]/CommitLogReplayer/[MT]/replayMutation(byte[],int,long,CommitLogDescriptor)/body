@@ -1,2 +1,32 @@
 {
+  final Mutation mutation;
+  try (RebufferingInputStream bufIn=new DataInputBuffer(inputBuffer,0,size)){
+    mutation=Mutation.serializer.deserialize(bufIn,desc.getMessagingVersion(),SerializationHelper.Flag.LOCAL);
+    for (    PartitionUpdate upd : mutation.getPartitionUpdates())     upd.validate();
+  }
+ catch (  UnknownColumnFamilyException ex) {
+    if (ex.cfId == null)     return;
+    AtomicInteger i=invalidMutations.get(ex.cfId);
+    if (i == null) {
+      i=new AtomicInteger(1);
+      invalidMutations.put(ex.cfId,i);
+    }
+ else     i.incrementAndGet();
+    return;
+  }
+catch (  Throwable t) {
+    JVMStabilityInspector.inspectThrowable(t);
+    File f=File.createTempFile("mutation","dat");
+    try (DataOutputStream out=new DataOutputStream(new FileOutputStream(f))){
+      out.write(inputBuffer,0,size);
+    }
+     handleReplayError(false,"Unexpected error deserializing mutation; saved to %s.  " + "This may be caused by replaying a mutation against a table with the same name but incompatible schema.  " + "Exception follows: %s",f.getAbsolutePath(),t);
+    return;
+  }
+  if (logger.isTraceEnabled())   logger.trace("replaying mutation for {}.{}: {}",mutation.getKeyspaceName(),mutation.key(),"{" + StringUtils.join(mutation.getPartitionUpdates().iterator(),", ") + "}");
+  pendingMutationBytes+=size;
+  futures.offer(mutationInitiator.initiateMutation(mutation,desc.id,size,entryLocation,this));
+  while (futures.size() > MAX_OUTSTANDING_REPLAY_COUNT || pendingMutationBytes > MAX_OUTSTANDING_REPLAY_BYTES || (!futures.isEmpty() && futures.peek().isDone())) {
+    pendingMutationBytes-=FBUtilities.waitOnFuture(futures.poll());
+  }
 }
