@@ -1,16 +1,17 @@
 {
   int nowInSec=FBUtilities.nowInSeconds();
-  ReadQuery query=getQuery(options,nowInSec);
+  int userLimit=getLimit(options);
+  ReadQuery query=getQuery(options,nowInSec,userLimit);
   int pageSize=getPageSize(options);
   try (ReadExecutionController executionController=query.executionController()){
     if (pageSize <= 0 || query.limits().count() <= pageSize) {
       try (PartitionIterator data=query.executeInternal(executionController)){
-        return processResults(data,options,nowInSec);
+        return processResults(data,options,nowInSec,userLimit);
       }
      }
  else {
       QueryPager pager=query.getPager(options.getPagingState(),options.getProtocolVersion());
-      return execute(Pager.forInternalQuery(pager,executionController),options,pageSize,nowInSec);
+      return execute(Pager.forInternalQuery(pager,executionController),options,pageSize,nowInSec,userLimit);
     }
   }
  }

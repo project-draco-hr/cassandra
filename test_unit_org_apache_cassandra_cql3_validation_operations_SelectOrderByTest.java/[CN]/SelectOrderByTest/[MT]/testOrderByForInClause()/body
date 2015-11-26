@@ -5,6 +5,8 @@
   execute("INSERT INTO %s (my_id, col1, value) VALUES ( 'key3', 2, 'b')");
   execute("INSERT INTO %s (my_id, col1, value) VALUES ( 'key4', 4, 'd')");
   assertRows(execute("SELECT col1 FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1"),row(1),row(2),row(3));
+  assertRows(execute("SELECT col1 FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1 LIMIT 2"),row(1),row(2));
+  assertRows(execute("SELECT col1 FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1 LIMIT 10"),row(1),row(2),row(3));
   assertRows(execute("SELECT col1, my_id FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1"),row(1,"key1"),row(2,"key3"),row(3,"key2"));
   assertRows(execute("SELECT my_id, col1 FROM %s WHERE my_id in('key1', 'key2', 'key3') ORDER BY col1"),row("key1",1),row("key3",2),row("key2",3));
   createTable("CREATE TABLE %s (pk1 int, pk2 int, c int, v text, PRIMARY KEY ((pk1, pk2), c) )");
@@ -15,6 +17,8 @@
   assertRows(execute("SELECT v, ttl(v), c FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c; ",1,1,2),row("B",null,1),row("A",null,2),row("D",null,4));
   assertRows(execute("SELECT v, ttl(v), c as name_1 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c; ",1,1,2),row("B",null,1),row("A",null,2),row("D",null,4));
   assertRows(execute("SELECT v FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c; ",1,1,2),row("B"),row("A"),row("D"));
+  assertRows(execute("SELECT v FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c LIMIT 2; ",1,1,2),row("B"),row("A"));
+  assertRows(execute("SELECT v FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c LIMIT 10; ",1,1,2),row("B"),row("A"),row("D"));
   assertRows(execute("SELECT v as c FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c; ",1,1,2),row("B"),row("A"),row("D"));
   createTable("CREATE TABLE %s (pk1 int, pk2 int, c1 int, c2 int, v text, PRIMARY KEY ((pk1, pk2), c1, c2) )");
   execute("INSERT INTO %s (pk1, pk2, c1, c2, v) VALUES (?, ?, ?, ?, ?)",1,1,4,4,"A");
@@ -25,4 +29,10 @@
   assertRows(execute("SELECT v, ttl(v), c1 as name_1, c2 as name_2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1, c2; ",1,1,2),row("B",null,1,2),row("D",null,4,1),row("A",null,4,4));
   assertRows(execute("SELECT v FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1, c2; ",1,1,2),row("B"),row("D"),row("A"));
   assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1, c2; ",1,1,2),row("B"),row("D"),row("A"));
+  assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1, c2 LIMIT 2; ",1,1,2),row("B"),row("D"));
+  assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1, c2 LIMIT 10; ",1,1,2),row("B"),row("D"),row("A"));
+  assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1 DESC , c2 DESC; ",1,1,2),row("A"),row("D"),row("B"));
+  assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1 DESC , c2 DESC LIMIT 2; ",1,1,2),row("A"),row("D"));
+  assertRows(execute("SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1 DESC , c2 DESC LIMIT 10; ",1,1,2),row("A"),row("D"),row("B"));
+  assertInvalidMessage("LIMIT must be strictly positive","SELECT v as c2 FROM %s where pk1 = ? AND pk2 IN (?, ?) ORDER BY c1 DESC , c2 DESC LIMIT 0; ",1,1,2);
 }
