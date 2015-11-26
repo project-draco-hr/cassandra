@@ -1,0 +1,11 @@
+{
+  if (jsonValuesCache == null)   jsonValuesCache=new ArrayList<>(Collections.<Map<ColumnIdentifier,Term>>nCopies(getValues().size(),null));
+  Map<ColumnIdentifier,Term> jsonValue=jsonValuesCache.get(bindIndex);
+  if (jsonValue == null) {
+    ByteBuffer value=getValues().get(bindIndex);
+    if (value == null)     throw new InvalidRequestException("Got null for INSERT JSON values");
+    jsonValue=Json.parseJson(UTF8Type.instance.getSerializer().deserialize(value),expectedReceivers);
+    jsonValuesCache.set(bindIndex,jsonValue);
+  }
+  return jsonValue.get(columnName);
+}
