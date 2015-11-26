@@ -1,0 +1,33 @@
+{
+  path.offer(newInProgressVisit(rootObject,getFields(rootObject.getClass()),null,rootObject.name()));
+  InProgressVisit inProgress=null;
+  while (inProgress != null || !path.isEmpty()) {
+    if (inProgress == null)     inProgress=path.pollLast();
+    try {
+      Pair<Object,Field> p=inProgress.nextChild();
+      Object child=null;
+      Field field=null;
+      if (p != null) {
+        iterations++;
+        child=p.left;
+        field=p.right;
+      }
+      if (child != null && visited.add(child)) {
+        path.offer(inProgress);
+        inProgress=newInProgressVisit(child,getFields(child.getClass()),field,null);
+        continue;
+      }
+ else       if (visiting == child) {
+        NoSpamLogger.log(logger,NoSpamLogger.Level.ERROR,rootObject.getClass().getName(),1,TimeUnit.SECONDS,"Strong self-ref loop detected {}",path);
+      }
+ else       if (child == null) {
+        returnInProgressVisit(inProgress);
+        inProgress=null;
+        continue;
+      }
+    }
+ catch (    IllegalAccessException e) {
+      NoSpamLogger.log(logger,NoSpamLogger.Level.ERROR,5,TimeUnit.MINUTES,"Could not fully check for self-referential leaks",e);
+    }
+  }
+}
