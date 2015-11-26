@@ -1,15 +1,15 @@
 {
   Function old=Schema.instance.findFunction(functionName,argTypes).orElse(null);
-  if (old != null) {
-    if (ifNotExists)     return false;
+  boolean replaced=old != null;
+  if (replaced) {
+    if (ifNotExists)     return null;
     if (!orReplace)     throw new InvalidRequestException(String.format("Function %s already exists",old));
     if (!(old instanceof AggregateFunction))     throw new InvalidRequestException(String.format("Aggregate %s can only replace an aggregate",old));
     if (old.isNative())     throw new InvalidRequestException(String.format("Cannot replace native aggregate %s",old));
     if (!old.returnType().isValueCompatibleWith(returnType))     throw new InvalidRequestException(String.format("Cannot replace aggregate %s, the new return type %s is not compatible with the return type %s of existing function",functionName,returnType.asCQL3Type(),old.returnType().asCQL3Type()));
   }
   if (!stateFunction.isCalledOnNullInput() && initcond == null)   throw new InvalidRequestException(String.format("Cannot create aggregate %s without INITCOND because state function %s does not accept 'null' arguments",functionName,stateFunc));
-  udAggregate=new UDAggregate(functionName,argTypes,returnType,stateFunction,finalFunction,initcond);
-  replaced=old != null;
+  UDAggregate udAggregate=new UDAggregate(functionName,argTypes,returnType,stateFunction,finalFunction,initcond);
   MigrationManager.announceNewAggregate(udAggregate,isLocalOnly);
-  return true;
+  return new Event.SchemaChange(replaced ? Event.SchemaChange.Change.UPDATED : Event.SchemaChange.Change.CREATED,Event.SchemaChange.Target.AGGREGATE,udAggregate.name().keyspace,udAggregate.name().name,AbstractType.asCQLTypeStringList(udAggregate.argTypes()));
 }
