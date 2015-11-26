@@ -1,0 +1,44 @@
+{
+  StorageService.instance.getTokenMetadata().clearUnsafe();
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF1);
+  fillCF(cfs,LOOPS);
+  SSTableReader ssTable=cfs.getSSTables().iterator().next();
+  final Token ssTableMin=ssTable.first.getToken();
+  final Token ssTableMax=ssTable.last.getToken();
+  final Token min=token((byte)0);
+  final Token before1=token((byte)2);
+  final Token before2=token((byte)5);
+  final Token before3=token((byte)10);
+  final Token before4=token((byte)47);
+  final Token insideSsTable1=token((byte)50);
+  final Token insideSsTable2=token((byte)55);
+  final Token max=token((byte)127,(byte)127,(byte)127,(byte)127);
+  assert(min.compareTo(ssTableMin) < 0);
+  assert(before1.compareTo(ssTableMin) < 0);
+  assert(before2.compareTo(ssTableMin) < 0);
+  assert(before3.compareTo(ssTableMin) < 0);
+  assert(before4.compareTo(ssTableMin) < 0);
+  assert(ssTableMin.compareTo(insideSsTable1) < 0);
+  assert(insideSsTable1.compareTo(ssTableMax) < 0);
+  assert(ssTableMin.compareTo(insideSsTable2) < 0);
+  assert(insideSsTable2.compareTo(ssTableMax) < 0);
+  assert(ssTableMax.compareTo(max) < 0);
+  List<Map.Entry<Boolean,List<Range<Token>>>> testCases=new LinkedList<Map.Entry<Boolean,List<Range<Token>>>>(){
+{
+      add(entry(false,Arrays.asList(range(min,max))));
+      add(entry(true,Arrays.asList(range(min,insideSsTable1))));
+      add(entry(true,Arrays.asList(range(insideSsTable1,max))));
+      add(entry(true,Arrays.asList(range(min,ssTableMin))));
+      add(entry(true,Arrays.asList(range(ssTableMax,max))));
+      add(entry(true,Arrays.asList(range(min,insideSsTable1),range(insideSsTable2,max))));
+      add(entry(true,Arrays.asList(range(ssTableMin,ssTableMax))));
+      add(entry(false,Arrays.asList(range(before4,max))));
+      add(entry(false,Arrays.asList(range(min,before1),range(before2,before3),range(before4,max))));
+    }
+  }
+;
+  for (  Map.Entry<Boolean,List<Range<Token>>> testCase : testCases) {
+    assertEquals(testCase.getKey(),CompactionManager.needsCleanup(ssTable,testCase.getValue()));
+  }
+}
