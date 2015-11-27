@@ -3,9 +3,8 @@
   this.queueSize=conf.getInt(CqlOutputFormat.QUEUE_SIZE,32 * FBUtilities.getAvailableProcessors());
   batchThreshold=conf.getLong(CqlOutputFormat.BATCH_THRESHOLD,32);
   this.clients=new HashMap<>();
-  try (Cluster cluster=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf)){
-    String keyspace=ConfigHelper.getOutputKeyspace(conf);
-    Session client=cluster.connect(keyspace);
+  String keyspace=ConfigHelper.getOutputKeyspace(conf);
+  try (Cluster cluster=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf);Session client=cluster.connect(keyspace)){
     ringCache=new NativeRingCache(conf);
     if (client != null) {
       TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
