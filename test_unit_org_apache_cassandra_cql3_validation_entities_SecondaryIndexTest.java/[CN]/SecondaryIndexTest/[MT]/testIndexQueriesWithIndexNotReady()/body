@@ -1,0 +1,15 @@
+{
+  createTable("CREATE TABLE %s (pk int, ck int, value int, PRIMARY KEY (pk, ck))");
+  for (int i=0; i < 10; i++)   for (int j=0; j < 10; j++)   execute("INSERT INTO %s (pk, ck, value) VALUES (?, ?, ?)",i,j,i + j);
+  createIndex("CREATE CUSTOM INDEX testIndex ON %s (value) USING '" + IndexBlockingOnInitialization.class.getName() + "'");
+  try {
+    execute("SELECT value FROM %s WHERE value = 2");
+    fail();
+  }
+ catch (  IndexNotAvailableException e) {
+    assertTrue(true);
+  }
+ finally {
+    execute("DROP index " + KEYSPACE + ".testIndex");
+  }
+}
