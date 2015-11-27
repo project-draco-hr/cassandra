@@ -1,0 +1,17 @@
+{
+  String confFile=FBUtilities.resourceToFile(PropertyFileSnitch.SNITCH_PROPERTIES_FILENAME);
+  effectiveFile=Paths.get(confFile);
+  backupFile=Paths.get(confFile + ".bak");
+  restoreOrigConfigFile();
+  InetAddress[] hosts={InetAddress.getByName("127.0.0.1"),InetAddress.getByName("127.0.0.2"),InetAddress.getByName("127.0.0.9")};
+  IPartitioner partitioner=new RandomPartitioner();
+  valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
+  tokenMap=new HashMap<>();
+  for (  InetAddress host : hosts) {
+    Set<Token> tokens=Collections.singleton(partitioner.getRandomToken());
+    Gossiper.instance.initializeNodeUnsafe(host,UUID.randomUUID(),1);
+    Gossiper.instance.injectApplicationState(host,ApplicationState.TOKENS,valueFactory.tokens(tokens));
+    setNodeShutdown(host);
+    tokenMap.put(host,tokens);
+  }
+}
