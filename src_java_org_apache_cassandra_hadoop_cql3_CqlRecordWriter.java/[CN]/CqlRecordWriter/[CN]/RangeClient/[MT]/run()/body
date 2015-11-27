@@ -1,56 +1,62 @@
 {
   Session session=null;
-  outer:   while (run || !queue.isEmpty()) {
-    List<ByteBuffer> bindVariables;
-    try {
-      bindVariables=queue.take();
-    }
- catch (    InterruptedException e) {
-      continue;
-    }
-    ListIterator<InetAddress> iter=endpoints.listIterator();
-    while (true) {
-      if (session != null) {
-        try {
-          int i=0;
-          PreparedStatement statement=preparedStatement(session);
-          while (bindVariables != null) {
-            BoundStatement boundStatement=new BoundStatement(statement);
-            for (int columnPosition=0; columnPosition < bindVariables.size(); columnPosition++) {
-              boundStatement.setBytesUnsafe(columnPosition,bindVariables.get(columnPosition));
+  try {
+    outer:     while (run || !queue.isEmpty()) {
+      List<ByteBuffer> bindVariables;
+      try {
+        bindVariables=queue.take();
+      }
+ catch (      InterruptedException e) {
+        continue;
+      }
+      ListIterator<InetAddress> iter=endpoints.listIterator();
+      while (true) {
+        if (session != null) {
+          try {
+            int i=0;
+            PreparedStatement statement=preparedStatement(session);
+            while (bindVariables != null) {
+              BoundStatement boundStatement=new BoundStatement(statement);
+              for (int columnPosition=0; columnPosition < bindVariables.size(); columnPosition++) {
+                boundStatement.setBytesUnsafe(columnPosition,bindVariables.get(columnPosition));
+              }
+              session.execute(boundStatement);
+              i++;
+              if (i >= batchThreshold)               break;
+              bindVariables=queue.poll();
             }
-            session.execute(boundStatement);
-            i++;
-            if (i >= batchThreshold)             break;
-            bindVariables=queue.poll();
+            break;
           }
-          break;
+ catch (          Exception e) {
+            closeInternal();
+            if (!iter.hasNext()) {
+              lastException=new IOException(e);
+              break outer;
+            }
+          }
+        }
+        try {
+          InetAddress address=iter.next();
+          String host=address.getHostName();
+          cluster=CqlConfigHelper.getOutputCluster(host,conf);
+          closeSession(session);
+          session=cluster.connect();
         }
  catch (        Exception e) {
+          if (canRetryDriverConnection(e)) {
+            iter.previous();
+          }
           closeInternal();
-          if (!iter.hasNext()) {
+          if ((e instanceof AuthenticationException || e instanceof InvalidQueryException) || !iter.hasNext()) {
             lastException=new IOException(e);
             break outer;
           }
         }
       }
-      try {
-        InetAddress address=iter.next();
-        String host=address.getHostName();
-        cluster=CqlConfigHelper.getOutputCluster(host,conf);
-        session=cluster.connect();
-      }
- catch (      Exception e) {
-        if (canRetryDriverConnection(e)) {
-          iter.previous();
-        }
-        closeInternal();
-        if ((e instanceof AuthenticationException || e instanceof InvalidQueryException) || !iter.hasNext()) {
-          lastException=new IOException(e);
-          break outer;
-        }
-      }
     }
+  }
+  finally {
+    closeSession(session);
   }
   closeInternal();
 }
