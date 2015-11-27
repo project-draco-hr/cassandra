@@ -1,0 +1,14 @@
+{
+  confFile=YamlFileNetworkTopologySnitch.DEFAULT_TOPOLOGY_CONFIG_FILENAME;
+  InetAddress[] hosts={InetAddress.getByName("127.0.0.1"),InetAddress.getByName("127.0.0.2"),InetAddress.getByName("127.0.0.9")};
+  IPartitioner partitioner=new RandomPartitioner();
+  valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
+  tokenMap=new HashMap<>();
+  for (  InetAddress host : hosts) {
+    Set<Token> tokens=Collections.singleton(partitioner.getRandomToken());
+    Gossiper.instance.initializeNodeUnsafe(host,UUID.randomUUID(),1);
+    Gossiper.instance.injectApplicationState(host,ApplicationState.TOKENS,valueFactory.tokens(tokens));
+    setNodeShutdown(host);
+    tokenMap.put(host,tokens);
+  }
+}

@@ -1,5 +1,6 @@
 {
-  HashMap<InetAddress,String[]> reloadedMap=new HashMap<InetAddress,String[]>();
+  HashMap<InetAddress,String[]> reloadedMap=new HashMap<>();
+  String[] reloadedDefaultDCRack=null;
   Properties properties=new Properties();
   InputStream stream=null;
   try {
@@ -15,14 +16,14 @@
   for (  Map.Entry<Object,Object> entry : properties.entrySet()) {
     String key=(String)entry.getKey();
     String value=(String)entry.getValue();
-    if (key.equals("default")) {
+    if ("default".equals(key)) {
       String[] newDefault=value.split(":");
-      if (newDefault.length < 2)       defaultDCRack=new String[]{"default","default"};
- else       defaultDCRack=new String[]{newDefault[0].trim(),newDefault[1].trim()};
+      if (newDefault.length < 2)       reloadedDefaultDCRack=new String[]{"default","default"};
+ else       reloadedDefaultDCRack=new String[]{newDefault[0].trim(),newDefault[1].trim()};
     }
  else {
       InetAddress host;
-      String hostString=key.replace("/","");
+      String hostString=StringUtils.remove(key,'/');
       try {
         host=InetAddress.getByName(hostString);
       }
@@ -35,12 +36,14 @@
       reloadedMap.put(host,token);
     }
   }
-  if (defaultDCRack == null && !reloadedMap.containsKey(FBUtilities.getBroadcastAddress()))   throw new ConfigurationException(String.format("Snitch definitions at %s do not define a location for this node's broadcast address %s, nor does it provides a default",SNITCH_PROPERTIES_FILENAME,FBUtilities.getBroadcastAddress()));
+  if (reloadedDefaultDCRack == null && !reloadedMap.containsKey(FBUtilities.getBroadcastAddress()))   throw new ConfigurationException(String.format("Snitch definitions at %s do not define a location for " + "this node's broadcast address %s, nor does it provides a default",SNITCH_PROPERTIES_FILENAME,FBUtilities.getBroadcastAddress()));
+  if (isUpdate && !livenessCheck(reloadedMap,reloadedDefaultDCRack))   return;
   if (logger.isDebugEnabled()) {
     StringBuilder sb=new StringBuilder();
-    for (    Map.Entry<InetAddress,String[]> entry : reloadedMap.entrySet())     sb.append(entry.getKey()).append(":").append(Arrays.toString(entry.getValue())).append(", ");
+    for (    Map.Entry<InetAddress,String[]> entry : reloadedMap.entrySet())     sb.append(entry.getKey()).append(':').append(Arrays.toString(entry.getValue())).append(", ");
     logger.debug("Loaded network topology from property file: {}",StringUtils.removeEnd(sb.toString(),", "));
   }
+  defaultDCRack=reloadedDefaultDCRack;
   endpointMap=reloadedMap;
   if (StorageService.instance != null) {
     if (isUpdate)     StorageService.instance.updateTopology();

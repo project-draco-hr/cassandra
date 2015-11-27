@@ -1,0 +1,26 @@
+{
+  final TypeDescription topologyConfigTypeDescription=new TypeDescription(TopologyConfig.class);
+  topologyConfigTypeDescription.putListPropertyType("topology",Datacenter.class);
+  final TypeDescription topologyTypeDescription=new TypeDescription(Datacenter.class);
+  topologyTypeDescription.putListPropertyType("racks",Rack.class);
+  final TypeDescription rackTypeDescription=new TypeDescription(Rack.class);
+  rackTypeDescription.putListPropertyType("nodes",Node.class);
+  final Constructor configConstructor=new Constructor(TopologyConfig.class);
+  configConstructor.addTypeDescription(topologyConfigTypeDescription);
+  configConstructor.addTypeDescription(topologyTypeDescription);
+  configConstructor.addTypeDescription(rackTypeDescription);
+  final InputStream configFileInputStream=getClass().getClassLoader().getResourceAsStream(topologyConfigFilename);
+  if (configFileInputStream == null) {
+    throw new ConfigurationException("Could not read topology config file " + topologyConfigFilename);
+  }
+  Yaml yaml;
+  TopologyConfig topologyConfig;
+  try {
+    yaml=new Yaml(configConstructor);
+    topologyConfig=(TopologyConfig)yaml.load(configFileInputStream);
+  }
+  finally {
+    FileUtils.closeQuietly(configFileInputStream);
+  }
+  return topologyConfig;
+}

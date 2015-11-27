@@ -1,0 +1,18 @@
+{
+  final InetAddress host=InetAddress.getByName("127.0.0.1");
+  final YamlFileNetworkTopologySnitch snitch=new YamlFileNetworkTopologySnitch(confFile);
+  checkEndpoint(snitch,host.getHostAddress(),"DC1","RAC1");
+  try {
+    final TopologyConfig topologyConfig=snitch.readConfig();
+    moveNode(topologyConfig,host.getHostAddress(),"9.0.0.1","DC1","DC1","RAC1","RAC2");
+    setNodeLive(host);
+    snitch.loadTopologyConfiguration(true,topologyConfig);
+    checkEndpoint(snitch,host.getHostAddress(),"DC1","RAC1");
+    setNodeShutdown(host);
+    snitch.loadTopologyConfiguration(true,topologyConfig);
+    checkEndpoint(snitch,host.getHostAddress(),"DC1","RAC2");
+  }
+  finally {
+    setNodeShutdown(host);
+  }
+}
