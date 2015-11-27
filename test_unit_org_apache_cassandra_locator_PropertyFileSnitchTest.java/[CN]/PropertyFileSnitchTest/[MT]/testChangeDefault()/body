@@ -1,0 +1,20 @@
+{
+  final InetAddress host=InetAddress.getByName("127.0.0.9");
+  final PropertyFileSnitch snitch=new PropertyFileSnitch(1);
+  checkEndpoint(snitch,host.getHostAddress(),"DC1","r1");
+  try {
+    setNodeLive(host);
+    Files.copy(effectiveFile,backupFile);
+    replaceConfigFile(Collections.singletonMap("default","DC2:r2"));
+    Thread.sleep(1500);
+    checkEndpoint(snitch,host.getHostAddress(),"DC1","r1");
+    setNodeShutdown(host);
+    replaceConfigFile(Collections.singletonMap("default","DC2:r2"));
+    Thread.sleep(1500);
+    checkEndpoint(snitch,host.getHostAddress(),"DC2","r2");
+  }
+  finally {
+    restoreOrigConfigFile();
+    setNodeShutdown(host);
+  }
+}

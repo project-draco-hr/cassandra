@@ -1,0 +1,21 @@
+{
+  List<String> lines=Files.readAllLines(effectiveFile,StandardCharsets.UTF_8);
+  List<String> newLines=new ArrayList<>(lines.size());
+  Set<String> replaced=new HashSet<>();
+  for (  String line : lines) {
+    String[] info=line.split("=");
+    if (info.length == 2 && replacements.containsKey(info[0])) {
+      String replacement=replacements.get(info[0]);
+      if (!replacement.isEmpty())       newLines.add(info[0] + '=' + replacement);
+      replaced.add(info[0]);
+    }
+ else {
+      newLines.add(line);
+    }
+  }
+  for (  Map.Entry<String,String> replacement : replacements.entrySet()) {
+    if (replaced.contains(replacement.getKey()))     continue;
+    if (!replacement.getValue().isEmpty())     newLines.add(replacement.getKey() + '=' + replacement.getValue());
+  }
+  Files.write(effectiveFile,newLines,StandardCharsets.UTF_8,StandardOpenOption.TRUNCATE_EXISTING);
+}
