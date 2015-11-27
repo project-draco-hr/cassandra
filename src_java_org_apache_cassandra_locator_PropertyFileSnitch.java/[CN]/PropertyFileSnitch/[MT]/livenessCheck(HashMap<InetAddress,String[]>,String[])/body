@@ -1,0 +1,12 @@
+{
+  Set<InetAddress> hosts=Arrays.equals(defaultDCRack,reloadedDefaultDCRack) ? Sets.intersection(StorageService.instance.getLiveMembers(),Sets.union(endpointMap.keySet(),reloadedMap.keySet())) : StorageService.instance.getLiveMembers();
+  for (  InetAddress host : hosts) {
+    String[] origValue=endpointMap.containsKey(host) ? endpointMap.get(host) : defaultDCRack;
+    String[] updateValue=reloadedMap.containsKey(host) ? reloadedMap.get(host) : reloadedDefaultDCRack;
+    if (!Arrays.equals(origValue,updateValue)) {
+      logger.error("Cannot update data center or rack from {} to {} for live host {}, property file NOT RELOADED",origValue,updateValue,host);
+      return false;
+    }
+  }
+  return true;
+}
