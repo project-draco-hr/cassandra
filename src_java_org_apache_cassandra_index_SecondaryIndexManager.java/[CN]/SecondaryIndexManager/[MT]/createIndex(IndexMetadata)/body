@@ -2,5 +2,9 @@
   Index index=createInstance(indexDef);
   index.register(this);
   final Callable<?> initialBuildTask=indexes.containsKey(indexDef.name) ? index.getInitializationTask() : null;
-  return initialBuildTask == null ? Futures.immediateFuture(null) : asyncExecutor.submit(initialBuildTask);
+  if (initialBuildTask == null) {
+    markIndexBuilt(indexDef.name);
+    return Futures.immediateFuture(null);
+  }
+  return asyncExecutor.submit(index.getInitializationTask());
 }
