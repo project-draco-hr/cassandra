@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, PRIMARY KEY ((a), b))");
+  createIndex("CREATE INDEX c_idx ON %s(c)");
+  MD5Digest cqlId=prepareStatement("SELECT * FROM %s.%s WHERE c=?",false).statementId;
+  Integer thriftId=prepareStatement("SELECT * FROM %s.%s WHERE c=?",true).toThriftPreparedResult().getItemId();
+  assertNotNull(QueryProcessor.instance.getPrepared(cqlId));
+  assertNotNull(QueryProcessor.instance.getPreparedForThrift(thriftId));
+  dropIndex("DROP INDEX %s.c_idx");
+  assertNull(QueryProcessor.instance.getPrepared(cqlId));
+  assertNull(QueryProcessor.instance.getPreparedForThrift(thriftId));
+}
