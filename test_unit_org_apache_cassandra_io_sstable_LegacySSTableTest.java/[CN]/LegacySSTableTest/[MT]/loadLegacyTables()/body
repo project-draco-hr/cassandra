@@ -6,6 +6,8 @@
     loadLegacyTable("legacy_%s_simple_counter",legacyVersion);
     loadLegacyTable("legacy_%s_clust",legacyVersion);
     loadLegacyTable("legacy_%s_clust_counter",legacyVersion);
+    CacheService.instance.invalidateKeyCache();
+    long startCount=CacheService.instance.keyCache.size();
     for (int ck=0; ck < 50; ck++) {
       String ckValue=Integer.toString(ck) + longString;
       for (int pk=0; pk < 5; pk++) {
@@ -34,5 +36,13 @@
         Assert.assertEquals(1L,rs.one().getLong("val"));
       }
     }
+    long endCount=CacheService.instance.keyCache.size();
+    Assert.assertTrue(endCount > startCount);
+    CacheService.instance.keyCache.submitWrite(Integer.MAX_VALUE).get();
+    CacheService.instance.invalidateKeyCache();
+    Assert.assertEquals(startCount,CacheService.instance.keyCache.size());
+    CacheService.instance.keyCache.loadSaved();
+    if (BigFormat.instance.getVersion(legacyVersion).storeRows())     Assert.assertEquals(endCount,CacheService.instance.keyCache.size());
+ else     Assert.assertEquals(startCount,CacheService.instance.keyCache.size());
   }
 }
