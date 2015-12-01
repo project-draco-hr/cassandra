@@ -1,5 +1,7 @@
 @completer_for('createIndexStatement', 'col')
 def create_index_col_completer(ctxt, cass):
+    " Return the columns for which an index doesn't exist yet. "
     layout = get_table_meta(ctxt, cass)
-    colnames = [cd.name for cd in layout.columns.values() if (not cd.index)]
+    idx_targets = [idx.index_options['target'] for idx in layout.indexes.itervalues()]
+    colnames = [cd.name for cd in layout.columns.values() if (cd.name not in idx_targets)]
     return map(maybe_escape_name, colnames)
