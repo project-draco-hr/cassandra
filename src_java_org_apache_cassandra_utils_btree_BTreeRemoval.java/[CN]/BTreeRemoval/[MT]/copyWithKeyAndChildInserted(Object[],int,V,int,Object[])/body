@@ -1,0 +1,23 @@
+{
+  final boolean leaf=BTree.isLeaf(node);
+  final int keyEnd=BTree.getKeyEnd(node);
+  final Object[] copy;
+  if (leaf)   copy=new Object[keyEnd + ((keyEnd & 1) == 1 ? 2 : 1)];
+ else   copy=new Object[node.length + 2];
+  if (keyIndex > 0)   System.arraycopy(node,0,copy,0,keyIndex);
+  copy[keyIndex]=key;
+  if (keyIndex < keyEnd)   System.arraycopy(node,keyIndex,copy,keyIndex + 1,keyEnd - keyIndex);
+  if (!leaf) {
+    if (childIndex > 0)     System.arraycopy(node,BTree.getChildStart(node),copy,keyEnd + 1,childIndex);
+    copy[keyEnd + 1 + childIndex]=child;
+    if (childIndex <= keyEnd)     System.arraycopy(node,BTree.getChildStart(node) + childIndex,copy,keyEnd + childIndex + 2,keyEnd - childIndex + 1);
+    final int[] sizeMap=BTree.getSizeMap(node);
+    final int[] newSizeMap=new int[sizeMap.length + 1];
+    if (childIndex > 0)     System.arraycopy(sizeMap,0,newSizeMap,0,childIndex);
+    final int childSize=BTree.size(child);
+    newSizeMap[childIndex]=childSize + ((childIndex == 0) ? 0 : newSizeMap[childIndex - 1] + 1);
+    for (int i=childIndex + 1; i < newSizeMap.length; ++i)     newSizeMap[i]=sizeMap[i - 1] + childSize + 1;
+    copy[copy.length - 1]=newSizeMap;
+  }
+  return copy;
+}

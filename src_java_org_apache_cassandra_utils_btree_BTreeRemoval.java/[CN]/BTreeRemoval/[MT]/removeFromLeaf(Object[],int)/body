@@ -1,0 +1,58 @@
+{
+  Object[] result=null;
+  Object[] prevNode=null;
+  int prevI=-1;
+  boolean needsCopy=true;
+  while (!BTree.isLeaf(node)) {
+    final int keyEnd=BTree.getBranchKeyEnd(node);
+    int i=-1 - Arrays.binarySearch(BTree.getSizeMap(node),index);
+    if (i > 0)     index-=(1 + BTree.getSizeMap(node)[i - 1]);
+    Object[] nextNode=(Object[])node[keyEnd + i];
+    boolean nextNodeNeedsCopy=true;
+    if (BTree.getKeyEnd(nextNode) > BTree.MINIMAL_NODE_SIZE)     node=copyIfNeeded(node,needsCopy);
+ else     if (i > 0 && BTree.getKeyEnd((Object[])node[keyEnd + i - 1]) > BTree.MINIMAL_NODE_SIZE) {
+      node=copyIfNeeded(node,needsCopy);
+      final Object[] leftNeighbour=(Object[])node[keyEnd + i - 1];
+      index++;
+      if (!BTree.isLeaf(leftNeighbour))       index+=BTree.size((Object[])leftNeighbour[BTree.getChildEnd(leftNeighbour) - 1]);
+      nextNode=rotateLeft(node,i);
+    }
+ else     if (i < keyEnd && BTree.getKeyEnd((Object[])node[keyEnd + i + 1]) > BTree.MINIMAL_NODE_SIZE) {
+      node=copyIfNeeded(node,needsCopy);
+      nextNode=rotateRight(node,i);
+    }
+ else {
+      nextNodeNeedsCopy=false;
+      if (i > 0) {
+        final Object[] leftNeighbour=(Object[])node[keyEnd + i - 1];
+        final V nodeKey=(V)node[i - 1];
+        node=keyEnd == 1 ? null : copyWithKeyAndChildRemoved(node,i - 1,i - 1,false);
+        nextNode=merge(leftNeighbour,nextNode,nodeKey);
+        i=i - 1;
+        index+=BTree.size(leftNeighbour) + 1;
+      }
+ else {
+        final Object[] rightNeighbour=(Object[])node[keyEnd + i + 1];
+        final V nodeKey=(V)node[i];
+        node=keyEnd == 1 ? null : copyWithKeyAndChildRemoved(node,i,i,false);
+        nextNode=merge(nextNode,rightNeighbour,nodeKey);
+      }
+    }
+    if (node != null) {
+      final int[] sizeMap=BTree.getSizeMap(node);
+      for (int j=i; j < sizeMap.length; ++j)       sizeMap[j]-=1;
+      if (prevNode != null)       prevNode[prevI]=node;
+ else       result=node;
+      prevNode=node;
+      prevI=BTree.getChildStart(node) + i;
+    }
+    node=nextNode;
+    needsCopy=nextNodeNeedsCopy;
+  }
+  final int keyEnd=BTree.getLeafKeyEnd(node);
+  final Object[] newLeaf=new Object[(keyEnd & 1) == 1 ? keyEnd : keyEnd - 1];
+  copyKeys(node,newLeaf,0,index);
+  if (prevNode != null)   prevNode[prevI]=newLeaf;
+ else   result=newLeaf;
+  return result;
+}
