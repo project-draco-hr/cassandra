@@ -1,16 +1,21 @@
 {
-  AnticompactionRequest acr=new AnticompactionRequest(parentSession);
-  SemanticVersion peerVersion=SystemKeyspace.getReleaseVersion(neighbor);
-  if (peerVersion != null && peerVersion.compareTo(VERSION_CHECKER) > 0) {
-    if (doAnticompaction) {
-      MessagingService.instance().sendRR(acr.createMessage(),neighbor,new AnticompactionCallback(this),TimeUnit.DAYS.toMillis(1),true);
+  if (FailureDetector.instance.isAlive(neighbor)) {
+    AnticompactionRequest acr=new AnticompactionRequest(parentSession);
+    SemanticVersion peerVersion=SystemKeyspace.getReleaseVersion(neighbor);
+    if (peerVersion != null && peerVersion.compareTo(VERSION_CHECKER) > 0) {
+      if (doAnticompaction) {
+        MessagingService.instance().sendRR(acr.createMessage(),neighbor,new AnticompactionCallback(this),TimeUnit.DAYS.toMillis(1),true);
+      }
+ else {
+        MessagingService.instance().sendRR(new CleanupMessage(parentSession).createMessage(),neighbor,new AnticompactionCallback(this),TimeUnit.DAYS.toMillis(1),true);
+      }
     }
  else {
-      MessagingService.instance().sendRR(new CleanupMessage(parentSession).createMessage(),neighbor,new AnticompactionCallback(this),TimeUnit.DAYS.toMillis(1),true);
+      MessagingService.instance().sendOneWay(acr.createMessage(),neighbor);
+      set(neighbor);
     }
   }
  else {
-    MessagingService.instance().sendOneWay(acr.createMessage(),neighbor);
-    set(neighbor);
+    setException(new IOException(neighbor + " is down"));
   }
 }
