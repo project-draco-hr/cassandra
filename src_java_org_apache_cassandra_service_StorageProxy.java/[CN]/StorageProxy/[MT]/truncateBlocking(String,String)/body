@@ -2,10 +2,10 @@
   logger.debug("Starting a blocking truncate operation on keyspace {}, CF {}",keyspace,cfname);
   if (isAnyStorageHostDown()) {
     logger.info("Cannot perform truncate, some hosts are down");
-    int liveMembers=Gossiper.instance.getLiveEndpoints().size();
+    int liveMembers=Gossiper.instance.getLiveMembers().size();
     throw new UnavailableException(ConsistencyLevel.ALL,liveMembers + Gossiper.instance.getUnreachableMembers().size(),liveMembers);
   }
-  Set<InetAddress> allEndpoints=StorageService.instance.getLiveMembers(true);
+  Set<InetAddress> allEndpoints=StorageService.instance.getLiveRingMembers(true);
   int blockFor=allEndpoints.size();
   final TruncateResponseHandler responseHandler=new TruncateResponseHandler(blockFor);
   Tracing.trace("Enqueuing truncate messages to hosts {}",allEndpoints);
