@@ -1,0 +1,19 @@
+{
+  final ColumnSerializer.Flag flag=ColumnSerializer.Flag.LOCAL;
+  final CellNameType type=sstable.metadata.comparator;
+  final int expireBefore=(int)(System.currentTimeMillis() / 1000);
+  final Version version=sstable.descriptor.version;
+  final long dataEnd=file.getFilePointer() + dataSize;
+  return new SSTableIdentityIterator(sstable.metadata,file,file.getPath(),key,checkData,sstable,flag,DeletionTime.LIVE,new AbstractIterator<OnDiskAtom>(){
+    protected OnDiskAtom computeNext(){
+      if (file.getFilePointer() >= dataEnd)       return endOfData();
+      try {
+        return type.onDiskAtomSerializer().deserializeFromSSTable(file,flag,expireBefore,version);
+      }
+ catch (      IOException e) {
+        throw new IOError(e);
+      }
+    }
+  }
+);
+}
