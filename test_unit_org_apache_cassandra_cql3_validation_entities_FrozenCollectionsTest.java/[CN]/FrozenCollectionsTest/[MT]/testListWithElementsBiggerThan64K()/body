@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, l frozen<list<text>>)");
+  byte[] bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)1);
+  String largeText=new String(bytes);
+  execute("INSERT INTO %s(k, l) VALUES (0, ?)",list(largeText,"v2"));
+  flush();
+  assertRows(execute("SELECT l FROM %s WHERE k = 0"),row(list(largeText,"v2")));
+  execute("UPDATE %s SET l = ? WHERE k = 0",list("v1",largeText));
+  flush();
+  assertRows(execute("SELECT l FROM %s WHERE k = 0"),row(list("v1",largeText)));
+  execute("DELETE l FROM %s WHERE k = 0");
+  assertRows(execute("SELECT l FROM %s WHERE k = 0"),row((Object)null));
+  execute("INSERT INTO %s(k, l) VALUES (0, ['" + largeText + "', 'v2'])");
+  flush();
+  assertRows(execute("SELECT l FROM %s WHERE k = 0"),row(list(largeText,"v2")));
+}
