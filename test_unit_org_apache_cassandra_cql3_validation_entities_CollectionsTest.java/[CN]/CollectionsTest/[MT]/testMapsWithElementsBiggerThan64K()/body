@@ -1,0 +1,34 @@
+{
+  byte[] bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)1);
+  String largeText=new String(bytes);
+  bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)2);
+  String largeText2=new String(bytes);
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, m map<text, text>)");
+  execute("INSERT INTO %s(k, m) VALUES (0, ?)",map("k1",largeText,largeText,"v2"));
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k1",largeText,largeText,"v2")));
+  execute("UPDATE %s SET m[?] = ? WHERE k = 0","k3",largeText);
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k1",largeText,largeText,"v2","k3",largeText)));
+  execute("UPDATE %s SET m[?] = ? WHERE k = 0",largeText2,"v4");
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k1",largeText,largeText,"v2","k3",largeText,largeText2,"v4")));
+  execute("DELETE m[?] FROM %s WHERE k = 0","k1");
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map(largeText,"v2","k3",largeText,largeText2,"v4")));
+  execute("DELETE m[?] FROM %s WHERE k = 0",largeText2);
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map(largeText,"v2","k3",largeText)));
+  execute("UPDATE %s SET m = ? WHERE k = 0",map("k5",largeText,largeText,"v6"));
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k5",largeText,largeText,"v6")));
+  execute("UPDATE %s SET m = m + ? WHERE k = 0",map("k7",largeText));
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k5",largeText,largeText,"v6","k7",largeText)));
+  execute("UPDATE %s SET m = m + ? WHERE k = 0",map(largeText2,"v8"));
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k5",largeText,largeText,"v6","k7",largeText,largeText2,"v8")));
+  execute("DELETE m FROM %s WHERE k = 0");
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row((Object)null));
+  execute("INSERT INTO %s(k, m) VALUES (0, {'" + largeText + "' : 'v1', 'k2' : '"+ largeText+ "'})");
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map(largeText,"v1","k2",largeText)));
+}
