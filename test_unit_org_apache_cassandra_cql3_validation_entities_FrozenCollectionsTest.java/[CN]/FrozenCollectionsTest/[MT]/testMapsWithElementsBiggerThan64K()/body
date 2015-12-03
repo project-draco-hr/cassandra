@@ -1,0 +1,20 @@
+{
+  byte[] bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)1);
+  String largeText=new String(bytes);
+  bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)2);
+  String largeText2=new String(bytes);
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, m frozen<map<text, text>>)");
+  execute("INSERT INTO %s(k, m) VALUES (0, ?)",map(largeText,"v1","k2",largeText));
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map(largeText,"v1","k2",largeText)));
+  execute("UPDATE %s SET m = ? WHERE k = 0",map("k5",largeText,largeText2,"v6"));
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map("k5",largeText,largeText2,"v6")));
+  execute("DELETE m FROM %s WHERE k = 0");
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row((Object)null));
+  execute("INSERT INTO %s(k, m) VALUES (0, {'" + largeText + "' : 'v1', 'k2' : '"+ largeText+ "'})");
+  flush();
+  assertRows(execute("SELECT m FROM %s WHERE k = 0"),row(map(largeText,"v1","k2",largeText)));
+}

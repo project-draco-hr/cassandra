@@ -1,0 +1,26 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, s set<text>)");
+  byte[] bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)1);
+  String largeText=new String(bytes);
+  bytes=new byte[FBUtilities.MAX_UNSIGNED_SHORT + 10];
+  Arrays.fill(bytes,(byte)2);
+  String largeText2=new String(bytes);
+  execute("INSERT INTO %s(k, s) VALUES (0, ?)",set(largeText,"v2"));
+  flush();
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set(largeText,"v2")));
+  execute("DELETE s[?] FROM %s WHERE k = 0",largeText);
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set("v2")));
+  execute("UPDATE %s SET s = ? WHERE k = 0",set("v1",largeText));
+  flush();
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set("v1",largeText)));
+  execute("UPDATE %s SET s = s + ? WHERE k = 0",set("v2",largeText2));
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set("v1",largeText,"v2",largeText2)));
+  execute("UPDATE %s SET s = s - ? WHERE k = 0",set(largeText,"v2"));
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set("v1",largeText2)));
+  execute("DELETE s FROM %s WHERE k = 0");
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row((Object)null));
+  execute("INSERT INTO %s(k, s) VALUES (0, {'" + largeText + "', 'v2'})");
+  flush();
+  assertRows(execute("SELECT s FROM %s WHERE k = 0"),row(set(largeText,"v2")));
+}
