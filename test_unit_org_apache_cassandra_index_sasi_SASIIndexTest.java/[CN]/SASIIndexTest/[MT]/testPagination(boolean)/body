@@ -1,0 +1,133 @@
+{
+  Map<String,Pair<String,Integer>> part1=new HashMap<String,Pair<String,Integer>>(){
+{
+      put("key01",Pair.create("Ali",33));
+      put("key02",Pair.create("Jeremy",41));
+      put("key03",Pair.create("Elvera",22));
+      put("key04",Pair.create("Bailey",45));
+      put("key05",Pair.create("Emerson",32));
+      put("key06",Pair.create("Kadin",38));
+      put("key07",Pair.create("Maggie",36));
+      put("key08",Pair.create("Kailey",36));
+      put("key09",Pair.create("Armand",21));
+      put("key10",Pair.create("Arnold",35));
+    }
+  }
+;
+  Map<String,Pair<String,Integer>> part2=new HashMap<String,Pair<String,Integer>>(){
+{
+      put("key11",Pair.create("Ken",38));
+      put("key12",Pair.create("Penelope",43));
+      put("key13",Pair.create("Wyatt",34));
+      put("key14",Pair.create("Johnpaul",34));
+      put("key15",Pair.create("Trycia",43));
+      put("key16",Pair.create("Aida",21));
+      put("key17",Pair.create("Devon",42));
+    }
+  }
+;
+  Map<String,Pair<String,Integer>> part3=new HashMap<String,Pair<String,Integer>>(){
+{
+      put("key18",Pair.create("Christina",20));
+      put("key19",Pair.create("Rick",19));
+      put("key20",Pair.create("Fannie",22));
+      put("key21",Pair.create("Keegan",29));
+      put("key22",Pair.create("Ignatius",36));
+      put("key23",Pair.create("Ellis",26));
+      put("key24",Pair.create("Annamarie",29));
+      put("key25",Pair.create("Tianna",31));
+      put("key26",Pair.create("Dennis",32));
+    }
+  }
+;
+  ColumnFamilyStore store=loadData(part1,forceFlush);
+  loadData(part2,forceFlush);
+  loadData(part3,forceFlush);
+  final ByteBuffer firstName=UTF8Type.instance.decompose("first_name");
+  final ByteBuffer age=UTF8Type.instance.decompose("age");
+  Set<DecoratedKey> uniqueKeys=getPaged(store,4,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),buildExpression(age,Operator.GTE,Int32Type.instance.decompose(21)));
+  List<String> expected=new ArrayList<String>(){
+{
+      add("key25");
+      add("key20");
+      add("key13");
+      add("key22");
+      add("key09");
+      add("key14");
+      add("key16");
+      add("key24");
+      add("key03");
+      add("key04");
+      add("key08");
+      add("key07");
+      add("key15");
+      add("key06");
+      add("key21");
+    }
+  }
+;
+  Assert.assertEquals(expected,convert(uniqueKeys));
+  uniqueKeys=getPaged(store,4,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")));
+  expected=new ArrayList<String>(){
+{
+      add("key25");
+      add("key20");
+      add("key13");
+      add("key22");
+      add("key09");
+      add("key14");
+      add("key16");
+      add("key24");
+      add("key03");
+      add("key04");
+      add("key18");
+      add("key08");
+      add("key07");
+      add("key15");
+      add("key06");
+      add("key21");
+    }
+  }
+;
+  Assert.assertEquals(expected,convert(uniqueKeys));
+  uniqueKeys=getPaged(store,4,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),buildExpression(age,Operator.EQ,Int32Type.instance.decompose(36)));
+  expected=new ArrayList<String>(){
+{
+      add("key22");
+      add("key08");
+      add("key07");
+    }
+  }
+;
+  Assert.assertEquals(expected,convert(uniqueKeys));
+  uniqueKeys=getPaged(store,2,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),buildExpression(age,Operator.EQ,Int32Type.instance.decompose(36)));
+  Assert.assertEquals(expected,convert(uniqueKeys));
+  uniqueKeys=getPaged(store,4,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),buildExpression(age,Operator.GT,Int32Type.instance.decompose(20)),buildExpression(age,Operator.LTE,Int32Type.instance.decompose(36)));
+  expected=new ArrayList<String>(){
+{
+      add("key25");
+      add("key20");
+      add("key13");
+      add("key22");
+      add("key09");
+      add("key14");
+      add("key16");
+      add("key24");
+      add("key03");
+      add("key08");
+      add("key07");
+      add("key21");
+    }
+  }
+;
+  Assert.assertEquals(expected,convert(uniqueKeys));
+  Set<String> rows;
+  rows=executeCQL(String.format("SELECT * FROM %s.%s WHERE first_name = 'a' limit 10 ALLOW FILTERING;",KS_NAME,CF_NAME));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key03","key04","key09","key13","key14","key16","key20","key22","key24","key25"},rows.toArray(new String[rows.size()])));
+  rows=executeCQL(String.format("SELECT * FROM %s.%s WHERE first_name = 'a' and token(id) >= token('key14') limit 5 ALLOW FILTERING;",KS_NAME,CF_NAME));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key03","key04","key14","key16","key24"},rows.toArray(new String[rows.size()])));
+  rows=executeCQL(String.format("SELECT * FROM %s.%s WHERE first_name = 'a' and token(id) >= token('key14') and token(id) <= token('key24') limit 5 ALLOW FILTERING;",KS_NAME,CF_NAME));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key14","key16","key24"},rows.toArray(new String[rows.size()])));
+  rows=executeCQL(String.format("SELECT * FROM %s.%s WHERE first_name = 'a' and age > 30 and token(id) >= token('key14') and token(id) <= token('key24') limit 5 ALLOW FILTERING;",KS_NAME,CF_NAME));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key14"},rows.toArray(new String[rows.size()])));
+}

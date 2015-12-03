@@ -1,0 +1,22 @@
+{
+  RangeUnionIterator.Builder<Long,Token> builder=RangeUnionIterator.builder();
+  NavigableMap<Long,Token> sparse=new TreeMap<>();
+  for (int i=start; i < end; i++) {
+    DataTerm term=getTerm(i);
+    if (term.isSparse()) {
+      NavigableMap<Long,Token> tokens=term.getSparseTokens();
+      for (      Map.Entry<Long,Token> t : tokens.entrySet()) {
+        Token token=sparse.get(t.getKey());
+        if (token == null)         sparse.put(t.getKey(),t.getValue());
+ else         token.merge(t.getValue());
+      }
+    }
+ else {
+      builder.add(term.getTokens());
+    }
+  }
+  PrefetchedTokensIterator prefetched=sparse.isEmpty() ? null : new PrefetchedTokensIterator(sparse);
+  if (builder.rangeCount() == 0)   return prefetched;
+  builder.add(prefetched);
+  return builder.build();
+}

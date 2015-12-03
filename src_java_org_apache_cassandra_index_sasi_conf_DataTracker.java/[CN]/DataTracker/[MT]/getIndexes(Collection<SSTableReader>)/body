@@ -1,0 +1,19 @@
+{
+  Set<SSTableIndex> indexes=new HashSet<>(sstables.size());
+  for (  SSTableReader sstable : sstables) {
+    if (sstable.isMarkedCompacted())     continue;
+    File indexFile=new File(sstable.descriptor.filenameFor(columnIndex.getComponent()));
+    if (!indexFile.exists())     continue;
+    SSTableIndex index=null;
+    try {
+      index=new SSTableIndex(columnIndex,indexFile,sstable);
+      logger.info("SSTableIndex.open(column: {}, minTerm: {}, maxTerm: {}, minKey: {}, maxKey: {}, sstable: {})",columnIndex.getColumnName(),columnIndex.getValidator().getString(index.minTerm()),columnIndex.getValidator().getString(index.maxTerm()),keyValidator.getString(index.minKey()),keyValidator.getString(index.maxKey()),index.getSSTable());
+      if (!indexes.add(index))       index.release();
+    }
+ catch (    Throwable t) {
+      logger.error("Can't open index file at " + indexFile.getAbsolutePath() + ", skipping.",t);
+      if (index != null)       index.release();
+    }
+  }
+  return indexes;
+}

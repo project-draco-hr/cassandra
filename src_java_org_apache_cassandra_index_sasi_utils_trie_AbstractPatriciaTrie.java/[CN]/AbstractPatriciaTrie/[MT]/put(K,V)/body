@@ -1,0 +1,36 @@
+{
+  if (key == null)   throw new NullPointerException("Key cannot be null");
+  int lengthInBits=lengthInBits(key);
+  if (lengthInBits == 0) {
+    if (root.isEmpty())     incrementSize();
+ else     incrementModCount();
+    return root.setKeyValue(key,value);
+  }
+  TrieEntry<K,V> found=getNearestEntryForKey(key);
+  if (compareKeys(key,found.key)) {
+    if (found.isEmpty())     incrementSize();
+ else     incrementModCount();
+    return found.setKeyValue(key,value);
+  }
+  int bitIndex=bitIndex(key,found.key);
+  if (!Tries.isOutOfBoundsIndex(bitIndex)) {
+    if (Tries.isValidBitIndex(bitIndex)) {
+      TrieEntry<K,V> t=new TrieEntry<>(key,value,bitIndex);
+      addEntry(t);
+      incrementSize();
+      return null;
+    }
+ else     if (Tries.isNullBitKey(bitIndex)) {
+      if (root.isEmpty())       incrementSize();
+ else       incrementModCount();
+      return root.setKeyValue(key,value);
+    }
+ else     if (Tries.isEqualBitKey(bitIndex)) {
+      if (found != root) {
+        incrementModCount();
+        return found.setKeyValue(key,value);
+      }
+    }
+  }
+  throw new IndexOutOfBoundsException("Failed to put: " + key + " -> "+ value+ ", "+ bitIndex);
+}

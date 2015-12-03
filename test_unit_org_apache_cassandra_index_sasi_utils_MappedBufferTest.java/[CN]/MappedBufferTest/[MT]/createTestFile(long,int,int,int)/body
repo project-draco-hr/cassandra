@@ -1,0 +1,31 @@
+{
+  final File testFile=File.createTempFile("mapped-buffer-test","db");
+  testFile.deleteOnExit();
+  RandomAccessFile file=new RandomAccessFile(testFile,"rw");
+  for (long i=0; i < numCount; i++) {
+switch (typeSize) {
+case 1:
+      file.write((byte)i);
+    break;
+case 2:
+  file.writeShort((short)i);
+break;
+case 4:
+file.writeInt((int)i);
+break;
+case 8:
+file.writeLong(i);
+break;
+default :
+throw new IllegalArgumentException("unknown byte size: " + typeSize);
+}
+for (int j=0; j < padding; j++) file.write(0);
+}
+file.getFD().sync();
+try {
+return new MappedBuffer(new ChannelProxy(testFile.getAbsolutePath(),file.getChannel()),numPageBits);
+}
+  finally {
+FileUtils.closeQuietly(file);
+}
+}

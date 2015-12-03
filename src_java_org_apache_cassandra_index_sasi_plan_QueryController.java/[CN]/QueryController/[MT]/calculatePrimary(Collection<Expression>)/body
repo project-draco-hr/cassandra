@@ -1,0 +1,15 @@
+{
+  Expression expression=null;
+  Set<SSTableIndex> primaryIndexes=Collections.emptySet();
+  for (  Expression e : expressions) {
+    if (!e.isIndexed())     continue;
+    View view=e.index.getView();
+    if (view == null)     continue;
+    Set<SSTableIndex> indexes=view.match(sstables,e);
+    if (primaryIndexes.size() > indexes.size()) {
+      primaryIndexes=indexes;
+      expression=e;
+    }
+  }
+  return expression == null ? null : Pair.create(expression,primaryIndexes);
+}

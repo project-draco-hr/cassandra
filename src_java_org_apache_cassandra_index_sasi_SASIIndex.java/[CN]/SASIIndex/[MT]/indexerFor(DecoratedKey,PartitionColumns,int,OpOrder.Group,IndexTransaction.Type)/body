@@ -1,0 +1,27 @@
+{
+  return new Indexer(){
+    public void begin(){
+    }
+    public void partitionDelete(    DeletionTime deletionTime){
+    }
+    public void rangeTombstone(    RangeTombstone tombstone){
+    }
+    public void insertRow(    Row row){
+      if (isNewData())       adjustMemtableSize(index.index(key,row),opGroup);
+    }
+    public void updateRow(    Row oldRow,    Row newRow){
+      insertRow(newRow);
+    }
+    public void removeRow(    Row row){
+    }
+    public void finish(){
+    }
+    private boolean isNewData(){
+      return transactionType == IndexTransaction.Type.UPDATE;
+    }
+    public void adjustMemtableSize(    long additionalSpace,    OpOrder.Group opGroup){
+      baseCfs.getTracker().getView().getCurrentMemtable().getAllocator().onHeap().allocate(additionalSpace,opGroup);
+    }
+  }
+;
+}

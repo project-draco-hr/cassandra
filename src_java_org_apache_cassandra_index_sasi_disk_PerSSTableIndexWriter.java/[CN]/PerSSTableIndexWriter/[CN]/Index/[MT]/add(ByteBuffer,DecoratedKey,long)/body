@@ -1,0 +1,23 @@
+{
+  if (term.remaining() == 0)   return;
+  boolean isAdded=false;
+  analyzer.reset(term);
+  while (analyzer.hasNext()) {
+    ByteBuffer token=analyzer.next();
+    int size=token.remaining();
+    if (token.remaining() >= OnDiskIndexBuilder.MAX_TERM_SIZE) {
+      logger.info("Rejecting value (size {}, maximum {} bytes) for column {} (analyzed {}) at {} SSTable.",term.remaining(),OnDiskIndexBuilder.MAX_TERM_SIZE,columnIndex.getColumnName(),columnIndex.getMode().isAnalyzed,descriptor);
+      continue;
+    }
+    if (!TypeUtil.isValid(token,columnIndex.getValidator())) {
+      if ((token=TypeUtil.tryUpcast(token,columnIndex.getValidator())) == null) {
+        logger.info("({}) Failed to add {} to index for key: {}, value size was {} bytes, validator is {}.",outputFile,columnIndex.getColumnName(),keyValidator.getString(key.getKey()),size,columnIndex.getValidator());
+        continue;
+      }
+    }
+    currentBuilder.add(token,key,keyPosition);
+    isAdded=true;
+  }
+  if (!isAdded || currentBuilder.estimatedMemoryUse() < maxMemorySize)   return;
+  segments.add(getExecutor().submit(scheduleSegmentFlush(false)));
+}

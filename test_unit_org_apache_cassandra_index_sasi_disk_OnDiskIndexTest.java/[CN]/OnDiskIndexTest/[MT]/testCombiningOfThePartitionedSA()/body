@@ -1,0 +1,53 @@
+{
+  OnDiskIndexBuilder builderA=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  OnDiskIndexBuilder builderB=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  TreeMap<Long,TreeMap<Long,LongSet>> expected=new TreeMap<>();
+  for (long i=0; i <= 100; i++) {
+    TreeMap<Long,LongSet> offsets=expected.get(i);
+    if (offsets == null)     expected.put(i,(offsets=new TreeMap<>()));
+    builderA.add(LongType.instance.decompose(i),keyAt(i),i);
+    offsets.putAll(keyBuilder(i).getTokens());
+  }
+  for (long i=50; i < 100; i++) {
+    TreeMap<Long,LongSet> offsets=expected.get(i);
+    if (offsets == null)     expected.put(i,(offsets=new TreeMap<>()));
+    long position=100L + i;
+    builderB.add(LongType.instance.decompose(i),keyAt(position),position);
+    offsets.putAll(keyBuilder(100L + i).getTokens());
+  }
+  File indexA=File.createTempFile("on-disk-sa-partition-a",".db");
+  indexA.deleteOnExit();
+  File indexB=File.createTempFile("on-disk-sa-partition-b",".db");
+  indexB.deleteOnExit();
+  builderA.finish(indexA);
+  builderB.finish(indexB);
+  OnDiskIndex a=new OnDiskIndex(indexA,LongType.instance,new KeyConverter());
+  OnDiskIndex b=new OnDiskIndex(indexB,LongType.instance,new KeyConverter());
+  RangeIterator<OnDiskIndex.DataTerm,CombinedTerm> union=OnDiskIndexIterator.union(a,b);
+  TreeMap<Long,TreeMap<Long,LongSet>> actual=new TreeMap<>();
+  while (union.hasNext()) {
+    CombinedTerm term=union.next();
+    Long composedTerm=LongType.instance.compose(term.getTerm());
+    TreeMap<Long,LongSet> offsets=actual.get(composedTerm);
+    if (offsets == null)     actual.put(composedTerm,(offsets=new TreeMap<>()));
+    offsets.putAll(term.getTokens());
+  }
+  Assert.assertEquals(actual,expected);
+  File indexC=File.createTempFile("on-disk-sa-partition-final",".db");
+  indexC.deleteOnExit();
+  OnDiskIndexBuilder combined=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  combined.finish(Pair.create(keyAt(0).getKey(),keyAt(100).getKey()),indexC,new CombinedTermIterator(a,b));
+  OnDiskIndex c=new OnDiskIndex(indexC,LongType.instance,new KeyConverter());
+  union=OnDiskIndexIterator.union(c);
+  actual.clear();
+  while (union.hasNext()) {
+    CombinedTerm term=union.next();
+    Long composedTerm=LongType.instance.compose(term.getTerm());
+    TreeMap<Long,LongSet> offsets=actual.get(composedTerm);
+    if (offsets == null)     actual.put(composedTerm,(offsets=new TreeMap<>()));
+    offsets.putAll(term.getTokens());
+  }
+  Assert.assertEquals(actual,expected);
+  a.close();
+  b.close();
+}

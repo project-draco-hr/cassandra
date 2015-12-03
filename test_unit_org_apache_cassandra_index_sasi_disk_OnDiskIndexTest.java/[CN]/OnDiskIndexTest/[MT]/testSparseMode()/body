@@ -1,0 +1,27 @@
+{
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.SPARSE);
+  final long start=System.currentTimeMillis();
+  final int numIterations=100000;
+  for (long i=0; i < numIterations; i++)   builder.add(LongType.instance.decompose(start + i),keyAt(i),i);
+  File index=File.createTempFile("on-disk-sa-sparse","db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,LongType.instance,new KeyConverter());
+  ThreadLocalRandom random=ThreadLocalRandom.current();
+  for (long step=start; step < (start + numIterations); step+=1000) {
+    boolean lowerInclusive=random.nextBoolean();
+    boolean upperInclusive=random.nextBoolean();
+    long limit=random.nextLong(step,start + numIterations);
+    RangeIterator<Long,Token> rows=onDisk.search(expressionFor(step,lowerInclusive,limit,upperInclusive));
+    long lowerKey=step - start;
+    long upperKey=lowerKey + (limit - step);
+    if (!lowerInclusive)     lowerKey+=1;
+    if (upperInclusive)     upperKey+=1;
+    Set<DecoratedKey> actual=convert(rows);
+    for (long key=lowerKey; key < upperKey; key++)     Assert.assertTrue("key" + key + " wasn't found",actual.contains(keyAt(key)));
+    Assert.assertEquals((upperKey - lowerKey),actual.size());
+  }
+  RangeIterator<Long,Token> rows=onDisk.search(expressionFor(start,true,start + numIterations,true));
+  Set<DecoratedKey> actual=convert(rows);
+  Assert.assertEquals(numIterations,actual.size());
+}

@@ -1,0 +1,38 @@
+{
+  Map<ByteBuffer,TokenTreeBuilder> data=new HashMap<ByteBuffer,TokenTreeBuilder>(){
+{
+      put(UTF8Type.instance.decompose("scat"),keyBuilder(1L));
+      put(UTF8Type.instance.decompose("mat"),keyBuilder(2L));
+      put(UTF8Type.instance.decompose("fat"),keyBuilder(3L));
+      put(UTF8Type.instance.decompose("cat"),keyBuilder(1L,4L));
+      put(UTF8Type.instance.decompose("till"),keyBuilder(2L,6L));
+      put(UTF8Type.instance.decompose("bill"),keyBuilder(5L));
+      put(UTF8Type.instance.decompose("foo"),keyBuilder(7L));
+      put(UTF8Type.instance.decompose("bar"),keyBuilder(9L,10L));
+      put(UTF8Type.instance.decompose("michael"),keyBuilder(11L,12L,1L));
+    }
+  }
+;
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,UTF8Type.instance,OnDiskIndexBuilder.Mode.CONTAINS);
+  for (  Map.Entry<ByteBuffer,TokenTreeBuilder> e : data.entrySet())   addAll(builder,e.getKey(),e.getValue());
+  File index=File.createTempFile("on-disk-sa-string","db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,UTF8Type.instance,new KeyConverter());
+  for (  Map.Entry<ByteBuffer,TokenTreeBuilder> e : data.entrySet()) {
+    if (UTF8Type.instance.getString(e.getKey()).equals("cat"))     continue;
+    Assert.assertEquals("Key was: " + UTF8Type.instance.compose(e.getKey()),convert(e.getValue()),convert(onDisk.search(expressionFor(UTF8Type.instance,e.getKey()))));
+  }
+  Assert.assertEquals(convert(1,4),convert(onDisk.search(expressionFor("cat"))));
+  Assert.assertEquals(convert(9,10),convert(onDisk.search(expressionFor("ar"))));
+  Assert.assertEquals(convert(1,2,3,4),convert(onDisk.search(expressionFor("at"))));
+  Assert.assertEquals(convert(1,11,12),convert(onDisk.search(expressionFor("mic"))));
+  Assert.assertEquals(convert(1,11,12),convert(onDisk.search(expressionFor("ae"))));
+  Assert.assertEquals(convert(2,5,6),convert(onDisk.search(expressionFor("ll"))));
+  Assert.assertEquals(convert(1,2,5,6,11,12),convert(onDisk.search(expressionFor("l"))));
+  Assert.assertEquals(convert(7),convert(onDisk.search(expressionFor("oo"))));
+  Assert.assertEquals(convert(7),convert(onDisk.search(expressionFor("o"))));
+  Assert.assertEquals(convert(1,2,3,4,6),convert(onDisk.search(expressionFor("t"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("hello"))));
+  onDisk.close();
+}

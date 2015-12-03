@@ -1,0 +1,33 @@
+{
+  if (!TypeUtil.isValid(value,validator)) {
+    int size=value.remaining();
+    if ((value=TypeUtil.tryUpcast(value,validator)) == null) {
+      logger.error("Can't cast value for {} to size accepted by {}, value size is {} bytes.",index.getColumnName(),validator,size);
+      return false;
+    }
+  }
+  if (lower != null) {
+    if (isLiteral) {
+      if (!validateStringValue(value,lower.value))       return false;
+    }
+ else {
+      int cmp=validator.compare(lower.value,value);
+      if (operation == Op.EQ || operation == Op.NOT_EQ)       return cmp == 0;
+      if (cmp > 0 || (cmp == 0 && !lower.inclusive))       return false;
+    }
+  }
+  if (upper != null && lower != upper) {
+    if (isLiteral) {
+      if (!validateStringValue(value,upper.value))       return false;
+    }
+ else {
+      int cmp=validator.compare(upper.value,value);
+      if (cmp < 0 || (cmp == 0 && !upper.inclusive))       return false;
+    }
+  }
+  for (  ByteBuffer term : exclusions) {
+    if (isLiteral && validateStringValue(value,term))     return false;
+ else     if (validator.compare(term,value) == 0)     return false;
+  }
+  return true;
+}

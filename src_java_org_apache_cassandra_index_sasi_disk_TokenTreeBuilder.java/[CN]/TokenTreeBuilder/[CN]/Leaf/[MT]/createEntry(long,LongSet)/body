@@ -1,0 +1,18 @@
+{
+  int offsetCount=offsets.size();
+switch (offsetCount) {
+case 0:
+    throw new AssertionError("no offsets for token " + tok);
+case 1:
+  long offset=offsets.toArray()[0];
+if (offset > MAX_OFFSET) throw new AssertionError("offset " + offset + " cannot be greater than "+ MAX_OFFSET);
+ else if (offset <= Integer.MAX_VALUE) return new SimpleLeafEntry(tok,offset);
+ else return new FactoredOffsetLeafEntry(tok,offset);
+case 2:
+long[] rawOffsets=offsets.toArray();
+if (rawOffsets[0] <= Integer.MAX_VALUE && rawOffsets[1] <= Integer.MAX_VALUE && (rawOffsets[0] <= Short.MAX_VALUE || rawOffsets[1] <= Short.MAX_VALUE)) return new PackedCollisionLeafEntry(tok,rawOffsets);
+ else return createOverflowEntry(tok,offsetCount,offsets);
+default :
+return createOverflowEntry(tok,offsetCount,offsets);
+}
+}

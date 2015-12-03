@@ -1,0 +1,28 @@
+{
+  final long lower=0;
+  final long upper=100000;
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.SPARSE);
+  for (long i=lower; i <= upper; i++)   builder.add(LongType.instance.decompose(i),keyAt(i),i);
+  File index=File.createTempFile("on-disk-sa-except-long-ranges","db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,LongType.instance,new KeyConverter());
+  ThreadLocalRandom random=ThreadLocalRandom.current();
+  validateExclusions(onDisk,lower,50,Sets.newHashSet(42L));
+  validateExclusions(onDisk,lower,upper,Sets.newHashSet(31337L));
+  validateExclusions(onDisk,lower,random.nextInt(400,800),Sets.newHashSet(42L,154L));
+  validateExclusions(onDisk,lower,upper,Sets.newHashSet(31337L,54631L));
+  validateExclusions(onDisk,lower,random.nextInt(400,800),Sets.newHashSet(42L,154L));
+  validateExclusions(onDisk,lower,upper,Sets.newHashSet(31337L,54631L));
+  validateExclusions(onDisk,lower,random.nextLong(400,upper),Sets.newHashSet(42L,55L));
+  validateExclusions(onDisk,lower,random.nextLong(400,upper),Sets.newHashSet(42L,55L,93L));
+  validateExclusions(onDisk,lower,random.nextLong(400,upper),Sets.newHashSet(42L,55L,93L,205L));
+  Set<Long> exclusions=Sets.newHashSet(3L,12L,13L,14L,27L,54L,81L,125L,384L,771L,1054L,2048L,78834L);
+  Assert.assertEquals(392,validateExclusions(onDisk,lower,400,exclusions,false));
+  Assert.assertEquals(101,validateExclusions(onDisk,lower,100,Sets.newHashSet(-10L,-5L,-1L),false));
+  validateExclusions(onDisk,lower,upper,exclusions);
+  Assert.assertEquals(100000,convert(onDisk.search(new Expression("",LongType.instance).add(Operator.NEQ,LongType.instance.decompose(100L)))).size());
+  Assert.assertEquals(49,convert(onDisk.search(new Expression("",LongType.instance).add(Operator.LT,LongType.instance.decompose(50L)).add(Operator.NEQ,LongType.instance.decompose(10L)))).size());
+  Assert.assertEquals(99998,convert(onDisk.search(new Expression("",LongType.instance).add(Operator.GT,LongType.instance.decompose(1L)).add(Operator.NEQ,LongType.instance.decompose(20L)))).size());
+  onDisk.close();
+}

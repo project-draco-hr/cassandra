@@ -1,0 +1,33 @@
+{
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,UTF8Type.instance,OnDiskIndexBuilder.Mode.CONTAINS){
+{
+      addAll(this,UTF8Type.instance.decompose("Eliza"),keyBuilder(1L,2L));
+      addAll(this,UTF8Type.instance.decompose("Elizabeth"),keyBuilder(3L,4L));
+      addAll(this,UTF8Type.instance.decompose("Aliza"),keyBuilder(5L,6L));
+      addAll(this,UTF8Type.instance.decompose("Taylor"),keyBuilder(7L,8L));
+      addAll(this,UTF8Type.instance.decompose("Pavel"),keyBuilder(9L,10L));
+    }
+  }
+;
+  File index=File.createTempFile("on-disk-sa-multi-suffix-match",".db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,UTF8Type.instance,new KeyConverter());
+  Assert.assertEquals(convert(1,2,3,4,5,6),convert(onDisk.search(expressionFor("liz"))));
+  Assert.assertEquals(convert(1,2,3,4,5,6,7,8,9,10),convert(onDisk.search(expressionFor("a"))));
+  Assert.assertEquals(convert(5,6),convert(onDisk.search(expressionFor("A"))));
+  Assert.assertEquals(convert(1,2,3,4),convert(onDisk.search(expressionFor("E"))));
+  Assert.assertEquals(convert(1,2,3,4,5,6,7,8,9,10),convert(onDisk.search(expressionFor("l"))));
+  Assert.assertEquals(convert(3,4),convert(onDisk.search(expressionFor("bet"))));
+  Assert.assertEquals(convert(3,4,9,10),convert(onDisk.search(expressionFor("e"))));
+  Assert.assertEquals(convert(7,8),convert(onDisk.search(expressionFor("yl"))));
+  Assert.assertEquals(convert(7,8),convert(onDisk.search(expressionFor("T"))));
+  Assert.assertEquals(convert(1,2,3,4,5,6),convert(onDisk.search(expressionFor("za"))));
+  Assert.assertEquals(convert(3,4),convert(onDisk.search(expressionFor("ab"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("Pi"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("ethz"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("liw"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("Taw"))));
+  Assert.assertEquals(Collections.<DecoratedKey>emptySet(),convert(onDisk.search(expressionFor("Av"))));
+  onDisk.close();
+}

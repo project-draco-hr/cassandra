@@ -1,0 +1,31 @@
+{
+  final TokenTreeBuilder builder=new TokenTreeBuilder(tokens).finish();
+  final File treeFile=File.createTempFile("token-tree-iterate-test2","tt");
+  treeFile.deleteOnExit();
+  try (SequentialWriter writer=new SequentialWriter(treeFile,4096,BufferType.ON_HEAP)){
+    builder.write(writer);
+    writer.sync();
+  }
+   final RandomAccessReader reader=RandomAccessReader.open(treeFile);
+  final TokenTree tokenTree=new TokenTree(new MappedBuffer(reader));
+  final RangeIterator<Long,Token> treeIterator=tokenTree.iterator(KEY_CONVERTER);
+  final RangeIterator<Long,TokenWithOffsets> listIterator=new EntrySetSkippableIterator(tokens);
+  long lastToken=0L;
+  while (treeIterator.hasNext() && lastToken < 12) {
+    Token treeNext=treeIterator.next();
+    TokenWithOffsets listNext=listIterator.next();
+    Assert.assertEquals(listNext.token,(lastToken=treeNext.get()));
+    Assert.assertEquals(convert(listNext.offsets),convert(treeNext));
+  }
+  treeIterator.skipTo(100548L);
+  listIterator.skipTo(100548L);
+  while (treeIterator.hasNext() && listIterator.hasNext()) {
+    Token treeNext=treeIterator.next();
+    TokenWithOffsets listNext=listIterator.next();
+    Assert.assertEquals(listNext.token,(long)treeNext.get());
+    Assert.assertEquals(convert(listNext.offsets),convert(treeNext));
+  }
+  Assert.assertFalse("Tree iterator not completed",treeIterator.hasNext());
+  Assert.assertFalse("List iterator not completed",listIterator.hasNext());
+  reader.close();
+}

@@ -2,7 +2,7 @@
   prepareTable(table);
   if (index != null) {
     StorageService.instance.disableAutoCompaction(KEYSPACE,table + '.' + index);
-    Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index).getBlockingFlushTask().call();
+    triggerBlockingFlush(Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index));
   }
   for (int i=0; i < 100; i++) {
     int partKeyA=i;
@@ -18,7 +18,7 @@
     }
     if (i % 10 == 9) {
       Keyspace.open(KEYSPACE).getColumnFamilyStore(table).forceFlush().get();
-      if (index != null)       Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index).getBlockingFlushTask().call();
+      if (index != null)       triggerBlockingFlush(Keyspace.open(KEYSPACE).getColumnFamilyStore(table).indexManager.getIndexByName(index));
     }
   }
 }

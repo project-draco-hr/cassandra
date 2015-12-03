@@ -1,0 +1,16 @@
+{
+  long overhead=CSLM_OVERHEAD;
+  ConcurrentSkipListSet<DecoratedKey> keys=get(value);
+  if (keys == null) {
+    ConcurrentSkipListSet<DecoratedKey> newKeys=new ConcurrentSkipListSet<>(DecoratedKey.comparator);
+    keys=putIfAbsent(value,newKeys);
+    if (keys == null) {
+      overhead+=CSLM_OVERHEAD + value.length();
+      keys=newKeys;
+    }
+  }
+  keys.add(key);
+  overhead+=NODE_FACTORY.currentUpdateSize();
+  NODE_FACTORY.reset();
+  return overhead;
+}

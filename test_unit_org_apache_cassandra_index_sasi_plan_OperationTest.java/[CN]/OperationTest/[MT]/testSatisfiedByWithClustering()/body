@@ -1,0 +1,37 @@
+{
+  ColumnDefinition location=getColumn(CLUSTERING_BACKEND,UTF8Type.instance.decompose("location"));
+  ColumnDefinition age=getColumn(CLUSTERING_BACKEND,UTF8Type.instance.decompose("age"));
+  ColumnDefinition height=getColumn(CLUSTERING_BACKEND,UTF8Type.instance.decompose("height"));
+  ColumnDefinition score=getColumn(CLUSTERING_BACKEND,UTF8Type.instance.decompose("score"));
+  Unfiltered row=buildRow(new Clustering(UTF8Type.instance.fromString("US"),Int32Type.instance.decompose(27)),buildCell(height,Int32Type.instance.decompose(182),System.currentTimeMillis()),buildCell(score,DoubleType.instance.decompose(1.0d),System.currentTimeMillis()));
+  Operation.Builder builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(27)));
+  builder.add(new SimpleExpression(height,Operator.EQ,Int32Type.instance.decompose(182)));
+  Assert.assertTrue(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(28)));
+  builder.add(new SimpleExpression(height,Operator.EQ,Int32Type.instance.decompose(182)));
+  Assert.assertFalse(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(location,Operator.EQ,UTF8Type.instance.decompose("US")));
+  builder.add(new SimpleExpression(age,Operator.GTE,Int32Type.instance.decompose(27)));
+  Assert.assertTrue(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(location,Operator.EQ,UTF8Type.instance.decompose("BY")));
+  builder.add(new SimpleExpression(age,Operator.GTE,Int32Type.instance.decompose(28)));
+  Assert.assertFalse(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(location,Operator.EQ,UTF8Type.instance.decompose("US")));
+  builder.add(new SimpleExpression(age,Operator.LTE,Int32Type.instance.decompose(27)));
+  builder.add(new SimpleExpression(height,Operator.GTE,Int32Type.instance.decompose(182)));
+  Assert.assertTrue(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(location,Operator.EQ,UTF8Type.instance.decompose("US")));
+  builder.add(new SimpleExpression(height,Operator.GTE,Int32Type.instance.decompose(182)));
+  builder.add(new SimpleExpression(score,Operator.EQ,DoubleType.instance.decompose(1.0d)));
+  Assert.assertTrue(builder.complete().satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(height,Operator.GTE,Int32Type.instance.decompose(182)));
+  builder.add(new SimpleExpression(score,Operator.EQ,DoubleType.instance.decompose(1.0d)));
+  Assert.assertTrue(builder.complete().satisfiedBy(row,false));
+}

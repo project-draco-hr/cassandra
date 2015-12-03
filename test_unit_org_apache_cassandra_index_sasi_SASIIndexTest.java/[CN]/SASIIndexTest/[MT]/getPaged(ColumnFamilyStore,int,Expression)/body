@@ -1,0 +1,21 @@
+{
+  UnfilteredPartitionIterator currentPage;
+  Set<DecoratedKey> uniqueKeys=new TreeSet<>();
+  DecoratedKey lastKey=null;
+  int count;
+  do {
+    count=0;
+    currentPage=getIndexed(store,ColumnFilter.all(store.metadata),lastKey,pageSize,expressions);
+    if (currentPage == null)     break;
+    while (currentPage.hasNext()) {
+      try (UnfilteredRowIterator row=currentPage.next()){
+        uniqueKeys.add(row.partitionKey());
+        lastKey=row.partitionKey();
+        count++;
+      }
+     }
+    currentPage.close();
+  }
+ while (count == pageSize);
+  return uniqueKeys;
+}

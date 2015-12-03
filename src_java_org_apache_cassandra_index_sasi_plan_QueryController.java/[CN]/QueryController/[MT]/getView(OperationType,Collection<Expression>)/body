@@ -1,0 +1,22 @@
+{
+  Pair<Expression,Set<SSTableIndex>> primary=(op == OperationType.AND) ? calculatePrimary(expressions) : null;
+  Map<Expression,Set<SSTableIndex>> indexes=new HashMap<>();
+  for (  Expression e : expressions) {
+    if (!e.isIndexed() || e.getOp() == Expression.Op.NOT_EQ)     continue;
+    if (primary != null && e.equals(primary.left)) {
+      indexes.put(primary.left,primary.right);
+      continue;
+    }
+    View view=e.index.getView();
+    if (view == null)     continue;
+    Set<SSTableIndex> readers=new HashSet<>();
+    if (primary != null && primary.right.size() > 0) {
+      for (      SSTableIndex index : primary.right)       readers.addAll(view.match(index.minKey(),index.maxKey()));
+    }
+ else {
+      readers.addAll(view.match(sstables,e));
+    }
+    indexes.put(e,readers);
+  }
+  return indexes;
+}

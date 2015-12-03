@@ -1,0 +1,79 @@
+{
+  final ColumnDefinition timestamp=getColumn(UTF8Type.instance.decompose("timestamp"));
+  final ColumnDefinition age=getColumn(UTF8Type.instance.decompose("age"));
+  Operation.Builder builder=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(5)));
+  Operation op=builder.complete();
+  Unfiltered row=buildRow(buildCell(age,Int32Type.instance.decompose(6),System.currentTimeMillis()));
+  Assert.assertTrue(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(5),System.currentTimeMillis()));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(6),System.currentTimeMillis()));
+  Assert.assertTrue(op.satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(5)),new SimpleExpression(age,Operator.GT,Int32Type.instance.decompose(1)),new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(6)),new SimpleExpression(age,Operator.LTE,Int32Type.instance.decompose(10)));
+  op=builder.complete();
+  Set<Integer> exclusions=Sets.newHashSet(0,1,5,6,11);
+  for (int i=0; i <= 11; i++) {
+    row=buildRow(buildCell(age,Int32Type.instance.decompose(i),System.currentTimeMillis()));
+    boolean result=op.satisfiedBy(row,false);
+    Assert.assertTrue(exclusions.contains(i) != result);
+  }
+  builder=new Operation.Builder(OperationType.OR,controller,new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(5)),new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(6)));
+  op=builder.complete();
+  exclusions=Sets.newHashSet(0,1,2,3,4,7,8,9,10);
+  for (int i=0; i <= 10; i++) {
+    row=buildRow(buildCell(age,Int32Type.instance.decompose(i),System.currentTimeMillis()));
+    boolean result=op.satisfiedBy(row,false);
+    Assert.assertTrue(exclusions.contains(i) != result);
+  }
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(age,Operator.GTE,Int32Type.instance.decompose(0)));
+  builder.add(new SimpleExpression(age,Operator.LT,Int32Type.instance.decompose(10)));
+  builder.add(new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(7)));
+  op=builder.complete();
+  exclusions=Sets.newHashSet(7);
+  for (int i=0; i < 10; i++) {
+    row=buildRow(buildCell(age,Int32Type.instance.decompose(i),System.currentTimeMillis()));
+    boolean result=op.satisfiedBy(row,false);
+    Assert.assertTrue(exclusions.contains(i) != result);
+  }
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(timestamp,Operator.GTE,LongType.instance.decompose(10L)));
+  builder.add(new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(5)));
+  op=builder.complete();
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(6),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(11L),System.currentTimeMillis()));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(5),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(22L),System.currentTimeMillis()));
+  Assert.assertTrue(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(5),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(9L),System.currentTimeMillis()));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.OR,controller,new SimpleExpression(timestamp,Operator.GT,LongType.instance.decompose(10L)));
+  builder.setRight(new Operation.Builder(OperationType.AND,controller,new SimpleExpression(age,Operator.GT,Int32Type.instance.decompose(0)),new SimpleExpression(age,Operator.LT,Int32Type.instance.decompose(10))));
+  op=builder.complete();
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(5),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(9L),System.currentTimeMillis()));
+  Assert.assertTrue(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(20),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(11L),System.currentTimeMillis()));
+  Assert.assertTrue(op.satisfiedBy(row,false));
+  row=buildRow(buildCell(age,Int32Type.instance.decompose(0),System.currentTimeMillis()),buildCell(timestamp,LongType.instance.decompose(9L),System.currentTimeMillis()));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  builder=new Operation.Builder(OperationType.AND,controller);
+  builder.add(new SimpleExpression(age,Operator.EQ,Int32Type.instance.decompose(30)));
+  op=builder.complete();
+  Assert.assertFalse(op.satisfiedBy(null,false));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  long now=System.currentTimeMillis();
+  row=OperationTest.buildRow(Row.Deletion.regular(new DeletionTime(now - 10,(int)(now / 1000))),buildCell(age,Int32Type.instance.decompose(6),System.currentTimeMillis()));
+  Assert.assertFalse(op.satisfiedBy(row,false));
+  row=buildRow(deletedCell(age,System.currentTimeMillis(),FBUtilities.nowInSeconds()));
+  Assert.assertFalse(op.satisfiedBy(row,true));
+  try {
+    Assert.assertFalse(op.satisfiedBy(buildRow(),false));
+  }
+ catch (  IllegalStateException e) {
+  }
+  try {
+    Assert.assertFalse(op.satisfiedBy(buildRow(),true));
+  }
+ catch (  IllegalStateException e) {
+    Assert.fail("IllegalStateException should not be thrown when missing column and allowMissingColumns=true");
+  }
+}

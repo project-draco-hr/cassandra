@@ -1,0 +1,29 @@
+{
+  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CLUSTRING_CF_NAME);
+  executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Pavel","US",27,183,1.0);
+  executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Pavel","BY",28,182,2.0);
+  executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Jordan","US",27,182,1.0);
+  if (forceFlush)   store.forceBlockingFlush();
+  UntypedResultSet results;
+  results=executeCQL("SELECT * FROM %s.%s WHERE location = ? ALLOW FILTERING","US");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE age >= ? AND height = ? ALLOW FILTERING",27,182);
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE age = ? AND height = ? ALLOW FILTERING",28,182);
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE age >= ? AND height = ? AND score >= ? ALLOW FILTERING",27,182,1.0);
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE age >= ? AND height = ? AND score = ? ALLOW FILTERING",27,182,1.0);
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location = ? AND age >= ? ALLOW FILTERING","US",27);
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location = ? ALLOW FILTERING","BY");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+}

@@ -1,0 +1,31 @@
+{
+  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
+  Mutation rm1=new Mutation(KS_NAME,decoratedKey(AsciiType.instance.decompose("key1")));
+  rm1.add(PartitionUpdate.singleRowUpdate(store.metadata,rm1.key(),buildRow(buildCell(store.metadata,UTF8Type.instance.decompose("/data/output/id"),AsciiType.instance.decompose("jason"),System.currentTimeMillis()))));
+  Mutation rm2=new Mutation(KS_NAME,decoratedKey(AsciiType.instance.decompose("key2")));
+  rm2.add(PartitionUpdate.singleRowUpdate(store.metadata,rm2.key(),buildRow(buildCell(store.metadata,UTF8Type.instance.decompose("/data/output/id"),AsciiType.instance.decompose("pavel"),System.currentTimeMillis()))));
+  Mutation rm3=new Mutation(KS_NAME,decoratedKey(AsciiType.instance.decompose("key3")));
+  rm3.add(PartitionUpdate.singleRowUpdate(store.metadata,rm3.key(),buildRow(buildCell(store.metadata,UTF8Type.instance.decompose("/data/output/id"),AsciiType.instance.decompose("Aleksey"),System.currentTimeMillis()))));
+  rm1.apply();
+  rm2.apply();
+  rm3.apply();
+  if (forceFlush)   store.forceBlockingFlush();
+  final ByteBuffer dataOutputId=UTF8Type.instance.decompose("/data/output/id");
+  Set<String> rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("a")));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key1","key2"},rows.toArray(new String[rows.size()])));
+  rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("A")));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key3"},rows.toArray(new String[rows.size()])));
+  if (!forceFlush)   return;
+  store.indexManager.invalidateAllIndexesBlocking();
+  rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("a")));
+  Assert.assertTrue(rows.toString(),rows.isEmpty());
+  rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("A")));
+  Assert.assertTrue(rows.toString(),rows.isEmpty());
+  store.indexManager.buildIndexBlocking(store.indexManager.getIndexByName("data_output_id"));
+  rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("a")));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key1","key2"},rows.toArray(new String[rows.size()])));
+  store.indexManager.buildIndexBlocking(store.indexManager.getIndexByName("first_name"));
+  store.indexManager.buildIndexBlocking(store.indexManager.getIndexByName("data_output_id"));
+  rows=getIndexed(store,10,buildExpression(dataOutputId,Operator.EQ,UTF8Type.instance.decompose("a")));
+  Assert.assertTrue(rows.toString(),Arrays.equals(new String[]{"key1","key2"},rows.toArray(new String[rows.size()])));
+}

@@ -1,0 +1,25 @@
+{
+  while (true) {
+    if (current >= suffixes.length) {
+      if (lastProcessedSuffix == null)       return endOfData();
+      Pair<ByteBuffer,TokenTreeBuilder> result=finishSuffix();
+      lastProcessedSuffix=null;
+      return result;
+    }
+    Pair<ByteBuffer,TokenTreeBuilder> suffix=suffixAt(current++);
+    if (lastProcessedSuffix == null) {
+      lastProcessedSuffix=suffix.left;
+      container=new TokenTreeBuilder(suffix.right.getTokens());
+    }
+ else     if (comparator.compare(lastProcessedSuffix,suffix.left) == 0) {
+      lastProcessedSuffix=suffix.left;
+      container.add(suffix.right.getTokens());
+    }
+ else {
+      Pair<ByteBuffer,TokenTreeBuilder> result=finishSuffix();
+      lastProcessedSuffix=suffix.left;
+      container=new TokenTreeBuilder(suffix.right.getTokens());
+      return result;
+    }
+  }
+}

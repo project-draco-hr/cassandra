@@ -1,0 +1,33 @@
+{
+  SearchResult<DataTerm> lowerPosition=(lower == null) ? null : searchIndex(lower.value,lowerBlock);
+  SearchResult<DataTerm> upperPosition=(upper == null) ? null : searchIndex(upper.value,upperBlock);
+  RangeUnionIterator.Builder<Long,Token> builder=RangeUnionIterator.builder();
+  int firstFullBlockIdx=lowerBlock, lastFullBlockIdx=upperBlock;
+  if (lowerPosition != null && (lowerPosition.index > 0 || !lower.inclusive)) {
+    DataBlock block=dataLevel.getBlock(lowerBlock);
+    int start=(lower.inclusive || lowerPosition.cmp != 0) ? lowerPosition.index : lowerPosition.index + 1;
+    builder.add(block.getRange(start,block.termCount()));
+    firstFullBlockIdx=lowerBlock + 1;
+  }
+  if (upperPosition != null) {
+    DataBlock block=dataLevel.getBlock(upperBlock);
+    int lastIndex=block.termCount() - 1;
+    if (upperPosition.index != lastIndex || !upper.inclusive) {
+      int end=(upperPosition.cmp < 0 || (upperPosition.cmp == 0 && upper.inclusive)) ? upperPosition.index + 1 : upperPosition.index;
+      builder.add(block.getRange(0,end));
+      lastFullBlockIdx=upperBlock - 1;
+    }
+  }
+  int totalSuperBlocks=(lastFullBlockIdx - firstFullBlockIdx) / OnDiskIndexBuilder.SUPER_BLOCK_SIZE;
+  if (totalSuperBlocks == 0) {
+    for (int i=firstFullBlockIdx; i <= lastFullBlockIdx; i++)     builder.add(dataLevel.getBlock(i).getBlockIndex().iterator(keyFetcher));
+    return builder.build();
+  }
+  int superBlockAlignedStart=firstFullBlockIdx == 0 ? 0 : (int)FBUtilities.align(firstFullBlockIdx,OnDiskIndexBuilder.SUPER_BLOCK_SIZE);
+  for (int blockIdx=firstFullBlockIdx; blockIdx < Math.min(superBlockAlignedStart,lastFullBlockIdx); blockIdx++)   builder.add(getBlockIterator(blockIdx));
+  int superBlockIdx=superBlockAlignedStart / OnDiskIndexBuilder.SUPER_BLOCK_SIZE;
+  for (int offset=0; offset < totalSuperBlocks - 1; offset++)   builder.add(dataLevel.getSuperBlock(superBlockIdx++).iterator());
+  int lastCoveredBlock=superBlockIdx * OnDiskIndexBuilder.SUPER_BLOCK_SIZE;
+  for (int offset=0; offset <= (lastFullBlockIdx - lastCoveredBlock); offset++)   builder.add(getBlockIterator(lastCoveredBlock + offset));
+  return builder.build();
+}

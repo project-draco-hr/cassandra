@@ -1,0 +1,22 @@
+{
+  Map<ByteBuffer,TokenTreeBuilder> terms=new HashMap<>();
+  terms.put(UTF8Type.instance.decompose("1234"),keyBuilder(1L,2L));
+  terms.put(UTF8Type.instance.decompose("2345"),keyBuilder(3L,4L));
+  terms.put(UTF8Type.instance.decompose("3456"),keyBuilder(5L,6L));
+  terms.put(UTF8Type.instance.decompose("4567"),keyBuilder(7L,8L));
+  terms.put(UTF8Type.instance.decompose("5678"),keyBuilder(9L,10L));
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,Int32Type.instance,OnDiskIndexBuilder.Mode.SPARSE);
+  for (  Map.Entry<ByteBuffer,TokenTreeBuilder> entry : terms.entrySet())   addAll(builder,entry.getKey(),entry.getValue());
+  File index=File.createTempFile("on-disk-sa-try-superblocks",".db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,Int32Type.instance,new KeyConverter());
+  OnDiskIndex.OnDiskSuperBlock superBlock=onDisk.dataLevel.getSuperBlock(0);
+  Iterator<Token> iter=superBlock.iterator();
+  Long lastToken=null;
+  while (iter.hasNext()) {
+    Token token=iter.next();
+    if (lastToken != null)     Assert.assertTrue(lastToken.compareTo(token.get()) < 0);
+    lastToken=token.get();
+  }
+}

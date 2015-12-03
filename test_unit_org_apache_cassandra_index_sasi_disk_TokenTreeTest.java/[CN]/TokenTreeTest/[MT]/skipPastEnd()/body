@@ -1,0 +1,12 @@
+{
+  final TokenTreeBuilder builder=new TokenTreeBuilder(simpleTokenMap).finish();
+  final File treeFile=File.createTempFile("token-tree-skip-past-test","tt");
+  treeFile.deleteOnExit();
+  try (SequentialWriter writer=new SequentialWriter(treeFile,4096,BufferType.ON_HEAP)){
+    builder.write(writer);
+    writer.sync();
+  }
+   final RandomAccessReader reader=RandomAccessReader.open(treeFile);
+  final RangeIterator<Long,Token> tokenTree=new TokenTree(new MappedBuffer(reader)).iterator(KEY_CONVERTER);
+  tokenTree.skipTo(simpleTokenMap.lastKey() + 10);
+}

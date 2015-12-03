@@ -1,0 +1,29 @@
+{
+  final Map<ByteBuffer,Pair<DecoratedKey,Long>> data=new HashMap<ByteBuffer,Pair<DecoratedKey,Long>>(){
+{
+      put(Int32Type.instance.decompose(5),Pair.create(keyAt(1L),1L));
+    }
+  }
+;
+  OnDiskIndexBuilder builder1=new OnDiskIndexBuilder(UTF8Type.instance,Int32Type.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  OnDiskIndexBuilder builder2=new OnDiskIndexBuilder(UTF8Type.instance,Int32Type.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  for (  Map.Entry<ByteBuffer,Pair<DecoratedKey,Long>> e : data.entrySet()) {
+    DecoratedKey key=e.getValue().left;
+    Long position=e.getValue().right;
+    builder1.add(e.getKey(),key,position);
+    builder2.add(e.getKey(),key,position);
+  }
+  File index1=File.createTempFile("on-disk-sa-int","db");
+  File index2=File.createTempFile("on-disk-sa-int2","db");
+  index1.deleteOnExit();
+  index2.deleteOnExit();
+  builder1.finish(index1);
+  builder2.finish(new Descriptor(Descriptor.VERSION_AA),index2);
+  OnDiskIndex onDisk1=new OnDiskIndex(index1,Int32Type.instance,new KeyConverter());
+  OnDiskIndex onDisk2=new OnDiskIndex(index2,Int32Type.instance,new KeyConverter());
+  ByteBuffer number=Int32Type.instance.decompose(5);
+  Assert.assertEquals(Collections.singleton(data.get(number).left),convert(onDisk1.search(expressionFor(Int32Type.instance,number))));
+  Assert.assertEquals(Collections.singleton(data.get(number).left),convert(onDisk2.search(expressionFor(Int32Type.instance,number))));
+  Assert.assertEquals(onDisk1.descriptor.version.version,Descriptor.CURRENT_VERSION);
+  Assert.assertEquals(onDisk2.descriptor.version.version,Descriptor.VERSION_AA);
+}

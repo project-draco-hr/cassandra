@@ -1,0 +1,32 @@
+{
+  final SortedMap<Long,LongSet> merged=new TreeMap<>();
+  final TokenTreeBuilder builder=new TokenTreeBuilder(simpleTokenMap).finish();
+  builder.add(collidingTokensMap);
+  merged.putAll(collidingTokensMap);
+  for (  Map.Entry<Long,LongSet> entry : simpleTokenMap.entrySet()) {
+    if (merged.containsKey(entry.getKey())) {
+      LongSet mergingOffsets=entry.getValue();
+      LongSet existingOffsets=merged.get(entry.getKey());
+      if (mergingOffsets.equals(existingOffsets))       continue;
+      Set<Long> mergeSet=new HashSet<>();
+      for (      LongCursor merging : mergingOffsets)       mergeSet.add(merging.value);
+      for (      LongCursor existing : existingOffsets)       mergeSet.add(existing.value);
+      LongSet mergedResults=new LongOpenHashSet();
+      for (      Long result : mergeSet)       mergedResults.add(result);
+      merged.put(entry.getKey(),mergedResults);
+    }
+ else {
+      merged.put(entry.getKey(),entry.getValue());
+    }
+  }
+  final Iterator<Pair<Long,LongSet>> tokenIterator=builder.iterator();
+  final Iterator<Map.Entry<Long,LongSet>> listIterator=merged.entrySet().iterator();
+  while (tokenIterator.hasNext() && listIterator.hasNext()) {
+    Pair<Long,LongSet> tokenNext=tokenIterator.next();
+    Map.Entry<Long,LongSet> listNext=listIterator.next();
+    Assert.assertEquals(listNext.getKey(),tokenNext.left);
+    Assert.assertEquals(listNext.getValue(),tokenNext.right);
+  }
+  Assert.assertFalse("token iterator not finished",tokenIterator.hasNext());
+  Assert.assertFalse("list iterator not finished",listIterator.hasNext());
+}

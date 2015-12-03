@@ -1,0 +1,33 @@
+{
+  SequentialWriter out=null;
+  try {
+    out=new SequentialWriter(file,BLOCK_SIZE,BufferType.ON_HEAP);
+    out.writeUTF(descriptor.version.toString());
+    out.writeShort(termSize.size);
+    ByteBufferUtil.writeWithShortLength(terms.minTerm(),out);
+    ByteBufferUtil.writeWithShortLength(terms.maxTerm(),out);
+    ByteBufferUtil.writeWithShortLength(range.left,out);
+    ByteBufferUtil.writeWithShortLength(range.right,out);
+    out.writeUTF(mode.toString());
+    out.skipBytes((int)(BLOCK_SIZE - out.position()));
+    dataLevel=mode == Mode.SPARSE ? new DataBuilderLevel(out,new MutableDataBlock(mode)) : new MutableLevel<>(out,new MutableDataBlock(mode));
+    while (terms.hasNext()) {
+      Pair<ByteBuffer,TokenTreeBuilder> term=terms.next();
+      addTerm(new InMemoryDataTerm(term.left,term.right),out);
+    }
+    dataLevel.finalFlush();
+    for (    MutableLevel l : levels)     l.flush();
+    final long levelIndexPosition=out.position();
+    out.writeInt(levels.size());
+    for (int i=levels.size() - 1; i >= 0; i--)     levels.get(i).flushMetadata();
+    dataLevel.flushMetadata();
+    out.writeLong(levelIndexPosition);
+    out.sync();
+  }
+ catch (  IOException e) {
+    throw new FSWriteError(e,file);
+  }
+ finally {
+    FileUtils.closeQuietly(out);
+  }
+}

@@ -1,0 +1,12 @@
+{
+  View currentView=view.get();
+  if (currentView == null)   return;
+  Set<SSTableReader> toRemove=new HashSet<>();
+  for (  SSTableIndex index : currentView) {
+    SSTableReader sstable=index.getSSTable();
+    if (sstable.getMaxTimestamp() > truncateUntil)     continue;
+    index.markObsolete();
+    toRemove.add(sstable);
+  }
+  update(toRemove,Collections.<SSTableReader>emptyList());
+}

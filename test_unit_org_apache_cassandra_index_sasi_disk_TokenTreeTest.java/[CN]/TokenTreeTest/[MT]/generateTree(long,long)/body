@@ -1,0 +1,27 @@
+{
+  final SortedMap<Long,LongSet> toks=new TreeMap<Long,LongSet>(){
+{
+      for (long i=minToken; i <= maxToken; i++) {
+        LongSet offsetSet=new LongOpenHashSet();
+        offsetSet.add(i);
+        put(i,offsetSet);
+      }
+    }
+  }
+;
+  final TokenTreeBuilder builder=new TokenTreeBuilder(toks).finish();
+  final File treeFile=File.createTempFile("token-tree-get-test","tt");
+  treeFile.deleteOnExit();
+  try (SequentialWriter writer=new SequentialWriter(treeFile,4096,BufferType.ON_HEAP)){
+    builder.write(writer);
+    writer.sync();
+  }
+   RandomAccessReader reader=null;
+  try {
+    reader=RandomAccessReader.open(treeFile);
+    return new TokenTree(new MappedBuffer(reader));
+  }
+  finally {
+    FileUtils.closeQuietly(reader);
+  }
+}

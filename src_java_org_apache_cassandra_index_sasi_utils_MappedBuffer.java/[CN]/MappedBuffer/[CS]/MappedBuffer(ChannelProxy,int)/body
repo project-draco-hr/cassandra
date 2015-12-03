@@ -1,0 +1,19 @@
+{
+  if (numPageBits > Integer.SIZE - 1)   throw new IllegalArgumentException("page size can't be bigger than 1G");
+  sizeBits=numPageBits;
+  pageSize=1 << sizeBits;
+  position=0;
+  limit=capacity=file.size();
+  pages=new MappedByteBuffer[(int)(file.size() / pageSize) + 1];
+  try {
+    long offset=0;
+    for (int i=0; i < pages.length; i++) {
+      long pageSize=Math.min(this.pageSize,(capacity - offset));
+      pages[i]=file.map(MapMode.READ_ONLY,offset,pageSize);
+      offset+=pageSize;
+    }
+  }
+  finally {
+    file.close();
+  }
+}

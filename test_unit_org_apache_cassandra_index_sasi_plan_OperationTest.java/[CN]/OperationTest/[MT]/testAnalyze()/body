@@ -1,0 +1,164 @@
+{
+  final ColumnDefinition firstName=getColumn(UTF8Type.instance.decompose("first_name"));
+  final ColumnDefinition age=getColumn(UTF8Type.instance.decompose("age"));
+  final ColumnDefinition comment=getColumn(UTF8Type.instance.decompose("comment"));
+  Map<Expression.Op,Expression> expressions=convert(Operation.analyzeGroup(controller,OperationType.AND,Arrays.asList(new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(5)),new SimpleExpression(age,Operator.GT,Int32Type.instance.decompose(1)),new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(6)),new SimpleExpression(age,Operator.LTE,Int32Type.instance.decompose(10)))));
+  Expression expected=new Expression("age",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      lower=new Bound(Int32Type.instance.decompose(1),false);
+      upper=new Bound(Int32Type.instance.decompose(10),true);
+      exclusions.add(Int32Type.instance.decompose(5));
+      exclusions.add(Int32Type.instance.decompose(6));
+    }
+  }
+;
+  Assert.assertEquals(1,expressions.size());
+  Assert.assertEquals(expected,expressions.get(Expression.Op.RANGE));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(5)),new SimpleExpression(age,Operator.GTE,Int32Type.instance.decompose(7)))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("age",Int32Type.instance){
+{
+      operation=Op.NOT_EQ;
+      lower=new Bound(Int32Type.instance.decompose(5),true);
+      upper=lower;
+    }
+  }
+,expressions.get(Expression.Op.NOT_EQ));
+  Assert.assertEquals(new Expression("age",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      lower=new Bound(Int32Type.instance.decompose(7),true);
+    }
+  }
+,expressions.get(Expression.Op.RANGE));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(5)),new SimpleExpression(age,Operator.LT,Int32Type.instance.decompose(7)))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("age",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      upper=new Bound(Int32Type.instance.decompose(7),false);
+    }
+  }
+,expressions.get(Expression.Op.RANGE));
+  Assert.assertEquals(new Expression("age",Int32Type.instance){
+{
+      operation=Op.NOT_EQ;
+      lower=new Bound(Int32Type.instance.decompose(5),true);
+      upper=lower;
+    }
+  }
+,expressions.get(Expression.Op.NOT_EQ));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.AND,Arrays.asList(new SimpleExpression(age,Operator.GT,Int32Type.instance.decompose(1)),new SimpleExpression(age,Operator.LT,Int32Type.instance.decompose(7)))));
+  Assert.assertEquals(1,expressions.size());
+  Assert.assertEquals(new Expression("age",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      lower=new Bound(Int32Type.instance.decompose(1),false);
+      upper=new Bound(Int32Type.instance.decompose(7),false);
+    }
+  }
+,expressions.get(Expression.Op.RANGE));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),new SimpleExpression(firstName,Operator.NEQ,UTF8Type.instance.decompose("b")))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("first_name",UTF8Type.instance){
+{
+      operation=Op.NOT_EQ;
+      lower=new Bound(UTF8Type.instance.decompose("b"),true);
+      upper=lower;
+    }
+  }
+,expressions.get(Expression.Op.NOT_EQ));
+  Assert.assertEquals(new Expression("first_name",UTF8Type.instance){
+{
+      operation=Op.EQ;
+      lower=upper=new Bound(UTF8Type.instance.decompose("a"),true);
+    }
+  }
+,expressions.get(Expression.Op.EQ));
+  ListMultimap<ColumnDefinition,Expression> e=Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(comment,Operator.EQ,UTF8Type.instance.decompose("soft eng")),new SimpleExpression(comment,Operator.NEQ,UTF8Type.instance.decompose("likes do"))));
+  List<Expression> expectedExpressions=new ArrayList<Expression>(2){
+{
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.EQ;
+          lower=new Bound(UTF8Type.instance.decompose("soft"),true);
+          upper=lower;
+        }
+      }
+);
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.EQ;
+          lower=new Bound(UTF8Type.instance.decompose("eng"),true);
+          upper=lower;
+        }
+      }
+);
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(UTF8Type.instance.decompose("likes"),true);
+          upper=lower;
+        }
+      }
+);
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(UTF8Type.instance.decompose("do"),true);
+          upper=lower;
+        }
+      }
+);
+    }
+  }
+;
+  Assert.assertEquals(expectedExpressions,e.get(comment));
+  e=Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(comment,Operator.NEQ,UTF8Type.instance.decompose("likes do")),new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("j"))));
+  expectedExpressions=new ArrayList<Expression>(2){
+{
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(UTF8Type.instance.decompose("likes"),true);
+          upper=lower;
+        }
+      }
+);
+      add(new Expression("comment",UTF8Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(UTF8Type.instance.decompose("do"),true);
+          upper=lower;
+        }
+      }
+);
+    }
+  }
+;
+  Assert.assertEquals(expectedExpressions,e.get(comment));
+  e=Operation.analyzeGroup(controller,OperationType.OR,Arrays.asList(new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(27)),new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("j")),new SimpleExpression(age,Operator.NEQ,Int32Type.instance.decompose(25))));
+  expectedExpressions=new ArrayList<Expression>(2){
+{
+      add(new Expression("age",Int32Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(Int32Type.instance.decompose(27),true);
+          upper=lower;
+        }
+      }
+);
+      add(new Expression("age",Int32Type.instance){
+{
+          operation=Op.NOT_EQ;
+          lower=new Bound(Int32Type.instance.decompose(25),true);
+          upper=lower;
+        }
+      }
+);
+    }
+  }
+;
+  Assert.assertEquals(expectedExpressions,e.get(age));
+}

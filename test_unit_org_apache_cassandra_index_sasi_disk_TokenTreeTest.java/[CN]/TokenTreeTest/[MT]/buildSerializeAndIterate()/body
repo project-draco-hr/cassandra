@@ -1,0 +1,22 @@
+{
+  final TokenTreeBuilder builder=new TokenTreeBuilder(simpleTokenMap).finish();
+  final File treeFile=File.createTempFile("token-tree-iterate-test1","tt");
+  treeFile.deleteOnExit();
+  try (SequentialWriter writer=new SequentialWriter(treeFile,4096,BufferType.ON_HEAP)){
+    builder.write(writer);
+    writer.sync();
+  }
+   final RandomAccessReader reader=RandomAccessReader.open(treeFile);
+  final TokenTree tokenTree=new TokenTree(new MappedBuffer(reader));
+  final Iterator<Token> tokenIterator=tokenTree.iterator(KEY_CONVERTER);
+  final Iterator<Map.Entry<Long,LongSet>> listIterator=simpleTokenMap.entrySet().iterator();
+  while (tokenIterator.hasNext() && listIterator.hasNext()) {
+    Token treeNext=tokenIterator.next();
+    Map.Entry<Long,LongSet> listNext=listIterator.next();
+    Assert.assertEquals(listNext.getKey(),treeNext.get());
+    Assert.assertEquals(convert(listNext.getValue()),convert(treeNext));
+  }
+  Assert.assertFalse("token iterator not finished",tokenIterator.hasNext());
+  Assert.assertFalse("list iterator not finished",listIterator.hasNext());
+  reader.close();
+}

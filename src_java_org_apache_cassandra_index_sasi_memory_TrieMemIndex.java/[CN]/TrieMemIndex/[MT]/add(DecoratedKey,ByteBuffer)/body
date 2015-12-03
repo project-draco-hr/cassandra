@@ -1,0 +1,14 @@
+{
+  AbstractAnalyzer analyzer=columnIndex.getAnalyzer();
+  analyzer.reset(value.duplicate());
+  long size=0;
+  while (analyzer.hasNext()) {
+    ByteBuffer term=analyzer.next();
+    if (term.remaining() >= OnDiskIndexBuilder.MAX_TERM_SIZE) {
+      logger.info("Can't add term of column {} to index for key: {}, term size {} bytes, max allowed size {} bytes, use analyzed = true (if not yet set) for that column.",columnIndex.getColumnName(),keyValidator.getString(key.getKey()),term.remaining(),OnDiskIndexBuilder.MAX_TERM_SIZE);
+      continue;
+    }
+    size+=index.add(columnIndex.getValidator().getString(term),key);
+  }
+  return size;
+}

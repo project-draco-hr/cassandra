@@ -1,0 +1,28 @@
+{
+  for (int attempt=0; attempt < 16; attempt++) {
+    final ThreadLocalRandom random=ThreadLocalRandom.current();
+    final int maxRanges=random.nextInt(2,16);
+    long[][] ranges=new long[maxRanges][];
+    for (int i=0; i < ranges.length; i++) {
+      int rangeSize=random.nextInt(16,512);
+      LongSet range=new LongOpenHashSet(rangeSize);
+      for (int j=0; j < rangeSize; j++)       range.add(random.nextLong(0,100));
+      ranges[i]=range.toArray();
+      Arrays.sort(ranges[i]);
+    }
+    List<Long> expected=new ArrayList<>();
+    for (    long token : ranges[0]) {
+      boolean intersectsAll=true;
+      for (int i=1; i < ranges.length; i++) {
+        if (Arrays.binarySearch(ranges[i],token) < 0) {
+          intersectsAll=false;
+          break;
+        }
+      }
+      if (intersectsAll)       expected.add(token);
+    }
+    RangeIterator.Builder<Long,Token> builder=RangeIntersectionIterator.builder(strategy);
+    for (    long[] range : ranges)     builder.add(new LongIterator(range));
+    Assert.assertEquals(expected,convert(builder.build()));
+  }
+}

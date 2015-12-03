@@ -1,0 +1,18 @@
+{
+  Map<String,Pair<String,Integer>> part1=new HashMap<String,Pair<String,Integer>>(){
+{
+      put("key0",Pair.create("If you can dream it, you can do it.",43));
+      put("key1",Pair.create("What you get by achieving your goals is not " + "as important as what you become by achieving your goals, do it.",33));
+      put("key2",Pair.create("Keep your face always toward the sunshine " + "- and shadows will fall behind you.",43));
+      put("key3",Pair.create("We can't help everyone, but everyone can " + "help someone.",27));
+    }
+  }
+;
+  ColumnFamilyStore store=loadData(part1,forceFlush);
+  final ByteBuffer firstName=UTF8Type.instance.decompose("first_name");
+  final ByteBuffer age=UTF8Type.instance.decompose("age");
+  Set<String> rows=getIndexed(store,10,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("What you get by achieving your goals")),buildExpression(age,Operator.GT,Int32Type.instance.decompose(32)));
+  Assert.assertEquals(rows.toString(),Collections.singleton("key1"),rows);
+  rows=getIndexed(store,10,buildExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("do it.")));
+  Assert.assertEquals(rows.toString(),Arrays.asList("key0","key1"),Lists.newArrayList(rows));
+}

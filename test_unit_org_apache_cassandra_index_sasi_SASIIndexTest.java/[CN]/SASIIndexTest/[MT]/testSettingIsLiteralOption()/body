@@ -1,0 +1,64 @@
+{
+  AbstractType<?> stringType=new AbstractType<String>(AbstractType.ComparisonType.CUSTOM){
+    public ByteBuffer fromString(    String source) throws MarshalException {
+      return UTF8Type.instance.fromString(source);
+    }
+    public Term fromJSONObject(    Object parsed) throws MarshalException {
+      throw new UnsupportedOperationException();
+    }
+    public TypeSerializer<String> getSerializer(){
+      return UTF8Type.instance.getSerializer();
+    }
+    public int compareCustom(    ByteBuffer a,    ByteBuffer b){
+      return UTF8Type.instance.compare(a,b);
+    }
+  }
+;
+  ColumnDefinition columnA=ColumnDefinition.regularDef(KS_NAME,CF_NAME,"special-A",stringType);
+  ColumnIndex indexA=new ColumnIndex(UTF8Type.instance,columnA,IndexMetadata.fromSchemaMetadata("special-index-A",IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+      put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+    }
+  }
+));
+  Assert.assertEquals(true,indexA.isIndexed());
+  Assert.assertEquals(false,indexA.isLiteral());
+  ColumnDefinition columnB=ColumnDefinition.regularDef(KS_NAME,CF_NAME,"special-B",stringType);
+  ColumnIndex indexB=new ColumnIndex(UTF8Type.instance,columnB,IndexMetadata.fromSchemaMetadata("special-index-B",IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+      put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+      put("is_literal","true");
+    }
+  }
+));
+  Assert.assertEquals(true,indexB.isIndexed());
+  Assert.assertEquals(true,indexB.isLiteral());
+  ColumnDefinition columnC=ColumnDefinition.regularDef(KS_NAME,CF_NAME,"special-C",UTF8Type.instance);
+  ColumnIndex indexC=new ColumnIndex(UTF8Type.instance,columnC,IndexMetadata.fromSchemaMetadata("special-index-C",IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+      put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+    }
+  }
+));
+  Assert.assertEquals(true,indexC.isIndexed());
+  Assert.assertEquals(true,indexC.isLiteral());
+  ColumnDefinition columnD=ColumnDefinition.regularDef(KS_NAME,CF_NAME,"special-D",AsciiType.instance);
+  ColumnIndex indexD=new ColumnIndex(UTF8Type.instance,columnD,IndexMetadata.fromSchemaMetadata("special-index-D",IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+      put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+    }
+  }
+));
+  Assert.assertEquals(true,indexD.isIndexed());
+  Assert.assertEquals(true,indexD.isLiteral());
+  ColumnDefinition columnE=ColumnDefinition.regularDef(KS_NAME,CF_NAME,"special-E",UTF8Type.instance);
+  ColumnIndex indexE=new ColumnIndex(UTF8Type.instance,columnE,IndexMetadata.fromSchemaMetadata("special-index-E",IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+      put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+      put("is_literal","false");
+    }
+  }
+));
+  Assert.assertEquals(true,indexE.isIndexed());
+  Assert.assertEquals(false,indexE.isLiteral());
+}

@@ -1,0 +1,41 @@
+{
+  while (!ranges.isEmpty()) {
+    RangeIterator<K,D> head=ranges.poll();
+    if (head.getCurrent().compareTo(getMinimum()) < 0)     head.skipTo(getMinimum());
+    D candidate=head.hasNext() ? head.next() : null;
+    if (candidate == null || candidate.get().compareTo(getMaximum()) > 0) {
+      ranges.add(head);
+      return endOfData();
+    }
+    List<RangeIterator<K,D>> processed=new ArrayList<>();
+    boolean intersectsAll=true, exhausted=false;
+    while (!ranges.isEmpty()) {
+      RangeIterator<K,D> range=ranges.poll();
+      if (!isOverlapping(head,range)) {
+        exhausted=true;
+        intersectsAll=false;
+        break;
+      }
+      D point=range.skipTo(candidate.get());
+      if (point == null) {
+        exhausted=true;
+        intersectsAll=false;
+        break;
+      }
+      processed.add(range);
+      if (candidate.get().equals(point.get())) {
+        candidate.merge(point);
+        Iterators.getNext(range,null);
+      }
+ else {
+        intersectsAll=false;
+        break;
+      }
+    }
+    ranges.add(head);
+    for (    RangeIterator<K,D> range : processed)     ranges.add(range);
+    if (exhausted)     return endOfData();
+    if (intersectsAll)     return candidate;
+  }
+  return endOfData();
+}

@@ -1,0 +1,21 @@
+{
+  short info=buffer.getShort(position);
+  short offsetShort=buffer.getShort(position + SHORT_BYTES);
+  int offsetInt=buffer.getInt(position + (2 * SHORT_BYTES) + LONG_BYTES);
+  EntryType type=EntryType.of(info & TokenTreeBuilder.ENTRY_TYPE_MASK);
+switch (type) {
+case SIMPLE:
+    return new long[]{offsetInt};
+case OVERFLOW:
+  long[] offsets=new long[offsetShort];
+long offsetPos=(buffer.position() + (2 * (leafSize * LONG_BYTES)) + (offsetInt * LONG_BYTES));
+for (int i=0; i < offsetShort; i++) offsets[i]=buffer.getLong(offsetPos + (i * LONG_BYTES));
+return offsets;
+case FACTORED:
+return new long[]{(((long)offsetInt) << Short.SIZE) + offsetShort};
+case PACKED:
+return new long[]{offsetShort,offsetInt};
+default :
+throw new IllegalStateException("Unknown entry type: " + type);
+}
+}

@@ -1,0 +1,16 @@
+{
+  ByteBuffer blockBuffer=ByteBuffer.allocate(BLOCK_BYTES);
+  Iterator<Node> levelIterator=root.levelIterator();
+  long childBlockIndex=1;
+  while (levelIterator != null) {
+    Node firstChild=null;
+    while (levelIterator.hasNext()) {
+      Node block=levelIterator.next();
+      if (firstChild == null && !block.isLeaf())       firstChild=((InteriorNode)block).children.get(0);
+      block.serialize(childBlockIndex,blockBuffer);
+      flushBuffer(blockBuffer,out,numBlocks != 1);
+      childBlockIndex+=block.childCount();
+    }
+    levelIterator=(firstChild == null) ? null : firstChild.levelIterator();
+  }
+}

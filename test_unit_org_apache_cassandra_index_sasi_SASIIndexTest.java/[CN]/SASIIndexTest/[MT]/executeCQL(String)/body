@@ -1,0 +1,12 @@
+{
+  SelectStatement statement=(SelectStatement)QueryProcessor.parseStatement(rawStatement).prepare().statement;
+  ResultMessage.Rows cqlRows=statement.executeInternal(QueryState.forInternalCalls(),QueryOptions.DEFAULT);
+  Set<String> results=new TreeSet<>();
+  for (  CqlRow row : cqlRows.toThriftResult().getRows()) {
+    for (    org.apache.cassandra.thrift.Column col : row.columns) {
+      String columnName=UTF8Type.instance.getString(col.bufferForName());
+      if (columnName.equals("id"))       results.add(AsciiType.instance.getString(col.bufferForValue()));
+    }
+  }
+  return results;
+}

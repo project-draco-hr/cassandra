@@ -1,0 +1,34 @@
+{
+  keyFetcher=keyReader;
+  comparator=cmp;
+  indexPath=index.getAbsolutePath();
+  RandomAccessFile backingFile=null;
+  try {
+    backingFile=new RandomAccessFile(index,"r");
+    descriptor=new Descriptor(backingFile.readUTF());
+    termSize=OnDiskIndexBuilder.TermSize.of(backingFile.readShort());
+    minTerm=ByteBufferUtil.readWithShortLength(backingFile);
+    maxTerm=ByteBufferUtil.readWithShortLength(backingFile);
+    minKey=ByteBufferUtil.readWithShortLength(backingFile);
+    maxKey=ByteBufferUtil.readWithShortLength(backingFile);
+    mode=OnDiskIndexBuilder.Mode.mode(backingFile.readUTF());
+    indexSize=backingFile.length();
+    indexFile=new MappedBuffer(new ChannelProxy(indexPath,backingFile.getChannel()));
+    indexFile.position(indexFile.getLong(indexSize - 8));
+    int numLevels=indexFile.getInt();
+    levels=new PointerLevel[numLevels];
+    for (int i=0; i < levels.length; i++) {
+      int blockCount=indexFile.getInt();
+      levels[i]=new PointerLevel(indexFile.position(),blockCount);
+      indexFile.position(indexFile.position() + blockCount * 8);
+    }
+    int blockCount=indexFile.getInt();
+    dataLevel=new DataLevel(indexFile.position(),blockCount);
+  }
+ catch (  IOException e) {
+    throw new FSReadError(e,index);
+  }
+ finally {
+    FileUtils.closeQuietly(backingFile);
+  }
+}

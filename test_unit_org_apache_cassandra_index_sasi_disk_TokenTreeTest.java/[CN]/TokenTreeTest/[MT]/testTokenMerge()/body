@@ -1,0 +1,31 @@
+{
+  final long min=0, max=1000;
+  TokenTree treeA=generateTree(min,max);
+  TokenTree treeB=generateTree(min,max);
+  RangeIterator<Long,Token> a=treeA.iterator(new KeyConverter());
+  RangeIterator<Long,Token> b=treeB.iterator(new KeyConverter());
+  long count=min;
+  while (a.hasNext() && b.hasNext()) {
+    final Token tokenA=a.next();
+    final Token tokenB=b.next();
+    tokenA.merge(tokenB);
+    tokenA.merge(new TokenWithOffsets(tokenA.get(),convert(count + 1)));
+    tokenA.merge(new TokenWithOffsets(tokenA.get(),convert(count)));
+    try {
+      tokenA.merge(new TokenWithOffsets(tokenA.get() + 1,convert(count)));
+      Assert.fail();
+    }
+ catch (    IllegalArgumentException e) {
+    }
+    final Set<Long> offsets=new TreeSet<>();
+    for (    DecoratedKey key : tokenA)     offsets.add(LongType.instance.compose(key.getKey()));
+    Set<Long> expected=new TreeSet<>();
+{
+      expected.add(count);
+      expected.add(count + 1);
+    }
+    Assert.assertEquals(expected,offsets);
+    count++;
+  }
+  Assert.assertEquals(max,count - 1);
+}

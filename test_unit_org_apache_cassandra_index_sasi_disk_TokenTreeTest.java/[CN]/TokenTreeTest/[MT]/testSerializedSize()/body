@@ -1,0 +1,11 @@
+{
+  final TokenTreeBuilder builder=new TokenTreeBuilder(tokens).finish();
+  final File treeFile=File.createTempFile("token-tree-size-test","tt");
+  treeFile.deleteOnExit();
+  try (SequentialWriter writer=new SequentialWriter(treeFile,4096,BufferType.ON_HEAP)){
+    builder.write(writer);
+    writer.sync();
+  }
+   final RandomAccessReader reader=RandomAccessReader.open(treeFile);
+  Assert.assertEquals((int)reader.bytesRemaining(),builder.serializedSize());
+}

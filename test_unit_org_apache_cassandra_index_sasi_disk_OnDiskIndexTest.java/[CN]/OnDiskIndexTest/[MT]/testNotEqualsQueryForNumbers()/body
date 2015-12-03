@@ -1,0 +1,26 @@
+{
+  final Map<ByteBuffer,TokenTreeBuilder> data=new HashMap<ByteBuffer,TokenTreeBuilder>(){
+{
+      put(Int32Type.instance.decompose(5),keyBuilder(1L));
+      put(Int32Type.instance.decompose(7),keyBuilder(2L));
+      put(Int32Type.instance.decompose(1),keyBuilder(3L));
+      put(Int32Type.instance.decompose(3),keyBuilder(1L,4L));
+      put(Int32Type.instance.decompose(8),keyBuilder(8L,6L));
+      put(Int32Type.instance.decompose(10),keyBuilder(5L));
+      put(Int32Type.instance.decompose(6),keyBuilder(7L));
+      put(Int32Type.instance.decompose(4),keyBuilder(9L,10L));
+      put(Int32Type.instance.decompose(0),keyBuilder(11L,12L,1L));
+    }
+  }
+;
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,Int32Type.instance,OnDiskIndexBuilder.Mode.PREFIX);
+  for (  Map.Entry<ByteBuffer,TokenTreeBuilder> e : data.entrySet())   addAll(builder,e.getKey(),e.getValue());
+  File index=File.createTempFile("on-disk-sa-except-int-test","db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,Int32Type.instance,new KeyConverter());
+  Assert.assertEquals(convert(1,2,4,5,6,7,8,9,10,11,12),convert(onDisk.search(expressionForNot(0,10,1))));
+  Assert.assertEquals(convert(1,2,4,5,7,9,10,11,12),convert(onDisk.search(expressionForNot(0,10,1,8))));
+  Assert.assertEquals(convert(1,2,4,5,7,11,12),convert(onDisk.search(expressionForNot(0,10,1,8,4))));
+  onDisk.close();
+}

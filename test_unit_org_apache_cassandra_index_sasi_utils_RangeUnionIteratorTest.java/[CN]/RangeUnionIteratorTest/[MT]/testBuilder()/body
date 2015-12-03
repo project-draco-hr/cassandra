@@ -1,0 +1,36 @@
+{
+  RangeUnionIterator.Builder<Long,Token> builder=RangeUnionIterator.builder();
+  Assert.assertNull(builder.getMinimum());
+  Assert.assertNull(builder.getMaximum());
+  Assert.assertEquals(0L,builder.getTokenCount());
+  Assert.assertEquals(0L,builder.rangeCount());
+  builder.add(new LongIterator(new long[]{1L,2L,3L}));
+  builder.add(new LongIterator(new long[]{4L,5L,6L}));
+  builder.add(new LongIterator(new long[]{7L,8L,9L}));
+  Assert.assertEquals(1L,(long)builder.getMinimum());
+  Assert.assertEquals(9L,(long)builder.getMaximum());
+  Assert.assertEquals(9L,builder.getTokenCount());
+  Assert.assertEquals(3L,builder.rangeCount());
+  Assert.assertFalse(builder.statistics.isDisjoint());
+  Assert.assertEquals(1L,(long)builder.ranges.poll().getMinimum());
+  Assert.assertEquals(4L,(long)builder.ranges.poll().getMinimum());
+  Assert.assertEquals(7L,(long)builder.ranges.poll().getMinimum());
+  RangeIterator<Long,Token> tokens=RangeUnionIterator.build(new ArrayList<RangeIterator<Long,Token>>(){
+{
+      add(new LongIterator(new long[]{1L,2L,4L}));
+      add(new LongIterator(new long[]{3L,5L,6L}));
+    }
+  }
+);
+  Assert.assertEquals(convert(1L,2L,3L,4L,5L,6L),convert(tokens));
+  FileUtils.closeQuietly(tokens);
+  RangeIterator emptyTokens=RangeUnionIterator.builder().build();
+  Assert.assertNull(emptyTokens);
+  builder=RangeUnionIterator.builder();
+  Assert.assertEquals(0L,builder.add((RangeIterator<Long,Token>)null).rangeCount());
+  Assert.assertEquals(0L,builder.add((List<RangeIterator<Long,Token>>)null).getTokenCount());
+  Assert.assertEquals(0L,builder.add(new LongIterator(new long[]{})).rangeCount());
+  RangeIterator<Long,Token> single=new LongIterator(new long[]{1L,2L,3L});
+  RangeIterator<Long,Token> range=RangeIntersectionIterator.<Long,Token>builder().add(single).build();
+  Assert.assertEquals(range,single);
+}

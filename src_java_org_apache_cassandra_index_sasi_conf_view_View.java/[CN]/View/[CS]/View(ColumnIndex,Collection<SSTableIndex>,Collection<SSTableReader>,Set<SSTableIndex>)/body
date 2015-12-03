@@ -1,0 +1,20 @@
+{
+  Map<Descriptor,SSTableIndex> newView=new HashMap<>();
+  AbstractType<?> validator=index.getValidator();
+  TermTree.Builder termTreeBuilder=(validator instanceof AsciiType || validator instanceof UTF8Type) ? new PrefixTermTree.Builder(index.getMode().mode,validator) : new RangeTermTree.Builder(index.getMode().mode,validator);
+  List<Interval<ByteBuffer,SSTableIndex>> keyIntervals=new ArrayList<>();
+  for (  SSTableIndex sstableIndex : Iterables.concat(currentView,newIndexes)) {
+    SSTableReader sstable=sstableIndex.getSSTable();
+    if (oldSSTables.contains(sstable) || sstable.isMarkedCompacted() || newView.containsKey(sstable.descriptor)) {
+      sstableIndex.release();
+      continue;
+    }
+    newView.put(sstable.descriptor,sstableIndex);
+    termTreeBuilder.add(sstableIndex);
+    keyIntervals.add(Interval.create(sstableIndex.minKey(),sstableIndex.maxKey(),sstableIndex));
+  }
+  this.view=newView;
+  this.termTree=termTreeBuilder.build();
+  this.keyIntervalTree=IntervalTree.build(keyIntervals);
+  if (keyIntervalTree.intervalCount() != termTree.intervalCount())   throw new IllegalStateException(String.format("mismatched sizes for intervals tree for keys vs terms: %d != %d",keyIntervalTree.intervalCount(),termTree.intervalCount()));
+}

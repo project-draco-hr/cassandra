@@ -1,0 +1,19 @@
+{
+  File tmp=File.createTempFile("mapped-buffer","tmp");
+  tmp.deleteOnExit();
+  RandomAccessFile file=new RandomAccessFile(tmp,"rw");
+  long numValues=1000;
+  for (long i=0; i < numValues; i++)   file.writeLong(i);
+  file.getFD().sync();
+  try (MappedBuffer buffer=new MappedBuffer(new ChannelProxy(tmp.getAbsolutePath(),file.getChannel()))){
+    Assert.assertEquals(numValues * 8,buffer.limit());
+    Assert.assertEquals(numValues * 8,buffer.capacity());
+    for (long i=0; i < numValues; i++) {
+      Assert.assertEquals(i * 8,buffer.position());
+      Assert.assertEquals(i,buffer.getLong());
+    }
+  }
+  finally {
+    FileUtils.closeQuietly(file);
+  }
+}

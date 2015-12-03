@@ -1,0 +1,36 @@
+{
+  final ColumnDefinition firstName=getColumn(UTF8Type.instance.decompose("first_name"));
+  final ColumnDefinition height=getColumn(UTF8Type.instance.decompose("height"));
+  Map<Expression.Op,Expression> expressions;
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.AND,Arrays.asList(new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),new SimpleExpression(height,Operator.NEQ,Int32Type.instance.decompose(5)))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("height",Int32Type.instance){
+{
+      operation=Op.NOT_EQ;
+      lower=new Bound(Int32Type.instance.decompose(5),true);
+      upper=lower;
+    }
+  }
+,expressions.get(Expression.Op.NOT_EQ));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.AND,Arrays.asList(new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),new SimpleExpression(height,Operator.GT,Int32Type.instance.decompose(0)),new SimpleExpression(height,Operator.NEQ,Int32Type.instance.decompose(5)))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("height",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      lower=new Bound(Int32Type.instance.decompose(0),false);
+      exclusions.add(Int32Type.instance.decompose(5));
+    }
+  }
+,expressions.get(Expression.Op.RANGE));
+  expressions=convert(Operation.analyzeGroup(controller,OperationType.AND,Arrays.asList(new SimpleExpression(firstName,Operator.EQ,UTF8Type.instance.decompose("a")),new SimpleExpression(height,Operator.NEQ,Int32Type.instance.decompose(5)),new SimpleExpression(height,Operator.GTE,Int32Type.instance.decompose(0)),new SimpleExpression(height,Operator.LT,Int32Type.instance.decompose(10)))));
+  Assert.assertEquals(2,expressions.size());
+  Assert.assertEquals(new Expression("height",Int32Type.instance){
+{
+      operation=Op.RANGE;
+      lower=new Bound(Int32Type.instance.decompose(0),true);
+      upper=new Bound(Int32Type.instance.decompose(10),false);
+      exclusions.add(Int32Type.instance.decompose(5));
+    }
+  }
+,expressions.get(Expression.Op.RANGE));
+}

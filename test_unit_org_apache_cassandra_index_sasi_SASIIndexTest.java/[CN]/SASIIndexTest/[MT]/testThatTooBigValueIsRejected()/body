@@ -1,0 +1,18 @@
+{
+  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
+  final ByteBuffer comment=UTF8Type.instance.decompose("comment_suffix_split");
+  for (int i=0; i < 10; i++) {
+    byte[] randomBytes=new byte[ThreadLocalRandom.current().nextInt(OnDiskIndexBuilder.MAX_TERM_SIZE,5 * OnDiskIndexBuilder.MAX_TERM_SIZE)];
+    ThreadLocalRandom.current().nextBytes(randomBytes);
+    final ByteBuffer bigValue=UTF8Type.instance.decompose(new String(randomBytes));
+    Mutation rm=new Mutation(KS_NAME,decoratedKey("key1"));
+    update(rm,comment,bigValue,System.currentTimeMillis());
+    rm.apply();
+    Set<String> rows;
+    rows=getIndexed(store,10,buildExpression(comment,Operator.EQ,bigValue.duplicate()));
+    Assert.assertEquals(0,rows.size());
+    store.forceBlockingFlush();
+    rows=getIndexed(store,10,buildExpression(comment,Operator.EQ,bigValue.duplicate()));
+    Assert.assertEquals(0,rows.size());
+  }
+}

@@ -1,0 +1,22 @@
+{
+  if (operationTree == null)   return endOfData();
+  for (; ; ) {
+    if (currentKeys == null || !currentKeys.hasNext()) {
+      if (!operationTree.hasNext())       return endOfData();
+      Token token=operationTree.next();
+      currentKeys=token.iterator();
+    }
+    while (currentKeys.hasNext()) {
+      DecoratedKey key=currentKeys.next();
+      if (!keyRange.right.isMinimum() && keyRange.right.compareTo(key) < 0)       return endOfData();
+      try (UnfilteredRowIterator partition=controller.getPartition(key,executionController)){
+        List<Unfiltered> clusters=new ArrayList<>();
+        while (partition.hasNext()) {
+          Unfiltered row=partition.next();
+          if (operationTree.satisfiedBy(row,true))           clusters.add(row);
+        }
+        if (!clusters.isEmpty())         return new PartitionIterator(partition,clusters);
+      }
+     }
+  }
+}

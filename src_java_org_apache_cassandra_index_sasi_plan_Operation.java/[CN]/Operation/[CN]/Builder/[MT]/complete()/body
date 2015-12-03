@@ -1,0 +1,33 @@
+{
+  if (!expressions.isEmpty()) {
+    ListMultimap<ColumnDefinition,Expression> analyzedExpressions=analyzeGroup(controller,op,expressions);
+    RangeIterator.Builder<Long,Token> range=controller.getIndexes(op,analyzedExpressions.values());
+    Operation rightOp=null;
+    if (right != null) {
+      rightOp=right.complete();
+      range.add(rightOp);
+    }
+    return new Operation(op,controller,analyzedExpressions,range.build(),null,rightOp);
+  }
+ else {
+    Operation leftOp=null, rightOp=null;
+    boolean leftIndexes=false, rightIndexes=false;
+    if (left != null) {
+      leftOp=left.complete();
+      leftIndexes=leftOp != null && leftOp.range != null;
+    }
+    if (right != null) {
+      rightOp=right.complete();
+      rightIndexes=rightOp != null && rightOp.range != null;
+    }
+    RangeIterator<Long,Token> join;
+    if (leftIndexes && !rightIndexes)     join=leftOp;
+ else     if (!leftIndexes && rightIndexes)     join=rightOp;
+ else     if (leftIndexes) {
+      RangeIterator.Builder<Long,Token> builder=op == OperationType.OR ? RangeUnionIterator.<Long,Token>builder() : RangeIntersectionIterator.<Long,Token>builder();
+      join=builder.add(leftOp).add(rightOp).build();
+    }
+ else     throw new AssertionError("both sub-trees have 0 indexes.");
+    return new Operation(op,controller,null,join,leftOp,rightOp);
+  }
+}

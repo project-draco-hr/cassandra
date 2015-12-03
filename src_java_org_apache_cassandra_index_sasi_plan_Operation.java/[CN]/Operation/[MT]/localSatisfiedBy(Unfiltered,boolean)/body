@@ -1,0 +1,30 @@
+{
+  if (row == null || !row.isRow())   return false;
+  final int now=FBUtilities.nowInSeconds();
+  boolean result=false;
+  int idx=0;
+  for (  ColumnDefinition column : expressions.keySet()) {
+    if (column.kind == Kind.PARTITION_KEY)     continue;
+    ByteBuffer value=ColumnIndex.getValueOf(column,(Row)row,now);
+    boolean isMissingColumn=value == null;
+    if (!allowMissingColumns && isMissingColumn)     throw new IllegalStateException("All indexed columns should be included into the column slice, missing: " + column);
+    boolean isMatch=false;
+    List<Expression> filters=expressions.get(column);
+    for (int i=filters.size() - 1; i >= 0; i--) {
+      Expression expression=filters.get(i);
+      isMatch=!isMissingColumn && expression.contains(value);
+      if (expression.getOp() == Op.NOT_EQ) {
+        isMatch=!isMatch;
+        if (!isMatch)         break;
+      }
+ else       if (isMatch || isMissingColumn)       break;
+    }
+    if (idx++ == 0) {
+      result=isMatch;
+      continue;
+    }
+    result=op.apply(result,isMatch);
+    if (op == OperationType.AND && !result)     return false;
+  }
+  return idx == 0 || result;
+}
