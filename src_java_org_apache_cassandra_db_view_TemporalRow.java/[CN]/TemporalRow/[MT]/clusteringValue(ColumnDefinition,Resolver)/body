@@ -14,7 +14,10 @@
     ColumnIdentifier columnIdentifier=baseDefinition.name;
     if (clusteringColumns.containsKey(columnIdentifier))     return clusteringColumns.get(columnIdentifier);
     Collection<org.apache.cassandra.db.rows.Cell> val=values(definition,resolver);
-    if (val != null && val.size() == 1)     return Iterables.getOnlyElement(val).value();
+    if (val != null && val.size() == 1) {
+      org.apache.cassandra.db.rows.Cell cell=Iterables.getOnlyElement(val);
+      return cell.isTombstone() ? null : cell.value();
+    }
   }
   return null;
 }
