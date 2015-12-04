@@ -1,0 +1,24 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Keyspace keyspace=Keyspace.open(KEYSPACE_CACHED);
+  ColumnFamilyStore cachedStore=keyspace.getColumnFamilyStore(CF_CACHED);
+  CacheService.instance.invalidateRowCache();
+  CacheService.instance.setRowCacheCapacityInMB(1);
+  SchemaLoader.insertData(KEYSPACE_CACHED,CF_CACHED,0,100);
+  cachedStore.forceBlockingFlush();
+  ((ClearableHistogram)cachedStore.metric.sstablesPerReadHistogram.cf).clear();
+  for (int i=0; i < 100; i++) {
+    DecoratedKey key=Util.dk("key" + i);
+    cachedStore.getColumnFamily(key,Composites.EMPTY,Composites.EMPTY,false,1,System.currentTimeMillis());
+    long count_before=cachedStore.metric.sstablesPerReadHistogram.cf.getCount();
+    cachedStore.getColumnFamily(key,Composites.EMPTY,Composites.EMPTY,false,1,System.currentTimeMillis());
+    long count_after=cachedStore.metric.sstablesPerReadHistogram.cf.getCount();
+    double belowMedian=cachedStore.metric.sstablesPerReadHistogram.cf.getSnapshot().getValue(0.49D);
+    double mean_after=cachedStore.metric.sstablesPerReadHistogram.cf.getSnapshot().getMean();
+    assertEquals("SSTablePerReadHistogram should be updated even key found in row cache",count_before + 1,count_after);
+    assertTrue("In half of requests we have not touched SSTables, " + "so 49 percentile (" + belowMedian + ") must be strongly less than 0.9",belowMedian < 0.9D);
+    assertTrue("In half of requests we have not touched SSTables, " + "so mean value (" + mean_after + ") must be strongly less than 1, but greater than 0",mean_after < 0.999D && mean_after > 0.001D);
+  }
+  assertEquals("Min value of SSTablesPerRead should be zero",0,cachedStore.metric.sstablesPerReadHistogram.cf.getSnapshot().getMin());
+  CacheService.instance.setRowCacheCapacityInMB(0);
+}
