@@ -8,7 +8,10 @@
   Row.Builder regularBuilder=BTreeRow.unsortedBuilder(temporalRow.nowInSec);
   CBuilder clustering=CBuilder.create(viewCfm.comparator);
   for (int i=0; i < viewCfm.clusteringColumns().size(); i++) {
-    clustering.add(temporalRow.clusteringValue(viewCfm.clusteringColumns().get(i),resolver));
+    ColumnDefinition column=viewCfm.clusteringColumns().get(i);
+    ByteBuffer value=temporalRow.clusteringValue(column,resolver);
+    if (value == null)     return null;
+    clustering.add(value);
   }
   regularBuilder.newRow(clustering.build());
   regularBuilder.addPrimaryKeyLivenessInfo(LivenessInfo.create(viewCfm,temporalRow.viewClusteringTimestamp(),temporalRow.viewClusteringTtl(),temporalRow.viewClusteringLocalDeletionTime()));
