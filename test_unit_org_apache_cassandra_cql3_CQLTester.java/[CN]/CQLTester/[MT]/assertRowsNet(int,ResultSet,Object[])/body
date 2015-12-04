@@ -15,9 +15,9 @@
       DataType type=meta.getType(j);
       com.datastax.driver.core.TypeCodec<Object> codec=clusters.get(protocolVersion).getConfiguration().getCodecRegistry().codecFor(type);
       ByteBuffer expectedByteValue=codec.serialize(expected[j],ProtocolVersion.fromInt(protocolVersion));
-      int expectedBytes=expectedByteValue.remaining();
+      int expectedBytes=expectedByteValue == null ? -1 : expectedByteValue.remaining();
       ByteBuffer actualValue=actual.getBytesUnsafe(meta.getName(j));
-      int actualBytes=actualValue.remaining();
+      int actualBytes=actualValue == null ? -1 : actualValue.remaining();
       if (!Objects.equal(expectedByteValue,actualValue))       Assert.fail(String.format("Invalid value for row %d column %d (%s of type %s), " + "expected <%s> (%d bytes) but got <%s> (%d bytes) " + "(using protocol version %d)",i,j,meta.getName(j),type,codec.format(expected[j]),expectedBytes,codec.format(codec.deserialize(actualValue,ProtocolVersion.fromInt(protocolVersion))),actualBytes,protocolVersion));
     }
     i++;
