@@ -22,9 +22,18 @@
       if (!DatabaseDescriptor.getClusterName().equals(savedClusterName))       throw new ConfigurationException("Saved cluster name " + savedClusterName + " != configured name "+ DatabaseDescriptor.getClusterName());
     }
   }
+  String req="SELECT rack, data_center FROM system.%s WHERE key='%s'";
+  UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
+  if (!Boolean.getBoolean("cassandra.ignore_dc")) {
+    if (!result.isEmpty() && result.one().has("data_center")) {
+      String storedDc=result.one().getString("data_center");
+      String currentDc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(FBUtilities.getBroadcastAddress());
+      if (!storedDc.equals(currentDc)) {
+        throw new ConfigurationException("Cannot start node if snitch's data center (" + currentDc + ") differs from previous data center ("+ storedDc+ "). "+ "Please fix the snitch configuration, decommission and rebootstrap this node or use the flag -Dcassandra.ignore_dc=true.");
+      }
+    }
+  }
   if (!Boolean.getBoolean("cassandra.ignore_rack")) {
-    String req="SELECT rack FROM system.%s WHERE key='%s'";
-    UntypedResultSet result=executeInternal(String.format(req,LOCAL_CF,LOCAL_KEY));
     if (!result.isEmpty() && result.one().has("rack")) {
       String storedRack=result.one().getString("rack");
       String currentRack=DatabaseDescriptor.getEndpointSnitch().getRack(FBUtilities.getBroadcastAddress());
