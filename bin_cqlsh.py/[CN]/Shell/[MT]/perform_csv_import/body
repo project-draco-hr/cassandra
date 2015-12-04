@@ -1,5 +1,5 @@
 def perform_csv_import(self, ks, cf, columns, fname, opts):
-    (csv_options, dialect_options, unrecognized_options) = copy.parse_options(self, opts)
+    (csv_options, dialect_options, unrecognized_options) = copyutil.parse_options(self, opts)
     if unrecognized_options:
         self.printerr(('Unrecognized COPY FROM options: %s' % ', '.join(unrecognized_options.keys())))
         return 0
@@ -22,14 +22,14 @@ def perform_csv_import(self, ks, cf, columns, fname, opts):
             if header:
                 linesource.next()
             reader = csv.reader(linesource, **dialect_options)
-            num_processes = copy.get_num_processes(cap=4)
+            num_processes = copyutil.get_num_processes(cap=4)
             for i in range(num_processes):
                 (parent_conn, child_conn) = mp.Pipe()
                 pipes.append(parent_conn)
                 processes.append(ImportProcess(self, child_conn, ks, cf, columns, nullval))
             for process in processes:
                 process.start()
-            meter = copy.RateMeter(10000)
+            meter = copyutil.RateMeter(10000)
             for (current_record, row) in enumerate(reader, start=1):
                 pipes[(current_record % num_processes)].send((current_record, row))
                 meter.increment()
