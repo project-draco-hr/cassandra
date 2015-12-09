@@ -3,6 +3,7 @@
   int repairedKeyCount=0;
   int unrepairedKeyCount=0;
   logger.info("Performing anticompaction on {} sstables",repairedSSTables.size());
+  Set<SSTableReader> successfullyAntiCompactedSSTables=new HashSet<>();
   for (  SSTableReader sstable : repairedSSTables) {
     if (!new File(sstable.getFilename()).exists()) {
       logger.info("Skipping anticompaction for {}, required sstable was compacted and is no longer available.",sstable);
@@ -40,7 +41,7 @@
       }
       anticompactedSSTables.addAll(repairedSSTableWriter.finish(repairedAt));
       anticompactedSSTables.addAll(unRepairedSSTableWriter.finish(ActiveRepairService.UNREPAIRED_SSTABLE));
-      cfs.getDataTracker().markCompactedSSTablesReplaced(sstableAsSet,anticompactedSSTables,OperationType.ANTICOMPACTION);
+      successfullyAntiCompactedSSTables.add(sstable);
     }
  catch (    Throwable e) {
       JVMStabilityInspector.inspectThrowable(e);
@@ -49,6 +50,7 @@
       unRepairedSSTableWriter.abort();
     }
   }
+  cfs.getDataTracker().markCompactedSSTablesReplaced(successfullyAntiCompactedSSTables,anticompactedSSTables,OperationType.ANTICOMPACTION);
   String format="Repaired {} keys of {} for {}/{}";
   logger.debug(format,repairedKeyCount,(repairedKeyCount + unrepairedKeyCount),cfs.keyspace,cfs.getColumnFamilyName());
   String format2="Anticompaction completed successfully, anticompacted from {} to {} sstable(s).";
