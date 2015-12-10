@@ -1,5 +1,11 @@
 {
-  if (System.currentTimeMillis() > constructionTime + DatabaseDescriptor.getTimeout(MessagingService.Verb.MUTATION)) {
+  long mutationTimeout=DatabaseDescriptor.getTimeout(MessagingService.Verb.MUTATION);
+  if (System.currentTimeMillis() > constructionTime + mutationTimeout) {
+    long timeTaken=System.currentTimeMillis() - constructionTime;
+    logger.debug("LocalMutationRunnable thread ran after {} ms, allowed time was {} ms. ",timeTaken,mutationTimeout);
+    if (this.mutation != null) {
+      logger.debug("MessageDeliveryTask dropped mutation of KS {}, CF {}",this.mutation.getKeyspaceName(),Arrays.toString(this.mutation.getColumnFamilyIds().toArray()));
+    }
     MessagingService.instance().incrementDroppedMessages(MessagingService.Verb.MUTATION);
     HintRunnable runnable=new HintRunnable(Collections.singleton(FBUtilities.getBroadcastAddress())){
       protected void runMayThrow() throws Exception {
