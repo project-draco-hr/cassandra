@@ -4,8 +4,9 @@
   List<ResampleEntry> forceResample=new ArrayList<>();
   List<ResampleEntry> forceUpsample=new ArrayList<>();
   List<SSTableReader> newSSTables=new ArrayList<>(sstables.size());
-  long remainingSpace=memoryPoolCapacity;
+  remainingSpace=memoryPoolCapacity;
   for (  SSTableReader sstable : sstables) {
+    if (isStopRequested())     throw new CompactionInterruptedException(getCompactionInfo());
     int minIndexInterval=sstable.metadata.params.minIndexInterval;
     int maxIndexInterval=sstable.metadata.params.maxIndexInterval;
     double readsPerSec=sstable.getReadMeter() == null ? 0.0 : sstable.getReadMeter().fifteenMinuteRate();
@@ -67,6 +68,7 @@
   toDownsample.addAll(toUpsample);
   toDownsample.addAll(forceUpsample);
   for (  ResampleEntry entry : toDownsample) {
+    if (isStopRequested())     throw new CompactionInterruptedException(getCompactionInfo());
     SSTableReader sstable=entry.sstable;
     logger.trace("Re-sampling index summary for {} from {}/{} to {}/{} of the original number of entries",sstable,sstable.getIndexSummarySamplingLevel(),Downsampling.BASE_SAMPLING_LEVEL,entry.newSamplingLevel,Downsampling.BASE_SAMPLING_LEVEL);
     ColumnFamilyStore cfs=Keyspace.open(sstable.metadata.ksName).getColumnFamilyStore(sstable.metadata.cfId);
