@@ -1,0 +1,39 @@
+{
+  String ksname=KEYSPACE1;
+  String cfname=CF_STANDARDLOWiINTERVAL;
+  Keyspace keyspace=Keyspace.open(ksname);
+  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfname);
+  final int numSSTables=4;
+  int numRows=256;
+  createSSTables(ksname,cfname,numSSTables,numRows);
+  final List<SSTableReader> sstables=new ArrayList<>(cfs.getLiveSSTables());
+  for (  SSTableReader sstable : sstables)   sstable.overrideReadMeter(new RestorableMeter(100.0,100.0));
+  final long singleSummaryOffHeapSpace=sstables.get(0).getIndexSummaryOffHeapSize();
+  final AtomicReference<CompactionInterruptedException> exception=new AtomicReference<>();
+  Thread t=new Thread(new Runnable(){
+    public void run(){
+      try {
+        try (LifecycleTransaction txn=cfs.getTracker().tryModify(sstables,OperationType.UNKNOWN)){
+          redistributeSummaries(Collections.EMPTY_LIST,of(cfs.metadata.cfId,txn),singleSummaryOffHeapSpace);
+        }
+       }
+ catch (      CompactionInterruptedException ex) {
+        exception.set(ex);
+      }
+catch (      IOException ignored) {
+      }
+    }
+  }
+);
+  t.start();
+  while (CompactionManager.instance.getActiveCompactions() == 0 && t.isAlive())   Thread.sleep(1);
+  CompactionManager.instance.stopCompaction("INDEX_SUMMARY");
+  t.join();
+  assertNotNull("Expected compaction interrupted exception",exception.get());
+  assertTrue("Expected no active compactions",CompactionMetrics.getCompactions().isEmpty());
+  Set<SSTableReader> beforeRedistributionSSTables=new HashSet<>(sstables);
+  Set<SSTableReader> afterCancelSSTables=new HashSet<>(cfs.getLiveSSTables());
+  Set<SSTableReader> disjoint=Sets.symmetricDifference(beforeRedistributionSSTables,afterCancelSSTables);
+  assertTrue(String.format("Mismatched files before and after cancelling redistribution: %s",Joiner.on(",").join(disjoint)),disjoint.isEmpty());
+  validateData(cfs,numRows);
+}
