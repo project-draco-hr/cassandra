@@ -9,6 +9,37 @@
     }
   }
 );
+  pendingTasksByTableName=Metrics.register(factory.createMetricName("PendingTasksByTableName"),new Gauge<Map<String,Map<String,Integer>>>(){
+    @Override public Map<String,Map<String,Integer>> getValue(){
+      Map<String,Map<String,Integer>> resultMap=new HashMap<>();
+      for (      String keyspaceName : Schema.instance.getKeyspaces()) {
+        for (        ColumnFamilyStore cfs : Keyspace.open(keyspaceName).getColumnFamilyStores()) {
+          int taskNumber=cfs.getCompactionStrategyManager().getEstimatedRemainingTasks();
+          if (taskNumber > 0) {
+            if (!resultMap.containsKey(keyspaceName)) {
+              resultMap.put(keyspaceName,new HashMap<>());
+            }
+            resultMap.get(keyspaceName).put(cfs.getTableName(),taskNumber);
+          }
+        }
+      }
+      for (      CompactionInfo.Holder compaction : compactions) {
+        CFMetaData metaData=compaction.getCompactionInfo().getCFMetaData();
+        if (!resultMap.containsKey(metaData.ksName)) {
+          resultMap.put(metaData.ksName,new HashMap<>());
+        }
+        Map<String,Integer> tableNameToCountMap=resultMap.get(metaData.ksName);
+        if (tableNameToCountMap.containsKey(metaData.cfName)) {
+          tableNameToCountMap.put(metaData.cfName,tableNameToCountMap.get(metaData.cfName) + 1);
+        }
+ else {
+          tableNameToCountMap.put(metaData.cfName,1);
+        }
+      }
+      return resultMap;
+    }
+  }
+);
   completedTasks=Metrics.register(factory.createMetricName("CompletedTasks"),new Gauge<Long>(){
     public Long getValue(){
       long completedTasks=0;
