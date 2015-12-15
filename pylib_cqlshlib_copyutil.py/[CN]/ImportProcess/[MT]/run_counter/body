@@ -1,0 +1,16 @@
+def run_counter(self, table_meta):
+    '\n        Main run method for tables that contain counter columns.\n        '
+    query = ('UPDATE %s.%s SET %%s WHERE %%s' % (protect_name(self.ks), protect_name(self.cf)))
+    where_clause = ' AND '.join([('%s = ?' % protect_name(c.name)) for c in table_meta.partition_key])
+    select_query = ('SELECT * FROM %s.%s WHERE %s' % (protect_name(self.ks), protect_name(self.cf), where_clause))
+    conv = ImportConversion(self, table_meta, self.session.prepare(select_query))
+    while True:
+        try:
+            batch = self.inmsg.get()
+            for batches in self.split_batches(batch, conv):
+                for b in batches:
+                    self.send_counter_batch(query, conv, b)
+        except Exception as exc:
+            self.outmsg.put((batch, ('%s - %s' % (exc.__class__.__name__, exc.message))))
+            if self.debug:
+                traceback.print_exc(exc)

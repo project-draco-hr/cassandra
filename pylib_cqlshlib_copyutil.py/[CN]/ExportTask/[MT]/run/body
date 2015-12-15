@@ -17,19 +17,14 @@ def run(self):
         writer.writerow(self.columns)
     ranges = self.get_ranges()
     num_processes = get_num_processes(cap=min(16, len(ranges)))
-    inmsg = mp.Queue()
-    outmsg = mp.Queue()
-    processes = []
+    params = self.make_params()
     for i in xrange(num_processes):
-        process = ExportProcess(outmsg, inmsg, self.ks, self.cf, self.columns, self.dialect_options, self.csv_options, shell.debug, shell.port, shell.conn.cql_version, shell.auth_provider, shell.ssl, self.protocol_version, self.config_file)
+        self.processes.append(ExportProcess(params))
+    for process in self.processes:
         process.start()
-        processes.append(process)
     try:
-        return self.check_processes(csvdest, ranges, inmsg, outmsg, processes)
+        return self.check_processes(csvdest, ranges)
     finally:
-        for process in processes:
-            process.terminate()
-        inmsg.close()
-        outmsg.close()
+        self.close()
         if do_close:
             csvdest.close()

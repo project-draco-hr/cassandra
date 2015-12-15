@@ -1,0 +1,12 @@
+def send_batches(self, reader):
+    '\n        Send batches to the queue until we have exceeded the ingest rate. In the export case we queue\n        everything and let the worker processes throttle using max_requests, here we throttle\n        in the parent process because of memory usage concerns.\n\n        When we have finished reading the csv file, then send any retries.\n        '
+    while (self.send_meter.current_record <= self.ingest_rate):
+        if (not reader.exhausted):
+            rows = reader.read_rows()
+            if rows:
+                self.sent += self.send_batch(self.new_batch(rows))
+        elif self.retries:
+            batch = self.retries.popleft()
+            self.send_batch(batch)
+        else:
+            break

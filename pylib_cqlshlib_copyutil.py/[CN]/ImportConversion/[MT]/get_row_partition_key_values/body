@@ -1,0 +1,16 @@
+def get_row_partition_key_values(self, row):
+    '\n        Return a string composed of the partition key values, serialized and binary packed -\n        as expected by metadata.get_replicas(), see also BoundStatement.routing_key.\n        '
+
+    def serialize(n):
+        (c, v) = (self.columns[n], row[n])
+        return self.cqltypes[c].serialize(self.converters[c](v), self.proto_version)
+    partition_key_indexes = self.partition_key_indexes
+    if (len(partition_key_indexes) == 1):
+        return serialize(partition_key_indexes[0])
+    else:
+        pk_values = []
+        for i in partition_key_indexes:
+            val = serialize(i)
+            l = len(val)
+            pk_values.append(struct.pack(('>H%dsB' % l), l, val, 0))
+        return ''.join(pk_values)

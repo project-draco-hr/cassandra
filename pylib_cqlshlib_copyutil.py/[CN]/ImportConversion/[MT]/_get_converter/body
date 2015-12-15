@@ -1,0 +1,78 @@
+def _get_converter(self, cql_type):
+    '\n        Return a function that converts a string into a value the can be passed\n        into BoundStatement.bind() for the given cql type. See cassandra.cqltypes\n        for more details.\n        '
+
+    def unprotect(v):
+        if (v is not None):
+            return CqlRuleSet.dequote_value(v)
+
+    def convert(t, v):
+        return converters.get(t.typename, convert_unknown)(unprotect(v), ct=t)
+
+    def split(val, sep=','):
+        '\n            Split into a list of values whenever we encounter a separator but\n            ignore separators inside parentheses or single quotes, except for the two\n            outermost parentheses, which will be ignored. We expect val to be at least\n            2 characters long (the two outer parentheses).\n            '
+        ret = []
+        last = 1
+        level = 0
+        quote = False
+        for (i, c) in enumerate(val):
+            if ((c == '{') or (c == '[') or (c == '(')):
+                level += 1
+            elif ((c == '}') or (c == ']') or (c == ')')):
+                level -= 1
+            elif (c == "'"):
+                quote = (not quote)
+            elif ((c == sep) and (level == 1) and (not quote)):
+                ret.append(val[last:i])
+                last = (i + 1)
+        else:
+            if (last < (len(val) - 1)):
+                ret.append(val[last:(-1)])
+        return ret
+    p = re.compile((("(\\d{4})\\-(\\d{2})\\-(\\d{2})\\s?(?:'T')?" + '(?:(\\d{2}):(\\d{2})(?::(\\d{2}))?)?') + '(?:([+\\-])(\\d{2}):?(\\d{2}))?'))
+
+    def convert_date(val, **_):
+        m = p.match(val)
+        if (not m):
+            raise ValueError(("can't interpret %r as a date" % (val,)))
+        tval = time.struct_time((int(m.group(1)), int(m.group(2)), int(m.group(3)), (int(m.group(4)) if m.group(4) else 0), (int(m.group(5)) if m.group(5) else 0), (int(m.group(6)) if m.group(6) else 0), 0, 1, (-1)))
+        if m.group(7):
+            offset = (((int(m.group(8)) * 3600) + (int(m.group(9)) * 60)) * int((m.group(7) + '1')))
+        else:
+            offset = (- time.timezone)
+        return ((timegm(tval) + offset) * 1000.0)
+
+    def convert_tuple(val, ct=cql_type):
+        return tuple((convert(t, v) for (t, v) in zip(ct.subtypes, split(val))))
+
+    def convert_list(val, ct=cql_type):
+        return list((convert(ct.subtypes[0], v) for v in split(val)))
+
+    def convert_set(val, ct=cql_type):
+        return frozenset((convert(ct.subtypes[0], v) for v in split(val)))
+
+    def convert_map(val, ct=cql_type):
+        "\n            We need to pass to BoundStatement.bind() a dict() because it calls iteritems(),\n            except we can't create a dict with another dict as the key, hence we use a class\n            that adds iteritems to a frozen set of tuples (which is how dict are normally made\n            immutable in python).\n            "
+
+
+        class ImmutableDict(frozenset):
+            iteritems = frozenset.__iter__
+        return ImmutableDict(frozenset(((convert(ct.subtypes[0], v[0]), convert(ct.subtypes[1], v[1])) for v in [split(('{%s}' % vv), sep=':') for vv in split(val)])))
+
+    def convert_user_type(val, ct=cql_type):
+        '\n            A user type is a dictionary except that we must convert each key into\n            an attribute, so we are using named tuples. It must also be hashable,\n            so we cannot use dictionaries. Maybe there is a way to instantiate ct\n            directly but I could not work it out.\n            '
+        vals = [v for v in [split(('{%s}' % vv), sep=':') for vv in split(val)]]
+        ret_type = namedtuple(ct.typename, [unprotect(v[0]) for v in vals])
+        return ret_type(*tuple((convert(t, v[1]) for (t, v) in zip(ct.subtypes, vals))))
+
+    def convert_single_subtype(val, ct=cql_type):
+        return converters.get(ct.subtypes[0].typename, convert_unknown)(val, ct=ct.subtypes[0])
+
+    def convert_unknown(val, ct=cql_type):
+        if issubclass(ct, UserType):
+            return convert_user_type(val, ct=ct)
+        elif issubclass(ct, ReversedType):
+            return convert_single_subtype(val, ct=ct)
+        self.printmsg(('Unknown type %s (%s) for val %s' % (ct, ct.typename, val)))
+        return val
+    converters = {'blob': (lambda v, ct=cql_type: bytearray.fromhex(v[2:])), 'decimal': (lambda v, ct=cql_type: Decimal(v)), 'uuid': (lambda v, ct=cql_type: UUID(v)), 'boolean': (lambda v, ct=cql_type: bool(v)), 'tinyint': (lambda v, ct=cql_type: int(v)), 'ascii': (lambda v, ct=cql_type: v), 'float': (lambda v, ct=cql_type: float(v)), 'double': (lambda v, ct=cql_type: float(v)), 'bigint': (lambda v, ct=cql_type: long(v)), 'int': (lambda v, ct=cql_type: int(v)), 'varint': (lambda v, ct=cql_type: int(v)), 'inet': (lambda v, ct=cql_type: v), 'counter': (lambda v, ct=cql_type: long(v)), 'timestamp': convert_date, 'timeuuid': (lambda v, ct=cql_type: UUID(v)), 'date': (lambda v, ct=cql_type: Date(v)), 'smallint': (lambda v, ct=cql_type: int(v)), 'time': (lambda v, ct=cql_type: Time(v)), 'text': (lambda v, ct=cql_type: v), 'varchar': (lambda v, ct=cql_type: v), 'list': convert_list, 'set': convert_set, 'map': convert_map, 'tuple': convert_tuple, 'frozen': convert_single_subtype, }
+    return converters.get(cql_type.typename, convert_unknown)

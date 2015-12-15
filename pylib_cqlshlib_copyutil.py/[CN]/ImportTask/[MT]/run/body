@@ -1,0 +1,35 @@
+def run(self):
+    shell = self.shell
+    if (self.fname is None):
+        do_close = False
+        print '[Use \\. on a line by itself to end input]'
+        linesource = shell.use_stdin_reader(prompt='[copy] ', until='\\.')
+    else:
+        do_close = True
+        try:
+            linesource = open(self.fname, 'rb')
+        except IOError as e:
+            shell.printerr(("Can't open %r for reading: %s" % (self.fname, e)))
+            return 0
+    try:
+        try:
+            if self.header:
+                linesource.next()
+            reader = ImportReader(linesource, self.chunk_size, self.dialect_options)
+            params = self.make_params()
+            for i in range(self.num_processes):
+                self.processes.append(ImportProcess(params))
+            for process in self.processes:
+                process.start()
+            return self.process_records(reader)
+        except Exception as exc:
+            shell.printerr(str(exc))
+            if shell.debug:
+                traceback.print_exc()
+            return 0
+    finally:
+        self.close()
+        if do_close:
+            linesource.close()
+        elif shell.tty:
+            print 
