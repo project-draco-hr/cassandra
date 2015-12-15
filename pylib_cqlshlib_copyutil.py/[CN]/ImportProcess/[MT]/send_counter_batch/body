@@ -1,0 +1,16 @@
+def send_counter_batch(self, query_text, conv, batch):
+    if (self.test_failures and self.maybe_inject_failures(batch)):
+        return
+    columns = self.columns
+    batch_statement = BatchStatement(batch_type=BatchType.COUNTER, consistency_level=self.consistency_level)
+    for row in batch['rows']:
+        where_clause = []
+        set_clause = []
+        for (i, value) in enumerate(row):
+            if (i in conv.primary_key_indexes):
+                where_clause.append(('%s=%s' % (columns[i], value)))
+            else:
+                set_clause.append(('%s=%s+%s' % (columns[i], columns[i], value)))
+        full_query_text = (query_text % (','.join(set_clause), ' AND '.join(where_clause)))
+        batch_statement.add(full_query_text)
+    self.execute_statement(batch_statement, batch)

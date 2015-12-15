@@ -1,0 +1,10 @@
+def send_normal_batch(self, conv, query_statement, batch):
+    try:
+        if (self.test_failures and self.maybe_inject_failures(batch)):
+            return
+        batch_statement = BatchStatement(batch_type=BatchType.UNLOGGED, consistency_level=self.consistency_level)
+        for row in batch['rows']:
+            batch_statement.add(query_statement, conv.get_row_values(row))
+        self.execute_statement(batch_statement, batch)
+    except Exception as exc:
+        self.err_callback(exc, batch)

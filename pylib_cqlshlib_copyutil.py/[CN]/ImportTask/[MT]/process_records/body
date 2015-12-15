@@ -1,0 +1,13 @@
+def process_records(self, reader):
+    '\n        Keep on running until we have stuff to receive or send and until all processes are running.\n        Send data (batches or retries) up to the max ingest rate. If we are waiting for stuff to\n        receive check the incoming queue.\n        '
+    while ((self.has_more_to_send(reader) or self.has_more_to_receive()) and self.all_processes_running()):
+        if self.has_more_to_send(reader):
+            if (self.send_meter.current_record <= self.ingest_rate):
+                self.send_batches(reader)
+            else:
+                self.send_meter.maybe_update()
+        if self.has_more_to_receive():
+            self.receive()
+    if (self.succeeded < self.sent):
+        self.shell.printerr(('Failed to process %d batches' % (self.sent - self.succeeded)))
+    return self.receive_meter.get_total_records()

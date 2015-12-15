@@ -1,0 +1,15 @@
+def __init__(self, shell, ks, cf, columns, fname, csv_options, dialect_options, protocol_version, config_file):
+    CopyTask.__init__(self, shell, ks, cf, columns, fname, csv_options, dialect_options, protocol_version, config_file)
+    self.num_processes = get_num_processes(cap=4)
+    self.chunk_size = csv_options['chunksize']
+    self.ingest_rate = csv_options['ingestrate']
+    self.max_attempts = csv_options['maxattempts']
+    self.header = self.csv_options['header']
+    self.table_meta = self.shell.get_table_meta(self.ks, self.cf)
+    self.batch_id = 0
+    self.receive_meter = RateMeter(update_interval=csv_options['reportfrequency'])
+    self.send_meter = RateMeter(update_interval=1, log=False)
+    self.retries = deque([])
+    self.failed = 0
+    self.succeeded = 0
+    self.sent = 0
