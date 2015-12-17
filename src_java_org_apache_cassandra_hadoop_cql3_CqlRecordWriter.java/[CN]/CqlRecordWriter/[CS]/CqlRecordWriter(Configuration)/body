@@ -4,19 +4,15 @@
   batchThreshold=conf.getLong(CqlOutputFormat.BATCH_THRESHOLD,32);
   this.clients=new HashMap<>();
   String keyspace=ConfigHelper.getOutputKeyspace(conf);
-  try (Cluster cluster=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf);Session client=cluster.connect(keyspace)){
-    ringCache=new NativeRingCache(conf);
-    if (client != null) {
-      TableMetadata tableMetadata=client.getCluster().getMetadata().getKeyspace(client.getLoggedKeyspace()).getTable(ConfigHelper.getOutputColumnFamily(conf));
-      clusterColumns=tableMetadata.getClusteringColumns();
-      partitionKeyColumns=tableMetadata.getPartitionKey();
-      String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
-      if (cqlQuery.toLowerCase().startsWith("insert"))       throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
-      cql=appendKeyWhereClauses(cqlQuery);
-    }
- else {
-      throw new IllegalArgumentException("Invalid configuration specified " + conf);
-    }
+  try (Cluster cluster=CqlConfigHelper.getOutputCluster(ConfigHelper.getOutputInitialAddress(conf),conf)){
+    Metadata metadata=cluster.getMetadata();
+    ringCache=new NativeRingCache(conf,metadata);
+    TableMetadata tableMetadata=metadata.getKeyspace(Metadata.quote(keyspace)).getTable(ConfigHelper.getOutputColumnFamily(conf));
+    clusterColumns=tableMetadata.getClusteringColumns();
+    partitionKeyColumns=tableMetadata.getPartitionKey();
+    String cqlQuery=CqlConfigHelper.getOutputCql(conf).trim();
+    if (cqlQuery.toLowerCase().startsWith("insert"))     throw new UnsupportedOperationException("INSERT with CqlRecordWriter is not supported, please use UPDATE/DELETE statement");
+    cql=appendKeyWhereClauses(cqlQuery);
   }
  catch (  Exception e) {
     throw new RuntimeException(e);
