@@ -1,19 +1,22 @@
 def start_proc(self):
     preexec = noop
     stdin = stdout = stderr = None
-    if self.tty:
+    cqlshlog.info(('Spawning %r subprocess with args: %r and env: %r' % (self.exe_path, self.args, self.env)))
+    if self.realtty:
         (masterfd, slavefd) = pty.openpty()
         preexec = (lambda : set_controlling_pty(masterfd, slavefd))
-    else:
-        stdin = stdout = subprocess.PIPE
-        stderr = subprocess.STDOUT
-    cqlshlog.info(('Spawning %r subprocess with args: %r and env: %r' % (self.exe_path, self.args, self.env)))
-    self.proc = subprocess.Popen((('python', self.exe_path) + tuple(self.args)), env=self.env, preexec_fn=preexec, stdin=stdin, stdout=stdout, stderr=stderr, close_fds=False)
-    if self.tty:
+        self.proc = subprocess.Popen(((self.exe_path,) + tuple(self.args)), env=self.env, preexec_fn=preexec, stdin=stdin, stdout=stdout, stderr=stderr, close_fds=False)
         os.close(slavefd)
         self.childpty = masterfd
         self.send = self.send_tty
         self.read = self.read_tty
     else:
+        stdin = stdout = subprocess.PIPE
+        stderr = subprocess.STDOUT
+        self.proc = subprocess.Popen(((self.exe_path,) + tuple(self.args)), env=self.env, stdin=stdin, stdout=stdout, stderr=stderr, bufsize=0, close_fds=False)
         self.send = self.send_pipe
-        self.read = self.read_pipe
+        if self.tty:
+            self.winpty = WinPty(self.proc.stdout)
+            self.read = self.read_winpty
+        else:
+            self.read = self.read_pipe

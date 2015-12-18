@@ -1,17 +1,31 @@
 import os
+import sys
 import re
-import pty
-import fcntl
 import contextlib
 import subprocess
 import signal
 import math
 from time import time
 from . import basecase
-DEFAULT_CQLSH_PROMPT = (os.linesep + '(\\S+@)?cqlsh(:\\S+)?> ')
+from os.path import join, normpath
+if is_win():
+    from winpty import WinPty
+    DEFAULT_PREFIX = ''
+else:
+    import pty
+    DEFAULT_PREFIX = os.linesep
+DEFAULT_CQLSH_PROMPT = (DEFAULT_PREFIX + '(\\S+@)?cqlsh(:\\S+)?> ')
 DEFAULT_CQLSH_TERM = 'xterm'
 cqlshlog = basecase.cqlshlog
-if hasattr(signal, 'setitimer'):
+if is_win():
+    try:
+        import eventlet
+    except ImportError as e:
+        sys.exit('evenlet library required to run cqlshlib tests on Windows')
+
+    def timing_out(seconds):
+        return eventlet.Timeout(seconds, TimeoutError)
+elif hasattr(signal, 'setitimer'):
     timing_out = timing_out_itimer
 else:
     timing_out = timing_out_alarm
