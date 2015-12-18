@@ -3,8 +3,9 @@ def test_exit_prints_no_newline(self):
         with testrun_cqlsh(tty=True) as c:
             cmd = ('exit%s\n' % semicolon)
             c.send(cmd)
-            out = c.read_lines(1)[0].replace('\r', '')
-            self.assertEqual(out, cmd)
+            if c.realtty:
+                out = c.read_lines(1)[0].replace('\r', '')
+                self.assertEqual(out, cmd)
             with self.assertRaises(BaseException) as cm:
                 c.read_lines(1)
             self.assertIn(type(cm.exception), (EOFError, OSError))

@@ -13,8 +13,11 @@ def test_prompt(self):
         self.assertTrue(output.endswith('cqlsh:system> '))
         c.send('use NONEXISTENTKEYSPACE;\n')
         outputlines = c.read_to_next_prompt().splitlines()
-        self.assertEqual(outputlines[0], 'use NONEXISTENTKEYSPACE;')
-        self.assertTrue(outputlines[2].endswith('cqlsh:system> '))
-        midline = ColoredText(outputlines[1])
+        start_index = 0
+        if c.realtty:
+            self.assertEqual(outputlines[start_index], 'use NONEXISTENTKEYSPACE;')
+            start_index = 1
+        self.assertTrue(outputlines[(start_index + 1)].endswith('cqlsh:system> '))
+        midline = ColoredText(outputlines[start_index])
         self.assertEqual(midline.plain(), 'InvalidRequest: code=2200 [Invalid query] message="Keyspace \'nonexistentkeyspace\' does not exist"')
         self.assertColorFromTags(midline, 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR')

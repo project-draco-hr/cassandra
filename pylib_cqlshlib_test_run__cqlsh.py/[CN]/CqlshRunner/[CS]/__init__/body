@@ -1,12 +1,18 @@
-def __init__(self, path=None, host=None, port=None, keyspace=None, cqlver=None, args=(), prompt=DEFAULT_CQLSH_PROMPT, env=None, **kwargs):
+def __init__(self, path=None, host=None, port=None, keyspace=None, cqlver=None, args=(), prompt=DEFAULT_CQLSH_PROMPT, env=None, win_force_colors=True, tty=True, **kwargs):
     if (path is None):
-        path = basecase.path_to_cqlsh
+        cqlsh_bin = 'cqlsh'
+        if is_win():
+            cqlsh_bin = 'cqlsh.bat'
+        path = normpath(join(basecase.cqlshdir, cqlsh_bin))
     if (host is None):
         host = basecase.TEST_HOST
     if (port is None):
         port = basecase.TEST_PORT
     if (env is None):
         env = {}
+    if is_win():
+        env['PYTHONUNBUFFERED'] = '1'
+        env.update(os.environ.copy())
     env.setdefault('TERM', 'xterm')
     env.setdefault('CQLSH_NO_BUNDLED', os.environ.get('CQLSH_NO_BUNDLED', ''))
     env.setdefault('PYTHONPATH', os.environ.get('PYTHONPATH', ''))
@@ -15,8 +21,13 @@ def __init__(self, path=None, host=None, port=None, keyspace=None, cqlver=None, 
         args += ('--cqlversion', str(cqlver))
     if (keyspace is not None):
         args += ('--keyspace', keyspace)
+    if (tty and is_win()):
+        args += ('--tty',)
+        args += ('--encoding', 'utf-8')
+        if win_force_colors:
+            args += ('--color',)
     self.keyspace = keyspace
-    ProcRunner.__init__(self, path, args=args, env=env, **kwargs)
+    ProcRunner.__init__(self, path, tty=tty, args=args, env=env, **kwargs)
     self.prompt = prompt
     if (self.prompt is None):
         self.output_header = ''
