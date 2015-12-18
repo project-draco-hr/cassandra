@@ -1,13 +1,23 @@
 {
-  if (current instanceof Leaf) {
-    if (!find.contains(activeRange))     throw new StopRecursion.BadRange();
-    return current;
+  while (true) {
+    if (current instanceof Leaf) {
+      if (!find.contains(activeRange))       throw new StopRecursion.BadRange();
+      return current;
+    }
+    Inner node=(Inner)current;
+    Range<Token> leftRange=new Range<>(activeRange.left,node.token);
+    Range<Token> rightRange=new Range<>(node.token,activeRange.right);
+    if (find.contains(activeRange))     return node.calc();
+    if (leftRange.contains(find)) {
+      current=node.lchild;
+      activeRange=leftRange;
+    }
+ else     if (rightRange.contains(find)) {
+      current=node.rchild;
+      activeRange=rightRange;
+    }
+ else {
+      throw new StopRecursion.BadRange();
+    }
   }
-  Inner node=(Inner)current;
-  Range<Token> leftRange=new Range<Token>(activeRange.left,node.token);
-  Range<Token> rightRange=new Range<Token>(node.token,activeRange.right);
-  if (find.contains(activeRange))   return node.calc();
-  if (leftRange.contains(find))   return findHelper(node.lchild,leftRange,find);
- else   if (rightRange.contains(find))   return findHelper(node.rchild,rightRange,find);
- else   throw new StopRecursion.BadRange();
 }
