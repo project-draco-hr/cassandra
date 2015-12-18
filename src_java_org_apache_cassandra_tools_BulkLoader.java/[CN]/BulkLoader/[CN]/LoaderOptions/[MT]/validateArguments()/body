@@ -1,0 +1,33 @@
+{
+  if ((user != null) != (passwd != null))   errorMsg("Username and password must both be provided",getCmdLineOptions());
+  if (user != null) {
+    if (authProviderName != null) {
+      try {
+        Class authProviderClass=Class.forName(authProviderName);
+        Constructor constructor=authProviderClass.getConstructor(String.class,String.class);
+        authProvider=(AuthProvider)constructor.newInstance(user,passwd);
+      }
+ catch (      ClassNotFoundException e) {
+        errorMsg("Unknown auth provider: " + e.getMessage(),getCmdLineOptions());
+      }
+catch (      NoSuchMethodException e) {
+        errorMsg("Auth provider does not support plain text credentials: " + e.getMessage(),getCmdLineOptions());
+      }
+catch (      InstantiationException|IllegalAccessException|IllegalArgumentException|InvocationTargetException e) {
+        errorMsg("Could not create auth provider with plain text credentials: " + e.getMessage(),getCmdLineOptions());
+      }
+    }
+ else {
+      authProvider=new PlainTextAuthProvider(user,passwd);
+    }
+  }
+ else   if (authProviderName != null) {
+    try {
+      authProvider=(AuthProvider)Class.forName(authProviderName).newInstance();
+    }
+ catch (    ClassNotFoundException|InstantiationException|IllegalAccessException e) {
+      errorMsg("Unknown auth provider" + e.getMessage(),getCmdLineOptions());
+    }
+  }
+  return this;
+}
