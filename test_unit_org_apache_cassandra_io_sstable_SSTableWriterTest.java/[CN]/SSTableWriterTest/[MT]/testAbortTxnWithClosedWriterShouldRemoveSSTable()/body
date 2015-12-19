@@ -1,0 +1,33 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
+  truncate(cfs);
+  File dir=cfs.getDirectories().getDirectoryForNewSSTables();
+  LifecycleTransaction txn=LifecycleTransaction.offline(OperationType.STREAM);
+  try (SSTableWriter writer=getWriter(cfs,dir,txn)){
+    for (int i=0; i < 10000; i++) {
+      UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,random(i,10)).withTimestamp(1);
+      for (int j=0; j < 100; j++)       builder.newRow("" + j).add("val",ByteBuffer.allocate(1000));
+      writer.append(builder.build().unfilteredIterator());
+    }
+    assertFileCounts(dir.list());
+    for (int i=10000; i < 20000; i++) {
+      UpdateBuilder builder=UpdateBuilder.create(cfs.metadata,random(i,10)).withTimestamp(1);
+      for (int j=0; j < 100; j++)       builder.newRow("" + j).add("val",ByteBuffer.allocate(1000));
+      writer.append(builder.build().unfilteredIterator());
+    }
+    SSTableReader sstable=writer.finish(true);
+    int datafiles=assertFileCounts(dir.list());
+    assertEquals(datafiles,1);
+    sstable.selfRef().release();
+    if (!FBUtilities.isWindows()) {
+      LifecycleTransaction.waitForDeletions();
+      assertFileCounts(dir.list());
+    }
+    txn.abort();
+    LifecycleTransaction.waitForDeletions();
+    datafiles=assertFileCounts(dir.list());
+    assertEquals(datafiles,0);
+    validateCFS(cfs);
+  }
+ }
