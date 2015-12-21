@@ -1,0 +1,20 @@
+{
+  int ROWS=1000;
+  int VALUE_LENGTH=100;
+  createTable("CREATE TABLE %s (k int, t int, s text static, v text, PRIMARY KEY (k, t))");
+  String text=makeRandomTest(VALUE_LENGTH);
+  for (int i=0; i < ROWS; i++)   execute("INSERT INTO %s(k, t, v) VALUES (?, ?, ?)",0,i,text + i);
+  flush();
+  compact();
+  DecoratedKey dk=Util.dk(ByteBufferUtil.bytes(0));
+  boolean hasIndexed=false;
+  for (  SSTableReader sstable : getCurrentColumnFamilyStore().getLiveSSTables()) {
+    RowIndexEntry indexEntry=sstable.getPosition(dk,SSTableReader.Operator.EQ);
+    hasIndexed|=indexEntry != null && indexEntry.isIndexed();
+  }
+  assert hasIndexed;
+  assertRowCount(execute("SELECT s FROM %s WHERE k = ?",0),ROWS);
+  assertRowCount(execute("SELECT s FROM %s WHERE k = ? ORDER BY t DESC",0),ROWS);
+  assertRowCount(execute("SELECT DISTINCT s FROM %s WHERE k = ?",0),1);
+  assertRowCount(execute("SELECT DISTINCT s FROM %s WHERE k = ? ORDER BY t DESC",0),1);
+}
