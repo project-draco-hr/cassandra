@@ -58,7 +58,7 @@ def _get_converter(self, cql_type):
             if (last < (len(val) - 1)):
                 ret.append(val[last:(-1)])
         return ret
-    p = re.compile((("(\\d{4})\\-(\\d{2})\\-(\\d{2})\\s?(?:'T')?" + '(?:(\\d{2}):(\\d{2})(?::(\\d{2}))?)?') + '(?:([+\\-])(\\d{2}):?(\\d{2}))?'))
+    p = re.compile((("(\\d{4})\\-(\\d{2})\\-(\\d{2})\\s?(?:'T')?" + '(?:(\\d{2}):(\\d{2})(?::(\\d{2})(?:\\.(\\d{1,6}))?))?') + '(?:([+\\-])(\\d{2}):?(\\d{2}))?'))
 
     def convert_datetime(val, **_):
         try:
@@ -70,11 +70,12 @@ def _get_converter(self, cql_type):
         if (not m):
             raise ValueError(("can't interpret %r as a date with this format: %s" % (val, self.date_time_format)))
         tval = time.struct_time((int(m.group(1)), int(m.group(2)), int(m.group(3)), (int(m.group(4)) if m.group(4) else 0), (int(m.group(5)) if m.group(5) else 0), (int(m.group(6)) if m.group(6) else 0), 0, 1, (-1)))
-        if m.group(7):
-            offset = (((int(m.group(8)) * 3600) + (int(m.group(9)) * 60)) * int((m.group(7) + '1')))
+        milliseconds = (0 if (not m.group(7)) else (int(m.group(7)) * pow(10, (3 - len(m.group(7))))))
+        if m.group(8):
+            offset = (((int(m.group(9)) * 3600) + (int(m.group(10)) * 60)) * int((m.group(8) + '1')))
         else:
             offset = (- time.timezone)
-        return ((timegm(tval) + offset) * 1000.0)
+        return (((timegm(tval) + offset) * 1000.0) + milliseconds)
 
     def convert_date(v, **_):
         return Date(v)
