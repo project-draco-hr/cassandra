@@ -1,13 +1,13 @@
 {
   int header=in.readUnsignedByte();
   boolean isFetchAll=(header & IS_FETCH_ALL_MASK) != 0;
-  boolean hasSelection=(header & HAS_SELECTION_MASK) != 0;
+  boolean hasQueried=(header & HAS_QUERIED_MASK) != 0;
   boolean hasSubSelections=(header & HAS_SUB_SELECTIONS_MASK) != 0;
-  PartitionColumns selection=null;
-  if (hasSelection) {
+  PartitionColumns queried=null;
+  if (hasQueried) {
     Columns statics=Columns.serializer.deserialize(in,metadata);
     Columns regulars=Columns.serializer.deserialize(in,metadata);
-    selection=new PartitionColumns(statics,regulars);
+    queried=new PartitionColumns(statics,regulars);
   }
   SortedSetMultimap<ColumnIdentifier,ColumnSubselection> subSelections=null;
   if (hasSubSelections) {
@@ -18,5 +18,5 @@
       subSelections.put(subSel.column().name,subSel);
     }
   }
-  return new ColumnFilter(isFetchAll,isFetchAll ? metadata : null,selection,subSelections);
+  return new ColumnFilter(isFetchAll,isFetchAll ? metadata : null,queried,subSelections);
 }
