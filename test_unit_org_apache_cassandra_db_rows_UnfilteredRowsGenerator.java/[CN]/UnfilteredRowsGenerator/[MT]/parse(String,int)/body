@@ -1,0 +1,29 @@
+{
+  String[] split=input.split(" ");
+  Pattern open=Pattern.compile("(\\d+)<(=)?\\[(\\d+)\\]");
+  Pattern close=Pattern.compile("\\[(\\d+)\\]<(=)?(\\d+)");
+  Pattern row=Pattern.compile("(\\d+)(\\[(\\d+)(?:D(\\d+))?\\])?");
+  List<Unfiltered> out=new ArrayList<>(split.length);
+  for (  String s : split) {
+    Matcher m=open.matcher(s);
+    if (m.matches()) {
+      out.add(openMarker(Integer.parseInt(m.group(1)),Integer.parseInt(m.group(3)),m.group(2) != null));
+      continue;
+    }
+    m=close.matcher(s);
+    if (m.matches()) {
+      out.add(closeMarker(Integer.parseInt(m.group(3)),Integer.parseInt(m.group(1)),m.group(2) != null));
+      continue;
+    }
+    m=row.matcher(s);
+    if (m.matches()) {
+      int live=m.group(3) != null ? Integer.parseInt(m.group(3)) : default_liveness;
+      int delTime=m.group(4) != null ? Integer.parseInt(m.group(4)) : -1;
+      out.add(emptyRowAt(Integer.parseInt(m.group(1)),live,delTime));
+      continue;
+    }
+    Assert.fail("Can't parse " + s);
+  }
+  attachBoundaries(out);
+  return out;
+}

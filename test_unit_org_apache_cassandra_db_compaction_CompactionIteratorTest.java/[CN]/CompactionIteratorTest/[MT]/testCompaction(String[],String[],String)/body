@@ -1,0 +1,12 @@
+{
+  testNonGcCompaction(inputs,tombstones);
+  UnfilteredRowsGenerator generator=new UnfilteredRowsGenerator(metadata.comparator,false);
+  List<List<Unfiltered>> inputLists=parse(inputs,generator);
+  List<List<Unfiltered>> tombstoneLists=parse(tombstones,generator);
+  List<Unfiltered> result=compact(inputLists,tombstoneLists);
+  System.out.println("GC compaction resulted in " + size(result) + " Unfiltereds");
+  generator.verifyValid(result);
+  verifyEquivalent(inputLists,result,tombstoneLists,generator);
+  List<Unfiltered> expectedResult=generator.parse(expected,NOW - 1);
+  if (!expectedResult.equals(result))   fail("Expected " + expected + ", got "+ generator.str(result));
+}

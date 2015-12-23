@@ -1,0 +1,32 @@
+{
+  while (next == null && dataNext != null) {
+    int cmp=tombNext == null ? -1 : metadata.comparator.compare(dataNext,tombNext);
+    if (cmp < 0) {
+      if (dataNext.isRow())       next=((Row)dataNext).filter(cf,activeDeletionTime,false,metadata);
+ else       next=processDataMarker();
+    }
+ else     if (cmp == 0) {
+      if (dataNext.isRow()) {
+        next=garbageFilterRow((Row)dataNext,(Row)tombNext);
+      }
+ else {
+        tombOpenDeletionTime=updateOpenDeletionTime(tombOpenDeletionTime,tombNext);
+        activeDeletionTime=Ordering.natural().max(partitionDeletionTime,tombOpenDeletionTime);
+        next=processDataMarker();
+      }
+    }
+ else {
+      if (tombNext.isRangeTombstoneMarker()) {
+        tombOpenDeletionTime=updateOpenDeletionTime(tombOpenDeletionTime,tombNext);
+        activeDeletionTime=Ordering.natural().max(partitionDeletionTime,tombOpenDeletionTime);
+        boolean supersededBefore=openDeletionTime.isLive();
+        boolean supersededAfter=!dataOpenDeletionTime.supersedes(activeDeletionTime);
+        if (supersededBefore && !supersededAfter)         next=new RangeTombstoneBoundMarker(((RangeTombstoneMarker)tombNext).closeBound(false).invert(),dataOpenDeletionTime);
+      }
+    }
+    if (next instanceof RangeTombstoneMarker)     openDeletionTime=updateOpenDeletionTime(openDeletionTime,next);
+    if (cmp <= 0)     dataNext=advance(wrapped);
+    if (cmp >= 0)     tombNext=advance(tombSource);
+  }
+  return next != null;
+}

@@ -1,0 +1,14 @@
+{
+  super(dataSource);
+  this.tombSource=tombSource;
+  this.nowInSec=nowInSec;
+  this.cellLevelGC=cellLevelGC;
+  metadata=dataSource.metadata();
+  cf=ColumnFilter.all(metadata);
+  activeDeletionTime=partitionDeletionTime=tombSource.partitionLevelDeletion();
+  this.partitionLevelDeletion=dataSource.partitionLevelDeletion().supersedes(tombSource.partitionLevelDeletion()) ? dataSource.partitionLevelDeletion() : DeletionTime.LIVE;
+  Row dataStaticRow=garbageFilterRow(dataSource.staticRow(),tombSource.staticRow());
+  this.staticRow=dataStaticRow != null ? dataStaticRow : Rows.EMPTY_STATIC_ROW;
+  tombNext=advance(tombSource);
+  dataNext=advance(dataSource);
+}

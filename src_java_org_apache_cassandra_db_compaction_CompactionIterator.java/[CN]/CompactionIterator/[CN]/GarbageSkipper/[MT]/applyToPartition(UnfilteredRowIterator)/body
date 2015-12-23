@@ -1,0 +1,11 @@
+{
+  Iterable<UnfilteredRowIterator> sources=controller.shadowSources(partition.partitionKey(),!cellLevelGC);
+  if (sources == null)   return partition;
+  List<UnfilteredRowIterator> iters=new ArrayList<>();
+  for (  UnfilteredRowIterator iter : sources) {
+    if (!iter.isEmpty())     iters.add(iter);
+ else     iter.close();
+  }
+  if (iters.isEmpty())   return partition;
+  return new GarbageSkippingUnfilteredRowIterator(partition,UnfilteredRowIterators.merge(iters,nowInSec),nowInSec,cellLevelGC);
+}

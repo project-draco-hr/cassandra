@@ -1,0 +1,46 @@
+{
+  Row.Builder builder=BTreeRow.sortedBuilder();
+  Clustering clustering=existing.clustering();
+  builder.newRow(clustering);
+  DeletionTime deletion=update.deletion().time();
+  if (rangeDeletion.supersedes(deletion))   deletion=rangeDeletion;
+  LivenessInfo existingInfo=existing.primaryKeyLivenessInfo();
+  if (!deletion.deletes(existingInfo))   builder.addPrimaryKeyLivenessInfo(existingInfo);
+  Row.Deletion rowDeletion=existing.deletion();
+  if (!deletion.supersedes(rowDeletion.time()))   builder.addRowDeletion(rowDeletion);
+  Iterator<ColumnData> a=existing.iterator();
+  Iterator<ColumnData> b=update.iterator();
+  ColumnData nexta=a.hasNext() ? a.next() : null, nextb=b.hasNext() ? b.next() : null;
+  while (nexta != null) {
+    int comparison=nextb == null ? -1 : nexta.column.compareTo(nextb.column);
+    if (comparison <= 0) {
+      ColumnData cura=nexta;
+      ColumnDefinition column=cura.column;
+      ColumnData curb=comparison == 0 ? nextb : null;
+      if (column.isSimple()) {
+        Cells.addNonShadowed((Cell)cura,(Cell)curb,deletion,builder,nowInSec);
+      }
+ else {
+        ComplexColumnData existingData=(ComplexColumnData)cura;
+        ComplexColumnData updateData=(ComplexColumnData)curb;
+        DeletionTime existingDt=existingData.complexDeletion();
+        DeletionTime updateDt=updateData == null ? DeletionTime.LIVE : updateData.complexDeletion();
+        DeletionTime maxDt=updateDt.supersedes(deletion) ? updateDt : deletion;
+        if (existingDt.supersedes(maxDt)) {
+          builder.addComplexDeletion(column,existingDt);
+          maxDt=existingDt;
+        }
+        Iterator<Cell> existingCells=existingData.iterator();
+        Iterator<Cell> updateCells=updateData == null ? null : updateData.iterator();
+        Cells.addNonShadowedComplex(column,existingCells,updateCells,maxDt,builder,nowInSec);
+      }
+      nexta=a.hasNext() ? a.next() : null;
+      if (curb != null)       nextb=b.hasNext() ? b.next() : null;
+    }
+ else {
+      nextb=b.hasNext() ? b.next() : null;
+    }
+  }
+  Row row=builder.build();
+  return row != null && !row.isEmpty() ? row : null;
+}

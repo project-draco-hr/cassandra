@@ -1,0 +1,28 @@
+{
+  int reversedAsMultiplier=reversed ? -1 : 1;
+  try {
+    RangeTombstoneMarker prev=null;
+    Unfiltered prevUnfiltered=null;
+    for (    Unfiltered unfiltered : list) {
+      Assert.assertTrue("Order violation prev " + str(prevUnfiltered) + " curr "+ str(unfiltered),prevUnfiltered == null || comparator.compare(prevUnfiltered,unfiltered) * reversedAsMultiplier < 0);
+      prevUnfiltered=unfiltered;
+      if (unfiltered.kind() == Kind.RANGE_TOMBSTONE_MARKER) {
+        RangeTombstoneMarker curr=(RangeTombstoneMarker)unfiltered;
+        if (prev != null) {
+          if (curr.isClose(reversed)) {
+            Assert.assertTrue(str(unfiltered) + " follows another close marker " + str(prev),prev.isOpen(reversed));
+            Assert.assertEquals("Deletion time mismatch for open " + str(prev) + " and close "+ str(unfiltered),prev.openDeletionTime(reversed),curr.closeDeletionTime(reversed));
+          }
+ else           Assert.assertFalse(str(curr) + " follows another open marker " + str(prev),prev.isOpen(reversed));
+        }
+        prev=curr;
+      }
+    }
+    Assert.assertFalse("Cannot end in open marker " + str(prev),prev != null && prev.isOpen(reversed));
+  }
+ catch (  AssertionError e) {
+    System.out.println(e);
+    dumpList(list);
+    throw e;
+  }
+}

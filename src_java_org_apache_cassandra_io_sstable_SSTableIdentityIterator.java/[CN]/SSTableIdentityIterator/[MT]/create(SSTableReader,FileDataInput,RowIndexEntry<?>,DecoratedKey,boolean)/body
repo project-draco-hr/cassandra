@@ -1,0 +1,14 @@
+{
+  try {
+    dfile.seek(indexEntry.position);
+    ByteBufferUtil.skipShortLength(dfile);
+    DeletionTime partitionLevelDeletion=DeletionTime.serializer.deserialize(dfile);
+    SerializationHelper helper=new SerializationHelper(sstable.metadata,sstable.descriptor.version.correspondingMessagingVersion(),SerializationHelper.Flag.LOCAL);
+    SSTableSimpleIterator iterator=tombstoneOnly ? SSTableSimpleIterator.createTombstoneOnly(sstable.metadata,dfile,sstable.header,helper,partitionLevelDeletion) : SSTableSimpleIterator.create(sstable.metadata,dfile,sstable.header,helper,partitionLevelDeletion);
+    return new SSTableIdentityIterator(sstable,key,partitionLevelDeletion,dfile.getPath(),iterator);
+  }
+ catch (  IOException e) {
+    sstable.markSuspect();
+    throw new CorruptSSTableException(e,dfile.getPath());
+  }
+}

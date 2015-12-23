@@ -1,0 +1,44 @@
+{
+  int[] positions=new int[items + 1];
+  for (int i=0; i < items; ++i)   positions[i]=r.nextInt(range);
+  positions[items]=range;
+  Arrays.sort(positions);
+  List<Unfiltered> content=new ArrayList<>(items);
+  int prev=-1;
+  for (int i=0; i < items; ++i) {
+    int pos=positions[i];
+    int sz=positions[i + 1] - pos;
+    if (sz == 0 && pos == prev)     continue;
+    if (r.nextBoolean() || pos == prev) {
+      int span;
+      boolean includesStart;
+      boolean includesEnd;
+      if (pos > prev) {
+        span=r.nextInt(sz + 1);
+        includesStart=span > 0 ? r.nextBoolean() : true;
+        includesEnd=span > 0 ? r.nextBoolean() : true;
+      }
+ else {
+        span=1 + r.nextInt(sz);
+        includesStart=false;
+        includesEnd=r.nextBoolean();
+      }
+      int deltime=r.nextInt(del_range);
+      DeletionTime dt=new DeletionTime(deltime,deltime);
+      content.add(new RangeTombstoneBoundMarker(boundFor(pos,true,includesStart),dt));
+      content.add(new RangeTombstoneBoundMarker(boundFor(pos + span,false,includesEnd),dt));
+      prev=pos + span - (includesEnd ? 0 : 1);
+    }
+ else {
+      content.add(emptyRowAt(pos,timeGenerator));
+      prev=pos;
+    }
+  }
+  attachBoundaries(content);
+  if (reversed) {
+    Collections.reverse(content);
+  }
+  verifyValid(content);
+  if (items <= 20)   dumpList(content);
+  return content;
+}

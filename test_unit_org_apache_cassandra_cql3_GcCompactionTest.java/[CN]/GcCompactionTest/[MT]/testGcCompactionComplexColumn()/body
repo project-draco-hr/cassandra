@@ -1,0 +1,22 @@
+{
+  createTable("CREATE TABLE %s(" + "  key int," + "  data map<int, int>,"+ "  extra text,"+ "  PRIMARY KEY(key)"+ ") WITH compaction = { 'class' :  'SizeTieredCompactionStrategy', 'provide_overlapping_tombstones' : 'cell'  };");
+  for (int i=0; i < KEY_COUNT; ++i)   for (int j=0; j < CLUSTERING_COUNT; ++j)   execute("UPDATE %s SET data[?] = ? WHERE key = ?",j,i + j,i);
+  Set<SSTableReader> readers=new HashSet<>();
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  flush();
+  assertEquals(1,cfs.getLiveSSTables().size());
+  SSTableReader table0=getNewTable(readers);
+  assertEquals(0,countTombstoneMarkers(table0));
+  int cellCount=countComplexCells(table0);
+  deleteWithSomeInsertsComplexColumn(3,5,8);
+  flush();
+  assertEquals(2,cfs.getLiveSSTables().size());
+  SSTableReader table1=getNewTable(readers);
+  assertTrue(countComplexCells(table1) > 0);
+  assertEquals(0,countTombstoneMarkers(table0));
+  CompactionManager.instance.forceUserDefinedCompaction(table0.getFilename());
+  assertEquals(2,cfs.getLiveSSTables().size());
+  SSTableReader table3=getNewTable(readers);
+  assertEquals(0,countTombstoneMarkers(table3));
+  assertEquals(cellCount - 23,countComplexCells(table3));
+}

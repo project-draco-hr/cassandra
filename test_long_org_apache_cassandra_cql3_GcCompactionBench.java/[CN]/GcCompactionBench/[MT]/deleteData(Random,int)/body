@@ -1,0 +1,29 @@
+{
+  for (int i=0; i < count; ++i) {
+    int key;
+    UntypedResultSet res;
+    long ii=id.incrementAndGet();
+    if (ii % 1000 == 0)     System.out.print('-');
+    if (rand.nextInt(RANGE_FREQUENCY_INV) != 1) {
+      do {
+        key=rand.nextInt(KEY_RANGE);
+        long cid=rand.nextInt(DEL_SECTIONS);
+        int cstart=(int)(cid * CLUSTERING_RANGE / DEL_SECTIONS);
+        int cend=(int)((cid + 1) * CLUSTERING_RANGE / DEL_SECTIONS);
+        res=execute("SELECT column FROM %s WHERE key = ? AND column >= ? AND column < ? LIMIT 1",key,cstart,cend);
+      }
+ while (res.size() == 0);
+      UntypedResultSet.Row r=Iterables.get(res,rand.nextInt(res.size()));
+      int clustering=r.getInt("column");
+      execute("DELETE FROM %s WHERE key = ? AND column = ?",key,clustering);
+    }
+ else {
+      key=rand.nextInt(KEY_RANGE);
+      long cid=rand.nextInt(DEL_SECTIONS);
+      int cstart=(int)(cid * CLUSTERING_RANGE / DEL_SECTIONS);
+      int cend=(int)((cid + 1) * CLUSTERING_RANGE / DEL_SECTIONS);
+      res=execute("DELETE FROM %s WHERE key = ? AND column >= ? AND column < ?",key,cstart,cend);
+    }
+    maybeCompact(ii);
+  }
+}
