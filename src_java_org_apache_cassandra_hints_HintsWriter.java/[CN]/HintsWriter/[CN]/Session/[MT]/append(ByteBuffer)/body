@@ -1,12 +1,14 @@
 {
   bytesWritten+=hint.remaining();
+  if (hint.remaining() > buffer.remaining()) {
+    buffer.flip();
+    writeBuffer(buffer);
+    buffer.clear();
+  }
   if (hint.remaining() <= buffer.remaining()) {
     buffer.put(hint);
-    return;
   }
-  buffer.flip();
-  updateChecksum(globalCRC,buffer);
-  updateChecksum(globalCRC,hint);
-  channel.write(new ByteBuffer[]{buffer,hint});
-  buffer.clear();
+ else {
+    writeBuffer(hint);
+  }
 }

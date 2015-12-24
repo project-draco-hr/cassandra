@@ -1,0 +1,17 @@
+{
+  int originalSize=bb.remaining();
+  int estimatedSize=compressor.initialCompressedBufferLength(originalSize) + METADATA_SIZE;
+  if (compressionBuffer == null || compressionBuffer.capacity() < estimatedSize) {
+    compressionBuffer=compressor.preferredBufferType().allocate(estimatedSize);
+  }
+  compressionBuffer.clear();
+  compressionBuffer.position(METADATA_SIZE);
+  compressor.compress(bb,compressionBuffer);
+  int compressedSize=compressionBuffer.position() - METADATA_SIZE;
+  compressionBuffer.rewind();
+  compressionBuffer.putInt(originalSize);
+  compressionBuffer.putInt(compressedSize);
+  compressionBuffer.rewind();
+  compressionBuffer.limit(compressedSize + METADATA_SIZE);
+  super.writeBuffer(compressionBuffer);
+}
