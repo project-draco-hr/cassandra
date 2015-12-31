@@ -1,19 +1,19 @@
 {
-  JSONArray stats;
-  if (json == null) {
-    json=new JSONObject();
-    stats=new JSONArray();
-  }
+  try (InputStream logStream=new FileInputStream(stressSettings.graph.temporaryLogFile)){
+    JSONArray stats;
+    if (json == null) {
+      json=new JSONObject();
+      stats=new JSONArray();
+    }
  else {
-    stats=(JSONArray)json.get("stats");
+      stats=(JSONArray)json.get("stats");
+    }
+    stats=parseLogStats(logStream,stats);
+    json.put("title",stressSettings.graph.title);
+    json.put("stats",stats);
+    return json;
   }
-  try {
-    stats=parseLogStats(new FileInputStream(stressSettings.graph.temporaryLogFile),stats);
-  }
- catch (  FileNotFoundException e) {
+ catch (  IOException e) {
     throw new RuntimeException(e);
   }
-  json.put("title",stressSettings.graph.title);
-  json.put("stats",stats);
-  return json;
 }
