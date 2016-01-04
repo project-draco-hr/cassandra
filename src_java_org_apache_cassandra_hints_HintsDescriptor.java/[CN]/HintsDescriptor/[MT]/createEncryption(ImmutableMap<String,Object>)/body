@@ -1,0 +1,27 @@
+{
+  if (params.containsKey(ENCRYPTION)) {
+    Map<?,?> encryptionConfig=(Map<?,?>)params.get(ENCRYPTION);
+    EncryptionContext encryptionContext=EncryptionContext.createFromMap(encryptionConfig,DatabaseDescriptor.getEncryptionContext());
+    try {
+      Cipher cipher;
+      if (encryptionConfig.containsKey(EncryptionContext.ENCRYPTION_IV)) {
+        cipher=encryptionContext.getDecryptor();
+      }
+ else {
+        cipher=encryptionContext.getEncryptor();
+        ImmutableMap<String,Object> encParams=ImmutableMap.<String,Object>builder().putAll(encryptionContext.toHeaderParameters()).put(EncryptionContext.ENCRYPTION_IV,Hex.bytesToHex(cipher.getIV())).build();
+        Map<String,Object> map=new HashMap<>(params);
+        map.put(ENCRYPTION,encParams);
+        params=ImmutableMap.<String,Object>builder().putAll(map).build();
+      }
+      return new EncryptionData(cipher,encryptionContext.getCompressor(),params);
+    }
+ catch (    IOException ioe) {
+      logger.warn("failed to create encyption context for hints file. ignoring encryption for hints.",ioe);
+      return null;
+    }
+  }
+ else {
+    return null;
+  }
+}

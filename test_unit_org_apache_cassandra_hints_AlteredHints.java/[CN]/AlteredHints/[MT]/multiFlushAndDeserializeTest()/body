@@ -1,0 +1,37 @@
+{
+  int hintNum=0;
+  int bufferSize=HintsWriteExecutor.WRITE_BUFFER_SIZE;
+  List<Hint> hints=new LinkedList<>();
+  UUID hostId=UUIDGen.getTimeUUID();
+  long ts=System.currentTimeMillis();
+  HintsDescriptor descriptor=new HintsDescriptor(hostId,ts,params());
+  File dir=Files.createTempDir();
+  try (HintsWriter writer=HintsWriter.create(dir,descriptor)){
+    Assert.assertTrue(looksLegit(writer));
+    ByteBuffer writeBuffer=ByteBuffer.allocateDirect(bufferSize);
+    try (HintsWriter.Session session=writer.newSession(writeBuffer)){
+      while (session.getBytesWritten() < bufferSize * 3) {
+        Hint hint=createHint(hintNum,ts + hintNum);
+        session.append(hint);
+        hints.add(hint);
+        hintNum++;
+      }
+    }
+   }
+   try (HintsReader reader=HintsReader.open(new File(dir,descriptor.fileName()))){
+    Assert.assertTrue(looksLegit(reader.getInput()));
+    List<Hint> deserialized=new ArrayList<>(hintNum);
+    for (    HintsReader.Page page : reader) {
+      Iterator<Hint> iterator=page.hintsIterator();
+      while (iterator.hasNext()) {
+        deserialized.add(iterator.next());
+      }
+    }
+    Assert.assertEquals(hints.size(),deserialized.size());
+    hintNum=0;
+    for (    Hint expected : hints) {
+      HintsTestUtil.assertHintsEqual(expected,deserialized.get(hintNum));
+      hintNum++;
+    }
+  }
+ }
