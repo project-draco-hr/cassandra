@@ -15,8 +15,9 @@
       allocator.reclaimer().reclaimImmediately(cloneKey);
     }
   }
-  final Pair<Long,Long> pair=previous.addAllWithSizeDelta(cf,allocator,opGroup,indexer);
-  liveDataSize.addAndGet(initialSize + pair.left);
+  final AtomicBTreeColumns.ColumnUpdater updater=previous.addAllWithSizeDelta(cf,allocator,opGroup,indexer);
+  minTimestamp=Math.min(minTimestamp,updater.minTimestamp);
+  liveDataSize.addAndGet(initialSize + updater.dataSize);
   currentOperations.addAndGet(cf.getColumnCount() + (cf.isMarkedForDelete() ? 1 : 0) + cf.deletionInfo().rangeCount());
-  return pair.right;
+  return updater.colUpdateTimeDelta;
 }
