@@ -1,15 +1,18 @@
 {
+  maybeReload(cfs.metadata);
   return cfs.runWithCompactionsDisabled(new Callable<Collection<AbstractCompactionTask>>(){
     @Override public Collection<AbstractCompactionTask> call() throws Exception {
 synchronized (CompactionStrategyManager.this) {
-        Collection<AbstractCompactionTask> repairedTasks=repaired.getMaximalTask(gcBefore,splitOutput);
-        Collection<AbstractCompactionTask> unrepairedTasks=unrepaired.getMaximalTask(gcBefore,splitOutput);
-        if (repairedTasks == null && unrepairedTasks == null)         return null;
-        if (repairedTasks == null)         return unrepairedTasks;
-        if (unrepairedTasks == null)         return repairedTasks;
         List<AbstractCompactionTask> tasks=new ArrayList<>();
-        tasks.addAll(repairedTasks);
-        tasks.addAll(unrepairedTasks);
+        for (        AbstractCompactionStrategy strategy : repaired) {
+          Collection<AbstractCompactionTask> task=strategy.getMaximalTask(gcBefore,splitOutput);
+          if (task != null)           tasks.addAll(task);
+        }
+        for (        AbstractCompactionStrategy strategy : unrepaired) {
+          Collection<AbstractCompactionTask> task=strategy.getMaximalTask(gcBefore,splitOutput);
+          if (task != null)           tasks.addAll(task);
+        }
+        if (tasks.isEmpty())         return null;
         return tasks;
       }
     }

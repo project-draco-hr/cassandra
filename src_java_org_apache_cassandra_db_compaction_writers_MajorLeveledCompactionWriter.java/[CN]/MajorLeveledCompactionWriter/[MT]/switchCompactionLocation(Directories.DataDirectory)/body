@@ -1,5 +1,7 @@
 {
-  File sstableDirectory=getDirectories().getLocationForDisk(directory);
-  @SuppressWarnings("resource") SSTableWriter writer=SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(sstableDirectory)),averageEstimatedKeysPerSSTable,minRepairedAt,cfs.metadata,new MetadataCollector(allSSTables,cfs.metadata.comparator,currentLevel),SerializationHeader.make(cfs.metadata,nonExpiredSSTables),cfs.indexManager.listIndexes(),txn);
-  sstableWriter.switchWriter(writer);
+  this.sstableDirectory=location;
+  averageEstimatedKeysPerSSTable=Math.round(((double)averageEstimatedKeysPerSSTable * sstablesWritten + partitionsWritten) / (sstablesWritten + 1));
+  sstableWriter.switchWriter(SSTableWriter.create(Descriptor.fromFilename(cfs.getSSTablePath(getDirectories().getLocationForDisk(sstableDirectory))),keysPerSSTable,minRepairedAt,cfs.metadata,new MetadataCollector(txn.originals(),cfs.metadata.comparator,currentLevel),SerializationHeader.make(cfs.metadata,txn.originals()),cfs.indexManager.listIndexes(),txn));
+  partitionsWritten=0;
+  sstablesWritten=0;
 }

@@ -1,4 +1,15 @@
 {
-  if (!isInitialized)   switchCompactionLocation(getDirectories().getWriteableLocation(cfs.getExpectedCompactedFileSize(nonExpiredSSTables,txn.opType())));
-  isInitialized=true;
+  if (diskBoundaries == null) {
+    if (locationIndex < 0) {
+      Directories.DataDirectory defaultLocation=getWriteDirectory(nonExpiredSSTables,cfs.getExpectedCompactedFileSize(nonExpiredSSTables,OperationType.UNKNOWN));
+      switchCompactionLocation(defaultLocation);
+      locationIndex=0;
+    }
+    return;
+  }
+  if (locationIndex > -1 && key.compareTo(diskBoundaries.get(locationIndex)) < 0)   return;
+  int prevIdx=locationIndex;
+  while (locationIndex == -1 || key.compareTo(diskBoundaries.get(locationIndex)) > 0)   locationIndex++;
+  if (prevIdx >= 0)   logger.debug("Switching write location from {} to {}",locations[prevIdx],locations[locationIndex]);
+  switchCompactionLocation(locations[locationIndex]);
 }
