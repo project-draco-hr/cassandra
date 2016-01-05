@@ -1,9 +1,13 @@
 {
-  Multimap<Range<Token>,InetAddress> map=pendingRanges.get(keyspaceName);
-  if (map == null) {
-    map=HashMultimap.create();
-    Multimap<Range<Token>,InetAddress> priorMap=pendingRanges.putIfAbsent(keyspaceName,map);
-    if (priorMap != null)     map=priorMap;
+  Multimap<Range<Token>,InetAddress> map=HashMultimap.create();
+  PendingRangeMaps pendingRangeMaps=this.pendingRanges.get(keyspaceName);
+  if (pendingRangeMaps != null) {
+    for (    Map.Entry<Range<Token>,List<InetAddress>> entry : pendingRangeMaps) {
+      Range<Token> range=entry.getKey();
+      for (      InetAddress address : entry.getValue()) {
+        map.put(range,address);
+      }
+    }
   }
   return map;
 }
