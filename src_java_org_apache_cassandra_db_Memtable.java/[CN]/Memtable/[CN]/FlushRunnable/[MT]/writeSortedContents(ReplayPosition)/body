@@ -1,0 +1,16 @@
+{
+  logger.debug("Writing {}, flushed range = ({}, {}]",Memtable.this.toString(),from,to);
+  boolean trackContention=logger.isTraceEnabled();
+  int heavilyContendedRowCount=0;
+  for (  AtomicBTreePartition partition : toFlush.values()) {
+    if (isBatchLogTable && !partition.partitionLevelDeletion().isLive() && partition.hasRows())     continue;
+    if (trackContention && partition.usePessimisticLocking())     heavilyContendedRowCount++;
+    if (!partition.isEmpty()) {
+      try (UnfilteredRowIterator iter=partition.unfilteredIterator()){
+        writer.append(iter);
+      }
+     }
+  }
+  logger.debug(String.format("Completed flushing %s (%s) for commitlog position %s",writer.getFilename(),FBUtilities.prettyPrintMemory(writer.getFilePointer()),context));
+  if (heavilyContendedRowCount > 0)   logger.trace(String.format("High update contention in %d/%d partitions of %s ",heavilyContendedRowCount,toFlush.size(),Memtable.this.toString()));
+}

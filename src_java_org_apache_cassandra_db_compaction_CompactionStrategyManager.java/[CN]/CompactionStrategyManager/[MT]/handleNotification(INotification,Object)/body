@@ -1,53 +1,59 @@
 {
+  maybeReload(cfs.metadata);
   if (notification instanceof SSTableAddedNotification) {
     SSTableAddedNotification flushedNotification=(SSTableAddedNotification)notification;
-    for (    SSTableReader sstable : flushedNotification.added) {
-      if (sstable.isRepaired())       repaired.addSSTable(sstable);
- else       unrepaired.addSSTable(sstable);
-    }
+    for (    SSTableReader sstable : flushedNotification.added)     getCompactionStrategyFor(sstable).addSSTable(sstable);
   }
  else   if (notification instanceof SSTableListChangedNotification) {
     SSTableListChangedNotification listChangedNotification=(SSTableListChangedNotification)notification;
-    Set<SSTableReader> repairedRemoved=new HashSet<>();
-    Set<SSTableReader> repairedAdded=new HashSet<>();
-    Set<SSTableReader> unrepairedRemoved=new HashSet<>();
-    Set<SSTableReader> unrepairedAdded=new HashSet<>();
+    Directories.DataDirectory[] locations=cfs.getDirectories().getWriteableLocations();
+    int locationSize=cfs.getPartitioner().splitter().isPresent() ? locations.length : 1;
+    List<Set<SSTableReader>> repairedRemoved=new ArrayList<>(locationSize);
+    List<Set<SSTableReader>> repairedAdded=new ArrayList<>(locationSize);
+    List<Set<SSTableReader>> unrepairedRemoved=new ArrayList<>(locationSize);
+    List<Set<SSTableReader>> unrepairedAdded=new ArrayList<>(locationSize);
+    for (int i=0; i < locationSize; i++) {
+      repairedRemoved.add(new HashSet<>());
+      repairedAdded.add(new HashSet<>());
+      unrepairedRemoved.add(new HashSet<>());
+      unrepairedAdded.add(new HashSet<>());
+    }
     for (    SSTableReader sstable : listChangedNotification.removed) {
-      if (sstable.isRepaired())       repairedRemoved.add(sstable);
- else       unrepairedRemoved.add(sstable);
+      int i=getCompactionStrategyIndex(cfs,getDirectories(),sstable);
+      if (sstable.isRepaired())       repairedRemoved.get(i).add(sstable);
+ else       unrepairedRemoved.get(i).add(sstable);
     }
     for (    SSTableReader sstable : listChangedNotification.added) {
-      if (sstable.isRepaired())       repairedAdded.add(sstable);
- else       unrepairedAdded.add(sstable);
+      int i=getCompactionStrategyIndex(cfs,getDirectories(),sstable);
+      if (sstable.isRepaired())       repairedAdded.get(i).add(sstable);
+ else       unrepairedAdded.get(i).add(sstable);
     }
-    if (!repairedRemoved.isEmpty()) {
-      repaired.replaceSSTables(repairedRemoved,repairedAdded);
-    }
+    for (int i=0; i < locationSize; i++) {
+      if (!repairedRemoved.get(i).isEmpty())       repaired.get(i).replaceSSTables(repairedRemoved.get(i),repairedAdded.get(i));
  else {
-      for (      SSTableReader sstable : repairedAdded)       repaired.addSSTable(sstable);
-    }
-    if (!unrepairedRemoved.isEmpty()) {
-      unrepaired.replaceSSTables(unrepairedRemoved,unrepairedAdded);
-    }
+        for (        SSTableReader sstable : repairedAdded.get(i))         repaired.get(i).addSSTable(sstable);
+      }
+      if (!unrepairedRemoved.get(i).isEmpty())       unrepaired.get(i).replaceSSTables(unrepairedRemoved.get(i),unrepairedAdded.get(i));
  else {
-      for (      SSTableReader sstable : unrepairedAdded)       unrepaired.addSSTable(sstable);
+        for (        SSTableReader sstable : unrepairedAdded.get(i))         unrepaired.get(i).addSSTable(sstable);
+      }
     }
   }
  else   if (notification instanceof SSTableRepairStatusChanged) {
     for (    SSTableReader sstable : ((SSTableRepairStatusChanged)notification).sstable) {
+      int index=getCompactionStrategyIndex(cfs,getDirectories(),sstable);
       if (sstable.isRepaired()) {
-        unrepaired.removeSSTable(sstable);
-        repaired.addSSTable(sstable);
+        unrepaired.get(index).removeSSTable(sstable);
+        repaired.get(index).addSSTable(sstable);
       }
  else {
-        repaired.removeSSTable(sstable);
-        unrepaired.addSSTable(sstable);
+        repaired.get(index).removeSSTable(sstable);
+        unrepaired.get(index).addSSTable(sstable);
       }
     }
   }
  else   if (notification instanceof SSTableDeletingNotification) {
     SSTableReader sstable=((SSTableDeletingNotification)notification).deleting;
-    if (sstable.isRepaired())     repaired.removeSSTable(sstable);
- else     unrepaired.removeSSTable(sstable);
+    getCompactionStrategyFor(sstable).removeSSTable(sstable);
   }
 }

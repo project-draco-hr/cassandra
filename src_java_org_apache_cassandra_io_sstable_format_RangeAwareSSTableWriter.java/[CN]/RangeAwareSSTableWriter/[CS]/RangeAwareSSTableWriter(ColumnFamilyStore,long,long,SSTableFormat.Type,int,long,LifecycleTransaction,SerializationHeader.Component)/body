@@ -1,0 +1,17 @@
+{
+  directories=cfs.getDirectories().getWriteableLocations();
+  this.sstableLevel=sstableLevel;
+  this.cfs=cfs;
+  this.estimatedKeys=estimatedKeys / directories.length;
+  this.repairedAt=repairedAt;
+  this.format=format;
+  this.txn=txn;
+  this.header=header;
+  boundaries=StorageService.getDiskBoundaries(cfs,directories);
+  if (boundaries == null) {
+    Directories.DataDirectory localDir=cfs.getDirectories().getWriteableLocation(totalSize);
+    if (localDir == null)     throw new IOException("Insufficient disk space to store " + totalSize + " bytes");
+    Descriptor desc=Descriptor.fromFilename(cfs.getSSTablePath(cfs.getDirectories().getLocationForDisk(localDir),format));
+    currentWriter=cfs.createSSTableMultiWriter(desc,estimatedKeys,repairedAt,sstableLevel,header.toHeader(cfs.metadata),txn);
+  }
+}

@@ -14,12 +14,12 @@
   Keyspace ks=Keyspace.openWithoutSSTables(keyspace);
   ColumnFamilyStore cfs=ks.getColumnFamilyStore(columnfamily);
   Directories.SSTableLister lister=cfs.getDirectories().sstableLister(Directories.OnTxnErr.THROW).skipTemporary(true);
-  Set<SSTableReader> sstables=new HashSet<>();
+  SetMultimap<File,SSTableReader> sstableMultimap=HashMultimap.create();
   for (  Map.Entry<Descriptor,Set<Component>> sstable : lister.list().entrySet()) {
     if (sstable.getKey() != null) {
       try {
         SSTableReader reader=SSTableReader.open(sstable.getKey());
-        sstables.add(reader);
+        sstableMultimap.put(reader.descriptor.directory,reader);
       }
  catch (      Throwable t) {
         out.println("Couldn't open sstable: " + sstable.getKey().filenameFor(Component.DATA));
@@ -27,11 +27,16 @@
       }
     }
   }
-  if (sstables.isEmpty()) {
+  if (sstableMultimap.isEmpty()) {
     out.println("No sstables to relevel for " + keyspace + "."+ columnfamily);
     System.exit(1);
   }
-  Relevel rl=new Relevel(sstables);
-  rl.relevel(dryRun);
+  for (  File directory : sstableMultimap.keySet()) {
+    if (!sstableMultimap.get(directory).isEmpty()) {
+      Relevel rl=new Relevel(sstableMultimap.get(directory));
+      out.println("For sstables in " + directory + ":");
+      rl.relevel(dryRun);
+    }
+  }
   System.exit(0);
 }
