@@ -1,0 +1,20 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore("Standard1");
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  cfs.metadata.gcGraceSeconds(force10944Bug ? 1 : 0);
+  long timestamp=System.currentTimeMillis();
+  String key="ttl";
+  new RowUpdateBuilder(cfs.metadata,timestamp,1,key).add("col",ByteBufferUtil.EMPTY_BYTE_BUFFER).add("col7",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,timestamp,1,key).add("col2",ByteBufferUtil.EMPTY_BYTE_BUFFER).addMapEntry("col8","bar","foo").delete("col1").build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,timestamp,force10944Bug ? 0 : 1,key).add("col3",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  new RowUpdateBuilder(cfs.metadata,timestamp,1,key).add("col311",ByteBufferUtil.EMPTY_BYTE_BUFFER).build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  Thread.sleep(2000);
+  assertEquals(4,cfs.getLiveSSTables().size());
+  cfs.enableAutoCompaction(true);
+  assertEquals(force10944Bug ? 1 : 0,cfs.getLiveSSTables().size());
+}
