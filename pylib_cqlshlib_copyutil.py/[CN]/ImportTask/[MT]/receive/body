@@ -1,19 +1,16 @@
 def receive(self):
-    shell = self.shell
     start_time = time.time()
-    while ((time.time() - start_time) < 0.01):
+    while ((time.time() - start_time) < 0.001):
         try:
-            (batch, err) = self.inmsg.get(timeout=0.001)
+            (batch, err) = self.inmsg.get(timeout=1e-05)
             if (err is None):
                 self.succeeded += batch['imported']
                 self.receive_meter.increment(batch['imported'])
             else:
                 err = str(err)
-                if (err.startswith('ValueError') or err.startswith('TypeError') or err.startswith('IndexError') or (batch['attempts'] >= self.max_attempts)):
-                    shell.printerr(('Failed to import %d rows: %s -  given up after %d attempts' % (len(batch['rows']), err, batch['attempts'])))
-                    self.failed += len(batch['rows'])
-                else:
-                    shell.printerr(('Failed to import %d rows: %s -  will retry later, attempt %d of %d' % (len(batch['rows']), err, batch['attempts'], self.max_attempts)))
+                if self.import_errors.handle_error(err, batch):
                     self.retries.append(self.reset_batch(batch))
+                else:
+                    self.failed += len(batch['rows'])
         except Queue.Empty:
-            break
+            pass
