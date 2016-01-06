@@ -1,16 +1,23 @@
 def split_batches(self, batch, conv):
-    "\n        Split a batch into sub-batches with the same\n        partition key, if possible. If there are at least\n        batch_size rows with the same partition key value then\n        create a sub-batch with that partition key value, else\n        aggregate all remaining rows in a single 'left-overs' batch\n        "
+    '\n        Batch rows by partition key, if there are at least min_batch_size (2)\n        rows with the same partition key. These batches can be as big as they want\n        since this translates to a single insert operation server side.\n\n        If there are less than min_batch_size rows for a partition, work out the\n        first replica for this partition and add the rows to replica left-over rows.\n\n        Then batch the left-overs of each replica up to max_batch_size.\n        '
     rows_by_pk = defaultdict(list)
+    errors = defaultdict(list)
     for row in batch['rows']:
-        pk = conv.get_row_partition_key_values(row)
-        rows_by_pk[pk].append(row)
-    ret = dict()
-    remaining_rows = []
-    for (pk, rows) in rows_by_pk.items():
+        try:
+            pk = conv.get_row_partition_key_values(row)
+            rows_by_pk[pk].append(row)
+        except ParseError as e:
+            errors[e.message].append(row)
+    if errors:
+        for (msg, rows) in errors.iteritems():
+            self.outmsg.put((ImportTask.split_batch(batch, rows), ('%s - %s' % (ParseError.__name__, msg))))
+    rows_by_replica = defaultdict(list)
+    for (pk, rows) in rows_by_pk.iteritems():
         if (len(rows) >= self.min_batch_size):
-            ret[pk] = self.batches(rows, batch)
+            yield ImportTask.make_batch(batch['id'], rows, batch['attempts'])
         else:
-            remaining_rows.extend(rows)
-    if remaining_rows:
-        ret[self.hostname] = self.batches(remaining_rows, batch)
-    return ret.itervalues()
+            replica = self.get_replica(pk)
+            rows_by_replica[replica].extend(rows)
+    for (replica, rows) in rows_by_replica.iteritems():
+        for b in self.batches(rows, batch):
+            yield b
