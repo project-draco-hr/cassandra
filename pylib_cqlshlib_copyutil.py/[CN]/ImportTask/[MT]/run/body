@@ -1,27 +1,25 @@
 def run(self):
     shell = self.shell
-    if (self.fname is None):
-        do_close = False
-        print '[Use \\. on a line by itself to end input]'
-        linesource = shell.use_stdin_reader(prompt='[copy] ', until='\\.')
-    else:
-        do_close = True
-        try:
-            linesource = open(self.fname, 'rb')
-        except IOError as e:
-            shell.printerr(("Can't open %r for reading: %s" % (self.fname, e)))
+    if self.options.unrecognized:
+        shell.printerr(('Unrecognized COPY FROM options: %s' % ', '.join(self.options.unrecognized.keys())))
+        return
+    if (not self.valid_columns):
+        shell.printerr('No column specified')
+        return 0
+    for c in self.table_meta.primary_key:
+        if (c.name not in self.valid_columns):
+            shell.printerr(("Primary key column '%s' missing or skipped" % (c.name,)))
             return 0
+    self.printmsg(('\nStarting copy of %s.%s with columns %s.' % (self.ks, self.table, self.valid_columns)))
     try:
         try:
-            if self.header:
-                linesource.next()
-            reader = ImportReader(linesource, self.chunk_size, self.dialect_options)
+            self.reader.start()
             params = self.make_params()
             for i in range(self.num_processes):
                 self.processes.append(ImportProcess(params))
             for process in self.processes:
                 process.start()
-            return self.process_records(reader)
+            self.import_records()
         except Exception as exc:
             shell.printerr(str(exc))
             if shell.debug:
@@ -29,7 +27,3 @@ def run(self):
             return 0
     finally:
         self.close()
-        if do_close:
-            linesource.close()
-        elif shell.tty:
-            print 

@@ -1,0 +1,15 @@
+def import_records(self):
+    '\n        Keep on running until we have stuff to receive or send and until all processes are running.\n        Send data (batches or retries) up to the max ingest rate. If we are waiting for stuff to\n        receive check the incoming queue.\n        '
+    reader = self.reader
+    while (self.has_more_to_send(reader) or self.has_more_to_receive()):
+        if self.has_more_to_send(reader):
+            self.send_batches(reader)
+        if self.has_more_to_receive():
+            self.receive()
+        if (self.import_errors.max_exceeded() or (not self.all_processes_running())):
+            break
+    if self.import_errors.num_rows_failed:
+        self.shell.printerr(('Failed to process %d rows; failed rows written to %s' % (self.import_errors.num_rows_failed, self.import_errors.err_file)))
+    if (not self.all_processes_running()):
+        self.shell.printerr('{} child process(es) died unexpectedly, aborting'.format((self.num_processes - self.num_live_processes())))
+    self.printmsg(('\n%d rows imported from %d files in %s (%d skipped).' % (self.receive_meter.get_total_records(), self.reader.num_sources, self.describe_interval((time.time() - self.time_start)), self.reader.skip_rows)))

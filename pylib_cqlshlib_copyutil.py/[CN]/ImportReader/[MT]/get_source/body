@@ -1,0 +1,23 @@
+def get_source(self, paths):
+    '\n         Return a source generator. Each source is a named tuple\n         wrapping the source input, file name and a boolean indicating\n         if it requires closing.\n        '
+    shell = self.shell
+    LineSource = namedtuple('LineSource', 'input close fname')
+
+    def make_source(fname):
+        try:
+            ret = LineSource(input=open(fname, 'rb'), close=True, fname=fname)
+            return ret
+        except IOError as e:
+            shell.printerr(("Can't open %r for reading: %s" % (fname, e)))
+            return None
+    if (paths is None):
+        self.printmsg('[Use \\. on a line by itself to end input]')
+        yield LineSource(input=shell.use_stdin_reader(prompt='[copy] ', until='\\.'), close=False, fname='')
+    else:
+        for path in paths.split(','):
+            path = path.strip()
+            if os.path.isfile(path):
+                yield make_source(path)
+            else:
+                for f in glob.glob(path):
+                    yield make_source(f)

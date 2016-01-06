@@ -1,13 +1,17 @@
-def __init__(self, shell, ks, cf, columns, fname, csv_options, dialect_options, protocol_version, config_file):
+def __init__(self, shell, ks, table, columns, fname, opts, protocol_version, config_file, direction):
     self.shell = shell
-    self.csv_options = csv_options
-    self.dialect_options = dialect_options
     self.ks = ks
-    self.cf = cf
-    self.columns = (shell.get_column_names(ks, cf) if (columns is None) else columns)
-    self.fname = fname
+    self.table = table
+    self.local_dc = shell.conn.metadata.get_host(shell.hostname).datacenter
+    self.fname = safe_normpath(fname)
     self.protocol_version = protocol_version
     self.config_file = config_file
+    self.printmsg = (self._printmsg if ((self.fname is not None) or (direction == 'in')) else (lambda _, eol='\n': None))
+    self.options = self.parse_options(opts, direction)
+    self.num_processes = self.options.copy['numprocesses']
+    self.printmsg(('Using %d child processes' % (self.num_processes,)))
     self.processes = []
     self.inmsg = mp.Queue()
     self.outmsg = mp.Queue()
+    self.columns = CopyTask.get_columns(shell, ks, table, columns)
+    self.time_start = time.time()

@@ -1,0 +1,39 @@
+def export_records(self, ranges):
+    "\n        Send records to child processes and monitor them by collecting their results\n        or any errors. We terminate when we have processed all the ranges or when one child\n        process has died (since in this case we will never get any ACK for the ranges\n        processed by it and at the moment we don't keep track of which ranges a\n        process is handling).\n        "
+    shell = self.shell
+    processes = self.processes
+    meter = RateMeter(log_fcn=self.printmsg, update_interval=self.options.copy['reportfrequency'], log_file=self.options.copy['ratefile'])
+    total_requests = len(ranges)
+    max_attempts = self.options.copy['maxattempts']
+    self.send_work(ranges, ranges.keys())
+    num_processes = len(processes)
+    succeeded = 0
+    failed = 0
+    while (((failed + succeeded) < total_requests) and (self.num_live_processes() == num_processes)):
+        try:
+            (token_range, result) = self.inmsg.get(timeout=1.0)
+            if ((token_range is None) and (result is None)):
+                succeeded += 1
+            elif isinstance(result, Exception):
+                if (token_range is None):
+                    shell.printerr(('Error from worker process: %s' % result))
+                elif ((ranges[token_range]['attempts'] < max_attempts) and (ranges[token_range]['rows'] == 0)):
+                    shell.printerr(('Error for %s: %s (will try again later attempt %d of %d)' % (token_range, result, ranges[token_range]['attempts'], max_attempts)))
+                    self.send_work(ranges, [token_range])
+                else:
+                    shell.printerr(('Error for %s: %s (permanently given up after %d rows and %d attempts)' % (token_range, result, ranges[token_range]['rows'], ranges[token_range]['attempts'])))
+                    failed += 1
+            else:
+                (data, num) = result
+                self.writer.write(data, num)
+                meter.increment(n=num)
+                ranges[token_range]['rows'] += num
+        except Queue.Empty:
+            pass
+    if (self.num_live_processes() < len(processes)):
+        for process in processes:
+            if (not process.is_alive()):
+                shell.printerr(('Child process %d died with exit code %d' % (process.pid, process.exitcode)))
+    if (succeeded < total_requests):
+        shell.printerr(('Exported %d ranges out of %d total ranges, some records might be missing' % (succeeded, total_requests)))
+    self.printmsg(('\n%d rows exported to %d files in %s.' % (meter.get_total_records(), self.writer.num_files, self.describe_interval((time.time() - self.time_start)))))

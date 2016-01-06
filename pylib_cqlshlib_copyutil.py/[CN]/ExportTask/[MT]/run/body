@@ -1,30 +1,24 @@
 def run(self):
-    '\n        Initiates the export by creating the processes.\n        '
+    '\n        Initiates the export by starting the worker processes.\n        Then hand over control to export_records.\n        '
     shell = self.shell
-    fname = self.fname
-    if (fname is None):
-        do_close = False
-        csvdest = sys.stdout
-    else:
-        do_close = True
-        try:
-            csvdest = open(fname, 'wb')
-        except IOError as e:
-            shell.printerr(("Can't open %r for writing: %s" % (fname, e)))
-            return 0
-    if self.csv_options['header']:
-        writer = csv.writer(csvdest, **self.dialect_options)
-        writer.writerow(self.columns)
+    if self.options.unrecognized:
+        shell.printerr(('Unrecognized COPY TO options: %s' % ', '.join(self.options.unrecognized.keys())))
+        return
+    if (not self.columns):
+        shell.printerr('No column specified')
+        return 0
     ranges = self.get_ranges()
-    num_processes = get_num_processes(cap=min(16, len(ranges)))
+    if (not ranges):
+        return 0
+    if (not self.writer.open()):
+        return 0
+    self.printmsg(('\nStarting copy of %s.%s with columns %s.' % (self.ks, self.table, self.columns)))
     params = self.make_params()
-    for i in xrange(num_processes):
+    for i in xrange(self.num_processes):
         self.processes.append(ExportProcess(params))
     for process in self.processes:
         process.start()
     try:
-        return self.check_processes(csvdest, ranges)
+        self.export_records(ranges)
     finally:
         self.close()
-        if do_close:
-            csvdest.close()

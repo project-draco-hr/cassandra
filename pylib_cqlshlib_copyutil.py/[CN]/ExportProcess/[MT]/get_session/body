@@ -3,12 +3,12 @@ def get_session(self, hosts):
     new_hosts = [h for h in hosts if (h not in self.hosts_to_sessions)]
     if new_hosts:
         host = new_hosts[0]
-        new_cluster = Cluster(contact_points=(host,), port=self.port, cql_version=self.cql_version, protocol_version=self.protocol_version, auth_provider=self.auth_provider, ssl_options=(ssl_settings(host, self.config_file) if self.ssl else None), load_balancing_policy=TokenAwarePolicy(WhiteListRoundRobinPolicy(hosts)), default_retry_policy=ExpBackoffRetryPolicy(self), compression=None)
+        new_cluster = Cluster(contact_points=(host,), port=self.port, cql_version=self.cql_version, protocol_version=self.protocol_version, auth_provider=self.auth_provider, ssl_options=(ssl_settings(host, self.config_file) if self.ssl else None), load_balancing_policy=TokenAwarePolicy(WhiteListRoundRobinPolicy(hosts)), default_retry_policy=ExpBackoffRetryPolicy(self), compression=None, control_connection_timeout=self.connect_timeout, connect_timeout=self.connect_timeout)
         session = ExportSession(new_cluster, self)
         self.hosts_to_sessions[host] = session
         return session
     else:
-        host = min(hosts, key=(lambda h: self.hosts_to_sessions[h].requests))
+        host = min(hosts, key=(lambda hh: self.hosts_to_sessions[hh].requests))
         session = self.hosts_to_sessions[host]
         session.add_request()
         return session
