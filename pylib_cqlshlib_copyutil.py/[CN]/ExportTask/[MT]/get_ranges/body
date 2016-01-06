@@ -1,34 +1,64 @@
 def get_ranges(self):
-    '\n        return a queue of tuples, where the first tuple entry is a token range (from, to]\n        and the second entry is a list of hosts that own that range. Each host is responsible\n        for all the tokens in the rage (from, to].\n\n        The ring information comes from the driver metadata token map, which is built by\n        querying System.PEERS.\n\n        We only consider replicas that are in the local datacenter. If there are no local replicas\n        we use the cqlsh session host.\n        '
+    '\n        return a queue of tuples, where the first tuple entry is a token range (from, to]\n        and the second entry is a list of hosts that own that range. Each host is responsible\n        for all the tokens in the range (from, to].\n\n        The ring information comes from the driver metadata token map, which is built by\n        querying System.PEERS.\n\n        We only consider replicas that are in the local datacenter. If there are no local replicas\n        we use the cqlsh session host.\n        '
     shell = self.shell
     hostname = shell.hostname
+    local_dc = self.local_dc
     ranges = dict()
-
-    def make_range(hosts):
-        return {'hosts': tuple(hosts), 'attempts': 0, 'rows': 0, }
     min_token = self.get_min_token()
-    if ((shell.conn.metadata.token_map is None) or (min_token is None)):
-        ranges[(None, None)] = make_range([hostname])
+    begin_token = self.begin_token
+    end_token = self.end_token
+
+    def make_range(prev, curr):
+        '\n            Return the intersection of (prev, curr) and (begin_token, end_token),\n            return None if the intersection is empty\n            '
+        ret = (prev, curr)
+        if begin_token:
+            if (ret[1] < begin_token):
+                return None
+            elif (ret[0] < begin_token):
+                ret = (begin_token, ret[1])
+        if end_token:
+            if (ret[0] > end_token):
+                return None
+            elif (ret[1] > end_token):
+                ret = (ret[0], end_token)
+        return ret
+
+    def make_range_data(replicas=[]):
+        hosts = []
+        for r in replicas:
+            if (r.is_up and (r.datacenter == local_dc)):
+                hosts.append(r.address)
+        if (not hosts):
+            hosts.append(hostname)
+        return {'hosts': tuple(hosts), 'attempts': 0, 'rows': 0, }
+    if (begin_token and (begin_token < min_token)):
+        shell.printerr(('Begin token %d must be bigger or equal to min token %d' % (begin_token, min_token)))
         return ranges
-    local_dc = shell.conn.metadata.get_host(hostname).datacenter
+    if (begin_token and end_token and (begin_token > end_token)):
+        shell.printerr(('Begin token %d must be smaller than end token %d' % (begin_token, end_token)))
+        return ranges
+    if ((shell.conn.metadata.token_map is None) or (min_token is None)):
+        ranges[(begin_token, end_token)] = make_range_data()
+        return ranges
     ring = shell.get_ring(self.ks).items()
     ring.sort()
-    previous_previous = None
+    if (not ring):
+        ranges[(begin_token, end_token)] = make_range_data()
+        return ranges
+    first_range_data = None
     previous = None
     for (token, replicas) in ring:
         if ((previous is None) and (token.value == min_token)):
             continue
-        hosts = []
-        for host in replicas:
-            if (host.is_up and (host.datacenter == local_dc)):
-                hosts.append(host.address)
-        if (not hosts):
-            hosts.append(hostname)
-        ranges[(previous, token.value)] = make_range(hosts)
-        previous_previous = previous
+        if (previous is None):
+            first_range_data = make_range_data(replicas)
+        current_range = make_range(previous, token.value)
+        if (not current_range):
+            continue
+        ranges[current_range] = make_range_data(replicas)
         previous = token.value
+    if ((previous is not None) and ((not end_token) or (previous < end_token))):
+        ranges[(previous, end_token)] = first_range_data
     if (not ranges):
-        ranges[(None, None)] = make_range([hostname])
-    else:
-        ranges[(previous, None)] = ranges[(previous_previous, previous)].copy()
+        shell.printerr(('Found no ranges to query, check begin and end tokens: %s - %s' % (begin_token, end_token)))
     return ranges

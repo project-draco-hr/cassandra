@@ -1,6 +1,17 @@
-def read_rows(self):
-    if self.exhausted:
+def read_rows(self, max_rows):
+    if (not self.current_reader):
         return []
-    rows = list((next(self.reader) for _ in xrange(self.chunksize)))
-    self.exhausted = (len(rows) < self.chunksize)
-    return rows
+    rows = []
+    for i in xrange(min(max_rows, self.chunk_size)):
+        try:
+            row = self.current_reader.next()
+            self.num_read += 1
+            if (0 <= self.max_rows < self.num_read):
+                self.next_source()
+                break
+            if (self.num_read > self.skip_rows):
+                rows.append(row)
+        except StopIteration:
+            self.next_source()
+            break
+    return filter(None, rows)

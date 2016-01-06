@@ -2,10 +2,14 @@
   if (!isLogged() && Iterables.size(updates) > 1) {
     Set<DecoratedKey> keySet=new HashSet<>();
     Set<String> tableNames=new HashSet<>();
+    Map<String,Collection<Range<Token>>> localTokensByKs=new HashMap<>();
+    boolean localPartitionsOnly=true;
     for (    PartitionUpdate update : updates) {
       keySet.add(update.partitionKey());
       tableNames.add(String.format("%s.%s",update.metadata().ksName,update.metadata().cfName));
+      if (localPartitionsOnly)       localPartitionsOnly&=isPartitionLocal(localTokensByKs,update);
     }
+    if (localPartitionsOnly)     return;
     NoSpamLogger.log(logger,NoSpamLogger.Level.WARN,1,TimeUnit.MINUTES,UNLOGGED_BATCH_WARNING,keySet.size(),keySet.size() == 1 ? "" : "s",tableNames.size() == 1 ? "" : "s",tableNames);
     ClientWarn.warn(MessageFormatter.arrayFormat(UNLOGGED_BATCH_WARNING,new Object[]{keySet.size(),keySet.size() == 1 ? "" : "s",tableNames.size() == 1 ? "" : "s",tableNames}).getMessage());
   }

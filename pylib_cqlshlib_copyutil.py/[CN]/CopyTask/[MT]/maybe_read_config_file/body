@@ -1,0 +1,22 @@
+def maybe_read_config_file(self, opts, direction):
+    '\n        Read optional sections from a configuration file that  was specified in the command options or from the default\n        cqlshrc configuration file if none was specified.\n        '
+    config_file = opts.pop('configfile', '')
+    if (not config_file):
+        config_file = self.config_file
+    if (not os.path.isfile(config_file)):
+        return opts
+    configs = ConfigParser.RawConfigParser()
+    configs.readfp(open(config_file))
+    ret = dict()
+    config_sections = list(['copy', ('copy-%s' % (direction,)), ('copy:%s.%s' % (self.ks, self.table)), ('copy-%s:%s.%s' % (direction, self.ks, self.table))])
+    for section in config_sections:
+        if configs.has_section(section):
+            options = dict(configs.items(section))
+            self.printmsg(('Reading options from %s:[%s]: %s' % (config_file, section, options)))
+            ret.update(options)
+    if opts:
+        self.printmsg(('Reading options from the command line: %s' % (opts,)))
+        ret.update(opts)
+    if self.shell.debug:
+        self.printmsg(("Using options: '%s'" % (ret,)))
+    return ret

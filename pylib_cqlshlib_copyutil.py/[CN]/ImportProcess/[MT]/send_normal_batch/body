@@ -1,10 +1,15 @@
 def send_normal_batch(self, conv, query_statement, batch):
-    try:
-        if (self.test_failures and self.maybe_inject_failures(batch)):
-            return
-        batch_statement = BatchStatement(batch_type=BatchType.UNLOGGED, consistency_level=self.consistency_level)
-        for row in batch['rows']:
-            batch_statement.add(query_statement, conv.get_row_values(row))
-        self.execute_statement(batch_statement, batch)
-    except Exception as exc:
-        self.err_callback(exc, batch)
+    if (self.test_failures and self.maybe_inject_failures(batch)):
+        return
+    (good_rows, converted_rows, errors) = self.convert_rows(conv, batch['rows'])
+    if converted_rows:
+        try:
+            statement = BatchStatement(batch_type=BatchType.UNLOGGED, consistency_level=self.consistency_level)
+            for row in converted_rows:
+                statement.add(query_statement, row)
+            self.execute_statement(statement, ImportTask.split_batch(batch, good_rows))
+        except Exception as exc:
+            self.err_callback(exc, ImportTask.split_batch(batch, good_rows))
+    if errors:
+        for (msg, rows) in errors.iteritems():
+            self.outmsg.put((ImportTask.split_batch(batch, rows), ('%s - %s' % (ParseError.__name__, msg))))

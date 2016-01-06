@@ -26,6 +26,20 @@ if (platform.system() == 'Windows'):
 _formatters = {}
 formatter_for('buffer')(format_value_blob)
 formatter_for('float')(format_floating_point_type)
+if (sys.version_info >= (2, 7)):
+
+    def format_integer_with_thousands_sep(val, thousands_sep=','):
+        return '{:,.0f}'.format(val).replace(',', thousands_sep)
+else:
+
+    def format_integer_with_thousands_sep(val, thousands_sep=','):
+        if (val < 0):
+            return ('-' + format_integer_with_thousands_sep((- val), thousands_sep))
+        result = ''
+        while (val >= 1000):
+            (val, r) = divmod(val, 1000)
+            result = ('%s%03d%s' % (thousands_sep, r, result))
+        return ('%d%s' % (val, result))
 formatter_for('long')(format_integer_type)
 formatter_for('int')(format_integer_type)
 formatter_for('unicode')(format_value_text)

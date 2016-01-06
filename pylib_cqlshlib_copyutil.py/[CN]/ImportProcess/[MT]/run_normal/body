@@ -1,14 +1,14 @@
 def run_normal(self, table_meta):
     '\n        Main run method for normal tables, i.e. tables that do not contain counter columns.\n        '
-    query = ('INSERT INTO %s.%s (%s) VALUES (%s)' % (protect_name(self.ks), protect_name(self.cf), ', '.join(protect_names(self.columns)), ', '.join(['?' for _ in self.columns])))
+    query = ('INSERT INTO %s.%s (%s) VALUES (%s)' % (protect_name(self.ks), protect_name(self.table), ', '.join(protect_names(self.valid_columns)), ', '.join(['?' for _ in self.valid_columns])))
     query_statement = self.session.prepare(query)
+    query_statement.consistency_level = self.consistency_level
     conv = ImportConversion(self, table_meta, query_statement)
     while True:
+        batch = self.inmsg.get()
         try:
-            batch = self.inmsg.get()
-            for batches in self.split_batches(batch, conv):
-                for b in batches:
-                    self.send_normal_batch(conv, query_statement, b)
+            for b in self.split_batches(batch, conv):
+                self.send_normal_batch(conv, query_statement, b)
         except Exception as exc:
             self.outmsg.put((batch, ('%s - %s' % (exc.__class__.__name__, exc.message))))
             if self.debug:
