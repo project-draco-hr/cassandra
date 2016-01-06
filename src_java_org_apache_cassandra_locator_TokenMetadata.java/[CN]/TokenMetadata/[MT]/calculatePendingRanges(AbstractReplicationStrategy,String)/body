@@ -1,7 +1,7 @@
 {
   lock.readLock().lock();
   try {
-    PendingRangeMaps newPendingRanges=new PendingRangeMaps();
+    Multimap<Range<Token>,InetAddress> newPendingRanges=HashMultimap.create();
     if (bootstrapTokens.isEmpty() && leavingEndpoints.isEmpty() && movingEndpoints.isEmpty()) {
       if (logger.isTraceEnabled())       logger.trace("No bootstrapping, leaving or moving nodes -> empty pending ranges for {}",keyspaceName);
       pendingRanges.put(keyspaceName,newPendingRanges);
@@ -15,24 +15,20 @@
     for (    Range<Token> range : affectedRanges) {
       Set<InetAddress> currentEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,metadata));
       Set<InetAddress> newEndpoints=ImmutableSet.copyOf(strategy.calculateNaturalEndpoints(range.right,allLeftMetadata));
-      for (      InetAddress address : Sets.difference(newEndpoints,currentEndpoints)) {
-        newPendingRanges.addPendingRange(range,address);
-      }
+      newPendingRanges.putAll(range,Sets.difference(newEndpoints,currentEndpoints));
     }
     Multimap<InetAddress,Token> bootstrapAddresses=bootstrapTokens.inverse();
     for (    InetAddress endpoint : bootstrapAddresses.keySet()) {
       Collection<Token> tokens=bootstrapAddresses.get(endpoint);
       allLeftMetadata.updateNormalTokens(tokens,endpoint);
-      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
-        newPendingRanges.addPendingRange(range,endpoint);
-      }
+      for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint))       newPendingRanges.put(range,endpoint);
       allLeftMetadata.removeEndpoint(endpoint);
     }
     for (    Pair<Token,InetAddress> moving : movingEndpoints) {
       InetAddress endpoint=moving.right;
       allLeftMetadata.updateNormalToken(moving.left,endpoint);
       for (      Range<Token> range : strategy.getAddressRanges(allLeftMetadata).get(endpoint)) {
-        newPendingRanges.addPendingRange(range,endpoint);
+        newPendingRanges.put(range,endpoint);
       }
       allLeftMetadata.removeEndpoint(endpoint);
     }

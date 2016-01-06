@@ -1,0 +1,15 @@
+def _write_with_split(self, data, num):
+    "\n         Write the data to the current destination output if we still\n         haven't reached the maximum number of rows. Otherwise split\n         the rows between the current destination and the next.\n        "
+    if ((self.num_written + num) > self.max_output_size):
+        num_remaining = (self.max_output_size - self.num_written)
+        last_switch = 0
+        for (i, row) in enumerate(filter(None, data.split(os.linesep))):
+            if (i == num_remaining):
+                self._next_dest()
+                last_switch = i
+                num_remaining += self.max_output_size
+            self.current_dest.output.write((row + '\n'))
+        self.num_written = (num - last_switch)
+    else:
+        self.num_written += num
+        self.current_dest.output.write(data)

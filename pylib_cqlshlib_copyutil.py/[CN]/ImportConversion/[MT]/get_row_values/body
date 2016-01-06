@@ -1,11 +1,17 @@
 def get_row_values(self, row):
     '\n        Parse the row into a list of row values to be returned\n        '
+
+    def convert(n, val):
+        try:
+            return self.converters[self.columns[n]](val)
+        except Exception as e:
+            raise ParseError(e.message)
     ret = ([None] * len(row))
     for (i, val) in enumerate(row):
         if (val != self.nullval):
-            ret[i] = self.converters[self.columns[i]](val)
+            ret[i] = convert(i, val)
         else:
             if (i in self.primary_key_indexes):
-                raise ValueError(self.get_null_primary_key_message(i))
+                raise ParseError(self.get_null_primary_key_message(i))
             ret[i] = None
     return ret

@@ -1,0 +1,46 @@
+def parse_options(self, opts, direction):
+    '\n        Parse options for import (COPY FROM) and export (COPY TO) operations.\n        Extract from opts csv and dialect options.\n\n        :return: 3 dictionaries: the csv options, the dialect options, any unrecognized options.\n        '
+    shell = self.shell
+    opts = self.clean_options(self.maybe_read_config_file(opts, direction))
+    dialect_options = dict()
+    dialect_options['quotechar'] = opts.pop('quote', '"')
+    dialect_options['escapechar'] = opts.pop('escape', '\\')
+    dialect_options['delimiter'] = opts.pop('delimiter', ',')
+    if (dialect_options['quotechar'] == dialect_options['escapechar']):
+        dialect_options['doublequote'] = True
+        del dialect_options['escapechar']
+    else:
+        dialect_options['doublequote'] = False
+    copy_options = dict()
+    copy_options['nullval'] = opts.pop('null', '')
+    copy_options['header'] = bool((opts.pop('header', '').lower() == 'true'))
+    copy_options['encoding'] = opts.pop('encoding', 'utf8')
+    copy_options['maxrequests'] = int(opts.pop('maxrequests', 6))
+    copy_options['pagesize'] = int(opts.pop('pagesize', 1000))
+    copy_options['pagetimeout'] = int(opts.pop('pagetimeout', max(10, (10 * (copy_options['pagesize'] / 1000)))))
+    copy_options['maxattempts'] = int(opts.pop('maxattempts', 5))
+    copy_options['dtformats'] = DateTimeFormat(opts.pop('datetimeformat', shell.display_timestamp_format), shell.display_date_format, shell.display_nanotime_format)
+    copy_options['float_precision'] = shell.display_float_precision
+    copy_options['chunksize'] = int(opts.pop('chunksize', 1000))
+    copy_options['ingestrate'] = int(opts.pop('ingestrate', 100000))
+    copy_options['maxbatchsize'] = int(opts.pop('maxbatchsize', 20))
+    copy_options['minbatchsize'] = int(opts.pop('minbatchsize', 2))
+    copy_options['reportfrequency'] = float(opts.pop('reportfrequency', 0.25))
+    copy_options['consistencylevel'] = shell.consistency_level
+    copy_options['decimalsep'] = opts.pop('decimalsep', '.')
+    copy_options['thousandssep'] = opts.pop('thousandssep', '')
+    copy_options['boolstyle'] = [s.strip() for s in opts.pop('boolstyle', 'True, False').split(',')]
+    copy_options['numprocesses'] = int(opts.pop('numprocesses', self.get_num_processes(cap=16)))
+    copy_options['begintoken'] = opts.pop('begintoken', '')
+    copy_options['endtoken'] = opts.pop('endtoken', '')
+    copy_options['maxrows'] = int(opts.pop('maxrows', '-1'))
+    copy_options['skiprows'] = int(opts.pop('skiprows', '0'))
+    copy_options['skipcols'] = opts.pop('skipcols', '')
+    copy_options['maxparseerrors'] = int(opts.pop('maxparseerrors', '-1'))
+    copy_options['maxinserterrors'] = int(opts.pop('maxinserterrors', '-1'))
+    copy_options['errfile'] = safe_normpath(opts.pop('errfile', ('import_%s_%s.err' % (self.ks, self.table))))
+    copy_options['ratefile'] = safe_normpath(opts.pop('ratefile', ''))
+    copy_options['maxoutputsize'] = int(opts.pop('maxoutputsize', '-1'))
+    copy_options['ttl'] = int(opts.pop('ttl', (-1)))
+    self.check_options(copy_options)
+    return CopyOptions(copy=copy_options, dialect=dialect_options, unrecognized=opts)

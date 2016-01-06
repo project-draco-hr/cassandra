@@ -1,16 +1,22 @@
 def send_counter_batch(self, query_text, conv, batch):
     if (self.test_failures and self.maybe_inject_failures(batch)):
         return
-    columns = self.columns
+    error_rows = []
     batch_statement = BatchStatement(batch_type=BatchType.COUNTER, consistency_level=self.consistency_level)
-    for row in batch['rows']:
+    for r in batch['rows']:
+        row = self.filter_row_values(r)
+        if (len(row) != len(self.valid_columns)):
+            error_rows.append(row)
+            continue
         where_clause = []
         set_clause = []
         for (i, value) in enumerate(row):
             if (i in conv.primary_key_indexes):
-                where_clause.append(('%s=%s' % (columns[i], value)))
+                where_clause.append(('%s=%s' % (self.valid_columns[i], value)))
             else:
-                set_clause.append(('%s=%s+%s' % (columns[i], columns[i], value)))
+                set_clause.append(('%s=%s+%s' % (self.valid_columns[i], self.valid_columns[i], value)))
         full_query_text = (query_text % (','.join(set_clause), ' AND '.join(where_clause)))
         batch_statement.add(full_query_text)
     self.execute_statement(batch_statement, batch)
+    if error_rows:
+        self.outmsg.put((ImportTask.split_batch(batch, error_rows), ('%s - %s' % (ParseError.__name__, 'Failed to parse one or more rows'))))
