@@ -1,0 +1,22 @@
+{
+  DatabaseDescriptor.setEndpointSnitch(new AbstractNetworkTopologySnitch(){
+    @Override public String getRack(    InetAddress endpoint){
+      int ipLastPart=getIPLastPart(endpoint);
+      if (ipLastPart <= 14)       return UUID.randomUUID().toString();
+ else       return "RAC" + (ipLastPart % 3);
+    }
+    @Override public String getDatacenter(    InetAddress endpoint){
+      if (getIPLastPart(endpoint) % 2 == 0)       return "DC2";
+ else       return "DC1";
+    }
+    private int getIPLastPart(    InetAddress endpoint){
+      String str=endpoint.toString();
+      int index=str.lastIndexOf(".");
+      return Integer.parseInt(str.substring(index + 1).trim());
+    }
+  }
+);
+  Class<? extends AbstractReplicationStrategy> strategy=NetworkTopologyStrategy.class;
+  KSMetaData keyspace=KSMetaData.testMetadata(keyspaceName,strategy,configOptions(replicas),CFMetaData.denseCFMetaData(keyspaceName,"CF1",BytesType.instance));
+  MigrationManager.announceNewKeyspace(keyspace);
+}

@@ -1,0 +1,23 @@
+{
+  StorageService ss=StorageService.instance;
+  final int RING_SIZE=60;
+  TokenMetadata tmd=ss.getTokenMetadata();
+  tmd.clearUnsafe();
+  VersionedValue.VersionedValueFactory valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
+  ArrayList<Token> endpointTokens=new ArrayList<>();
+  ArrayList<Token> keyTokens=new ArrayList<>();
+  List<InetAddress> hosts=new ArrayList<>();
+  List<UUID> hostIds=new ArrayList<>();
+  for (int i=0; i < RING_SIZE / 2; i++) {
+    endpointTokens.add(new BigIntegerToken(String.valueOf(10 * i)));
+    endpointTokens.add(new BigIntegerToken(String.valueOf((10 * i) + 1)));
+  }
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,RING_SIZE);
+  PendingRangeCalculatorService.instance.blockUntilFinished();
+  int MOVING_NODE=36;
+  moveHost(hosts.get(MOVING_NODE),215,tmd,valueFactory);
+  assertPendingRanges(tmd,generatePendingRanges(generatePendingMapEntry(150,151,"127.0.0.43"),generatePendingMapEntry(151,160,"127.0.0.43"),generatePendingMapEntry(160,161,"127.0.0.43"),generatePendingMapEntry(161,170,"127.0.0.43"),generatePendingMapEntry(170,171,"127.0.0.43"),generatePendingMapEntry(171,180,"127.0.0.43"),generatePendingMapEntry(210,211,"127.0.0.37"),generatePendingMapEntry(211,215,"127.0.0.37")),Network_33_KeyspaceName);
+  finishMove(hosts.get(MOVING_NODE),215,tmd);
+  moveHost(hosts.get(MOVING_NODE),180,tmd,valueFactory);
+  finishMove(hosts.get(MOVING_NODE),180,tmd);
+}
