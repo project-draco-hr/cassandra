@@ -1,7 +1,8 @@
 def start_request(self, token_range, info):
     '\n        Begin querying a range by executing an async query that\n        will later on invoke the callbacks attached in attach_callbacks.\n        '
-    session = self.get_session(info['hosts'])
-    metadata = session.cluster.metadata.keyspaces[self.ks].tables[self.table]
-    query = self.prepare_query(metadata.partition_key, token_range, info['attempts'])
-    future = session.execute_async(query)
-    self.attach_callbacks(token_range, future, session)
+    session = self.get_session(info['hosts'], token_range)
+    if session:
+        metadata = session.cluster.metadata.keyspaces[self.ks].tables[self.table]
+        query = self.prepare_query(metadata.partition_key, token_range, info['attempts'])
+        future = session.execute_async(query)
+        self.attach_callbacks(token_range, future, session)
