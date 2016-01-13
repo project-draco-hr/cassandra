@@ -1,28 +1,25 @@
 {
   byte[] compressedWithCRC;
-  while (!Thread.currentThread().isInterrupted() && chunks.hasNext()) {
+  while (chunks.hasNext()) {
     CompressionMetadata.Chunk chunk=chunks.next();
     int readLength=chunk.length + 4;
     compressedWithCRC=new byte[readLength];
     int bufferRead=0;
     while (bufferRead < readLength) {
-      int r;
       try {
-        r=source.read(compressedWithCRC,bufferRead,readLength - bufferRead);
+        int r=source.read(compressedWithCRC,bufferRead,readLength - bufferRead);
         if (r < 0) {
           dataBuffer.put(POISON_PILL);
           return;
         }
+        bufferRead+=r;
       }
  catch (      IOException e) {
+        logger.warn("Error while reading compressed input stream.",e);
         dataBuffer.put(POISON_PILL);
-        throw e;
+        return;
       }
-      bufferRead+=r;
     }
     dataBuffer.put(compressedWithCRC);
-  }
-synchronized (CompressedInputStream.this) {
-    readerThread=null;
   }
 }
