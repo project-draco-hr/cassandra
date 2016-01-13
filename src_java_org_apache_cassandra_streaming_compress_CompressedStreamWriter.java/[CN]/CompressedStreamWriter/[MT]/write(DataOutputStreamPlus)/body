@@ -1,10 +1,13 @@
 {
   long totalSize=totalSize();
+  logger.debug("[Stream #{}] Start streaming file {} to {}, repairedAt = {}, totalSize = {}",session.planId(),sstable.getFilename(),session.peer,sstable.getSSTableMetadata().repairedAt,totalSize);
   try (RandomAccessReader file=sstable.openDataReader();final ChannelProxy fc=file.getChannel()){
     long progress=0L;
     List<Pair<Long,Long>> sections=getTransferSections(compressionInfo.chunks);
+    int sectionIdx=0;
     for (    final Pair<Long,Long> section : sections) {
       long length=section.right - section.left;
+      logger.trace("[Stream #{}] Writing section {} with length {} to stream.",session.planId(),sectionIdx++,length);
       long bytesTransferred=0;
       while (bytesTransferred < length) {
         final long bytesTransferredFinal=bytesTransferred;
@@ -21,5 +24,6 @@
         session.progress(sstable.descriptor,ProgressInfo.Direction.OUT,progress,totalSize);
       }
     }
+    logger.debug("[Stream #{}] Finished streaming file {} to {}, bytesTransferred = {}, totalSize = {}",session.planId(),sstable.getFilename(),session.peer,progress,totalSize);
   }
  }
