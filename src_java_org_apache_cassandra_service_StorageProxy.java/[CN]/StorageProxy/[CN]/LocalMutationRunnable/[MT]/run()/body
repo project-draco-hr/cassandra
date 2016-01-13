@@ -1,8 +1,9 @@
 {
-  long mutationTimeout=DatabaseDescriptor.getTimeout(MessagingService.Verb.MUTATION);
+  final MessagingService.Verb verb=verb();
+  long mutationTimeout=DatabaseDescriptor.getTimeout(verb);
   long timeTaken=System.currentTimeMillis() - constructionTime;
   if (timeTaken > mutationTimeout) {
-    MessagingService.instance().incrementDroppedMessages(MessagingService.Verb.MUTATION,timeTaken);
+    if (MessagingService.DROPPABLE_VERBS.contains(verb))     MessagingService.instance().incrementDroppedMessages(verb,timeTaken);
     HintRunnable runnable=new HintRunnable(Collections.singleton(FBUtilities.getBroadcastAddress())){
       protected void runMayThrow() throws Exception {
         LocalMutationRunnable.this.runMayThrow();
