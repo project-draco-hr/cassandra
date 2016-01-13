@@ -9,13 +9,13 @@
       DatabaseDescriptor.setUserDefinedFunctionWarnTimeout(10);
       DatabaseDescriptor.setUserDefinedFunctionFailTimeout(250);
       DatabaseDescriptor.setUserFunctionTimeoutPolicy(Config.UserFunctionTimeoutPolicy.ignore);
-      ClientWarn.captureWarnings();
+      ClientWarn.instance.captureWarnings();
       String fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVA\n"+ "AS 'long t=System.currentTimeMillis()+110; while (t>System.currentTimeMillis()) { }; return 0d;'");
       execute("SELECT " + fName + "(dval) FROM %s WHERE key=1");
-      List<String> warnings=ClientWarn.getWarnings();
+      List<String> warnings=ClientWarn.instance.getWarnings();
       Assert.assertNotNull(warnings);
       Assert.assertFalse(warnings.isEmpty());
-      ClientWarn.resetWarnings();
+      ClientWarn.instance.resetWarnings();
       fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVA\n"+ "AS 'long t=System.currentTimeMillis()+500; while (t>System.currentTimeMillis()) { }; return 0d;';");
       assertInvalidMessage("ran longer than 250ms","SELECT " + fName + "(dval) FROM %s WHERE key=1");
       fName=createFunction(KEYSPACE_PER_TEST,"double","CREATE OR REPLACE FUNCTION %s(val double) " + "RETURNS NULL ON NULL INPUT " + "RETURNS double "+ "LANGUAGE JAVASCRIPT\n"+ "AS 'var t=java.lang.System.currentTimeMillis()+500; while (t>java.lang.System.currentTimeMillis()) { }; 0;';");
