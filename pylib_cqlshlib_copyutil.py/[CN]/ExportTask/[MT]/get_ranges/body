@@ -44,21 +44,23 @@ def get_ranges(self):
     ring.sort()
     if (not ring):
         ranges[(begin_token, end_token)] = make_range_data()
-        return ranges
-    first_range_data = None
-    previous = None
-    for (token, replicas) in ring:
-        if ((previous is None) and (token.value == min_token)):
-            continue
-        if (previous is None):
-            first_range_data = make_range_data(replicas)
-        current_range = make_range(previous, token.value)
-        if (not current_range):
-            continue
-        ranges[current_range] = make_range_data(replicas)
-        previous = token.value
-    if ((previous is not None) and ((not end_token) or (previous < end_token))):
-        ranges[(previous, end_token)] = first_range_data
+    elif (len(ring) == 1):
+        ranges[(begin_token, end_token)] = make_range_data(ring[0][1])
+    else:
+        first_range_data = None
+        previous = None
+        for (token, replicas) in ring:
+            if (not first_range_data):
+                first_range_data = make_range_data(replicas)
+            if (token.value == min_token):
+                continue
+            current_range = make_range(previous, token.value)
+            if (not current_range):
+                continue
+            ranges[current_range] = make_range_data(replicas)
+            previous = token.value
+        if ((previous is not None) and ((not end_token) or (previous < end_token))):
+            ranges[(previous, end_token)] = first_range_data
     if (not ranges):
         shell.printerr(('Found no ranges to query, check begin and end tokens: %s - %s' % (begin_token, end_token)))
     return ranges
