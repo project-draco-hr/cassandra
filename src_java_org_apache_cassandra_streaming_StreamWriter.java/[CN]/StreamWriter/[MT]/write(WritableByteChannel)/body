@@ -1,5 +1,6 @@
 {
   long totalSize=totalSize();
+  logger.debug("[Stream #{}] Start streaming file {} to {}, repairedAt = {}, totalSize = {}",session.planId(),sstable.getFilename(),session.peer,sstable.getSSTableMetadata().repairedAt,totalSize);
   RandomAccessReader file=sstable.openDataReader();
   ChecksumValidator validator=new File(sstable.descriptor.filenameFor(Component.CRC)).exists() ? DataIntegrityMetadata.checksumValidator(sstable.descriptor) : null;
   transferBuffer=validator == null ? new byte[DEFAULT_CHUNK_SIZE] : new byte[validator.chunkSize];
@@ -22,6 +23,7 @@
       }
       compressedOutput.flush();
     }
+    logger.debug("[Stream #{}] Finished streaming file {} to {}, bytesTransferred = {}, totalSize = {}",session.planId(),sstable.getFilename(),session.peer,progress,totalSize);
   }
   finally {
     FileUtils.closeQuietly(file);
