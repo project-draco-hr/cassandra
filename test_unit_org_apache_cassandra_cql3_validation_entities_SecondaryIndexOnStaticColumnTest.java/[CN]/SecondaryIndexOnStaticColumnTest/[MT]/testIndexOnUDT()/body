@@ -1,0 +1,13 @@
+{
+  String typeName=createType("CREATE TYPE %s (street text, city text)");
+  createTable(String.format("CREATE TABLE %%s (id int, company text, home frozen<%s> static, price int, PRIMARY KEY(id, company))",typeName));
+  createIndex("CREATE INDEX on %s(home)");
+  String addressString="{street: 'Centre', city: 'C'}";
+  String companyName="Random";
+  execute("INSERT INTO %s(id, company, home, price) " + "VALUES(1, '" + companyName + "', "+ addressString+ ", 10000)");
+  assertRows(execute("SELECT id, company FROM %s WHERE home = " + addressString),row(1,companyName));
+  String newAddressString="{street: 'Fifth', city: 'P'}";
+  execute("UPDATE %s SET home = " + newAddressString + " WHERE id = 1");
+  assertEmpty(execute("SELECT id, company FROM %s WHERE home = " + addressString));
+  assertRows(execute("SELECT id, company FROM %s WHERE home = " + newAddressString),row(1,companyName));
+}

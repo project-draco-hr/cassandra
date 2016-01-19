@@ -1,0 +1,32 @@
+{
+  createTable("CREATE TABLE %s (k int, v int, l frozen<list<int>> static, s frozen<set<text>> static, m frozen<map<text, int>> static, PRIMARY KEY (k, v))");
+  createIndex("CREATE INDEX ON %s (FULL(l))");
+  createIndex("CREATE INDEX ON %s (FULL(s))");
+  createIndex("CREATE INDEX ON %s (FULL(m))");
+  execute("INSERT INTO %s (k, v, l, s, m) VALUES (0, 0, [1, 2],    {'a'},      {'a' : 1, 'b' : 2})");
+  execute("INSERT INTO %s (k, v)          VALUES (0, 1)                                  ");
+  execute("INSERT INTO %s (k, v, l, s, m) VALUES (1, 0, [4, 5],    {'d'},      {'b' : 1, 'c' : 4})");
+  execute("UPDATE %s SET l=[3], s={'3'}, m={'3': 3} WHERE k=3");
+  assertRows(execute("SELECT k, v FROM %s WHERE l = [1, 2]"),row(0,0),row(0,1));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE k = 1 AND l = [1, 2]"));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE l = [4]"));
+  assertRows(execute("SELECT k, v FROM %s WHERE l = [3]"),row(3,null));
+  execute("UPDATE %s SET l = [1, 2, 3] WHERE k = ?",0);
+  assertEmpty(execute("SELECT k, v FROM %s WHERE l = [1, 2]"));
+  assertRows(execute("SELECT k, v FROM %s WHERE l = [1, 2, 3]"),row(0,0),row(0,1));
+  assertRows(execute("SELECT k, v FROM %s WHERE s = {'a'}"),row(0,0),row(0,1));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE k = 1 AND s = {'a'}"));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE s = {'b'}"));
+  assertRows(execute("SELECT k, v FROM %s WHERE s = {'3'}"),row(3,null));
+  execute("UPDATE %s SET s = {'a', 'b'} WHERE k = ?",0);
+  assertEmpty(execute("SELECT k, v FROM %s WHERE s = {'a'}"));
+  assertRows(execute("SELECT k, v FROM %s WHERE s = {'a', 'b'}"),row(0,0),row(0,1));
+  assertRows(execute("SELECT k, v FROM %s WHERE m = {'a' : 1, 'b' : 2}"),row(0,0),row(0,1));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE k = 1 AND m = {'a' : 1, 'b' : 2}"));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE m = {'a' : 1, 'b' : 3}"));
+  assertEmpty(execute("SELECT k, v FROM %s WHERE m = {'a' : 1, 'c' : 2}"));
+  assertRows(execute("SELECT k, v FROM %s WHERE m = {'3': 3}"),row(3,null));
+  execute("UPDATE %s SET m = {'a': 2, 'b': 3} WHERE k = ?",0);
+  assertEmpty(execute("SELECT k, v FROM %s WHERE m = {'a': 1, 'b': 2}"));
+  assertRows(execute("SELECT k, v FROM %s WHERE m = {'a': 2, 'b': 3}"),row(0,0),row(0,1));
+}

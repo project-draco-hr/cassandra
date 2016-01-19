@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (id int, name text, age int static, PRIMARY KEY (id, name))");
+  createIndex("CREATE INDEX static_age on %s(age)");
+  int id1=1, id2=2, age1=24, age2=32;
+  String name1A="Taylor", name1B="Swift", name2="Jamie";
+  execute("INSERT INTO %s (id, name, age) VALUES (?, ?, ?)",id1,name1A,age1);
+  execute("INSERT INTO %s (id, name, age) VALUES (?, ?, ?)",id1,name1B,age1);
+  execute("INSERT INTO %s (id, name, age) VALUES (?, ?, ?)",id2,name2,age2);
+  assertRows(execute("SELECT id, name, age FROM %s WHERE age=?",age1),row(id1,name1B,age1),row(id1,name1A,age1));
+  assertRows(execute("SELECT id, name, age FROM %s WHERE age=?",age2),row(id2,name2,age2));
+  int newAge1=40;
+  execute("UPDATE %s SET age = ? WHERE id = ?",newAge1,id1);
+  assertEmpty(execute("SELECT id, name, age FROM %s WHERE age=?",age1));
+  assertRows(execute("SELECT id, name, age FROM %s WHERE age=?",newAge1),row(id1,name1B,newAge1),row(id1,name1A,newAge1));
+  execute("DELETE FROM %s WHERE id = ?",id2);
+  assertEmpty(execute("SELECT id, name, age FROM %s WHERE age=?",age2));
+}

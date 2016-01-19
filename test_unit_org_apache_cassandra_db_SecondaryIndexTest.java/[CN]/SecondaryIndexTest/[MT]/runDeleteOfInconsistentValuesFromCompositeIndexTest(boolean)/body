@@ -1,0 +1,26 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  String cfName=WITH_COMPOSITE_INDEX;
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cfName);
+  String colName=isStatic ? "static" : "birthdate";
+  ByteBuffer col=ByteBufferUtil.bytes(colName);
+  RowUpdateBuilder builder=new RowUpdateBuilder(cfs.metadata,0,"k1");
+  if (!isStatic)   builder=builder.clustering("c");
+  builder.add(colName,10l).build().applyUnsafe();
+  assertIndexedOne(cfs,col,10l);
+  keyspace.getColumnFamilyStore(cfName).forceBlockingFlush();
+  assertIndexedOne(cfs,col,10l);
+  builder=new RowUpdateBuilder(cfs.metadata,0,"k1");
+  if (!isStatic)   builder=builder.clustering("c");
+  builder.add(colName,20l);
+  keyspace.apply(builder.build(),true,false);
+  assertIndexedNone(cfs,col,10l);
+  assertIndexedNone(cfs,col,20l);
+  builder=new RowUpdateBuilder(cfs.metadata,2,"k1");
+  if (!isStatic)   builder=builder.clustering("c");
+  builder.add(colName,10L);
+  keyspace.apply(builder.build(),true,false);
+  assertIndexedNone(cfs,col,20l);
+  ColumnFamilyStore indexCfs=cfs.indexManager.getAllIndexColumnFamilyStores().iterator().next();
+  assertIndexCfsIsEmpty(indexCfs);
+}
