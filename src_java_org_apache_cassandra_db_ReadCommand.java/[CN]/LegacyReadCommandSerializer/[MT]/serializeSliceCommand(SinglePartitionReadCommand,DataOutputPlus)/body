@@ -6,13 +6,12 @@
   serializeSlices(out,slices,filter.isReversed(),makeStaticSlice,metadata);
   out.writeBoolean(filter.isReversed());
   boolean selectsStatics=!command.columnFilter().fetchedColumns().statics.isEmpty() || slices.selects(Clustering.STATIC_CLUSTERING);
-  DataLimits.Kind kind=command.limits().kind();
-  boolean isDistinct=(kind == DataLimits.Kind.CQL_LIMIT || kind == DataLimits.Kind.CQL_PAGING_LIMIT) && command.limits().perPartitionCount() == 1;
-  if (isDistinct)   out.writeInt(1);
+  DataLimits limits=command.limits();
+  if (limits.isDistinct())   out.writeInt(1);
  else   out.writeInt(updateLimitForQuery(command.limits().count(),filter.requestedSlices()));
   int compositesToGroup;
-  if (kind == DataLimits.Kind.THRIFT_LIMIT || metadata.isDense())   compositesToGroup=-1;
- else   if (isDistinct && !selectsStatics)   compositesToGroup=-2;
+  if (limits.kind() == DataLimits.Kind.THRIFT_LIMIT || metadata.isDense())   compositesToGroup=-1;
+ else   if (limits.isDistinct() && !selectsStatics)   compositesToGroup=-2;
  else   compositesToGroup=metadata.clusteringColumns().size();
   out.writeInt(compositesToGroup);
 }
