@@ -11,24 +11,16 @@
     for (    Entry<String,Integer> tableEntry : ksEntry.getValue().entrySet()) {
       String tableName=tableEntry.getKey();
       int pendingTaskCount=tableEntry.getValue();
-      StringBuilder builder=new StringBuilder();
-      builder.append("- ");
-      builder.append(ksName);
-      builder.append('.');
-      builder.append(tableName);
-      builder.append(": ");
-      builder.append(pendingTaskCount);
-      System.out.println(builder.toString());
+      System.out.println("- " + ksName + '.'+ tableName+ ": "+ pendingTaskCount);
     }
   }
   System.out.println();
   long remainingBytes=0;
+  TableBuilder table=new TableBuilder();
   List<Map<String,String>> compactions=cm.getCompactions();
   if (!compactions.isEmpty()) {
     int compactionThroughput=probe.getCompactionThroughput();
-    List<String[]> lines=new ArrayList<>();
-    int[] columnSizes=new int[]{0,0,0,0,0,0,0,0};
-    addLine(lines,columnSizes,"id","compaction type","keyspace","table","completed","total","unit","progress");
+    table.add("id","compaction type","keyspace","table","completed","total","unit","progress");
     for (    Map<String,String> c : compactions) {
       long total=Long.parseLong(c.get("total"));
       long completed=Long.parseLong(c.get("completed"));
@@ -40,20 +32,10 @@
       String unit=c.get("unit");
       String percentComplete=total == 0 ? "n/a" : new DecimalFormat("0.00").format((double)completed / total * 100) + "%";
       String id=c.get("compactionId");
-      addLine(lines,columnSizes,id,taskType,keyspace,columnFamily,completedStr,totalStr,unit,percentComplete);
+      table.add(id,taskType,keyspace,columnFamily,completedStr,totalStr,unit,percentComplete);
       if (taskType.equals(OperationType.COMPACTION.toString()))       remainingBytes+=total - completed;
     }
-    StringBuilder buffer=new StringBuilder();
-    for (    int columnSize : columnSizes) {
-      buffer.append("%");
-      buffer.append(columnSize + 3);
-      buffer.append("s");
-    }
-    buffer.append("%n");
-    String format=buffer.toString();
-    for (    String[] line : lines) {
-      System.out.printf(format,line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7]);
-    }
+    table.printTo(System.out);
     String remainingTime="n/a";
     if (compactionThroughput != 0) {
       long remainingTimeInSecs=remainingBytes / (1024L * 1024L * compactionThroughput);
