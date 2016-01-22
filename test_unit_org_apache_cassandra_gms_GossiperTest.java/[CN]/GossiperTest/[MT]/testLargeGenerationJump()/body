@@ -1,0 +1,17 @@
+{
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,2);
+  InetAddress remoteHostAddress=hosts.get(1);
+  EndpointState initialRemoteState=Gossiper.instance.getEndpointStateForEndpoint(remoteHostAddress);
+  HeartBeatState initialRemoteHeartBeat=initialRemoteState.getHeartBeatState();
+  assertEquals(initialRemoteHeartBeat.getGeneration(),1);
+  HeartBeatState proposedRemoteHeartBeat=new HeartBeatState(initialRemoteHeartBeat.getGeneration() + Gossiper.MAX_GENERATION_DIFFERENCE + 1);
+  EndpointState proposedRemoteState=new EndpointState(proposedRemoteHeartBeat);
+  Gossiper.instance.applyStateLocally(ImmutableMap.of(remoteHostAddress,proposedRemoteState));
+  HeartBeatState actualRemoteHeartBeat=Gossiper.instance.getEndpointStateForEndpoint(remoteHostAddress).getHeartBeatState();
+  assertEquals(proposedRemoteHeartBeat.getGeneration(),actualRemoteHeartBeat.getGeneration());
+  HeartBeatState badProposedRemoteHeartBeat=new HeartBeatState((int)(System.currentTimeMillis() / 1000) + Gossiper.MAX_GENERATION_DIFFERENCE * 10);
+  EndpointState badProposedRemoteState=new EndpointState(badProposedRemoteHeartBeat);
+  Gossiper.instance.applyStateLocally(ImmutableMap.of(remoteHostAddress,badProposedRemoteState));
+  actualRemoteHeartBeat=Gossiper.instance.getEndpointStateForEndpoint(remoteHostAddress).getHeartBeatState();
+  assertEquals(proposedRemoteHeartBeat.getGeneration(),actualRemoteHeartBeat.getGeneration());
+}
