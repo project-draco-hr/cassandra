@@ -15,13 +15,8 @@
     double score=(double)SSTableReader.getTotalBytes(remaining) / (double)maxBytesForLevel(i,maxSSTableSizeInBytes);
     logger.trace("Compaction score for level {} is {}",i,score);
     if (score > 1.001) {
-      if (!DatabaseDescriptor.getDisableSTCSInL0() && getLevel(0).size() > MAX_COMPACTING_L0) {
-        List<SSTableReader> mostInteresting=getSSTablesForSTCS(getLevel(0));
-        if (!mostInteresting.isEmpty()) {
-          logger.trace("L0 is too far behind, performing size-tiering there first");
-          return new CompactionCandidate(mostInteresting,0,Long.MAX_VALUE);
-        }
-      }
+      CompactionCandidate l0Compaction=getSTCSInL0CompactionCandidate();
+      if (l0Compaction != null)       return l0Compaction;
       Collection<SSTableReader> candidates=getCandidatesFor(i);
       if (!candidates.isEmpty()) {
         int nextLevel=getNextLevel(candidates);
@@ -36,6 +31,8 @@
   }
   if (getLevel(0).isEmpty())   return null;
   Collection<SSTableReader> candidates=getCandidatesFor(0);
-  if (candidates.isEmpty())   return null;
+  if (candidates.isEmpty()) {
+    return getSTCSInL0CompactionCandidate();
+  }
   return new CompactionCandidate(candidates,getNextLevel(candidates),cfs.getCompactionStrategyManager().getMaxSSTableBytes());
 }
