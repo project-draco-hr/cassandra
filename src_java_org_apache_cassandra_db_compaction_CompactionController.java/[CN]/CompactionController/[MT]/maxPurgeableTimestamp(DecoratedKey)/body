@@ -6,5 +6,9 @@
     if (sstable.getBloomFilter() instanceof AlwaysPresentFilter && sstable.getPosition(key,SSTableReader.Operator.EQ,false) != null)     min=Math.min(min,sstable.getMinTimestamp());
  else     if (sstable.getBloomFilter().isPresent(key))     min=Math.min(min,sstable.getMinTimestamp());
   }
+  for (  Memtable memtable : cfs.getTracker().getView().getAllMemtables()) {
+    Partition partition=memtable.getPartition(key);
+    if (partition != null)     min=Math.min(min,partition.stats().minTimestamp);
+  }
   return min;
 }
