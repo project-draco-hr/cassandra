@@ -1,0 +1,37 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF1);
+  cfs.truncateBlocking();
+  DecoratedKey key=Util.dk("k1");
+  long timestamp1=FBUtilities.timestampMicros();
+  long timestamp2=timestamp1 - 5;
+  long timestamp3=timestamp2 - 5;
+  applyMutation(cfs.metadata,key,timestamp1);
+  try (CompactionController controller=new CompactionController(cfs,null,0)){
+    assertEquals(timestamp1,controller.maxPurgeableTimestamp(key));
+    cfs.forceBlockingFlush();
+    assertEquals(Long.MAX_VALUE,controller.maxPurgeableTimestamp(key));
+  }
+   Set<SSTableReader> compacting=Sets.newHashSet(cfs.getLiveSSTables());
+  applyMutation(cfs.metadata,key,timestamp2);
+  cfs.forceBlockingFlush();
+  try (CompactionController controller=new CompactionController(cfs,compacting,0)){
+    assertEquals(timestamp2,controller.maxPurgeableTimestamp(key));
+    applyMutation(cfs.metadata,key,timestamp3);
+    assertEquals(timestamp3,controller.maxPurgeableTimestamp(key));
+  }
+   cfs.forceBlockingFlush();
+  try (CompactionController controller=new CompactionController(cfs,null,0)){
+    applyMutation(cfs.metadata,key,timestamp1);
+    applyMutation(cfs.metadata,key,timestamp2);
+    applyMutation(cfs.metadata,key,timestamp3);
+    assertEquals(timestamp3,controller.maxPurgeableTimestamp(key));
+  }
+   cfs.forceBlockingFlush();
+  try (CompactionController controller=new CompactionController(cfs,null,0)){
+    applyMutation(cfs.metadata,key,timestamp3);
+    applyMutation(cfs.metadata,key,timestamp2);
+    applyMutation(cfs.metadata,key,timestamp1);
+    assertEquals(timestamp3,controller.maxPurgeableTimestamp(key));
+  }
+ }
