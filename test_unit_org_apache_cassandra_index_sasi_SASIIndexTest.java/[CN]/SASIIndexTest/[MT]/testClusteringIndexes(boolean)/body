@@ -1,5 +1,5 @@
 {
-  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CLUSTRING_CF_NAME);
+  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CLUSTERING_CF_NAME);
   executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Pavel","US",27,183,1.0);
   executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Pavel","BY",28,182,2.0);
   executeCQL("INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Jordan","US",27,182,1.0);
@@ -26,4 +26,37 @@
   results=executeCQL("SELECT * FROM %s.%s WHERE location = ? ALLOW FILTERING","BY");
   Assert.assertNotNull(results);
   Assert.assertEquals(1,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location LIKE 'U%%' ALLOW FILTERING");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location LIKE 'U%%' AND height >= 183 ALLOW FILTERING");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location LIKE 'US%%' ALLOW FILTERING");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  results=executeCQL("SELECT * FROM %s.%s WHERE location LIKE 'US' ALLOW FILTERING");
+  Assert.assertNotNull(results);
+  Assert.assertEquals(2,results.size());
+  try {
+    executeCQL("SELECT * FROM %s.%s WHERE location LIKE '%%U' ALLOW FILTERING");
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+    Assert.assertTrue(e.getMessage().contains("only supported"));
+  }
+  try {
+    executeCQL("SELECT * FROM %s.%s WHERE location LIKE '%%' ALLOW FILTERING");
+    Assert.fail();
+  }
+ catch (  SyntaxException e) {
+    Assert.assertTrue(e.getMessage().contains("empty"));
+  }
+  try {
+    executeCQL("SELECT * FROM %s.%s WHERE location LIKE '%%%%' ALLOW FILTERING");
+    Assert.fail();
+  }
+ catch (  SyntaxException e) {
+    Assert.assertTrue(e.getMessage().contains("empty"));
+  }
 }

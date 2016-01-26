@@ -1,9 +1,20 @@
 {
   this(type,cfm);
+  ColumnFamilyStore cfs;
+  SecondaryIndexManager secondaryIndexManager=null;
+  if (type.allowUseOfSecondaryIndices()) {
+    cfs=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
+    secondaryIndexManager=cfs.indexManager;
+  }
   for (  Relation relation : whereClause.relations) {
     if (relation.operator() == Operator.IS_NOT) {
       if (!forView)       throw new InvalidRequestException("Unsupported restriction: " + relation);
       for (      ColumnDefinition def : relation.toRestriction(cfm,boundNames).getColumnDefs())       this.notNullColumns.add(def);
+    }
+ else     if (relation.isLIKE()) {
+      Restriction restriction=relation.toRestriction(cfm,boundNames);
+      if (!type.allowUseOfSecondaryIndices() || !restriction.hasSupportingIndex(secondaryIndexManager))       throw new InvalidRequestException(relation + " restriction is only supported on properly indexed columns");
+      addRestriction(restriction);
     }
  else {
       addRestriction(relation.toRestriction(cfm,boundNames));
@@ -12,8 +23,6 @@
   boolean hasQueriableClusteringColumnIndex=false;
   boolean hasQueriableIndex=false;
   if (type.allowUseOfSecondaryIndices()) {
-    ColumnFamilyStore cfs=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
-    SecondaryIndexManager secondaryIndexManager=cfs.indexManager;
     if (whereClause.containsCustomExpressions())     processCustomIndexExpressions(whereClause.expressions,boundNames,secondaryIndexManager);
     hasQueriableClusteringColumnIndex=clusteringColumnsRestrictions.hasSupportingIndex(secondaryIndexManager);
     hasQueriableIndex=!indexRestrictions.getCustomIndexExpressions().isEmpty() || hasQueriableClusteringColumnIndex || partitionKeyRestrictions.hasSupportingIndex(secondaryIndexManager)|| nonPrimaryKeyRestrictions.hasSupportingIndex(secondaryIndexManager);
