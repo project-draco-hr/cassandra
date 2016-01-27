@@ -3,8 +3,14 @@
   CassandraIndexFunctions utils=getFunctions(indexMetadata,target);
   ColumnDefinition indexedColumn=target.left;
   AbstractType<?> indexedValueType=utils.getIndexedValueType(indexedColumn);
-  CFMetaData.Builder builder=CFMetaData.Builder.create(baseCfsMetadata.ksName,baseCfsMetadata.indexColumnFamilyName(indexMetadata)).withId(baseCfsMetadata.cfId).withPartitioner(new LocalPartitioner(indexedValueType)).addPartitionKey(indexedColumn.name,indexedColumn.type);
-  builder.addClusteringColumn("partition_key",baseCfsMetadata.partitioner.partitionOrdering());
-  builder=utils.addIndexClusteringColumns(builder,baseCfsMetadata,indexedColumn);
+  CFMetaData.Builder builder=indexMetadata.isKeys() ? CFMetaData.Builder.create(baseCfsMetadata.ksName,baseCfsMetadata.indexColumnFamilyName(indexMetadata),true,false,false) : CFMetaData.Builder.create(baseCfsMetadata.ksName,baseCfsMetadata.indexColumnFamilyName(indexMetadata));
+  builder=builder.withId(baseCfsMetadata.cfId).withPartitioner(new LocalPartitioner(indexedValueType)).addPartitionKey(indexedColumn.name,indexedColumn.type).addClusteringColumn("partition_key",baseCfsMetadata.partitioner.partitionOrdering());
+  if (indexMetadata.isKeys()) {
+    CompactTables.DefaultNames names=CompactTables.defaultNameGenerator(ImmutableSet.of(indexedColumn.name.toString(),"partition_key"));
+    builder=builder.addRegularColumn(names.defaultCompactValueName(),EmptyType.instance);
+  }
+ else {
+    builder=utils.addIndexClusteringColumns(builder,baseCfsMetadata,indexedColumn);
+  }
   return builder.build().reloadIndexMetadataProperties(baseCfsMetadata);
 }
