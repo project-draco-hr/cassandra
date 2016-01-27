@@ -1,0 +1,15 @@
+{
+  if (version < MessagingService.VERSION_30) {
+    LegacyLayout.fromUnfilteredRowIterator(command,iterator).digest(iterator.metadata(),digest);
+    return;
+  }
+  digest.update(iterator.partitionKey().getKey().duplicate());
+  iterator.partitionLevelDeletion().digest(digest);
+  iterator.columns().digest(digest);
+  FBUtilities.updateWithBoolean(digest,iterator.isReverseOrder());
+  iterator.staticRow().digest(digest);
+  while (iterator.hasNext()) {
+    Unfiltered unfiltered=iterator.next();
+    unfiltered.digest(digest);
+  }
+}
