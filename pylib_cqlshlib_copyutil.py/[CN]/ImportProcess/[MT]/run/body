@@ -1,12 +1,10 @@
 def run(self):
     try:
         try:
-            table_meta = self.session.cluster.metadata.keyspaces[self.ks].tables[self.table]
-            is_counter = ('counter' in [table_meta.columns[name].typestring for name in self.valid_columns])
-            if is_counter:
-                self.run_counter(table_meta)
-            else:
-                self.run_normal(table_meta)
+            pr = (profile_on() if PROFILE_ON else None)
+            self.inner_run(*self.make_params())
+            if pr:
+                profile_off(pr, file_name=('worker_profile_%d.txt' % (os.getpid(),)))
         except Exception as exc:
             if self.debug:
                 traceback.print_exc(exc)

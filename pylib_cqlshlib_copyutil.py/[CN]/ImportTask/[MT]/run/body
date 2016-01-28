@@ -13,13 +13,16 @@ def run(self):
     self.printmsg(('\nStarting copy of %s.%s with columns %s.' % (self.ks, self.table, self.valid_columns)))
     try:
         try:
-            self.reader.start()
             params = self.make_params()
-            for i in range(self.num_processes):
-                self.processes.append(ImportProcess(params))
-            for process in self.processes:
-                process.start()
+            for i in range((self.num_processes - 1)):
+                self.processes.append(ImportProcess(self.update_params(params, i)))
+            feeder = FeedingProcess(self.outmsg.channels[(-1)], self.inmsg.channels[(-1)], self.outmsg.channels[:(-1)], self.fname, self.options)
+            self.processes.append(feeder)
+            self.start_processes()
+            pr = (profile_on() if PROFILE_ON else None)
             self.import_records()
+            if pr:
+                profile_off(pr, file_name=('parent_profile_%d.txt' % (os.getpid(),)))
         except Exception as exc:
             shell.printerr(str(exc))
             if shell.debug:

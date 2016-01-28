@@ -1,0 +1,16 @@
+def wrap_make_statement(self, inner_make_statement):
+
+    def make_statement(query, conv, chunk, batch, replicas):
+        try:
+            return inner_make_statement(query, conv, batch, replicas)
+        except Exception as exc:
+            print 'Failed to make batch statement: {}'.format(exc)
+            self.report_error(exc, chunk, batch['rows'])
+            return None
+
+    def make_statement_with_failures(query, conv, chunk, batch, replicas):
+        failed_batch = self.maybe_inject_failures(batch)
+        if failed_batch:
+            return failed_batch
+        return make_statement(query, conv, chunk, batch, replicas)
+    return (make_statement_with_failures if self.test_failures else make_statement)

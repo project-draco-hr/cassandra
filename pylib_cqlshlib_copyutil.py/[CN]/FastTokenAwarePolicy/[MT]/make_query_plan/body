@@ -1,0 +1,8 @@
+def make_query_plan(self, working_keyspace=None, query=None):
+    '\n        Extend TokenAwarePolicy.make_query_plan() so that we choose the same replicas in preference\n        and most importantly we avoid repeating the (slow) bisect\n        '
+    replicas = (query.replicas if hasattr(query, 'replicas') else [])
+    for r in replicas:
+        yield r
+    for r in DCAwareRoundRobinPolicy.make_query_plan(self, working_keyspace, query):
+        if (r not in replicas):
+            yield r

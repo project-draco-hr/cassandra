@@ -10,8 +10,7 @@ def export_records(self, ranges):
     succeeded = 0
     failed = 0
     while (((failed + succeeded) < total_requests) and (self.num_live_processes() == num_processes)):
-        try:
-            (token_range, result) = self.inmsg.get(timeout=1.0)
+        for (token_range, result) in self.inmsg.recv(timeout=0.1):
             if ((token_range is None) and (result is None)):
                 succeeded += 1
             elif isinstance(result, Exception):
@@ -28,8 +27,6 @@ def export_records(self, ranges):
                 self.writer.write(data, num)
                 meter.increment(n=num)
                 ranges[token_range]['rows'] += num
-        except Queue.Empty:
-            pass
     if (self.num_live_processes() < len(processes)):
         for process in processes:
             if (not process.is_alive()):

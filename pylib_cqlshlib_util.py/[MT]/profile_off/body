@@ -1,6 +1,14 @@
-def profile_off(pr):
+def profile_off(pr, file_name):
     pr.disable()
     s = StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
-    ps.print_stats()
-    print s.getvalue()
+    if (HAS_LINE_PROFILER and isinstance(pr, LineProfiler)):
+        pr.print_stats(s)
+    else:
+        ps = pstats.Stats(pr, stream=s).sort_stats('cumulative')
+        ps.print_stats()
+    ret = s.getvalue()
+    if file_name:
+        with open(file_name, 'w') as f:
+            print ('Writing to %s\n' % (f.name,))
+            f.write(ret)
+    return ret
