@@ -4,7 +4,12 @@
     if (UUIDGen.unixTimestamp(proposal.ballot) >= SystemKeyspace.getTruncatedAt(proposal.update.metadata().cfId)) {
       Tracing.trace("Committing proposal {}",proposal);
       Mutation mutation=proposal.makeMutation();
-      Keyspace.open(mutation.getKeyspaceName()).apply(mutation,true);
+      try {
+        Uninterruptibles.getUninterruptibly(Keyspace.open(mutation.getKeyspaceName()).apply(mutation,true));
+      }
+ catch (      ExecutionException e) {
+        throw new RuntimeException(e.getCause());
+      }
     }
  else {
       Tracing.trace("Not committing proposal {} as ballot timestamp predates last truncation time",proposal);
