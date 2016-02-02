@@ -11,7 +11,13 @@
  catch (    UnknownColumnException exc) {
       throw new UnknownColumnFamilyException("Received legacy range read command with names filter for unrecognized column name. " + "Fill name in filter (hex): " + ByteBufferUtil.bytesToHex(buffer),metadata.cfId);
     }
-    if (!cellName.clustering.equals(Clustering.STATIC_CLUSTERING))     clusterings.add(cellName.clustering);
+    if (metadata.isStaticCompactTable() && cellName.clustering.equals(Clustering.STATIC_CLUSTERING)) {
+      clusterings.add(new Clustering(cellName.column.name.bytes));
+      selectionBuilder.add(metadata.compactValueColumn());
+    }
+ else {
+      clusterings.add(cellName.clustering);
+    }
     selectionBuilder.add(cellName.column);
   }
   if (metadata.isStaticCompactTable() && clusterings.isEmpty())   selectionBuilder.addAll(metadata.partitionColumns());
