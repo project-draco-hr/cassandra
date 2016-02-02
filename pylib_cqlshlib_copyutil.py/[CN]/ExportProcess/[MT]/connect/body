@@ -1,0 +1,9 @@
+def connect(self, host):
+    if (host in self.hosts_to_sessions.keys()):
+        session = self.hosts_to_sessions[host]
+        session.add_request()
+        return session
+    new_cluster = Cluster(contact_points=(host,), port=self.port, cql_version=self.cql_version, protocol_version=self.protocol_version, auth_provider=self.auth_provider, ssl_options=(ssl_settings(host, self.config_file) if self.ssl else None), load_balancing_policy=WhiteListRoundRobinPolicy([host]), default_retry_policy=ExpBackoffRetryPolicy(self), compression=None, control_connection_timeout=self.connect_timeout, connect_timeout=self.connect_timeout)
+    session = ExportSession(new_cluster, self)
+    self.hosts_to_sessions[host] = session
+    return session
