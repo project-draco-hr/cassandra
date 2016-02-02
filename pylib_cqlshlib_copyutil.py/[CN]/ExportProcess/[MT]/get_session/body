@@ -1,14 +1,16 @@
-def get_session(self, hosts):
-    '\n        We select a host to connect to. If we have no connections to one of the hosts\n        yet then we select this host, else we pick the one with the smallest number\n        of requests.\n\n        :return: An ExportSession connected to the chosen host.\n        '
-    new_hosts = [h for h in hosts if (h not in self.hosts_to_sessions)]
-    if new_hosts:
-        host = new_hosts[0]
-        new_cluster = Cluster(contact_points=(host,), port=self.port, cql_version=self.cql_version, protocol_version=self.protocol_version, auth_provider=self.auth_provider, ssl_options=(ssl_settings(host, self.config_file) if self.ssl else None), load_balancing_policy=TokenAwarePolicy(WhiteListRoundRobinPolicy(hosts)), default_retry_policy=ExpBackoffRetryPolicy(self), compression=None, control_connection_timeout=self.connect_timeout, connect_timeout=self.connect_timeout)
-        session = ExportSession(new_cluster, self)
-        self.hosts_to_sessions[host] = session
-        return session
-    else:
-        host = min(hosts, key=(lambda hh: self.hosts_to_sessions[hh].requests))
-        session = self.hosts_to_sessions[host]
-        session.add_request()
-        return session
+def get_session(self, hosts, token_range):
+    '\n        We return a session connected to one of the hosts passed in, which are valid replicas for\n        the token range. We sort replicas by favouring those without any active requests yet or with the\n        smallest number of requests. If we fail to connect we report an error so that the token will\n        be retried again later.\n\n        :return: An ExportSession connected to the chosen host.\n        '
+    hosts = sorted(hosts, key=(lambda hh: (0 if (hh not in self.hosts_to_sessions) else self.hosts_to_sessions[hh].requests)))
+    errors = []
+    ret = None
+    for host in hosts:
+        try:
+            ret = self.connect(host)
+        except Exception as e:
+            errors.append(self.get_error_message(e))
+        if ret:
+            if errors:
+                self.printdebugmsg(('Warning: failed to connect to some replicas: %s' % (errors,)))
+            return ret
+    self.report_error(('Failed to connect to all replicas %s for %s, errors: %s' % (hosts, token_range, errors)))
+    return None
