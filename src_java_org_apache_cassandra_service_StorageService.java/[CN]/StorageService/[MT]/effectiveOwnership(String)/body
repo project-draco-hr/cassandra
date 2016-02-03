@@ -7,13 +7,17 @@
     strategy=keyspaceInstance.getReplicationStrategy();
   }
  else {
-    List<String> nonSystemKeyspaces=Schema.instance.getNonSystemKeyspaces();
-    int specialTableCount=0;
-    if (nonSystemKeyspaces.contains("system_traces")) {
-      specialTableCount+=1;
+    List<String> userKeyspaces=Schema.instance.getUserKeyspaces();
+    if (userKeyspaces.size() > 0) {
+      keyspace=userKeyspaces.iterator().next();
+      AbstractReplicationStrategy replicationStrategy=Schema.instance.getKeyspaceInstance(keyspace).getReplicationStrategy();
+      for (      String keyspaceName : userKeyspaces) {
+        if (!Schema.instance.getKeyspaceInstance(keyspaceName).getReplicationStrategy().hasSameSettings(replicationStrategy))         throw new IllegalStateException("Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless");
+      }
     }
-    if (nonSystemKeyspaces.size() > specialTableCount)     throw new IllegalStateException("Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless");
-    keyspace="system_traces";
+ else {
+      keyspace="system_traces";
+    }
     Keyspace keyspaceInstance=Schema.instance.getKeyspaceInstance(keyspace);
     if (keyspaceInstance == null)     throw new IllegalArgumentException("The node does not have " + keyspace + " yet, probably still bootstrapping");
     strategy=keyspaceInstance.getReplicationStrategy();
