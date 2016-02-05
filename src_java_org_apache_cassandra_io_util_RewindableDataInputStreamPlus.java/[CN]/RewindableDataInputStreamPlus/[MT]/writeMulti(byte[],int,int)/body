@@ -1,0 +1,31 @@
+{
+  if (memAvailable > 0) {
+    if (memBuffer == null)     memBuffer=new byte[initialMemBufferSize];
+    int pos=maxMemBufferSize - memAvailable;
+    int memWritten=memAvailable < len ? memAvailable : len;
+    if (pos + memWritten >= getIfNotClosed(memBuffer).length)     growMemBuffer(pos,memWritten);
+    System.arraycopy(b,off,memBuffer,pos,memWritten);
+    off+=memWritten;
+    len-=memWritten;
+    memAvailable-=memWritten;
+  }
+  if (len > 0) {
+    if (diskTailAvailable == -1) {
+      maybeCreateDiskBuffer();
+      diskHeadAvailable=(int)spillBuffer.getFilePointer();
+      diskTailAvailable=maxDiskBufferSize - diskHeadAvailable;
+    }
+    if (len > 0 && diskTailAvailable > 0) {
+      int diskTailWritten=diskTailAvailable < len ? diskTailAvailable : len;
+      getIfNotClosed(spillBuffer).write(b,off,diskTailWritten);
+      off+=diskTailWritten;
+      len-=diskTailWritten;
+      diskTailAvailable-=diskTailWritten;
+      if (diskTailAvailable == 0)       spillBuffer.seek(0);
+    }
+    if (len > 0 && diskTailAvailable > 0) {
+      int diskHeadWritten=diskHeadAvailable < len ? diskHeadAvailable : len;
+      getIfNotClosed(spillBuffer).write(b,off,diskHeadWritten);
+    }
+  }
+}

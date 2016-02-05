@@ -1,0 +1,46 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  try (DataOutputStream out=new DataOutputStream(baos)){
+    out.writeBoolean(true);
+    out.writeByte(0x1);
+    out.writeChar('a');
+    out.writeShort(1);
+    out.writeInt(1);
+    out.writeLong(1L);
+    out.writeFloat(1.0f);
+    out.writeDouble(1.0d);
+    out.writeUTF("abc");
+    testData=baos.toByteArray();
+  }
+   for (int memCapacity=0; memCapacity <= 18; memCapacity++) {
+    int diskCapacity=18 - memCapacity;
+    try (RewindableDataInputStreamPlus reader=new RewindableDataInputStreamPlus(new ByteArrayInputStream(testData),INITIAL_BUFFER_SIZE,memCapacity,file,diskCapacity)){
+      reader.mark();
+      assertTrue(reader.readBoolean());
+      assertEquals(0x1,reader.readByte());
+      assertEquals('a',reader.readChar());
+      assertEquals(1,reader.readShort());
+      assertEquals(1,reader.readInt());
+      assertEquals(1L,reader.readLong());
+      reader.reset();
+      assertTrue(reader.readBoolean());
+      assertEquals(0x1,reader.readByte());
+      assertEquals('a',reader.readChar());
+      assertEquals(1,reader.readShort());
+      assertEquals(1,reader.readInt());
+      assertEquals(1L,reader.readLong());
+      assertEquals(17,reader.available());
+      reader.mark();
+      assertEquals(1.0f,reader.readFloat(),0);
+      assertEquals(1.0d,reader.readDouble(),0);
+      assertEquals("abc",reader.readUTF());
+      reader.reset();
+      assertEquals(17,reader.available());
+      assertEquals(1.0f,reader.readFloat(),0);
+      assertEquals(1.0d,reader.readDouble(),0);
+      assertEquals("abc",reader.readUTF());
+    }
+     assertFalse(file.exists());
+  }
+}

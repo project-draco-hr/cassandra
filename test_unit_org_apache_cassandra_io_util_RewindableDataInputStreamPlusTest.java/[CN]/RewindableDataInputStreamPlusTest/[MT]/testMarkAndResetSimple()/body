@@ -1,0 +1,67 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  try (DataOutputStream out=new DataOutputStream(baos)){
+    out.writeBoolean(true);
+    out.writeByte(0x1);
+    out.writeChar('a');
+    out.writeShort(1);
+    out.writeInt(1);
+    out.writeLong(1L);
+    out.writeFloat(1.0f);
+    out.writeDouble(1.0d);
+    out.writeUTF("abc");
+    testData=baos.toByteArray();
+  }
+   for (int memCapacity=0; memCapacity <= 16; memCapacity++) {
+    int diskCapacity=16 - memCapacity;
+    try (RewindableDataInputStreamPlus reader=new RewindableDataInputStreamPlus(new ByteArrayInputStream(testData),INITIAL_BUFFER_SIZE,memCapacity,file,diskCapacity)){
+      try {
+        reader.reset(null);
+        fail("Should have thrown IOException");
+      }
+ catch (      IOException e) {
+      }
+      assertTrue(reader.readBoolean());
+      reader.mark();
+      try {
+        reader.mark();
+        fail("Should have thrown IllegalStateException");
+      }
+ catch (      IllegalStateException e) {
+      }
+      assertEquals(0x1,reader.readByte());
+      assertEquals('a',reader.readChar());
+      assertEquals(3,reader.bytesPastMark(null));
+      reader.reset(null);
+      try {
+        reader.mark();
+        fail("Should have thrown IllegalStateException");
+      }
+ catch (      IllegalStateException e) {
+      }
+      assertEquals(0x1,reader.readByte());
+      assertEquals('a',reader.readChar());
+      assertEquals(1,reader.readShort());
+      reader.mark();
+      assertEquals(1,reader.readInt());
+      assertEquals(1L,reader.readLong());
+      assertEquals(1.0f,reader.readFloat(),0);
+      assertEquals(16,reader.bytesPastMark(null));
+      reader.reset(null);
+      assertEquals(1,reader.readInt());
+      assertEquals(1L,reader.readLong());
+      assertEquals(1.0f,reader.readFloat(),0);
+      reader.mark();
+      assertEquals(1.0d,reader.readDouble(),0);
+      assertEquals(8,reader.bytesPastMark(null));
+      reader.reset(null);
+      assertEquals(1.0d,reader.readDouble(),0);
+      reader.mark();
+      reader.reset(null);
+      assertEquals("abc",reader.readUTF());
+      assertEquals(diskCapacity,file.length());
+    }
+     assertFalse(file.exists());
+  }
+}

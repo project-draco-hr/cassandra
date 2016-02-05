@@ -1,0 +1,28 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  DataOutputStream out=new DataOutputStream(baos);
+  try {
+    out.writeByte(0x1);
+    out.writeShort(1);
+    testData=baos.toByteArray();
+  }
+  finally {
+    out.close();
+  }
+  DataInputPlus.DataInputStreamPlus in=new DataInputPlus.DataInputStreamPlus(new ByteArrayInputStream(testData));
+  BytesReadTracker tracker=inputStream ? new TrackedInputStream(in) : new TrackedDataInputPlus(in);
+  DataInputPlus reader=inputStream ? new DataInputPlus.DataInputStreamPlus((TrackedInputStream)tracker) : (DataInputPlus)tracker;
+  try {
+    int b=reader.readUnsignedByte();
+    assertEquals(b,1);
+    assertEquals(1,tracker.getBytesRead());
+    int s=reader.readUnsignedShort();
+    assertEquals(1,s);
+    assertEquals(3,tracker.getBytesRead());
+    assertEquals(testData.length,tracker.getBytesRead());
+  }
+  finally {
+    in.close();
+  }
+}

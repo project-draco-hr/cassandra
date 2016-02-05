@@ -1,0 +1,38 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  try (DataOutputStream out=new DataOutputStream(baos)){
+    out.writeBoolean(true);
+    out.writeByte(0x1);
+    out.writeChar('a');
+    out.writeShort(1);
+    out.writeInt(1);
+    out.writeUTF("ab");
+    testData=baos.toByteArray();
+  }
+   int MEM_SIZE=0;
+  int DISK_SIZE=4;
+  try (RewindableDataInputStreamPlus reader=new RewindableDataInputStreamPlus(new ByteArrayInputStream(testData),INITIAL_BUFFER_SIZE,MEM_SIZE,file,DISK_SIZE)){
+    reader.mark();
+    assertTrue(reader.readBoolean());
+    assertEquals(0x1,reader.readByte());
+    assertEquals(2,reader.bytesPastMark(null));
+    reader.reset();
+    assertTrue(reader.readBoolean());
+    assertEquals(0x1,reader.readByte());
+    reader.mark();
+    assertEquals('a',reader.readChar());
+    assertEquals(1,reader.readShort());
+    assertEquals(4,reader.bytesPastMark(null));
+    reader.reset();
+    assertEquals('a',reader.readChar());
+    assertEquals(1,reader.readShort());
+    reader.mark();
+    assertEquals(1,reader.readInt());
+    assertEquals(4,reader.bytesPastMark(null));
+    reader.reset();
+    assertEquals(1,reader.readInt());
+    assertEquals(DISK_SIZE,file.length());
+  }
+   assertFalse(file.exists());
+}

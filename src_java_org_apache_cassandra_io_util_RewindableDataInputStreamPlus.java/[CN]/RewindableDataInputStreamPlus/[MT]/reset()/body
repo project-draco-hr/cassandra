@@ -1,0 +1,18 @@
+{
+  if (!marked)   throw new IOException("Must call mark() before calling reset().");
+  if (exhausted)   throw new IOException(String.format("Read more than capacity: %d bytes.",maxMemBufferSize + maxDiskBufferSize));
+  memAvailable=maxMemBufferSize - memAvailable;
+  memBufferSize=memAvailable;
+  if (diskTailAvailable == -1) {
+    diskHeadAvailable=0;
+    diskTailAvailable=0;
+  }
+ else {
+    int initialPos=diskTailAvailable > 0 ? 0 : (int)getIfNotClosed(spillBuffer).getFilePointer();
+    int diskMarkpos=initialPos + diskHeadAvailable;
+    getIfNotClosed(spillBuffer).seek(diskMarkpos);
+    diskHeadAvailable=diskMarkpos - diskHeadAvailable;
+    diskTailAvailable=(maxDiskBufferSize - diskTailAvailable) - diskMarkpos;
+  }
+  marked=false;
+}

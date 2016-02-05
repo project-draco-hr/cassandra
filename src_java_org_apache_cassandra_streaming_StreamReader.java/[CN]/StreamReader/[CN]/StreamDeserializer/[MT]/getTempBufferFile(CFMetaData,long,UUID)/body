@@ -1,0 +1,10 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(metadata.ksName).getColumnFamilyStore(metadata.cfName);
+  if (cfs == null) {
+    throw new RuntimeException(String.format("CF %s.%s was dropped during streaming",metadata.ksName,metadata.cfName));
+  }
+  long maxSize=Math.min(MAX_SPILL_FILE_SIZE,totalSize);
+  File tmpDir=cfs.getDirectories().getTemporaryWriteableDirectoryAsFile(maxSize);
+  if (tmpDir == null)   throw new IOException(String.format("No sufficient disk space to stream legacy sstable from {}.{}. " + "Required disk space: %s.",FBUtilities.prettyPrintMemory(maxSize)));
+  return new File(tmpDir,String.format("%s-%s.%s",BUFFER_FILE_PREFIX,sessionId,BUFFER_FILE_SUFFIX));
+}

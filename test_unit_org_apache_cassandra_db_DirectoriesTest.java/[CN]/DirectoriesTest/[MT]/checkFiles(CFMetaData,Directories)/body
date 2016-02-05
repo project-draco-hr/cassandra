@@ -1,0 +1,23 @@
+{
+  Directories.SSTableLister lister;
+  Set<File> listed;
+  lister=directories.sstableLister(Directories.OnTxnErr.THROW);
+  listed=new HashSet<>(lister.listFiles());
+  for (  File f : files.get(cfm.cfName)) {
+    if (f.getPath().contains(Directories.SNAPSHOT_SUBDIR) || f.getPath().contains(Directories.BACKUPS_SUBDIR))     assertFalse(f + " should not be listed",listed.contains(f));
+ else     assertTrue(f + " is missing",listed.contains(f));
+  }
+  lister=directories.sstableLister(Directories.OnTxnErr.THROW).includeBackups(true);
+  listed=new HashSet<>(lister.listFiles());
+  for (  File f : files.get(cfm.cfName)) {
+    if (f.getPath().contains(Directories.SNAPSHOT_SUBDIR))     assertFalse(f + " should not be listed",listed.contains(f));
+ else     assertTrue(f + " is missing",listed.contains(f));
+  }
+  lister=directories.sstableLister(Directories.OnTxnErr.THROW).skipTemporary(true);
+  listed=new HashSet<>(lister.listFiles());
+  for (  File f : files.get(cfm.cfName)) {
+    if (f.getPath().contains(Directories.SNAPSHOT_SUBDIR) || f.getPath().contains(Directories.BACKUPS_SUBDIR))     assertFalse(f + " should not be listed",listed.contains(f));
+ else     if (f.getName().contains("tmp-"))     assertFalse(f + " should not be listed",listed.contains(f));
+ else     assertTrue(f + " is missing",listed.contains(f));
+  }
+}
