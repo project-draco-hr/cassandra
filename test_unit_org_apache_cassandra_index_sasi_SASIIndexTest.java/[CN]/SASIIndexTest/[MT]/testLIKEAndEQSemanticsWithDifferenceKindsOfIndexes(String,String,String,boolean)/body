@@ -1,0 +1,92 @@
+{
+  QueryProcessor.executeOnceInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?);",KS_NAME,containsTable),0,"Pavel");
+  QueryProcessor.executeOnceInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?);",KS_NAME,prefixTable),0,"Jean-Claude");
+  QueryProcessor.executeOnceInternal(String.format("INSERT INTO %s.%s (k, v) VALUES (?, ?);",KS_NAME,analyzedPrefixTable),0,"Jean-Claude");
+  if (forceFlush) {
+    Keyspace keyspace=Keyspace.open(KS_NAME);
+    for (    String table : Arrays.asList(containsTable,prefixTable,analyzedPrefixTable))     keyspace.getColumnFamilyStore(table).forceBlockingFlush();
+  }
+  UntypedResultSet results;
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Pav';",KS_NAME,containsTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(0,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Pavel';",KS_NAME,containsTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v = 'Pav';",KS_NAME,containsTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Pav%%';",KS_NAME,containsTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Pav';",KS_NAME,containsTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(0,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Pav%%';",KS_NAME,containsTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v = 'Jean';",KS_NAME,prefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(0,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v = 'Jean-Claude';",KS_NAME,prefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Jea';",KS_NAME,prefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(0,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Jea%%';",KS_NAME,prefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Jea';",KS_NAME,prefixTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Jea%%';",KS_NAME,prefixTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v = 'Jean';",KS_NAME,analyzedPrefixTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Jean';",KS_NAME,analyzedPrefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Claude';",KS_NAME,analyzedPrefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Jean-Claude';",KS_NAME,analyzedPrefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Jean%%';",KS_NAME,analyzedPrefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  results=QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE 'Claude%%';",KS_NAME,analyzedPrefixTable));
+  Assert.assertNotNull(results);
+  Assert.assertEquals(1,results.size());
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Jean';",KS_NAME,analyzedPrefixTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  try {
+    QueryProcessor.executeOnceInternal(String.format("SELECT * FROM %s.%s WHERE v LIKE '%%Claude%%';",KS_NAME,analyzedPrefixTable));
+    Assert.fail();
+  }
+ catch (  InvalidRequestException e) {
+  }
+  for (  String table : Arrays.asList(containsTable,prefixTable,analyzedPrefixTable))   QueryProcessor.executeOnceInternal(String.format("TRUNCATE TABLE %s.%s",KS_NAME,table));
+}

@@ -1,0 +1,13 @@
+{
+  String containsTable="sasi_like_contains_test";
+  String prefixTable="sasi_like_prefix_test";
+  String analyzedPrefixTable="sasi_like_analyzed_prefix_test";
+  QueryProcessor.executeOnceInternal(String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int primary key, v text);",KS_NAME,containsTable));
+  QueryProcessor.executeOnceInternal(String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int primary key, v text);",KS_NAME,prefixTable));
+  QueryProcessor.executeOnceInternal(String.format("CREATE TABLE IF NOT EXISTS %s.%s (k int primary key, v text);",KS_NAME,analyzedPrefixTable));
+  QueryProcessor.executeOnceInternal(String.format("CREATE CUSTOM INDEX IF NOT EXISTS ON %s.%s(v) " + "USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = { 'mode' : 'CONTAINS' };",KS_NAME,containsTable));
+  QueryProcessor.executeOnceInternal(String.format("CREATE CUSTOM INDEX IF NOT EXISTS ON %s.%s(v) " + "USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = { 'mode' : 'PREFIX' };",KS_NAME,prefixTable));
+  QueryProcessor.executeOnceInternal(String.format("CREATE CUSTOM INDEX IF NOT EXISTS ON %s.%s(v) " + "USING 'org.apache.cassandra.index.sasi.SASIIndex' WITH OPTIONS = { 'mode' : 'PREFIX', 'analyzed': 'true' };",KS_NAME,analyzedPrefixTable));
+  testLIKEAndEQSemanticsWithDifferenceKindsOfIndexes(containsTable,prefixTable,analyzedPrefixTable,false);
+  testLIKEAndEQSemanticsWithDifferenceKindsOfIndexes(containsTable,prefixTable,analyzedPrefixTable,true);
+}
