@@ -1,8 +1,14 @@
 {
-  if (repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE) {
-    return unrepaired.get(0).createSSTableMultiWriter(descriptor,keyCount,repairedAt,collector,header,indexes,txn);
-  }
+  readLock.lock();
+  try {
+    if (repairedAt == ActiveRepairService.UNREPAIRED_SSTABLE) {
+      return unrepaired.get(0).createSSTableMultiWriter(descriptor,keyCount,repairedAt,collector,header,indexes,txn);
+    }
  else {
-    return repaired.get(0).createSSTableMultiWriter(descriptor,keyCount,repairedAt,collector,header,indexes,txn);
+      return repaired.get(0).createSSTableMultiWriter(descriptor,keyCount,repairedAt,collector,header,indexes,txn);
+    }
+  }
+  finally {
+    readLock.unlock();
   }
 }

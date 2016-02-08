@@ -1,15 +1,21 @@
 {
-  if (repaired.get(0) instanceof LeveledCompactionStrategy && unrepaired.get(0) instanceof LeveledCompactionStrategy) {
-    int[] res=new int[LeveledManifest.MAX_LEVEL_COUNT];
-    for (    AbstractCompactionStrategy strategy : repaired) {
-      int[] repairedCountPerLevel=((LeveledCompactionStrategy)strategy).getAllLevelSize();
-      res=sumArrays(res,repairedCountPerLevel);
+  readLock.lock();
+  try {
+    if (repaired.get(0) instanceof LeveledCompactionStrategy && unrepaired.get(0) instanceof LeveledCompactionStrategy) {
+      int[] res=new int[LeveledManifest.MAX_LEVEL_COUNT];
+      for (      AbstractCompactionStrategy strategy : repaired) {
+        int[] repairedCountPerLevel=((LeveledCompactionStrategy)strategy).getAllLevelSize();
+        res=sumArrays(res,repairedCountPerLevel);
+      }
+      for (      AbstractCompactionStrategy strategy : unrepaired) {
+        int[] unrepairedCountPerLevel=((LeveledCompactionStrategy)strategy).getAllLevelSize();
+        res=sumArrays(res,unrepairedCountPerLevel);
+      }
+      return res;
     }
-    for (    AbstractCompactionStrategy strategy : unrepaired) {
-      int[] unrepairedCountPerLevel=((LeveledCompactionStrategy)strategy).getAllLevelSize();
-      res=sumArrays(res,unrepairedCountPerLevel);
-    }
-    return res;
+  }
+  finally {
+    readLock.unlock();
   }
   return null;
 }

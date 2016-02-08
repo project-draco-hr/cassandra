@@ -2,8 +2,9 @@
   maybeReload(cfs.metadata);
   return cfs.runWithCompactionsDisabled(new Callable<Collection<AbstractCompactionTask>>(){
     @Override public Collection<AbstractCompactionTask> call() throws Exception {
-synchronized (CompactionStrategyManager.this) {
-        List<AbstractCompactionTask> tasks=new ArrayList<>();
+      List<AbstractCompactionTask> tasks=new ArrayList<>();
+      readLock.lock();
+      try {
         for (        AbstractCompactionStrategy strategy : repaired) {
           Collection<AbstractCompactionTask> task=strategy.getMaximalTask(gcBefore,splitOutput);
           if (task != null)           tasks.addAll(task);
@@ -12,9 +13,12 @@ synchronized (CompactionStrategyManager.this) {
           Collection<AbstractCompactionTask> task=strategy.getMaximalTask(gcBefore,splitOutput);
           if (task != null)           tasks.addAll(task);
         }
-        if (tasks.isEmpty())         return null;
-        return tasks;
       }
+  finally {
+        readLock.unlock();
+      }
+      if (tasks.isEmpty())       return null;
+      return tasks;
     }
   }
 ,false,false);

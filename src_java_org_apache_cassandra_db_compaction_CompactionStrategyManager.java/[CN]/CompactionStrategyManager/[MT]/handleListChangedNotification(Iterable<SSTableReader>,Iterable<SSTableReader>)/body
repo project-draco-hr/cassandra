@@ -1,0 +1,36 @@
+{
+  Directories.DataDirectory[] locations=cfs.getDirectories().getWriteableLocations();
+  int locationSize=cfs.getPartitioner().splitter().isPresent() ? locations.length : 1;
+  List<Set<SSTableReader>> repairedRemoved=new ArrayList<>(locationSize);
+  List<Set<SSTableReader>> repairedAdded=new ArrayList<>(locationSize);
+  List<Set<SSTableReader>> unrepairedRemoved=new ArrayList<>(locationSize);
+  List<Set<SSTableReader>> unrepairedAdded=new ArrayList<>(locationSize);
+  for (int i=0; i < locationSize; i++) {
+    repairedRemoved.add(new HashSet<>());
+    repairedAdded.add(new HashSet<>());
+    unrepairedRemoved.add(new HashSet<>());
+    unrepairedAdded.add(new HashSet<>());
+  }
+  for (  SSTableReader sstable : removed) {
+    int i=getCompactionStrategyIndex(cfs,getDirectories(),sstable);
+    if (sstable.isRepaired())     repairedRemoved.get(i).add(sstable);
+ else     unrepairedRemoved.get(i).add(sstable);
+  }
+  for (  SSTableReader sstable : added) {
+    int i=getCompactionStrategyIndex(cfs,getDirectories(),sstable);
+    if (sstable.isRepaired())     repairedAdded.get(i).add(sstable);
+ else     unrepairedAdded.get(i).add(sstable);
+  }
+  writeLock.lock();
+  try {
+    for (int i=0; i < locationSize; i++) {
+      if (!repairedRemoved.get(i).isEmpty())       repaired.get(i).replaceSSTables(repairedRemoved.get(i),repairedAdded.get(i));
+ else       repaired.get(i).addSSTables(repairedAdded.get(i));
+      if (!unrepairedRemoved.get(i).isEmpty())       unrepaired.get(i).replaceSSTables(unrepairedRemoved.get(i),unrepairedAdded.get(i));
+ else       unrepaired.get(i).addSSTables(unrepairedAdded.get(i));
+    }
+  }
+  finally {
+    writeLock.unlock();
+  }
+}
