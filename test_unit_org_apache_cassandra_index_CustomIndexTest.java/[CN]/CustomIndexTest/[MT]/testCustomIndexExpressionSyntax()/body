@@ -4,13 +4,13 @@
   execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",row);
   assertInvalidMessage(String.format(IndexRestrictions.INDEX_NOT_FOUND,"custom_index",keyspace(),currentTable()),"SELECT * FROM %s WHERE expr(custom_index, 'foo bar baz')");
   createIndex(String.format("CREATE CUSTOM INDEX custom_index ON %%s(c) USING '%s'",StubIndex.class.getName()));
-  assertInvalidMessage(String.format(IndexRestrictions.INDEX_NOT_FOUND,"no_such_index",keyspace(),currentTable()),"SELECT * FROM %s WHERE expr(no_such_index, 'foo bar baz ')");
+  assertInvalidThrowMessage(Server.CURRENT_VERSION,String.format(IndexRestrictions.INDEX_NOT_FOUND,"no_such_index",keyspace(),currentTable()),QueryValidationException.class,"SELECT * FROM %s WHERE expr(no_such_index, 'foo bar baz ')");
   assertRows(execute("SELECT * FROM %s WHERE expr(custom_index, 'foo bar baz')"),row);
   assertRows(execute("SELECT * FROM %s WHERE expr(\"custom_index\", 'foo bar baz')"),row);
   assertRows(execute("SELECT * FROM %s WHERE expr(custom_index, $$foo \" ~~~ bar Baz$$)"),row);
-  assertInvalidMessage(IndexRestrictions.MULTIPLE_EXPRESSIONS,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND expr(custom_index, 'bar')");
+  assertInvalidThrowMessage(Server.CURRENT_VERSION,IndexRestrictions.MULTIPLE_EXPRESSIONS,QueryValidationException.class,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND expr(custom_index, 'bar')");
   createIndex(String.format("CREATE CUSTOM INDEX other_custom_index ON %%s(d) USING '%s'",StubIndex.class.getName()));
-  assertInvalidMessage(IndexRestrictions.MULTIPLE_EXPRESSIONS,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND expr(other_custom_index, 'bar')");
-  assertInvalidMessage(SelectStatement.REQUIRES_ALLOW_FILTERING_MESSAGE,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND d=0");
+  assertInvalidThrowMessage(Server.CURRENT_VERSION,IndexRestrictions.MULTIPLE_EXPRESSIONS,QueryValidationException.class,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND expr(other_custom_index, 'bar')");
+  assertInvalidThrowMessage(Server.CURRENT_VERSION,SelectStatement.REQUIRES_ALLOW_FILTERING_MESSAGE,QueryValidationException.class,"SELECT * FROM %s WHERE expr(custom_index, 'foo') AND d=0");
   assertRows(execute("SELECT * FROM %s WHERE expr(custom_index, 'foo') AND d=0 ALLOW FILTERING"),row);
 }
