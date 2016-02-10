@@ -1,11 +1,11 @@
 {
   List<AbstractType<?>> types=new ArrayList<>();
-  for (int i=0; i < numberOfClusteringColumns; i++)   types.add(Int32Type.instance);
+  for (  Sort sort : sorts)   types.add(sort == Sort.ASC ? Int32Type.instance : ReversedType.getInstance(Int32Type.instance));
   CompoundSparseCellNameType cType=new CompoundSparseCellNameType(types);
   CFMetaData cfMetaData=new CFMetaData("keyspace","test",ColumnFamilyType.Standard,cType);
-  for (int i=0; i < numberOfClusteringColumns; i++) {
+  for (int i=0; i < sorts.length; i++) {
     ByteBuffer name=ByteBufferUtil.bytes("clustering_" + i);
-    ColumnDefinition columnDef=ColumnDefinition.clusteringKeyDef(cfMetaData,name,Int32Type.instance,i);
+    ColumnDefinition columnDef=ColumnDefinition.clusteringKeyDef(cfMetaData,name,types.get(i),i);
     cfMetaData.addColumnDefinition(columnDef);
   }
   cfMetaData.rebuild();

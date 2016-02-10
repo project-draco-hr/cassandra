@@ -1,0 +1,21 @@
+{
+  List<Composite> list=new ArrayList<>(composites.size());
+  int offset=r.getFirstColumn().position();
+  for (int i=0, m=composites.size(); i < m; i++) {
+    Composite composite=composites.get(i);
+    if (composite.size() == offset) {
+      list.add(composite.withEOC(bound.isEnd() ? EOC.END : EOC.START));
+      continue;
+    }
+    if (composite.size() <= r.getLastColumn().position() && i < m - 1 && composite.equals(composites.get(i + 1))) {
+      list.add(composite.withEOC(EOC.START));
+      list.add(composites.get(i++).withEOC(EOC.END));
+      continue;
+    }
+    ColumnDefinition column=r.getColumnDefs().get(composite.size() - 1 - offset);
+    Bound b=reverseBoundIfNeeded(column,bound);
+    Composite.EOC eoc=eocFor(r,bound,b);
+    list.add(composite.withEOC(eoc));
+  }
+  return list;
+}

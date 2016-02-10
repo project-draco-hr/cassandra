@@ -1,8 +1,31 @@
 {
-  List<ByteBuffer> vals=componentBounds(bound,options);
-  for (int i=0, m=vals.size(); i < m; i++) {
-    ByteBuffer v=checkNotNull(vals.get(i),"Invalid null value in condition for column %s",columnDefs.get(i).name);
-    builder.addElementToAll(v);
+  boolean reversed=getFirstColumn().isReversedType();
+  EnumMap<Bound,List<ByteBuffer>> componentBounds=new EnumMap<Bound,List<ByteBuffer>>(Bound.class);
+  componentBounds.put(Bound.START,componentBounds(Bound.START,options));
+  componentBounds.put(Bound.END,componentBounds(Bound.END,options));
+  List<List<ByteBuffer>> toAdd=new ArrayList<>();
+  List<ByteBuffer> values=new ArrayList<>();
+  for (int i=0, m=columnDefs.size(); i < m; i++) {
+    ColumnDefinition column=columnDefs.get(i);
+    Bound b=reverseBoundIfNeeded(column,bound);
+    if (reversed != column.isReversedType()) {
+      reversed=column.isReversedType();
+      toAdd.add(values);
+      if (!hasComponent(b,i,componentBounds))       continue;
+      if (hasComponent(b.reverse(),i,componentBounds))       toAdd.add(values);
+      values=new ArrayList<ByteBuffer>();
+      List<ByteBuffer> vals=componentBounds.get(b);
+      int n=Math.min(i,vals.size());
+      for (int j=0; j < n; j++) {
+        ByteBuffer v=checkNotNull(vals.get(j),"Invalid null value in condition for column %s",columnDefs.get(j).name);
+        values.add(v);
+      }
+    }
+    if (!hasComponent(b,i,componentBounds))     continue;
+    ByteBuffer v=checkNotNull(componentBounds.get(b).get(i),"Invalid null value in condition for column %s",columnDefs.get(i).name);
+    values.add(v);
   }
-  return builder;
+  toAdd.add(values);
+  if (bound.isEnd())   Collections.reverse(toAdd);
+  return builder.addAllElementsToAll(toAdd);
 }
