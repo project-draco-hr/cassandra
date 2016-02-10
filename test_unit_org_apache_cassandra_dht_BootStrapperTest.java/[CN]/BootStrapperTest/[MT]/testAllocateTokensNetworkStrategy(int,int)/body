@@ -1,0 +1,18 @@
+{
+  IEndpointSnitch oldSnitch=DatabaseDescriptor.getEndpointSnitch();
+  try {
+    DatabaseDescriptor.setEndpointSnitch(new RackInferringSnitch());
+    int vn=16;
+    String ks="BootStrapperTestNTSKeyspace" + rackCount + replicas;
+    String dc="1";
+    SchemaLoader.createKeyspace(ks,KeyspaceParams.nts(dc,replicas,"15",15),SchemaLoader.standardCFMD(ks,"Standard1"));
+    TokenMetadata tm=new TokenMetadata();
+    tm.clearUnsafe();
+    for (int i=0; i < rackCount; ++i)     generateFakeEndpoints(tm,10,vn,dc,Integer.toString(i));
+    InetAddress addr=InetAddress.getByName("127." + dc + ".0.99");
+    allocateTokensForNode(vn,ks,tm,addr);
+  }
+  finally {
+    DatabaseDescriptor.setEndpointSnitch(oldSnitch);
+  }
+}
