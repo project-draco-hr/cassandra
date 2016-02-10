@@ -1,2 +1,13 @@
 {
+  String targetColumn=options.get("target");
+  if (targetColumn == null)   throw new ConfigurationException("unknown target column");
+  Pair<ColumnDefinition,IndexTarget.Type> target=TargetParser.parse(cfm,targetColumn);
+  if (target == null)   throw new ConfigurationException("failed to retrieve target column for: " + targetColumn);
+  IndexMode.validateAnalyzer(options);
+  IndexMode mode=IndexMode.getMode(target.left,options);
+  if (mode.mode == Mode.SPARSE) {
+    if (mode.isLiteral)     throw new ConfigurationException("SPARSE mode is only supported on non-literal columns.");
+    if (mode.isAnalyzed)     throw new ConfigurationException("SPARSE mode doesn't support analyzers.");
+  }
+  return Collections.emptyMap();
 }
