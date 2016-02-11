@@ -1,20 +1,7 @@
 {
   logger.trace("Dispatching hints file {}",descriptor.fileName());
-  File file=new File(hintsDirectory,descriptor.fileName());
-  Long offset=store.getDispatchOffset(descriptor).orElse(null);
-  try (HintsDispatcher dispatcher=HintsDispatcher.create(file,rateLimiter,hostId,descriptor.hostId,isPaused)){
-    if (offset != null)     dispatcher.seek(offset);
-    if (dispatcher.dispatch()) {
-      store.delete(descriptor);
-      store.cleanUp(descriptor);
-      logger.info("Finished hinted handoff of file {} to endpoint {}",descriptor.fileName(),hostId);
-      return true;
-    }
- else {
-      store.markDispatchOffset(descriptor,dispatcher.dispatchOffset());
-      store.offerFirst(descriptor);
-      logger.info("Finished hinted handoff of file {} to endpoint {}, partially",descriptor.fileName(),hostId);
-      return false;
-    }
-  }
- }
+  InetAddress address=StorageService.instance.getEndpointForHostId(hostId);
+  if (address != null)   return deliver(descriptor,address);
+  convert(descriptor);
+  return true;
+}
