@@ -4,7 +4,6 @@
   this.sstable=transaction.onlyOne();
   this.outputHandler=outputHandler;
   this.skipCorrupted=skipCorrupted;
-  this.isOffline=isOffline;
   this.rowIndexEntrySerializer=sstable.descriptor.version.getSSTableFormat().getIndexSerializer(sstable.metadata,sstable.descriptor.version,sstable.header);
   List<SSTableReader> toScrub=Collections.singletonList(sstable);
   int locIndex=CompactionStrategyManager.getCompactionStrategyIndex(cfs,cfs.getDirectories(),sstable);
@@ -17,7 +16,7 @@
   }
   this.checkData=checkData && !this.isIndex;
   this.expectedBloomFilterSize=Math.max(cfs.metadata.params.minIndexInterval,hasIndexFile ? SSTableReader.getApproximateKeyCount(toScrub) : 0);
-  this.dataFile=isOffline ? sstable.openDataReader() : sstable.openDataReader(CompactionManager.instance.getRateLimiter());
+  this.dataFile=transaction.isOffline() ? sstable.openDataReader() : sstable.openDataReader(CompactionManager.instance.getRateLimiter());
   this.indexFile=hasIndexFile ? RandomAccessReader.open(new File(sstable.descriptor.filenameFor(Component.PRIMARY_INDEX))) : null;
   this.scrubInfo=new ScrubInfo(dataFile,sstable);
   this.currentRowPositionFromIndex=0;

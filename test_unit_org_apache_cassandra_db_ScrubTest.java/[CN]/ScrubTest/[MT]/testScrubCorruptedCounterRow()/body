@@ -9,14 +9,14 @@
   assertEquals(1,cfs.getLiveSSTables().size());
   SSTableReader sstable=cfs.getLiveSSTables().iterator().next();
   overrideWithGarbage(sstable,ByteBufferUtil.bytes("0"),ByteBufferUtil.bytes("1"));
-  try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,false,false,true)){
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,false,true)){
     scrubber.scrub();
     fail("Expected a CorruptSSTableException to be thrown");
   }
  catch (  IOError err) {
   }
   Scrubber.ScrubResult scrubResult;
-  try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,true,false,true)){
+  try (LifecycleTransaction txn=cfs.getTracker().tryModify(Arrays.asList(sstable),OperationType.SCRUB);Scrubber scrubber=new Scrubber(cfs,txn,true,true)){
     scrubResult=scrubber.scrubWithResult();
   }
    assertNotNull(scrubResult);
