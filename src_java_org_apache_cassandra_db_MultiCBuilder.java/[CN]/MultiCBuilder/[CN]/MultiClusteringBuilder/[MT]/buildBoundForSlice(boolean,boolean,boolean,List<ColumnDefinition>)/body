@@ -1,0 +1,24 @@
+{
+  built=true;
+  if (hasMissingElements)   return BTreeSet.empty(comparator);
+  CBuilder builder=CBuilder.create(comparator);
+  if (elementsList.isEmpty())   return BTreeSet.of(comparator,builder.buildBound(isStart,isInclusive));
+  BTreeSet.Builder<Slice.Bound> set=BTreeSet.builder(comparator);
+  int offset=columnDefs.get(0).position();
+  for (int i=0, m=elementsList.size(); i < m; i++) {
+    List<ByteBuffer> elements=elementsList.get(i);
+    if (elements.size() == offset) {
+      set.add(builder.buildBoundWith(elements,isStart,true));
+      continue;
+    }
+    ColumnDefinition lastColumn=columnDefs.get(columnDefs.size() - 1);
+    if (elements.size() <= lastColumn.position() && i < m - 1 && elements.equals(elementsList.get(i + 1))) {
+      set.add(builder.buildBoundWith(elements,isStart,false));
+      set.add(builder.buildBoundWith(elementsList.get(i++),isStart,true));
+      continue;
+    }
+    ColumnDefinition column=columnDefs.get(elements.size() - 1 - offset);
+    set.add(builder.buildBoundWith(elements,isStart,column.isReversedType() ? isOtherBoundInclusive : isInclusive));
+  }
+  return set.build();
+}

@@ -1,18 +1,14 @@
 {
-  MultiCBuilder builder=MultiCBuilder.create(comparator,hasIN());
+  MultiCBuilder builder=MultiCBuilder.create(comparator,hasIN() || hasMultiColumnSlice());
   int keyPosition=0;
   for (  Restriction r : restrictions) {
     ColumnDefinition def=r.getFirstColumn();
-    Bound b=!def.isReversedType() ? bound : bound.reverse();
     if (keyPosition != def.position() || r.isContains())     break;
     if (r.isSlice()) {
-      if (!r.hasBound(b)) {
-        return builder.buildBound(bound.isStart(),true);
-      }
-      r.appendBoundTo(builder,b,options);
-      return builder.buildBound(bound.isStart(),r.isInclusive(b));
+      r.appendBoundTo(builder,bound,options);
+      return builder.buildBoundForSlice(bound.isStart(),r.isInclusive(bound),r.isInclusive(bound.reverse()),r.getColumnDefs());
     }
-    r.appendBoundTo(builder,b,options);
+    r.appendBoundTo(builder,bound,options);
     if (builder.hasMissingElements())     return BTreeSet.empty(comparator);
     keyPosition=r.getLastColumn().position() + 1;
   }
