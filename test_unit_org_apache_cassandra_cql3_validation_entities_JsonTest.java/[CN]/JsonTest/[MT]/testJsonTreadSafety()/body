@@ -1,0 +1,30 @@
+{
+  int numThreads=10;
+  final int numRows=10000;
+  createTable("CREATE TABLE %s (" + "k text PRIMARY KEY, " + "v text)");
+  for (int i=0; i < numRows; i++)   execute("INSERT INTO %s (k, v) VALUES (?, ?)","" + i,"" + i);
+  long seed=System.nanoTime();
+  System.out.println("Seed " + seed);
+  final Random rand=new Random(seed);
+  final Runnable worker=new Runnable(){
+    @Override public void run(){
+      try {
+        for (int i=0; i < numRows; i++) {
+          String key="" + rand.nextInt(numRows);
+          assertRows(execute("SELECT JSON * FROM %s WHERE k = ?",key),row(String.format("{\"k\": \"%s\", \"v\": \"%s\"}",key,key)));
+        }
+      }
+ catch (      Throwable exc) {
+        exc.printStackTrace();
+        fail(exc.getMessage());
+      }
+    }
+  }
+;
+  ExecutorService executor=Executors.newFixedThreadPool(numThreads);
+  List<Future> futures=new ArrayList<>();
+  for (int i=0; i < numThreads; i++)   futures.add(executor.submit(worker));
+  for (  Future future : futures)   future.get(10,TimeUnit.SECONDS);
+  executor.shutdown();
+  Assert.assertTrue(executor.awaitTermination(10,TimeUnit.SECONDS));
+}
