@@ -1,4 +1,14 @@
 {
-  WrappingCompactionStrategy strategy=(WrappingCompactionStrategy)cfs.getCompactionStrategy();
-  while (strategy.getSSTableCountPerLevel()[0] > 1)   Thread.sleep(100);
+  WrappingCompactionStrategy strategyManager=(WrappingCompactionStrategy)cfs.getCompactionStrategy();
+  while (true) {
+    boolean allL0Empty=true;
+    boolean anyL1NonEmpty=false;
+    for (    AbstractCompactionStrategy strategy : strategyManager.getWrappedStrategies()) {
+      if (!(strategy instanceof LeveledCompactionStrategy))       return;
+      if (((LeveledCompactionStrategy)strategy).getLevelSize(0) > 1)       allL0Empty=false;
+      for (int i=1; i < 5; i++)       if (((LeveledCompactionStrategy)strategy).getLevelSize(i) > 0)       anyL1NonEmpty=true;
+    }
+    if (allL0Empty && anyL1NonEmpty)     return;
+    Thread.sleep(100);
+  }
 }
