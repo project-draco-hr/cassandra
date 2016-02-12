@@ -1,0 +1,20 @@
+{
+  Map<String,String> configMap=new TreeMap<>();
+  for (  Field field : getClass().getFields()) {
+    if (Modifier.isFinal(field.getModifiers()))     continue;
+    String name=field.getName();
+    if (SENSITIVE_KEYS.contains(name)) {
+      configMap.put(name,"<REDACTED>");
+      continue;
+    }
+    String value;
+    try {
+      value=field.get(this).toString();
+    }
+ catch (    NullPointerException|IllegalAccessException npe) {
+      value="null";
+    }
+    configMap.put(name,value);
+  }
+  logger.info("Node configuration:[" + Joiner.on("; ").join(configMap.entrySet()) + "]");
+}
