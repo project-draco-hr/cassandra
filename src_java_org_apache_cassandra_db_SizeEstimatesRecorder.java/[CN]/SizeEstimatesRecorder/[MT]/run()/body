@@ -1,11 +1,12 @@
 {
-  if (!StorageService.instance.getTokenMetadata().isMember(FBUtilities.getBroadcastAddress())) {
+  TokenMetadata metadata=StorageService.instance.getTokenMetadata().cloneOnlyTokenMap();
+  if (!metadata.isMember(FBUtilities.getBroadcastAddress())) {
     logger.debug("Node is not part of the ring; not recording size estimates");
     return;
   }
   logger.trace("Recording size estimates");
   Collection<Token> localTokens=StorageService.instance.getLocalTokens();
-  Collection<Range<Token>> localRanges=StorageService.instance.getTokenMetadata().getPrimaryRangesFor(localTokens);
+  Collection<Range<Token>> localRanges=metadata.getPrimaryRangesFor(localTokens);
   for (  Keyspace keyspace : Keyspace.nonSystem()) {
     for (    ColumnFamilyStore table : keyspace.getColumnFamilyStores()) {
       long start=System.nanoTime();
