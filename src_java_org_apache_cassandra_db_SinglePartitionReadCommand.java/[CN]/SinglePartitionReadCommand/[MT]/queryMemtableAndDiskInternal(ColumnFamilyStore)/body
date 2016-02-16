@@ -29,7 +29,7 @@
         continue;
       }
       minTimestamp=Math.min(minTimestamp,sstable.getMinTimestamp());
-      @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(sstable,true);
+      @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(cfs,sstable,true);
       if (!sstable.isRepaired())       oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
       iterators.add(iter);
       mostRecentPartitionTombstone=Math.max(mostRecentPartitionTombstone,iter.partitionLevelDeletion().markedForDeleteAt());
@@ -38,7 +38,7 @@
     if (skippedSSTablesWithTombstones != null) {
       for (      SSTableReader sstable : skippedSSTablesWithTombstones) {
         if (sstable.getMaxTimestamp() <= minTimestamp)         continue;
-        @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(sstable,false);
+        @SuppressWarnings("resource") UnfilteredRowIteratorWithLowerBound iter=makeIterator(cfs,sstable,false);
         if (!sstable.isRepaired())         oldestUnrepairedTombstone=Math.min(oldestUnrepairedTombstone,sstable.getMinLocalDeletionTime());
         iterators.add(iter);
         includedDueToTombstones++;
@@ -46,6 +46,7 @@
     }
     if (Tracing.isTracing())     Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones",nonIntersectingSSTables,view.sstables.size(),includedDueToTombstones);
     if (iterators.isEmpty())     return EmptyIterators.unfilteredRow(cfs.metadata,partitionKey(),filter.isReversed());
+    StorageHook.instance.reportRead(cfs.metadata.cfId,partitionKey());
     return withStateTracking(withSSTablesIterated(iterators,cfs.metric));
   }
  catch (  RuntimeException|Error e) {
