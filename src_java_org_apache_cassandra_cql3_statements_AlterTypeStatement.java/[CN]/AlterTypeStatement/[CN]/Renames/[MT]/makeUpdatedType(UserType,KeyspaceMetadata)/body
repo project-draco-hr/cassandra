@@ -1,0 +1,15 @@
+{
+  checkTypeNotUsedByAggregate(ksm);
+  List<ByteBuffer> newNames=new ArrayList<>(toUpdate.fieldNames());
+  List<AbstractType<?>> newTypes=new ArrayList<>(toUpdate.fieldTypes());
+  for (  Map.Entry<ColumnIdentifier,ColumnIdentifier> entry : renames.entrySet()) {
+    ColumnIdentifier from=entry.getKey();
+    ColumnIdentifier to=entry.getValue();
+    int idx=getIdxOfField(toUpdate,from);
+    if (idx < 0)     throw new InvalidRequestException(String.format("Unknown field %s in type %s",from,name));
+    newNames.set(idx,to.bytes);
+  }
+  UserType updated=new UserType(toUpdate.keyspace,toUpdate.name,newNames,newTypes);
+  CreateTypeStatement.checkForDuplicateNames(updated);
+  return updated;
+}
