@@ -1,10 +1,15 @@
 {
   try {
-    SelectStatement authenticationStatement=Schema.instance.getCFMetaData(AuthKeyspace.NAME,LEGACY_CREDENTIALS_TABLE) == null ? authenticateStatement : legacyAuthenticateStatement;
-    return doAuthenticate(username,password,authenticationStatement);
+    String hash=cache.get(username);
+    if (!BCrypt.checkpw(password,hash))     throw new AuthenticationException("Username and/or password are incorrect");
+    return new AuthenticatedUser(username);
   }
- catch (  RequestExecutionException e) {
-    logger.trace("Error performing internal authentication",e);
-    throw new AuthenticationException(e.toString());
+ catch (  ExecutionException|UncheckedExecutionException e) {
+    if (e.getCause() instanceof NoSuchCredentialsException)     throw new AuthenticationException("Username and/or password are incorrect");
+    if (e.getCause() instanceof RequestExecutionException) {
+      logger.trace("Error performing internal authentication",e);
+      throw new AuthenticationException(e.getMessage());
+    }
+    throw new RuntimeException(e);
   }
 }

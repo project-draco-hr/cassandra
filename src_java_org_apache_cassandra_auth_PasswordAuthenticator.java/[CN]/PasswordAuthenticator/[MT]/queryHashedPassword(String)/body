@@ -1,0 +1,14 @@
+{
+  try {
+    SelectStatement authenticationStatement=Schema.instance.getCFMetaData(AuthKeyspace.NAME,LEGACY_CREDENTIALS_TABLE) == null ? authenticateStatement : legacyAuthenticateStatement;
+    ResultMessage.Rows rows=authenticationStatement.execute(QueryState.forInternalCalls(),QueryOptions.forInternalCalls(consistencyForRole(username),Lists.newArrayList(ByteBufferUtil.bytes(username))));
+    if (rows.result.isEmpty())     throw new NoSuchCredentialsException();
+    UntypedResultSet result=UntypedResultSet.create(rows.result);
+    if (!result.one().has(SALTED_HASH))     throw new NoSuchCredentialsException();
+    return result.one().getString(SALTED_HASH);
+  }
+ catch (  RequestExecutionException e) {
+    logger.trace("Error performing internal authentication",e);
+    throw e;
+  }
+}
