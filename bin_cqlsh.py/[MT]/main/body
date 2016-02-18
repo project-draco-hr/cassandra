@@ -15,8 +15,31 @@ def main(options, hostname, port):
     if options.debug:
         sys.stderr.write(('Using CQL driver: %s\n' % (cassandra,)))
         sys.stderr.write(('Using connect timeout: %s seconds\n' % (options.connect_timeout,)))
+    timezone = None
+    if (options.timezone or ('TZ' in os.environ)):
+        try:
+            import pytz
+            if options.timezone:
+                try:
+                    timezone = pytz.timezone(options.timezone)
+                except:
+                    sys.stderr.write(("Warning: could not recognize timezone '%s' specified in cqlshrc\n\n" % options.timezone))
+            if ('TZ' in os.environ):
+                try:
+                    timezone = pytz.timezone(os.environ['TZ'])
+                except:
+                    sys.stderr.write(("Warning: could not recognize timezone '%s' from environment value TZ\n\n" % os.environ['TZ']))
+        except ImportError:
+            sys.stderr.write("Warning: Timezone defined and 'pytz' module for timezone conversion not installed. Timestamps will be displayed in UTC timezone.\n\n")
+    if (not timezone):
+        try:
+            from tzlocal import get_localzone
+            timezone = get_localzone()
+        except ImportError:
+            if (options.time_format != DEFAULT_TIMESTAMP_FORMAT):
+                sys.stderr.write(('Warning: custom timestamp format specified in cqlshrc, but local timezone could not be detected.\n' + "Either install Python 'tzlocal' module for auto-detection or specify client timezone in your cqlshrc.\n\n"))
     try:
-        shell = Shell(hostname, port, color=options.color, username=options.username, password=options.password, stdin=stdin, tty=options.tty, completekey=options.completekey, browser=options.browser, cqlver=options.cqlversion, keyspace=options.keyspace, display_timestamp_format=options.time_format, display_nanotime_format=options.nanotime_format, display_date_format=options.date_format, display_float_precision=options.float_precision, max_trace_wait=options.max_trace_wait, ssl=options.ssl, single_statement=options.execute, request_timeout=options.request_timeout, connect_timeout=options.connect_timeout, encoding=options.encoding)
+        shell = Shell(hostname, port, color=options.color, username=options.username, password=options.password, stdin=stdin, tty=options.tty, completekey=options.completekey, browser=options.browser, cqlver=options.cqlversion, keyspace=options.keyspace, display_timestamp_format=options.time_format, display_nanotime_format=options.nanotime_format, display_date_format=options.date_format, display_float_precision=options.float_precision, display_timezone=timezone, max_trace_wait=options.max_trace_wait, ssl=options.ssl, single_statement=options.execute, request_timeout=options.request_timeout, connect_timeout=options.connect_timeout, encoding=options.encoding)
     except KeyboardInterrupt:
         sys.exit('Connection aborted.')
     except CQL_ERRORS as e:
