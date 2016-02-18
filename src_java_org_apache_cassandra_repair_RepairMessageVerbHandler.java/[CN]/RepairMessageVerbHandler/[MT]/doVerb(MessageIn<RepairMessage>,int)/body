@@ -7,8 +7,11 @@ case PREPARE_MESSAGE:
     logger.debug("Preparing, {}",prepareMessage);
   List<ColumnFamilyStore> columnFamilyStores=new ArrayList<>(prepareMessage.cfIds.size());
 for (UUID cfId : prepareMessage.cfIds) {
-  Pair<String,String> kscf=Schema.instance.getCF(cfId);
-  ColumnFamilyStore columnFamilyStore=Keyspace.open(kscf.left).getColumnFamilyStore(kscf.right);
+  ColumnFamilyStore columnFamilyStore=ColumnFamilyStore.getIfExists(cfId);
+  if (columnFamilyStore == null) {
+    logErrorAndSendFailureResponse(String.format("Table with id %s was dropped during prepare phase of repair",cfId.toString()),message.from,id);
+    return;
+  }
   columnFamilyStores.add(columnFamilyStore);
 }
 ActiveRepairService.instance.registerParentRepairSession(prepareMessage.parentRepairSession,columnFamilyStores,prepareMessage.ranges,prepareMessage.isIncremental,prepareMessage.timestamp,prepareMessage.isGlobal);
@@ -16,7 +19,11 @@ MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTER
 break;
 case SNAPSHOT:
 logger.debug("Snapshotting {}",desc);
-ColumnFamilyStore cfs=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+final ColumnFamilyStore cfs=ColumnFamilyStore.getIfExists(desc.keyspace,desc.columnFamily);
+if (cfs == null) {
+logErrorAndSendFailureResponse(String.format("Table %s.%s was dropped during snapshot phase of repair",desc.keyspace,desc.columnFamily),message.from,id);
+return;
+}
 final Collection<Range<Token>> repairingRange=desc.ranges;
 Set<SSTableReader> snapshottedSSSTables=cfs.snapshot(desc.sessionId.toString(),new Predicate<SSTableReader>(){
 public boolean apply(SSTableReader sstable){
@@ -27,9 +34,7 @@ return sstable != null && !sstable.metadata.isIndex() && new Bounds<>(sstable.fi
 Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfs.metadata.cfId,desc.parentSessionId);
 if (!Sets.intersection(currentlyRepairing,snapshottedSSSTables).isEmpty()) {
 cfs.clearSnapshot(desc.sessionId.toString());
-logger.error("Cannot start multiple repair sessions over the same sstables");
-MessageOut reply=new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE).withParameter(MessagingService.FAILURE_RESPONSE_PARAM,MessagingService.ONE_BYTE);
-MessagingService.instance().sendReply(reply,id,message.from);
+logErrorAndSendFailureResponse("Cannot start multiple repair sessions over the same sstables",message.from,id);
 return;
 }
 ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).addSSTables(cfs.metadata.cfId,snapshottedSSSTables);
@@ -39,7 +44,12 @@ break;
 case VALIDATION_REQUEST:
 ValidationRequest validationRequest=(ValidationRequest)message.payload;
 logger.debug("Validating {}",validationRequest);
-ColumnFamilyStore store=Keyspace.open(desc.keyspace).getColumnFamilyStore(desc.columnFamily);
+ColumnFamilyStore store=ColumnFamilyStore.getIfExists(desc.keyspace,desc.columnFamily);
+if (store == null) {
+logger.error("Table {}.{} was dropped during snapshot phase of repair",desc.keyspace,desc.columnFamily);
+MessagingService.instance().sendOneWay(new ValidationComplete(desc).createMessage(),message.from);
+return;
+}
 Validator validator=new Validator(desc,message.from,validationRequest.gcBefore);
 CompactionManager.instance.submitValidation(store,validator);
 break;
