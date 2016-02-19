@@ -1,3 +1,13 @@
 {
+  String compressorType=validateCompressorType(args.get(LZ4_COMPRESSOR_TYPE));
+  Integer compressionLevel=validateCompressionLevel(args.get(LZ4_HIGH_COMPRESSION_LEVEL));
+  Pair<String,Integer> compressorTypeAndLevel=Pair.create(compressorType,compressionLevel);
+  LZ4Compressor instance=instances.get(compressorTypeAndLevel);
+  if (instance == null) {
+    if (compressorType.equals(LZ4_FAST_COMPRESSOR) && args.get(LZ4_HIGH_COMPRESSION_LEVEL) != null)     logger.warn("'{}' parameter is ignored when '{}' is '{}'",LZ4_HIGH_COMPRESSION_LEVEL,LZ4_COMPRESSOR_TYPE,LZ4_FAST_COMPRESSOR);
+    instance=new LZ4Compressor(compressorType,compressionLevel);
+    LZ4Compressor instanceFromMap=instances.putIfAbsent(compressorTypeAndLevel,instance);
+    if (instanceFromMap != null)     instance=instanceFromMap;
+  }
   return instance;
 }
