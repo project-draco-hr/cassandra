@@ -1,7 +1,7 @@
 {
   super(name,argNames,argTypes,UDHelper.driverTypes(argTypes),returnType,UDHelper.driverType(returnType),calledOnNullInput,"java",body);
-  TypeToken<?>[] javaParamTypes=UDHelper.typeTokens(argDataTypes,calledOnNullInput);
-  TypeToken<?> javaReturnType=UDHelper.asTypeToken(returnDataType);
+  TypeToken<?>[] javaParamTypes=UDHelper.typeTokens(argCodecs,calledOnNullInput);
+  TypeToken<?> javaReturnType=returnCodec.getJavaType();
   String pkgName=BASE_PACKAGE + '.' + generateClassName(name,'p');
   String clsName=generateClassName(name,'C');
   String executeInternalName=generateClassName(name,'x');
@@ -84,9 +84,9 @@ nonSyntheticMethodCount+=1;
 }
 }
 if (nonSyntheticMethodCount != 2 || cls.getDeclaredConstructors().length != 1) throw new InvalidRequestException("Check your source to not define additional Java methods or constructors");
-MethodType methodType=MethodType.methodType(void.class).appendParameterTypes(DataType.class,DataType[].class);
+MethodType methodType=MethodType.methodType(void.class).appendParameterTypes(TypeCodec.class,TypeCodec[].class);
 MethodHandle ctor=MethodHandles.lookup().findConstructor(cls,methodType);
-this.javaUDF=(JavaUDF)ctor.invokeWithArguments(returnDataType,argDataTypes);
+this.javaUDF=(JavaUDF)ctor.invokeWithArguments(returnCodec,argCodecs);
 }
   finally {
 thread.setContextClassLoader(orig);
