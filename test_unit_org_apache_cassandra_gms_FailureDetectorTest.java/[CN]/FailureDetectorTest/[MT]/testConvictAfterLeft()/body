@@ -1,0 +1,19 @@
+{
+  StorageService ss=StorageService.instance;
+  TokenMetadata tmd=ss.getTokenMetadata();
+  tmd.clearUnsafe();
+  IPartitioner partitioner=new RandomPartitioner();
+  VersionedValue.VersionedValueFactory valueFactory=new VersionedValue.VersionedValueFactory(partitioner);
+  ArrayList<Token> endpointTokens=new ArrayList<>();
+  ArrayList<Token> keyTokens=new ArrayList<>();
+  List<InetAddress> hosts=new ArrayList<>();
+  List<UUID> hostIds=new ArrayList<>();
+  DatabaseDescriptor.setPhiConvictThreshold(0);
+  Util.createInitialRing(ss,partitioner,endpointTokens,keyTokens,hosts,hostIds,3);
+  InetAddress leftHost=hosts.get(1);
+  FailureDetector.instance.report(leftHost);
+  ss.onChange(leftHost,ApplicationState.STATUS,valueFactory.left(Collections.singleton(endpointTokens.get(1)),Gossiper.computeExpireTime()));
+  assertFalse("Left endpoint not removed from TokenMetadata",tmd.isMember(leftHost));
+  FailureDetector.instance.interpret(leftHost);
+  assertFalse("Left endpoint not convicted",FailureDetector.instance.isAlive(leftHost));
+}
