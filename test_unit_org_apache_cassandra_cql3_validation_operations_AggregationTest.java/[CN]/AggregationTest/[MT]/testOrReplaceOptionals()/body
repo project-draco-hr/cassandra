@@ -1,0 +1,17 @@
+{
+  String fState=createFunction(KEYSPACE,"list<text>, int","CREATE FUNCTION %s(s list<text>, i int) " + "CALLED ON NULL INPUT " + "RETURNS list<text> "+ "LANGUAGE java "+ "AS 'if (i != null) s.add(String.valueOf(i)); return s;'");
+  String fFinal=shortFunctionName(createFunction(KEYSPACE,"list<text>","CREATE FUNCTION %s(s list<text>) " + "CALLED ON NULL INPUT " + "RETURNS list<text> "+ "LANGUAGE java "+ "AS 'return s;'"));
+  String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(fState) + ' '+ "STYPE list<text> ");
+  checkOptionals(a,null,null);
+  String ddlPrefix="CREATE OR REPLACE AGGREGATE " + a + "(int) "+ "SFUNC "+ shortFunctionName(fState)+ ' '+ "STYPE list<text> ";
+  for (  String condition : new String[]{"","INITCOND null"}) {
+    execute(ddlPrefix + "INITCOND [  ] ");
+    checkOptionals(a,null,ByteBuffer.allocate(4));
+    execute(ddlPrefix + condition);
+    checkOptionals(a,null,null);
+  }
+  execute(ddlPrefix + "FINALFUNC " + shortFunctionName(fFinal)+ " ");
+  checkOptionals(a,shortFunctionName(fFinal),null);
+  execute(ddlPrefix);
+  checkOptionals(a,null,null);
+}
