@@ -3,6 +3,9 @@
   logger.debug("Starting anticompaction for ranges {}",ranges);
   Set<SSTableReader> sstables=new HashSet<>(validatedForRepair);
   Set<SSTableReader> mutatedRepairStatuses=new HashSet<>();
+  Set<SSTableReader> mutatedRepairStatusToNotify=new HashSet<>();
+  Map<SSTableReader,Boolean> wasRepairedBefore=new HashMap<>();
+  for (  SSTableReader sstable : sstables)   wasRepairedBefore.put(sstable,sstable.isRepaired());
   Set<SSTableReader> nonAnticompacting=new HashSet<>();
   Iterator<SSTableReader> sstableIterator=sstables.iterator();
   try {
@@ -17,6 +20,7 @@
           sstable.descriptor.getMetadataSerializer().mutateRepairedAt(sstable.descriptor,repairedAt);
           sstable.reloadSSTableMetadata();
           mutatedRepairStatuses.add(sstable);
+          if (!wasRepairedBefore.get(sstable))           mutatedRepairStatusToNotify.add(sstable);
           sstableIterator.remove();
           shouldAnticompact=true;
           break;
@@ -33,7 +37,7 @@
       }
     }
     validatedForRepair.release(Sets.union(nonAnticompacting,mutatedRepairStatuses));
-    cfs.getDataTracker().notifySSTableRepairedStatusChanged(mutatedRepairStatuses);
+    cfs.getDataTracker().notifySSTableRepairedStatusChanged(mutatedRepairStatusToNotify);
     cfs.getDataTracker().unmarkCompacting(Sets.union(nonAnticompacting,mutatedRepairStatuses));
     if (!sstables.isEmpty())     doAntiCompaction(cfs,ranges,sstables,repairedAt);
   }
