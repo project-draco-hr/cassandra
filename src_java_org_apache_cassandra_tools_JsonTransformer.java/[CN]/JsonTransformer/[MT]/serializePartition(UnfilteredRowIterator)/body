@@ -1,0 +1,49 @@
+{
+  String key=metadata.getKeyValidator().getString(partition.partitionKey().getKey());
+  try {
+    json.writeStartObject();
+    json.writeFieldName("partition");
+    json.writeStartObject();
+    json.writeFieldName("key");
+    serializePartitionKey(partition.partitionKey());
+    json.writeNumberField("position",this.currentScanner.getCurrentPosition());
+    if (!partition.partitionLevelDeletion().isLive()) {
+      json.writeFieldName("deletion_info");
+      objectIndenter.setCompact(true);
+      json.writeStartObject();
+      json.writeFieldName("deletion_time");
+      json.writeNumber(partition.partitionLevelDeletion().markedForDeleteAt());
+      json.writeFieldName("tstamp");
+      json.writeNumber(partition.partitionLevelDeletion().localDeletionTime());
+      json.writeEndObject();
+      objectIndenter.setCompact(false);
+      json.writeEndObject();
+    }
+ else {
+      json.writeEndObject();
+      json.writeFieldName("rows");
+      json.writeStartArray();
+      updatePosition();
+      if (!partition.staticRow().isEmpty()) {
+        serializeRow(partition.staticRow());
+      }
+      Unfiltered unfiltered;
+      updatePosition();
+      while (partition.hasNext()) {
+        unfiltered=partition.next();
+        if (unfiltered instanceof Row) {
+          serializeRow((Row)unfiltered);
+        }
+ else         if (unfiltered instanceof RangeTombstoneMarker) {
+          serializeTombstone((RangeTombstoneMarker)unfiltered);
+        }
+        updatePosition();
+      }
+      json.writeEndArray();
+    }
+    json.writeEndObject();
+  }
+ catch (  IOException e) {
+    logger.error("Fatal error parsing partition: {}",key,e);
+  }
+}
