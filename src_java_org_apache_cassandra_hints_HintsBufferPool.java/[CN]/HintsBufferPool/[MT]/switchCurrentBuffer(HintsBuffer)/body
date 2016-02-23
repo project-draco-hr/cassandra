@@ -1,6 +1,14 @@
 {
   if (currentBuffer != previous)   return false;
   HintsBuffer buffer=reserveBuffers.poll();
+  if (buffer == null && allocatedBuffers >= MAX_ALLOCATED_BUFFERS) {
+    try {
+      buffer=reserveBuffers.take();
+    }
+ catch (    InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
   currentBuffer=buffer == null ? createBuffer() : buffer;
   return true;
 }
