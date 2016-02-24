@@ -1,0 +1,45 @@
+{
+  try {
+    json.writeStartObject();
+    objectIndenter.setCompact(true);
+    json.writeFieldName("name");
+    AbstractType<?> type=cell.column().type;
+    json.writeString(cell.column().name.toCQLString());
+    if (cell.path() != null && cell.path().size() > 0) {
+      CollectionType ct=(CollectionType)type;
+      json.writeFieldName("path");
+      arrayIndenter.setCompact(true);
+      json.writeStartArray();
+      for (int i=0; i < cell.path().size(); i++) {
+        json.writeString(ct.nameComparator().getString(cell.path().get(i)));
+      }
+      json.writeEndArray();
+      arrayIndenter.setCompact(false);
+    }
+    if (cell.isTombstone()) {
+      json.writeFieldName("deletion_time");
+      json.writeNumber(cell.localDeletionTime());
+    }
+ else {
+      json.writeFieldName("value");
+      json.writeString(cell.column().cellValueType().getString(cell.value()));
+    }
+    if (liveInfo.isEmpty() || cell.timestamp() != liveInfo.timestamp()) {
+      json.writeFieldName("tstamp");
+      json.writeNumber(cell.timestamp());
+    }
+    if (cell.isExpiring() && (liveInfo.isEmpty() || cell.ttl() != liveInfo.ttl())) {
+      json.writeFieldName("ttl");
+      json.writeNumber(cell.ttl());
+      json.writeFieldName("expires_at");
+      json.writeNumber(cell.localDeletionTime());
+      json.writeFieldName("expired");
+      json.writeBoolean(!cell.isLive((int)(System.currentTimeMillis() / 1000)));
+    }
+    json.writeEndObject();
+    objectIndenter.setCompact(false);
+  }
+ catch (  IOException e) {
+    logger.error("Failure parsing cell.",e);
+  }
+}
