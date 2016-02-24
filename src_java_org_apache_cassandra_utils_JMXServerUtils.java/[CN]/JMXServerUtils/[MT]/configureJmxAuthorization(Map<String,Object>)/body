@@ -1,0 +1,16 @@
+{
+  String authzProxyClass=System.getProperty("cassandra.jmx.authorizer");
+  if (authzProxyClass != null) {
+    final InvocationHandler handler=FBUtilities.construct(authzProxyClass,"JMX authz proxy");
+    final Class[] interfaces={MBeanServerForwarder.class};
+    Object proxy=Proxy.newProxyInstance(MBeanServerForwarder.class.getClassLoader(),interfaces,handler);
+    return MBeanServerForwarder.class.cast(proxy);
+  }
+ else {
+    String accessFile=System.getProperty("com.sun.management.jmxremote.access.file");
+    if (accessFile != null) {
+      env.put("jmx.remote.x.access.file",accessFile);
+    }
+    return null;
+  }
+}

@@ -1,17 +1,18 @@
 {
-  if (System.getProperty("com.sun.management.jmxremote.port") != null)   return;
-  String jmxPort=System.getProperty("cassandra.jmx.local.port");
+  System.setProperty("java.rmi.server.randomIDs","true");
+  boolean localOnly=false;
+  String jmxPort=System.getProperty("cassandra.jmx.remote.port");
+  if (jmxPort == null) {
+    localOnly=true;
+    jmxPort=System.getProperty("cassandra.jmx.local.port");
+  }
   if (jmxPort == null)   return;
-  System.setProperty("java.rmi.server.hostname",InetAddress.getLoopbackAddress().getHostAddress());
-  RMIServerSocketFactory serverFactory=new RMIServerSocketFactoryImpl();
-  Map<String,?> env=Collections.singletonMap(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE,serverFactory);
   try {
-    LocateRegistry.createRegistry(Integer.valueOf(jmxPort),null,serverFactory);
-    JMXServiceURL url=new JMXServiceURL(String.format("service:jmx:rmi://localhost/jndi/rmi://localhost:%s/jmxrmi",jmxPort));
-    jmxServer=new RMIConnectorServer(url,env,ManagementFactory.getPlatformMBeanServer());
+    jmxServer=JMXServerUtils.createJMXServer(Integer.parseInt(jmxPort),localOnly);
+    if (jmxServer == null)     return;
     jmxServer.start();
   }
  catch (  IOException e) {
-    logger.error("Error starting local jmx server: ",e);
+    logger.error("Error starting JMX server: ",e);
   }
 }

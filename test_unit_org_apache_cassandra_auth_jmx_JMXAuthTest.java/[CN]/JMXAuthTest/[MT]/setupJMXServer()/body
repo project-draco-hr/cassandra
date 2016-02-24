@@ -1,0 +1,14 @@
+{
+  String config=Paths.get(ClassLoader.getSystemResource("auth/cassandra-test-jaas.conf").toURI()).toString();
+  System.setProperty("com.sun.management.jmxremote.authenticate","true");
+  System.setProperty("java.security.auth.login.config",config);
+  System.setProperty("cassandra.jmx.remote.login.config","TestLogin");
+  System.setProperty("cassandra.jmx.authorizer",NoSuperUserAuthorizationProxy.class.getName());
+  jmxServer=JMXServerUtils.createJMXServer(9999,true);
+  jmxServer.start();
+  JMXServiceURL jmxUrl=new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:9999/jmxrmi");
+  Map<String,Object> env=new HashMap<>();
+  env.put("com.sun.jndi.rmi.factory.socket",RMISocketFactory.getDefaultSocketFactory());
+  JMXConnector jmxc=JMXConnectorFactory.connect(jmxUrl,env);
+  connection=jmxc.getMBeanServerConnection();
+}

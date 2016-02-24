@@ -1,0 +1,16 @@
+{
+  if (permittedResources.contains(JMXResource.root()))   return true;
+  Set<ObjectName> targetNames=queryNames.apply(target);
+  for (  JMXResource resource : permittedResources) {
+    try {
+      Set<ObjectName> matchingNames=queryNames.apply(ObjectName.getInstance(resource.getObjectName()));
+      targetNames.removeAll(matchingNames);
+      if (targetNames.isEmpty())       return true;
+    }
+ catch (    MalformedObjectNameException e) {
+      logger.warn("Permissions for JMX resource contains invalid ObjectName {}",resource.getObjectName());
+    }
+  }
+  logger.trace("Subject does not have sufficient permissions on all MBeans matching the target pattern {}",target);
+  return false;
+}

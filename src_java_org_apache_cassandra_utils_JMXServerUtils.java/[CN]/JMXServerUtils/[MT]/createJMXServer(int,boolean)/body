@@ -1,0 +1,26 @@
+{
+  Map<String,Object> env=new HashMap<>();
+  String urlTemplate="service:jmx:rmi://%1$s/jndi/rmi://%1$s:%2$d/jmxrmi";
+  String url;
+  String host;
+  InetAddress serverAddress;
+  if (local) {
+    serverAddress=InetAddress.getLoopbackAddress();
+    host=serverAddress.getHostAddress();
+    System.setProperty("java.rmi.server.hostname",host);
+  }
+ else {
+    host=System.getProperty("java.rmi.server.hostname");
+    serverAddress=host == null ? null : InetAddress.getByName(host);
+  }
+  env.putAll(configureJmxSocketFactories(serverAddress));
+  url=String.format(urlTemplate,(host == null ? "0.0.0.0" : serverAddress.getHostAddress()),port);
+  LocateRegistry.createRegistry(port,(RMIClientSocketFactory)env.get(RMIConnectorServer.RMI_CLIENT_SOCKET_FACTORY_ATTRIBUTE),(RMIServerSocketFactory)env.get(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE));
+  env.putAll(configureJmxAuthentication());
+  MBeanServerForwarder authzProxy=configureJmxAuthorization(env);
+  env.put(RMIExporter.EXPORTER_ATTRIBUTE,new Exporter());
+  JMXConnectorServer jmxServer=JMXConnectorServerFactory.newJMXConnectorServer(new JMXServiceURL(url),env,ManagementFactory.getPlatformMBeanServer());
+  if (authzProxy != null)   jmxServer.setMBeanServerForwarder(authzProxy);
+  logger.info("Configured JMX server at: {}",url);
+  return jmxServer;
+}

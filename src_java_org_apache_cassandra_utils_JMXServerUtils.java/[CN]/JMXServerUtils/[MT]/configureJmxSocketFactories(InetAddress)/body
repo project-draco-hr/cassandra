@@ -1,0 +1,28 @@
+{
+  Map<String,Object> env=new HashMap<>();
+  if (Boolean.getBoolean("com.sun.management.jmxremote.ssl")) {
+    boolean requireClientAuth=Boolean.getBoolean("com.sun.management.jmxremote.ssl.need.client.auth");
+    String[] protocols=null;
+    String protocolList=System.getProperty("com.sun.management.jmxremote.ssl.enabled.protocols");
+    if (protocolList != null) {
+      System.setProperty("javax.rmi.ssl.client.enabledProtocols",protocolList);
+      protocols=StringUtils.split(protocolList,',');
+    }
+    String[] ciphers=null;
+    String cipherList=System.getProperty("com.sun.management.jmxremote.ssl.enabled.cipher.suites");
+    if (cipherList != null) {
+      System.setProperty("javax.rmi.ssl.client.enabledCipherSuites",cipherList);
+      ciphers=StringUtils.split(cipherList,',');
+    }
+    SslRMIClientSocketFactory clientFactory=new SslRMIClientSocketFactory();
+    SslRMIServerSocketFactory serverFactory=new SslRMIServerSocketFactory(ciphers,protocols,requireClientAuth);
+    env.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE,serverFactory);
+    env.put(RMIConnectorServer.RMI_CLIENT_SOCKET_FACTORY_ATTRIBUTE,clientFactory);
+    env.put("com.sun.jndi.rmi.factory.socket",clientFactory);
+    logJmxSslConfig(serverFactory);
+  }
+ else {
+    env.put(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE,new RMIServerSocketFactoryImpl(serverAddress));
+  }
+  return env;
+}

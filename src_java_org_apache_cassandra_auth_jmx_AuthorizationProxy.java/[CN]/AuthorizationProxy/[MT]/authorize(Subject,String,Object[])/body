@@ -1,0 +1,19 @@
+{
+  logger.trace("Authorizing JMX method invocation {} for {}",methodName,subject == null ? "" : subject.toString().replaceAll("\\n"," "));
+  if (!isAuthSetupComplete.get()) {
+    logger.trace("Auth setup is not complete, refusing access");
+    return false;
+  }
+  if (!isAuthzRequired.get())   return true;
+  if (subject == null)   return true;
+  if (METHOD_BLACKLIST.contains(methodName)) {
+    logger.trace("Access denied to blacklisted method {}",methodName);
+    return false;
+  }
+  Set<Principal> principals=subject.getPrincipals();
+  if (principals == null || principals.isEmpty())   return false;
+  RoleResource userResource=RoleResource.role(principals.iterator().next().getName());
+  if (isSuperuser.apply(userResource))   return true;
+  if (args != null && args[0] instanceof ObjectName)   return authorizeMBeanMethod(userResource,methodName,args);
+ else   return authorizeMBeanServerMethod(userResource,methodName);
+}
