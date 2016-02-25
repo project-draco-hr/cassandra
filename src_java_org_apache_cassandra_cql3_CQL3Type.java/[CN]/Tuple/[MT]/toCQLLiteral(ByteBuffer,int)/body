@@ -1,0 +1,23 @@
+{
+  if (buffer == null)   return "null";
+  StringBuilder target=new StringBuilder();
+  buffer=buffer.duplicate();
+  target.append('(');
+  boolean first=true;
+  for (int i=0; i < type.size(); i++) {
+    if (!buffer.hasRemaining())     break;
+    if (buffer.remaining() < 4)     throw new MarshalException(String.format("Not enough bytes to read size of %dth component",i));
+    int size=buffer.getInt();
+    if (first)     first=false;
+ else     target.append(", ");
+    if (size < 0) {
+      target.append("null");
+      continue;
+    }
+    if (buffer.remaining() < size)     throw new MarshalException(String.format("Not enough bytes to read %dth component",i));
+    ByteBuffer field=ByteBufferUtil.readBytes(buffer,size);
+    target.append(type.type(i).asCQL3Type().toCQLLiteral(field,version));
+  }
+  target.append(')');
+  return target.toString();
+}
