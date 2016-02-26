@@ -1,0 +1,14 @@
+{
+  createTable("CREATE TABLE %s (" + "a int," + "b int,"+ "c map<int, text>,"+ "PRIMARY KEY (a))");
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mvmap","CREATE MATERIALIZED VIEW %s AS SELECT a, b FROM %%s WHERE b IS NOT NULL PRIMARY KEY (b, a)");
+  updateView("INSERT INTO %s (a, b) VALUES (?, ?)",0,0);
+  ResultSet mvRows=executeNet(protocolVersion,"SELECT a, b FROM mvmap WHERE b = ?",0);
+  assertRowsNet(protocolVersion,mvRows,row(0,0));
+  updateView("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",1,1,map(1,"1"));
+  mvRows=executeNet(protocolVersion,"SELECT a, b FROM mvmap WHERE b = ?",1);
+  assertRowsNet(protocolVersion,mvRows,row(1,1));
+  updateView("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,0,map(0,"0"));
+  mvRows=executeNet(protocolVersion,"SELECT a, b FROM mvmap WHERE b = ?",0);
+  assertRowsNet(protocolVersion,mvRows,row(0,0));
+}
