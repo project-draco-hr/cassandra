@@ -1,6 +1,11 @@
 {
-  Set<String> des=Sets.newHashSet(desired);
-  Set<String> toReturn=Sets.intersection(Sets.newHashSet(supported),des);
-  if (des.size() > toReturn.size())   logger.warn("Filtering out {} as it isnt supported by the socket",StringUtils.join(Sets.difference(des,toReturn),","));
-  return toReturn.toArray(new String[toReturn.size()]);
+  if (Arrays.equals(supported,desired))   return desired;
+  List<String> ldesired=Arrays.asList(desired);
+  ImmutableSet<String> ssupported=ImmutableSet.copyOf(supported);
+  String[] ret=Iterables.toArray(Iterables.filter(ldesired,Predicates.in(ssupported)),String.class);
+  if (desired.length > ret.length && logger.isWarnEnabled()) {
+    Iterable<String> missing=Iterables.filter(ldesired,Predicates.not(Predicates.in(Sets.newHashSet(ret))));
+    logger.warn("Filtering out {} as it isn't supported by the socket",Iterables.toString(missing));
+  }
+  return ret;
 }
