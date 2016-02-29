@@ -1,11 +1,15 @@
 def attach_callbacks(self, token_range, future, session):
+    metadata = session.cluster.metadata
+    ks_meta = metadata.keyspaces[self.ks]
+    table_meta = ks_meta.tables[self.table]
+    cql_types = [CqlType(table_meta.columns[c].cql_type, ks_meta) for c in self.columns]
 
     def result_callback(rows):
         if future.has_more_pages:
             future.start_fetching_next_page()
-            self.write_rows_to_csv(token_range, rows)
+            self.write_rows_to_csv(token_range, rows, cql_types)
         else:
-            self.write_rows_to_csv(token_range, rows)
+            self.write_rows_to_csv(token_range, rows, cql_types)
             self.outmsg.send((None, None))
             session.complete_request()
 

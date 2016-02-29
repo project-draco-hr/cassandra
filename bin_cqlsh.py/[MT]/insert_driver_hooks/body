@@ -1,3 +1,17 @@
 def insert_driver_hooks():
-    extend_cql_deserialization()
-    auto_format_udts()
+
+
+    class DateOverFlowWarning(RuntimeWarning):
+        pass
+
+    def deserialize_date_fallback_int(byts, protocol_version):
+        timestamp_ms = int64_unpack(byts)
+        try:
+            return datetime_from_timestamp((timestamp_ms / 1000.0))
+        except OverflowError:
+            warnings.warn(DateOverFlowWarning('Some timestamps are larger than Python datetime can represent. Timestamps are displayed in milliseconds from epoch.'))
+            return timestamp_ms
+    cassandra.cqltypes.DateType.deserialize = staticmethod(deserialize_date_fallback_int)
+    if hasattr(cassandra, 'deserializers'):
+        del cassandra.deserializers.DesDateType
+    cassandra.cqltypes.CassandraType.support_empty_values = True

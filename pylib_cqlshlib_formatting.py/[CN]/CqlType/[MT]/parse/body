@@ -1,0 +1,17 @@
+def parse(self, typestring, ksmeta):
+    '\n        Parse the typestring by looking at this pattern: *<*>. If there is no match then the type\n        is either a simple type or a user type, otherwise it must be a composite type\n        for which we need to look-up the sub-types. For user types the sub types can be extracted\n        from the keyspace metadata.\n        '
+    while True:
+        m = self.pattern.match(typestring)
+        if (not m):
+            name = typestring
+            if (ksmeta and (name in ksmeta.user_types)):
+                sub_types = [CqlType(t, ksmeta) for t in ksmeta.user_types[name].field_types]
+                return (name, sub_types, format_value_utype)
+            else:
+                return (name, [], self._get_formatter(name))
+        else:
+            if (m.group(1) == 'frozen'):
+                typestring = m.group(2)
+                continue
+            name = m.group(1)
+            return (name, self.parse_sub_types(m.group(2), ksmeta), self._get_formatter(name))
