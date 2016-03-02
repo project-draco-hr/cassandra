@@ -1,8 +1,12 @@
 {
   final File f=writeFile(params);
   try (ChannelProxy channel=new ChannelProxy(f)){
-    RandomAccessReader.Builder builder=new RandomAccessReader.Builder(channel).bufferType(params.bufferType).bufferSize(params.bufferSize);
-    if (params.mmappedRegions)     builder.regions(MmappedRegions.map(channel,f.length()));
+    RandomAccessReader.Builder builder=RandomAccessReader.builder(channel).bufferType(params.bufferType).bufferSize(params.bufferSize);
+    MmappedRegions regions=null;
+    if (params.mmappedRegions) {
+      regions=MmappedRegions.map(channel,f.length());
+      builder.regions(regions);
+    }
     try (RandomAccessReader reader=builder.build()){
       assertEquals(f.getAbsolutePath(),reader.getPath());
       assertEquals(f.length(),reader.length());
@@ -18,6 +22,6 @@
       assertTrue(reader.isEOF());
       assertEquals(0,reader.bytesRemaining());
     }
-     if (builder.regions != null)     assertNull(builder.regions.close(null));
+     if (regions != null)     assertNull(regions.close(null));
   }
  }

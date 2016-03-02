@@ -1,0 +1,34 @@
+{
+  metadataBuffer.clear();
+  channel.read(metadataBuffer,filePosition);
+  filePosition+=CompressedHintsWriter.METADATA_SIZE;
+  metadataBuffer.rewind();
+  int uncompressedSize=metadataBuffer.getInt();
+  int compressedSize=metadataBuffer.getInt();
+  if (compressedBuffer == null || compressedSize > compressedBuffer.capacity()) {
+    int bufferSize=compressedSize + (compressedSize / 20);
+    if (compressedBuffer != null) {
+      BufferPool.put(compressedBuffer);
+    }
+    compressedBuffer=BufferPool.get(bufferSize,compressor.preferredBufferType());
+  }
+  compressedBuffer.clear();
+  compressedBuffer.limit(compressedSize);
+  channel.read(compressedBuffer,filePosition);
+  compressedBuffer.rewind();
+  filePosition+=compressedSize;
+  if (buffer.capacity() < uncompressedSize) {
+    int bufferSize=uncompressedSize + (uncompressedSize / 20);
+    BufferPool.put(buffer);
+    buffer=BufferPool.get(bufferSize,compressor.preferredBufferType());
+  }
+  buffer.clear();
+  buffer.limit(uncompressedSize);
+  try {
+    compressor.uncompress(compressedBuffer,buffer);
+    buffer.flip();
+  }
+ catch (  IOException e) {
+    throw new FSReadError(e,getPath());
+  }
+}
