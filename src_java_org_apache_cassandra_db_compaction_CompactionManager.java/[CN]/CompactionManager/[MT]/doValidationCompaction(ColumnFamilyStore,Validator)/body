@@ -1,2 +1,51 @@
 {
+  if (!cfs.isValid())   return;
+  Refs<SSTableReader> sstables=null;
+  try {
+    String snapshotName=validator.desc.sessionId.toString();
+    int gcBefore;
+    int nowInSec=FBUtilities.nowInSeconds();
+    boolean isSnapshotValidation=cfs.snapshotExists(snapshotName);
+    if (isSnapshotValidation) {
+      sstables=cfs.getSnapshotSSTableReader(snapshotName);
+      gcBefore=cfs.gcBefore((int)(cfs.getSnapshotCreationTime(snapshotName) / 1000));
+    }
+ else {
+      StorageService.instance.forceKeyspaceFlush(cfs.keyspace.getName(),cfs.name);
+      sstables=getSSTablesToValidate(cfs,validator);
+      if (sstables == null)       return;
+      if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;
+ else       gcBefore=getDefaultGcBefore(cfs,nowInSec);
+    }
+    long numPartitions=0;
+    for (    SSTableReader sstable : sstables) {
+      numPartitions+=sstable.estimatedKeysForRanges(validator.desc.ranges);
+    }
+    int depth=numPartitions > 0 ? (int)Math.min(Math.floor(Math.log(numPartitions)),20) : 0;
+    MerkleTrees tree=new MerkleTrees(cfs.getPartitioner());
+    tree.addMerkleTrees((int)Math.pow(2,depth),validator.desc.ranges);
+    long start=System.nanoTime();
+    try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables,validator.desc.ranges);ValidationCompactionController controller=new ValidationCompactionController(cfs,gcBefore);CompactionIterator ci=new ValidationCompactionIterator(scanners.scanners,controller,nowInSec,metrics)){
+      validator.prepare(cfs,tree);
+      while (ci.hasNext()) {
+        if (ci.isStopRequested())         throw new CompactionInterruptedException(ci.getCompactionInfo());
+        try (UnfilteredRowIterator partition=ci.next()){
+          validator.add(partition);
+        }
+       }
+      validator.complete();
+    }
+  finally {
+      if (isSnapshotValidation) {
+        cfs.clearSnapshot(snapshotName);
+      }
+    }
+    if (logger.isTraceEnabled()) {
+      long duration=TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+      logger.trace("Validation finished in {} msec, depth {} for {} keys, serialized size {} bytes for {}",duration,depth,numPartitions,MerkleTrees.serializer.serializedSize(tree,0),validator.desc);
+    }
+  }
+  finally {
+    if (sstables != null)     sstables.release();
+  }
 }
