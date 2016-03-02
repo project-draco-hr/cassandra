@@ -1,0 +1,29 @@
+{
+  State state=currentState.get();
+  if (state == null) {
+    TokenRange range=tokenRangeIterator.next();
+    if (range == null)     return true;
+    state=new State(range,buildQuery(range));
+    currentState.set(state);
+  }
+  ResultSet results;
+  Statement statement=new SimpleStatement(state.query);
+  statement.setFetchSize(pageSize);
+  if (state.pagingState != null)   statement.setPagingState(state.pagingState);
+  results=client.getSession().execute(statement);
+  state.pagingState=results.getExecutionInfo().getPagingState();
+  int remaining=results.getAvailableWithoutFetching();
+  rowCount+=remaining;
+  for (  Row row : results) {
+    Token partition=row.getPartitionKeyToken();
+    if (!state.partitions.contains(partition)) {
+      partitionCount+=1;
+      state.partitions.add(partition);
+    }
+    if (--remaining == 0)     break;
+  }
+  if (results.isExhausted() || isWarmup) {
+    currentState.set(null);
+  }
+  return true;
+}
