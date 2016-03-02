@@ -1,10 +1,12 @@
 {
   final SeedManager seeds=new SeedManager(settings);
+  final TokenRangeIterator tokenRangeIterator=profile.tokenRangeQueries.isEmpty() ? null : new TokenRangeIterator(settings,profile.maybeLoadTokenRanges(settings));
   return new SampledOpDistributionFactory<String>(ratios,clustering){
-    protected List<? extends Operation> get(    Timer timer,    PartitionGenerator generator,    String key){
+    protected List<? extends Operation> get(    Timer timer,    PartitionGenerator generator,    String key,    boolean isWarmup){
       if (key.equalsIgnoreCase("insert"))       return Collections.singletonList(profile.getInsert(timer,generator,seeds,settings));
       if (key.equalsIgnoreCase("validate"))       return profile.getValidate(timer,generator,seeds,settings);
-      return Collections.singletonList(profile.getQuery(key,timer,generator,seeds,settings));
+      if (profile.tokenRangeQueries.containsKey(key))       return Collections.singletonList(profile.getBulkReadQueries(key,timer,settings,tokenRangeIterator,isWarmup));
+      return Collections.singletonList(profile.getQuery(key,timer,generator,seeds,settings,isWarmup));
     }
     protected PartitionGenerator newGenerator(){
       return profile.newGenerator(settings);
