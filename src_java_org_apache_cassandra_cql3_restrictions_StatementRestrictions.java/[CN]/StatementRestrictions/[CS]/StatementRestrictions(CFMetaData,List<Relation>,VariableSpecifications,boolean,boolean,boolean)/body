@@ -16,6 +16,10 @@
   usesSecondaryIndexing=usesSecondaryIndexing || clusteringColumnsRestrictions.isContains();
   if (usesSecondaryIndexing)   indexRestrictions.add(clusteringColumnsRestrictions);
   if (!nonPrimaryKeyRestrictions.isEmpty()) {
+    if (!hasQueriableIndex) {
+      if (cfm.comparator.isDense() || cfm.comparator.isCompound())       throw invalidRequest("Predicates on non-primary-key columns (%s) are not yet supported for non secondary index queries",Joiner.on(", ").join(toIdentifiers(nonPrimaryKeyRestrictions.getColumnDefs())));
+      if (!useFiltering)       throw invalidRequest(REQUIRES_ALLOW_FILTERING_MESSAGE);
+    }
     usesSecondaryIndexing=true;
     indexRestrictions.add(nonPrimaryKeyRestrictions);
   }

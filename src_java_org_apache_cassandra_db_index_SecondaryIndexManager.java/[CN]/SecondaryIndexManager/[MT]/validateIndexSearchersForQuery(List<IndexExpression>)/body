@@ -26,20 +26,16 @@
       haveSupportedIndexLookup|=secondaryIndex.supportsOperator(expression.operator);
     }
   }
-  if (!haveSupportedIndexLookup) {
+  CellNameType comparator=baseCfs.metadata.comparator;
+  if (!haveSupportedIndexLookup && (comparator.isDense() || comparator.isCompound())) {
+    if (expressionsByIndexType.isEmpty())     throw new InvalidRequestException(String.format("Predicates on non-primary-key columns (%s) are not yet supported for non secondary index queries",Joiner.on(", ").join(getColumnNames(clause))));
     int i=0;
     StringBuilder sb=new StringBuilder("No secondary indexes on the restricted columns support the provided operators: ");
     for (    Map.Entry<String,Set<IndexExpression>> expressions : expressionsByIndexType.entrySet()) {
       for (      IndexExpression expression : expressions.getValue()) {
         if (i++ > 0)         sb.append(", ");
         sb.append("'");
-        String columnName;
-        try {
-          columnName=ByteBufferUtil.string(expression.column);
-        }
- catch (        CharacterCodingException ex) {
-          columnName="<unprintable>";
-        }
+        String columnName=getColumnName(expression);
         sb.append(columnName).append(" ").append(expression.operator).append(" <value>").append("'");
       }
     }
