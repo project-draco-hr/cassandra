@@ -1,20 +1,2 @@
 {
-  if (expressions.isEmpty())   return iter;
-  final CFMetaData metadata=iter.metadata();
-class IsSatisfiedFilter extends Transformation<UnfilteredRowIterator> {
-    DecoratedKey pk;
-    public UnfilteredRowIterator applyToPartition(    UnfilteredRowIterator partition){
-      Row staticRow=applyToRow(partition.staticRow());
-      if (staticRow == null)       return null;
-      pk=partition.partitionKey();
-      return Transformation.apply(partition,this);
-    }
-    public Row applyToRow(    Row row){
-      Row purged=row.purge(DeletionPurger.PURGE_ALL,nowInSec);
-      if (purged == null)       return null;
-      for (      Expression e : expressions)       if (!e.isSatisfiedBy(metadata,pk,purged))       return null;
-      return row;
-    }
-  }
-  return Transformation.apply(iter,new IsSatisfiedFilter());
 }
