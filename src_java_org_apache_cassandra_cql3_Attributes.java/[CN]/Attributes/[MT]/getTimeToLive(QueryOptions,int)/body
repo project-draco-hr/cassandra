@@ -1,8 +1,8 @@
 {
-  if (timeToLive == null)   return 0;
+  if (timeToLive == null)   return defaultTimeToLive;
   ByteBuffer tval=timeToLive.bindAndGet(options);
   if (tval == null)   throw new InvalidRequestException("Invalid null value of TTL");
-  if (tval == ByteBufferUtil.UNSET_BYTE_BUFFER)   return 0;
+  if (tval == ByteBufferUtil.UNSET_BYTE_BUFFER)   return defaultTimeToLive;
   try {
     Int32Type.instance.validate(tval);
   }
@@ -12,5 +12,6 @@
   int ttl=Int32Type.instance.compose(tval);
   if (ttl < 0)   throw new InvalidRequestException("A TTL must be greater or equal to 0, but was " + ttl);
   if (ttl > MAX_TTL)   throw new InvalidRequestException(String.format("ttl is too large. requested (%d) maximum (%d)",ttl,MAX_TTL));
+  if (defaultTimeToLive != LivenessInfo.NO_TTL && ttl == LivenessInfo.NO_TTL)   return LivenessInfo.NO_TTL;
   return ttl;
 }
