@@ -1,0 +1,13 @@
+def _initialize_ring(self):
+    token_map = self.metadata.token_map
+    if (token_map is None):
+        self.ring = [0]
+        self.replicas = [(self.metadata.get_host(self.hostname),)]
+        self.pk_to_token_value = (lambda pk: 0)
+        return
+    token_map.rebuild_keyspace(self.ks, build_if_absent=True)
+    tokens_to_hosts = token_map.tokens_to_hosts_by_ks.get(self.ks, None)
+    from_key = token_map.token_class.from_key
+    self.ring = [token.value for token in token_map.ring]
+    self.replicas = [tuple(tokens_to_hosts[token]) for token in token_map.ring]
+    self.pk_to_token_value = (lambda pk: from_key(pk).value)

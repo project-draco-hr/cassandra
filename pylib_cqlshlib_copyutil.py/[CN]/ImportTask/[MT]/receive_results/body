@@ -1,0 +1,15 @@
+def receive_results(self):
+    '\n        Receive results from the worker processes, which will send the number of rows imported\n        or from the feeder process, which will send the number of rows sent when it has finished sending rows.\n        '
+    aggregate_result = ImportProcessResult()
+    try:
+        for result in self.inmsg.recv(timeout=0.1):
+            if isinstance(result, ImportProcessResult):
+                aggregate_result.imported += result.imported
+            elif isinstance(result, ImportTaskError):
+                self.error_handler.handle_error(result)
+            elif isinstance(result, FeedingProcessResult):
+                self.feeding_result = result
+            else:
+                raise ValueError(('Unexpected result: %s' % (result,)))
+    finally:
+        self.receive_meter.increment(aggregate_result.imported)

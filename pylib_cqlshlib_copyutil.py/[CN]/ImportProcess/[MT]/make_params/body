@@ -1,0 +1,20 @@
+def make_params(self):
+    metadata = self.session.cluster.metadata
+    table_meta = metadata.keyspaces[self.ks].tables[self.table]
+    prepared_statement = None
+    is_counter = ('counter' in [table_meta.columns[name].cql_type for name in self.valid_columns])
+    if is_counter:
+        query = ('UPDATE %s.%s SET %%s WHERE %%s' % (protect_name(self.ks), protect_name(self.table)))
+        make_statement = self.wrap_make_statement(self.make_counter_batch_statement)
+    elif self.use_prepared_statements:
+        query = ('INSERT INTO %s.%s (%s) VALUES (%s)' % (protect_name(self.ks), protect_name(self.table), ', '.join(protect_names(self.valid_columns)), ', '.join(['?' for _ in self.valid_columns])))
+        query = self.session.prepare(query)
+        query.consistency_level = self.consistency_level
+        prepared_statement = query
+        make_statement = self.wrap_make_statement(self.make_prepared_batch_statement)
+    else:
+        query = ('INSERT INTO %s.%s (%s) VALUES (%%s)' % (protect_name(self.ks), protect_name(self.table), ', '.join(protect_names(self.valid_columns))))
+        make_statement = self.wrap_make_statement(self.make_non_prepared_batch_statement)
+    conv = ImportConversion(self, table_meta, prepared_statement)
+    tm = TokenMap(self.ks, self.hostname, self.local_dc, self.session)
+    return (query, conv, tm, make_statement)
