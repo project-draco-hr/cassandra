@@ -5,27 +5,34 @@ import json
 import glob
 import multiprocessing as mp
 import os
-import Queue
+import platform
+import random
 import re
 import struct
 import sys
 import time
 import traceback
+from bisect import bisect_right
 from calendar import timegm
-from collections import defaultdict, deque, namedtuple
+from collections import defaultdict, namedtuple
 from decimal import Decimal
 from random import randrange
 from StringIO import StringIO
+from select import select
 from threading import Lock
 from uuid import UUID
+from util import profile_on, profile_off
 from cassandra.cluster import Cluster
 from cassandra.cqltypes import ReversedType, UserType
-from cassandra.metadata import protect_name, protect_names
-from cassandra.policies import RetryPolicy, WhiteListRoundRobinPolicy, TokenAwarePolicy, DCAwareRoundRobinPolicy
+from cassandra.metadata import protect_name, protect_names, protect_value
+from cassandra.policies import RetryPolicy, WhiteListRoundRobinPolicy, DCAwareRoundRobinPolicy
 from cassandra.query import BatchStatement, BatchType, SimpleStatement, tuple_factory
 from cassandra.util import Date, Time
 from cql3handling import CqlRuleSet
 from displaying import NO_COLOR_MAP
 from formatting import format_value_default, DateTimeFormat, EMPTY, get_formatter
 from sslhandling import ssl_settings
+PROFILE_ON = False
+STRACE_ON = False
+IS_LINUX = (platform.system() == 'Linux')
 CopyOptions = namedtuple('CopyOptions', 'copy dialect unrecognized')

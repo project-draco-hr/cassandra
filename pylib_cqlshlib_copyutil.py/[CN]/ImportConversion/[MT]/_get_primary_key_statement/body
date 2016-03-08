@@ -1,0 +1,6 @@
+@staticmethod
+def _get_primary_key_statement(parent, table_meta):
+    '\n        We prepare a query statement to find out the types of the partition key columns so we can\n        route the update query to the correct replicas. As far as I understood this is the easiest\n        way to find out the types of the partition columns, we will never use this prepared statement\n        '
+    where_clause = ' AND '.join([('%s = ?' % protect_name(c.name)) for c in table_meta.partition_key])
+    select_query = ('SELECT * FROM %s.%s WHERE %s' % (protect_name(parent.ks), protect_name(parent.table), where_clause))
+    return parent.session.prepare(select_query)
