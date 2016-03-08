@@ -1,0 +1,7 @@
+def make_prepared_batch_statement(self, query, _, batch, replicas):
+    "\n        Return a batch statement. This is an optimized version of:\n\n            statement = BatchStatement(batch_type=BatchType.UNLOGGED, consistency_level=self.consistency_level)\n            for row in batch['rows']:\n                statement.add(query, row)\n\n        We could optimize further by removing bound_statements altogether but we'd have to duplicate much\n        more driver's code (BoundStatement.bind()).\n        "
+    statement = BatchStatement(batch_type=BatchType.UNLOGGED, consistency_level=self.consistency_level)
+    statement.replicas = replicas
+    statement.keyspace = self.ks
+    statement._statements_and_parameters = [(True, query.query_id, query.bind(r).values) for r in batch['rows']]
+    return statement

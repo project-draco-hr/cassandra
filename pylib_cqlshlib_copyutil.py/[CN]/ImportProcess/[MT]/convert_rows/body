@@ -1,17 +1,22 @@
-def convert_rows(self, conv, rows):
-    '\n        Try to convert each row. If conversion is OK then add the converted result to converted_rows\n        and the original string to good_rows. Else add the original string to error_rows. Return the three\n        arrays.\n        '
-    good_rows = []
+def convert_rows(self, conv, chunk):
+    '\n        Return converted rows and report any errors during conversion.\n        '
+
+    def filter_row_values(row):
+        return [v for (i, v) in enumerate(row) if (i not in self.skip_column_indexes)]
+    if self.skip_column_indexes:
+        rows = [filter_row_values(r) for r in list(csv.reader(chunk['rows'], **self.dialect_options))]
+    else:
+        rows = list(csv.reader(chunk['rows'], **self.dialect_options))
     errors = defaultdict(list)
-    converted_rows = []
-    for r in rows:
-        row = self.filter_row_values(r)
-        if (len(row) != len(self.valid_columns)):
-            msg = ('Invalid row length %d should be %d' % (len(row), len(self.valid_columns)))
-            errors[msg].append(row)
-            continue
+
+    def convert_row(r):
         try:
-            converted_rows.append(conv.get_row_values(row))
-            good_rows.append(row)
-        except ParseError as err:
-            errors[err.message].append(row)
-    return (good_rows, converted_rows, errors)
+            return conv.convert_row(r)
+        except Exception as err:
+            errors[err.message].append(r)
+            return None
+    converted_rows = filter(None, [convert_row(r) for r in rows])
+    if errors:
+        for (msg, rows) in errors.iteritems():
+            self.report_error(ParseError(msg), chunk, rows)
+    return converted_rows

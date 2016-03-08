@@ -1,0 +1,24 @@
+def get_row_partition_key_values_fcn(self):
+    '\n        Return a function to convert a row into a string composed of the partition key values serialized\n        and binary packed (the tokens on the ring). Depending on whether we are using prepared statements, we\n        may have to convert the primary key values first, so we have two different serialize_value implementations.\n        We also return different functions depending on how many partition key indexes we have (single or multiple).\n        See also BoundStatement.routing_key.\n        '
+
+    def serialize_value_prepared(n, v):
+        return self.cqltypes[n].serialize(v, self.proto_version)
+
+    def serialize_value_not_prepared(n, v):
+        return self.cqltypes[n].serialize(self.converters[n](v), self.proto_version)
+    partition_key_indexes = self.partition_key_indexes
+    serialize = (serialize_value_prepared if self.use_prepared_statements else serialize_value_not_prepared)
+
+    def serialize_row_single(row):
+        return serialize(partition_key_indexes[0], row[partition_key_indexes[0]])
+
+    def serialize_row_multiple(row):
+        pk_values = []
+        for i in partition_key_indexes:
+            val = serialize(i, row[i])
+            l = len(val)
+            pk_values.append(struct.pack(('>H%dsB' % l), l, val, 0))
+        return ''.join(pk_values)
+    if (len(partition_key_indexes) == 1):
+        return serialize_row_single
+    return serialize_row_multiple

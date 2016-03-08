@@ -1,4 +1,9 @@
 def extend_cql_deserialization():
-    '\n    The python driver returns BLOBs as string, but we expect them as bytearrays\n    '
+    '\n    The python driver returns BLOBs as string, but we expect them as bytearrays; therefore we change\n    the implementation of cassandra.cqltypes.BytesType.deserialize.\n\n    The deserializers package exists only when the driver has been compiled with cython extensions and\n    cassandra.deserializers.DesBytesType replaces cassandra.cqltypes.BytesType.deserialize.\n\n    DesBytesTypeByteArray is a fast deserializer that converts blobs into bytearrays but it was\n    only introduced recently (3.1.0). If it is available we use it, otherwise we remove\n    cassandra.deserializers.DesBytesType so that we fall back onto cassandra.cqltypes.BytesType.deserialize\n    just like in the case where no cython extensions are present.\n    '
+    if hasattr(cassandra, 'deserializers'):
+        if hasattr(cassandra.deserializers, 'DesBytesTypeByteArray'):
+            cassandra.deserializers.DesBytesType = cassandra.deserializers.DesBytesTypeByteArray
+        else:
+            del cassandra.deserializers.DesBytesType
     cassandra.cqltypes.BytesType.deserialize = staticmethod((lambda byts, protocol_version: bytearray(byts)))
     cassandra.cqltypes.CassandraType.support_empty_values = True

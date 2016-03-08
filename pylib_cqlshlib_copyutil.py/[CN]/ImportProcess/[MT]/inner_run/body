@@ -1,0 +1,22 @@
+def inner_run(self, query, conv, tm, make_statement):
+    '\n        Main run method. Note that we bind self methods that are called inside loops\n        for performance reasons.\n        '
+    self.query = query
+    self.conv = conv
+    self.make_statement = make_statement
+    convert_rows = self.convert_rows
+    split_into_batches = self.split_into_batches
+    result_callback = self.result_callback
+    err_callback = self.err_callback
+    session = self.session
+    while True:
+        chunk = self.inmsg.recv()
+        if (chunk is None):
+            break
+        try:
+            chunk['rows'] = convert_rows(conv, chunk)
+            for (replicas, batch) in split_into_batches(chunk, conv, tm):
+                statement = make_statement(query, conv, chunk, batch, replicas)
+                future = session.execute_async(statement)
+                future.add_callbacks(callback=result_callback, callback_args=(batch, chunk), errback=err_callback, errback_args=(batch, chunk, replicas))
+        except Exception as exc:
+            self.report_error(exc, chunk, chunk['rows'])

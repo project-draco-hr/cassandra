@@ -1,0 +1,12 @@
+def convert_row(self, row):
+    "\n        Convert the row into a list of parsed values if using prepared statements, else simply apply the\n        protection functions to escape values with quotes when required. Also check on the row length and\n        make sure primary partition key values aren't missing.\n        "
+    converters = (self.converters if self.use_prepared_statements else self.protectors)
+    if (len(row) != len(converters)):
+        raise ParseError(('Invalid row length %d should be %d' % (len(row), len(converters))))
+    for i in self.primary_key_indexes:
+        if (row[i] == self.nullval):
+            raise ParseError(self.get_null_primary_key_message(i))
+    try:
+        return [conv(val) for (conv, val) in zip(converters, row)]
+    except Exception as e:
+        raise ParseError(e.message)

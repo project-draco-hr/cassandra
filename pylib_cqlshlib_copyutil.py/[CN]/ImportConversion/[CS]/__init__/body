@@ -1,4 +1,4 @@
-def __init__(self, parent, table_meta, statement):
+def __init__(self, parent, table_meta, statement=None):
     self.ks = parent.ks
     self.table = parent.table
     self.columns = parent.valid_columns
@@ -11,6 +11,13 @@ def __init__(self, parent, table_meta, statement):
     self.table_meta = table_meta
     self.primary_key_indexes = [self.columns.index(col.name) for col in self.table_meta.primary_key]
     self.partition_key_indexes = [self.columns.index(col.name) for col in self.table_meta.partition_key]
+    if (statement is None):
+        self.use_prepared_statements = False
+        statement = self._get_primary_key_statement(parent, table_meta)
+    else:
+        self.use_prepared_statements = True
     self.proto_version = statement.protocol_version
-    self.cqltypes = dict([(c.name, c.type) for c in statement.column_metadata])
-    self.converters = dict([(c.name, self._get_converter(c.type)) for c in statement.column_metadata])
+    self.cqltypes = [c.type for c in statement.column_metadata]
+    self.converters = [self._get_converter(c.type) for c in statement.column_metadata]
+    self.coltypes = [table_meta.columns[name].cql_type for name in parent.valid_columns]
+    self.protectors = [(protect_value if (t in ('ascii', 'text', 'timestamp', 'date', 'time', 'inet')) else (lambda v: v)) for t in self.coltypes]

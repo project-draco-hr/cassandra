@@ -1,0 +1,13 @@
+def recv_polling(self, timeout):
+    '\n        Implementation of the recv method for platforms where select() is not available for pipes.\n        We poll on all of the readers with a very small timeout. We stop when the timeout specified\n        has been received but we may exceed it since we check all processes during each sweep.\n        '
+    start = time.time()
+    while True:
+        for (i, r) in enumerate(self._readers):
+            with self._rlocks[i]:
+                if r.poll(1e-09):
+                    try:
+                        yield r.recv()
+                    except EOFError:
+                        continue
+        if ((time.time() - start) > timeout):
+            break
