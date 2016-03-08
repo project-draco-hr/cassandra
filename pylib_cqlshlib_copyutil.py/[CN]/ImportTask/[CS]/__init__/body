@@ -1,18 +1,10 @@
 def __init__(self, shell, ks, table, columns, fname, opts, protocol_version, config_file):
     CopyTask.__init__(self, shell, ks, table, columns, fname, opts, protocol_version, config_file, 'from')
     options = self.options
-    self.ingest_rate = options.copy['ingestrate']
-    self.max_attempts = options.copy['maxattempts']
-    self.header = options.copy['header']
     self.skip_columns = [c.strip() for c in self.options.copy['skipcols'].split(',')]
     self.valid_columns = [c for c in self.columns if (c not in self.skip_columns)]
     self.table_meta = self.shell.get_table_meta(self.ks, self.table)
-    self.batch_id = 0
     self.receive_meter = RateMeter(log_fcn=self.printmsg, update_interval=options.copy['reportfrequency'], log_file=options.copy['ratefile'])
-    self.send_meter = RateMeter(log_fcn=None, update_interval=1)
-    self.reader = ImportReader(self)
-    self.import_errors = ImportErrors(self)
-    self.retries = deque([])
-    self.failed = 0
-    self.succeeded = 0
+    self.error_handler = ImportErrorHandler(self)
+    self.feeding_result = None
     self.sent = 0

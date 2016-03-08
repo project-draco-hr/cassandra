@@ -6,12 +6,14 @@ def __init__(self, shell, ks, table, columns, fname, opts, protocol_version, con
     self.fname = safe_normpath(fname)
     self.protocol_version = protocol_version
     self.config_file = config_file
-    self.printmsg = (self._printmsg if ((self.fname is not None) or (direction == 'in')) else (lambda _, eol='\n': None))
+    self.printmsg = (self._printmsg if ((self.fname is not None) or (direction == 'from')) else (lambda _, eol='\n': None))
     self.options = self.parse_options(opts, direction)
     self.num_processes = self.options.copy['numprocesses']
+    if (direction == 'in'):
+        self.num_processes += 1
     self.printmsg(('Using %d child processes' % (self.num_processes,)))
     self.processes = []
-    self.inmsg = mp.Queue()
-    self.outmsg = mp.Queue()
+    self.inmsg = OneWayChannels(self.num_processes)
+    self.outmsg = OneWayChannels(self.num_processes)
     self.columns = CopyTask.get_columns(shell, ks, table, columns)
     self.time_start = time.time()

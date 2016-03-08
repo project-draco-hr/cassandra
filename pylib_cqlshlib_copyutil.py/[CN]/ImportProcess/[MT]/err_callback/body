@@ -1,4 +1,8 @@
-def err_callback(self, response, batch):
-    self.outmsg.put((batch, ('%s - %s' % (response.__class__.__name__, response.message))))
-    if self.debug:
-        traceback.print_exc(response)
+def err_callback(self, response, batch, chunk, replicas):
+    err_is_final = (batch['attempts'] >= self.max_attempts)
+    self.report_error(response, chunk, batch['rows'], batch['attempts'], err_is_final)
+    if (not err_is_final):
+        batch['attempts'] += 1
+        statement = self.make_statement(self.query, self.conv, chunk, batch, replicas)
+        future = self.session.execute_async(statement)
+        future.add_callbacks(callback=self.result_callback, callback_args=(batch, chunk), errback=self.err_callback, errback_args=(batch, chunk, replicas))
