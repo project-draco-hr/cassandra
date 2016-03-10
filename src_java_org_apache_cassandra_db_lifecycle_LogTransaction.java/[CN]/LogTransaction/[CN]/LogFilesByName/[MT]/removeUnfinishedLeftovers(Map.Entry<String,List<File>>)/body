@@ -1,0 +1,20 @@
+{
+  LogFile txn=LogFile.make(entry.getKey(),entry.getValue());
+  try {
+    if (txn.verify()) {
+      Throwable failure=txn.removeUnfinishedLeftovers(null);
+      if (failure != null) {
+        logger.error("Failed to remove unfinished transaction leftovers for transaction log {}",txn.toString(true),failure);
+        return false;
+      }
+      return true;
+    }
+ else {
+      logger.error("Unexpected disk state: failed to read transaction log {}",txn.toString(true));
+      return false;
+    }
+  }
+  finally {
+    txn.close();
+  }
+}

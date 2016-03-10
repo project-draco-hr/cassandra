@@ -42,7 +42,14 @@
   Schema.instance.loadFromDisk();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
     if (keyspaceName.equals(SystemKeyspace.NAME))     continue;
-    for (    CFMetaData cfm : Schema.instance.getTablesAndViews(keyspaceName))     ColumnFamilyStore.scrubDataDirectories(cfm);
+    for (    CFMetaData cfm : Schema.instance.getTablesAndViews(keyspaceName)) {
+      try {
+        ColumnFamilyStore.scrubDataDirectories(cfm);
+      }
+ catch (      StartupException e) {
+        exitOrFail(e.returnCode,e.getMessage(),e.getCause());
+      }
+    }
   }
   Keyspace.setInitialized();
   for (  String keyspaceName : Schema.instance.getKeyspaces()) {
