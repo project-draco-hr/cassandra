@@ -1,19 +1,19 @@
 {
-  if (DatabaseDescriptor.shouldHintByDC()) {
-    final String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
-    if (!DatabaseDescriptor.hintedHandoffEnabled(dc)) {
-      HintedHandOffManager.instance.metrics.incrPastWindow(ep);
-      return false;
+  if (DatabaseDescriptor.hintedHandoffEnabled()) {
+    if (DatabaseDescriptor.shouldHintByDC()) {
+      final String dc=DatabaseDescriptor.getEndpointSnitch().getDatacenter(ep);
+      if (!DatabaseDescriptor.hintedHandoffEnabled(dc)) {
+        return false;
+      }
     }
+    boolean hintWindowExpired=Gossiper.instance.getEndpointDowntime(ep) > DatabaseDescriptor.getMaxHintWindow();
+    if (hintWindowExpired) {
+      HintedHandOffManager.instance.metrics.incrPastWindow(ep);
+      Tracing.trace("Not hinting {} which has been down {}ms",ep,Gossiper.instance.getEndpointDowntime(ep));
+    }
+    return !hintWindowExpired;
   }
- else   if (!DatabaseDescriptor.hintedHandoffEnabled()) {
-    HintedHandOffManager.instance.metrics.incrPastWindow(ep);
+ else {
     return false;
   }
-  boolean hintWindowExpired=Gossiper.instance.getEndpointDowntime(ep) > DatabaseDescriptor.getMaxHintWindow();
-  if (hintWindowExpired) {
-    HintedHandOffManager.instance.metrics.incrPastWindow(ep);
-    Tracing.trace("Not hinting {} which has been down {}ms",ep,Gossiper.instance.getEndpointDowntime(ep));
-  }
-  return !hintWindowExpired;
 }
