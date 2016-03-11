@@ -2,16 +2,12 @@
   AtomicLong noBase=new AtomicLong(Long.MAX_VALUE);
   ReadQuery selectQuery=view.getReadQuery();
   if (!selectQuery.selectsKey(key))   return;
-  QueryPager pager=view.getSelectStatement().internalReadForView(key,FBUtilities.nowInSeconds()).getPager(null,Server.CURRENT_VERSION);
-  while (!pager.isExhausted()) {
-    try (ReadOrderGroup orderGroup=pager.startOrderGroup();PartitionIterator partitionIterator=pager.fetchPageInternal(128,orderGroup)){
-      if (!partitionIterator.hasNext())       return;
-      try (RowIterator rowIterator=partitionIterator.next()){
-        FilteredPartition partition=FilteredPartition.create(rowIterator);
-        TemporalRow.Set temporalRows=view.getTemporalRowSet(partition,null,true);
-        Collection<Mutation> mutations=view.createMutations(partition,temporalRows,true);
-        if (mutations != null)         StorageProxy.mutateMV(key.getKey(),mutations,true,noBase);
-      }
-     }
-   }
+  int nowInSec=FBUtilities.nowInSeconds();
+  SinglePartitionReadCommand command=view.getSelectStatement().internalReadForView(key,nowInSec);
+  UnfilteredRowIterator empty=UnfilteredRowIterators.noRowsIterator(baseCfs.metadata,key,Rows.EMPTY_STATIC_ROW,DeletionTime.LIVE,false);
+  Collection<Mutation> mutations;
+  try (ReadOrderGroup orderGroup=command.startOrderGroup();UnfilteredRowIterator data=UnfilteredPartitionIterators.getOnlyElement(command.executeLocally(orderGroup),command)){
+    mutations=baseCfs.keyspace.viewManager.forTable(baseCfs.metadata).generateViewUpdates(Collections.singleton(view),data,empty,nowInSec);
+  }
+   if (!mutations.isEmpty())   StorageProxy.mutateMV(key.getKey(),mutations,true,noBase);
 }
