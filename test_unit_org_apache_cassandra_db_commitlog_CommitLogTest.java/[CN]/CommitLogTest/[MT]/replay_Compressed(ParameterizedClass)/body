@@ -1,7 +1,16 @@
 {
-  DatabaseDescriptor.setCommitLogCompression(parameterizedClass);
-  DatabaseDescriptor.setEncryptionContext(EncryptionContextGenerator.createDisabledContext());
-  CommitLog commitLog=new CommitLog(logDirectory,CommitLogArchiver.disabled()).start();
-  replaySimple(commitLog);
-  replayWithDiscard(commitLog);
+  ParameterizedClass originalCompression=DatabaseDescriptor.getCommitLogCompression();
+  EncryptionContext originalEncryptionContext=DatabaseDescriptor.getEncryptionContext();
+  try {
+    DatabaseDescriptor.setCommitLogCompression(parameterizedClass);
+    DatabaseDescriptor.setEncryptionContext(EncryptionContextGenerator.createDisabledContext());
+    CommitLog.instance.resetUnsafe(true);
+    replaySimple(CommitLog.instance);
+    replayWithDiscard(CommitLog.instance);
+  }
+  finally {
+    DatabaseDescriptor.setCommitLogCompression(originalCompression);
+    DatabaseDescriptor.setEncryptionContext(originalEncryptionContext);
+    CommitLog.instance.resetUnsafe(true);
+  }
 }
