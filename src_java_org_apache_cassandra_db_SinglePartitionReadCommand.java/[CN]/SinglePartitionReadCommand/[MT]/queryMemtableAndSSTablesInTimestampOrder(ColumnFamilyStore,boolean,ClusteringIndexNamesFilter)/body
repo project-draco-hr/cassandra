@@ -14,6 +14,7 @@
    }
   Collections.sort(view.sstables,SSTableReader.maxTimestampComparator);
   int sstablesIterated=0;
+  boolean onlyUnrepaired=true;
   for (  SSTableReader sstable : view.sstables) {
     if (result != null && sstable.getMaxTimestamp() < result.partitionLevelDeletion().markedForDeleteAt())     break;
     long currentMaxTs=sstable.getMaxTimestamp();
@@ -34,6 +35,7 @@
     sstable.incrementReadCount();
     try (UnfilteredRowIterator iter=filter.filter(sstable.iterator(partitionKey(),columnFilter(),filter.isReversed(),isForThrift()))){
       if (iter.isEmpty())       continue;
+      if (sstable.isRepaired())       onlyUnrepaired=false;
       sstablesIterated++;
       result=add(isForThrift() ? ThriftResultsMerger.maybeWrap(iter,nowInSec()) : iter,result,filter,sstable.isRepaired());
     }
@@ -42,7 +44,7 @@
   if (result == null || result.isEmpty())   return EmptyIterators.unfilteredRow(metadata(),partitionKey(),false);
   DecoratedKey key=result.partitionKey();
   cfs.metric.samplers.get(TableMetrics.Sampler.READS).addSample(key.getKey(),key.hashCode(),1);
-  if (sstablesIterated > cfs.getMinimumCompactionThreshold() && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategyManager().shouldDefragment()) {
+  if (sstablesIterated > cfs.getMinimumCompactionThreshold() && onlyUnrepaired && !cfs.isAutoCompactionDisabled() && cfs.getCompactionStrategyManager().shouldDefragment()) {
     Tracing.trace("Defragmenting requested data");
     try (UnfilteredRowIterator iter=result.unfilteredIterator(columnFilter(),Slices.ALL,false)){
       final Mutation mutation=new Mutation(PartitionUpdate.fromIterator(iter));
