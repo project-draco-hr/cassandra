@@ -1,11 +1,14 @@
 {
+  if (Boolean.getBoolean("cassandra.allow_unsafe_join")) {
+    logger.warn("Skipping endpoint collision check as cassandra.allow_unsafe_join=true");
+    return;
+  }
   logger.debug("Starting shadow gossip round to check for endpoint collision");
-  if (!MessagingService.instance().isListening())   MessagingService.instance().listen();
   Gossiper.instance.doShadowRound();
-  if (!Gossiper.instance.isSafeForBootstrap(FBUtilities.getBroadcastAddress())) {
+  if (!Gossiper.instance.isSafeForStartup(FBUtilities.getBroadcastAddress(),localHostId,shouldBootstrap())) {
     throw new RuntimeException(String.format("A node with address %s already exists, cancelling join. " + "Use cassandra.replace_address if you want to replace this node.",FBUtilities.getBroadcastAddress()));
   }
-  if (useStrictConsistency && !allowSimultaneousMoves()) {
+  if (shouldBootstrap() && useStrictConsistency && !allowSimultaneousMoves()) {
     for (    Map.Entry<InetAddress,EndpointState> entry : Gossiper.instance.getEndpointStates()) {
       if (entry.getKey().equals(FBUtilities.getBroadcastAddress()) || entry.getValue().getApplicationState(ApplicationState.STATUS) == null)       continue;
       String[] pieces=entry.getValue().getApplicationState(ApplicationState.STATUS).value.split(VersionedValue.DELIMITER_STR,-1);
@@ -14,5 +17,6 @@
       if (state.equals(VersionedValue.STATUS_BOOTSTRAPPING) || state.equals(VersionedValue.STATUS_LEAVING) || state.equals(VersionedValue.STATUS_MOVING))       throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
     }
   }
+  logger.debug("Resetting gossip state after shadow round");
   Gossiper.instance.resetEndpointStateMap();
 }

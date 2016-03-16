@@ -1,0 +1,16 @@
+{
+  if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
+    logger.info("Loading persisted ring state");
+    Multimap<InetAddress,Token> loadedTokens=SystemKeyspace.loadTokens();
+    Map<InetAddress,UUID> loadedHostIds=SystemKeyspace.loadHostIds();
+    for (    InetAddress ep : loadedTokens.keySet()) {
+      if (ep.equals(FBUtilities.getBroadcastAddress())) {
+        SystemKeyspace.removeEndpoint(ep);
+      }
+ else {
+        if (loadedHostIds.containsKey(ep))         tokenMetadata.updateHostId(loadedHostIds.get(ep),ep);
+        Gossiper.instance.addSavedEndpoint(ep);
+      }
+    }
+  }
+}

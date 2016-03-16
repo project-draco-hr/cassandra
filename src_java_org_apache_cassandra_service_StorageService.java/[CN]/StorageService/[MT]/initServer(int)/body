@@ -2,27 +2,12 @@
   logger.info("Cassandra version: {}",FBUtilities.getReleaseVersionString());
   logger.info("Thrift API version: {}",cassandraConstants.VERSION);
   logger.info("CQL supported versions: {} (default: {})",StringUtils.join(ClientState.getCQLSupportedVersion(),","),ClientState.DEFAULT_CQL_VERSION);
-  initialized=true;
   try {
     Class.forName("org.apache.cassandra.service.StorageProxy");
     Class.forName("org.apache.cassandra.io.sstable.IndexSummaryManager");
   }
  catch (  ClassNotFoundException e) {
     throw new AssertionError(e);
-  }
-  if (Boolean.parseBoolean(System.getProperty("cassandra.load_ring_state","true"))) {
-    logger.info("Loading persisted ring state");
-    Multimap<InetAddress,Token> loadedTokens=SystemKeyspace.loadTokens();
-    Map<InetAddress,UUID> loadedHostIds=SystemKeyspace.loadHostIds();
-    for (    InetAddress ep : loadedTokens.keySet()) {
-      if (ep.equals(FBUtilities.getBroadcastAddress())) {
-        SystemKeyspace.removeEndpoint(ep);
-      }
- else {
-        if (loadedHostIds.containsKey(ep))         tokenMetadata.updateHostId(loadedHostIds.get(ep),ep);
-        Gossiper.instance.addSavedEndpoint(ep);
-      }
-    }
   }
   drainOnShutdown=new Thread(new WrappedRunnable(){
     @Override public void runMayThrow() throws InterruptedException {
@@ -68,6 +53,8 @@
   replacing=DatabaseDescriptor.isReplacing();
   if (!Boolean.parseBoolean(System.getProperty("cassandra.start_gossip","true"))) {
     logger.info("Not starting gossip as requested.");
+    loadRingState();
+    initialized=true;
     return;
   }
   prepareToJoin();
@@ -92,4 +79,5 @@
     }
     logger.info("Not joining ring as requested. Use JMX (StorageService->joinRing()) to initiate ring joining");
   }
+  initialized=true;
 }

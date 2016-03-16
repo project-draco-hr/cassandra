@@ -1,0 +1,17 @@
+{
+  logger.info("Gathering node replacement information for {}",DatabaseDescriptor.getReplaceAddress());
+  Gossiper.instance.doShadowRound();
+  if (Gossiper.instance.getEndpointStateForEndpoint(replaceAddress) == null)   throw new RuntimeException(String.format("Cannot replace_address %s because it doesn't exist in gossip",replaceAddress));
+  try {
+    VersionedValue tokensVersionedValue=Gossiper.instance.getEndpointStateForEndpoint(replaceAddress).getApplicationState(ApplicationState.TOKENS);
+    if (tokensVersionedValue == null)     throw new RuntimeException(String.format("Could not find tokens for %s to replace",replaceAddress));
+    bootstrapTokens=TokenSerializer.deserialize(tokenMetadata.partitioner,new DataInputStream(new ByteArrayInputStream(tokensVersionedValue.toBytes())));
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  UUID localHostId=Gossiper.instance.getHostId(replaceAddress);
+  SystemKeyspace.setLocalHostId(localHostId);
+  Gossiper.instance.resetEndpointStateMap();
+  return localHostId;
+}

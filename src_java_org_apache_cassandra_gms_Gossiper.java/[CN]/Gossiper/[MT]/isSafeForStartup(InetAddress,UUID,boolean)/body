@@ -1,0 +1,20 @@
+{
+  EndpointState epState=endpointStateMap.get(endpoint);
+  if (epState == null || isDeadState(epState))   return true;
+  if (isBootstrapping) {
+    String status=getGossipStatus(epState);
+    final List<String> unsafeStatuses=new ArrayList<String>(){
+{
+        add("");
+        add(VersionedValue.STATUS_NORMAL);
+        add(VersionedValue.SHUTDOWN);
+      }
+    }
+;
+    return !unsafeStatuses.contains(status);
+  }
+ else {
+    VersionedValue previous=epState.getApplicationState(ApplicationState.HOST_ID);
+    return UUID.fromString(previous.value).equals(localHostUUID);
+  }
+}

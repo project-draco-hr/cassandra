@@ -1,5 +1,7 @@
 {
   buildSeedsList();
+  if (seeds.isEmpty())   return;
+  seedsInShadowRound.clear();
   List<GossipDigest> gDigests=new ArrayList<GossipDigest>();
   GossipDigestSyn digestSynMessage=new GossipDigestSyn(DatabaseDescriptor.getClusterName(),DatabaseDescriptor.getPartitionerName(),gDigests);
   MessageOut<GossipDigestSyn> message=new MessageOut<GossipDigestSyn>(MessagingService.Verb.GOSSIP_DIGEST_SYN,digestSynMessage,GossipDigestSyn.serializer);
@@ -14,7 +16,12 @@
       Thread.sleep(1000);
       if (!inShadowRound)       break;
       slept+=1000;
-      if (slept > StorageService.RING_DELAY)       throw new RuntimeException("Unable to gossip with any seeds");
+      if (slept > StorageService.RING_DELAY) {
+        if (!DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()))         throw new RuntimeException("Unable to gossip with any seeds");
+        logger.warn("Unable to gossip with any seeds but continuing since node is in its own seed list");
+        inShadowRound=false;
+        break;
+      }
     }
   }
  catch (  InterruptedException wtf) {
