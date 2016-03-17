@@ -1,0 +1,28 @@
+{
+  String testStr="1234567890";
+  byte[] testData=testStr.getBytes();
+  for (int memCapacity=0; memCapacity <= 5; memCapacity++) {
+    int diskCapacity=5 - memCapacity;
+    try (RewindableDataInputStreamPlus reader=new RewindableDataInputStreamPlus(new ByteArrayInputStream(testData),INITIAL_BUFFER_SIZE,memCapacity,file,diskCapacity)){
+      reader.mark();
+      byte[] out=new byte[5];
+      reader.readFully(out,0,5);
+      assertEquals("12345",new String(out));
+      reader.reset();
+      out=new byte[7];
+      reader.readFully(out);
+      assertEquals("1234567",new String(out));
+      reader.mark();
+      out=new byte[3];
+      reader.readFully(out);
+      assertEquals("890",new String(out));
+      assertEquals(0,reader.available());
+      reader.reset();
+      reader.readFully(out,2,1);
+      assertEquals("898",new String(out));
+      assertEquals(2,reader.available());
+      assertEquals("90",reader.readLine());
+    }
+     assertFalse(file.exists());
+  }
+}

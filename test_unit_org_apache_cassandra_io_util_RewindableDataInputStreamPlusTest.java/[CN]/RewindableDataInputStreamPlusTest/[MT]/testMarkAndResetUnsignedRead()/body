@@ -1,0 +1,26 @@
+{
+  byte[] testData;
+  ByteArrayOutputStream baos=new ByteArrayOutputStream();
+  try (DataOutputStream out=new DataOutputStream(baos)){
+    out.writeByte(0x1);
+    out.writeShort(2);
+    testData=baos.toByteArray();
+  }
+   for (int memCapacity=0; memCapacity <= 1; memCapacity++) {
+    int diskCapacity=1 - memCapacity;
+    try (RewindableDataInputStreamPlus reader=new RewindableDataInputStreamPlus(new ByteArrayInputStream(testData),INITIAL_BUFFER_SIZE,memCapacity,file,diskCapacity)){
+      reader.mark();
+      assertEquals(1,reader.readUnsignedByte());
+      reader.reset();
+      assertEquals(1,reader.readUnsignedByte());
+      reader.mark();
+      assertEquals(0,reader.readUnsignedByte());
+      reader.reset();
+      assertEquals(2,reader.readUnsignedShort());
+      reader.mark();
+      reader.reset();
+      assertEquals(0,reader.available());
+    }
+   }
+  assertFalse(file.exists());
+}
