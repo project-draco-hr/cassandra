@@ -1,7 +1,8 @@
 {
   if (client != null)   return client;
-  try {
 synchronized (this) {
+    if (numFailures >= MAX_NUM_FAILURES)     throw new RuntimeException("Failed to create client too many times");
+    try {
       String currentNode=node.randomNode();
       if (client != null)       return client;
       EncryptionOptions.ClientEncryptionOptions encOptions=transport.getEncryptionOptions();
@@ -10,8 +11,9 @@ synchronized (this) {
       if (setKeyspace)       c.execute("USE \"" + schema.keyspace + "\";",org.apache.cassandra.db.ConsistencyLevel.ONE);
       return client=c;
     }
-  }
- catch (  Exception e) {
-    throw new RuntimeException(e);
+ catch (    Exception e) {
+      numFailures+=1;
+      throw new RuntimeException(e);
+    }
   }
 }
