@@ -1,54 +1,36 @@
 {
   TableStats.OptionFilter filter=new OptionFilter(ignore,tableNames);
-  Map<String,List<ColumnFamilyStoreMBean>> tableStoreMap=new HashMap<>();
-  Iterator<Map.Entry<String,ColumnFamilyStoreMBean>> tables=probe.getColumnFamilyStoreMBeanProxies();
-  while (tables.hasNext()) {
-    Map.Entry<String,ColumnFamilyStoreMBean> entry=tables.next();
+  ArrayListMultimap<String,ColumnFamilyStoreMBean> selectedTableMbeans=ArrayListMultimap.create();
+  Map<String,KeyspaceStats> keyspaceStats=new HashMap<>();
+  Iterator<Map.Entry<String,ColumnFamilyStoreMBean>> tableMBeans=probe.getColumnFamilyStoreMBeanProxies();
+  while (tableMBeans.hasNext()) {
+    Map.Entry<String,ColumnFamilyStoreMBean> entry=tableMBeans.next();
     String keyspaceName=entry.getKey();
     ColumnFamilyStoreMBean tableProxy=entry.getValue();
-    if (!tableStoreMap.containsKey(keyspaceName) && filter.isColumnFamilyIncluded(entry.getKey(),tableProxy.getColumnFamilyName())) {
-      List<ColumnFamilyStoreMBean> columnFamilies=new ArrayList<>();
-      columnFamilies.add(tableProxy);
-      tableStoreMap.put(keyspaceName,columnFamilies);
-    }
- else     if (filter.isColumnFamilyIncluded(entry.getKey(),tableProxy.getColumnFamilyName())) {
-      tableStoreMap.get(keyspaceName).add(tableProxy);
+    if (filter.isKeyspaceIncluded(keyspaceName)) {
+      KeyspaceStats stats=keyspaceStats.get(keyspaceName);
+      if (stats == null) {
+        stats=new KeyspaceStats(probe,keyspaceName);
+        keyspaceStats.put(keyspaceName,stats);
+      }
+      stats.add(tableProxy);
+      if (filter.isTableIncluded(keyspaceName,tableProxy.getTableName()))       selectedTableMbeans.put(keyspaceName,tableProxy);
     }
   }
   filter.verifyKeyspaces(probe.getKeyspaces());
-  filter.verifyColumnFamilies();
-  for (  Map.Entry<String,List<ColumnFamilyStoreMBean>> entry : tableStoreMap.entrySet()) {
+  filter.verifyTables();
+  for (  Map.Entry<String,Collection<ColumnFamilyStoreMBean>> entry : selectedTableMbeans.asMap().entrySet()) {
     String keyspaceName=entry.getKey();
-    List<ColumnFamilyStoreMBean> columnFamilies=entry.getValue();
-    long keyspaceReadCount=0;
-    long keyspaceWriteCount=0;
-    int keyspacePendingFlushes=0;
-    double keyspaceTotalReadTime=0.0f;
-    double keyspaceTotalWriteTime=0.0f;
+    Collection<ColumnFamilyStoreMBean> tables=entry.getValue();
     System.out.println("Keyspace: " + keyspaceName);
-    for (    ColumnFamilyStoreMBean table : columnFamilies) {
-      String tableName=table.getColumnFamilyName();
-      long writeCount=((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspaceName,tableName,"WriteLatency")).getCount();
-      long readCount=((CassandraMetricsRegistry.JmxTimerMBean)probe.getColumnFamilyMetric(keyspaceName,tableName,"ReadLatency")).getCount();
-      if (readCount > 0) {
-        keyspaceReadCount+=readCount;
-        keyspaceTotalReadTime+=(long)probe.getColumnFamilyMetric(keyspaceName,tableName,"ReadTotalLatency");
-      }
-      if (writeCount > 0) {
-        keyspaceWriteCount+=writeCount;
-        keyspaceTotalWriteTime+=(long)probe.getColumnFamilyMetric(keyspaceName,tableName,"WriteTotalLatency");
-      }
-      keyspacePendingFlushes+=(long)probe.getColumnFamilyMetric(keyspaceName,tableName,"PendingFlushes");
-    }
-    double keyspaceReadLatency=keyspaceReadCount > 0 ? keyspaceTotalReadTime / keyspaceReadCount / 1000 : Double.NaN;
-    double keyspaceWriteLatency=keyspaceWriteCount > 0 ? keyspaceTotalWriteTime / keyspaceWriteCount / 1000 : Double.NaN;
-    System.out.println("\tRead Count: " + keyspaceReadCount);
-    System.out.println("\tRead Latency: " + String.format("%s",keyspaceReadLatency) + " ms.");
-    System.out.println("\tWrite Count: " + keyspaceWriteCount);
-    System.out.println("\tWrite Latency: " + String.format("%s",keyspaceWriteLatency) + " ms.");
-    System.out.println("\tPending Flushes: " + keyspacePendingFlushes);
-    for (    ColumnFamilyStoreMBean table : columnFamilies) {
-      String tableName=table.getColumnFamilyName();
+    KeyspaceStats stats=keyspaceStats.get(keyspaceName);
+    System.out.println("\tRead Count: " + stats.readCount);
+    System.out.println("\tRead Latency: " + String.format("%s",stats.readLatency()) + " ms.");
+    System.out.println("\tWrite Count: " + stats.writeCount);
+    System.out.println("\tWrite Latency: " + String.format("%s",stats.writeLatency()) + " ms.");
+    System.out.println("\tPending Flushes: " + stats.pendingFlushes);
+    for (    ColumnFamilyStoreMBean table : tables) {
+      String tableName=table.getTableName();
       if (tableName.contains("."))       System.out.println("\t\tTable (index): " + tableName);
  else       System.out.println("\t\tTable: " + tableName);
       System.out.println("\t\tSSTable count: " + probe.getColumnFamilyMetric(keyspaceName,tableName,"LiveSSTableCount"));
