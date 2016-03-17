@@ -1,0 +1,31 @@
+{
+  if (closed.compareAndSet(false,true)) {
+    Throwable fail=null;
+    if (closeUnderlying) {
+      try {
+        super.close();
+      }
+ catch (      IOException e) {
+        fail=merge(fail,e);
+      }
+    }
+    try {
+      if (spillBuffer != null) {
+        this.spillBuffer.close();
+        this.spillBuffer=null;
+      }
+    }
+ catch (    IOException e) {
+      fail=merge(fail,e);
+    }
+    try {
+      if (spillFile.exists()) {
+        spillFile.delete();
+      }
+    }
+ catch (    Throwable e) {
+      fail=merge(fail,e);
+    }
+    maybeFail(fail,IOException.class);
+  }
+}

@@ -1,0 +1,31 @@
+{
+  long skipped=0;
+  if (marked) {
+    while (n-- > 0 && read() != -1) {
+      skipped++;
+    }
+    return skipped;
+  }
+  if (memAvailable > 0) {
+    skipped+=memAvailable < n ? memAvailable : n;
+    memAvailable-=skipped;
+    n-=skipped;
+  }
+  if (n > 0 && diskTailAvailable > 0) {
+    int skipFromTail=diskTailAvailable < n ? diskTailAvailable : (int)n;
+    getIfNotClosed(spillBuffer).skipBytes(skipFromTail);
+    diskTailAvailable-=skipFromTail;
+    skipped+=skipFromTail;
+    n-=skipFromTail;
+    if (diskTailAvailable == 0)     spillBuffer.seek(0);
+  }
+  if (n > 0 && diskHeadAvailable > 0) {
+    int skipFromHead=diskHeadAvailable < n ? diskHeadAvailable : (int)n;
+    getIfNotClosed(spillBuffer).skipBytes(skipFromHead);
+    diskHeadAvailable-=skipFromHead;
+    skipped+=skipFromHead;
+    n-=skipFromHead;
+  }
+  if (n > 0)   skipped+=getIfNotClosed(in).skip(n);
+  return skipped;
+}
