@@ -1,0 +1,16 @@
+{
+  CFMetaData cfm=CFMetaData.Builder.create(ksName,cfName).addPartitionKey("name",UTF8Type.instance).addClusteringColumn("location",UTF8Type.instance).addClusteringColumn("age",Int32Type.instance).addRegularColumn("height",Int32Type.instance).addRegularColumn("score",DoubleType.instance).build();
+  Indexes indexes=cfm.getIndexes();
+  for (  String indexedColumn : indexedColumns) {
+    indexes=indexes.with(IndexMetadata.fromSchemaMetadata(indexedColumn,IndexMetadata.Kind.CUSTOM,new HashMap<String,String>(){
+{
+        put(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName());
+        put(IndexTarget.TARGET_OPTION_NAME,indexedColumn);
+        put("mode",OnDiskIndexBuilder.Mode.PREFIX.toString());
+      }
+    }
+));
+  }
+  cfm.indexes(indexes);
+  return cfm;
+}
