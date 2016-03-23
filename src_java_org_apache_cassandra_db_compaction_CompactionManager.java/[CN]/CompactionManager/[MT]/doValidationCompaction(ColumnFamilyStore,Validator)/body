@@ -17,13 +17,7 @@
       if (validator.gcBefore > 0)       gcBefore=validator.gcBefore;
  else       gcBefore=getDefaultGcBefore(cfs,nowInSec);
     }
-    long numPartitions=0;
-    for (    SSTableReader sstable : sstables) {
-      numPartitions+=sstable.estimatedKeysForRanges(validator.desc.ranges);
-    }
-    int depth=numPartitions > 0 ? (int)Math.min(Math.floor(Math.log(numPartitions)),20) : 0;
-    MerkleTrees tree=new MerkleTrees(cfs.getPartitioner());
-    tree.addMerkleTrees((int)Math.pow(2,depth),validator.desc.ranges);
+    MerkleTrees tree=createMerkleTrees(sstables,validator.desc.ranges,cfs);
     long start=System.nanoTime();
     try (AbstractCompactionStrategy.ScannerList scanners=cfs.getCompactionStrategyManager().getScanners(sstables,validator.desc.ranges);ValidationCompactionController controller=new ValidationCompactionController(cfs,gcBefore);CompactionIterator ci=new ValidationCompactionIterator(scanners.scanners,controller,nowInSec,metrics)){
       validator.prepare(cfs,tree);
@@ -40,9 +34,9 @@
         cfs.clearSnapshot(snapshotName);
       }
     }
-    if (logger.isTraceEnabled()) {
+    if (logger.isDebugEnabled()) {
       long duration=TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-      logger.trace("Validation finished in {} msec, depth {} for {} keys, serialized size {} bytes for {}",duration,depth,numPartitions,MerkleTrees.serializer.serializedSize(tree,0),validator.desc);
+      logger.debug("Validation finished in {} msec, for {}",duration,validator.desc);
     }
   }
   finally {
