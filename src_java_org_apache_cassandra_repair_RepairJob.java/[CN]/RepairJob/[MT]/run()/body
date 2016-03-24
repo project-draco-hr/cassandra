@@ -12,7 +12,6 @@
     ListenableFuture<List<InetAddress>> allSnapshotTasks=Futures.allAsList(snapshotTasks);
     validations=Futures.transform(allSnapshotTasks,new AsyncFunction<List<InetAddress>,List<TreeResponse>>(){
       public ListenableFuture<List<TreeResponse>> apply(      List<InetAddress> endpoints) throws Exception {
-        logger.info(String.format("[repair #%s] requesting merkle trees for %s (to %s)",desc.sessionId,desc.columnFamily,endpoints));
         if (parallelismDegree == RepairParallelism.SEQUENTIAL)         return sendSequentialValidationRequest(endpoints);
  else         return sendDCAwareValidationRequest(endpoints);
       }
@@ -20,7 +19,6 @@
 ,taskExecutor);
   }
  else {
-    logger.info(String.format("[repair #%s] requesting merkle trees for %s (to %s)",desc.sessionId,desc.columnFamily,allEndpoints));
     validations=sendValidationRequest(allEndpoints);
   }
   ListenableFuture<List<SyncStat>> syncResults=Futures.transform(validations,new AsyncFunction<List<TreeResponse>,List<SyncStat>>(){
