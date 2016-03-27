@@ -1,0 +1,9 @@
+{
+  this.configuration=new Configuration(DatabaseDescriptor.getCommitLogCompression(),DatabaseDescriptor.getEncryptionContext());
+  DatabaseDescriptor.createAllDirectories();
+  this.archiver=archiver;
+  metrics=new CommitLogMetrics();
+  executor=DatabaseDescriptor.getCommitLogSync() == Config.CommitLogSync.batch ? new BatchCommitLogService(this) : new PeriodicCommitLogService(this);
+  segmentManager=DatabaseDescriptor.isCDCEnabled() ? new CommitLogSegmentManagerCDC(this,DatabaseDescriptor.getCommitLogLocation()) : new CommitLogSegmentManagerStandard(this,DatabaseDescriptor.getCommitLogLocation());
+  metrics.attach(executor,segmentManager);
+}

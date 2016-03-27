@@ -1,0 +1,54 @@
+{
+  CommitLogDescriptor desc=CommitLogDescriptor.fromFileName(file.getName());
+  try (ChannelProxy channel=new ChannelProxy(file);RandomAccessReader reader=RandomAccessReader.open(channel)){
+    if (desc.version < CommitLogDescriptor.VERSION_21) {
+      if (!shouldSkipSegmentId(file,desc,minPosition)) {
+        if (minPosition.segmentId == desc.id)         reader.seek(minPosition.position);
+        ReadStatusTracker statusTracker=new ReadStatusTracker(mutationLimit,tolerateTruncation);
+        statusTracker.errorContext=desc.fileName();
+        readSection(handler,reader,minPosition,(int)reader.length(),statusTracker,desc);
+      }
+      return;
+    }
+    final long segmentIdFromFilename=desc.id;
+    try {
+      desc=CommitLogDescriptor.readHeader(reader,DatabaseDescriptor.getEncryptionContext());
+    }
+ catch (    Exception e) {
+      desc=null;
+    }
+    if (desc == null) {
+      handler.handleUnrecoverableError(new CommitLogReadException(String.format("Could not read commit log descriptor in file %s",file),CommitLogReadErrorReason.UNRECOVERABLE_DESCRIPTOR_ERROR,false));
+      return;
+    }
+    if (segmentIdFromFilename != desc.id) {
+      if (handler.shouldSkipSegmentOnError(new CommitLogReadException(String.format("Segment id mismatch (filename %d, descriptor %d) in file %s",segmentIdFromFilename,desc.id,file),CommitLogReadErrorReason.RECOVERABLE_DESCRIPTOR_ERROR,false))) {
+        return;
+      }
+    }
+    if (shouldSkipSegmentId(file,desc,minPosition))     return;
+    CommitLogSegmentReader segmentReader;
+    try {
+      segmentReader=new CommitLogSegmentReader(handler,desc,reader,tolerateTruncation);
+    }
+ catch (    Exception e) {
+      handler.handleUnrecoverableError(new CommitLogReadException(String.format("Unable to create segment reader for commit log file: %s",e),CommitLogReadErrorReason.UNRECOVERABLE_UNKNOWN_ERROR,tolerateTruncation));
+      return;
+    }
+    try {
+      ReadStatusTracker statusTracker=new ReadStatusTracker(mutationLimit,tolerateTruncation);
+      for (      CommitLogSegmentReader.SyncSegment syncSegment : segmentReader) {
+        statusTracker.tolerateErrorsInSection&=syncSegment.toleratesErrorsInSection;
+        if (desc.id == minPosition.segmentId && syncSegment.endPosition < minPosition.position)         continue;
+        statusTracker.errorContext=String.format("Next section at %d in %s",syncSegment.fileStartPosition,desc.fileName());
+        readSection(handler,syncSegment.input,minPosition,syncSegment.endPosition,statusTracker,desc);
+        if (!statusTracker.shouldContinue())         break;
+      }
+    }
+ catch (    RuntimeException re) {
+      if (re.getCause() instanceof IOException)       throw (IOException)re.getCause();
+      throw re;
+    }
+    logger.debug("Finished reading {}",file);
+  }
+ }

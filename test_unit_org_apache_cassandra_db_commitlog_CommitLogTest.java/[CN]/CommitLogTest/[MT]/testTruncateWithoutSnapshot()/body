@@ -3,18 +3,19 @@
   try {
     boolean prev=DatabaseDescriptor.isAutoSnapshot();
     DatabaseDescriptor.setAutoSnapshot(false);
-    ColumnFamilyStore cfs1=Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
-    ColumnFamilyStore cfs2=Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD2);
+    Keyspace ks=Keyspace.open(KEYSPACE1);
+    ColumnFamilyStore cfs1=ks.getColumnFamilyStore(STANDARD1);
+    ColumnFamilyStore cfs2=ks.getColumnFamilyStore(STANDARD2);
     new RowUpdateBuilder(cfs1.metadata,0,"k").clustering("bytes").add("val",ByteBuffer.allocate(100)).build().applyUnsafe();
     cfs1.truncateBlocking();
     DatabaseDescriptor.setAutoSnapshot(prev);
     Mutation m2=new RowUpdateBuilder(cfs2.metadata,0,"k").clustering("bytes").add("val",ByteBuffer.allocate(DatabaseDescriptor.getCommitLogSegmentSize() / 4)).build();
     for (int i=0; i < 5; i++)     CommitLog.instance.add(m2);
-    assertEquals(2,CommitLog.instance.activeSegments());
-    ReplayPosition position=CommitLog.instance.getContext();
-    for (    Keyspace ks : Keyspace.system())     for (    ColumnFamilyStore syscfs : ks.getColumnFamilyStores())     CommitLog.instance.discardCompletedSegments(syscfs.metadata.cfId,position);
+    assertEquals(2,CommitLog.instance.segmentManager.getActiveSegments().size());
+    CommitLogPosition position=CommitLog.instance.getCurrentPosition();
+    for (    Keyspace keyspace : Keyspace.system())     for (    ColumnFamilyStore syscfs : keyspace.getColumnFamilyStores())     CommitLog.instance.discardCompletedSegments(syscfs.metadata.cfId,position);
     CommitLog.instance.discardCompletedSegments(cfs2.metadata.cfId,position);
-    assertEquals(1,CommitLog.instance.activeSegments());
+    assertEquals(1,CommitLog.instance.segmentManager.getActiveSegments().size());
   }
   finally {
     DatabaseDescriptor.setAutoSnapshot(originalState);

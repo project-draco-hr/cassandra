@@ -1,0 +1,12 @@
+{
+  CommitLogSegment segment=allocatingFrom();
+  CommitLogSegment.Allocation alloc;
+  throwIfForbidden(mutation,segment);
+  while (null == (alloc=segment.allocate(mutation,size))) {
+    advanceAllocatingFrom(segment);
+    segment=allocatingFrom;
+    throwIfForbidden(mutation,segment);
+  }
+  if (mutation.trackedByCDC())   segment.setCDCState(CDCState.CONTAINS);
+  return alloc;
+}

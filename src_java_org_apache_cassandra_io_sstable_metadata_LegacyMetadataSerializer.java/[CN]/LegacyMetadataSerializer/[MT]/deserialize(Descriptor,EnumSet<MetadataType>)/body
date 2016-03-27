@@ -8,8 +8,8 @@
     try (DataInputStreamPlus in=new DataInputStreamPlus(new BufferedInputStream(new FileInputStream(statsFile)))){
       EstimatedHistogram partitionSizes=EstimatedHistogram.serializer.deserialize(in);
       EstimatedHistogram columnCounts=EstimatedHistogram.serializer.deserialize(in);
-      ReplayPosition commitLogLowerBound=ReplayPosition.NONE;
-      ReplayPosition commitLogUpperBound=ReplayPosition.serializer.deserialize(in);
+      CommitLogPosition commitLogLowerBound=CommitLogPosition.NONE;
+      CommitLogPosition commitLogUpperBound=CommitLogPosition.serializer.deserialize(in);
       long minTimestamp=in.readLong();
       long maxTimestamp=in.readLong();
       int maxLocalDeletionTime=in.readInt();
@@ -27,7 +27,7 @@
       colCount=in.readInt();
       List<ByteBuffer> maxColumnNames=new ArrayList<>(colCount);
       for (int i=0; i < colCount; i++)       maxColumnNames.add(ByteBufferUtil.readWithShortLength(in));
-      if (descriptor.version.hasCommitLogLowerBound())       commitLogLowerBound=ReplayPosition.serializer.deserialize(in);
+      if (descriptor.version.hasCommitLogLowerBound())       commitLogLowerBound=CommitLogPosition.serializer.deserialize(in);
       if (types.contains(MetadataType.VALIDATION))       components.put(MetadataType.VALIDATION,new ValidationMetadata(partitioner,bloomFilterFPChance));
       if (types.contains(MetadataType.STATS))       components.put(MetadataType.STATS,new StatsMetadata(partitionSizes,columnCounts,commitLogLowerBound,commitLogUpperBound,minTimestamp,maxTimestamp,Integer.MAX_VALUE,maxLocalDeletionTime,0,Integer.MAX_VALUE,compressionRatio,tombstoneHistogram,sstableLevel,minColumnNames,maxColumnNames,true,ActiveRepairService.UNREPAIRED_SSTABLE,-1,-1));
       if (types.contains(MetadataType.COMPACTION))       components.put(MetadataType.COMPACTION,new CompactionMetadata(null));

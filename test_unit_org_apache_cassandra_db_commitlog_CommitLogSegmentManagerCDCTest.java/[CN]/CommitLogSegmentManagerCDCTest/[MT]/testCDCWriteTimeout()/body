@@ -1,0 +1,30 @@
+{
+  createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=true;");
+  CommitLogSegmentManagerCDC cdcMgr=(CommitLogSegmentManagerCDC)CommitLog.instance.segmentManager;
+  CFMetaData cfm=currentTableMetadata();
+  Integer originalCDCSize=DatabaseDescriptor.getCDCSpaceInMB();
+  try {
+    DatabaseDescriptor.setCDCSpaceInMB(32);
+    try {
+      for (int i=0; i < 100; i++) {
+        new RowUpdateBuilder(cfm,0,i).add("data",randomizeBuffer(DatabaseDescriptor.getCommitLogSegmentSize() / 3)).build().apply();
+      }
+      Assert.fail("Expected WriteTimeoutException from full CDC but did not receive it.");
+    }
+ catch (    WriteTimeoutException e) {
+    }
+    expectCurrentCDCState(CDCState.FORBIDDEN);
+    createTable("CREATE TABLE %s (idx int, data text, primary key(idx)) WITH cdc=false;");
+    execute("INSERT INTO %s (idx, data) VALUES (1, '1');");
+    Keyspace.open(keyspace()).getColumnFamilyStore(currentTable()).forceBlockingFlush();
+    CommitLog.instance.forceRecycleAllSegments();
+    cdcMgr.awaitManagementTasksCompletion();
+    Assert.assertTrue("Expected files to be moved to overflow.",getCDCRawCount() > 0);
+    for (    File f : new File(DatabaseDescriptor.getCDCLogLocation()).listFiles())     FileUtils.deleteWithConfirm(f);
+    cdcMgr.updateCDCTotalSize();
+    expectCurrentCDCState(CDCState.PERMITTED);
+  }
+  finally {
+    DatabaseDescriptor.setCDCSpaceInMB(originalCDCSize);
+  }
+}

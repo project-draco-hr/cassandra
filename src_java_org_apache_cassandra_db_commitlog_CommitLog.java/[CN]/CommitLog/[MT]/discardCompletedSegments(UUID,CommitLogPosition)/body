@@ -1,0 +1,15 @@
+{
+  logger.trace("discard completed log segments for {}, table {}",context,cfId);
+  for (Iterator<CommitLogSegment> iter=segmentManager.getActiveSegments().iterator(); iter.hasNext(); ) {
+    CommitLogSegment segment=iter.next();
+    segment.markClean(cfId,context);
+    if (segment.isUnused()) {
+      logger.trace("Commit log segment {} is unused",segment);
+      segmentManager.recycleSegment(segment);
+    }
+ else {
+      logger.trace("Not safe to delete{} commit log segment {}; dirty is {}",(iter.hasNext() ? "" : " active"),segment,segment.dirtyString());
+    }
+    if (segment.contains(context))     break;
+  }
+}

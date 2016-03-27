@@ -1,0 +1,12 @@
+{
+  Assert.assertEquals("entryCount must be an even number.",0,entryCount % 2);
+  createTable("CREATE TABLE %s (idx INT, data TEXT, PRIMARY KEY(idx));");
+  int midpoint=entryCount / 2;
+  for (int i=0; i < midpoint; i++) {
+    execute("INSERT INTO %s (idx, data) VALUES (?, ?)",i,Integer.toString(i));
+  }
+  CommitLogPosition result=CommitLog.instance.getCurrentPosition();
+  for (int i=midpoint; i < entryCount; i++)   execute("INSERT INTO %s (idx, data) VALUES (?, ?)",i,Integer.toString(i));
+  Keyspace.open(keyspace()).getColumnFamilyStore(currentTable()).forceBlockingFlush();
+  return result;
+}

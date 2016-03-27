@@ -1,0 +1,20 @@
+{
+  if (segments.isEmpty())   return Futures.immediateFuture(null);
+  final CommitLogPosition maxCommitLogPosition=segments.get(segments.size() - 1).getCurrentCommitLogPosition();
+  final Map<UUID,ListenableFuture<?>> flushes=new LinkedHashMap<>();
+  for (  CommitLogSegment segment : segments) {
+    for (    UUID dirtyCFId : segment.getDirtyCFIDs()) {
+      Pair<String,String> pair=Schema.instance.getCF(dirtyCFId);
+      if (pair == null) {
+        logger.trace("Marking clean CF {} that doesn't exist anymore",dirtyCFId);
+        segment.markClean(dirtyCFId,segment.getCurrentCommitLogPosition());
+      }
+ else       if (!flushes.containsKey(dirtyCFId)) {
+        String keyspace=pair.left;
+        final ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(dirtyCFId);
+        flushes.put(dirtyCFId,force ? cfs.forceFlush() : cfs.forceFlush(maxCommitLogPosition));
+      }
+    }
+  }
+  return Futures.allAsList(flushes.values());
+}

@@ -1,0 +1,18 @@
+{
+  ColumnDefinition cd=currentTableMetadata().getColumnDefinition(new ColumnIdentifier("data",false));
+  int i=0;
+  int j=0;
+  while (i + j < handler.seenMutationCount()) {
+    PartitionUpdate pu=handler.seenMutations.get(i + j).get(currentTableMetadata());
+    if (pu == null) {
+      j++;
+      continue;
+    }
+    for (    Row r : pu) {
+      String expected=Integer.toString(i + offset);
+      String seen=new String(r.getCell(cd).value().array());
+      if (!expected.equals(seen))       Assert.fail("Mismatch at index: " + i + ". Offset: "+ offset+ " Expected: "+ expected+ " Seen: "+ seen);
+    }
+    i++;
+  }
+}

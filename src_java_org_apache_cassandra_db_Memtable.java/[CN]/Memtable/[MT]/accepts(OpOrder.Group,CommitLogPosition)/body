@@ -1,0 +1,12 @@
+{
+  OpOrder.Barrier barrier=this.writeBarrier;
+  if (barrier == null)   return true;
+  if (!barrier.isAfter(opGroup))   return false;
+  if (commitLogPosition == null)   return true;
+  while (true) {
+    CommitLogPosition currentLast=commitLogUpperBound.get();
+    if (currentLast instanceof LastCommitLogPosition)     return currentLast.compareTo(commitLogPosition) >= 0;
+    if (currentLast != null && currentLast.compareTo(commitLogPosition) >= 0)     return true;
+    if (commitLogUpperBound.compareAndSet(currentLast,commitLogPosition))     return true;
+  }
+}
