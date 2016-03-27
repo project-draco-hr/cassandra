@@ -1,0 +1,48 @@
+{
+  final String columnName="timestamp";
+  ColumnFamilyStore cfs=Keyspace.open(KS_NAME).getColumnFamilyStore(CF_NAME);
+  ColumnDefinition column=cfs.metadata.getColumnDefinition(UTF8Type.instance.decompose(columnName));
+  SASIIndex sasi=(SASIIndex)cfs.indexManager.getIndexByName(columnName);
+  File directory=cfs.getDirectories().getDirectoryForNewSSTables();
+  Descriptor descriptor=Descriptor.fromFilename(cfs.getSSTablePath(directory));
+  PerSSTableIndexWriter indexWriter=(PerSSTableIndexWriter)sasi.getFlushObserver(descriptor,OperationType.FLUSH);
+  final long now=System.currentTimeMillis();
+  indexWriter.begin();
+  indexWriter.indexes.put(column,indexWriter.newIndex(sasi.getIndex()));
+  populateSegment(cfs.metadata,indexWriter.getIndex(column),new HashMap<Long,Set<Integer>>(){
+{
+      put(now,new HashSet<>(Arrays.asList(0,1)));
+      put(now + 1,new HashSet<>(Arrays.asList(2,3)));
+      put(now + 2,new HashSet<>(Arrays.asList(4,5,6,7,8,9)));
+    }
+  }
+);
+  Callable<OnDiskIndex> segmentBuilder=indexWriter.getIndex(column).scheduleSegmentFlush(false);
+  Assert.assertNull(segmentBuilder.call());
+  PerSSTableIndexWriter.Index index=indexWriter.getIndex(column);
+  Random random=ThreadLocalRandom.current();
+  Set<String> segments=new HashSet<>();
+  for (int i=0; i < 3; i++) {
+    populateSegment(cfs.metadata,index,new HashMap<Long,Set<Integer>>(){
+{
+        put(now,new HashSet<>(Arrays.asList(random.nextInt(),random.nextInt(),random.nextInt())));
+        put(now + 1,new HashSet<>(Arrays.asList(random.nextInt(),random.nextInt(),random.nextInt())));
+        put(now + 2,new HashSet<>(Arrays.asList(random.nextInt(),random.nextInt(),random.nextInt())));
+      }
+    }
+);
+    try {
+      OnDiskIndex segment=index.scheduleSegmentFlush(false).call();
+      index.segments.add(Futures.immediateFuture(segment));
+      segments.add(segment.getIndexPath());
+    }
+ catch (    Exception|FSError e) {
+      e.printStackTrace();
+      Assert.fail();
+    }
+  }
+  for (  String segment : segments)   Assert.assertTrue(new File(segment).exists());
+  indexWriter.complete();
+  for (  String segment : segments)   Assert.assertFalse(new File(segment).exists());
+  Assert.assertFalse(new File(index.outputFile).exists());
+}
