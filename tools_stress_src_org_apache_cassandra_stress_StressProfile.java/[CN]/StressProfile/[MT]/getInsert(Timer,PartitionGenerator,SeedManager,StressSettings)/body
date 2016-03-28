@@ -4,35 +4,58 @@ synchronized (this) {
       if (insertStatement == null) {
         maybeLoadSchemaInfo(settings);
         Set<ColumnMetadata> keyColumns=com.google.common.collect.Sets.newHashSet(tableMetaData.getPrimaryKey());
-        StringBuilder sb=new StringBuilder();
-        sb.append("UPDATE \"").append(tableName).append("\" SET ");
-        StringBuilder pred=new StringBuilder();
-        pred.append(" WHERE ");
-        boolean firstCol=true;
-        boolean firstPred=true;
-        for (        ColumnMetadata c : tableMetaData.getColumns()) {
-          if (keyColumns.contains(c)) {
-            if (firstPred)             firstPred=false;
- else             pred.append(" AND ");
-            pred.append(c.getName()).append(" = ?");
+        Set<ColumnMetadata> allColumns=com.google.common.collect.Sets.newHashSet(tableMetaData.getColumns());
+        boolean isKeyOnlyTable=(keyColumns.size() == allColumns.size());
+        if (!isKeyOnlyTable && (keyColumns.size() == (allColumns.size() - 1))) {
+          com.google.common.collect.Sets.SetView diff=com.google.common.collect.Sets.difference(allColumns,keyColumns);
+          for (          Object obj : diff) {
+            ColumnMetadata col=(ColumnMetadata)obj;
+            isKeyOnlyTable=col.getName().isEmpty();
+            break;
           }
+        }
+        StringBuilder sb=new StringBuilder();
+        if (!isKeyOnlyTable) {
+          sb.append("UPDATE \"").append(tableName).append("\" SET ");
+          StringBuilder pred=new StringBuilder();
+          pred.append(" WHERE ");
+          boolean firstCol=true;
+          boolean firstPred=true;
+          for (          ColumnMetadata c : tableMetaData.getColumns()) {
+            if (keyColumns.contains(c)) {
+              if (firstPred)               firstPred=false;
+ else               pred.append(" AND ");
+              pred.append(c.getName()).append(" = ?");
+            }
  else {
-            if (firstCol)             firstCol=false;
- else             sb.append(",");
-            sb.append(c.getName()).append(" = ");
+              if (firstCol)               firstCol=false;
+ else               sb.append(',');
+              sb.append(c.getName()).append(" = ");
 switch (c.getType().getName()) {
 case SET:
 case LIST:
 case COUNTER:
-              sb.append(c.getName()).append(" + ?");
-            break;
+                sb.append(c.getName()).append(" + ?");
+              break;
 default :
-          sb.append("?");
-        break;
+            sb.append("?");
+          break;
+      }
     }
   }
+  sb.append(pred);
 }
-sb.append(pred);
+ else {
+  sb.append("INSERT INTO \"").append(tableName).append("\" (");
+  StringBuilder value=new StringBuilder();
+  for (  ColumnMetadata c : tableMetaData.getPrimaryKey()) {
+    sb.append(c.getName()).append(", ");
+    value.append("?, ");
+  }
+  sb.delete(sb.lastIndexOf(","),sb.length());
+  value.delete(value.lastIndexOf(","),value.length());
+  sb.append(") ").append("values(").append(value).append(')');
+}
 if (insert == null) insert=new HashMap<>();
 lowerCase(insert);
 partitions=select(settings.insert.batchsize,"partitions","fixed(1)",insert,OptionDistribution.BUILDER);
