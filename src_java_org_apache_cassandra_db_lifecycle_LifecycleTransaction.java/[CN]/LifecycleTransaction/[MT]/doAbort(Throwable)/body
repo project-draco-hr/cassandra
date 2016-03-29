@@ -7,7 +7,10 @@
   accumulate=prepareForObsoletion(obsolete,log,obsoletions=new ArrayList<>(),accumulate);
   accumulate=log.abort(accumulate);
   accumulate=markObsolete(obsoletions,accumulate);
-  accumulate=tracker.apply(updateLiveSet(logged.update,restoreUpdatedOriginals()),accumulate);
+  List<SSTableReader> restored=restoreUpdatedOriginals();
+  List<SSTableReader> invalid=Lists.newArrayList(Iterables.concat(logged.update,logged.obsolete));
+  accumulate=tracker.apply(updateLiveSet(logged.update,restored),accumulate);
+  accumulate=tracker.notifySSTablesChanged(invalid,restored,OperationType.COMPACTION,accumulate);
   accumulate=setReplaced(logged.update,accumulate);
   accumulate=release(selfRefs(concat(staged.update,logged.update,logged.obsolete)),accumulate);
   logged.clear();
