@@ -35,6 +35,7 @@ return sstable != null && !(sstable.partitioner instanceof LocalPartitioner) && 
 }
 }
 ,true);
+if (ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).isGlobal) {
 Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfs.metadata.cfId,desc.parentSessionId);
 if (!Sets.intersection(currentlyRepairing,snapshottedSSSTables).isEmpty()) {
 cfs.clearSnapshot(desc.sessionId.toString());
@@ -42,6 +43,7 @@ logErrorAndSendFailureResponse("Cannot start multiple repair sessions over the s
 return;
 }
 ActiveRepairService.instance.getParentRepairSession(desc.parentSessionId).addSSTables(cfs.metadata.cfId,snapshottedSSSTables);
+}
 logger.debug("Enqueuing response to snapshot request {} to {}",desc.sessionId,message.from);
 MessagingService.instance().sendReply(new MessageOut(MessagingService.Verb.INTERNAL_RESPONSE),id,message.from);
 break;
