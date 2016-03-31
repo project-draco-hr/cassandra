@@ -1,0 +1,28 @@
+{
+  Operator operator;
+  int beginIndex=value.position();
+  int endIndex=value.limit() - 1;
+  if (ByteBufferUtil.endsWith(value,LIKE_WILDCARD)) {
+    if (ByteBufferUtil.startsWith(value,LIKE_WILDCARD)) {
+      operator=Operator.LIKE_CONTAINS;
+      beginIndex=+1;
+    }
+ else {
+      operator=Operator.LIKE_PREFIX;
+    }
+  }
+ else   if (ByteBufferUtil.startsWith(value,LIKE_WILDCARD)) {
+    operator=Operator.LIKE_SUFFIX;
+    beginIndex+=1;
+    endIndex+=1;
+  }
+ else {
+    operator=Operator.LIKE_MATCHES;
+    endIndex+=1;
+  }
+  if (endIndex == 0 || beginIndex == endIndex)   throw new InvalidRequestException("LIKE value can't be empty.");
+  ByteBuffer newValue=value.duplicate();
+  newValue.position(beginIndex);
+  newValue.limit(endIndex);
+  return Pair.create(operator,newValue);
+}
