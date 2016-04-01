@@ -16,9 +16,15 @@
     return;
   }
   metric.memtableSwitchCount.inc();
-  for (  Memtable memtable : memtables) {
-    MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
-    reclaim(memtable);
+  try {
+    for (    Memtable memtable : memtables) {
+      MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
+      reclaim(memtable);
+    }
+  }
+ catch (  FSWriteError e) {
+    JVMStabilityInspector.inspectThrowable(e);
+    postFlush.flushFailure=e;
   }
   postFlush.latch.countDown();
 }
