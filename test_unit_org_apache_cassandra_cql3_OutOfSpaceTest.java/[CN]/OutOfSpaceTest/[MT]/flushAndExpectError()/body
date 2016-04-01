@@ -1,0 +1,12 @@
+{
+  try {
+    Keyspace.open(KEYSPACE).getColumnFamilyStore(currentTable()).forceFlush().get();
+    fail("FSWriteError expected.");
+  }
+ catch (  ExecutionException e) {
+    Assert.assertTrue(e.getCause() instanceof FSWriteError);
+  }
+  UUID cfid=currentTableMetadata().cfId;
+  for (  CommitLogSegment segment : CommitLog.instance.allocator.getActiveSegments())   if (segment.getDirtyCFIDs().contains(cfid))   return;
+  fail("Expected commit log to remain dirty for the affected table.");
+}
