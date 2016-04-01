@@ -1,8 +1,19 @@
 def make_query_plan(self, working_keyspace=None, query=None):
-    '\n        Extend TokenAwarePolicy.make_query_plan() so that we choose the same replicas in preference\n        and most importantly we avoid repeating the (slow) bisect\n        '
-    replicas = (query.replicas if hasattr(query, 'replicas') else [])
-    for r in replicas:
-        yield r
-    for r in DCAwareRoundRobinPolicy.make_query_plan(self, working_keyspace, query):
-        if (r not in replicas):
-            yield r
+    '\n        Extend TokenAwarePolicy.make_query_plan() so that we choose the same replicas in preference\n        and most importantly we avoid repeating the (slow) bisect. We also implement a backoff policy\n        by sleeping an exponentially larger delay in case all connections to eligible replicas have\n        too many in flight requests.\n        '
+    connections = ConnectionWrapper.connections
+    replicas = (list(query.replicas) if hasattr(query, 'replicas') else [])
+    replicas.extend([r for r in DCAwareRoundRobinPolicy.make_query_plan(self, working_keyspace, query) if (r not in replicas)])
+    if replicas:
+
+        def replica_is_not_overloaded(r):
+            if (r.address in connections):
+                conn = connections[r.address]
+                return (conn.in_flight < min(conn.max_request_id, self.max_inflight_messages))
+            return True
+        for i in xrange(self.max_backoff_attempts):
+            for r in filter(replica_is_not_overloaded, replicas):
+                yield r
+            delay = (randint(1, pow(2, (i + 1))) * 0.01)
+            printdebugmsg(('All replicas busy, sleeping for %d second(s)...' % (delay,)))
+            time.sleep(delay)
+        printdebugmsg('Replicas too busy, given up')
