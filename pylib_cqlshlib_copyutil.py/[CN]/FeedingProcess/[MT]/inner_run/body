@@ -3,9 +3,20 @@ def inner_run(self):
     reader = self.reader
     reader.start()
     channels = self.worker_channels
+    max_pending_chunks = self.max_pending_chunks
     sent = 0
+    failed_attempts = 0
     while (not reader.exhausted):
-        for ch in channels:
+        channels_eligible = filter((lambda c: (c.num_pending() < max_pending_chunks)), channels)
+        if (not channels_eligible):
+            failed_attempts += 1
+            delay = randint(1, pow(2, failed_attempts))
+            printdebugmsg(('All workers busy, sleeping for %d second(s)' % (delay,)))
+            time.sleep(delay)
+            continue
+        elif (failed_attempts > 0):
+            failed_attempts = 0
+        for ch in channels_eligible:
             try:
                 max_rows = (self.ingest_rate - self.send_meter.current_record)
                 if (max_rows <= 0):
