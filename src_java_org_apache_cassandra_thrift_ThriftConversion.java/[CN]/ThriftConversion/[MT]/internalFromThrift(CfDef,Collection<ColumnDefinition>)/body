@@ -10,15 +10,18 @@
     List<ColumnDefinition> defs=fromThrift(cf_def.keyspace,cf_def.name,rawComparator,subComparator,cf_def.column_metadata);
     boolean hasKeyAlias=cf_def.isSetKey_alias() && keyValidator != null && !(keyValidator instanceof CompositeType);
     if (hasKeyAlias)     defs.add(ColumnDefinition.partitionKeyDef(cf_def.keyspace,cf_def.name,cf_def.key_alias,keyValidator,null));
+    boolean isDense=CFMetaData.calculateIsDense(fullRawComparator,defs);
     for (    ColumnDefinition def : previousCQLMetadata) {
-      if (def.isPartOfCellName())       continue;
+      if (def.kind == ColumnDefinition.Kind.REGULAR)       continue;
       if (def.kind == ColumnDefinition.Kind.PARTITION_KEY && hasKeyAlias)       continue;
+      if (def.kind == ColumnDefinition.Kind.COMPACT_VALUE && !isDense)       continue;
+      if (def.kind == ColumnDefinition.Kind.CLUSTERING_COLUMN && !isDense)       if (cfType == ColumnFamilyType.Standard || def.position() != 0)       continue;
       defs.add(def);
     }
     CellNameType comparator=CellNames.fromAbstractType(fullRawComparator,CFMetaData.calculateIsDense(fullRawComparator,defs));
     UUID cfId=Schema.instance.getId(cf_def.keyspace,cf_def.name);
     if (cfId == null)     cfId=UUIDGen.getTimeUUID();
-    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator,cfId);
+    CFMetaData newCFMD=new CFMetaData(cf_def.keyspace,cf_def.name,cfType,comparator,cfId).isDense(isDense);
     newCFMD.addAllColumnDefinitions(defs);
     if (keyValidator != null)     newCFMD.keyValidator(keyValidator);
     if (cf_def.isSetGc_grace_seconds())     newCFMD.gcGraceSeconds(cf_def.gc_grace_seconds);

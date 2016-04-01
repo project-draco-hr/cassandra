@@ -1,0 +1,29 @@
+{
+  CfDef cfDef0=new CfDef().setDefault_validation_class(BytesType.class.getCanonicalName()).setComparator_type(UTF8Type.class.getCanonicalName()).setColumn_metadata(Collections.<ColumnDef>emptyList()).setKeyspace(KEYSPACE1).setName(CF_STANDARD2);
+  CFMetaData cfm0=ThriftConversion.fromThrift(cfDef0);
+  MigrationManager.announceNewColumnFamily(cfm0,true);
+  CFMetaData current=Schema.instance.getCFMetaData(KEYSPACE1,CF_STANDARD2);
+  assertTrue(current.getIsDense());
+  assertNotNull(current.compactValueColumn());
+  assertEquals(0,Iterables.size(current.regularAndStaticColumns()));
+  assertEquals(1,current.clusteringColumns().size());
+  CfDef cfDef1=ThriftConversion.toThrift(current);
+  List<ColumnDef> colDefs=Collections.singletonList(new ColumnDef(ByteBufferUtil.bytes("col1"),AsciiType.class.getCanonicalName()));
+  cfDef1.setColumn_metadata(colDefs);
+  CFMetaData cfm1=ThriftConversion.fromThriftForUpdate(cfDef1,current);
+  MigrationManager.announceColumnFamilyUpdate(cfm1,true);
+  current=Schema.instance.getCFMetaData(KEYSPACE1,CF_STANDARD2);
+  assertFalse(current.getIsDense());
+  assertNull(current.compactValueColumn());
+  assertEquals(1,Iterables.size(current.regularAndStaticColumns()));
+  assertEquals(0,current.clusteringColumns().size());
+  CfDef cfDef2=ThriftConversion.toThrift(current);
+  cfDef2.setColumn_metadata(Collections.<ColumnDef>emptyList());
+  CFMetaData cfm2=ThriftConversion.fromThriftForUpdate(cfDef2,current);
+  MigrationManager.announceColumnFamilyUpdate(cfm2,true);
+  current=Schema.instance.getCFMetaData(KEYSPACE1,CF_STANDARD2);
+  assertTrue(current.getIsDense());
+  assertNotNull(current.compactValueColumn());
+  assertEquals(0,Iterables.size(current.regularAndStaticColumns()));
+  assertEquals(1,current.clusteringColumns().size());
+}
