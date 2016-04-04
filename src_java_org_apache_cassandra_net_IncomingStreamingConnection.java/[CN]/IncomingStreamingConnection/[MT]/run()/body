@@ -1,13 +1,14 @@
 {
   try {
-    if (version != StreamMessage.CURRENT_VERSION)     throw new IOException(String.format("Received stream using protocol version %d (my version %d). Terminating connection",version,MessagingService.current_version));
+    if (version != StreamMessage.CURRENT_VERSION)     throw new IOException(String.format("Received stream using protocol version %d (my version %d). Terminating connection",version,StreamMessage.CURRENT_VERSION));
     DataInput input=new DataInputStream(socket.getInputStream());
     StreamInitMessage init=StreamInitMessage.serializer.deserialize(input,version);
     if (!init.isForOutgoing)     socket.setSoTimeout(DatabaseDescriptor.getStreamingSocketTimeout());
     StreamResultFuture.initReceivingSide(init.sessionIndex,init.planId,init.description,init.from,socket,init.isForOutgoing,version,init.keepSSTableLevel,init.isIncremental);
   }
  catch (  IOException e) {
-    logger.trace("IOException reading from socket; closing",e);
+    logger.error(String.format("IOException while reading from socket from %s, closing: %s",socket.getRemoteSocketAddress(),e));
+    logger.trace(String.format("IOException while reading from socket from %s, closing",socket.getRemoteSocketAddress()),e);
     close();
   }
 }
