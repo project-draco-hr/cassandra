@@ -1,0 +1,18 @@
+{
+  final ColumnDefinition sensorType=getColumn(STATIC_BACKEND,UTF8Type.instance.decompose("sensor_type"));
+  final ColumnDefinition value=getColumn(STATIC_BACKEND,UTF8Type.instance.decompose("value"));
+  Unfiltered row=buildRow(Clustering.make(UTF8Type.instance.fromString("date"),LongType.instance.decompose(20160401L)),buildCell(value,DoubleType.instance.decompose(24.56),System.currentTimeMillis()));
+  Row staticRow=buildRow(Clustering.STATIC_CLUSTERING,buildCell(sensorType,UTF8Type.instance.decompose("TEMPERATURE"),System.currentTimeMillis()));
+  Operation op=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("TEMPERATURE")),new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(24.56))).complete();
+  Assert.assertTrue(op.satisfiedBy(row,staticRow,false));
+  op=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("TEMPERATURE")),new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(30.00))).complete();
+  Assert.assertFalse(op.satisfiedBy(row,staticRow,false));
+  op=new Operation.Builder(OperationType.OR,controller,new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("TEMPERATURE")),new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(24.56))).complete();
+  Assert.assertTrue(op.satisfiedBy(row,staticRow,false));
+  op=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("PRESSURE")),new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(30.00))).complete();
+  Assert.assertFalse(op.satisfiedBy(row,staticRow,false));
+  op=new Operation.Builder(OperationType.OR,controller,new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("TEMPERATURE")),new SimpleExpression(sensorType,Operator.EQ,UTF8Type.instance.decompose("PRESSURE"))).setRight(new Operation.Builder(OperationType.AND,controller,new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(24.56)))).complete();
+  Assert.assertTrue(op.satisfiedBy(row,staticRow,false));
+  op=new Operation.Builder(OperationType.AND,controller,new SimpleExpression(sensorType,Operator.LIKE_PREFIX,UTF8Type.instance.decompose("TEMP")),new SimpleExpression(value,Operator.EQ,DoubleType.instance.decompose(24.56))).complete();
+  Assert.assertTrue(op.satisfiedBy(row,staticRow,false));
+}

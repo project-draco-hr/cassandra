@@ -10,10 +10,11 @@
       DecoratedKey key=currentKeys.next();
       if (!keyRange.right.isMinimum() && keyRange.right.compareTo(key) < 0)       return endOfData();
       try (UnfilteredRowIterator partition=controller.getPartition(key,executionController)){
+        Row staticRow=partition.staticRow();
         List<Unfiltered> clusters=new ArrayList<>();
         while (partition.hasNext()) {
           Unfiltered row=partition.next();
-          if (operationTree.satisfiedBy(row,true))           clusters.add(row);
+          if (operationTree.satisfiedBy(row,staticRow,true))           clusters.add(row);
         }
         if (!clusters.isEmpty())         return new PartitionIterator(partition,clusters);
       }
