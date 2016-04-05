@@ -1,0 +1,14 @@
+{
+  SSTableLoader loader=new SSTableLoader(dataDir,new SSTableLoader.Client(){
+    private String keyspace;
+    public void init(    String keyspace){
+      this.keyspace=keyspace;
+      for (      Range<Token> range : StorageService.instance.getLocalRanges(ks))       addRangeForEndpoint(range,FBUtilities.getBroadcastAddress());
+    }
+    public CFMetaData getTableMetadata(    String cfName){
+      return Schema.instance.getCFMetaData(keyspace,cfName);
+    }
+  }
+,new OutputHandler.SystemOutput(false,false));
+  loader.stream().get();
+}
