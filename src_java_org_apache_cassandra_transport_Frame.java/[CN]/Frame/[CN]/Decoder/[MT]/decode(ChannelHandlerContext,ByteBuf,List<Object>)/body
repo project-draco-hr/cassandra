@@ -4,12 +4,14 @@
     if (bytesToDiscard <= 0)     fail();
     return;
   }
-  if (buffer.readableBytes() < Header.LENGTH)   return;
+  int readableBytes=buffer.readableBytes();
+  if (readableBytes == 0)   return;
   int idx=buffer.readerIndex();
   int firstByte=buffer.getByte(idx++);
   Message.Direction direction=Message.Direction.extractFromVersion(firstByte);
   int version=firstByte & PROTOCOL_VERSION_MASK;
   if (version < Server.MIN_SUPPORTED_VERSION || version > Server.CURRENT_VERSION)   throw new ProtocolException(String.format("Invalid or unsupported protocol version (%d); the lowest supported version is %d and the greatest is %d",version,Server.MIN_SUPPORTED_VERSION,Server.CURRENT_VERSION));
+  if (readableBytes < Header.LENGTH)   return;
   int flags=buffer.getByte(idx++);
   int streamId=buffer.getShort(idx);
   idx+=2;
