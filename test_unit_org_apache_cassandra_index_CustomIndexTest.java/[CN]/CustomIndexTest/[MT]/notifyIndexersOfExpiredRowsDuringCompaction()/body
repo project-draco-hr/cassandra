@@ -1,0 +1,17 @@
+{
+  createTable("CREATE TABLE %s (k int, c int, PRIMARY KEY (k,c))");
+  createIndex(String.format("CREATE CUSTOM INDEX row_ttl_test_index ON %%s() USING '%s'",StubIndex.class.getName()));
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  StubIndex index=(StubIndex)cfs.indexManager.getIndexByName("row_ttl_test_index");
+  execute("INSERT INTO %s (k, c) VALUES (?, ?) USING TTL 1",0,0);
+  execute("INSERT INTO %s (k, c) VALUES (?, ?)",0,1);
+  execute("INSERT INTO %s (k, c) VALUES (?, ?)",0,2);
+  execute("INSERT INTO %s (k, c) VALUES (?, ?)",3,3);
+  assertEquals(4,index.rowsInserted.size());
+  flush();
+  TimeUnit.SECONDS.sleep(2);
+  compact();
+  assertEquals(1,index.rowsDeleted.size());
+  Integer deletedClustering=Int32Type.instance.compose(index.rowsDeleted.get(0).clustering().get(0));
+  assertEquals(0,deletedClustering.intValue());
+}
