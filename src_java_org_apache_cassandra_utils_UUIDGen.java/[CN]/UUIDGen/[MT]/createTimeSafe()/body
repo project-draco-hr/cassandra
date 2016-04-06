@@ -1,6 +1,17 @@
 {
-  long nanosSince=(System.currentTimeMillis() - START_EPOCH) * 10000;
-  if (nanosSince > lastNanos)   lastNanos=nanosSince;
- else   nanosSince=++lastNanos;
-  return createTime(nanosSince);
+  long newLastNanos;
+  while (true) {
+    newLastNanos=(System.currentTimeMillis() - START_EPOCH) * 10000;
+    long originalLastNanos=lastNanos.get();
+    if (newLastNanos > originalLastNanos) {
+      if (lastNanos.compareAndSet(originalLastNanos,newLastNanos)) {
+        break;
+      }
+    }
+ else {
+      newLastNanos=lastNanos.incrementAndGet();
+      break;
+    }
+  }
+  return createTime(newLastNanos);
 }
