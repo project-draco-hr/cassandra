@@ -1,0 +1,26 @@
+{
+  buffer.reset();
+  boolean isFirst=true;
+  if (start != null) {
+    while (deserializer.hasNext() && deserializer.compareNextTo(start) <= 0 && !stopReadingDisk()) {
+      isFirst=false;
+      if (deserializer.nextIsRow())       deserializer.skipNext();
+ else       updateOpenMarker((RangeTombstoneMarker)deserializer.readNext());
+    }
+  }
+  if (openMarker != null) {
+    ClusteringBound markerStart=start == null ? ClusteringBound.BOTTOM : start;
+    buffer.add(new RangeTombstoneBoundMarker(markerStart,openMarker));
+  }
+  while (deserializer.hasNext() && (end == null || deserializer.compareNextTo(end) <= 0) && !stopReadingDisk()) {
+    Unfiltered unfiltered=deserializer.readNext();
+    if (!isFirst || includeFirst)     buffer.add(unfiltered);
+    isFirst=false;
+    if (unfiltered.isRangeTombstoneMarker())     updateOpenMarker((RangeTombstoneMarker)unfiltered);
+  }
+  if (openMarker != null) {
+    ClusteringBound markerEnd=end == null ? ClusteringBound.TOP : end;
+    buffer.add(new RangeTombstoneBoundMarker(markerEnd,getAndClearOpenMarker()));
+  }
+  buffer.build();
+}
