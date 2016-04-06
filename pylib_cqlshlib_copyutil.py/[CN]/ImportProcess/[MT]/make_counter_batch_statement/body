@@ -1,15 +1,20 @@
 def make_counter_batch_statement(self, query, conv, batch, replicas):
-    statement = BatchStatement(batch_type=BatchType.COUNTER, consistency_level=self.consistency_level)
-    statement.replicas = replicas
-    statement.keyspace = self.ks
-    for row in batch['rows']:
+
+    def make_full_query(r):
         where_clause = []
         set_clause = []
-        for (i, value) in enumerate(row):
+        for (i, value) in enumerate(r):
             if (i in conv.primary_key_indexes):
                 where_clause.append(('%s=%s' % (self.valid_columns[i], value)))
             else:
                 set_clause.append(('%s=%s+%s' % (self.valid_columns[i], self.valid_columns[i], value)))
-        full_query_text = (query % (','.join(set_clause), ' AND '.join(where_clause)))
-        statement.add(full_query_text)
+        return (query % (','.join(set_clause), ' AND '.join(where_clause)))
+    if (len(batch['rows']) == 1):
+        statement = SimpleStatement(make_full_query(batch['rows'][0]), consistency_level=self.consistency_level)
+    else:
+        statement = BatchStatement(batch_type=BatchType.COUNTER, consistency_level=self.consistency_level)
+        for row in batch['rows']:
+            statement.add(make_full_query(row))
+    statement.replicas = replicas
+    statement.keyspace = self.ks
     return statement
