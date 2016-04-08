@@ -1,0 +1,30 @@
+{
+  String typeName=createType("CREATE TYPE %s (a int, b text)");
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v " + typeName + ")");
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("UPDATE %s SET v = ? WHERE k = ?",userType("a",1,"b","def"),0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",1,"b","def")));
+  execute("UPDATE %s SET v = ? WHERE k = ?",userType("a",0,"b",null),0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b",null)));
+  execute("UPDATE %s SET v = ? WHERE k = ?",userType("a",null,"b","abc"),0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",null,"b","abc")));
+  execute("UPDATE %s SET v.a = ? WHERE k = ?",1,0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",1,"b","abc")));
+  execute("UPDATE %s SET v.b = ? WHERE k = ?","def",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",1,"b","def")));
+  execute("UPDATE %s SET v.a = ?, v.b = ? WHERE k = ?",0,"abc",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("UPDATE %s SET v.b = ?, v.a = ? WHERE k = ?","abc",0,0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("UPDATE %s SET v.a = ? WHERE k = ?",null,0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",null,"b","abc")));
+  execute("UPDATE %s SET v.a = ? WHERE k = ?",0,0);
+  execute("UPDATE %s SET v.b = ? WHERE k = ?",null,0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b",null)));
+  execute("UPDATE %s SET v.a = ? WHERE k = ?",null,0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,null));
+  assertInvalid("UPDATE %s SET v.bad = ? FROM %s WHERE k = ?",0,0);
+  assertInvalid("UPDATE %s SET v = ? FROM %s WHERE k = ?",0,0);
+  assertInvalid("UPDATE %s SET v = ? FROM %s WHERE k = ?",userType("a",1,"b","abc","bad",123),0);
+}

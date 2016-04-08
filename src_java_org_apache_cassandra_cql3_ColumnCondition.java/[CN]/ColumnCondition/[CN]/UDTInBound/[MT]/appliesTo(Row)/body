@@ -1,0 +1,21 @@
+{
+  UserType userType=(UserType)column.type;
+  ByteBuffer rowValue;
+  if (userType.isMultiCell()) {
+    Iterator<Cell> cells=getCells(row,column);
+    rowValue=cells.hasNext() ? userType.serializeForNativeProtocol(cells,protocolVersion) : null;
+  }
+ else {
+    Cell cell=getCell(row,column);
+    rowValue=cell == null ? null : cell.value();
+  }
+  for (  ByteBuffer value : inValues) {
+    if (value == null || rowValue == null) {
+      if (value == rowValue)       return true;
+    }
+ else     if (userType.compare(value,rowValue) == 0) {
+      return true;
+    }
+  }
+  return false;
+}

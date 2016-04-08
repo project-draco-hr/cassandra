@@ -1,0 +1,12 @@
+{
+  String typeName=createType("CREATE TYPE %s (a int, b text)");
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v " + typeName + ")");
+  execute("INSERT INTO %s (k, v) VALUES (?, {a: ?, b: ?})",0,0,"abc");
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("INSERT INTO %s (k, v) VALUES (?, {a: ?, b: ?})",0,0,null);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b",null)));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",null,"b","abc"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",null,"b","abc")));
+}

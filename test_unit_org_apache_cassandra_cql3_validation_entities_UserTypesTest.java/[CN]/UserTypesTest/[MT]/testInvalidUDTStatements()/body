@@ -1,0 +1,32 @@
+{
+  String typename=createType("CREATE TYPE %s (a int)");
+  String myType=KEYSPACE + '.' + typename;
+  assertInvalidMessage("Invalid non-frozen user-defined type for PRIMARY KEY component k","CREATE TABLE " + KEYSPACE + ".wrong (k "+ myType+ " PRIMARY KEY , v int)");
+  assertInvalidMessage("Invalid non-frozen user-defined type for PRIMARY KEY component k2","CREATE TABLE " + KEYSPACE + ".wrong (k1 int, k2 "+ myType+ ", v int, PRIMARY KEY (k1, k2))");
+  assertInvalidMessage("Non-frozen UDTs are not allowed inside collections: list<" + myType + ">","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v list<"+ myType+ ">)");
+  assertInvalidMessage("Non-frozen UDTs are not allowed inside collections: set<" + myType + ">","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v set<"+ myType+ ">)");
+  assertInvalidMessage("Non-frozen UDTs are not allowed inside collections: map<" + myType + ", int>","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v map<"+ myType+ ", int>)");
+  assertInvalidMessage("Non-frozen UDTs are not allowed inside collections: map<int, " + myType + ">","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v map<int, "+ myType+ ">)");
+  assertInvalidMessage("Non-frozen UDTs are not allowed inside collections: list<" + myType + ">","CREATE TYPE " + KEYSPACE + ".wrong (a int, b list<"+ myType+ ">)");
+  assertInvalidMessage("A user type cannot contain non-frozen UDTs","CREATE TYPE " + KEYSPACE + ".wrong (a int, b "+ myType+ ")");
+  assertInvalidMessage("Statement on keyspace " + KEYSPACE + " cannot refer to a user type in keyspace otherkeyspace;"+ " user types can only be used in the keyspace they are defined in","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v frozen<otherKeyspace.myType>)");
+  assertInvalidMessage("Unknown type " + KEYSPACE + ".unknowntype","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v frozen<"+ KEYSPACE+ '.'+ "unknownType>)");
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b frozen<" + myType + ">, c int)");
+  assertInvalidMessage("Frozen UDT column b does not support field deletion","DELETE b.a FROM %s WHERE a = 0");
+  assertInvalidMessage("Invalid field deletion operation for non-UDT column c","DELETE c.a FROM %s WHERE a = 0");
+  assertInvalidMessage("Invalid operation (b.a = 0) for frozen UDT column b","UPDATE %s SET b.a = 0 WHERE a = 0");
+  assertInvalidMessage("Invalid operation (c.a = 0) for non-UDT column c","UPDATE %s SET c.a = 0 WHERE a = 0");
+  createTable("CREATE TABLE %s (a int PRIMARY KEY, b " + myType + ", c int)");
+  assertInvalidMessage("UDT column b does not have a field named foo","DELETE b.foo FROM %s WHERE a = 0");
+  assertInvalidMessage("UDT column b does not have a field named foo","UPDATE %s SET b.foo = 0 WHERE a = 0");
+  assertInvalidMessage("Unknown field 'foo' in value of user defined type","INSERT INTO %s (a, b, c) VALUES (0, {a: 0, foo: 0}, 0)");
+  if (usePrepared()) {
+    assertInvalidMessage("Expected 1 value for " + typename + " column, but got more","INSERT INTO %s (a, b, c) VALUES (0, ?, 0)",userType("a",0,"foo",0));
+  }
+ else {
+    assertInvalidMessage("Unknown field 'foo' in value of user defined type " + typename,"INSERT INTO %s (a, b, c) VALUES (0, ?, 0)",userType("a",0,"foo",0));
+  }
+  String typename2=createType("CREATE TYPE %s (bar int, foo list<int>)");
+  String myType2=KEYSPACE + '.' + typename2;
+  assertInvalidMessage("Non-frozen UDTs with nested non-frozen collections are not supported","CREATE TABLE " + KEYSPACE + ".wrong (k int PRIMARY KEY, v "+ myType2+ ")");
+}

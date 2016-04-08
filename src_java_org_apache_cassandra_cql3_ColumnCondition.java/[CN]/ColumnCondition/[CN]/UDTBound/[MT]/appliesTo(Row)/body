@@ -1,0 +1,18 @@
+{
+  UserType userType=(UserType)column.type;
+  ByteBuffer rowValue;
+  if (userType.isMultiCell()) {
+    Iterator<Cell> iter=getCells(row,column);
+    rowValue=iter.hasNext() ? userType.serializeForNativeProtocol(iter,protocolVersion) : null;
+  }
+ else {
+    Cell cell=getCell(row,column);
+    rowValue=cell == null ? null : cell.value();
+  }
+  if (value == null) {
+    if (operator == Operator.EQ)     return rowValue == null;
+ else     if (operator == Operator.NEQ)     return rowValue != null;
+ else     throw new InvalidRequestException(String.format("Invalid comparison with null for operator \"%s\"",operator));
+  }
+  return compareWithOperator(operator,userType,value,rowValue);
+}

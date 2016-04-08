@@ -1,0 +1,20 @@
+{
+  Term.Terminal value=t.bind(params.options);
+  if (value == UNSET_VALUE)   return;
+  Value userTypeValue=(Value)value;
+  if (column.type.isMultiCell()) {
+    params.setComplexDeletionTimeForOverwrite(column);
+    if (value == null)     return;
+    Iterator<ByteBuffer> fieldNameIter=userTypeValue.type.fieldNames().iterator();
+    for (    ByteBuffer buffer : userTypeValue.elements) {
+      ByteBuffer fieldName=fieldNameIter.next();
+      if (buffer == null)       continue;
+      CellPath fieldPath=userTypeValue.type.cellPathForField(fieldName);
+      params.addCell(column,fieldPath,buffer);
+    }
+  }
+ else {
+    if (value == null)     params.addTombstone(column);
+ else     params.addCell(column,value.get(params.options.getProtocolVersion()));
+  }
+}

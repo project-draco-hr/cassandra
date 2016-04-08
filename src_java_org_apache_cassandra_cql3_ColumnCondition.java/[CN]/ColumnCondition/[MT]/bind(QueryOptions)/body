@@ -1,8 +1,12 @@
 {
   boolean isInCondition=operator == Operator.IN;
   if (column.type instanceof CollectionType) {
-    if (collectionElement == null)     return isInCondition ? new CollectionInBound(this,options) : new CollectionBound(this,options);
- else     return isInCondition ? new ElementAccessInBound(this,options) : new ElementAccessBound(this,options);
+    if (collectionElement != null)     return isInCondition ? new ElementAccessInBound(this,options) : new ElementAccessBound(this,options);
+ else     return isInCondition ? new CollectionInBound(this,options) : new CollectionBound(this,options);
+  }
+ else   if (column.type.isUDT()) {
+    if (field != null)     return isInCondition ? new UDTFieldAccessInBound(this,options) : new UDTFieldAccessBound(this,options);
+ else     return isInCondition ? new UDTInBound(this,options) : new UDTBound(this,options);
   }
   return isInCondition ? new SimpleInBound(this,options) : new SimpleBound(this,options);
 }

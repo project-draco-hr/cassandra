@@ -1,0 +1,23 @@
+{
+  String typeName=createType("CREATE TYPE %s (a int, b text)");
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v " + typeName + ")");
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b","abc")));
+  execute("DELETE v.b FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",0,"b",null)));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  execute("DELETE v.a FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,userType("a",null,"b","abc")));
+  execute("DELETE v.b FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,null));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  execute("DELETE v.a, v.b FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,null));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  execute("DELETE v.b, v.a FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,null));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?)",0,userType("a",0,"b","abc"));
+  execute("DELETE v FROM %s WHERE k = ?",0);
+  assertRows(execute("SELECT * FROM %s WHERE k = ?",0),row(0,null));
+  assertInvalid("DELETE v.bad FROM %s WHERE k = ?",0);
+}

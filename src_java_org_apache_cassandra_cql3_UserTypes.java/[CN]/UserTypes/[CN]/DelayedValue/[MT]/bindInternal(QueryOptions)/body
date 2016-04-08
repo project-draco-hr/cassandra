@@ -1,8 +1,11 @@
 {
+  if (values.size() > type.size()) {
+    throw new InvalidRequestException(String.format("UDT value contained too many fields (expected %s, got %s)",type.size(),values.size()));
+  }
   ByteBuffer[] buffers=new ByteBuffer[values.size()];
   for (int i=0; i < type.size(); i++) {
     buffers[i]=values.get(i).bindAndGet(options);
-    if (buffers[i] == ByteBufferUtil.UNSET_BYTE_BUFFER)     throw new InvalidRequestException(String.format("Invalid unset value for field '%s' of user defined type %s",type.fieldNameAsString(i),type.getNameAsString()));
+    if (!type.isMultiCell() && buffers[i] == ByteBufferUtil.UNSET_BYTE_BUFFER)     throw new InvalidRequestException(String.format("Invalid unset value for field '%s' of user defined type %s",type.fieldNameAsString(i),type.getNameAsString()));
   }
   return buffers;
 }

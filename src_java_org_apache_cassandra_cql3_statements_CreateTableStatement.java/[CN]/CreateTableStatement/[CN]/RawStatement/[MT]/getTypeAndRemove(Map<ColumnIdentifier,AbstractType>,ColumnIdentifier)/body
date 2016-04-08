@@ -1,7 +1,10 @@
 {
   AbstractType type=columns.get(t);
   if (type == null)   throw new InvalidRequestException(String.format("Unknown definition %s referenced in PRIMARY KEY",t));
-  if (type.isCollection() && type.isMultiCell())   throw new InvalidRequestException(String.format("Invalid collection type for PRIMARY KEY component %s",t));
+  if (type.isMultiCell()) {
+    if (type.isCollection())     throw new InvalidRequestException(String.format("Invalid non-frozen collection type for PRIMARY KEY component %s",t));
+ else     throw new InvalidRequestException(String.format("Invalid non-frozen user-defined type for PRIMARY KEY component %s",t));
+  }
   columns.remove(t);
   Boolean isReversed=properties.definedOrdering.get(t);
   return isReversed != null && isReversed ? ReversedType.getInstance(type) : type;

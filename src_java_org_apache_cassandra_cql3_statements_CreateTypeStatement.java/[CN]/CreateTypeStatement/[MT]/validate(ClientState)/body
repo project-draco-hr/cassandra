@@ -2,5 +2,8 @@
   KeyspaceMetadata ksm=Schema.instance.getKSMetaData(name.getKeyspace());
   if (ksm == null)   throw new InvalidRequestException(String.format("Cannot add type in unknown keyspace %s",name.getKeyspace()));
   if (ksm.types.get(name.getUserTypeName()).isPresent() && !ifNotExists)   throw new InvalidRequestException(String.format("A user type of name %s already exists",name));
-  for (  CQL3Type.Raw type : columnTypes)   if (type.isCounter())   throw new InvalidRequestException("A user type cannot contain counters");
+  for (  CQL3Type.Raw type : columnTypes) {
+    if (type.isCounter())     throw new InvalidRequestException("A user type cannot contain counters");
+    if (type.isUDT() && !type.isFrozen())     throw new InvalidRequestException("A user type cannot contain non-frozen UDTs");
+  }
 }

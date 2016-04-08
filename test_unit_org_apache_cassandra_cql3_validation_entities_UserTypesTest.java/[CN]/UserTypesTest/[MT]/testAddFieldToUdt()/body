@@ -1,7 +1,8 @@
 {
   String typeName=createType("CREATE TYPE %s (fooint int, fooset set <text>)");
   createTable("CREATE TABLE %s (key int PRIMARY KEY, data frozen <" + typeName + ">)");
-  execute("INSERT INTO %s (key, data) VALUES (1, {fooint: 1, fooset: {'2'}})");
+  execute("INSERT INTO %s (key, data) VALUES (1, ?)",userType("fooint",1,"fooset",set("2")));
   execute("ALTER TYPE " + keyspace() + "."+ typeName+ " ADD foomap map <int,text>");
-  execute("INSERT INTO %s (key, data) VALUES (1, {fooint: 1, fooset: {'2'}, foomap: {3 : 'bar'}})");
+  execute("INSERT INTO %s (key, data) VALUES (1, ?)",userType("fooint",1,"fooset",set("2"),"foomap",map(3,"bar")));
+  assertRows(execute("SELECT * FROM %s"),row(1,userType("fooint",1,"fooset",set("2"),"foomap",map(3,"bar"))));
 }

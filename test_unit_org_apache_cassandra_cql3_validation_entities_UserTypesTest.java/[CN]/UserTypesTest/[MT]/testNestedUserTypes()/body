@@ -2,6 +2,6 @@
   String type1=createType("CREATE TYPE %s ( s set<text>, m map<text, text>, l list<text>)");
   String type2=createType("CREATE TYPE %s ( s set < frozen < " + type1 + " >>,)");
   createTable("CREATE TABLE %s (id int PRIMARY KEY, val frozen<" + type2 + ">)");
-  execute("INSERT INTO %s (id, val) VALUES (0, { s : {{ s : {'foo', 'bar'}, m : { 'foo' : 'bar' }, l : ['foo', 'bar']} }})");
-  execute("SELECT * FROM %s");
+  execute("INSERT INTO %s (id, val) VALUES (0, ?)",userType("s",set(userType("s",set("foo","bar"),"m",map("foo","bar"),"l",list("foo","bar")))));
+  assertRows(execute("SELECT * FROM %s"),row(0,userType("s",set(userType("s",set("foo","bar"),"m",map("foo","bar"),"l",list("foo","bar"))))));
 }
