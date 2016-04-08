@@ -1,39 +1,32 @@
 {
   RangeIterator<Long,Token> tokens=combinedTerm.getTokenIterator();
-  tokenCount=tokens.getCount();
+  tokenCount=0;
   treeMinToken=tokens.getMinimum();
   treeMaxToken=tokens.getMaximum();
   numBlocks=1;
-  if (tokenCount <= TOKENS_PER_BLOCK) {
-    leftmostLeaf=new StaticLeaf(tokens,tokens.getMinimum(),tokens.getMaximum(),tokens.getCount(),true);
-    rightmostLeaf=leftmostLeaf;
-    root=leftmostLeaf;
+  root=new InteriorNode();
+  rightmostParent=(InteriorNode)root;
+  Leaf lastLeaf=null;
+  Long lastToken, firstToken=null;
+  int leafSize=0;
+  while (tokens.hasNext()) {
+    Long token=tokens.next().get();
+    if (firstToken == null)     firstToken=token;
+    tokenCount++;
+    leafSize++;
+    if (tokenCount % TOKENS_PER_BLOCK != 0 && token != treeMaxToken)     continue;
+    lastToken=token;
+    Leaf leaf=new PartialLeaf(firstToken,lastToken,leafSize);
+    if (lastLeaf == null)     leftmostLeaf=leaf;
+ else     lastLeaf.next=leaf;
+    rightmostParent.add(leaf);
+    lastLeaf=rightmostLeaf=leaf;
+    firstToken=null;
+    numBlocks++;
+    leafSize=0;
   }
- else {
-    root=new InteriorNode();
-    rightmostParent=(InteriorNode)root;
-    Leaf lastLeaf=null;
-    long numFullLeaves=tokenCount / TOKENS_PER_BLOCK;
-    for (long i=0; i < numFullLeaves; i++) {
-      Long firstToken=tokens.next().get();
-      for (int j=1; j < (TOKENS_PER_BLOCK - 1); j++)       tokens.next();
-      Long lastToken=tokens.next().get();
-      Leaf leaf=new PartialLeaf(firstToken,lastToken,TOKENS_PER_BLOCK);
-      if (lastLeaf == null)       leftmostLeaf=leaf;
- else       lastLeaf.next=leaf;
-      rightmostParent.add(leaf);
-      lastLeaf=rightmostLeaf=leaf;
-      numBlocks++;
-    }
-    int remainingTokens=(int)(tokenCount % TOKENS_PER_BLOCK);
-    if (remainingTokens != 0) {
-      Long firstToken=tokens.next().get();
-      Long lastToken=firstToken;
-      while (tokens.hasNext())       lastToken=tokens.next().get();
-      Leaf leaf=new PartialLeaf(firstToken,lastToken,remainingTokens);
-      rightmostParent.add(leaf);
-      lastLeaf.next=rightmostLeaf=leaf;
-      numBlocks++;
-    }
+  if (root.tokenCount() == 0) {
+    numBlocks=1;
+    root=new StaticLeaf(combinedTerm.getTokenIterator(),treeMinToken,treeMaxToken,tokenCount,true);
   }
 }
