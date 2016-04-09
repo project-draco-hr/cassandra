@@ -1,0 +1,17 @@
+{
+  StreamingHistogram hist=new StreamingHistogram(5);
+  hist.update(2);
+  hist.update(2.0);
+  hist.update(2L);
+  Map<Number,long[]> asMap=hist.getAsMap();
+  assertEquals(1,asMap.size());
+  assertEquals(3L,asMap.get(2)[0]);
+  DataOutputBuffer out=new DataOutputBuffer();
+  StreamingHistogram.serializer.serialize(hist,out);
+  byte[] bytes=out.toByteArray();
+  StreamingHistogram deserialized=StreamingHistogram.serializer.deserialize(new DataInputBuffer(bytes));
+  deserialized.update(2L);
+  asMap=deserialized.getAsMap();
+  assertEquals(1,asMap.size());
+  assertEquals(4L,asMap.get(2)[0]);
+}
