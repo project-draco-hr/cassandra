@@ -1,0 +1,23 @@
+{
+  SSLContext ctx=SSLContext.getInstance("SSL");
+  TrustManagerFactory tmf=null;
+  if (truststorePath.isPresent()) {
+    try (FileInputStream tsf=new FileInputStream(truststorePath.get())){
+      KeyStore ts=KeyStore.getInstance("JKS");
+      ts.load(tsf,truststorePassword.isPresent() ? truststorePassword.get().toCharArray() : null);
+      tmf=TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+      tmf.init(ts);
+    }
+   }
+  KeyManagerFactory kmf=null;
+  if (keystorePath.isPresent()) {
+    try (FileInputStream ksf=new FileInputStream(keystorePath.get())){
+      KeyStore ks=KeyStore.getInstance("JKS");
+      ks.load(ksf,keystorePassword.isPresent() ? keystorePassword.get().toCharArray() : null);
+      kmf=KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+      kmf.init(ks,keystorePassword.isPresent() ? keystorePassword.get().toCharArray() : null);
+    }
+   }
+  ctx.init(kmf != null ? kmf.getKeyManagers() : null,tmf != null ? tmf.getTrustManagers() : null,new SecureRandom());
+  return ctx;
+}
