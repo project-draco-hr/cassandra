@@ -1,0 +1,21 @@
+{
+  if (!StorageService.instance.isDaemonSetupCompleted())   handleStartupFSError(e);
+  JVMStabilityInspector.inspectThrowable(e);
+switch (DatabaseDescriptor.getDiskFailurePolicy()) {
+case stop_paranoid:
+case stop:
+    StorageService.instance.stopTransports();
+  break;
+case best_effort:
+BlacklistedDirectories.maybeMarkUnwritable(e.path);
+if (e instanceof FSReadError) {
+File directory=BlacklistedDirectories.maybeMarkUnreadable(e.path);
+if (directory != null) Keyspace.removeUnreadableSSTables(directory);
+}
+break;
+case ignore:
+break;
+default :
+throw new IllegalStateException();
+}
+}
