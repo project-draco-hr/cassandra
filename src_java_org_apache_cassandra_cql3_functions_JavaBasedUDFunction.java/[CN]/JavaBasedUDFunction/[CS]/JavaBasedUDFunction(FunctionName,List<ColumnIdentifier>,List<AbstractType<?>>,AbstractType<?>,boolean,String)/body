@@ -64,12 +64,9 @@ if (fullSource) throw new InvalidRequestException("Java source compilation faile
 }
 Set<String> errors=udfByteCodeVerifier.verify(targetClassLoader.classData(targetClassName));
 String validDeclare="not allowed method declared: " + executeInternalName + '(';
-String validCall="call to " + targetClassName.replace('.','/') + '.'+ executeInternalName+ "()";
 for (Iterator<String> i=errors.iterator(); i.hasNext(); ) {
 String error=i.next();
-if (error.startsWith(validDeclare) || error.equals(validCall)) {
-i.remove();
-}
+if (error.startsWith(validDeclare)) i.remove();
 }
 if (!errors.isEmpty()) throw new InvalidRequestException("Java UDF validation failed: " + errors);
 Thread thread=Thread.currentThread();
@@ -84,9 +81,9 @@ nonSyntheticMethodCount+=1;
 }
 }
 if (nonSyntheticMethodCount != 2 || cls.getDeclaredConstructors().length != 1) throw new InvalidRequestException("Check your source to not define additional Java methods or constructors");
-MethodType methodType=MethodType.methodType(void.class).appendParameterTypes(TypeCodec.class,TypeCodec[].class);
+MethodType methodType=MethodType.methodType(void.class).appendParameterTypes(TypeCodec.class,TypeCodec[].class,UDFContext.class);
 MethodHandle ctor=MethodHandles.lookup().findConstructor(cls,methodType);
-this.javaUDF=(JavaUDF)ctor.invokeWithArguments(returnCodec,argCodecs);
+this.javaUDF=(JavaUDF)ctor.invokeWithArguments(returnCodec,argCodecs,udfContext);
 }
   finally {
 thread.setContextClassLoader(orig);

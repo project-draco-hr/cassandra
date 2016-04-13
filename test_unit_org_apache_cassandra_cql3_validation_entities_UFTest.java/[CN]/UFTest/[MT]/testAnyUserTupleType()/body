@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (key int primary key, sval text)");
+  execute("INSERT INTO %s (key, sval) VALUES (1, 'foo')");
+  String udt=createType("CREATE TYPE %s (a int, b text, c bigint)");
+  String fUdt=createFunction(KEYSPACE,"text","CREATE OR REPLACE FUNCTION %s(arg text) " + "CALLED ON NULL INPUT " + "RETURNS " + udt + " "+ "LANGUAGE JAVA\n"+ "AS $$\n"+ "    UDTValue udt = udfContext.newUDTValue(\""+ udt+ "\");"+ "    udt.setInt(\"a\", 42);"+ "    udt.setString(\"b\", \"42\");"+ "    udt.setLong(\"c\", 4242);"+ "    return udt;"+ "$$");
+  assertRows(execute("SELECT " + fUdt + "(sval) FROM %s"),row(userType("a",42,"b","42","c",4242L)));
+  String fTup=createFunction(KEYSPACE,"text","CREATE OR REPLACE FUNCTION %s(arg text) " + "CALLED ON NULL INPUT " + "RETURNS tuple<int, " + udt + "> "+ "LANGUAGE JAVA\n"+ "AS $$\n"+ "    UDTValue udt = udfContext.newUDTValue(\""+ udt+ "\");"+ "    udt.setInt(\"a\", 42);"+ "    udt.setString(\"b\", \"42\");"+ "    udt.setLong(\"c\", 4242);"+ "    TupleValue tup = udfContext.newTupleValue(\"tuple<int,"+ udt+ ">\");"+ "    tup.setInt(0, 88);"+ "    tup.setUDTValue(1, udt);"+ "    return tup;"+ "$$");
+  assertRows(execute("SELECT " + fTup + "(sval) FROM %s"),row(tuple(88,userType("a",42,"b","42","c",4242L))));
+}

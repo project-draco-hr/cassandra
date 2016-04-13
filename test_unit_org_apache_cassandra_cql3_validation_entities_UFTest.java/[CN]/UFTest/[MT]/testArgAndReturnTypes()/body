@@ -1,0 +1,17 @@
+{
+  String type=KEYSPACE + '.' + createType("CREATE TYPE %s (txt text, i int)");
+  createTable("CREATE TABLE %s (key int primary key, udt frozen<" + type + ">)");
+  execute("INSERT INTO %s (key, udt) VALUES (1, {txt: 'foo', i: 42})");
+  String f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val int) " + "RETURNS NULL ON NULL INPUT " + "RETURNS " + type + ' '+ "LANGUAGE JAVA\n"+ "AS 'return udfContext.newReturnUDTValue();';");
+  assertRows(execute("SELECT " + f + "(key) FROM %s"),row(userType("txt",null,"i",null)));
+  f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS "+ type+ ' '+ "LANGUAGE JAVA\n"+ "AS $$"+ "   com.datastax.driver.core.UDTValue udt = udfContext.newArgUDTValue(\"val\");"+ "   udt.setString(\"txt\", \"baz\");"+ "   udt.setInt(\"i\", 88);"+ "   return udt;"+ "$$;");
+  assertRows(execute("SELECT " + f + "(udt) FROM %s"),row(userType("txt","baz","i",88)));
+  f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS tuple<text, int>"+ "LANGUAGE JAVA\n"+ "AS $$"+ "   com.datastax.driver.core.TupleValue tv = udfContext.newReturnTupleValue();"+ "   tv.setString(0, \"baz\");"+ "   tv.setInt(1, 88);"+ "   return tv;"+ "$$;");
+  assertRows(execute("SELECT " + f + "(udt) FROM %s"),row(tuple("baz",88)));
+  f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val int) " + "RETURNS NULL ON NULL INPUT " + "RETURNS " + type + ' '+ "LANGUAGE JAVASCRIPT\n"+ "AS $$"+ "   udt = udfContext.newReturnUDTValue();"+ "   udt;"+ "$$;");
+  assertRows(execute("SELECT " + f + "(key) FROM %s"),row(userType("txt",null,"i",null)));
+  f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS "+ type+ ' '+ "LANGUAGE JAVASCRIPT\n"+ "AS $$"+ "   udt = udfContext.newArgUDTValue(0);"+ "   udt.setString(\"txt\", \"baz\");"+ "   udt.setInt(\"i\", 88);"+ "   udt;"+ "$$;");
+  assertRows(execute("SELECT " + f + "(udt) FROM %s"),row(userType("txt","baz","i",88)));
+  f=createFunction(KEYSPACE,"int","CREATE OR REPLACE FUNCTION %s(val " + type + ") "+ "RETURNS NULL ON NULL INPUT "+ "RETURNS tuple<text, int>"+ "LANGUAGE JAVASCRIPT\n"+ "AS $$"+ "   tv = udfContext.newReturnTupleValue();"+ "   tv.setString(0, \"baz\");"+ "   tv.setInt(1, 88);"+ "   tv;"+ "$$;");
+  assertRows(execute("SELECT " + f + "(udt) FROM %s"),row(tuple("baz",88)));
+}
