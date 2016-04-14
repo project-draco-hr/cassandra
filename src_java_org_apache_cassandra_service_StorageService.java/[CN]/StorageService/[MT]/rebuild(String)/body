@@ -1,24 +1,3 @@
 {
-  if (!isRebuilding.compareAndSet(false,true)) {
-    throw new IllegalStateException("Node is still rebuilding. Check nodetool netstats.");
-  }
-  logger.info("rebuild from dc: {}",sourceDc == null ? "(any dc)" : sourceDc);
-  try {
-    RangeStreamer streamer=new RangeStreamer(tokenMetadata,null,FBUtilities.getBroadcastAddress(),"Rebuild",!replacing && useStrictConsistency,DatabaseDescriptor.getEndpointSnitch(),streamStateStore,false);
-    streamer.addSourceFilter(new RangeStreamer.FailureDetectorSourceFilter(FailureDetector.instance));
-    if (sourceDc != null)     streamer.addSourceFilter(new RangeStreamer.SingleDatacenterFilter(DatabaseDescriptor.getEndpointSnitch(),sourceDc));
-    for (    String keyspaceName : Schema.instance.getNonSystemKeyspaces())     streamer.addRanges(keyspaceName,getLocalRanges(keyspaceName));
-    StreamResultFuture resultFuture=streamer.fetchAsync();
-    resultFuture.get();
-  }
- catch (  InterruptedException e) {
-    throw new RuntimeException("Interrupted while waiting on rebuild streaming");
-  }
-catch (  ExecutionException e) {
-    logger.error("Error while rebuilding node",e.getCause());
-    throw new RuntimeException("Error while rebuilding node: " + e.getCause().getMessage());
-  }
- finally {
-    isRebuilding.set(false);
-  }
+  rebuild(sourceDc,null,null);
 }
