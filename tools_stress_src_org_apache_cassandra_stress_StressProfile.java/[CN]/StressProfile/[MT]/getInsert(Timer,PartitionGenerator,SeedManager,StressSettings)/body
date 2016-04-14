@@ -16,7 +16,7 @@ synchronized (this) {
         }
         StringBuilder sb=new StringBuilder();
         if (!isKeyOnlyTable) {
-          sb.append("UPDATE \"").append(tableName).append("\" SET ");
+          sb.append("UPDATE ").append(quoteIdentifier(tableName)).append(" SET ");
           StringBuilder pred=new StringBuilder();
           pred.append(" WHERE ");
           boolean firstCol=true;
@@ -25,17 +25,17 @@ synchronized (this) {
             if (keyColumns.contains(c)) {
               if (firstPred)               firstPred=false;
  else               pred.append(" AND ");
-              pred.append(c.getName()).append(" = ?");
+              pred.append(quoteIdentifier(c.getName())).append(" = ?");
             }
  else {
               if (firstCol)               firstCol=false;
  else               sb.append(',');
-              sb.append(c.getName()).append(" = ");
+              sb.append(quoteIdentifier(c.getName())).append(" = ");
 switch (c.getType().getName()) {
 case SET:
 case LIST:
 case COUNTER:
-                sb.append(c.getName()).append(" + ?");
+                sb.append(quoteIdentifier(c.getName())).append(" + ?");
               break;
 default :
             sb.append("?");
@@ -46,10 +46,10 @@ default :
   sb.append(pred);
 }
  else {
-  sb.append("INSERT INTO \"").append(tableName).append("\" (");
+  sb.append("INSERT INTO ").append(quoteIdentifier(tableName)).append(" (");
   StringBuilder value=new StringBuilder();
   for (  ColumnMetadata c : tableMetaData.getPrimaryKey()) {
-    sb.append(c.getName()).append(", ");
+    sb.append(quoteIdentifier(c.getName())).append(", ");
     value.append("?, ");
   }
   sb.delete(sb.lastIndexOf(","),sb.length());
