@@ -1,0 +1,12 @@
+{
+  SingleRestriction newRestriction=(SingleRestriction)restriction;
+  RestrictionSet newRestrictionSet=restrictions.addRestriction(newRestriction);
+  if (!isEmpty()) {
+    SingleRestriction lastRestriction=restrictions.lastRestriction();
+    ColumnDefinition lastRestrictionStart=lastRestriction.getFirstColumn();
+    ColumnDefinition newRestrictionStart=restriction.getFirstColumn();
+    checkFalse(lastRestriction.isSlice() && newRestrictionStart.position() > lastRestrictionStart.position(),"Clustering column \"%s\" cannot be restricted (preceding column \"%s\" is restricted by a non-EQ relation)",newRestrictionStart.name,lastRestrictionStart.name);
+    if (newRestrictionStart.position() < lastRestrictionStart.position() && newRestriction.isSlice())     throw invalidRequest("PRIMARY KEY column \"%s\" cannot be restricted (preceding column \"%s\" is restricted by a non-EQ relation)",restrictions.nextColumn(newRestrictionStart).name,newRestrictionStart.name);
+  }
+  return new ClusteringColumnRestrictions(this.comparator,newRestrictionSet);
+}

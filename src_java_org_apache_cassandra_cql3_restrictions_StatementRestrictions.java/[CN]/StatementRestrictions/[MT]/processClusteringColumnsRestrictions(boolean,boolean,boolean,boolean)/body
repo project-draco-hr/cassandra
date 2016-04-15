@@ -1,11 +1,11 @@
 {
-  checkFalse(!type.allowClusteringColumnSlices() && clusteringColumnsRestrictions.isSlice(),"Slice restrictions are not supported on the clustering columns in %s statements",type);
+  checkFalse(!type.allowClusteringColumnSlices() && clusteringColumnsRestrictions.hasSlice(),"Slice restrictions are not supported on the clustering columns in %s statements",type);
   if (!type.allowClusteringColumnSlices() && (!cfm.isCompactTable() || (cfm.isCompactTable() && !hasClusteringColumnsRestriction()))) {
     if (!selectsOnlyStaticColumns && hasUnrestrictedClusteringColumns())     throw invalidRequest("Some clustering keys are missing: %s",Joiner.on(", ").join(getUnrestrictedClusteringColumns()));
   }
  else {
-    checkFalse(clusteringColumnsRestrictions.isIN() && selectsComplexColumn,"Cannot restrict clustering columns by IN relations when a collection is selected by the query");
-    checkFalse(clusteringColumnsRestrictions.isContains() && !hasQueriableIndex,"Cannot restrict clustering columns by a CONTAINS relation without a secondary index");
+    checkFalse(clusteringColumnsRestrictions.hasIN() && selectsComplexColumn,"Cannot restrict clustering columns by IN relations when a collection is selected by the query");
+    checkFalse(clusteringColumnsRestrictions.hasContains() && !hasQueriableIndex,"Cannot restrict clustering columns by a CONTAINS relation without a secondary index");
     if (hasClusteringColumnsRestriction()) {
       List<ColumnDefinition> clusteringColumns=cfm.clusteringColumns();
       List<ColumnDefinition> restrictedColumns=new LinkedList<>(clusteringColumnsRestrictions.getColumnDefs());
@@ -20,5 +20,5 @@
       }
     }
   }
-  if (clusteringColumnsRestrictions.isContains())   usesSecondaryIndexing=true;
+  if (clusteringColumnsRestrictions.hasContains())   usesSecondaryIndexing=true;
 }
