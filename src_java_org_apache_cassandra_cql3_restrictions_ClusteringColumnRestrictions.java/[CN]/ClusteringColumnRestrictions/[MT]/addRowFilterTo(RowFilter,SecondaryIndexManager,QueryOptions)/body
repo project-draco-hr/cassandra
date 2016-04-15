@@ -1,11 +1,16 @@
 {
   int position=0;
+  SingleRestriction slice=null;
   for (  SingleRestriction restriction : restrictions) {
-    ColumnDefinition columnDef=restriction.getFirstColumn();
-    if (!(restriction.isContains() || restriction.isLIKE()) && position == columnDef.position()) {
-      position=restriction.getLastColumn().position() + 1;
-      if (!restriction.hasSupportingIndex(indexManager))       continue;
+    if (handleInFilter(restriction,position) || restriction.hasSupportingIndex(indexManager)) {
+      restriction.addRowFilterTo(filter,indexManager,options);
+      continue;
     }
-    restriction.addRowFilterTo(filter,indexManager,options);
+    if (slice != null && !slice.getFirstColumn().equals(restriction.getFirstColumn())) {
+      restriction.addRowFilterTo(filter,indexManager,options);
+      continue;
+    }
+    if (slice == null && restriction.isSlice())     slice=restriction;
+ else     position=restriction.getLastColumn().position() + 1;
   }
 }

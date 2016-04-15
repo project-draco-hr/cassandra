@@ -1,5 +1,5 @@
 {
-  this(type,cfm);
+  this(type,cfm,allowFiltering);
   ColumnFamilyStore cfs;
   SecondaryIndexManager secondaryIndexManager=null;
   if (type.allowUseOfSecondaryIndices()) {
@@ -25,26 +25,25 @@
   if (type.allowUseOfSecondaryIndices()) {
     if (whereClause.containsCustomExpressions())     processCustomIndexExpressions(whereClause.expressions,boundNames,secondaryIndexManager);
     hasQueriableClusteringColumnIndex=clusteringColumnsRestrictions.hasSupportingIndex(secondaryIndexManager);
-    hasQueriableIndex=!indexRestrictions.getCustomIndexExpressions().isEmpty() || hasQueriableClusteringColumnIndex || partitionKeyRestrictions.hasSupportingIndex(secondaryIndexManager)|| nonPrimaryKeyRestrictions.hasSupportingIndex(secondaryIndexManager);
+    hasQueriableIndex=!filterRestrictions.getCustomIndexExpressions().isEmpty() || hasQueriableClusteringColumnIndex || partitionKeyRestrictions.hasSupportingIndex(secondaryIndexManager)|| nonPrimaryKeyRestrictions.hasSupportingIndex(secondaryIndexManager);
   }
   processPartitionKeyRestrictions(hasQueriableIndex);
-  if (usesSecondaryIndexing)   indexRestrictions.add(partitionKeyRestrictions);
+  if (usesSecondaryIndexing)   filterRestrictions.add(partitionKeyRestrictions);
   if (selectsOnlyStaticColumns && hasClusteringColumnsRestriction()) {
     if (type.isDelete() || type.isUpdate())     throw invalidRequest("Invalid restrictions on clustering columns since the %s statement modifies only static columns",type);
     if (type.isSelect())     throw invalidRequest("Cannot restrict clustering columns when selecting only static columns");
   }
-  processClusteringColumnsRestrictions(hasQueriableIndex,selectsOnlyStaticColumns,selectsComplexColumn,forView);
+  processClusteringColumnsRestrictions(hasQueriableIndex,selectsOnlyStaticColumns,selectsComplexColumn,forView,allowFiltering);
   if (isKeyRange && hasQueriableClusteringColumnIndex)   usesSecondaryIndexing=true;
-  usesSecondaryIndexing=usesSecondaryIndexing || clusteringColumnsRestrictions.hasContains();
-  if (usesSecondaryIndexing)   indexRestrictions.add(clusteringColumnsRestrictions);
+  if (usesSecondaryIndexing || clusteringColumnsRestrictions.needFiltering())   filterRestrictions.add(clusteringColumnsRestrictions);
   if (!nonPrimaryKeyRestrictions.isEmpty()) {
     if (!type.allowNonPrimaryKeyInWhereClause()) {
       Collection<ColumnIdentifier> nonPrimaryKeyColumns=ColumnDefinition.toIdentifiers(nonPrimaryKeyRestrictions.getColumnDefs());
       throw invalidRequest("Non PRIMARY KEY columns found in where clause: %s ",Joiner.on(", ").join(nonPrimaryKeyColumns));
     }
     if (hasQueriableIndex)     usesSecondaryIndexing=true;
- else     if (!useFiltering)     throw invalidRequest(StatementRestrictions.REQUIRES_ALLOW_FILTERING_MESSAGE);
-    indexRestrictions.add(nonPrimaryKeyRestrictions);
+ else     if (!allowFiltering)     throw invalidRequest(StatementRestrictions.REQUIRES_ALLOW_FILTERING_MESSAGE);
+    filterRestrictions.add(nonPrimaryKeyRestrictions);
   }
   if (usesSecondaryIndexing)   validateSecondaryIndexSelections(selectsOnlyStaticColumns);
 }
