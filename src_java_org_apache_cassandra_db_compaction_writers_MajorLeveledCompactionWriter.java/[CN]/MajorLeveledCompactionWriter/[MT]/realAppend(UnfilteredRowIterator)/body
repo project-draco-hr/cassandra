@@ -1,9 +1,9 @@
 {
-  long posBefore=sstableWriter.currentWriter().getOnDiskFilePointer();
   RowIndexEntry rie=sstableWriter.append(partition);
-  totalWrittenInLevel+=sstableWriter.currentWriter().getOnDiskFilePointer() - posBefore;
   partitionsWritten++;
-  if (sstableWriter.currentWriter().getOnDiskFilePointer() > maxSSTableSize) {
+  long totalWrittenInCurrentWriter=sstableWriter.currentWriter().getEstimatedOnDiskBytesWritten();
+  if (totalWrittenInCurrentWriter > maxSSTableSize) {
+    totalWrittenInLevel+=totalWrittenInCurrentWriter;
     if (totalWrittenInLevel > LeveledManifest.maxBytesForLevel(currentLevel,maxSSTableSize)) {
       totalWrittenInLevel=0;
       currentLevel++;
