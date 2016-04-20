@@ -1,0 +1,8 @@
+{
+  String keyspace="cql_test_keyspace_create_table";
+  String table="test_table_create_table";
+  CFMetaData cfm=CFMetaData.Builder.create(keyspace,table).addPartitionKey("pk1",IntegerType.instance).addPartitionKey("pk2",AsciiType.instance).addClusteringColumn("ck1",ReversedType.getInstance(IntegerType.instance)).addClusteringColumn("ck2",IntegerType.instance).addStaticColumn("st1",AsciiType.instance).addRegularColumn("reg1",AsciiType.instance).addRegularColumn("reg2",ListType.getInstance(IntegerType.instance,false)).addRegularColumn("reg3",MapType.getInstance(AsciiType.instance,IntegerType.instance,true)).build();
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("CREATE TABLE IF NOT EXISTS cql_test_keyspace_create_table.test_table_create_table (\n" + "\tpk1 varint,\n" + "\tpk2 ascii,\n"+ "\tck1 varint,\n"+ "\tck2 varint,\n"+ "\tst1 ascii static,\n"+ "\treg1 ascii,\n"+ "\treg2 frozen<list<varint>>,\n"+ "\treg3 map<ascii, varint>,\n"+ "\tPRIMARY KEY ((pk1, pk2), ck1, ck2))\n"+ "\tWITH ID = " + cfs.metadata.cfId + "\n"+ "\tAND CLUSTERING ORDER BY (ck1 DESC, ck2 ASC)"));
+}

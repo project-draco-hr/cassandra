@@ -1,0 +1,8 @@
+{
+  String keyspace="cql_test_keyspace_counter";
+  String table="test_table_counter";
+  CFMetaData cfm=CFMetaData.Builder.createDense(keyspace,table,true,true).addPartitionKey("pk1",IntegerType.instance).addPartitionKey("pk2",AsciiType.instance).addClusteringColumn("ck1",ReversedType.getInstance(IntegerType.instance)).addClusteringColumn("ck2",IntegerType.instance).addRegularColumn("cnt",CounterColumnType.instance).build();
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("CREATE TABLE IF NOT EXISTS cql_test_keyspace_counter.test_table_counter (\n" + "\tpk1 varint,\n" + "\tpk2 ascii,\n"+ "\tck1 varint,\n"+ "\tck2 varint,\n"+ "\tcnt counter,\n"+ "\tPRIMARY KEY ((pk1, pk2), ck1, ck2))\n"+ "\tWITH ID = " + cfm.cfId + "\n"+ "\tAND COMPACT STORAGE\n"+ "\tAND CLUSTERING ORDER BY (ck1 DESC, ck2 ASC)"));
+}

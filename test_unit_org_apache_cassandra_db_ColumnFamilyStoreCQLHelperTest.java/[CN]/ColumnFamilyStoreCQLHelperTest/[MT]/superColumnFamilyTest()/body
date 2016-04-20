@@ -1,0 +1,8 @@
+{
+  final String KEYSPACE="thrift_compact_table_with_supercolumns_test";
+  final String TABLE="test_table_1";
+  CFMetaData cfm=CFMetaData.Builder.createSuper(KEYSPACE,TABLE,false).addPartitionKey("pk",BytesType.instance).addClusteringColumn("c1",AsciiType.instance).addClusteringColumn("c2",AsciiType.instance).addRegularColumn("",MapType.getInstance(Int32Type.instance,AsciiType.instance,true)).build();
+  SchemaLoader.createKeyspace(KEYSPACE,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(TABLE);
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("/*\n" + "Warning: Table " + KEYSPACE + "."+ TABLE+ " omitted because it has constructs not compatible with CQL (was created via legacy API).\n\n"+ "Approximate structure, for reference:\n"+ "(this should not be used to reproduce this schema)\n\n"+ "CREATE TABLE IF NOT EXISTS "+ KEYSPACE+ "."+ TABLE+ " (\n"+ "\tpk blob,\n"+ "\tc1 ascii,\n"+ "\tc2 ascii,\n"+ "\t\"\" map<int, ascii>,\n"+ "\tPRIMARY KEY (pk, c1, c2))\n"+ "\tWITH ID = "+ cfs.metadata.cfId+ "\n"+ "\tAND COMPACT STORAGE"));
+}

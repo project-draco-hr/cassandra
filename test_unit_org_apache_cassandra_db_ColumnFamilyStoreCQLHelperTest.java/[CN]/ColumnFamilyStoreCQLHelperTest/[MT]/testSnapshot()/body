@@ -1,0 +1,24 @@
+{
+  String typeA=createType("CREATE TYPE %s (a1 varint, a2 varint, a3 varint);");
+  String typeB=createType("CREATE TYPE %s (b1 frozen<" + typeA + ">, b2 frozen<"+ typeA+ ">, b3 frozen<"+ typeA+ ">);");
+  String typeC=createType("CREATE TYPE %s (c1 frozen<" + typeB + ">, c2 frozen<"+ typeB+ ">, c3 frozen<"+ typeB+ ">);");
+  String tableName=createTable("CREATE TABLE IF NOT EXISTS %s (" + "pk1 varint," + "pk2 ascii,"+ "ck1 varint,"+ "ck2 varint,"+ "reg1 frozen<" + typeC + ">,"+ "reg2 int,"+ "reg3 int,"+ "PRIMARY KEY ((pk1, pk2), ck1, ck2)) WITH "+ "CLUSTERING ORDER BY (ck1 ASC, ck2 DESC);");
+  alterTable("ALTER TABLE %s DROP reg3 USING TIMESTAMP 10000;");
+  alterTable("ALTER TABLE %s ADD reg3 int;");
+  for (int i=0; i < 10; i++)   execute("INSERT INTO %s (pk1, pk2, ck1, ck2, reg1, reg2) VALUES (?, ?, ?, ?, ?, ?)",i,i + 1,i + 2,i + 3,null,i + 5);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace()).getColumnFamilyStore(tableName);
+  cfs.snapshot(SNAPSHOT);
+  String schema=Files.toString(cfs.getDirectories().getSnapshotSchemaFile(SNAPSHOT),Charset.defaultCharset());
+  assertTrue(schema.contains(String.format("CREATE TYPE %s.%s(a1 varint, a2 varint, a3 varint);",keyspace(),typeA)));
+  assertTrue(schema.contains(String.format("CREATE TYPE %s.%s(a1 varint, a2 varint, a3 varint);",keyspace(),typeA)));
+  assertTrue(schema.contains(String.format("CREATE TYPE %s.%s(b1 frozen<%s>, b2 frozen<%s>, b3 frozen<%s>);",keyspace(),typeB,typeA,typeA,typeA)));
+  assertTrue(schema.contains(String.format("CREATE TYPE %s.%s(c1 frozen<%s>, c2 frozen<%s>, c3 frozen<%s>);",keyspace(),typeC,typeB,typeB,typeB)));
+  schema=schema.substring(schema.indexOf("CREATE TABLE"));
+  assertTrue(schema.startsWith("CREATE TABLE IF NOT EXISTS " + keyspace() + "."+ tableName+ " (\n"+ "\tpk1 varint,\n"+ "\tpk2 ascii,\n"+ "\tck1 varint,\n"+ "\tck2 varint,\n"+ "\treg1 frozen<"+ typeC+ ">,\n"+ "\treg2 int,\n"+ "\treg3 int,\n"+ "\tPRIMARY KEY ((pk1, pk2), ck1, ck2))\n"+ "\tWITH ID = "+ cfs.metadata.cfId+ "\n"+ "\tAND CLUSTERING ORDER BY (ck1 ASC, ck2 DESC)"));
+  schema=schema.substring(schema.indexOf("ALTER"));
+  assertTrue(schema.startsWith(String.format("ALTER TABLE %s.%s DROP reg3 USING TIMESTAMP 10000;",keyspace(),tableName)));
+  assertTrue(schema.contains(String.format("ALTER TABLE %s.%s ADD reg3 int;",keyspace(),tableName)));
+  JSONObject manifest=(JSONObject)new JSONParser().parse(new FileReader(cfs.getDirectories().getSnapshotManifestFile(SNAPSHOT)));
+  JSONArray files=(JSONArray)manifest.get("files");
+  Assert.assertEquals(1,files.size());
+}

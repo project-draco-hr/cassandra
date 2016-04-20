@@ -1,0 +1,11 @@
+{
+  Map<Byte,AbstractType<?>> aliases=new HashMap<>();
+  aliases.put((byte)'a',BytesType.instance);
+  aliases.put((byte)'b',BytesType.instance);
+  aliases.put((byte)'c',BytesType.instance);
+  String DYNAMIC_COMPOSITE="dynamic_composite";
+  AbstractType<?> dynamicComposite=DynamicCompositeType.getInstance(aliases);
+  SchemaLoader.createKeyspace(DYNAMIC_COMPOSITE,KeyspaceParams.simple(1),SchemaLoader.denseCFMD(DYNAMIC_COMPOSITE,DYNAMIC_COMPOSITE,dynamicComposite));
+  ColumnFamilyStore cfs=Keyspace.open(DYNAMIC_COMPOSITE).getColumnFamilyStore(DYNAMIC_COMPOSITE);
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("CREATE TABLE IF NOT EXISTS " + DYNAMIC_COMPOSITE + "."+ DYNAMIC_COMPOSITE+ " (\n"+ "\tkey ascii,\n"+ "\tcols 'org.apache.cassandra.db.marshal.DynamicCompositeType(a=>org.apache.cassandra.db.marshal.BytesType,b=>org.apache.cassandra.db.marshal.BytesType,c=>org.apache.cassandra.db.marshal.BytesType)',\n"+ "\tval ascii,\n"+ "\tPRIMARY KEY (key, cols))\n"+ "\tWITH ID = "+ cfs.metadata.cfId+ "\n"+ "\tAND COMPACT STORAGE"));
+}
