@@ -1,11 +1,10 @@
 {
   this.cfm=cfm;
   this.partitionKeyRestrictions=new PrimaryKeyRestrictionSet(cfm.getKeyValidatorAsCType());
-  this.clusteringColumnsRestrictions=new PrimaryKeyRestrictionSet(cfm.comparator);
+  this.clusteringColumnsRestrictions=new PrimaryKeyRestrictionSet(cfm.comparator,cfm);
   this.nonPrimaryKeyRestrictions=new RestrictionSet();
   for (  Relation relation : whereClause)   addRestriction(relation.toRestriction(cfm,boundNames));
-  ColumnFamilyStore cfs=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName);
-  SecondaryIndexManager secondaryIndexManager=cfs.indexManager;
+  SecondaryIndexManager secondaryIndexManager=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName).indexManager;
   boolean hasQueriableClusteringColumnIndex=clusteringColumnsRestrictions.hasSupportingIndex(secondaryIndexManager);
   boolean hasQueriableIndex=hasQueriableClusteringColumnIndex || partitionKeyRestrictions.hasSupportingIndex(secondaryIndexManager) || nonPrimaryKeyRestrictions.hasSupportingIndex(secondaryIndexManager);
   processPartitionKeyRestrictions(hasQueriableIndex);
