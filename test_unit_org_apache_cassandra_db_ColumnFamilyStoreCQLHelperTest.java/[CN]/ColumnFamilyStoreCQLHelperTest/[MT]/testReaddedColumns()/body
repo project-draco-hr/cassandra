@@ -1,0 +1,17 @@
+{
+  String keyspace="cql_test_keyspace_readded_columns";
+  String table="test_table_readded_columns";
+  CFMetaData cfm=CFMetaData.Builder.create(keyspace,table).addPartitionKey("pk1",IntegerType.instance).addClusteringColumn("ck1",IntegerType.instance).addRegularColumn("reg1",IntegerType.instance).addStaticColumn("reg2",IntegerType.instance).addRegularColumn("reg3",IntegerType.instance).build();
+  ColumnDefinition reg1=cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1"));
+  ColumnDefinition reg2=cfm.getColumnDefinition(ByteBufferUtil.bytes("reg2"));
+  cfm.removeColumnDefinition(reg1);
+  cfm.removeColumnDefinition(reg2);
+  cfm.recordColumnDrop(reg1,10000);
+  cfm.recordColumnDrop(reg2,20000);
+  cfm.addColumnDefinition(reg1);
+  cfm.addColumnDefinition(reg2);
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("CREATE TABLE IF NOT EXISTS cql_test_keyspace_readded_columns.test_table_readded_columns (\n" + "\tpk1 varint,\n" + "\tck1 varint,\n"+ "\treg2 varint static,\n"+ "\treg1 varint,\n"+ "\treg3 varint,\n"+ "\tPRIMARY KEY (pk1, ck1))"));
+  assertEquals(ImmutableList.of("ALTER TABLE cql_test_keyspace_readded_columns.test_table_readded_columns DROP reg1 USING TIMESTAMP 10000;","ALTER TABLE cql_test_keyspace_readded_columns.test_table_readded_columns ADD reg1 varint;","ALTER TABLE cql_test_keyspace_readded_columns.test_table_readded_columns DROP reg2 USING TIMESTAMP 20000;","ALTER TABLE cql_test_keyspace_readded_columns.test_table_readded_columns ADD reg2 varint static;"),ColumnFamilyStoreCQLHelper.getDroppedColumnsAsCQL(cfs.metadata));
+}

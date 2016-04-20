@@ -1,0 +1,9 @@
+{
+  String keyspace="cql_test_keyspace_3";
+  String table="test_table_3";
+  CFMetaData cfm=CFMetaData.Builder.create(keyspace,table).addPartitionKey("pk1",IntegerType.instance).addClusteringColumn("cl1",IntegerType.instance).addRegularColumn("reg1",AsciiType.instance).build();
+  cfm.indexes(cfm.getIndexes().with(IndexMetadata.fromIndexTargets(cfm,Collections.singletonList(new IndexTarget(cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1")).name,IndexTarget.Type.VALUES)),"indexName",IndexMetadata.Kind.COMPOSITES,Collections.emptyMap())).with(IndexMetadata.fromIndexTargets(cfm,Collections.singletonList(new IndexTarget(cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1")).name,IndexTarget.Type.KEYS)),"indexName2",IndexMetadata.Kind.COMPOSITES,Collections.emptyMap())).with(IndexMetadata.fromIndexTargets(cfm,Collections.singletonList(new IndexTarget(cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1")).name,IndexTarget.Type.KEYS_AND_VALUES)),"indexName3",IndexMetadata.Kind.COMPOSITES,Collections.emptyMap())).with(IndexMetadata.fromIndexTargets(cfm,Collections.singletonList(new IndexTarget(cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1")).name,IndexTarget.Type.KEYS_AND_VALUES)),"indexName4",IndexMetadata.Kind.CUSTOM,Collections.singletonMap(IndexTarget.CUSTOM_INDEX_OPTION_NAME,SASIIndex.class.getName()))));
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertEquals(ImmutableList.of("CREATE INDEX \"indexName\" ON cql_test_keyspace_3.test_table_3 (reg1);","CREATE INDEX \"indexName2\" ON cql_test_keyspace_3.test_table_3 (reg1);","CREATE INDEX \"indexName3\" ON cql_test_keyspace_3.test_table_3 (reg1);","CREATE CUSTOM INDEX \"indexName4\" ON cql_test_keyspace_3.test_table_3 (reg1) USING 'org.apache.cassandra.index.sasi.SASIIndex';"),ColumnFamilyStoreCQLHelper.getIndexesAsCQL(cfs.metadata));
+}

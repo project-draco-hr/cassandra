@@ -1,0 +1,18 @@
+{
+  String keyspace="cql_test_keyspace_dropped_columns";
+  String table="test_table_dropped_columns";
+  CFMetaData cfm=CFMetaData.Builder.create(keyspace,table).addPartitionKey("pk1",IntegerType.instance).addClusteringColumn("ck1",IntegerType.instance).addRegularColumn("reg1",IntegerType.instance).addRegularColumn("reg2",IntegerType.instance).addRegularColumn("reg3",IntegerType.instance).build();
+  ColumnDefinition reg1=cfm.getColumnDefinition(ByteBufferUtil.bytes("reg1"));
+  ColumnDefinition reg2=cfm.getColumnDefinition(ByteBufferUtil.bytes("reg2"));
+  ColumnDefinition reg3=cfm.getColumnDefinition(ByteBufferUtil.bytes("reg3"));
+  cfm.removeColumnDefinition(reg1);
+  cfm.removeColumnDefinition(reg2);
+  cfm.removeColumnDefinition(reg3);
+  cfm.recordColumnDrop(reg1,10000);
+  cfm.recordColumnDrop(reg2,20000);
+  cfm.recordColumnDrop(reg3,30000);
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),cfm);
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertEquals(ImmutableList.of("ALTER TABLE cql_test_keyspace_dropped_columns.test_table_dropped_columns DROP reg1 USING TIMESTAMP 10000;","ALTER TABLE cql_test_keyspace_dropped_columns.test_table_dropped_columns DROP reg3 USING TIMESTAMP 30000;","ALTER TABLE cql_test_keyspace_dropped_columns.test_table_dropped_columns DROP reg2 USING TIMESTAMP 20000;"),ColumnFamilyStoreCQLHelper.getDroppedColumnsAsCQL(cfs.metadata));
+  assertTrue(ColumnFamilyStoreCQLHelper.getCFMetadataAsCQL(cfs.metadata,true).startsWith("CREATE TABLE IF NOT EXISTS cql_test_keyspace_dropped_columns.test_table_dropped_columns (\n" + "\tpk1 varint,\n" + "\tck1 varint,\n"+ "\treg1 varint,\n"+ "\treg3 varint,\n"+ "\treg2 varint,\n"+ "\tPRIMARY KEY (pk1, ck1))"));
+}

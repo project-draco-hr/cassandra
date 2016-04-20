@@ -1,0 +1,74 @@
+{
+  StringBuilder sb=new StringBuilder();
+  if (!isCqlCompatible(metadata)) {
+    sb.append(String.format("/*\nWarning: Table %s.%s omitted because it has constructs not compatible with CQL (was created via legacy API).\n",metadata.ksName,metadata.cfName));
+    sb.append("\nApproximate structure, for reference:");
+    sb.append("\n(this should not be used to reproduce this schema)\n\n");
+  }
+  sb.append("CREATE TABLE IF NOT EXISTS ");
+  sb.append(quoteIdentifier(metadata.ksName)).append('.').append(quoteIdentifier(metadata.cfName)).append(" (");
+  List<ColumnDefinition> partitionKeyColumns=metadata.partitionKeyColumns();
+  List<ColumnDefinition> clusteringColumns=getClusteringColumns(metadata);
+  List<ColumnDefinition> partitionColumns=getPartitionColumns(metadata);
+  Consumer<StringBuilder> cdCommaAppender=commaAppender("\n\t");
+  sb.append("\n\t");
+  for (  ColumnDefinition cfd : partitionKeyColumns) {
+    cdCommaAppender.accept(sb);
+    sb.append(toCQL(cfd));
+    if (partitionKeyColumns.size() == 1 && clusteringColumns.size() == 0)     sb.append(" PRIMARY KEY");
+  }
+  for (  ColumnDefinition cfd : clusteringColumns) {
+    cdCommaAppender.accept(sb);
+    sb.append(toCQL(cfd));
+  }
+  for (  ColumnDefinition cfd : partitionColumns) {
+    cdCommaAppender.accept(sb);
+    sb.append(toCQL(cfd,metadata.isStaticCompactTable()));
+  }
+  if (includeDroppedColumns) {
+    for (    Map.Entry<ByteBuffer,CFMetaData.DroppedColumn> entry : metadata.getDroppedColumns().entrySet()) {
+      if (metadata.getColumnDefinition(entry.getKey()) != null)       continue;
+      CFMetaData.DroppedColumn droppedColumn=entry.getValue();
+      cdCommaAppender.accept(sb);
+      sb.append(quoteIdentifier(droppedColumn.name));
+      sb.append(' ');
+      sb.append(droppedColumn.type.asCQL3Type().toString());
+    }
+  }
+  if (clusteringColumns.size() > 0 || partitionKeyColumns.size() > 1) {
+    sb.append(",\n\tPRIMARY KEY (");
+    if (partitionKeyColumns.size() > 1) {
+      sb.append("(");
+      Consumer<StringBuilder> pkCommaAppender=commaAppender(" ");
+      for (      ColumnDefinition cfd : partitionKeyColumns) {
+        pkCommaAppender.accept(sb);
+        sb.append(quoteIdentifier(cfd.name.toString()));
+      }
+      sb.append(")");
+    }
+ else {
+      sb.append(quoteIdentifier(partitionKeyColumns.get(0).name.toString()));
+    }
+    for (    ColumnDefinition cfd : metadata.clusteringColumns())     sb.append(", ").append(quoteIdentifier(cfd.name.toString()));
+    sb.append(')');
+  }
+  sb.append(")\n\t");
+  sb.append("WITH ");
+  sb.append("ID = ").append(metadata.cfId).append("\n\tAND ");
+  if (metadata.isCompactTable())   sb.append("COMPACT STORAGE\n\tAND ");
+  if (clusteringColumns.size() > 0) {
+    sb.append("CLUSTERING ORDER BY (");
+    Consumer<StringBuilder> cOrderCommaAppender=commaAppender(" ");
+    for (    ColumnDefinition cd : clusteringColumns) {
+      cOrderCommaAppender.accept(sb);
+      sb.append(quoteIdentifier(cd.name.toString())).append(' ').append(cd.clusteringOrder().toString());
+    }
+    sb.append(")\n\tAND ");
+  }
+  sb.append(toCQL(metadata.params));
+  sb.append(";");
+  if (!isCqlCompatible(metadata)) {
+    sb.append("\n*/");
+  }
+  return sb.toString();
+}

@@ -1,0 +1,11 @@
+{
+  String keyspace="cql_test_keyspace_user_types";
+  String table="test_table_user_types";
+  UserType typeA=new UserType(keyspace,ByteBufferUtil.bytes("a"),Arrays.asList(FieldIdentifier.forUnquoted("a1"),FieldIdentifier.forUnquoted("a2"),FieldIdentifier.forUnquoted("a3")),Arrays.asList(IntegerType.instance,IntegerType.instance,IntegerType.instance),true);
+  UserType typeB=new UserType(keyspace,ByteBufferUtil.bytes("b"),Arrays.asList(FieldIdentifier.forUnquoted("b1"),FieldIdentifier.forUnquoted("b2"),FieldIdentifier.forUnquoted("b3")),Arrays.asList(typeA,typeA,typeA),true);
+  UserType typeC=new UserType(keyspace,ByteBufferUtil.bytes("c"),Arrays.asList(FieldIdentifier.forUnquoted("c1"),FieldIdentifier.forUnquoted("c2"),FieldIdentifier.forUnquoted("c3")),Arrays.asList(typeB,typeB,typeB),true);
+  CFMetaData cfm=CFMetaData.Builder.create(keyspace,table).addPartitionKey("pk1",IntegerType.instance).addClusteringColumn("ck1",IntegerType.instance).addRegularColumn("reg1",typeC).addRegularColumn("reg2",ListType.getInstance(IntegerType.instance,false)).addRegularColumn("reg3",MapType.getInstance(AsciiType.instance,IntegerType.instance,true)).build();
+  SchemaLoader.createKeyspace(keyspace,KeyspaceParams.simple(1),Tables.of(cfm),Types.of(typeA,typeB,typeC));
+  ColumnFamilyStore cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  assertEquals(ImmutableList.of("CREATE TYPE cql_test_keyspace_user_types.a(a1 varint, a2 varint, a3 varint);","CREATE TYPE cql_test_keyspace_user_types.b(b1 a, b2 a, b3 a);","CREATE TYPE cql_test_keyspace_user_types.c(c1 b, c2 b, c3 b);"),ColumnFamilyStoreCQLHelper.getUserTypesAsCQL(cfs.metadata));
+}
