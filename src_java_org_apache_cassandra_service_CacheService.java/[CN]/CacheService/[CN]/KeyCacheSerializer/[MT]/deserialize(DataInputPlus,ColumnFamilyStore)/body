@@ -6,12 +6,12 @@
   ByteBuffer key=ByteBufferUtil.read(input,keyLength);
   int generation=input.readInt();
   input.readBoolean();
-  SSTableReader reader=null;
+  SSTableReader reader;
   if (cfs == null || !cfs.isKeyCacheEnabled() || (reader=findDesc(generation,cfs.getSSTables(SSTableSet.CANONICAL))) == null) {
-    RowIndexEntry.Serializer.skip(input,BigFormat.instance.getLatestVersion());
+    RowIndexEntry.Serializer.skipForCache(input,BigFormat.instance.getLatestVersion());
     return null;
   }
-  RowIndexEntry.IndexSerializer<?> indexSerializer=reader.descriptor.getFormat().getIndexSerializer(reader.metadata,reader.descriptor.version,SerializationHeader.forKeyCache(cfs.metadata));
-  RowIndexEntry entry=indexSerializer.deserialize(input);
+  RowIndexEntry.IndexSerializer<?> indexSerializer=reader.descriptor.getFormat().getIndexSerializer(reader.metadata,reader.descriptor.version,reader.header);
+  RowIndexEntry<?> entry=indexSerializer.deserializeForCache(input);
   return Futures.immediateFuture(Pair.create(new KeyCacheKey(cfs.metadata.ksAndCFName,reader.descriptor,key),entry));
 }

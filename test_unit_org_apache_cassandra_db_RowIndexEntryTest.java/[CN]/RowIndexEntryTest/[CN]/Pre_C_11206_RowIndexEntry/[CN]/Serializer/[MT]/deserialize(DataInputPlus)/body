@@ -1,0 +1,35 @@
+{
+  if (!version.storeRows()) {
+    long position=in.readLong();
+    int size=in.readInt();
+    if (size > 0) {
+      DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+      int entries=in.readInt();
+      List<IndexInfo> columnsIndex=new ArrayList<>(entries);
+      long headerLength=0L;
+      for (int i=0; i < entries; i++) {
+        IndexInfo info=idxSerializer.deserialize(in);
+        columnsIndex.add(info);
+        if (i == 0)         headerLength=info.offset;
+      }
+      return new Pre_C_11206_RowIndexEntry.IndexedEntry(position,deletionTime,headerLength,columnsIndex);
+    }
+ else {
+      return new Pre_C_11206_RowIndexEntry(position);
+    }
+  }
+  long position=in.readUnsignedVInt();
+  int size=(int)in.readUnsignedVInt();
+  if (size > 0) {
+    long headerLength=in.readUnsignedVInt();
+    DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+    int entries=(int)in.readUnsignedVInt();
+    List<IndexInfo> columnsIndex=new ArrayList<>(entries);
+    for (int i=0; i < entries; i++)     columnsIndex.add(idxSerializer.deserialize(in));
+    in.skipBytesFully(entries * TypeSizes.sizeof(0));
+    return new Pre_C_11206_RowIndexEntry.IndexedEntry(position,deletionTime,headerLength,columnsIndex);
+  }
+ else {
+    return new Pre_C_11206_RowIndexEntry(position);
+  }
+}

@@ -1,0 +1,27 @@
+{
+  long dataFilePosition=in.readLong();
+  int size=in.readInt();
+  if (size == 0) {
+    return new RowIndexEntry<>(dataFilePosition);
+  }
+ else   if (size <= DatabaseDescriptor.getColumnIndexCacheSize()) {
+    return new IndexedEntry(dataFilePosition,in,idxInfoSerializer,version,false);
+  }
+ else {
+    DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+    int entries=in.readInt();
+    int[] offsets=new int[entries];
+    TrackedDataInputPlus tracked=new TrackedDataInputPlus(in);
+    long start=tracked.getBytesRead();
+    long headerLength=0L;
+    for (int i=0; i < entries; i++) {
+      offsets[i]=(int)(tracked.getBytesRead() - start);
+      if (i == 0) {
+        IndexInfo info=idxInfoSerializer.deserialize(tracked);
+        headerLength=info.offset;
+      }
+ else       idxInfoSerializer.skip(tracked);
+    }
+    return new LegacyShallowIndexedEntry(dataFilePosition,indexFilePosition,deletionTime,headerLength,offsets,idxInfoSerializer,size);
+  }
+}

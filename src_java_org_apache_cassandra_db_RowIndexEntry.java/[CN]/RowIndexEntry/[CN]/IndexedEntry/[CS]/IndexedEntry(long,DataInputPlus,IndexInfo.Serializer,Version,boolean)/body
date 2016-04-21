@@ -1,0 +1,17 @@
+{
+  super(dataFilePosition);
+  this.headerLength=in.readUnsignedVInt();
+  this.deletionTime=DeletionTime.serializer.deserialize(in);
+  int columnsIndexCount=(int)in.readUnsignedVInt();
+  TrackedDataInputPlus trackedIn=new TrackedDataInputPlus(in);
+  this.columnsIndex=new IndexInfo[columnsIndexCount];
+  for (int i=0; i < columnsIndexCount; i++)   this.columnsIndex[i]=idxInfoSerializer.deserialize(trackedIn);
+  int[] offsets=null;
+  if (!forCache && version.storeRows()) {
+    offsets=new int[this.columnsIndex.length];
+    for (int i=0; i < offsets.length; i++)     offsets[i]=trackedIn.readInt();
+  }
+  this.offsets=offsets;
+  this.indexedPartSize=(int)trackedIn.getBytesRead();
+  this.idxInfoSerializer=idxInfoSerializer;
+}

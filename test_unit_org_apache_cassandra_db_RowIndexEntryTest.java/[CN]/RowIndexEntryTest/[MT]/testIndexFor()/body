@@ -1,0 +1,44 @@
+{
+  DeletionTime deletionInfo=new DeletionTime(FBUtilities.timestampMicros(),FBUtilities.nowInSeconds());
+  List<IndexInfo> indexes=new ArrayList<>();
+  indexes.add(new IndexInfo(cn(0L),cn(5L),0,0,deletionInfo));
+  indexes.add(new IndexInfo(cn(10L),cn(15L),0,0,deletionInfo));
+  indexes.add(new IndexInfo(cn(20L),cn(25L),0,0,deletionInfo));
+  RowIndexEntry rie=new RowIndexEntry(0L){
+    public IndexInfoRetriever openWithIndex(    SegmentedFile indexFile){
+      return new IndexInfoRetriever(){
+        public IndexInfo columnsIndex(        int index){
+          return indexes.get(index);
+        }
+        public void close(){
+        }
+      }
+;
+    }
+    public int columnsIndexCount(){
+      return indexes.size();
+    }
+  }
+;
+  AbstractSSTableIterator.IndexState indexState=new AbstractSSTableIterator.IndexState(null,comp,rie,false,null);
+  assertEquals(0,indexState.indexFor(cn(-1L),-1));
+  assertEquals(0,indexState.indexFor(cn(5L),-1));
+  assertEquals(1,indexState.indexFor(cn(12L),-1));
+  assertEquals(2,indexState.indexFor(cn(17L),-1));
+  assertEquals(3,indexState.indexFor(cn(100L),-1));
+  assertEquals(3,indexState.indexFor(cn(100L),0));
+  assertEquals(3,indexState.indexFor(cn(100L),1));
+  assertEquals(3,indexState.indexFor(cn(100L),2));
+  assertEquals(3,indexState.indexFor(cn(100L),3));
+  indexState=new AbstractSSTableIterator.IndexState(null,comp,rie,true,null);
+  assertEquals(-1,indexState.indexFor(cn(-1L),-1));
+  assertEquals(0,indexState.indexFor(cn(5L),3));
+  assertEquals(0,indexState.indexFor(cn(5L),2));
+  assertEquals(1,indexState.indexFor(cn(17L),3));
+  assertEquals(2,indexState.indexFor(cn(100L),3));
+  assertEquals(2,indexState.indexFor(cn(100L),4));
+  assertEquals(1,indexState.indexFor(cn(12L),3));
+  assertEquals(1,indexState.indexFor(cn(12L),2));
+  assertEquals(1,indexState.indexFor(cn(100L),1));
+  assertEquals(2,indexState.indexFor(cn(100L),2));
+}

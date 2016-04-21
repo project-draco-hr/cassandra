@@ -7,10 +7,9 @@
     if (recreateBloomFilter)     bf=FilterFactory.getFilter(estimatedKeys,metadata.params.bloomFilterFpChance,true,descriptor.version.hasOldBfHashOrder());
     try (IndexSummaryBuilder summaryBuilder=summaryLoaded ? null : new IndexSummaryBuilder(estimatedKeys,metadata.params.minIndexInterval,samplingLevel)){
       long indexPosition;
-      RowIndexEntry.IndexSerializer rowIndexSerializer=descriptor.getFormat().getIndexSerializer(metadata,descriptor.version,header);
       while ((indexPosition=primaryIndex.getFilePointer()) != indexSize) {
         ByteBuffer key=ByteBufferUtil.readWithShortLength(primaryIndex);
-        rowIndexSerializer.deserialize(primaryIndex);
+        RowIndexEntry.Serializer.skip(primaryIndex,descriptor.version);
         DecoratedKey decoratedKey=decorateKey(key);
         if (first == null)         first=decoratedKey;
         last=decoratedKey;

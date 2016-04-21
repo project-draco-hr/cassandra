@@ -1,0 +1,26 @@
+{
+  CompactionManager.instance.disableAutoCompaction();
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(cf);
+  CacheService.instance.invalidateKeyCache();
+  assertKeyCacheSize(0,KEYSPACE1,cf);
+  Mutation rm;
+  new RowUpdateBuilder(cfs.metadata,0,"key1").clustering("1").build().applyUnsafe();
+  new RowUpdateBuilder(cfs.metadata,0,"key2").clustering("2").build().applyUnsafe();
+  cfs.forceBlockingFlush();
+  Util.getAll(Util.cmd(cfs,"key1").build());
+  Util.getAll(Util.cmd(cfs,"key2").build());
+  assertKeyCacheSize(2,KEYSPACE1,cf);
+  Set<SSTableReader> readers=cfs.getLiveSSTables();
+  Refs<SSTableReader> refs=Refs.tryRef(readers);
+  if (refs == null)   throw new IllegalStateException();
+  Util.compactAll(cfs,Integer.MAX_VALUE).get();
+  boolean noEarlyOpen=DatabaseDescriptor.getSSTablePreempiveOpenIntervalInMB() < 0;
+  assertKeyCacheSize(noEarlyOpen ? 2 : 4,KEYSPACE1,cf);
+  refs.release();
+  LifecycleTransaction.waitForDeletions();
+  assertKeyCacheSize(2,KEYSPACE1,cf);
+  Util.getAll(Util.cmd(cfs,"key1").build());
+  Util.getAll(Util.cmd(cfs,"key2").build());
+  assertKeyCacheSize(noEarlyOpen ? 4 : 2,KEYSPACE1,cf);
+}

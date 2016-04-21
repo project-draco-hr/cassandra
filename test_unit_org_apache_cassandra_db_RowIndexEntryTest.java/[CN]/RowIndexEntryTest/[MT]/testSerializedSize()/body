@@ -1,20 +1,20 @@
 {
   String tableName=createTable("CREATE TABLE %s (a int, b text, c int, PRIMARY KEY(a, b))");
   ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(tableName);
-  final RowIndexEntry simple=new RowIndexEntry(123);
+  Pre_C_11206_RowIndexEntry simple=new Pre_C_11206_RowIndexEntry(123);
   DataOutputBuffer buffer=new DataOutputBuffer();
   SerializationHeader header=new SerializationHeader(true,cfs.metadata,cfs.metadata.partitionColumns(),EncodingStats.NO_STATS);
-  RowIndexEntry.Serializer serializer=new RowIndexEntry.Serializer(cfs.metadata,BigFormat.latestVersion,header);
+  Pre_C_11206_RowIndexEntry.Serializer serializer=new Pre_C_11206_RowIndexEntry.Serializer(cfs.metadata,BigFormat.latestVersion,header);
   serializer.serialize(simple,buffer);
   assertEquals(buffer.getLength(),serializer.serializedSize(simple));
-  for (int i=0; i <= DatabaseDescriptor.getColumnIndexSize() / 4; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,"" + i,i);
+  for (int i=0; i <= DatabaseDescriptor.getColumnIndexSize() / 4; i++)   execute("INSERT INTO %s (a, b, c) VALUES (?, ?, ?)",0,String.valueOf(i),i);
   ImmutableBTreePartition partition=Util.getOnlyPartitionUnfiltered(Util.cmd(cfs).build());
   File tempFile=File.createTempFile("row_index_entry_test",null);
   tempFile.deleteOnExit();
   SequentialWriter writer=SequentialWriter.open(tempFile);
-  ColumnIndex columnIndex=ColumnIndex.writeAndBuildIndex(partition.unfilteredIterator(),writer,header,Collections.emptySet(),BigFormat.latestVersion);
-  RowIndexEntry<IndexHelper.IndexInfo> withIndex=RowIndexEntry.create(0xdeadbeef,DeletionTime.LIVE,columnIndex);
-  IndexHelper.IndexInfo.Serializer indexSerializer=new IndexHelper.IndexInfo.Serializer(cfs.metadata,BigFormat.latestVersion,header);
+  ColumnIndex columnIndex=RowIndexEntryTest.ColumnIndex.writeAndBuildIndex(partition.unfilteredIterator(),writer,header,Collections.emptySet(),BigFormat.latestVersion);
+  Pre_C_11206_RowIndexEntry withIndex=Pre_C_11206_RowIndexEntry.create(0xdeadbeef,DeletionTime.LIVE,columnIndex);
+  IndexInfo.Serializer indexSerializer=cfs.metadata.serializers().indexInfoSerializer(BigFormat.latestVersion,header);
   assertTrue(columnIndex.columnsIndex.size() >= 3);
   buffer=new DataOutputBuffer();
   serializer.serialize(withIndex,buffer);
@@ -37,6 +37,6 @@
   serializationCheck(withIndex,indexSerializer,bb,input);
   bb=buffer.buffer();
   input=new DataInputBuffer(bb,false);
-  RowIndexEntry.Serializer.skip(input,BigFormat.latestVersion);
+  Pre_C_11206_RowIndexEntry.Serializer.skip(input,BigFormat.latestVersion);
   Assert.assertEquals(0,bb.remaining());
 }

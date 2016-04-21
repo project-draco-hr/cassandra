@@ -1,0 +1,21 @@
+{
+  if (!version.storeRows())   return LegacyShallowIndexedEntry.deserialize(in,indexFilePosition,idxInfoSerializer,version);
+  long position=in.readUnsignedVInt();
+  int size=(int)in.readUnsignedVInt();
+  if (size == 0) {
+    return new RowIndexEntry<>(position);
+  }
+ else {
+    long headerLength=in.readUnsignedVInt();
+    DeletionTime deletionTime=DeletionTime.serializer.deserialize(in);
+    int columnsIndexCount=(int)in.readUnsignedVInt();
+    int indexedPartSize=size - serializedSize(deletionTime,headerLength,columnsIndexCount);
+    if (size <= DatabaseDescriptor.getColumnIndexCacheSize()) {
+      return new IndexedEntry(position,in,deletionTime,headerLength,columnsIndexCount,idxInfoSerializer,version,indexedPartSize);
+    }
+ else {
+      in.skipBytes(indexedPartSize);
+      return new ShallowIndexedEntry(position,indexFilePosition,deletionTime,headerLength,columnsIndexCount,indexedPartSize,idxInfoSerializer);
+    }
+  }
+}

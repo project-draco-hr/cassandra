@@ -1,0 +1,19 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD1);
+  cfs.truncateBlocking();
+  for (int i=0; i < 2; i++) {
+    ColumnDefinition colDef=ColumnDefinition.regularDef(cfs.metadata,ByteBufferUtil.bytes("col1"),AsciiType.instance);
+    RowUpdateBuilder rowBuilder=new RowUpdateBuilder(cfs.metadata,System.currentTimeMillis(),"key1");
+    rowBuilder.add(colDef,"val1");
+    rowBuilder.build().apply();
+    cfs.forceBlockingFlush();
+  }
+  Assert.assertEquals(2,cfs.getLiveSSTables().size());
+  for (  SSTableReader sstable : cfs.getLiveSSTables())   sstable.getPosition(Util.dk("key1"),SSTableReader.Operator.EQ);
+  AutoSavingCache<KeyCacheKey,RowIndexEntry> keyCache=CacheService.instance.keyCache;
+  keyCache.submitWrite(keyCache.size()).get();
+  keyCache.clear();
+  Assert.assertEquals(0,keyCache.size());
+  keyCache.loadSavedAsync().get();
+  for (  SSTableReader sstable : cfs.getLiveSSTables())   Assert.assertNotNull(keyCache.get(new KeyCacheKey(cfs.metadata.ksAndCFName,sstable.descriptor,ByteBufferUtil.bytes("key1"))));
+}

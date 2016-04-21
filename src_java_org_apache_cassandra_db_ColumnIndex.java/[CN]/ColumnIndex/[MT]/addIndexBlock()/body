@@ -1,0 +1,26 @@
+{
+  IndexInfo cIndexInfo=new IndexInfo(firstClustering,lastClustering,startPosition,currentPosition() - startPosition,openMarker);
+  if (indexOffsets == null)   indexOffsets=new int[10];
+ else {
+    if (columnIndexCount >= indexOffsets.length)     indexOffsets=Arrays.copyOf(indexOffsets,indexOffsets.length + 10);
+    indexOffsets[columnIndexCount]=buffer != null ? Ints.checkedCast(buffer.position()) : indexSamplesSerializedSize;
+  }
+  columnIndexCount++;
+  if (buffer == null) {
+    indexSamplesSerializedSize+=idxSerializer.serializedSize(cIndexInfo);
+    if (indexSamplesSerializedSize + columnIndexCount * TypeSizes.sizeof(0) > DatabaseDescriptor.getColumnIndexCacheSize()) {
+      buffer=new DataOutputBuffer(DatabaseDescriptor.getColumnIndexCacheSize() * 2);
+      for (      IndexInfo indexSample : indexSamples) {
+        idxSerializer.serialize(indexSample,buffer);
+      }
+      indexSamples=null;
+    }
+ else {
+      indexSamples.add(cIndexInfo);
+    }
+  }
+  if (buffer != null) {
+    idxSerializer.serialize(cIndexInfo,buffer);
+  }
+  firstClustering=null;
+}
