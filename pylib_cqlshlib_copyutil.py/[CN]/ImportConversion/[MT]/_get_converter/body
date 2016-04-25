@@ -6,7 +6,16 @@ def _get_converter(self, cql_type):
             return CqlRuleSet.dequote_value(v)
 
     def convert(t, v):
-        return converters.get(t.typename, convert_unknown)(unprotect(v), ct=t)
+        v = unprotect(v)
+        if (v == self.nullval):
+            return self.get_null_val()
+        return converters.get(t.typename, convert_unknown)(v, ct=t)
+
+    def convert_mandatory(t, v):
+        v = unprotect(v)
+        if (v == self.nullval):
+            raise ParseError('Empty values are not allowed')
+        return converters.get(t.typename, convert_unknown)(v, ct=t)
 
     def convert_blob(v, **_):
         try:
@@ -87,13 +96,13 @@ def _get_converter(self, cql_type):
         return Time(v)
 
     def convert_tuple(val, ct=cql_type):
-        return tuple((convert(t, v) for (t, v) in zip(ct.subtypes, split(val))))
+        return tuple((convert_mandatory(t, v) for (t, v) in zip(ct.subtypes, split(val))))
 
     def convert_list(val, ct=cql_type):
-        return list((convert(ct.subtypes[0], v) for v in split(val)))
+        return list((convert_mandatory(ct.subtypes[0], v) for v in split(val)))
 
     def convert_set(val, ct=cql_type):
-        return frozenset((convert(ct.subtypes[0], v) for v in split(val)))
+        return frozenset((convert_mandatory(ct.subtypes[0], v) for v in split(val)))
 
     def convert_map(val, ct=cql_type):
         "\n            We need to pass to BoundStatement.bind() a dict() because it calls iteritems(),\n            except we can't create a dict with another dict as the key, hence we use a class\n            that adds iteritems to a frozen set of tuples (which is how dict are normally made\n            immutable in python).\n            "
@@ -101,7 +110,7 @@ def _get_converter(self, cql_type):
 
         class ImmutableDict(frozenset):
             iteritems = frozenset.__iter__
-        return ImmutableDict(frozenset(((convert(ct.subtypes[0], v[0]), convert(ct.subtypes[1], v[1])) for v in [split(('{%s}' % vv), sep=':') for vv in split(val)])))
+        return ImmutableDict(frozenset(((convert_mandatory(ct.subtypes[0], v[0]), convert(ct.subtypes[1], v[1])) for v in [split(('{%s}' % vv), sep=':') for vv in split(val)])))
 
     def convert_user_type(val, ct=cql_type):
         '\n            A user type is a dictionary except that we must convert each key into\n            an attribute, so we are using named tuples. It must also be hashable,\n            so we cannot use dictionaries. Maybe there is a way to instantiate ct\n            directly but I could not work it out.\n            '
