@@ -1,0 +1,37 @@
+{
+  testParallelLeveledCompaction();
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  ColumnFamilyStore store=keyspace.getColumnFamilyStore(CF_STANDARDLVL);
+  store.disableAutoCompaction();
+  CompactionStrategyManager mgr=store.getCompactionStrategyManager();
+  LeveledCompactionStrategy lcs=(LeveledCompactionStrategy)mgr.getStrategies().get(1).get(0);
+  ByteBuffer value=ByteBuffer.wrap(new byte[10 * 1024]);
+  for (int r=0; r < 10; r++) {
+    DecoratedKey key=Util.dk(String.valueOf(r));
+    UpdateBuilder builder=UpdateBuilder.create(store.metadata,key);
+    for (int c=0; c < 10; c++)     builder.newRow("column" + c).add("val",value);
+    Mutation rm=new Mutation(builder.build());
+    rm.apply();
+  }
+  store.forceBlockingFlush();
+  Iterable<SSTableReader> allSSTables=store.getSSTables(SSTableSet.LIVE);
+  for (  SSTableReader sstable : allSSTables) {
+    if (sstable.getSSTableLevel() == 0) {
+      System.out.println("Mutating L0-SSTABLE level to L1 to simulate a bug: " + sstable.getFilename());
+      sstable.descriptor.getMetadataSerializer().mutateLevel(sstable.descriptor,1);
+      sstable.reloadSSTableMetadata();
+    }
+  }
+  try (AbstractCompactionStrategy.ScannerList scannerList=lcs.getScanners(Lists.newArrayList(allSSTables))){
+    for (    ISSTableScanner scanner : scannerList.scanners) {
+      DecoratedKey lastKey=null;
+      while (scanner.hasNext()) {
+        UnfilteredRowIterator row=scanner.next();
+        if (lastKey != null) {
+          assertTrue("row " + row.partitionKey() + " received out of order wrt "+ lastKey,row.partitionKey().compareTo(lastKey) >= 0);
+        }
+        lastKey=row.partitionKey();
+      }
+    }
+  }
+ }
