@@ -6,7 +6,12 @@ def convert_row(self, row):
     for i in self.primary_key_indexes:
         if (row[i] == self.nullval):
             raise ParseError(self.get_null_primary_key_message(i))
-    try:
-        return [(conv(val) if (val != self.nullval) else None) for (conv, val) in zip(converters, row)]
-    except Exception as e:
-        raise ParseError(e.message)
+
+    def convert(c, v):
+        try:
+            return (c(v) if (v != self.nullval) else self.get_null_val())
+        except Exception as e:
+            if self.debug:
+                traceback.print_exc()
+            raise ParseError(('Failed to parse %s : %s' % (val, e.message)))
+    return [convert(conv, val) for (conv, val) in zip(converters, row)]
