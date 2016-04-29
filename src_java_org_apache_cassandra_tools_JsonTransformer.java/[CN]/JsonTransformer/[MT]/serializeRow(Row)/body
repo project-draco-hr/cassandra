@@ -1,2 +1,43 @@
 {
+  try {
+    json.writeStartObject();
+    String rowType=row.isStatic() ? "static_block" : "row";
+    json.writeFieldName("type");
+    json.writeString(rowType);
+    json.writeNumberField("position",this.currentPosition);
+    if (!row.isStatic()) {
+      serializeClustering(row.clustering());
+    }
+    LivenessInfo liveInfo=row.primaryKeyLivenessInfo();
+    if (!liveInfo.isEmpty()) {
+      objectIndenter.setCompact(false);
+      json.writeFieldName("liveness_info");
+      objectIndenter.setCompact(true);
+      json.writeStartObject();
+      json.writeFieldName("tstamp");
+      json.writeString(dateString(TimeUnit.MICROSECONDS,liveInfo.timestamp()));
+      if (liveInfo.isExpiring()) {
+        json.writeNumberField("ttl",liveInfo.ttl());
+        json.writeFieldName("expires_at");
+        json.writeString(dateString(TimeUnit.SECONDS,liveInfo.localExpirationTime()));
+        json.writeFieldName("expired");
+        json.writeBoolean(liveInfo.localExpirationTime() < (System.currentTimeMillis() / 1000));
+      }
+      json.writeEndObject();
+      objectIndenter.setCompact(false);
+    }
+    if (!row.deletion().isLive()) {
+      serializeDeletion(row.deletion().time());
+    }
+    json.writeFieldName("cells");
+    json.writeStartArray();
+    for (    ColumnData cd : row) {
+      serializeColumnData(cd,liveInfo);
+    }
+    json.writeEndArray();
+    json.writeEndObject();
+  }
+ catch (  IOException e) {
+    logger.error("Fatal error parsing row.",e);
+  }
 }
