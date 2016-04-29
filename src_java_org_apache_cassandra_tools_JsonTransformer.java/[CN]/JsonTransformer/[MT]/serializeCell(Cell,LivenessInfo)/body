@@ -17,8 +17,13 @@
       arrayIndenter.setCompact(false);
     }
     if (cell.isTombstone()) {
-      json.writeFieldName("deletion_time");
-      json.writeNumber(cell.localDeletionTime());
+      json.writeFieldName("deletion_info");
+      objectIndenter.setCompact(true);
+      json.writeStartObject();
+      json.writeFieldName("local_delete_time");
+      json.writeString(dateString(TimeUnit.SECONDS,cell.localDeletionTime()));
+      json.writeEndObject();
+      objectIndenter.setCompact(false);
     }
  else {
       json.writeFieldName("value");
@@ -26,13 +31,13 @@
     }
     if (liveInfo.isEmpty() || cell.timestamp() != liveInfo.timestamp()) {
       json.writeFieldName("tstamp");
-      json.writeNumber(cell.timestamp());
+      json.writeString(dateString(TimeUnit.MICROSECONDS,cell.timestamp()));
     }
     if (cell.isExpiring() && (liveInfo.isEmpty() || cell.ttl() != liveInfo.ttl())) {
       json.writeFieldName("ttl");
       json.writeNumber(cell.ttl());
       json.writeFieldName("expires_at");
-      json.writeNumber(cell.localDeletionTime());
+      json.writeString(dateString(TimeUnit.SECONDS,cell.localDeletionTime()));
       json.writeFieldName("expired");
       json.writeBoolean(!cell.isLive((int)(System.currentTimeMillis() / 1000)));
     }
