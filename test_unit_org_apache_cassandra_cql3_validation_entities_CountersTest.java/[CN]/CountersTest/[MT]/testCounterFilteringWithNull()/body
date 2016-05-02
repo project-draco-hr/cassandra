@@ -1,0 +1,13 @@
+{
+  for (  String compactStorageClause : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (k int PRIMARY KEY, a counter, b counter)" + compactStorageClause);
+    execute("UPDATE %s SET a = a + ? WHERE k = ?",1L,1);
+    assertRows(execute("SELECT * FROM %s WHERE a > ? ALLOW FILTERING",0L),row(1,1L,null));
+    assertEmpty(execute("SELECT * FROM %s WHERE b > ? ALLOW FILTERING",1L));
+    assertEmpty(execute("SELECT * FROM %s WHERE b >= ? ALLOW FILTERING",1L));
+    assertEmpty(execute("SELECT * FROM %s WHERE b < ? ALLOW FILTERING",1L));
+    assertEmpty(execute("SELECT * FROM %s WHERE b <= ? ALLOW FILTERING",1L));
+    assertEmpty(execute("SELECT * FROM %s WHERE b = ? ALLOW FILTERING",1L));
+    assertInvalidMessage("Invalid null value for counter increment/decrement","SELECT * FROM %s WHERE b = null ALLOW FILTERING");
+  }
+}
