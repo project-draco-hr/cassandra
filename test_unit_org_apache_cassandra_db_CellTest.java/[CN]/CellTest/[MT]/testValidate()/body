@@ -1,0 +1,19 @@
+{
+  ColumnDefinition c;
+  c=fakeColumn("c",Int32Type.instance);
+  assertValid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.EMPTY_BYTE_BUFFER));
+  assertValid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.bytes(4)));
+  assertValid(BufferCell.expiring(c,0,4,4,ByteBufferUtil.EMPTY_BYTE_BUFFER));
+  assertValid(BufferCell.expiring(c,0,4,4,ByteBufferUtil.bytes(4)));
+  assertValid(BufferCell.tombstone(c,0,4));
+  c=fakeColumn("c",ShortType.instance);
+  assertInvalid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.EMPTY_BYTE_BUFFER));
+  assertValid(BufferCell.tombstone(c,0,4));
+  assertValid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.bytes((short)4)));
+  assertInvalid(BufferCell.expiring(c,0,-4,4,ByteBufferUtil.bytes(4)));
+  assertInvalid(BufferCell.expiring(c,0,4,-4,ByteBufferUtil.bytes(4)));
+  assertInvalid(BufferCell.expiring(c,0,4,Cell.NO_DELETION_TIME,ByteBufferUtil.bytes(4)));
+  c=fakeColumn("c",MapType.getInstance(Int32Type.instance,Int32Type.instance,true));
+  assertValid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.bytes(4),CellPath.create(ByteBufferUtil.bytes(4))));
+  assertInvalid(BufferCell.live(fakeMetadata,c,0,ByteBufferUtil.bytes(4),CellPath.create(ByteBufferUtil.bytes((long)4))));
+}
