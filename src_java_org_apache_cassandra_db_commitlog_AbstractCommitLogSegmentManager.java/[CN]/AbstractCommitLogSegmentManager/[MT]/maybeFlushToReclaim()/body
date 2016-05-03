@@ -1,0 +1,14 @@
+{
+  long unused=unusedCapacity();
+  if (unused < 0) {
+    long flushingSize=0;
+    List<CommitLogSegment> segmentsToRecycle=new ArrayList<>();
+    for (    CommitLogSegment segment : activeSegments) {
+      if (segment == allocatingFrom)       break;
+      flushingSize+=segment.onDiskSize();
+      segmentsToRecycle.add(segment);
+      if (flushingSize + unused >= 0)       break;
+    }
+    flushDataFrom(segmentsToRecycle,false);
+  }
+}

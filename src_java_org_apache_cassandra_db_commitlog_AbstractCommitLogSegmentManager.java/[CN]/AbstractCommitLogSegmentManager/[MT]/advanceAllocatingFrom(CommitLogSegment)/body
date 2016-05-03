@@ -1,29 +1,19 @@
 {
   while (true) {
-    CommitLogSegment next;
 synchronized (this) {
       if (allocatingFrom != old)       return;
-      next=availableSegments.poll();
-      if (next != null) {
-        allocatingFrom=next;
-        activeSegments.add(next);
+      if (availableSegment != null) {
+        activeSegments.add(allocatingFrom=availableSegment);
+        availableSegment=null;
+        break;
       }
     }
-    if (next != null) {
-      if (old != null) {
-        commitLog.archiver.maybeArchive(old);
-        old.discardUnusedTail();
-      }
-      commitLog.requestExtraSync();
-      return;
-    }
-    WaitQueue.Signal signal=hasAvailableSegments.register(commitLog.metrics.waitingOnSegmentAllocation.time());
-    wakeManager();
-    if (!availableSegments.isEmpty() || allocatingFrom != old) {
-      signal.cancel();
-      if (allocatingFrom != old)       return;
-      continue;
-    }
-    signal.awaitUninterruptibly();
+    awaitAvailableSegment(old);
   }
+  wakeManager();
+  if (old != null) {
+    commitLog.archiver.maybeArchive(old);
+    old.discardUnusedTail();
+  }
+  commitLog.requestExtraSync();
 }

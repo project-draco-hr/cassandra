@@ -1,10 +1,15 @@
 {
   if (Strings.isNullOrEmpty(archiveCommand))   return;
-  archivePending.put(name,executor.submit(new WrappedRunnable(){
-    protected void runMayThrow() throws IOException {
-      String command=NAME.matcher(archiveCommand).replaceAll(Matcher.quoteReplacement(name));
-      command=PATH.matcher(command).replaceAll(Matcher.quoteReplacement(path));
-      exec(command);
+  archivePending.put(name,executor.submit(new Runnable(){
+    public void run(){
+      try {
+        String command=NAME.matcher(archiveCommand).replaceAll(Matcher.quoteReplacement(name));
+        command=PATH.matcher(command).replaceAll(Matcher.quoteReplacement(path));
+        exec(command);
+      }
+ catch (      IOException e) {
+        logger.warn("Archiving file {} failed, file may have already been archived.",name,e);
+      }
     }
   }
 ));

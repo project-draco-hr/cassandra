@@ -1,12 +1,8 @@
 {
-  if (waitForSyncToCatchUp(Long.MAX_VALUE)) {
-    long started=System.currentTimeMillis();
+  long expectedSyncTime=System.nanoTime() - blockWhenSyncLagsNanos;
+  if (lastSyncedAt < expectedSyncTime) {
     pending.incrementAndGet();
-    while (waitForSyncToCatchUp(started)) {
-      WaitQueue.Signal signal=syncComplete.register(commitLog.metrics.waitingOnCommit.time());
-      if (waitForSyncToCatchUp(started))       signal.awaitUninterruptibly();
- else       signal.cancel();
-    }
+    awaitSyncAt(expectedSyncTime,commitLog.metrics.waitingOnCommit.time());
     pending.decrementAndGet();
   }
 }
