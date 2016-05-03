@@ -1,5 +1,8 @@
 def on_fork(self):
-    '\n        Release any parent connections after forking, see CASSANDRA-11749 for details.\n        '
+    '\n        Create the channels and release any parent connections after forking,\n        see CASSANDRA-11749 for details.\n        '
+    self.inmsg = ReceivingChannel(self.inpipe)
+    self.outmsg = SendingChannel(self.outpipe)
+    self.worker_channels = [SendingChannel(p) for p in self.worker_pipes]
     if self.parent_cluster:
         printdebugmsg('Closing parent cluster sockets')
         self.parent_cluster.shutdown()
