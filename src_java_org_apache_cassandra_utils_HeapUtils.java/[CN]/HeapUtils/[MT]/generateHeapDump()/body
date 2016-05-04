@@ -1,0 +1,30 @@
+{
+  Long processId=getProcessId();
+  if (processId == null) {
+    logger.error("The process ID could not be retrieved. Skipping heap dump generation.");
+    return;
+  }
+  String heapDumpPath=getHeapDumpPathOption();
+  if (heapDumpPath == null) {
+    String cassandraHome=System.getenv("CASSANDRA_HOME");
+    if (cassandraHome == null) {
+      return;
+    }
+    heapDumpPath=cassandraHome;
+  }
+  Path dumpPath=FileSystems.getDefault().getPath(heapDumpPath);
+  if (Files.isDirectory(dumpPath)) {
+    dumpPath=dumpPath.resolve("java_pid" + processId + ".hprof");
+  }
+  String jmapPath=getJmapPath();
+  String jmapCommand=jmapPath == null ? "jmap" : jmapPath;
+  String[] dumpCommands=new String[]{jmapCommand,"-dump:format=b,file=" + dumpPath,processId.toString()};
+  String[] histoCommands=new String[]{jmapCommand,"-histo",processId.toString()};
+  try {
+    logProcessOutput(Runtime.getRuntime().exec(dumpCommands));
+    logProcessOutput(Runtime.getRuntime().exec(histoCommands));
+  }
+ catch (  IOException e) {
+    logger.error("The heap dump could not be generated due to the following error: ",e);
+  }
+}
