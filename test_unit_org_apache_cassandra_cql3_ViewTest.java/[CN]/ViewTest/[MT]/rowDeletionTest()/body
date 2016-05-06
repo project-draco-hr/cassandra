@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (" + "a int," + "b int,"+ "c int,"+ "d int,"+ "PRIMARY KEY (a, b))");
+  executeNet(protocolVersion,"USE " + keyspace());
+  createView("mv","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE c IS NOT NULL AND a IS NOT NULL AND b IS NOT NULL PRIMARY KEY (c, a, b)");
+  String table=keyspace() + "." + currentTable();
+  updateView("DELETE FROM " + table + " USING TIMESTAMP 6 WHERE a = 1 AND b = 1;");
+  updateView("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?) USING TIMESTAMP 3",1,1,1,1);
+  Assert.assertEquals(0,executeNet(protocolVersion,"SELECT * FROM mv WHERE c = 1 AND a = 1 AND b = 1").all().size());
+}
