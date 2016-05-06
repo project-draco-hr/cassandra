@@ -1,0 +1,21 @@
+{
+  if (generators.size() == 1) {
+    Collection<PartitionUpdate> updates=generators.get(0).generateViewUpdates();
+    List<Mutation> mutations=new ArrayList<>(updates.size());
+    for (    PartitionUpdate update : updates)     mutations.add(new Mutation(update));
+    return mutations;
+  }
+  Map<DecoratedKey,Mutation> mutations=new HashMap<>();
+  for (  ViewUpdateGenerator generator : generators) {
+    for (    PartitionUpdate update : generator.generateViewUpdates()) {
+      DecoratedKey key=update.partitionKey();
+      Mutation mutation=mutations.get(key);
+      if (mutation == null) {
+        mutation=new Mutation(baseTableMetadata.ksName,key);
+        mutations.put(key,mutation);
+      }
+      mutation.add(update);
+    }
+  }
+  return mutations.values();
+}

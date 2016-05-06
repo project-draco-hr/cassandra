@@ -1,0 +1,57 @@
+{
+  if (!matchesViewFilter(existingBaseRow)) {
+    createEntry(mergedBaseRow);
+    return;
+  }
+  if (!matchesViewFilter(mergedBaseRow)) {
+    deleteOldEntryInternal(existingBaseRow);
+    return;
+  }
+  startNewUpdate(mergedBaseRow);
+  currentViewEntryBuilder.addPrimaryKeyLivenessInfo(computeLivenessInfoForEntry(mergedBaseRow));
+  currentViewEntryBuilder.addRowDeletion(mergedBaseRow.deletion());
+  PeekingIterator<ColumnData> existingIter=Iterators.peekingIterator(existingBaseRow.iterator());
+  for (  ColumnData mergedData : mergedBaseRow) {
+    ColumnDefinition baseColumn=mergedData.column();
+    ColumnDefinition viewColumn=view.getViewColumn(baseColumn);
+    if (viewColumn == null || viewColumn.isPrimaryKeyColumn())     continue;
+    ColumnData existingData=null;
+    while (existingIter.hasNext()) {
+      int cmp=baseColumn.compareTo(existingIter.peek().column());
+      if (cmp < 0)       break;
+      ColumnData next=existingIter.next();
+      if (cmp == 0) {
+        existingData=next;
+        break;
+      }
+    }
+    if (existingData == null) {
+      addColumnData(viewColumn,mergedData);
+      continue;
+    }
+    if (mergedData == existingData)     continue;
+    if (baseColumn.isComplex()) {
+      ComplexColumnData mergedComplexData=(ComplexColumnData)mergedData;
+      ComplexColumnData existingComplexData=(ComplexColumnData)existingData;
+      if (mergedComplexData.complexDeletion().supersedes(existingComplexData.complexDeletion()))       currentViewEntryBuilder.addComplexDeletion(viewColumn,mergedComplexData.complexDeletion());
+      PeekingIterator<Cell> existingCells=Iterators.peekingIterator(existingComplexData.iterator());
+      for (      Cell mergedCell : mergedComplexData) {
+        Cell existingCell=null;
+        while (existingCells.hasNext()) {
+          int cmp=baseColumn.cellPathComparator().compare(mergedCell.path(),existingCells.peek().path());
+          if (cmp > 0)           break;
+          Cell next=existingCells.next();
+          if (cmp == 0) {
+            existingCell=next;
+            break;
+          }
+        }
+        if (mergedCell != existingCell)         addCell(viewColumn,mergedCell);
+      }
+    }
+ else {
+      addCell(viewColumn,(Cell)mergedData);
+    }
+  }
+  submitUpdate();
+}
