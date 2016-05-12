@@ -2,19 +2,14 @@
   this.truncate=truncate;
   metric.pendingFlushes.inc();
   writeBarrier=keyspace.writeOrder.newBarrier();
-  memtables=new ArrayList<>();
-  AtomicReference<ReplayPosition> lastReplayPositionHolder=new AtomicReference<>();
+  AtomicReference<ReplayPosition> commitLogUpperBound=new AtomicReference<>();
   for (  ColumnFamilyStore cfs : concatWithIndexes()) {
-    Memtable mt=cfs.data.switchMemtable(truncate);
-    mt.setDiscarding(writeBarrier,lastReplayPositionHolder);
-    memtables.add(mt);
+    Memtable newMemtable=new Memtable(commitLogUpperBound,cfs);
+    Memtable oldMemtable=cfs.data.switchMemtable(truncate,newMemtable);
+    oldMemtable.setDiscarding(writeBarrier,commitLogUpperBound);
+    memtables.add(oldMemtable);
   }
-  ReplayPosition lastReplayPosition;
-  while (true) {
-    lastReplayPosition=new Memtable.LastReplayPosition(CommitLog.instance.getContext());
-    ReplayPosition currentLast=lastReplayPositionHolder.get();
-    if ((currentLast == null || currentLast.compareTo(lastReplayPosition) <= 0) && lastReplayPositionHolder.compareAndSet(currentLast,lastReplayPosition))     break;
-  }
+  setCommitLogUpperBound(commitLogUpperBound);
   writeBarrier.issue();
-  postFlush=new PostFlush(!truncate,writeBarrier,lastReplayPosition);
+  postFlush=new PostFlush(!truncate,writeBarrier,commitLogUpperBound.get(),memtables,readers);
 }

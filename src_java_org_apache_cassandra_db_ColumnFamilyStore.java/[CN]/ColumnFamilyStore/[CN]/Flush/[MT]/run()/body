@@ -6,19 +6,15 @@
     Memtable memtable=iter.next();
     memtable.cfs.data.markFlushing(memtable);
     if (memtable.isClean() || truncate) {
-      memtable.cfs.replaceFlushed(memtable,null);
+      memtable.cfs.data.replaceFlushed(memtable,Collections.emptyList());
       reclaim(memtable);
       iter.remove();
     }
   }
-  if (memtables.isEmpty()) {
-    postFlush.latch.countDown();
-    return;
-  }
   metric.memtableSwitchCount.inc();
   try {
     for (    Memtable memtable : memtables) {
-      flushMemtable(memtable);
+      this.readers.add(flushMemtable(memtable));
     }
   }
  catch (  Throwable t) {
