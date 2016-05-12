@@ -1,16 +1,8 @@
 {
-  CFMetaData cfm=SchemaLoader.standardCFMD("ks1","cf1");
-  ReplayPosition rp=new ReplayPosition(11L,12);
-  MetadataCollector collector=new MetadataCollector(cfm.comparator).replayPosition(rp);
-  String partitioner=RandomPartitioner.class.getCanonicalName();
-  double bfFpChance=0.1;
-  Map<MetadataType,MetadataComponent> originalMetadata=collector.finalizeMetadata(partitioner,bfFpChance,0,SerializationHeader.make(cfm,Collections.EMPTY_LIST));
+  Map<MetadataType,MetadataComponent> originalMetadata=constructMetadata();
   MetadataSerializer serializer=new MetadataSerializer();
-  File statsFile=File.createTempFile(Component.STATS.name,null);
-  try (DataOutputStreamPlus out=new BufferedDataOutputStreamPlus(new FileOutputStream(statsFile))){
-    serializer.serialize(originalMetadata,out,BigFormat.latestVersion);
-  }
-   Descriptor desc=new Descriptor(statsFile.getParentFile(),"","",0);
+  File statsFile=serialize(originalMetadata,serializer,BigFormat.latestVersion);
+  Descriptor desc=new Descriptor(statsFile.getParentFile(),"","",0);
   try (RandomAccessReader in=RandomAccessReader.open(statsFile)){
     Map<MetadataType,MetadataComponent> deserialized=serializer.deserialize(desc,in,EnumSet.allOf(MetadataType.class));
     for (    MetadataType type : MetadataType.values()) {
