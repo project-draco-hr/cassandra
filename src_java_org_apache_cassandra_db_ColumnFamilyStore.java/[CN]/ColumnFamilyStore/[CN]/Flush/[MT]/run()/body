@@ -6,20 +6,19 @@
     Memtable memtable=iter.next();
     memtable.cfs.data.markFlushing(memtable);
     if (memtable.isClean() || truncate) {
-      memtable.cfs.replaceFlushed(memtable,null);
+      memtable.cfs.data.replaceFlushed(memtable,Collections.emptyList());
+      memtable.cfs.compactionStrategyManager.replaceFlushed(memtable,Collections.emptyList());
       reclaim(memtable);
       iter.remove();
     }
   }
-  if (memtables.isEmpty()) {
-    postFlush.latch.countDown();
-    return;
-  }
   metric.memtableSwitchCount.inc();
   try {
     for (    Memtable memtable : memtables) {
-      MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
+      Collection<SSTableReader> readers=memtable.flush();
+      memtable.cfs.data.replaceFlushed(memtable,readers);
       reclaim(memtable);
+      this.readers.add(readers);
     }
   }
  catch (  FSWriteError e) {
