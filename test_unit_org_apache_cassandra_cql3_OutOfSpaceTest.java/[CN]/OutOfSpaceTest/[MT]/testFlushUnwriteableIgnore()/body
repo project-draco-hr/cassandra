@@ -1,14 +1,12 @@
 {
   makeTable();
-  markDirectoriesUnwriteable();
   DiskFailurePolicy oldPolicy=DatabaseDescriptor.getDiskFailurePolicy();
-  try {
+  try (Closeable c=Util.markDirectoriesUnwriteable(getCurrentColumnFamilyStore())){
     DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.ignore);
     flushAndExpectError();
   }
   finally {
     DatabaseDescriptor.setDiskFailurePolicy(oldPolicy);
   }
-  makeTable();
   flush();
 }

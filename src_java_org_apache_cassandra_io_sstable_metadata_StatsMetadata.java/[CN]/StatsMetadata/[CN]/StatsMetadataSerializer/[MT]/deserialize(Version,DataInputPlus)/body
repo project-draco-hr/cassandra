@@ -25,5 +25,8 @@
   long totalColumnsSet=version.storeRows() ? in.readLong() : -1L;
   long totalRows=version.storeRows() ? in.readLong() : -1L;
   if (version.hasCommitLogLowerBound())   commitLogLowerBound=ReplayPosition.serializer.deserialize(in);
-  return new StatsMetadata(partitionSizes,columnCounts,commitLogLowerBound,commitLogUpperBound,minTimestamp,maxTimestamp,minLocalDeletionTime,maxLocalDeletionTime,minTTL,maxTTL,compressionRatio,tombstoneHistogram,sstableLevel,minClusteringValues,maxClusteringValues,hasLegacyCounterShards,repairedAt,totalColumnsSet,totalRows);
+  IntervalSet<ReplayPosition> commitLogIntervals;
+  if (version.hasCommitLogIntervals())   commitLogIntervals=replayPositionSetSerializer.deserialize(in);
+ else   commitLogIntervals=new IntervalSet<ReplayPosition>(commitLogLowerBound,commitLogUpperBound);
+  return new StatsMetadata(partitionSizes,columnCounts,commitLogIntervals,minTimestamp,maxTimestamp,minLocalDeletionTime,maxLocalDeletionTime,minTTL,maxTTL,compressionRatio,tombstoneHistogram,sstableLevel,minClusteringValues,maxClusteringValues,hasLegacyCounterShards,repairedAt,totalColumnsSet,totalRows);
 }

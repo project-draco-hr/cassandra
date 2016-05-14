@@ -1,0 +1,26 @@
+{
+  return new ISerializer<IntervalSet<T>>(){
+    public void serialize(    IntervalSet<T> intervals,    DataOutputPlus out) throws IOException {
+      out.writeInt(intervals.ranges.size());
+      for (      Map.Entry<T,T> en : intervals.ranges.entrySet()) {
+        pointSerializer.serialize(en.getKey(),out);
+        pointSerializer.serialize(en.getValue(),out);
+      }
+    }
+    public IntervalSet<T> deserialize(    DataInputPlus in) throws IOException {
+      int count=in.readInt();
+      NavigableMap<T,T> ranges=new TreeMap<>();
+      for (int i=0; i < count; ++i)       ranges.put(pointSerializer.deserialize(in),pointSerializer.deserialize(in));
+      return new IntervalSet<T>(ImmutableSortedMap.copyOfSorted(ranges));
+    }
+    public long serializedSize(    IntervalSet<T> intervals){
+      long size=TypeSizes.sizeof(intervals.ranges.size());
+      for (      Map.Entry<T,T> en : intervals.ranges.entrySet()) {
+        size+=pointSerializer.serializedSize(en.getKey());
+        size+=pointSerializer.serializedSize(en.getValue());
+      }
+      return size;
+    }
+  }
+;
+}
