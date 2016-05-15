@@ -1,0 +1,20 @@
+{
+  int partitionCount=(int)spec.partitionCount.next();
+  if (partitionCount <= 0)   return 0;
+  partitionCount=permits.takePermits(partitionCount);
+  if (partitionCount <= 0)   return 0;
+  int i=0;
+  boolean success=true;
+  for (; i < partitionCount && success; i++) {
+    if (i >= partitionCache.size())     partitionCache.add(PartitionIterator.get(spec.partitionGenerator,spec.seedManager));
+    success=false;
+    while (!success) {
+      Seed seed=spec.seedManager.next(this);
+      if (seed == null)       break;
+      success=reset(seed,partitionCache.get(i));
+    }
+  }
+  partitionCount=i;
+  partitions=partitionCache.subList(0,partitionCount);
+  return partitions.size();
+}

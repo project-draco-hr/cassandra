@@ -1,16 +1,22 @@
 {
+  endTimeNs=System.nanoTime();
   maybeReport();
   long now=System.nanoTime();
-  long time=now - sampleStartNanos;
-  if (rnd.nextInt(p(opCount)) == 0)   sample[index(opCount)]=time;
-  if (time > max) {
-    maxStart=sampleStartNanos;
-    max=time;
+  if (intendedTimeNs != 0) {
+    long rTime=endTimeNs - intendedTimeNs;
+    responseTime.recordValue(rTime);
+    long wTime=startTimeNs - intendedTimeNs;
+    waitTime.recordValue(wTime);
   }
-  total+=time;
-  opCount+=1;
+  long sTime=endTimeNs - startTimeNs;
+  serviceTime.recordValue(sTime);
+  if (sTime > max) {
+    maxStart=startTimeNs;
+    max=sTime;
+  }
   this.partitionCount+=partitionCount;
   this.rowCount+=rowCount;
   if (error)   this.errorCount++;
   upToDateAsOf=now;
+  resetTimes();
 }

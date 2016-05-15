@@ -1,10 +1,10 @@
 {
-  operations.initTimers();
   try {
     SimpleClient sclient=null;
     ThriftClient tclient=null;
     JavaDriverClient jclient=null;
-switch (settings.mode.api) {
+    final ConnectionAPI clientType=settings.mode.api;
+switch (clientType) {
 case JAVA_DRIVER_NATIVE:
       jclient=settings.getJavaDriverClient();
     break;
@@ -18,11 +18,13 @@ break;
 default :
 throw new IllegalStateException();
 }
+start.countDown();
+releaseConsumers.await();
 while (true) {
-Operation op=operations.next();
-if (!op.ready(workManager,rateLimiter)) break;
+Operation op=opStream.nextOp();
+if (op == null) break;
 try {
-switch (settings.mode.api) {
+switch (clientType) {
 case JAVA_DRIVER_NATIVE:
 op.run(jclient);
 break;
@@ -39,7 +41,7 @@ op.run(tclient);
 if (output == null) System.err.println(e.getMessage());
  else e.printStackTrace(output);
 success=false;
-workManager.stop();
+opStream.abort();
 metrics.cancel();
 return;
 }
@@ -51,6 +53,6 @@ success=false;
 }
  finally {
 done.countDown();
-operations.closeTimers();
+opStream.close();
 }
 }

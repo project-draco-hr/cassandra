@@ -1,12 +1,17 @@
 {
   Timing.TimingResult<JmxCollector.GcStats> result=timing.snap(gcStatsCollector);
   totalGcStats=JmxCollector.GcStats.aggregate(Arrays.asList(totalGcStats,result.extra));
-  TimingInterval current=result.intervals.combine(settings.samples.reportCount);
-  TimingInterval history=timing.getHistory().combine(settings.samples.historyCount);
+  TimingInterval current=result.intervals.combine();
+  TimingInterval history=timing.getHistory().combine();
   rowRateUncertainty.update(current.adjustedRowRate());
-  if (current.operationCount != 0) {
+  if (current.operationCount() != 0) {
     if (result.intervals.intervals().size() > 1) {
-      for (      Map.Entry<String,TimingInterval> type : result.intervals.intervals().entrySet())       printRow("",type.getKey(),type.getValue(),timing.getHistory().get(type.getKey()),result.extra,rowRateUncertainty,output);
+      for (      Map.Entry<String,TimingInterval> type : result.intervals.intervals().entrySet()) {
+        final String opName=type.getKey();
+        final TimingInterval opInterval=type.getValue();
+        printRow("",opName,opInterval,timing.getHistory().get(type.getKey()),result.extra,rowRateUncertainty,output);
+        logHistograms(opName,opInterval);
+      }
     }
     printRow("","total",current,history,result.extra,rowRateUncertainty,output);
   }
