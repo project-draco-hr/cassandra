@@ -2,19 +2,21 @@
   logger.trace("truncating {}",name);
   final long truncatedAt;
   final ReplayPosition replayAfter;
-synchronized (data) {
-    if (keyspace.getMetadata().durableWrites || takeSnapshot) {
-      replayAfter=forceBlockingFlush();
-    }
+  if (keyspace.getMetadata().durableWrites || takeSnapshot) {
+    replayAfter=forceBlockingFlush();
+  }
  else {
+    Future<ReplayPosition> replayAfterFuture;
+synchronized (data) {
       final Flush flush=new Flush(true);
       flushExecutor.execute(flush);
-      replayAfter=FBUtilities.waitOnFuture(postFlushExecutor.submit(flush.postFlush));
+      replayAfterFuture=postFlushExecutor.submit(flush.postFlush);
     }
-    long now=System.currentTimeMillis();
-    for (    ColumnFamilyStore cfs : concatWithIndexes())     for (    SSTableReader sstable : cfs.data.getSSTables())     now=Math.max(now,sstable.maxDataAge);
-    truncatedAt=now;
+    replayAfter=FBUtilities.waitOnFuture(replayAfterFuture);
   }
+  long now=System.currentTimeMillis();
+  for (  ColumnFamilyStore cfs : concatWithIndexes())   for (  SSTableReader sstable : cfs.data.getSSTables())   now=Math.max(now,sstable.maxDataAge);
+  truncatedAt=now;
   Runnable truncateRunnable=new Runnable(){
     public void run(){
       logger.debug("Discarding sstable data for truncated CF + indexes");
