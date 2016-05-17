@@ -1,0 +1,22 @@
+{
+  ColumnFamilyStore store=prepareColumnFamilyStore();
+  Set<SSTableReader> original=store.getUnrepairedSSTables();
+  UUID prsId=UUID.randomUUID();
+  ActiveRepairService.instance.registerParentRepairSession(prsId,Collections.singletonList(store),null);
+  ActiveRepairService.ParentRepairSession prs=ActiveRepairService.instance.getParentRepairSession(prsId);
+  prs.addSSTables(store.metadata.cfId,original);
+  Refs<SSTableReader> refs=prs.getActiveRepairedSSTableRefs(store.metadata.cfId);
+  Set<SSTableReader> retrieved=Sets.newHashSet(refs.iterator());
+  assertEquals(original,retrieved);
+  refs.release();
+  Set<SSTableReader> newLiveSet=new HashSet<>(original);
+  Iterator<SSTableReader> it=newLiveSet.iterator();
+  SSTableReader removed=it.next();
+  it.remove();
+  store.getDataTracker().replaceWithNewInstances(Collections.singleton(removed),Collections.EMPTY_SET);
+  refs=prs.getActiveRepairedSSTableRefs(store.metadata.cfId);
+  retrieved=Sets.newHashSet(refs.iterator());
+  assertEquals(newLiveSet,retrieved);
+  assertFalse(retrieved.contains(removed));
+  refs.release();
+}
