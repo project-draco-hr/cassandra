@@ -1,0 +1,13 @@
+{
+  int latency=100;
+  ConcurrentHashMap<String,Timer> dcLatency=MessagingService.instance().metrics.dcLatency;
+  dcLatency.clear();
+  long now=System.currentTimeMillis();
+  long sentAt=now - latency;
+  assertNull(dcLatency.get("datacenter1"));
+  addDCLatency(sentAt,now);
+  assertNotNull(dcLatency.get("datacenter1"));
+  assertEquals(1,dcLatency.get("datacenter1").getCount());
+  long expectedBucket=bucketOffsets[Math.abs(Arrays.binarySearch(bucketOffsets,TimeUnit.MILLISECONDS.toNanos(latency))) - 1];
+  assertEquals(expectedBucket,dcLatency.get("datacenter1").getSnapshot().getMax());
+}
