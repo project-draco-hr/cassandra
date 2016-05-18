@@ -6,6 +6,7 @@
   AbstractType<?> comparator=isCQLTable ? UTF8Type.instance : CompactTables.columnDefinitionComparator(kind,isSuper,rawComparator,rawSubComparator);
   ColumnIdentifier name=ColumnIdentifier.getInterned(comparator.fromString(row.getString("column_name")),comparator);
   AbstractType<?> validator=parseType(row.getString("validator"));
-  validator=validator.freezeNestedUDTs();
+  if (validator.isUDT() && validator.isMultiCell())   validator=validator.freeze();
+ else   validator=validator.freezeNestedMulticellTypes();
   return new ColumnDefinition(keyspace,table,name,validator,componentIndex,kind);
 }
