@@ -2,24 +2,22 @@
   logger.trace("truncating {}",name);
   final long truncatedAt;
   final ReplayPosition replayAfter;
-synchronized (data) {
-    if (keyspace.getMetadata().params.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
-      replayAfter=forceBlockingFlush();
-      viewManager.forceBlockingFlush();
-    }
- else {
-      viewManager.dumpMemtables();
-      try {
-        replayAfter=dumpMemtable().get();
-      }
- catch (      Exception e) {
-        throw new RuntimeException(e);
-      }
-    }
-    long now=System.currentTimeMillis();
-    for (    ColumnFamilyStore cfs : concatWithIndexes())     for (    SSTableReader sstable : cfs.data.getSSTables())     now=Math.max(now,sstable.maxDataAge);
-    truncatedAt=now;
+  if (keyspace.getMetadata().params.durableWrites || DatabaseDescriptor.isAutoSnapshot()) {
+    replayAfter=forceBlockingFlush();
+    viewManager.forceBlockingFlush();
   }
+ else {
+    viewManager.dumpMemtables();
+    try {
+      replayAfter=dumpMemtable().get();
+    }
+ catch (    Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+  long now=System.currentTimeMillis();
+  for (  ColumnFamilyStore cfs : concatWithIndexes())   for (  SSTableReader sstable : cfs.data.getSSTables())   now=Math.max(now,sstable.maxDataAge);
+  truncatedAt=now;
   Runnable truncateRunnable=new Runnable(){
     public void run(){
       logger.debug("Discarding sstable data for truncated CF + indexes");
