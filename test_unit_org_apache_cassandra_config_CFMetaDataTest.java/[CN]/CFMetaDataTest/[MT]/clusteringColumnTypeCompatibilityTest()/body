@@ -1,0 +1,18 @@
+{
+  Map<String,Set<String>> compatibilityMap=new HashMap<>();
+  compatibilityMap.put("blob",new HashSet<>(Arrays.asList(new String[]{"ascii","text","varchar"})));
+  compatibilityMap.put("text",new HashSet<>(Arrays.asList(new String[]{"ascii","varchar"})));
+  compatibilityMap.put("varchar",new HashSet<>(Arrays.asList(new String[]{"ascii","text"})));
+  for (  String sourceTypeString : primitiveTypes) {
+    AbstractType sourceType=CQLTypeParser.parse("KEYSPACE",sourceTypeString,Types.none());
+    for (    String destinationTypeString : primitiveTypes) {
+      AbstractType destinationType=CQLTypeParser.parse("KEYSPACE",destinationTypeString,Types.none());
+      if (compatibilityMap.get(destinationTypeString) != null && compatibilityMap.get(destinationTypeString).contains(sourceTypeString) || sourceTypeString.equals(destinationTypeString)) {
+        assertTrue(sourceTypeString + " should be compatible with " + destinationTypeString,destinationType.isCompatibleWith(sourceType));
+      }
+ else {
+        assertFalse(sourceTypeString + " should not be compatible with " + destinationTypeString,destinationType.isCompatibleWith(sourceType));
+      }
+    }
+  }
+}

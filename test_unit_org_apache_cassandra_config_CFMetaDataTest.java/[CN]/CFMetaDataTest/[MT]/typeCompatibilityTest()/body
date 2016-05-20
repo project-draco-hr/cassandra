@@ -1,0 +1,24 @@
+{
+  Map<String,Set<String>> compatibilityMap=new HashMap<>();
+  compatibilityMap.put("bigint",new HashSet<>(Arrays.asList(new String[]{"timestamp"})));
+  compatibilityMap.put("blob",new HashSet<>(Arrays.asList(new String[]{"ascii","bigint","boolean","date","decimal","double","float","inet","int","smallint","text","time","timestamp","timeuuid","tinyint","uuid","varchar","varint"})));
+  compatibilityMap.put("date",new HashSet<>(Arrays.asList(new String[]{"int"})));
+  compatibilityMap.put("time",new HashSet<>(Arrays.asList(new String[]{"bigint"})));
+  compatibilityMap.put("text",new HashSet<>(Arrays.asList(new String[]{"ascii","varchar"})));
+  compatibilityMap.put("timestamp",new HashSet<>(Arrays.asList(new String[]{"bigint"})));
+  compatibilityMap.put("varchar",new HashSet<>(Arrays.asList(new String[]{"ascii","text"})));
+  compatibilityMap.put("varint",new HashSet<>(Arrays.asList(new String[]{"bigint","int","timestamp"})));
+  compatibilityMap.put("uuid",new HashSet<>(Arrays.asList(new String[]{"timeuuid"})));
+  for (  String sourceTypeString : primitiveTypes) {
+    AbstractType sourceType=CQLTypeParser.parse("KEYSPACE",sourceTypeString,Types.none());
+    for (    String destinationTypeString : primitiveTypes) {
+      AbstractType destinationType=CQLTypeParser.parse("KEYSPACE",destinationTypeString,Types.none());
+      if (compatibilityMap.get(destinationTypeString) != null && compatibilityMap.get(destinationTypeString).contains(sourceTypeString) || sourceTypeString.equals(destinationTypeString)) {
+        assertTrue(sourceTypeString + " should be compatible with " + destinationTypeString,destinationType.isValueCompatibleWith(sourceType));
+      }
+ else {
+        assertFalse(sourceTypeString + " should not be compatible with " + destinationTypeString,destinationType.isValueCompatibleWith(sourceType));
+      }
+    }
+  }
+}
