@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c text, PRIMARY KEY (a, b)) WITH gc_grace_seconds = 0");
+  ColumnFamilyStore cfs=Keyspace.open(keyspace()).getColumnFamilyStore(currentTable());
+  execute("INSERT INTO %s (a, b, c) VALUES (1, 2, '3')");
+  execute(deletionStatement);
+  Thread.sleep(1000);
+  cfs.forceBlockingFlush();
+  cfs.forceMajorCompaction();
+  verifyContainsTombstones(cfs.getSSTables(),1);
+}

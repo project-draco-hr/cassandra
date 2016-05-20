@@ -1,0 +1,17 @@
+{
+  assertTrue(sstables.size() == 1);
+  SSTableReader sstable=sstables.iterator().next();
+  int tombstoneCount=0;
+  try (ISSTableScanner scanner=sstable.getScanner()){
+    while (scanner.hasNext()) {
+      try (OnDiskAtomIterator iter=scanner.next()){
+        if (iter.getColumnFamily().deletionInfo().getTopLevelDeletion().localDeletionTime < Integer.MAX_VALUE)         tombstoneCount++;
+        while (iter.hasNext()) {
+          OnDiskAtom atom=iter.next();
+          if (atom instanceof DeletedCell || atom instanceof RangeTombstone)           tombstoneCount++;
+        }
+      }
+     }
+  }
+   assertEquals(tombstoneCount,expectedTombstoneCount);
+}
