@@ -1,0 +1,25 @@
+{
+  createTable("CREATE TABLE %s (pk int, ck int, t text, PRIMARY KEY (pk, ck) )");
+  execute("INSERT INTO %s (pk, ck, t) VALUES (1, 1, 'one')");
+  execute("INSERT INTO %s (pk, ck, t) VALUES (1, 2, 'two')");
+  execute("INSERT INTO %s (pk, ck, t) VALUES (1, 3, 'three')");
+  String query="SELECT (int)?, (decimal):adecimal, (text)?, (tuple<int,text>):atuple, pk, ck, t FROM %s WHERE pk = ?";
+  ResultMessage.Prepared prepared=prepare(query);
+  List<ColumnSpecification> boundNames=prepared.metadata.names;
+  assertEquals(5,boundNames.size());
+  assertColumnSpec(boundNames.get(0),"[selection]",Int32Type.instance);
+  assertColumnSpec(boundNames.get(1),"adecimal",DecimalType.instance);
+  assertColumnSpec(boundNames.get(2),"[selection]",UTF8Type.instance);
+  assertColumnSpec(boundNames.get(3),"atuple",TypeParser.parse("TupleType(Int32Type,UTF8Type)"));
+  assertColumnSpec(boundNames.get(4),"pk",Int32Type.instance);
+  List<ColumnSpecification> resultNames=prepared.resultMetadata.names;
+  assertEquals(7,resultNames.size());
+  assertColumnSpec(resultNames.get(0),"(int)?",Int32Type.instance);
+  assertColumnSpec(resultNames.get(1),"(decimal)?",DecimalType.instance);
+  assertColumnSpec(resultNames.get(2),"(text)?",UTF8Type.instance);
+  assertColumnSpec(resultNames.get(3),"(tuple<int, text>)?",TypeParser.parse("TupleType(Int32Type,UTF8Type)"));
+  assertColumnSpec(resultNames.get(4),"pk",Int32Type.instance);
+  assertColumnSpec(resultNames.get(5),"ck",Int32Type.instance);
+  assertColumnSpec(resultNames.get(6),"t",UTF8Type.instance);
+  assertRows(execute(query,88,BigDecimal.TEN,"foo bar baz",tuple(42,"ursus"),1),row(88,BigDecimal.TEN,"foo bar baz",tuple(42,"ursus"),1,1,"one"),row(88,BigDecimal.TEN,"foo bar baz",tuple(42,"ursus"),1,2,"two"),row(88,BigDecimal.TEN,"foo bar baz",tuple(42,"ursus"),1,3,"three"));
+}
