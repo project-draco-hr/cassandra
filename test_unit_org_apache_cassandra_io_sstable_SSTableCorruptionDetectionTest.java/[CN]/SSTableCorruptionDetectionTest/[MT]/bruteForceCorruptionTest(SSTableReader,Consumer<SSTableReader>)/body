@@ -1,0 +1,21 @@
+{
+  RandomAccessFile raf=new RandomAccessFile(ssTableReader.getFilename(),"rw");
+  int corruptedCounter=0;
+  int fileLength=(int)raf.length();
+  for (int i=0; i < numberOfRuns; i++) {
+    final int corruptionPosition=random.nextInt(fileLength - 1);
+    final int corruptionSize=Math.min(maxCorruptionSize,random.nextInt(fileLength - corruptionPosition));
+    byte[] backup=corruptSstable(raf,corruptionPosition,corruptionSize);
+    try {
+      walker.accept(ssTableReader);
+    }
+ catch (    CorruptSSTableException t) {
+      corruptedCounter++;
+    }
+ finally {
+      restore(raf,corruptionPosition,backup);
+    }
+  }
+  assertTrue(corruptedCounter > 0);
+  FileUtils.closeQuietly(raf);
+}
