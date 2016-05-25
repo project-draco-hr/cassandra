@@ -1,0 +1,39 @@
+{
+  Keyspace keyspace=Keyspace.open(KEYSPACE);
+  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(CF);
+  truncate(cfs);
+  cfs.addSSTable(writeFile(cfs,1000));
+  Collection<SSTableReader> allSSTables=cfs.getSSTables();
+  assertEquals(1,allSSTables.size());
+  final Token firstToken=allSSTables.iterator().next().first.getToken();
+  DatabaseDescriptor.setSSTablePreempiveOpenIntervalInMB(1);
+  List<StreamSession.SSTableStreamingSections> sectionsBeforeRewrite=StreamSession.getSSTableSectionsForRanges(Collections.singleton(new Range<Token>(firstToken,firstToken)),Collections.singleton(cfs),0L,false);
+  assertEquals(1,sectionsBeforeRewrite.size());
+  for (  StreamSession.SSTableStreamingSections section : sectionsBeforeRewrite)   section.ref.release();
+  final AtomicInteger checkCount=new AtomicInteger();
+  INotificationConsumer consumer=new INotificationConsumer(){
+    public void handleNotification(    INotification notification,    Object sender){
+      if (notification instanceof SSTableListChangedNotification) {
+        Collection<SSTableReader> added=((SSTableListChangedNotification)notification).added;
+        Collection<SSTableReader> removed=((SSTableListChangedNotification)notification).removed;
+        if (added.isEmpty() || !added.iterator().next().getColumnFamilyName().equals(cfs.getColumnFamilyName()) || !added.equals(removed))         return;
+        Set<Range<Token>> range=Collections.singleton(new Range<Token>(firstToken,firstToken));
+        List<StreamSession.SSTableStreamingSections> sections=StreamSession.getSSTableSectionsForRanges(range,Collections.singleton(cfs),0L,false);
+        assertEquals(1,sections.size());
+        for (        StreamSession.SSTableStreamingSections section : sections)         section.ref.release();
+        checkCount.incrementAndGet();
+      }
+    }
+  }
+;
+  cfs.getDataTracker().subscribe(consumer);
+  try {
+    cfs.forceMajorCompaction();
+  }
+  finally {
+    DatabaseDescriptor.setSSTablePreempiveOpenIntervalInMB(50);
+    cfs.getDataTracker().unsubscribe(consumer);
+  }
+  assertTrue(checkCount.get() >= 2);
+  truncate(cfs);
+}
