@@ -1,6 +1,6 @@
 {
   Keyspace keyspace=Keyspace.open(KEYSPACE1);
-  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore("Standard1");
+  final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(tableName);
   final int ROWS_PER_SSTABLE=10;
   final int SSTABLES=cfs.metadata.params.minIndexInterval * 2 / ROWS_PER_SSTABLE;
   cfs.disableAutoCompaction();
@@ -29,9 +29,9 @@
       raf=new RandomAccessFile(sstable.getFilename(),"rw");
       assertNotNull(raf);
       assertTrue(raf.length() > corruptionSize);
-      raf.seek(new Random().nextInt((int)(raf.length() - corruptionSize)));
+      raf.seek(random.nextInt((int)(raf.length() - corruptionSize)));
       byte[] corruption=new byte[corruptionSize];
-      Arrays.fill(corruption,(byte)0xFF);
+      random.nextBytes(corruption);
       raf.write(corruption);
       if (ChunkCache.instance != null)       ChunkCache.instance.invalidateFile(sstable.getFilename());
     }
