@@ -1,5 +1,13 @@
 {
+  long seed=System.nanoTime();
+  logger.info("Seed {}",seed);
+  random=new Random(seed);
   SchemaLoader.prepareServer();
-  SchemaLoader.createKeyspace(KEYSPACE1,KeyspaceParams.simple(1),SchemaLoader.standardCFMD(KEYSPACE1,CF_STANDARD1));
+  SchemaLoader.createKeyspace(KEYSPACE1,KeyspaceParams.simple(1),SchemaLoader.standardCFMD(KEYSPACE1,STANDARD_STCS).compaction(CompactionParams.DEFAULT),SchemaLoader.standardCFMD(KEYSPACE1,STANDARD_LCS).compaction(CompactionParams.lcs(Collections.emptyMap())));
+  Keyspace keyspace=Keyspace.open(KEYSPACE1);
+  for (  String tableName : new String[]{STANDARD_STCS,STANDARD_LCS}) {
+    final ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(tableName);
+    for (    ColumnDefinition cd : cfs.metadata.allColumns())     cd.type.setMaxValueSize(1024 * 1024);
+  }
   closeStdErr();
 }
