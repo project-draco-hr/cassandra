@@ -1,5 +1,10 @@
 {
-  logger.error("[Stream #{}] Streaming error occurred",planId(),e);
+  if (e instanceof SocketTimeoutException) {
+    logger.error("[Stream #{}] Streaming socket timed out. This means the session peer stopped responding or " + "is still processing received data. If there is no sign of failure in the other end or a very " + "dense table is being transferred you may want to increase streaming_socket_timeout_in_ms "+ "property. Current value is {}ms.",planId(),DatabaseDescriptor.getStreamingSocketTimeout(),e);
+  }
+ else {
+    logger.error("[Stream #{}] Streaming error occurred",planId(),e);
+  }
   if (handler.isOutgoingConnected())   handler.sendMessage(new SessionFailedMessage());
   closeSession(State.FAILED);
 }
