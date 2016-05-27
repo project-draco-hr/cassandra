@@ -8,22 +8,7 @@
     }
     if (components.contains(Component.PRIMARY_INDEX))     ifile=ibuilder.buildIndex(descriptor,indexSummary);
     dfile=dbuilder.buildData(descriptor,sstableMetadata);
-    if (ifile != null && !descriptor.version.hasSamplingLevel() && !builtSummary && !validateSummarySamplingLevel()) {
-      indexSummary.close();
-      ifile.close();
-      dfile.close();
-      logger.info("Detected erroneously downsampled index summary; will rebuild summary at full sampling");
-      FileUtils.deleteWithConfirm(new File(descriptor.filenameFor(Component.SUMMARY)));
-      try (SegmentedFile.Builder ibuilderRebuild=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode(),false);SegmentedFile.Builder dbuilderRebuild=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode(),compression)){
-        buildSummary(false,false,Downsampling.BASE_SAMPLING_LEVEL);
-        ifile=ibuilderRebuild.buildIndex(descriptor,indexSummary);
-        dfile=dbuilderRebuild.buildData(descriptor,sstableMetadata);
-        saveSummary(ibuilderRebuild,dbuilderRebuild);
-      }
-     }
- else     if (saveSummaryIfCreated && builtSummary) {
-      saveSummary(ibuilder,dbuilder);
-    }
+    if (saveSummaryIfCreated && builtSummary)     saveSummary(ibuilder,dbuilder);
   }
  catch (  Throwable t) {
     if (ifile != null) {
