@@ -1,0 +1,12 @@
+{
+  if (!marked.contains(cfId)) {
+    List<SSTableReader> sstables=columnFamilyStores.get(cfId).select(ColumnFamilyStore.UNREPAIRED_SSTABLES).sstables;
+    Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfId,parentSessionId);
+    if (!Sets.intersection(currentlyRepairing,Sets.newHashSet(sstables)).isEmpty()) {
+      logger.error("Cannot start multiple repair sessions over the same sstables");
+      throw new RuntimeException("Cannot start multiple repair sessions over the same sstables");
+    }
+    addSSTables(cfId,sstables);
+    marked.add(cfId);
+  }
+}

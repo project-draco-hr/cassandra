@@ -4,8 +4,8 @@
   UUID prsId=UUID.randomUUID();
   ActiveRepairService.instance.registerParentRepairSession(prsId,FBUtilities.getBroadcastAddress(),Collections.singletonList(store),null);
   ActiveRepairService.ParentRepairSession prs=ActiveRepairService.instance.getParentRepairSession(prsId);
-  prs.addSSTables(store.metadata.cfId,original);
-  Refs<SSTableReader> refs=prs.getActiveRepairedSSTableRefs(store.metadata.cfId);
+  prs.markSSTablesRepairing(store.metadata.cfId,prsId);
+  Refs<SSTableReader> refs=prs.getActiveRepairedSSTableRefsForAntiCompaction(store.metadata.cfId);
   Set<SSTableReader> retrieved=Sets.newHashSet(refs.iterator());
   assertEquals(original,retrieved);
   refs.release();
@@ -14,7 +14,7 @@
   SSTableReader removed=it.next();
   it.remove();
   store.getDataTracker().replaceWithNewInstances(Collections.singleton(removed),Collections.EMPTY_SET);
-  refs=prs.getActiveRepairedSSTableRefs(store.metadata.cfId);
+  refs=prs.getActiveRepairedSSTableRefsForAntiCompaction(store.metadata.cfId);
   retrieved=Sets.newHashSet(refs.iterator());
   assertEquals(newLiveSet,retrieved);
   assertFalse(retrieved.contains(removed));
