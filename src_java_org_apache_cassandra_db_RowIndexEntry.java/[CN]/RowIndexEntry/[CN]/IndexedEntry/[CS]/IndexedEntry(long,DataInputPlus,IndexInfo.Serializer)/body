@@ -1,0 +1,16 @@
+{
+  super(dataFilePosition);
+  long headerLength=0;
+  this.deletionTime=DeletionTime.serializer.deserialize(in);
+  int columnsIndexCount=in.readInt();
+  TrackedDataInputPlus trackedIn=new TrackedDataInputPlus(in);
+  this.columnsIndex=new IndexInfo[columnsIndexCount];
+  for (int i=0; i < columnsIndexCount; i++) {
+    this.columnsIndex[i]=idxInfoSerializer.deserialize(trackedIn);
+    if (i == 0)     headerLength=this.columnsIndex[i].offset;
+  }
+  this.headerLength=headerLength;
+  this.offsets=null;
+  this.indexedPartSize=(int)trackedIn.getBytesRead();
+  this.idxInfoSerializer=idxInfoSerializer;
+}
