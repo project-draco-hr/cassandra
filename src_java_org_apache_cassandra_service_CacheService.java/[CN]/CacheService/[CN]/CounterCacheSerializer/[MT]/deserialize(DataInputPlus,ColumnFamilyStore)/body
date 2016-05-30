@@ -15,7 +15,7 @@
  else       builder.select(column,path);
       ClusteringIndexFilter filter=new ClusteringIndexNamesFilter(FBUtilities.<Clustering>singleton(name.clustering,cfs.metadata.comparator),false);
       SinglePartitionReadCommand cmd=SinglePartitionReadCommand.create(cfs.metadata,nowInSec,key,builder.build(),filter);
-      try (OpOrder.Group op=cfs.readOrdering.start();RowIterator iter=UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs,op),nowInSec)){
+      try (ReadExecutionController controller=cmd.executionController();RowIterator iter=UnfilteredRowIterators.filter(cmd.queryMemtableAndDisk(cfs,controller),nowInSec)){
         Cell cell;
         if (column.isStatic()) {
           cell=iter.staticRow().getCell(column);
