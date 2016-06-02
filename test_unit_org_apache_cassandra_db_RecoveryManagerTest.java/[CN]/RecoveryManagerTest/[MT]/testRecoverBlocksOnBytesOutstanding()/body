@@ -2,6 +2,7 @@
   long originalMaxOutstanding=CommitLogReplayer.MAX_OUTSTANDING_REPLAY_BYTES;
   CommitLogReplayer.MAX_OUTSTANDING_REPLAY_BYTES=1;
   CommitLogReplayer.MutationInitiator originalInitiator=CommitLogReplayer.mutationInitiator;
+  MockInitiator mockInitiator=new MockInitiator();
   CommitLogReplayer.mutationInitiator=mockInitiator;
   try {
     CommitLog.instance.resetUnsafe(true);
@@ -27,10 +28,10 @@
     }
 ;
     t.start();
-    Assert.assertTrue(blocked.tryAcquire(1,20,TimeUnit.SECONDS));
+    Assert.assertTrue(mockInitiator.blocked.tryAcquire(1,20,TimeUnit.SECONDS));
     Thread.sleep(100);
     Assert.assertTrue(t.isAlive());
-    blocker.release(Integer.MAX_VALUE);
+    mockInitiator.blocker.release(Integer.MAX_VALUE);
     t.join(20 * 1000);
     if (err.get() != null)     throw new RuntimeException(err.get());
     if (t.isAlive()) {

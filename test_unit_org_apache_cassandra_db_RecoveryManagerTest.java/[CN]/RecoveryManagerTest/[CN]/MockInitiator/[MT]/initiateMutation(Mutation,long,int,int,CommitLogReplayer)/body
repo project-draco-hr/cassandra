@@ -1,0 +1,26 @@
+{
+  final Future<Integer> toWrap=super.initiateMutation(mutation,segmentId,serializedSize,entryLocation,clr);
+  return new Future<Integer>(){
+    @Override public boolean cancel(    boolean mayInterruptIfRunning){
+      throw new UnsupportedOperationException();
+    }
+    @Override public boolean isCancelled(){
+      throw new UnsupportedOperationException();
+    }
+    @Override public boolean isDone(){
+      return blocker.availablePermits() > 0 && toWrap.isDone();
+    }
+    @Override public Integer get() throws InterruptedException, ExecutionException {
+      System.out.println("Got blocker once");
+      blocked.release();
+      blocker.acquire();
+      return toWrap.get();
+    }
+    @Override public Integer get(    long timeout,    TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+      blocked.release();
+      blocker.tryAcquire(1,timeout,unit);
+      return toWrap.get(timeout,unit);
+    }
+  }
+;
+}
