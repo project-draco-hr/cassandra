@@ -1,5 +1,4 @@
 {
-  AtomicLong noBase=new AtomicLong(Long.MAX_VALUE);
   ReadQuery selectQuery=view.getReadQuery();
   if (!selectQuery.selectsKey(key))   return;
   int nowInSec=FBUtilities.nowInSeconds();
@@ -9,5 +8,8 @@
   try (ReadExecutionController orderGroup=command.executionController();UnfilteredRowIterator data=UnfilteredPartitionIterators.getOnlyElement(command.executeLocally(orderGroup),command)){
     mutations=baseCfs.keyspace.viewManager.forTable(baseCfs.metadata).generateViewUpdates(Collections.singleton(view),data,empty,nowInSec);
   }
-   if (!mutations.isEmpty())   StorageProxy.mutateMV(key.getKey(),mutations,true,noBase);
+   if (!mutations.isEmpty()) {
+    AtomicLong noBase=new AtomicLong(Long.MAX_VALUE);
+    StorageProxy.mutateMV(key.getKey(),mutations,true,noBase);
+  }
 }
