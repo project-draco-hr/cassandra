@@ -1,0 +1,12 @@
+{
+  List<SSTableReader> mostInteresting=getCompactionCandidates(nonExpiringSSTables);
+  if (mostInteresting != null) {
+    return mostInteresting;
+  }
+  List<SSTableReader> sstablesWithTombstones=new ArrayList<>();
+  for (  SSTableReader sstable : nonExpiringSSTables) {
+    if (worthDroppingTombstones(sstable,gcBefore))     sstablesWithTombstones.add(sstable);
+  }
+  if (sstablesWithTombstones.isEmpty())   return Collections.emptyList();
+  return Collections.singletonList(Collections.min(sstablesWithTombstones,new SSTableReader.SizeComparator()));
+}

@@ -1,0 +1,24 @@
+{
+  TreeSet<Long> allKeys=new TreeSet<>(buckets.keySet());
+  Iterator<Long> it=allKeys.descendingIterator();
+  while (it.hasNext()) {
+    Long key=it.next();
+    Set<SSTableReader> bucket=buckets.get(key);
+    logger.trace("Key {}, now {}",key,now);
+    if (bucket.size() >= minThreshold && key >= now) {
+      List<Pair<SSTableReader,Long>> pairs=SizeTieredCompactionStrategy.createSSTableAndLengthPairs(bucket);
+      List<List<SSTableReader>> stcsBuckets=SizeTieredCompactionStrategy.getBuckets(pairs,stcsOptions.bucketHigh,stcsOptions.bucketLow,stcsOptions.minSSTableSize);
+      logger.debug("Using STCS compaction for first window of bucket: data files {} , options {}",pairs,stcsOptions);
+      List<SSTableReader> stcsInterestingBucket=SizeTieredCompactionStrategy.mostInterestingBucket(stcsBuckets,minThreshold,maxThreshold);
+      if (!stcsInterestingBucket.isEmpty())       return stcsInterestingBucket;
+    }
+ else     if (bucket.size() >= 2 && key < now) {
+      logger.debug("bucket size {} >= 2 and not in current bucket, compacting what's here: {}",bucket.size(),bucket);
+      return trimToThreshold(bucket,maxThreshold);
+    }
+ else {
+      logger.debug("No compaction necessary for bucket size {} , key {}, now {}",bucket.size(),key,now);
+    }
+  }
+  return Collections.<SSTableReader>emptyList();
+}
