@@ -18,6 +18,15 @@
       if (options.getConsistency() != null)       builder.put("consistency_level",options.getConsistency().name());
       if (options.getSerialConsistency() != null)       builder.put("serial_consistency_level",options.getSerialConsistency().name());
       builder.put("query",prepared.rawCQLStatement);
+      for (int i=0; i < prepared.boundNames.size(); i++) {
+        ColumnSpecification cs=prepared.boundNames.get(i);
+        String boundName=cs.name.toString();
+        String boundValue=cs.type.asCQL3Type().toCQLLiteral(options.getValues().get(i),options.getProtocolVersion());
+        if (boundValue.length() > 1000) {
+          boundValue=boundValue.substring(0,1000) + "...'";
+        }
+        builder.put("bound_var_" + Integer.toString(i) + "_"+ boundName,boundValue);
+      }
       Tracing.instance.begin("Execute CQL3 prepared query",state.getClientAddress(),builder.build());
     }
     QueryOptions queryOptions=QueryOptions.addColumnSpecifications(options,prepared.boundNames);
