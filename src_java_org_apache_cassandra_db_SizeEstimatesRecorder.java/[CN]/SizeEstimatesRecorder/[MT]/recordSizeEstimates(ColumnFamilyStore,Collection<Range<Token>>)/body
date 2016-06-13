@@ -6,7 +6,10 @@
     long partitionsCount, meanPartitionSize;
     try {
       while (refs == null) {
-        Iterable<SSTableReader> canonicalSSTables=table.getTracker().getView().select(SSTableSet.CANONICAL,table.select(View.selectLive(Range.makeRowRange(range))).sstables);
+        Iterable<SSTableReader> sstables=table.getTracker().getView().select(SSTableSet.CANONICAL);
+        SSTableIntervalTree tree=SSTableIntervalTree.build(sstables);
+        Range<PartitionPosition> r=Range.makeRowRange(range);
+        Iterable<SSTableReader> canonicalSSTables=View.sstablesInBounds(r.left,r.right,tree);
         refs=Refs.tryRef(canonicalSSTables);
       }
       partitionsCount=estimatePartitionsCount(refs,range);
