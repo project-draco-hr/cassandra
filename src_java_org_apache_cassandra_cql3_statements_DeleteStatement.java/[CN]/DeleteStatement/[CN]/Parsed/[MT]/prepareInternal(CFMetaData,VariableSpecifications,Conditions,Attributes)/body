@@ -9,6 +9,9 @@
   }
   StatementRestrictions restrictions=newRestrictions(cfm,boundNames,operations,whereClause,conditions);
   DeleteStatement stmt=new DeleteStatement(boundNames.size(),cfm,operations,restrictions,conditions,attrs);
-  if (stmt.hasConditions())   checkTrue(restrictions.hasAllPKColumnsRestrictedByEqualities(),"DELETE statements must restrict all PRIMARY KEY columns with equality relations" + " in order to use IF conditions");
+  if (stmt.hasConditions() && !restrictions.hasAllPKColumnsRestrictedByEqualities()) {
+    checkFalse(operations.appliesToRegularColumns(),"DELETE statements must restrict all PRIMARY KEY columns with equality relations in order to delete non static columns");
+    checkFalse(conditions.appliesToRegularColumns(),"DELETE statements must restrict all PRIMARY KEY columns with equality relations" + " in order to use IF condition on non static columns");
+  }
   return stmt;
 }
