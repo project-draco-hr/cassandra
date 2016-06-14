@@ -1,10 +1,18 @@
 {
-  Iterator<ColumnDefinition> iterator=Iterators.concat(cfm.partitionKeyColumns().iterator(),cfm.clusteringColumns().iterator());
+  boolean onlyHasConditionsOnStaticColumns=hasStaticConditions() && !hasRegularConditions();
+  Iterator<ColumnDefinition> iterator=appliesOnlyToStaticColumns() ? cfm.partitionKeyColumns().iterator() : Iterators.concat(cfm.partitionKeyColumns().iterator(),cfm.clusteringColumns().iterator());
   while (iterator.hasNext()) {
     ColumnDefinition def=iterator.next();
     Restriction restriction=processedKeys.get(def.name);
     if (restriction == null || !(restriction.isEQ() || restriction.isIN())) {
-      throw new InvalidRequestException(String.format("DELETE statements must restrict all PRIMARY KEY columns with equality relations in order " + "to use IF conditions, but column '%s' is not restricted",def.name));
+      if (onlyHasConditionsOnStaticColumns) {
+        for (        Operation oper : getOperations()) {
+          if (!oper.column.isStatic()) {
+            throw new InvalidRequestException(String.format("Primary key column '%s' must be specified in order to delete column '%s'",def.name,oper.column.name));
+          }
+        }
+      }
+      throw new InvalidRequestException(String.format("DELETE statements must restrict all %s KEY columns with equality relations in order " + "to use IF conditions%s, but column '%s' is not restricted",onlyHasConditionsOnStaticColumns ? "PARTITION" : "PRIMARY",onlyHasConditionsOnStaticColumns ? " on static columns" : "",def.name));
     }
   }
 }
