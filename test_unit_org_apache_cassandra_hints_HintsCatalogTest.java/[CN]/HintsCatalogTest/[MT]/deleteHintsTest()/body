@@ -1,0 +1,21 @@
+{
+  File directory=Files.createTempDirectory(null).toFile();
+  UUID hostId1=UUID.randomUUID();
+  UUID hostId2=UUID.randomUUID();
+  long now=System.currentTimeMillis();
+  writeDescriptor(directory,new HintsDescriptor(hostId1,now));
+  writeDescriptor(directory,new HintsDescriptor(hostId1,now + 1));
+  writeDescriptor(directory,new HintsDescriptor(hostId2,now + 2));
+  writeDescriptor(directory,new HintsDescriptor(hostId2,now + 3));
+  HintsCatalog catalog=HintsCatalog.load(directory,ImmutableMap.of());
+  assertEquals(2,catalog.stores().count());
+  assertTrue(catalog.hasFiles());
+  assertTrue(catalog.get(hostId1).hasFiles());
+  catalog.deleteAllHints(hostId1);
+  assertFalse(catalog.get(hostId1).hasFiles());
+  assertEquals(2,catalog.stores().count());
+  assertTrue(catalog.hasFiles());
+  catalog.deleteAllHints();
+  assertEquals(2,catalog.stores().count());
+  assertFalse(catalog.hasFiles());
+}

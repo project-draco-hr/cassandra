@@ -1,0 +1,21 @@
+{
+  MessageIn<HintResponse> messageIn=MessageIn.create(FBUtilities.getBroadcastAddress(),HintResponse.instance,Collections.emptyMap(),MessagingService.Verb.REQUEST_RESPONSE,MessagingService.current_version,MessageIn.createTimestamp());
+  MockMessagingSpy spy;
+  if (noOfResponses != -1) {
+    spy=MockMessagingService.when(verb(MessagingService.Verb.HINT)).respondN(messageIn,noOfResponses);
+  }
+ else {
+    spy=MockMessagingService.when(verb(MessagingService.Verb.HINT)).respond(messageIn);
+  }
+  UUID hostId=StorageService.instance.getLocalHostUUID();
+  for (int i=0; i < noOfHints; i++) {
+    long now=System.currentTimeMillis();
+    DecoratedKey dkey=dk(String.valueOf(i));
+    CFMetaData cfMetaData=Schema.instance.getCFMetaData(KEYSPACE,TABLE);
+    PartitionUpdate.SimpleBuilder builder=PartitionUpdate.simpleBuilder(cfMetaData,dkey).timestamp(now);
+    builder.row("column0").add("val","value0");
+    Hint hint=Hint.create(builder.buildAsMutation(),now);
+    HintsService.instance.write(hostId,hint);
+  }
+  return spy;
+}

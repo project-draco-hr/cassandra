@@ -21,7 +21,9 @@
    try (HintsReader reader=HintsReader.open(new File(dir,descriptor.fileName()))){
     Assert.assertTrue(looksLegit(reader.getInput()));
     List<Hint> deserialized=new ArrayList<>(hintNum);
+    List<InputPosition> pagePositions=new ArrayList<>(hintNum);
     for (    HintsReader.Page page : reader) {
+      pagePositions.add(page.position);
       Iterator<Hint> iterator=page.hintsIterator();
       while (iterator.hasNext()) {
         deserialized.add(iterator.next());
@@ -32,6 +34,17 @@
     for (    Hint expected : hints) {
       HintsTestUtil.assertHintsEqual(expected,deserialized.get(hintNum));
       hintNum++;
+    }
+    int hintOffset=0;
+    for (    InputPosition pos : pagePositions) {
+      reader.seek(pos);
+      HintsReader.Page page=reader.iterator().next();
+      Iterator<Hint> iterator=page.hintsIterator();
+      while (iterator.hasNext()) {
+        Hint seekedHint=iterator.next();
+        HintsTestUtil.assertHintsEqual(hints.get(hintOffset),seekedHint);
+        hintOffset++;
+      }
     }
   }
  }

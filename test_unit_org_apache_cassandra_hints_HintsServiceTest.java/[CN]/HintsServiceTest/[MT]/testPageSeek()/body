@@ -1,0 +1,12 @@
+{
+  MockMessagingSpy spy=sendHintsAndResponses(20000,12000);
+  spy.interceptMessageOut(22000).get();
+  HintsService.instance.pauseDispatch();
+  Thread.sleep(1000);
+  HintsStore store=HintsService.instance.getCatalog().get(StorageService.instance.getLocalHostUUID());
+  HintsDescriptor descriptor=store.poll();
+  store.offerFirst(descriptor);
+  InputPosition dispatchOffset=store.getDispatchOffset(descriptor);
+  assertTrue(dispatchOffset != null);
+  assertTrue(((ChecksummedDataInput.Position)dispatchOffset).sourcePosition > 0);
+}

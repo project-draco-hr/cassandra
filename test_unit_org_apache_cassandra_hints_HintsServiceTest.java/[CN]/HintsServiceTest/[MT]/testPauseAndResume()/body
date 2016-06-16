@@ -1,0 +1,12 @@
+{
+  HintsService.instance.pauseDispatch();
+  MockMessagingSpy spy=sendHintsAndResponses(100,-1);
+  ListenableFuture<Boolean> noMessagesWhilePaused=spy.interceptNoMsg(15,TimeUnit.SECONDS);
+  Futures.addCallback(noMessagesWhilePaused,new MoreFutures.SuccessCallback<Boolean>(){
+    public void onSuccess(    @Nullable Boolean aBoolean){
+      HintsService.instance.resumeDispatch();
+    }
+  }
+);
+  Futures.allAsList(noMessagesWhilePaused,spy.interceptMessageOut(100),spy.interceptNoMsg(200,TimeUnit.MILLISECONDS)).get();
+}
