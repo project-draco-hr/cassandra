@@ -1,2 +1,110 @@
 {
+  joined=true;
+  Set<InetAddress> current=new HashSet<>();
+  if (logger.isDebugEnabled()) {
+    logger.debug("Bootstrap variables: {} {} {} {}",DatabaseDescriptor.isAutoBootstrap(),SystemKeyspace.bootstrapInProgress(),SystemKeyspace.bootstrapComplete(),DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress()));
+  }
+  if (DatabaseDescriptor.isAutoBootstrap() && !SystemKeyspace.bootstrapComplete() && DatabaseDescriptor.getSeeds().contains(FBUtilities.getBroadcastAddress())) {
+    logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
+  }
+  boolean dataAvailable=true;
+  if (shouldBootstrap()) {
+    if (SystemKeyspace.bootstrapInProgress())     logger.warn("Detected previous bootstrap failure; retrying");
+ else     SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.IN_PROGRESS);
+    setMode(Mode.JOINING,"waiting for ring information",true);
+    for (int i=0; i < delay; i+=1000) {
+      if (!Schema.instance.getVersion().equals(Schema.emptyVersion)) {
+        logger.debug("got schema: {}",Schema.instance.getVersion());
+        break;
+      }
+      Uninterruptibles.sleepUninterruptibly(1,TimeUnit.SECONDS);
+    }
+    while (!MigrationManager.isReadyForBootstrap()) {
+      setMode(Mode.JOINING,"waiting for schema information to complete",true);
+      Uninterruptibles.sleepUninterruptibly(1,TimeUnit.SECONDS);
+    }
+    setMode(Mode.JOINING,"schema complete, ready to bootstrap",true);
+    setMode(Mode.JOINING,"waiting for pending range calculation",true);
+    PendingRangeCalculatorService.instance.blockUntilFinished();
+    setMode(Mode.JOINING,"calculation complete, ready to bootstrap",true);
+    logger.debug("... got ring + schema info");
+    if (useStrictConsistency && (tokenMetadata.getBootstrapTokens().valueSet().size() > 0 || tokenMetadata.getLeavingEndpoints().size() > 0 || tokenMetadata.getMovingEndpoints().size() > 0)) {
+      throw new UnsupportedOperationException("Other bootstrapping/leaving/moving nodes detected, cannot bootstrap while cassandra.consistent.rangemovement is true");
+    }
+    if (!replacing) {
+      if (tokenMetadata.isMember(FBUtilities.getBroadcastAddress())) {
+        String s="This node is already a member of the token ring; bootstrap aborted. (If replacing a dead node, remove the old one from the ring first.)";
+        throw new UnsupportedOperationException(s);
+      }
+      setMode(Mode.JOINING,"getting bootstrap token",true);
+      bootstrapTokens=BootStrapper.getBootstrapTokens(tokenMetadata);
+    }
+ else {
+      if (!isReplacingSameAddress()) {
+        try {
+          Thread.sleep(LoadBroadcaster.BROADCAST_INTERVAL);
+        }
+ catch (        InterruptedException e) {
+          throw new AssertionError(e);
+        }
+        for (        Token token : bootstrapTokens) {
+          InetAddress existing=tokenMetadata.getEndpoint(token);
+          if (existing != null) {
+            long nanoDelay=delay * 1000000L;
+            if (Gossiper.instance.getEndpointStateForEndpoint(existing).getUpdateTimestamp() > (System.nanoTime() - nanoDelay))             throw new UnsupportedOperationException("Cannot replace a live node... ");
+            current.add(existing);
+          }
+ else {
+            throw new UnsupportedOperationException("Cannot replace token " + token + " which does not exist!");
+          }
+        }
+      }
+ else {
+        try {
+          Thread.sleep(RING_DELAY);
+        }
+ catch (        InterruptedException e) {
+          throw new AssertionError(e);
+        }
+      }
+      setMode(Mode.JOINING,"Replacing a node with token(s): " + bootstrapTokens,true);
+    }
+    dataAvailable=bootstrap(bootstrapTokens);
+  }
+ else {
+    bootstrapTokens=SystemKeyspace.getSavedTokens();
+    if (bootstrapTokens.isEmpty()) {
+      Collection<String> initialTokens=DatabaseDescriptor.getInitialTokens();
+      if (initialTokens.size() < 1) {
+        bootstrapTokens=BootStrapper.getRandomTokens(tokenMetadata,DatabaseDescriptor.getNumTokens());
+        if (DatabaseDescriptor.getNumTokens() == 1)         logger.warn("Generated random token {}. Random tokens will result in an unbalanced ring; see http://wiki.apache.org/cassandra/Operations",bootstrapTokens);
+ else         logger.info("Generated random tokens. tokens are {}",bootstrapTokens);
+      }
+ else {
+        bootstrapTokens=new ArrayList<>(initialTokens.size());
+        for (        String token : initialTokens)         bootstrapTokens.add(getPartitioner().getTokenFactory().fromString(token));
+        logger.info("Saved tokens not found. Using configuration value: {}",bootstrapTokens);
+      }
+    }
+ else {
+      if (bootstrapTokens.size() != DatabaseDescriptor.getNumTokens())       throw new ConfigurationException("Cannot change the number of tokens from " + bootstrapTokens.size() + " to "+ DatabaseDescriptor.getNumTokens());
+ else       logger.info("Using saved tokens {}",bootstrapTokens);
+    }
+  }
+  maybeAddOrUpdateKeyspace(TraceKeyspace.definition());
+  maybeAddOrUpdateKeyspace(SystemDistributedKeyspace.definition());
+  if (!isSurveyMode) {
+    if (dataAvailable) {
+      finishJoiningRing();
+      if (!current.isEmpty()) {
+        for (        InetAddress existing : current)         Gossiper.instance.replacedEndpoint(existing);
+      }
+    }
+ else {
+      logger.warn("Some data streaming failed. Use nodetool to check bootstrap state and resume. For more, see `nodetool help bootstrap`. {}",SystemKeyspace.getBootstrapState());
+    }
+  }
+ else {
+    logger.info("Startup complete, but write survey mode is active, not becoming an active ring member. Use JMX (StorageService->joinRing()) to finalize ring joining.");
+  }
 }

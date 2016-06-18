@@ -1,0 +1,22 @@
+{
+  InetAddress oldNode;
+  try {
+    oldNode=InetAddress.getByName(pieces[1]);
+  }
+ catch (  Exception e) {
+    logger.error("Node {} tried to replace malformed endpoint {}.",newNode,pieces[1],e);
+    return;
+  }
+  if (FailureDetector.instance.isAlive(oldNode)) {
+    throw new RuntimeException(String.format("Node %s is trying to replace alive node %s.",newNode,oldNode));
+  }
+  Optional<InetAddress> replacingNode=tokenMetadata.getReplacingNode(newNode);
+  if (replacingNode.isPresent() && !replacingNode.get().equals(oldNode)) {
+    throw new RuntimeException(String.format("Node %s is already replacing %s but is trying to replace %s.",newNode,replacingNode.get(),oldNode));
+  }
+  Collection<Token> tokens=getTokensFor(newNode);
+  if (logger.isDebugEnabled())   logger.debug("Node {} is replacing {}, tokens {}",newNode,oldNode,tokens);
+  tokenMetadata.addReplaceTokens(tokens,newNode,oldNode);
+  PendingRangeCalculatorService.instance.update();
+  tokenMetadata.updateHostId(Gossiper.instance.getHostId(newNode),newNode);
+}
