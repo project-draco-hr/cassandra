@@ -1,9 +1,10 @@
 {
-  ColumnDefinition.Kind kind=deserializeKind(row.getString("type"));
+  String rawKind=row.getString("type");
+  ColumnDefinition.Kind kind=deserializeKind(rawKind);
   if (needsUpgrade && isStaticCompactTable && kind == ColumnDefinition.Kind.REGULAR)   kind=ColumnDefinition.Kind.STATIC;
   int componentIndex=ColumnDefinition.NO_POSITION;
   if (kind.isPrimaryKeyKind())   componentIndex=row.has("component_index") ? row.getInt("component_index") : 0;
-  AbstractType<?> comparator=isCQLTable ? UTF8Type.instance : CompactTables.columnDefinitionComparator(kind,isSuper,rawComparator,rawSubComparator);
+  AbstractType<?> comparator=isCQLTable ? UTF8Type.instance : CompactTables.columnDefinitionComparator(rawKind,isSuper,rawComparator,rawSubComparator);
   ColumnIdentifier name=ColumnIdentifier.getInterned(comparator.fromString(row.getString("column_name")),comparator);
   AbstractType<?> validator=parseType(row.getString("validator"));
   return new ColumnDefinition(keyspace,table,name,validator,componentIndex,kind);
