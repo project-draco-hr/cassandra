@@ -1,7 +1,8 @@
 {
   Iterator<InetAddress> iter=targets.iterator();
   InetAddress target=iter.next();
-  try (DataOutputBuffer out=new DataOutputBuffer()){
+  DataOutputBuffer out=null;
+  try (DataOutputBuffer ignored=out=DataOutputBuffer.RECYCLER.get()){
     out.writeInt(targets.size() - 1);
     while (iter.hasNext()) {
       InetAddress destination=iter.next();
@@ -16,5 +17,8 @@
   }
  catch (  IOException e) {
     throw new AssertionError(e);
+  }
+ finally {
+    out.recycle();
   }
 }
