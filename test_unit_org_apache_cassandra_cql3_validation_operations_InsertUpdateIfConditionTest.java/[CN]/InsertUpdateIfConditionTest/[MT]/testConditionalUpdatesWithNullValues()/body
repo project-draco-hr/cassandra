@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
+  for (int i=1; i <= 5; i++)   execute("INSERT INTO %s (a, b) VALUES (?, ?)",i,i);
+  conditionalUpdatesWithNonExistingOrNullValues();
+  assertRows(execute("UPDATE %s SET s = 30 WHERE a = 3 IF s IN (10,20,30)"),row(false));
+  assertRows(execute("SELECT * FROM %s WHERE a = 3"),row(3,3,null,null));
+  for (  String operator : new String[]{">","<",">=","<=","="}) {
+    assertRows(execute("UPDATE %s SET s = 50 WHERE a = 5 IF s " + operator + " 3"),row(false));
+    assertRows(execute("SELECT * FROM %s WHERE a = 5"),row(5,5,null,null));
+  }
+}
