@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
+  testConditionalUpdatesWithNonExistingOrNullValuesWithBatch();
+  for (  String operator : new String[]{">","<",">=","<=","="}) {
+    assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (3, 3, 3, 'a');\n" + "UPDATE %1$s SET s = 3 WHERE a = 3 IF s " + operator + " 5;\n"+ "APPLY BATCH"),row(false));
+    assertEmpty(execute("SELECT * FROM %s WHERE a = 3"));
+  }
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (6, 6, 6, 'a');\n" + "UPDATE %1$s SET s = 7 WHERE a = 6 IF s IN (1,2,3);\n"+ "APPLY BATCH"),row(false));
+  assertEmpty(execute("SELECT * FROM %s WHERE a = 6"));
+}

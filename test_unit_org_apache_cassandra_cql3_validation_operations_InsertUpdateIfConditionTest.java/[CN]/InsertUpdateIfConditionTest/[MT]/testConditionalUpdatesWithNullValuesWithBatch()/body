@@ -1,0 +1,11 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
+  for (int i=1; i <= 6; i++)   execute("INSERT INTO %s (a, b) VALUES (?, ?)",i,i);
+  testConditionalUpdatesWithNonExistingOrNullValuesWithBatch();
+  for (  String operator : new String[]{">","<",">=","<=","="}) {
+    assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (3, 3, 40, 'a');\n" + "UPDATE %1$s SET s = 30 WHERE a = 3 IF s " + operator + " 5;\n"+ "APPLY BATCH"),row(false));
+    assertRows(execute("SELECT * FROM %s WHERE a = 3"),row(3,3,null,null));
+  }
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (6, 6, 70, 'a');\n" + "UPDATE %1$s SET s = 60 WHERE a = 6 IF s IN (1,2,3);\n"+ "APPLY BATCH"),row(false));
+  assertRows(execute("SELECT * FROM %s WHERE a = 6"),row(6,6,null,null));
+}
