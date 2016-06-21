@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
+  conditionalUpdatesWithNonExistingOrNullValues();
+  assertRows(execute("UPDATE %s SET s = 3 WHERE a = 3 IF s IN (10,20,30)"),row(false));
+  assertEmpty(execute("SELECT a, s, d FROM %s WHERE a = 3"));
+  for (  String operator : new String[]{">","<",">=","<=","="}) {
+    assertRows(execute("UPDATE %s SET s = 50 WHERE a = 5 IF s " + operator + " 3"),row(false));
+    assertEmpty(execute("SELECT * FROM %s WHERE a = 5"));
+  }
+}

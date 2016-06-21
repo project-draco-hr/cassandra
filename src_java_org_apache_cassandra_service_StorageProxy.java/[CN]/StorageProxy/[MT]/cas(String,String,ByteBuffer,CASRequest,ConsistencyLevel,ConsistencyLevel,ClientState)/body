@@ -18,10 +18,11 @@
       ReadCommand readCommand=ReadCommand.create(keyspaceName,key,cfName,timestamp,request.readFilter());
       List<Row> rows=read(Arrays.asList(readCommand),consistencyForPaxos == ConsistencyLevel.LOCAL_SERIAL ? ConsistencyLevel.LOCAL_QUORUM : ConsistencyLevel.QUORUM);
       ColumnFamily current=rows.get(0).cf;
+      if (current == null)       current=ArrayBackedSortedColumns.factory.create(metadata);
       if (!request.appliesTo(current)) {
         Tracing.trace("CAS precondition does not match current values {}",current);
         casWriteMetrics.conditionNotMet.inc();
-        return current == null ? ArrayBackedSortedColumns.factory.create(metadata) : current;
+        return current;
       }
       ColumnFamily updates=request.makeUpdates(current);
       updates=TriggerExecutor.instance.execute(key,updates);
