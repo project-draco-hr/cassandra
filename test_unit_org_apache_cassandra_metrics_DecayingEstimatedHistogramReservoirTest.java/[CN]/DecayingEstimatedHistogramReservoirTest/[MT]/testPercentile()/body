@@ -1,0 +1,46 @@
+{
+{
+    TestClock clock=new TestClock();
+    DecayingEstimatedHistogramReservoir histogram=new DecayingEstimatedHistogramReservoir(DecayingEstimatedHistogramReservoir.DEFAULT_ZERO_CONSIDERATION,DecayingEstimatedHistogramReservoir.DEFAULT_BUCKET_COUNT,clock);
+    assertEquals(0D,histogram.getSnapshot().getValue(0.99),DOUBLE_ASSERT_DELTA);
+    histogram.update(1);
+    assertEquals(1D,histogram.getSnapshot().getValue(0.99),DOUBLE_ASSERT_DELTA);
+    histogram.update(10);
+    assertEquals(10D,histogram.getSnapshot().getValue(0.99),DOUBLE_ASSERT_DELTA);
+  }
+{
+    TestClock clock=new TestClock();
+    DecayingEstimatedHistogramReservoir histogram=new DecayingEstimatedHistogramReservoir(DecayingEstimatedHistogramReservoir.DEFAULT_ZERO_CONSIDERATION,DecayingEstimatedHistogramReservoir.DEFAULT_BUCKET_COUNT,clock);
+    histogram.update(1);
+    histogram.update(2);
+    histogram.update(3);
+    histogram.update(4);
+    histogram.update(5);
+    Snapshot snapshot=histogram.getSnapshot();
+    assertEquals(0,snapshot.getValue(0.00),DOUBLE_ASSERT_DELTA);
+    assertEquals(3,snapshot.getValue(0.50),DOUBLE_ASSERT_DELTA);
+    assertEquals(3,snapshot.getValue(0.60),DOUBLE_ASSERT_DELTA);
+    assertEquals(5,snapshot.getValue(1.00),DOUBLE_ASSERT_DELTA);
+  }
+{
+    TestClock clock=new TestClock();
+    DecayingEstimatedHistogramReservoir histogram=new DecayingEstimatedHistogramReservoir(DecayingEstimatedHistogramReservoir.DEFAULT_ZERO_CONSIDERATION,DecayingEstimatedHistogramReservoir.DEFAULT_BUCKET_COUNT,clock);
+    for (int i=11; i <= 20; i++)     histogram.update(i);
+    Snapshot snapshot=histogram.getSnapshot();
+    assertEquals(12,snapshot.getValue(0.01),DOUBLE_ASSERT_DELTA);
+    assertEquals(14,snapshot.getValue(0.30),DOUBLE_ASSERT_DELTA);
+    assertEquals(17,snapshot.getValue(0.50),DOUBLE_ASSERT_DELTA);
+    assertEquals(17,snapshot.getValue(0.60),DOUBLE_ASSERT_DELTA);
+    assertEquals(20,snapshot.getValue(0.80),DOUBLE_ASSERT_DELTA);
+  }
+{
+    TestClock clock=new TestClock();
+    DecayingEstimatedHistogramReservoir histogram=new DecayingEstimatedHistogramReservoir(true,DecayingEstimatedHistogramReservoir.DEFAULT_BUCKET_COUNT,clock);
+    histogram.update(0);
+    histogram.update(0);
+    histogram.update(1);
+    Snapshot snapshot=histogram.getSnapshot();
+    assertEquals(0,snapshot.getValue(0.5),DOUBLE_ASSERT_DELTA);
+    assertEquals(1,snapshot.getValue(0.99),DOUBLE_ASSERT_DELTA);
+  }
+}
