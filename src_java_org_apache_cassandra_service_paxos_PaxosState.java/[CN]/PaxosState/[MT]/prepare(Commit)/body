@@ -4,7 +4,8 @@
     Lock lock=LOCKS.get(toPrepare.update.partitionKey());
     lock.lock();
     try {
-      PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.update.partitionKey(),toPrepare.update.metadata());
+      int nowInSec=UUIDGen.unixTimestampInSec(toPrepare.ballot);
+      PaxosState state=SystemKeyspace.loadPaxosState(toPrepare.update.partitionKey(),toPrepare.update.metadata(),nowInSec);
       if (toPrepare.isAfter(state.promised)) {
         Tracing.trace("Promising ballot {}",toPrepare.ballot);
         SystemKeyspace.savePaxosPromise(toPrepare);

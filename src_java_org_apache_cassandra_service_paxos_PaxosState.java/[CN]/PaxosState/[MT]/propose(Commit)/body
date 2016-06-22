@@ -4,7 +4,8 @@
     Lock lock=LOCKS.get(proposal.update.partitionKey());
     lock.lock();
     try {
-      PaxosState state=SystemKeyspace.loadPaxosState(proposal.update.partitionKey(),proposal.update.metadata());
+      int nowInSec=UUIDGen.unixTimestampInSec(proposal.ballot);
+      PaxosState state=SystemKeyspace.loadPaxosState(proposal.update.partitionKey(),proposal.update.metadata(),nowInSec);
       if (proposal.hasBallot(state.promised.ballot) || proposal.isAfter(state.promised)) {
         Tracing.trace("Accepting proposal {}",proposal);
         SystemKeyspace.savePaxosProposal(proposal);
