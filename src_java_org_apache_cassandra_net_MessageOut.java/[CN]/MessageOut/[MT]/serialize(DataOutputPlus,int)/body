@@ -1,2 +1,25 @@
 {
+  CompactEndpointSerializationHelper.serialize(from,out);
+  out.writeInt(verb.ordinal());
+  out.writeInt(parameters.size());
+  for (  Map.Entry<String,byte[]> entry : parameters.entrySet()) {
+    out.writeUTF(entry.getKey());
+    out.writeInt(entry.getValue().length);
+    out.write(entry.getValue());
+  }
+  if (payload != null) {
+    DataOutputBuffer dob=DataOutputBuffer.scratchBuffer.get();
+    try {
+      serializer.serialize(payload,dob,version);
+      int size=dob.getLength();
+      out.writeInt(size);
+      out.write(dob.getData(),0,size);
+    }
+  finally {
+      dob.recycle();
+    }
+  }
+ else {
+    out.writeInt(0);
+  }
 }

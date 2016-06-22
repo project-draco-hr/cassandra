@@ -1,0 +1,13 @@
+{
+  Schema.instance.load(KeyspaceMetadata.create(keyspace,KeyspaceParams.simple(1)));
+  KeyspaceMetadata ksm=Schema.instance.getKSMetaData(keyspace);
+  CFMetaData metadata=CFMetaData.compile("CREATE TABLE userpics " + "( userid bigint," + "picid bigint,"+ "commentid bigint, "+ "PRIMARY KEY(userid, picid))",keyspace);
+  Schema.instance.load(metadata);
+  Schema.instance.setKeyspaceMetadata(ksm.withSwapped(ksm.tables.with(metadata)));
+  mutation=(Mutation)UpdateBuilder.create(metadata,1L).newRow(1L).add("commentid",32L).makeMutation();
+  messageOut=mutation.createMessage();
+  buffer=ByteBuffer.allocate(messageOut.serializedSize(MessagingService.current_version));
+  outputBuffer=new DataOutputBufferFixed(buffer);
+  inputBuffer=new DataInputBuffer(buffer,false);
+  messageOut.serialize(outputBuffer,MessagingService.current_version);
+}
