@@ -1,0 +1,15 @@
+{
+  Set<SSTableReader> activeSSTables=new HashSet<>();
+  ColumnFamilyStore cfs=columnFamilyStores.get(cfId);
+  Set<Integer> snapshotGenerations=new HashSet<>();
+  try (Refs<SSTableReader> snapshottedSSTables=cfs.getSnapshotSSTableReader(parentSessionId.toString())){
+    for (    SSTableReader sstable : snapshottedSSTables) {
+      snapshotGenerations.add(sstable.descriptor.generation);
+    }
+  }
+ catch (  IOException e) {
+    throw new RuntimeException(e);
+  }
+  for (  SSTableReader sstable : cfs.getSSTables(SSTableSet.CANONICAL))   if (snapshotGenerations.contains(sstable.descriptor.generation))   activeSSTables.add(sstable);
+  return activeSSTables;
+}

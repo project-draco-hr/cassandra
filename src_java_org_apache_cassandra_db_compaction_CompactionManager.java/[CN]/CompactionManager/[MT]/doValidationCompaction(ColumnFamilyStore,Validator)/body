@@ -2,9 +2,13 @@
   if (!cfs.isValid())   return;
   Refs<SSTableReader> sstables=null;
   try {
-    String snapshotName=validator.desc.sessionId.toString();
     int gcBefore;
     int nowInSec=FBUtilities.nowInSeconds();
+    UUID parentRepairSessionId=validator.desc.parentSessionId;
+    String snapshotName;
+    boolean isGlobalSnapshotValidation=cfs.snapshotExists(parentRepairSessionId.toString());
+    if (isGlobalSnapshotValidation)     snapshotName=parentRepairSessionId.toString();
+ else     snapshotName=validator.desc.sessionId.toString();
     boolean isSnapshotValidation=cfs.snapshotExists(snapshotName);
     if (isSnapshotValidation) {
       sstables=cfs.getSnapshotSSTableReader(snapshotName);
@@ -30,7 +34,7 @@
       validator.complete();
     }
   finally {
-      if (isSnapshotValidation) {
+      if (isSnapshotValidation && !isGlobalSnapshotValidation) {
         cfs.clearSnapshot(snapshotName);
       }
     }

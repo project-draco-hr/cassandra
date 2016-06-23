@@ -1,0 +1,18 @@
+{
+  String snapshotName=parentSessionId.toString();
+  if (!columnFamilyStores.get(cfId).snapshotExists(snapshotName)) {
+    Set<SSTableReader> snapshottedSSTables=columnFamilyStores.get(cfId).snapshot(snapshotName,new Predicate<SSTableReader>(){
+      public boolean apply(      SSTableReader sstable){
+        return sstable != null && (!isIncremental || !sstable.isRepaired()) && !(sstable.metadata.isIndex()) && new Bounds<>(sstable.first.getToken(),sstable.last.getToken()).intersects(ranges);
+      }
+    }
+,true);
+    if (isAlreadyRepairing(cfId,parentSessionId,snapshottedSSTables)) {
+      columnFamilyStores.get(cfId).clearSnapshot(parentSessionId.toString());
+      logger.error("Cannot start multiple repair sessions over the same sstables");
+      throw new RuntimeException("Cannot start multiple repair sessions over the same sstables");
+    }
+    addSSTables(cfId,snapshottedSSTables);
+    marked.add(cfId);
+  }
+}
