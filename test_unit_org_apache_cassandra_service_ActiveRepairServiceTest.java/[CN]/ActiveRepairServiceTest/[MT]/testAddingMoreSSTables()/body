@@ -1,0 +1,27 @@
+{
+  ColumnFamilyStore store=prepareColumnFamilyStore();
+  Set<SSTableReader> original=store.getUnrepairedSSTables();
+  UUID prsId=UUID.randomUUID();
+  ActiveRepairService.instance.registerParentRepairSession(prsId,FBUtilities.getBroadcastAddress(),Collections.singletonList(store),null,true,true);
+  ActiveRepairService.ParentRepairSession prs=ActiveRepairService.instance.getParentRepairSession(prsId);
+  prs.markSSTablesRepairing(store.metadata.cfId,prsId);
+  try (Refs<SSTableReader> refs=prs.getActiveRepairedSSTableRefsForAntiCompaction(store.metadata.cfId,prsId)){
+    Set<SSTableReader> retrieved=Sets.newHashSet(refs.iterator());
+    assertEquals(original,retrieved);
+  }
+   createSSTables(store,2);
+  boolean exception=false;
+  try {
+    UUID newPrsId=UUID.randomUUID();
+    ActiveRepairService.instance.registerParentRepairSession(newPrsId,FBUtilities.getBroadcastAddress(),Collections.singletonList(store),null,true,true);
+    ActiveRepairService.instance.getParentRepairSession(newPrsId).markSSTablesRepairing(store.metadata.cfId,newPrsId);
+  }
+ catch (  Throwable t) {
+    exception=true;
+  }
+  assertTrue(exception);
+  try (Refs<SSTableReader> refs=prs.getActiveRepairedSSTableRefsForAntiCompaction(store.metadata.cfId,prsId)){
+    Set<SSTableReader> retrieved=Sets.newHashSet(refs.iterator());
+    assertEquals(original,retrieved);
+  }
+ }

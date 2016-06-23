@@ -3,17 +3,11 @@
   ActiveRepairService.ParentRepairSession prs=ActiveRepairService.instance.getParentRepairSession(validator.desc.parentSessionId);
   if (prs == null)   return null;
   Set<SSTableReader> sstablesToValidate=new HashSet<>();
+  if (prs.isGlobal)   prs.markSSTablesRepairing(cfs.metadata.cfId,validator.desc.parentSessionId);
   try (ColumnFamilyStore.RefViewFragment sstableCandidates=cfs.selectAndReference(prs.isIncremental ? ColumnFamilyStore.UNREPAIRED_SSTABLES : ColumnFamilyStore.CANONICAL_SSTABLES)){
     for (    SSTableReader sstable : sstableCandidates.sstables) {
       if (new Bounds<>(sstable.first.getToken(),sstable.last.getToken()).intersects(Collections.singletonList(validator.desc.range))) {
         sstablesToValidate.add(sstable);
-      }
-    }
-    if (prs.isGlobal) {
-      Set<SSTableReader> currentlyRepairing=ActiveRepairService.instance.currentlyRepairing(cfs.metadata.cfId,validator.desc.parentSessionId);
-      if (!Sets.intersection(currentlyRepairing,sstablesToValidate).isEmpty()) {
-        logger.error("Cannot start multiple repair sessions over the same sstables");
-        throw new RuntimeException("Cannot start multiple repair sessions over the same sstables");
       }
     }
     sstables=Refs.tryRef(sstablesToValidate);
@@ -22,6 +16,5 @@
       throw new RuntimeException("Could not reference sstables");
     }
   }
-   if (prs.isGlobal)   prs.addSSTables(cfs.metadata.cfId,sstablesToValidate);
-  return sstables;
+   return sstables;
 }
