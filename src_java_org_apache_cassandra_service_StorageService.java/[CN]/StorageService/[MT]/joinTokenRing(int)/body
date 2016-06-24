@@ -8,7 +8,8 @@
     logger.info("This node will not auto bootstrap because it is configured to be a seed node.");
   }
   boolean dataAvailable=true;
-  if (shouldBootstrap()) {
+  boolean bootstrap=shouldBootstrap();
+  if (bootstrap) {
     if (SystemKeyspace.bootstrapInProgress())     logger.warn("Detected previous bootstrap failure; retrying");
  else     SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.IN_PROGRESS);
     setMode(Mode.JOINING,"waiting for ring information",true);
@@ -95,7 +96,7 @@
   maybeAddOrUpdateKeyspace(SystemDistributedKeyspace.metadata());
   if (!isSurveyMode) {
     if (dataAvailable) {
-      finishJoiningRing();
+      finishJoiningRing(bootstrap);
       if (!current.isEmpty()) {
         for (        InetAddress existing : current)         Gossiper.instance.replacedEndpoint(existing);
       }
