@@ -1,21 +1,35 @@
 {
+  if (descriptor.version.compareTo(Version.ac) < 0)   return fetchOffsetsLegacy();
   short info=buffer.getShort(position);
-  int offsetExtra=buffer.getShort(position + SHORT_BYTES) & 0xFFFF;
-  int offsetData=buffer.getInt(position + (2 * SHORT_BYTES) + LONG_BYTES);
   EntryType type=EntryType.of(info & TokenTreeBuilder.ENTRY_TYPE_MASK);
+  KeyOffsets rowOffsets=new KeyOffsets();
+  long baseOffset=position + LEAF_ENTRY_TYPE_BYTES + TOKEN_BYTES;
 switch (type) {
 case SIMPLE:
-    return new long[]{offsetData};
-case OVERFLOW:
-  long[] offsets=new long[offsetExtra];
-long offsetPos=(buffer.position() + (2 * (leafSize * LONG_BYTES)) + (offsetData * LONG_BYTES));
-for (int i=0; i < offsetExtra; i++) offsets[i]=buffer.getLong(offsetPos + (i * LONG_BYTES));
-return offsets;
-case FACTORED:
-return new long[]{(((long)offsetData) << Short.SIZE) + offsetExtra};
+    long partitionOffset=buffer.getLong(baseOffset);
+  long rowOffset=buffer.getLong(baseOffset + LEAF_PARTITON_OFFSET_BYTES);
+rowOffsets.put(partitionOffset,rowOffset);
+break;
 case PACKED:
-return new long[]{offsetExtra,offsetData};
+long partitionOffset1=buffer.getInt(baseOffset);
+long rowOffset1=buffer.getInt(baseOffset + LEAF_PARTITON_OFFSET_PACKED_BYTES);
+long partitionOffset2=buffer.getInt(baseOffset + LEAF_PARTITON_OFFSET_PACKED_BYTES + LEAF_ROW_OFFSET_PACKED_BYTES);
+long rowOffset2=buffer.getInt(baseOffset + 2 * LEAF_PARTITON_OFFSET_PACKED_BYTES + LEAF_ROW_OFFSET_PACKED_BYTES);
+rowOffsets.put(partitionOffset1,rowOffset1);
+rowOffsets.put(partitionOffset2,rowOffset2);
+break;
+case OVERFLOW:
+long collisionOffset=buffer.getLong(baseOffset);
+long count=buffer.getLong(baseOffset + LEAF_PARTITON_OFFSET_BYTES);
+long offsetPos=buffer.position() + leafSize * LEAF_ENTRY_BYTES + collisionOffset * COLLISION_ENTRY_BYTES;
+for (int i=0; i < count; i++) {
+long currentPartitionOffset=buffer.getLong(offsetPos + i * COLLISION_ENTRY_BYTES);
+long currentRowOffset=buffer.getLong(offsetPos + i * COLLISION_ENTRY_BYTES + LEAF_PARTITON_OFFSET_BYTES);
+rowOffsets.put(currentPartitionOffset,currentRowOffset);
+}
+break;
 default :
 throw new IllegalStateException("Unknown entry type: " + type);
 }
+return rowOffsets;
 }

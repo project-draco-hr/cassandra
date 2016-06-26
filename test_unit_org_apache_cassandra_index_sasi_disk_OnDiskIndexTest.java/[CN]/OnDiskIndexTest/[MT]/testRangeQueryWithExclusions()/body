@@ -1,12 +1,12 @@
 {
   final long lower=0;
   final long upper=100000;
-  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,LongType.instance,OnDiskIndexBuilder.Mode.SPARSE);
-  for (long i=lower; i <= upper; i++)   builder.add(LongType.instance.decompose(i),keyAt(i),i);
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(LongType.instance,LongType.instance,OnDiskIndexBuilder.Mode.SPARSE);
+  for (long i=lower; i <= upper; i++)   builder.add(LongType.instance.decompose(i),keyAt(i),i,clusteringOffset(i));
   File index=File.createTempFile("on-disk-sa-except-long-ranges","db");
   index.deleteOnExit();
   builder.finish(index);
-  OnDiskIndex onDisk=new OnDiskIndex(index,LongType.instance,new KeyConverter());
+  OnDiskIndex onDisk=new OnDiskIndex(index,LongType.instance,KeyConverter.instance);
   ThreadLocalRandom random=ThreadLocalRandom.current();
   validateExclusions(onDisk,lower,50,Sets.newHashSet(42L));
   validateExclusions(onDisk,lower,upper,Sets.newHashSet(31337L));

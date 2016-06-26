@@ -2,8 +2,8 @@
   final long min=0, max=1000;
   TokenTree treeA=generateTree(min,max,isStatic);
   TokenTree treeB=generateTree(min,max,isStatic);
-  RangeIterator<Long,Token> a=treeA.iterator(new KeyConverter());
-  RangeIterator<Long,Token> b=treeB.iterator(new KeyConverter());
+  RangeIterator<Long,Token> a=treeA.iterator(KeyConverter.instance);
+  RangeIterator<Long,Token> b=treeB.iterator(KeyConverter.instance);
   long count=min;
   while (a.hasNext() && b.hasNext()) {
     final Token tokenA=a.next();
@@ -12,13 +12,14 @@
     tokenA.merge(new TokenWithOffsets(tokenA.get(),convert(count + 1)));
     tokenA.merge(new TokenWithOffsets(tokenA.get(),convert(count)));
     try {
-      tokenA.merge(new TokenWithOffsets(tokenA.get() + 1,convert(count)));
+      long l=tokenA.get();
+      tokenA.merge(new TokenWithOffsets(l + 1,convert(count)));
       Assert.fail();
     }
  catch (    IllegalArgumentException e) {
     }
     final Set<Long> offsets=new TreeSet<>();
-    for (    DecoratedKey key : tokenA)     offsets.add(LongType.instance.compose(key.getKey()));
+    for (    RowKey key : tokenA)     offsets.add(LongType.instance.compose(key.decoratedKey.getKey()));
     Set<Long> expected=new TreeSet<>();
 {
       expected.add(count);

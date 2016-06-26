@@ -1,12 +1,16 @@
 {
   if (resources.containsKey(expressions))   throw new IllegalArgumentException("Can't process the same expressions multiple times.");
-  RangeIterator.Builder<Long,Token> builder=op == OperationType.OR ? RangeUnionIterator.<Long,Token>builder() : RangeIntersectionIterator.<Long,Token>builder();
+  RangeIterator.Builder<Long,Token> builder=op == OperationType.OR ? RangeUnionIterator.<Long,Token>builder() : RangeIntersectionIterator.<Long,org.apache.cassandra.index.sasi.disk.Token>builder();
   List<RangeIterator<Long,Token>> perIndexUnions=new ArrayList<>();
   for (  Map.Entry<Expression,Set<SSTableIndex>> e : getView(op,expressions).entrySet()) {
-    @SuppressWarnings("resource") RangeIterator<Long,Token> index=TermIterator.build(e.getKey(),e.getValue());
-    if (index == null)     continue;
-    builder.add(index);
-    perIndexUnions.add(index);
+    try (RangeIterator<Long,Token> index=TermIterator.build(e.getKey(),e.getValue())){
+      if (index == null)       continue;
+      builder.add(index);
+      perIndexUnions.add(index);
+    }
+ catch (    IOException ex) {
+      logger.error("Failed to release index: ",ex);
+    }
   }
   resources.put(expressions,perIndexUnions);
   return builder;

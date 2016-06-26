@@ -1,3 +1,14 @@
 {
-  return index < offsets.length ? keyFetcher.apply(offsets[index++]) : endOfData();
+  if (currentCursor != null && currentCursor.hasNext()) {
+    return keyFetcher.getRowKey(currentPatitionKey,currentCursor.nextLong());
+  }
+ else   if (offsets.hasNext()) {
+    LongObjectCursor<long[]> cursor=offsets.next();
+    currentPatitionKey=cursor.key;
+    currentCursor=LongStream.of(cursor.value).iterator();
+    return keyFetcher.getRowKey(currentPatitionKey,currentCursor.nextLong());
+  }
+ else {
+    return endOfData();
+  }
 }

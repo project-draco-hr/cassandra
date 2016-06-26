@@ -1,0 +1,13 @@
+{
+  if (fetchWholePartition)   clusterings=null;
+  try (UnfilteredRowIterator partition=controller.getPartition(key,clusterings,executionController)){
+    Row staticRow=partition.staticRow();
+    List<Unfiltered> clusters=new ArrayList<>();
+    while (partition.hasNext()) {
+      Unfiltered row=partition.next();
+      if (operationTree.satisfiedBy(row,staticRow,true))       clusters.add(row);
+    }
+    if (!clusters.isEmpty())     return new PartitionIterator(partition,clusters);
+ else     return UnfilteredRowIterators.noRowsIterator(partition.metadata(),partition.partitionKey(),Rows.EMPTY_STATIC_ROW,partition.partitionLevelDeletion(),partition.isReverseOrder());
+  }
+ }
