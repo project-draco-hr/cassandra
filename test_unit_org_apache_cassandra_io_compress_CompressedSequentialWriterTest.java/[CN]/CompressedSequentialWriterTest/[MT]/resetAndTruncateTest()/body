@@ -1,0 +1,26 @@
+{
+  File tempFile=new File(Files.createTempDir(),"reset.txt");
+  File offsetsFile=FileUtils.createTempFile("compressedsequentialwriter.offset","test");
+  final int bufferSize=48;
+  final int writeSize=64;
+  byte[] toWrite=new byte[writeSize];
+  try (SequentialWriter writer=new CompressedSequentialWriter(tempFile,offsetsFile.getPath(),null,SequentialWriterOption.DEFAULT,CompressionParams.lz4(bufferSize),new MetadataCollector(new ClusteringComparator(UTF8Type.instance)))){
+    writer.write(toWrite);
+    long flushedOffset=writer.getLastFlushOffset();
+    assertEquals(writeSize,writer.position());
+    DataPosition pos=writer.mark();
+    writer.write(toWrite);
+    assertEquals(flushedOffset * 2,writer.getLastFlushOffset());
+    assertEquals(writeSize * 2,writer.position());
+    writer.resetAndTruncate(pos);
+    assertEquals(writeSize,writer.position());
+    assertEquals(flushedOffset,writer.getLastFlushOffset());
+    writer.write(new byte[]{0});
+    assertEquals(writeSize + 1,writer.position());
+    assertEquals(flushedOffset,writer.getLastFlushOffset());
+    writer.finish();
+  }
+ catch (  IOException e) {
+    Assert.fail();
+  }
+}

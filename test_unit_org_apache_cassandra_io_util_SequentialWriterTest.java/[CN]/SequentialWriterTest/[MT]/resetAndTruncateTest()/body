@@ -1,0 +1,27 @@
+{
+  File tempFile=new File(Files.createTempDir(),"reset.txt");
+  final int bufferSize=48;
+  final int writeSize=64;
+  byte[] toWrite=new byte[writeSize];
+  SequentialWriterOption option=SequentialWriterOption.newBuilder().bufferSize(bufferSize).build();
+  try (SequentialWriter writer=new SequentialWriter(tempFile,option)){
+    writer.write(toWrite);
+    assertEquals(bufferSize,writer.getLastFlushOffset());
+    assertEquals(writeSize,writer.position());
+    DataPosition pos=writer.mark();
+    writer.write(toWrite);
+    assertEquals(bufferSize * 2,writer.getLastFlushOffset());
+    assertEquals(writeSize * 2,writer.position());
+    writer.resetAndTruncate(pos);
+    assertEquals(writeSize,writer.position());
+    assertEquals(writeSize,writer.getLastFlushOffset());
+    writer.write(new byte[]{0});
+    assertEquals(writeSize + 1,writer.position());
+    assertEquals(writeSize,writer.getLastFlushOffset());
+    writer.finish();
+  }
+ catch (  IOException e) {
+    Assert.fail();
+  }
+  assertEquals(writeSize + 1,tempFile.length());
+}
