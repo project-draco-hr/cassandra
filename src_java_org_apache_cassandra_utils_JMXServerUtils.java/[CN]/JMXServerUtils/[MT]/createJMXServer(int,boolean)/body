@@ -6,14 +6,16 @@
     serverAddress=InetAddress.getLoopbackAddress();
     System.setProperty("java.rmi.server.hostname",serverAddress.getHostAddress());
   }
-  env.putAll(configureJmxSocketFactories(serverAddress));
-  String url=String.format(urlTemplate,(serverAddress != null ? serverAddress.getHostAddress() : "0.0.0.0"),port);
-  LocateRegistry.createRegistry(port,(RMIClientSocketFactory)env.get(RMIConnectorServer.RMI_CLIENT_SOCKET_FACTORY_ATTRIBUTE),(RMIServerSocketFactory)env.get(RMIConnectorServer.RMI_SERVER_SOCKET_FACTORY_ATTRIBUTE));
+  env.putAll(configureJmxSocketFactories(serverAddress,local));
   env.putAll(configureJmxAuthentication());
   MBeanServerForwarder authzProxy=configureJmxAuthorization(env);
   env.put(RMIExporter.EXPORTER_ATTRIBUTE,new Exporter());
-  JMXConnectorServer jmxServer=JMXConnectorServerFactory.newJMXConnectorServer(new JMXServiceURL(url),env,ManagementFactory.getPlatformMBeanServer());
+  String url=String.format(urlTemplate,(serverAddress != null ? serverAddress.getHostAddress() : "0.0.0.0"),port);
+  int rmiPort=Integer.getInteger("com.sun.management.jmxremote.rmi.port",0);
+  JMXConnectorServer jmxServer=JMXConnectorServerFactory.newJMXConnectorServer(new JMXServiceURL("rmi",null,rmiPort),env,ManagementFactory.getPlatformMBeanServer());
   if (authzProxy != null)   jmxServer.setMBeanServerForwarder(authzProxy);
+  jmxServer.start();
+  configureRMIRegistry(port,env);
   logger.info("Configured JMX server at: {}",url);
   return jmxServer;
 }
