@@ -1,11 +1,10 @@
 {
   int position=0;
   for (  Restriction restriction : restrictions) {
-    ColumnDefinition columnDef=restriction.getFirstColumn();
-    if (!isPartitionKey && !restriction.isContains() && position == columnDef.position()) {
-      position=restriction.getLastColumn().position() + 1;
-      if (!restriction.hasSupportingIndex(indexManager))       continue;
+    if (isPartitionKey || handleInFilter(restriction,position) || restriction.hasSupportingIndex(indexManager)) {
+      restriction.addRowFilterTo(filter,indexManager,options);
+      continue;
     }
-    restriction.addRowFilterTo(filter,indexManager,options);
+    if (!restriction.isSlice())     position=restriction.getLastColumn().position() + 1;
   }
 }
