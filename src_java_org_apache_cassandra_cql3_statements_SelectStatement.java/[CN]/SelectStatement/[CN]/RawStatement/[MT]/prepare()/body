@@ -38,12 +38,16 @@
   processColumnRestrictions(stmt,hasQueriableIndex,cfm);
   if (stmt.isKeyRange && hasQueriableClusteringColumnIndex)   stmt.usesSecondaryIndexing=true;
   int numberOfRestrictionsEvaluatedWithSlices=0;
+  Restriction lastSliceRestriction=null;
   for (  ColumnDefinition def : cfm.clusteringColumns()) {
     Boolean indexed=stmt.restrictedColumns.get(def);
     if (indexed == null)     break;
-    if (!(indexed && stmt.usesSecondaryIndexing) && stmt.columnRestrictions[def.position()].canEvaluateWithSlices()) {
+    Restriction restriction=stmt.columnRestrictions[def.position()];
+    if (lastSliceRestriction != null && !restriction.equals(lastSliceRestriction))     break;
+    if (!(indexed && stmt.usesSecondaryIndexing) && restriction.canEvaluateWithSlices()) {
       stmt.restrictedColumns.remove(def);
       numberOfRestrictionsEvaluatedWithSlices++;
+      if (restriction.isSlice())       lastSliceRestriction=restriction;
     }
   }
   if (!stmt.metadataRestrictions.isEmpty())   stmt.usesSecondaryIndexing=true;
