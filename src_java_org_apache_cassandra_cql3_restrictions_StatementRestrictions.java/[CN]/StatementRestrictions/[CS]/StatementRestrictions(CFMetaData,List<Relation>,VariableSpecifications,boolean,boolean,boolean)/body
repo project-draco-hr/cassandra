@@ -1,7 +1,7 @@
 {
   this.cfm=cfm;
   this.partitionKeyRestrictions=new PrimaryKeyRestrictionSet(cfm.getKeyValidatorAsCType());
-  this.clusteringColumnsRestrictions=new PrimaryKeyRestrictionSet(cfm.comparator,cfm);
+  this.clusteringColumnsRestrictions=new PrimaryKeyRestrictionSet(cfm.comparator);
   this.nonPrimaryKeyRestrictions=new RestrictionSet();
   for (  Relation relation : whereClause)   addRestriction(relation.toRestriction(cfm,boundNames));
   SecondaryIndexManager secondaryIndexManager=Keyspace.open(cfm.ksName).getColumnFamilyStore(cfm.cfName).indexManager;
@@ -17,7 +17,7 @@
   if (!nonPrimaryKeyRestrictions.isEmpty()) {
     if (!hasQueriableIndex) {
       if (cfm.comparator.isDense() || cfm.comparator.isCompound())       throw invalidRequest("Predicates on non-primary-key columns (%s) are not yet supported for non secondary index queries",Joiner.on(", ").join(toIdentifiers(nonPrimaryKeyRestrictions.getColumnDefs())));
-      if (!useFiltering)       throw invalidRequest(REQUIRES_ALLOW_FILTERING_MESSAGE);
+      if (!allowFiltering)       throw invalidRequest(REQUIRES_ALLOW_FILTERING_MESSAGE);
     }
     usesSecondaryIndexing=true;
     indexRestrictions.add(nonPrimaryKeyRestrictions);
