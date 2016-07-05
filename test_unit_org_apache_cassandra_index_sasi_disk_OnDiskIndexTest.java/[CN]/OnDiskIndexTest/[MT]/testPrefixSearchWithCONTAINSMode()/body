@@ -1,0 +1,21 @@
+{
+  Map<ByteBuffer,TokenTreeBuilder> data=new HashMap<ByteBuffer,TokenTreeBuilder>(){
+{
+      put(UTF8Type.instance.decompose("lady gaga"),keyBuilder(1L));
+      DataOutputBuffer ladyOfBellsBuffer=new DataOutputBuffer();
+      ladyOfBellsBuffer.writeShort(UTF8Type.instance.decompose("lady of bells").remaining() | (1 << OnDiskIndexBuilder.IS_PARTIAL_BIT));
+      ladyOfBellsBuffer.write(UTF8Type.instance.decompose("lady of bells"));
+      put(ladyOfBellsBuffer.asNewBuffer(),keyBuilder(2L));
+      put(UTF8Type.instance.decompose("lady pank"),keyBuilder(3L));
+    }
+  }
+;
+  OnDiskIndexBuilder builder=new OnDiskIndexBuilder(UTF8Type.instance,UTF8Type.instance,OnDiskIndexBuilder.Mode.CONTAINS);
+  for (  Map.Entry<ByteBuffer,TokenTreeBuilder> e : data.entrySet())   addAll(builder,e.getKey(),e.getValue());
+  File index=File.createTempFile("on-disk-sa-prefix-contains-search","db");
+  index.deleteOnExit();
+  builder.finish(index);
+  OnDiskIndex onDisk=new OnDiskIndex(index,UTF8Type.instance,new KeyConverter());
+  Assert.assertEquals(convert(1,3),convert(onDisk.search(expressionFor("lady",Operator.LIKE_PREFIX))));
+  onDisk.close();
+}
