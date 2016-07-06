@@ -6,8 +6,11 @@
     long partitionsCount, meanPartitionSize;
     try {
       while (refs == null) {
-        ColumnFamilyStore.ViewFragment view=table.select(View.select(SSTableSet.CANONICAL,Range.makeRowRange(range)));
-        refs=Refs.tryRef(view.sstables);
+        Iterable<SSTableReader> sstables=table.getTracker().getView().select(SSTableSet.CANONICAL);
+        SSTableIntervalTree tree=SSTableIntervalTree.build(sstables);
+        Range<PartitionPosition> r=Range.makeRowRange(range);
+        Iterable<SSTableReader> canonicalSSTables=View.sstablesInBounds(r.left,r.right,tree);
+        refs=Refs.tryRef(canonicalSSTables);
       }
       partitionsCount=estimatePartitionsCount(refs,range);
       meanPartitionSize=estimateMeanPartitionSize(refs);
