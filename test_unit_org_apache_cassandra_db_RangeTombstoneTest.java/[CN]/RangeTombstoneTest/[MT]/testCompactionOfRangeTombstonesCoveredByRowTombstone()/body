@@ -1,0 +1,22 @@
+{
+  long testTimeStamp=1451606400L;
+  Keyspace table=Keyspace.open(KSNAME);
+  ColumnFamilyStore cfs=table.getColumnFamilyStore(CFNAME);
+  ByteBuffer key=ByteBufferUtil.bytes("k4");
+  cfs.truncateBlocking();
+  cfs.disableAutoCompaction();
+  cfs.setCompactionStrategyClass(LeveledCompactionStrategy.class.getCanonicalName());
+  Mutation rm=new Mutation(KSNAME,key);
+  for (int i=1; i < 11; i+=2, testTimeStamp+=i * 10)   add(rm,i,testTimeStamp);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  rm=new Mutation(KSNAME,key);
+  ColumnFamily cf=rm.addOrGet(CFNAME);
+  cf.delete(new DeletionTime(++testTimeStamp,(int)testTimeStamp));
+  for (int i=1; i < 11; i+=2, testTimeStamp-=i * 5)   delete(cf,0,7,testTimeStamp);
+  rm.apply();
+  cfs.forceBlockingFlush();
+  assertEquals(2,cfs.getSSTables().size());
+  CompactionManager.instance.performMaximal(cfs);
+  assertEquals(0,cfs.getSSTables().size());
+}
