@@ -2,23 +2,21 @@
   SequentialWriter w=createTempFile("brafTestMark");
   w.write(new byte[30]);
   w.finish();
-  ChannelProxy channel=new ChannelProxy(w.getPath());
-  RandomAccessReader file=RandomAccessReader.open(channel);
-  file.seek(10);
-  DataPosition mark=file.mark();
-  file.seek(file.length());
-  assertTrue(file.isEOF());
-  file.reset();
-  assertEquals(file.bytesRemaining(),20);
-  file.seek(file.length());
-  assertTrue(file.isEOF());
-  file.reset(mark);
-  assertEquals(file.bytesRemaining(),20);
-  file.seek(file.length());
-  assertEquals(file.bytesPastMark(),20);
-  assertEquals(file.bytesPastMark(mark),20);
-  file.reset(mark);
-  assertEquals(file.bytesPastMark(),0);
-  file.close();
-  channel.close();
-}
+  try (FileHandle.Builder builder=new FileHandle.Builder(w.getPath());FileHandle fh=builder.complete();RandomAccessReader file=fh.createReader()){
+    file.seek(10);
+    DataPosition mark=file.mark();
+    file.seek(file.length());
+    assertTrue(file.isEOF());
+    file.reset();
+    assertEquals(file.bytesRemaining(),20);
+    file.seek(file.length());
+    assertTrue(file.isEOF());
+    file.reset(mark);
+    assertEquals(file.bytesRemaining(),20);
+    file.seek(file.length());
+    assertEquals(file.bytesPastMark(),20);
+    assertEquals(file.bytesPastMark(mark),20);
+    file.reset(mark);
+    assertEquals(file.bytesPastMark(),0);
+  }
+ }

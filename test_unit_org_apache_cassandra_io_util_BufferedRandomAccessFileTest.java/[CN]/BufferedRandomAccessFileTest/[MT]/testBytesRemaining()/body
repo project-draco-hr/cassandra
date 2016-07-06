@@ -3,17 +3,15 @@
   int toWrite=RandomAccessReader.DEFAULT_BUFFER_SIZE + 10;
   w.write(generateByteArray(toWrite));
   w.sync();
-  ChannelProxy channel=new ChannelProxy(w.getPath());
-  RandomAccessReader r=RandomAccessReader.open(channel);
-  assertEquals(r.bytesRemaining(),toWrite);
-  for (int i=1; i <= r.length(); i++) {
-    r.read();
-    assertEquals(r.bytesRemaining(),r.length() - i);
+  try (FileHandle.Builder builder=new FileHandle.Builder(w.getPath());FileHandle fh=builder.complete();RandomAccessReader r=fh.createReader()){
+    assertEquals(r.bytesRemaining(),toWrite);
+    for (int i=1; i <= r.length(); i++) {
+      r.read();
+      assertEquals(r.bytesRemaining(),r.length() - i);
+    }
+    r.seek(0);
+    r.skipBytes(10);
+    assertEquals(r.bytesRemaining(),r.length() - 10);
+    w.finish();
   }
-  r.seek(0);
-  r.skipBytes(10);
-  assertEquals(r.bytesRemaining(),r.length() - 10);
-  w.finish();
-  r.close();
-  channel.close();
-}
+ }

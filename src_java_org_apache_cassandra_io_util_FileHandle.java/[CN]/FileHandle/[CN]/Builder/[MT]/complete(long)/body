@@ -1,0 +1,36 @@
+{
+  if (channel == null) {
+    channel=new ChannelProxy(path);
+  }
+  ChannelProxy channelCopy=channel.sharedCopy();
+  try {
+    if (compressed && compressionMetadata == null)     compressionMetadata=CompressionMetadata.create(channelCopy.filePath());
+    long length=overrideLength > 0 ? overrideLength : compressed ? compressionMetadata.compressedFileLength : channelCopy.size();
+    RebuffererFactory rebuffererFactory;
+    if (mmapped) {
+      if (compressed) {
+        regions=MmappedRegions.map(channelCopy,compressionMetadata);
+        rebuffererFactory=maybeCached(new CompressedChunkReader.Mmap(channelCopy,compressionMetadata,regions));
+      }
+ else {
+        updateRegions(channelCopy,length);
+        rebuffererFactory=new MmapRebufferer(channelCopy,length,regions.sharedCopy());
+      }
+    }
+ else {
+      regions=null;
+      if (compressed) {
+        rebuffererFactory=maybeCached(new CompressedChunkReader.Standard(channelCopy,compressionMetadata));
+      }
+ else {
+        rebuffererFactory=maybeCached(new SimpleChunkReader(channelCopy,length,bufferType,bufferSize));
+      }
+    }
+    Cleanup cleanup=new Cleanup(channelCopy,rebuffererFactory,compressionMetadata,chunkCache);
+    return new FileHandle(cleanup,channelCopy,rebuffererFactory,compressionMetadata,length);
+  }
+ catch (  Throwable t) {
+    channelCopy.close();
+    throw t;
+  }
+}

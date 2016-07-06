@@ -1,3 +1,12 @@
 {
-  return new Builder(new ChannelProxy(file)).buildWithChannel();
+  ChannelProxy channel=new ChannelProxy(file);
+  try {
+    ChunkReader reader=new SimpleChunkReader(channel,-1,BufferType.OFF_HEAP,DEFAULT_BUFFER_SIZE);
+    Rebufferer rebufferer=reader.instantiateRebufferer();
+    return new RandomAccessReaderWithOwnChannel(rebufferer);
+  }
+ catch (  Throwable t) {
+    channel.close();
+    throw t;
+  }
 }

@@ -1,14 +1,19 @@
 {
-  try (SegmentedFile.Builder ibuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getIndexAccessMode(),false);SegmentedFile.Builder dbuilder=SegmentedFile.getBuilder(DatabaseDescriptor.getDiskAccessMode(),compression)){
-    boolean summaryLoaded=loadSummary(ibuilder,dbuilder);
+  try (FileHandle.Builder ibuilder=new FileHandle.Builder(descriptor.filenameFor(Component.PRIMARY_INDEX)).mmapped(DatabaseDescriptor.getIndexAccessMode() == Config.DiskAccessMode.mmap).withChunkCache(ChunkCache.instance);FileHandle.Builder dbuilder=new FileHandle.Builder(descriptor.filenameFor(Component.DATA)).compressed(compression).mmapped(DatabaseDescriptor.getDiskAccessMode() == Config.DiskAccessMode.mmap).withChunkCache(ChunkCache.instance)){
+    boolean summaryLoaded=loadSummary();
     boolean builtSummary=false;
     if (recreateBloomFilter || !summaryLoaded) {
       buildSummary(recreateBloomFilter,summaryLoaded,Downsampling.BASE_SAMPLING_LEVEL);
       builtSummary=true;
     }
-    if (components.contains(Component.PRIMARY_INDEX))     ifile=ibuilder.buildIndex(descriptor,indexSummary);
-    dfile=dbuilder.buildData(descriptor,sstableMetadata);
-    if (saveSummaryIfCreated && builtSummary)     saveSummary(ibuilder,dbuilder);
+    long indexFileLength=new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+    int dataBufferSize=optimizationStrategy.bufferSize(sstableMetadata.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+    if (components.contains(Component.PRIMARY_INDEX)) {
+      int indexBufferSize=optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
+      ifile=ibuilder.bufferSize(indexBufferSize).complete();
+    }
+    dfile=dbuilder.bufferSize(dataBufferSize).complete();
+    if (saveSummaryIfCreated && builtSummary)     saveSummary();
   }
  catch (  Throwable t) {
     if (ifile != null) {

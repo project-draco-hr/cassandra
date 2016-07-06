@@ -1,0 +1,16 @@
+{
+  if (maxDataAge < 0)   maxDataAge=System.currentTimeMillis();
+  StatsMetadata stats=statsMetadata();
+  IndexSummary indexSummary=iwriter.summary.build(this.metadata.partitioner);
+  long indexFileLength=new File(descriptor.filenameFor(Component.PRIMARY_INDEX)).length();
+  int dataBufferSize=optimizationStrategy.bufferSize(stats.estimatedPartitionSize.percentile(DatabaseDescriptor.getDiskOptimizationEstimatePercentile()));
+  int indexBufferSize=optimizationStrategy.bufferSize(indexFileLength / indexSummary.size());
+  FileHandle ifile=iwriter.builder.bufferSize(optimizationStrategy.bufferSize(indexBufferSize)).complete();
+  if (compression)   dbuilder.withCompressionMetadata(((CompressedSequentialWriter)dataFile).open(0));
+  FileHandle dfile=dbuilder.bufferSize(optimizationStrategy.bufferSize(dataBufferSize)).complete();
+  invalidateCacheAtBoundary(dfile);
+  SSTableReader sstable=SSTableReader.internalOpen(descriptor,components,this.metadata,ifile,dfile,indexSummary,iwriter.bf.sharedCopy(),maxDataAge,stats,openReason,header);
+  sstable.first=getMinimalKey(first);
+  sstable.last=getMinimalKey(last);
+  return sstable;
+}

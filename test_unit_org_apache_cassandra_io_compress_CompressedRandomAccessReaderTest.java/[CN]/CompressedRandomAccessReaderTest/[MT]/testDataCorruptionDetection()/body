@@ -11,43 +11,41 @@
     writer.write(CONTENT.getBytes());
     writer.finish();
   }
-   try (ChannelProxy channel=new ChannelProxy(file)){
-    CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length(),ChecksumType.CRC32);
-    CompressionMetadata.Chunk chunk=meta.chunkFor(0);
-    try (RandomAccessReader reader=RandomAccessReader.builder(channel).compression(meta).build()){
-      assertEquals(CONTENT,reader.readLine());
-      Random random=new Random();
-      RandomAccessFile checksumModifier=null;
-      try {
-        checksumModifier=new RandomAccessFile(file,"rw");
-        byte[] checksum=new byte[4];
-        checksumModifier.seek(chunk.length);
-        checksumModifier.read(checksum);
-        checksumModifier.seek(chunk.length);
-        for (int i=0; i < checksum.length; i++) {
-          checksumModifier.write(random.nextInt());
-          SyncUtil.sync(checksumModifier);
-          try (final RandomAccessReader r=RandomAccessReader.builder(channel).compression(meta).build()){
-            Throwable exception=null;
-            try {
-              r.readLine();
-            }
- catch (            Throwable t) {
-              exception=t;
-            }
-            assertNotNull(exception);
-            assertSame(exception.getClass(),CorruptSSTableException.class);
-            assertSame(exception.getCause().getClass(),CorruptBlockException.class);
+   CompressionMetadata meta=new CompressionMetadata(metadata.getPath(),file.length(),ChecksumType.CRC32);
+  CompressionMetadata.Chunk chunk=meta.chunkFor(0);
+  try (FileHandle.Builder builder=new FileHandle.Builder(file.getPath()).withCompressionMetadata(meta);FileHandle fh=builder.complete();RandomAccessReader reader=fh.createReader()){
+    assertEquals(CONTENT,reader.readLine());
+    Random random=new Random();
+    RandomAccessFile checksumModifier=null;
+    try {
+      checksumModifier=new RandomAccessFile(file,"rw");
+      byte[] checksum=new byte[4];
+      checksumModifier.seek(chunk.length);
+      checksumModifier.read(checksum);
+      checksumModifier.seek(chunk.length);
+      for (int i=0; i < checksum.length; i++) {
+        checksumModifier.write(random.nextInt());
+        SyncUtil.sync(checksumModifier);
+        try (final RandomAccessReader r=fh.createReader()){
+          Throwable exception=null;
+          try {
+            r.readLine();
           }
-         }
-        updateChecksum(checksumModifier,chunk.length,checksum);
-        try (RandomAccessReader cr=RandomAccessReader.builder(channel).compression(meta).build()){
-          assertEquals(CONTENT,cr.readLine());
+ catch (          Throwable t) {
+            exception=t;
+          }
+          assertNotNull(exception);
+          assertSame(exception.getClass(),CorruptSSTableException.class);
+          assertSame(exception.getCause().getClass(),CorruptBlockException.class);
         }
        }
-  finally {
-        if (checksumModifier != null)         checksumModifier.close();
+      updateChecksum(checksumModifier,chunk.length,checksum);
+      try (RandomAccessReader cr=fh.createReader()){
+        assertEquals(CONTENT,cr.readLine());
       }
+     }
+  finally {
+      if (checksumModifier != null)       checksumModifier.close();
     }
-   }
+  }
  }

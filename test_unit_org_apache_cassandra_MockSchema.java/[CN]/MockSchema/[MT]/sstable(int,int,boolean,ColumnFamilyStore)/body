@@ -1,5 +1,5 @@
 {
-  Descriptor descriptor=new Descriptor(cfs.getDirectories().getDirectoryForNewSSTables(),cfs.keyspace.getName(),cfs.getColumnFamilyName(),generation);
+  Descriptor descriptor=new Descriptor(cfs.getDirectories().getDirectoryForNewSSTables(),cfs.keyspace.getName(),cfs.getColumnFamilyName(),generation,SSTableFormat.Type.BIG);
   Set<Component> components=ImmutableSet.of(Component.DATA,Component.PRIMARY_INDEX,Component.FILTER,Component.TOC);
   for (  Component component : components) {
     File file=new File(descriptor.filenameFor(component));
@@ -22,7 +22,7 @@
   }
   SerializationHeader header=SerializationHeader.make(cfs.metadata,Collections.emptyList());
   StatsMetadata metadata=(StatsMetadata)new MetadataCollector(cfs.metadata.comparator).finalizeMetadata(cfs.metadata.partitioner.getClass().getCanonicalName(),0.01f,-1,header).get(MetadataType.STATS);
-  SSTableReader reader=SSTableReader.internalOpen(descriptor,components,cfs.metadata,segmentedFile.sharedCopy(),segmentedFile.sharedCopy(),indexSummary.sharedCopy(),new AlwaysPresentFilter(),1L,metadata,SSTableReader.OpenReason.NORMAL,header);
+  SSTableReader reader=SSTableReader.internalOpen(descriptor,components,cfs.metadata,RANDOM_ACCESS_READER_FACTORY.sharedCopy(),RANDOM_ACCESS_READER_FACTORY.sharedCopy(),indexSummary.sharedCopy(),new AlwaysPresentFilter(),1L,metadata,SSTableReader.OpenReason.NORMAL,header);
   reader.first=reader.last=readerBounds(generation);
   if (!keepRef)   reader.selfRef().release();
   return reader;
