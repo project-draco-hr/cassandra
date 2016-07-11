@@ -4,20 +4,24 @@
   AbstractType<?> rawComparator=TypeParser.parse(tableRow.getString("comparator"));
   AbstractType<?> subComparator=tableRow.has("subcomparator") ? TypeParser.parse(tableRow.getString("subcomparator")) : null;
   boolean isSuper="super".equals(tableRow.getString("type").toLowerCase());
-  boolean isDense=tableRow.has("is_dense") ? tableRow.getBoolean("is_dense") : calculateIsDense(rawComparator,columnRows);
   boolean isCompound=rawComparator instanceof CompositeType;
+  Boolean rawIsDense=tableRow.has("is_dense") ? tableRow.getBoolean("is_dense") : null;
+  boolean isDense;
+  if (rawIsDense != null && !rawIsDense)   isDense=false;
+ else   isDense=calculateIsDense(rawComparator,columnRows);
+  Iterable<UntypedResultSet.Row> filteredColumnRows=!isDense && (rawIsDense == null || rawIsDense) ? filterOutRedundantRowsForSparse(columnRows,isSuper,isCompound) : columnRows;
   AbstractType<?> defaultValidator=TypeParser.parse(tableRow.getString("default_validator"));
   boolean isCounter=defaultValidator instanceof CounterColumnType;
   UUID cfId=tableRow.has("cf_id") ? tableRow.getUUID("cf_id") : CFMetaData.generateLegacyCfId(ksName,cfName);
   boolean isCQLTable=!isSuper && !isDense && isCompound;
   boolean isStaticCompactTable=!isDense && !isCompound;
-  boolean needsUpgrade=!isCQLTable && checkNeedsUpgrade(columnRows,isSuper,isStaticCompactTable);
-  List<ColumnDefinition> columnDefs=createColumnsFromColumnRows(columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
+  boolean needsUpgrade=!isCQLTable && checkNeedsUpgrade(filteredColumnRows,isSuper,isStaticCompactTable);
+  List<ColumnDefinition> columnDefs=createColumnsFromColumnRows(filteredColumnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
   if (needsUpgrade) {
     addDefinitionForUpgrade(columnDefs,ksName,cfName,isStaticCompactTable,isSuper,rawComparator,subComparator,defaultValidator);
   }
   CFMetaData cfm=CFMetaData.create(ksName,cfName,cfId,isDense,isCompound,isSuper,isCounter,false,columnDefs,DatabaseDescriptor.getPartitioner());
-  Indexes indexes=createIndexesFromColumnRows(cfm,columnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
+  Indexes indexes=createIndexesFromColumnRows(cfm,filteredColumnRows,ksName,cfName,rawComparator,subComparator,isSuper,isCQLTable,isStaticCompactTable,needsUpgrade);
   cfm.indexes(indexes);
   if (tableRow.has("dropped_columns"))   addDroppedColumns(cfm,rawComparator,tableRow.getMap("dropped_columns",UTF8Type.instance,LongType.instance));
   return cfm.params(decodeTableParams(tableRow)).triggers(createTriggersFromTriggerRows(triggerRows));
