@@ -1,6 +1,5 @@
 def test_describe_keyspace_output(self):
-    fullcqlver = cqlsh.DEFAULT_CQLVER
-    with testrun_cqlsh(tty=True, cqlver=fullcqlver) as c:
+    with testrun_cqlsh(tty=True) as c:
         ks = get_test_keyspace()
         qks = quote_name(ks)
         for cmd in ('describe keyspace', 'desc keyspace'):
@@ -8,12 +7,12 @@ def test_describe_keyspace_output(self):
                 for semicolon in ('', ';'):
                     fullcmd = (((cmd + (' ' if givename else '')) + givename) + semicolon)
                     desc = c.cmd_and_response(fullcmd)
-                    self.check_describe_keyspace_output(desc, (givename or qks), fullcqlver)
+                    self.check_describe_keyspace_output(desc, (givename or qks))
         new_ks_name = ('COPY_OF_' + ks)
         copy_desc = desc.replace(ks, new_ks_name)
         statements = split_cql_commands(copy_desc)
         do_drop = True
-        with cassandra_cursor(cql_version=fullcqlver) as curs:
+        with cassandra_cursor() as curs:
             try:
                 for stmt in statements:
                     cqlshlog.debug(('TEST EXEC: %s' % stmt))
