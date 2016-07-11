@@ -1,0 +1,15 @@
+{
+  ClientState clientState=ClientState.forInternalCalls();
+  int count=0;
+  for (  Pair<String,String> useKeyspaceAndCQL : SystemKeyspace.loadPreparedStatements()) {
+    try {
+      clientState.setKeyspace(useKeyspaceAndCQL.left);
+      prepare(useKeyspaceAndCQL.right,clientState,false);
+      count++;
+    }
+ catch (    RequestValidationException e) {
+      logger.warn("prepared statement recreation error: {}",useKeyspaceAndCQL.right,e);
+    }
+  }
+  logger.info("Preloaded {} prepared statements",count);
+}
