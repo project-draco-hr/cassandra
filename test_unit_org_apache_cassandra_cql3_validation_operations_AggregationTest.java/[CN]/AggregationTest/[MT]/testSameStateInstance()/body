@@ -1,0 +1,20 @@
+{
+  String sf=createFunction(KEYSPACE,"tuple<int,int,int,int>, int","CREATE FUNCTION %s(s tuple<int,int,int,int>, i int) " + "CALLED ON NULL INPUT " + "RETURNS tuple<int,int,int,int> "+ "LANGUAGE java "+ "AS 's.setInt(i, System.identityHashCode(s)); return s;'");
+  String ff=createFunction(KEYSPACE,"tuple<int,int,int,int>","CREATE FUNCTION %s(s tuple<int,int,int,int>) " + "CALLED ON NULL INPUT " + "RETURNS tuple<int,int,int,int> "+ "LANGUAGE java "+ "AS 's.setInt(3, System.identityHashCode(s)); return s;'");
+  String a=createAggregate(KEYSPACE,"int","CREATE AGGREGATE %s(int) " + "SFUNC " + shortFunctionName(sf) + ' '+ "STYPE tuple<int,int,int,int> "+ "FINALFUNC "+ shortFunctionName(ff)+ ' '+ "INITCOND (0,1,2)");
+  createTable("CREATE TABLE %s (a int primary key, b int)");
+  execute("INSERT INTO %s (a, b) VALUES (0, 0)");
+  execute("INSERT INTO %s (a, b) VALUES (1, 1)");
+  execute("INSERT INTO %s (a, b) VALUES (2, 2)");
+  try (Session s=sessionNet()){
+    com.datastax.driver.core.Row row=s.execute("SELECT " + a + "(b) FROM "+ KEYSPACE+ '.'+ currentTable()).one();
+    TupleValue tuple=row.getTupleValue(0);
+    int h0=tuple.getInt(0);
+    int h1=tuple.getInt(1);
+    int h2=tuple.getInt(2);
+    int h3=tuple.getInt(3);
+    assertEquals(h0,h1);
+    assertEquals(h0,h2);
+    assertEquals(h0,h3);
+  }
+ }

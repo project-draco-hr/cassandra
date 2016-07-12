@@ -1,0 +1,46 @@
+{
+  Future<T> future=executor().submit(callable);
+  try {
+    if (DatabaseDescriptor.getUserDefinedFunctionWarnTimeout() > 0)     try {
+      return future.get(DatabaseDescriptor.getUserDefinedFunctionWarnTimeout(),TimeUnit.MILLISECONDS);
+    }
+ catch (    TimeoutException e) {
+      String warn=String.format("User defined function %s ran longer than %dms",this,DatabaseDescriptor.getUserDefinedFunctionWarnTimeout());
+      logger.warn(warn);
+      ClientWarn.instance.warn(warn);
+    }
+    return future.get(DatabaseDescriptor.getUserDefinedFunctionFailTimeout() - DatabaseDescriptor.getUserDefinedFunctionWarnTimeout(),TimeUnit.MILLISECONDS);
+  }
+ catch (  InterruptedException e) {
+    Thread.currentThread().interrupt();
+    throw new RuntimeException(e);
+  }
+catch (  ExecutionException e) {
+    Throwable c=e.getCause();
+    if (c instanceof RuntimeException)     throw (RuntimeException)c;
+    throw new RuntimeException(c);
+  }
+catch (  TimeoutException e) {
+    try {
+      threadIdAndCpuTime.get(1,TimeUnit.SECONDS);
+      long cpuTimeMillis=threadMXBean.getThreadCpuTime(threadIdAndCpuTime.threadId) - threadIdAndCpuTime.cpuTime;
+      cpuTimeMillis/=1000000L;
+      return future.get(Math.max(DatabaseDescriptor.getUserDefinedFunctionFailTimeout() - cpuTimeMillis,0L),TimeUnit.MILLISECONDS);
+    }
+ catch (    InterruptedException e1) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(e);
+    }
+catch (    ExecutionException e1) {
+      Throwable c=e.getCause();
+      if (c instanceof RuntimeException)       throw (RuntimeException)c;
+      throw new RuntimeException(c);
+    }
+catch (    TimeoutException e1) {
+      TimeoutException cause=new TimeoutException(String.format("User defined function %s ran longer than %dms%s",this,DatabaseDescriptor.getUserDefinedFunctionFailTimeout(),DatabaseDescriptor.getUserFunctionTimeoutPolicy() == Config.UserFunctionTimeoutPolicy.ignore ? "" : " - will stop Cassandra VM"));
+      FunctionExecutionException fe=FunctionExecutionException.create(this,cause);
+      JVMStabilityInspector.userFunctionTimeout(cause);
+      throw fe;
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  assertUdfsEnabled(language);
+  if (!calledOnNullInput && firstParam == null || !isCallableWrtNullable(parameters))   return null;
+  long tStart=System.nanoTime();
+  parameters=makeEmptyParametersNull(parameters);
+  try {
+    Object result=DatabaseDescriptor.enableUserDefinedFunctionsThreads() ? executeAggregateAsync(protocolVersion,firstParam,parameters) : executeAggregateUserDefined(protocolVersion,firstParam,parameters);
+    Tracing.trace("Executed UDF {} in {}\u03bcs",name(),(System.nanoTime() - tStart) / 1000);
+    return result;
+  }
+ catch (  InvalidRequestException e) {
+    throw e;
+  }
+catch (  Throwable t) {
+    logger.debug("Invocation of user-defined function '{}' failed",this,t);
+    if (t instanceof VirtualMachineError)     throw (VirtualMachineError)t;
+    throw FunctionExecutionException.create(this,t);
+  }
+}
