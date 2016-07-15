@@ -28,8 +28,11 @@
     public UnfilteredRowIterator next(){
       ImmutableBTreePartition partition=toReturn.get(idx++);
       ClusteringIndexFilter filter=command.clusteringIndexFilter(partition.partitionKey());
-      if (!command.metadata().isCompound())       return ThriftResultsMerger.maybeWrap(partition.unfilteredIterator(command.columnFilter(),filter.getSlices(command.metadata()),filter.isReversed()),command.nowInSec());
-      return ThriftResultsMerger.maybeWrap(partition.unfilteredIterator(command.columnFilter(),Slices.ALL,filter.isReversed()),command.nowInSec());
+      UnfilteredRowIterator iterator;
+      if (!command.metadata().isCompound())       iterator=partition.unfilteredIterator(command.columnFilter(),filter.getSlices(command.metadata()),filter.isReversed());
+ else       iterator=partition.unfilteredIterator(command.columnFilter(),Slices.ALL,filter.isReversed());
+      if (command.isForThrift())       return ThriftResultsMerger.maybeWrap(iterator,command.nowInSec());
+ else       return iterator;
     }
   }
 ;
