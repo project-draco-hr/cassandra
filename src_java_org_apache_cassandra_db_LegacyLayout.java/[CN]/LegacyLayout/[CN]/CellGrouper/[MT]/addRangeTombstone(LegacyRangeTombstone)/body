@@ -1,6 +1,15 @@
 {
   if (tombstone.isRowDeletion(metadata)) {
-    if (clustering != null)     return false;
+    if (clustering != null) {
+      if (rowDeletion != null && clustering.equals(tombstone.start.getAsClustering(metadata))) {
+        if (tombstone.deletionTime.supersedes(rowDeletion.deletionTime)) {
+          builder.addRowDeletion(Row.Deletion.regular(tombstone.deletionTime));
+          rowDeletion=tombstone;
+        }
+        return true;
+      }
+      return false;
+    }
     clustering=tombstone.start.getAsClustering(metadata);
     builder.newRow(clustering);
     builder.addRowDeletion(Row.Deletion.regular(tombstone.deletionTime));
