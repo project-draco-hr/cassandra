@@ -16,7 +16,14 @@
     streamId=((WrappedException)e).streamId;
     e=e.getCause();
   }
-  if (e instanceof TransportException)   return new ErrorMessage((TransportException)e,streamId);
+  if (e instanceof TransportException) {
+    ErrorMessage message=new ErrorMessage((TransportException)e,streamId);
+    if (e instanceof ProtocolException) {
+      Integer attemptedLowProtocolVersion=((ProtocolException)e).getAttemptedLowProtocolVersion();
+      if (attemptedLowProtocolVersion != null)       message.forcedProtocolVersion=attemptedLowProtocolVersion;
+    }
+    return message;
+  }
   if (unexpectedExceptionHandler == null || !unexpectedExceptionHandler.apply(e))   logger.error("Unexpected exception during request",e);
   return new ErrorMessage(new ServerError(e),streamId);
 }
