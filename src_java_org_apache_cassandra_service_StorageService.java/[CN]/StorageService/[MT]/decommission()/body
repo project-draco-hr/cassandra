@@ -1,31 +1,44 @@
 {
   if (!tokenMetadata.isMember(FBUtilities.getBroadcastAddress()))   throw new UnsupportedOperationException("local node is not a member of the token ring yet");
   if (tokenMetadata.cloneAfterAllLeft().sortedTokens().size() < 2)   throw new UnsupportedOperationException("no other normal nodes in the ring; decommission would be pointless");
-  if (operationMode != Mode.NORMAL)   throw new UnsupportedOperationException("Node in " + operationMode + " state; wait for status to become normal or restart");
-  PendingRangeCalculatorService.instance.blockUntilFinished();
-  for (  String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces()) {
-    if (tokenMetadata.getPendingRanges(keyspaceName,FBUtilities.getBroadcastAddress()).size() > 0)     throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
-  }
+  if (operationMode != Mode.LEAVING && operationMode != Mode.NORMAL)   throw new UnsupportedOperationException("Node in " + operationMode + " state; wait for status to become normal or restart");
+  if (isDecommissioning.compareAndSet(true,true))   throw new IllegalStateException("Node is still decommissioning. Check nodetool netstats.");
   if (logger.isDebugEnabled())   logger.debug("DECOMMISSIONING");
-  startLeaving();
-  long timeout=Math.max(RING_DELAY,BatchlogManager.instance.getBatchlogTimeout());
-  setMode(Mode.LEAVING,"sleeping " + timeout + " ms for batch processing and pending range setup",true);
-  Thread.sleep(timeout);
-  Runnable finishLeaving=new Runnable(){
-    public void run(){
-      shutdownClientServers();
-      Gossiper.instance.stop();
-      try {
-        MessagingService.instance().shutdown();
-      }
- catch (      IOError ioe) {
-        logger.info("failed to shutdown message service: {}",ioe);
-      }
-      StageManager.shutdownNow();
-      SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.DECOMMISSIONED);
-      setMode(Mode.DECOMMISSIONED,true);
+  try {
+    PendingRangeCalculatorService.instance.blockUntilFinished();
+    for (    String keyspaceName : Schema.instance.getNonLocalStrategyKeyspaces()) {
+      if (tokenMetadata.getPendingRanges(keyspaceName,FBUtilities.getBroadcastAddress()).size() > 0)       throw new UnsupportedOperationException("data is currently moving to this node; unable to leave the ring");
     }
-  }
+    startLeaving();
+    long timeout=Math.max(RING_DELAY,BatchlogManager.instance.getBatchlogTimeout());
+    setMode(Mode.LEAVING,"sleeping " + timeout + " ms for batch processing and pending range setup",true);
+    Thread.sleep(timeout);
+    Runnable finishLeaving=new Runnable(){
+      public void run(){
+        shutdownClientServers();
+        Gossiper.instance.stop();
+        try {
+          MessagingService.instance().shutdown();
+        }
+ catch (        IOError ioe) {
+          logger.info("failed to shutdown message service: {}",ioe);
+        }
+        StageManager.shutdownNow();
+        SystemKeyspace.setBootstrapState(SystemKeyspace.BootstrapState.DECOMMISSIONED);
+        setMode(Mode.DECOMMISSIONED,true);
+      }
+    }
 ;
-  unbootstrap(finishLeaving);
+    unbootstrap(finishLeaving);
+  }
+ catch (  InterruptedException e) {
+    throw new RuntimeException("Node interrupted while decommissioning");
+  }
+catch (  ExecutionException e) {
+    logger.error("Error while decommissioning node ",e.getCause());
+    throw new RuntimeException("Error while decommissioning node: " + e.getCause().getMessage());
+  }
+ finally {
+    isDecommissioning.set(false);
+  }
 }

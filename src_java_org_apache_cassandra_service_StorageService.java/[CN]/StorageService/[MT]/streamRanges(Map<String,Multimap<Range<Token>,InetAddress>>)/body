@@ -4,10 +4,16 @@
     String keyspace=entry.getKey();
     Multimap<Range<Token>,InetAddress> rangesWithEndpoints=entry.getValue();
     if (rangesWithEndpoints.isEmpty())     continue;
+    Map<InetAddress,Set<Range<Token>>> transferredRangePerKeyspace=SystemKeyspace.getTransferredRanges("Unbootstrap",keyspace,StorageService.instance.getTokenMetadata().partitioner);
     Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=new HashMap<>();
     for (    Map.Entry<Range<Token>,InetAddress> endPointEntry : rangesWithEndpoints.entries()) {
       Range<Token> range=endPointEntry.getKey();
       InetAddress endpoint=endPointEntry.getValue();
+      Set<Range<Token>> transferredRanges=transferredRangePerKeyspace.get(endpoint);
+      if (transferredRanges != null && transferredRanges.contains(range)) {
+        logger.debug("Skipping transferred range {} of keyspace {}, endpoint {}",range,keyspace,endpoint);
+        continue;
+      }
       List<Range<Token>> curRanges=rangesPerEndpoint.get(endpoint);
       if (curRanges == null) {
         curRanges=new LinkedList<>();
@@ -18,6 +24,7 @@
     sessionsToStreamByKeyspace.put(keyspace,rangesPerEndpoint);
   }
   StreamPlan streamPlan=new StreamPlan("Unbootstrap");
+  streamPlan.listeners(streamStateStore);
   for (  Map.Entry<String,Map<InetAddress,List<Range<Token>>>> entry : sessionsToStreamByKeyspace.entrySet()) {
     String keyspaceName=entry.getKey();
     Map<InetAddress,List<Range<Token>>> rangesPerEndpoint=entry.getValue();

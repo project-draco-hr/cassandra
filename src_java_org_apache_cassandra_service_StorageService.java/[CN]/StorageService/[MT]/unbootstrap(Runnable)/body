@@ -9,22 +9,12 @@
   Future<?> batchlogReplay=BatchlogManager.instance.startBatchlogReplay();
   Future<StreamState> streamSuccess=streamRanges(rangesToStream);
   logger.debug("waiting for batch log processing.");
-  try {
-    batchlogReplay.get();
-  }
- catch (  ExecutionException|InterruptedException e) {
-    throw new RuntimeException(e);
-  }
+  batchlogReplay.get();
   setMode(Mode.LEAVING,"streaming hints to other nodes",true);
   Future hintsSuccess=streamHints();
   logger.debug("waiting for stream acks.");
-  try {
-    streamSuccess.get();
-    hintsSuccess.get();
-  }
- catch (  ExecutionException|InterruptedException e) {
-    throw new RuntimeException(e);
-  }
+  streamSuccess.get();
+  hintsSuccess.get();
   logger.debug("stream acks all received.");
   leaveRing();
   onFinish.run();
