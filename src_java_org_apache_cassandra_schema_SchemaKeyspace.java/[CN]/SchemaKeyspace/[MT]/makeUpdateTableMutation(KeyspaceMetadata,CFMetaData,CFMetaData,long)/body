@@ -1,19 +1,19 @@
 {
-  Mutation mutation=makeCreateKeyspaceMutation(keyspace.name,keyspace.params,timestamp);
-  addTableToSchemaMutation(newTable,timestamp,false,mutation);
+  Mutation.SimpleBuilder builder=makeCreateKeyspaceMutation(keyspace.name,keyspace.params,timestamp);
+  addTableToSchemaMutation(newTable,false,builder);
   MapDifference<ByteBuffer,ColumnDefinition> columnDiff=Maps.difference(oldTable.getColumnMetadata(),newTable.getColumnMetadata());
-  for (  ColumnDefinition column : columnDiff.entriesOnlyOnLeft().values())   dropColumnFromSchemaMutation(oldTable,column,timestamp,mutation);
-  for (  ColumnDefinition column : columnDiff.entriesOnlyOnRight().values())   addColumnToSchemaMutation(newTable,column,timestamp,mutation);
-  for (  ByteBuffer name : columnDiff.entriesDiffering().keySet())   addColumnToSchemaMutation(newTable,newTable.getColumnDefinition(name),timestamp,mutation);
+  for (  ColumnDefinition column : columnDiff.entriesOnlyOnLeft().values())   dropColumnFromSchemaMutation(oldTable,column,builder);
+  for (  ColumnDefinition column : columnDiff.entriesOnlyOnRight().values())   addColumnToSchemaMutation(newTable,column,builder);
+  for (  ByteBuffer name : columnDiff.entriesDiffering().keySet())   addColumnToSchemaMutation(newTable,newTable.getColumnDefinition(name),builder);
   MapDifference<ByteBuffer,CFMetaData.DroppedColumn> droppedColumnDiff=Maps.difference(oldTable.getDroppedColumns(),newTable.getDroppedColumns());
-  for (  CFMetaData.DroppedColumn column : droppedColumnDiff.entriesOnlyOnRight().values())   addDroppedColumnToSchemaMutation(newTable,column,timestamp,mutation);
-  for (  ByteBuffer name : droppedColumnDiff.entriesDiffering().keySet())   addDroppedColumnToSchemaMutation(newTable,newTable.getDroppedColumns().get(name),timestamp,mutation);
+  for (  CFMetaData.DroppedColumn column : droppedColumnDiff.entriesOnlyOnRight().values())   addDroppedColumnToSchemaMutation(newTable,column,builder);
+  for (  ByteBuffer name : droppedColumnDiff.entriesDiffering().keySet())   addDroppedColumnToSchemaMutation(newTable,newTable.getDroppedColumns().get(name),builder);
   MapDifference<String,TriggerMetadata> triggerDiff=triggersDiff(oldTable.getTriggers(),newTable.getTriggers());
-  for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnLeft().values())   dropTriggerFromSchemaMutation(oldTable,trigger,timestamp,mutation);
-  for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnRight().values())   addTriggerToSchemaMutation(newTable,trigger,timestamp,mutation);
+  for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnLeft().values())   dropTriggerFromSchemaMutation(oldTable,trigger,builder);
+  for (  TriggerMetadata trigger : triggerDiff.entriesOnlyOnRight().values())   addTriggerToSchemaMutation(newTable,trigger,builder);
   MapDifference<String,IndexMetadata> indexesDiff=indexesDiff(oldTable.getIndexes(),newTable.getIndexes());
-  for (  IndexMetadata index : indexesDiff.entriesOnlyOnLeft().values())   dropIndexFromSchemaMutation(oldTable,index,timestamp,mutation);
-  for (  IndexMetadata index : indexesDiff.entriesOnlyOnRight().values())   addIndexToSchemaMutation(newTable,index,timestamp,mutation);
-  for (  MapDifference.ValueDifference<IndexMetadata> diff : indexesDiff.entriesDiffering().values())   addUpdatedIndexToSchemaMutation(newTable,diff.rightValue(),timestamp,mutation);
-  return mutation;
+  for (  IndexMetadata index : indexesDiff.entriesOnlyOnLeft().values())   dropIndexFromSchemaMutation(oldTable,index,builder);
+  for (  IndexMetadata index : indexesDiff.entriesOnlyOnRight().values())   addIndexToSchemaMutation(newTable,index,builder);
+  for (  MapDifference.ValueDifference<IndexMetadata> diff : indexesDiff.entriesDiffering().values())   addUpdatedIndexToSchemaMutation(newTable,diff.rightValue(),builder);
+  return builder;
 }

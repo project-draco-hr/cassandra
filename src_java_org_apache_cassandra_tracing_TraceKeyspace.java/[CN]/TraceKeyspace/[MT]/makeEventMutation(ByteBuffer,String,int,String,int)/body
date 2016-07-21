@@ -1,8 +1,7 @@
 {
-  RowUpdateBuilder adder=new RowUpdateBuilder(Events,FBUtilities.timestampMicros(),ttl,sessionId).clustering(UUIDGen.getTimeUUID());
-  adder.add("activity",message);
-  adder.add("source",FBUtilities.getBroadcastAddress());
-  adder.add("thread",threadName);
-  if (elapsed >= 0)   adder.add("source_elapsed",elapsed);
-  return adder.build();
+  PartitionUpdate.SimpleBuilder builder=PartitionUpdate.simpleBuilder(Events,sessionId);
+  Row.SimpleBuilder rowBuilder=builder.row(UUIDGen.getTimeUUID()).ttl(ttl);
+  rowBuilder.add("activity",message).add("source",FBUtilities.getBroadcastAddress()).add("thread",threadName);
+  if (elapsed >= 0)   rowBuilder.add("source_elapsed",elapsed);
+  return builder.buildAsMutation();
 }
