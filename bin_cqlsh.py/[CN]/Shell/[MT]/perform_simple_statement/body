@@ -1,22 +1,23 @@
 def perform_simple_statement(self, statement):
     if (not statement):
         return (False, None)
-    while True:
+    future = self.session.execute_async(statement, trace=self.tracing_enabled)
+    result = None
+    try:
+        result = future.result()
+    except CQL_ERRORS as err:
+        self.printerr(((unicode(err.__class__.__name__) + u': ') + err.message.decode(encoding='utf-8')))
+    except Exception:
+        import traceback
+        self.printerr(traceback.format_exc())
+    if (not future.is_schema_agreed):
         try:
-            future = self.session.execute_async(statement, trace=self.tracing_enabled)
-            result = future.result()
-            break
-        except cassandra.OperationTimedOut as err:
-            self.refresh_schema_metadata_best_effort()
-            self.printerr(((unicode(err.__class__.__name__) + u': ') + unicode(err)))
-            return (False, None)
-        except CQL_ERRORS as err:
-            self.printerr(((unicode(err.__class__.__name__) + u': ') + unicode(err)))
-            return (False, None)
-        except Exception as err:
-            import traceback
-            self.printerr(traceback.format_exc())
-            return (False, None)
+            self.conn.refresh_schema_metadata(5)
+        except Exception:
+            self.printerr('Warning: schema version mismatch detected; check the schema versions of your nodes in system.local and system.peers.')
+            self.conn.refresh_schema_metadata((-1))
+    if (result is None):
+        return (False, None)
     if (statement.query_string[:6].lower() == 'select'):
         self.print_result(result, self.parse_for_table_meta(statement.query_string))
     elif (statement.query_string.lower().startswith('list users') or statement.query_string.lower().startswith('list roles')):
