@@ -1,7 +1,7 @@
 {
   Keyspace keyspace=Keyspace.open(command.metadata().ksName);
   List<InetAddress> allReplicas=StorageProxy.getLiveSortedEndpoints(keyspace,command.partitionKey());
-  ReadRepairDecision repairDecision=command.metadata().newReadRepairDecision();
+  ReadRepairDecision repairDecision=consistencyLevel == ConsistencyLevel.EACH_QUORUM ? ReadRepairDecision.NONE : command.metadata().newReadRepairDecision();
   List<InetAddress> targetReplicas=consistencyLevel.filterForQuery(keyspace,allReplicas,repairDecision);
   consistencyLevel.assureSufficientLiveNodes(keyspace,targetReplicas);
   if (repairDecision != ReadRepairDecision.NONE) {
@@ -10,7 +10,7 @@
   }
   ColumnFamilyStore cfs=keyspace.getColumnFamilyStore(command.metadata().cfId);
   SpeculativeRetryParam retry=cfs.metadata.params.speculativeRetry;
-  if (retry.equals(SpeculativeRetryParam.NONE) || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(keyspace,command,consistencyLevel,targetReplicas);
+  if (retry.equals(SpeculativeRetryParam.NONE) || consistencyLevel == ConsistencyLevel.EACH_QUORUM || consistencyLevel.blockFor(keyspace) == allReplicas.size())   return new NeverSpeculatingReadExecutor(keyspace,command,consistencyLevel,targetReplicas);
   if (targetReplicas.size() == allReplicas.size()) {
     return new AlwaysSpeculatingReadExecutor(keyspace,cfs,command,consistencyLevel,targetReplicas);
   }
