@@ -1,0 +1,19 @@
+{
+  AssertionError e=runCatchingAssertionError(test);
+  if (e == null)   return;
+  System.err.format("Test failed. %s%n" + "Re-running %d times to verify it isn't failing more often than it should.%n" + "Failure was: %s%n",message,rerunsOnFailure,e);
+  e.printStackTrace();
+  int rerunsFailed=0;
+  for (int i=0; i < rerunsOnFailure; ++i) {
+    AssertionError t=runCatchingAssertionError(test);
+    if (t != null) {
+      ++rerunsFailed;
+      e.addSuppressed(t);
+    }
+  }
+  if (rerunsFailed > 0) {
+    System.err.format("Test failed in %d of the %d reruns.%n",rerunsFailed,rerunsOnFailure);
+    throw e;
+  }
+  System.err.println("All reruns succeeded. Failure treated as flake.");
+}
