@@ -1,0 +1,34 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,0,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",0,1,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,0,1,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,1,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,1,1,0);
+  createView("mv_test","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE a IS NOT NULL AND b IS NOT NULL AND c IS NOT NULL AND c = 1 PRIMARY KEY (a, b, c)");
+  while (!SystemKeyspace.isViewBuilt(keyspace(),"mv_test"))   Thread.sleep(10);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,0),row(1,1,1,0));
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",2,0,0,0);
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",2,1,2,0);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,0),row(1,1,1,0));
+  execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",1,2,1,0);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,0),row(1,1,1,0),row(1,2,1,0));
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ?",2,2,0);
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ?",1,2,1);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,0),row(1,1,1,0),row(1,2,1,0));
+  execute("UPDATE %s SET d = ? WHERE a = ? AND b = ?",1,1,0);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,1),row(1,1,1,0),row(1,2,1,0));
+  execute("DELETE FROM %s WHERE a = ? AND b = ?",2,0);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,1),row(1,1,1,0),row(1,2,1,0));
+  execute("DELETE FROM %s WHERE a = ? AND b = ?",1,2);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0),row(1,0,1,1),row(1,1,1,0));
+  execute("DELETE FROM %s WHERE a = ?",1);
+  assertRowsIgnoringOrder(execute("SELECT a, b, c, d FROM mv_test"),row(0,0,1,0),row(0,1,1,0));
+  dropView("mv_test");
+  dropTable("DROP TABLE %s");
+}

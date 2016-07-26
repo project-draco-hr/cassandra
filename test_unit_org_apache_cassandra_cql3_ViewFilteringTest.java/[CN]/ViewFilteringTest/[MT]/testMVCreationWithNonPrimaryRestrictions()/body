@@ -1,0 +1,13 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b))");
+  execute("USE " + keyspace());
+  executeNet(protocolVersion,"USE " + keyspace());
+  try {
+    createView("mv_test","CREATE MATERIALIZED VIEW %s AS SELECT * FROM %%s WHERE b IS NOT NULL AND c IS NOT NULL AND d = 1 PRIMARY KEY (a, b, c)");
+    dropView("mv_test");
+  }
+ catch (  Exception e) {
+    throw new RuntimeException("MV creation with non primary column restrictions failed.",e);
+  }
+  dropTable("DROP TABLE %s");
+}
