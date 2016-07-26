@@ -2,7 +2,10 @@ def inner_run(self):
     '\n        Send one batch per worker process to the queue unless we have exceeded the ingest rate.\n        In the export case we queue everything and let the worker processes throttle using max_requests,\n        here we throttle using the ingest rate in the feeding process because of memory usage concerns.\n        When finished we send back to the parent process the total number of rows sent.\n        '
     self.on_fork()
     reader = self.reader
-    reader.start()
+    try:
+        reader.start()
+    except IOError as exc:
+        self.outmsg.send(ImportTaskError(exc.__class__.__name__, exc.message))
     channels = self.worker_channels
     max_pending_chunks = self.max_pending_chunks
     sent = 0
