@@ -1,0 +1,26 @@
+{
+  DataResolver resolver=new DataResolver(ks,command,ConsistencyLevel.ALL,2);
+  InetAddress peer1=peer();
+  InetAddress peer2=peer();
+  RangeTombstone one_two=tombstone("1",true,"2",false,timestamp1,nowInSec);
+  RangeTombstone three_four=tombstone("3",false,"4",true,timestamp1,nowInSec);
+  RangeTombstone five_six=tombstone("5",false,"6",true,timestamp1,nowInSec);
+  UnfilteredPartitionIterator iter1=iter(new RowUpdateBuilder(cfm,nowInSec,1L,dk).addRangeTombstone(one_two).addRangeTombstone(three_four).addRangeTombstone(five_six).buildUpdate());
+  RangeTombstone two_three=tombstone("2",true,"3",true,timestamp2,nowInSec);
+  RangeTombstone four_five=tombstone("4",true,"5",false,timestamp2,nowInSec);
+  UnfilteredPartitionIterator iter2=iter(new RowUpdateBuilder(cfm,nowInSec,1L,dk).addRangeTombstone(two_three).addRangeTombstone(four_five).buildUpdate());
+  resolver.preprocess(readResponseMessage(peer1,iter1));
+  resolver.preprocess(readResponseMessage(peer2,iter2));
+  try (PartitionIterator data=resolver.resolve()){
+    assertFalse(data.hasNext());
+  }
+   assertEquals(2,messageRecorder.sent.size());
+  MessageOut msg1=getSentMessage(peer1);
+  assertRepairMetadata(msg1);
+  assertRepairContainsNoColumns(msg1);
+  MessageOut msg2=getSentMessage(peer2);
+  assertRepairMetadata(msg2);
+  assertRepairContainsNoColumns(msg2);
+  assertRepairContainsDeletions(msg1,null,two_three,withExclusiveStartIf(four_five,timestamp1 >= timestamp2));
+  assertRepairContainsDeletions(msg2,null,one_two,withExclusiveEndIf(three_four,timestamp2 >= timestamp1),five_six);
+}
