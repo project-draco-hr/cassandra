@@ -1,6 +1,7 @@
 {
-  ColumnFamilyStore cfs=getCurrentColumnFamilyStore();
+  ColumnFamilyStore cfs=getCurrentColumnFamilyStore(KEYSPACE_PER_TEST);
   ((ClearableHistogram)cfs.metric.sstablesPerReadHistogram.cf).clear();
   assertRows(execute(query),rows);
-  assertEquals(numSSTables,cfs.metric.sstablesPerReadHistogram.cf.getSnapshot().getMax());
+  long numSSTablesIterated=cfs.metric.sstablesPerReadHistogram.cf.getSnapshot().getMax();
+  assertEquals(String.format("Expected %d sstables iterated but got %d instead, with %d live sstables",numSSTables,numSSTablesIterated,cfs.getLiveSSTables().size()),numSSTables,numSSTablesIterated);
 }
