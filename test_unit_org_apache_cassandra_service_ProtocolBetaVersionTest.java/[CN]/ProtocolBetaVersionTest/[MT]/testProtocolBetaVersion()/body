@@ -1,0 +1,16 @@
+{
+  createTable("CREATE TABLE %s (pk int PRIMARY KEY, v int)");
+  try (SimpleClient client=new SimpleClient(nativeAddr.getHostAddress(),nativePort,Server.BETA_VERSION,true,new EncryptionOptions.ClientEncryptionOptions())){
+    client.connect(false);
+    for (int i=0; i < 10; i++) {
+      QueryMessage query=new QueryMessage(String.format("INSERT INTO %s.%s (pk, v) VALUES (%s, %s)",KEYSPACE,currentTable(),i,i),QueryOptions.DEFAULT);
+      client.execute(query);
+    }
+    QueryMessage query=new QueryMessage(String.format("SELECT * FROM %s.%s",KEYSPACE,currentTable()),QueryOptions.DEFAULT);
+    ResultMessage.Rows resp=(ResultMessage.Rows)client.execute(query);
+    assertEquals(10,resp.result.size());
+  }
+ catch (  Exception e) {
+    fail("No exceptions should've been thrown: " + e.getMessage());
+  }
+}
