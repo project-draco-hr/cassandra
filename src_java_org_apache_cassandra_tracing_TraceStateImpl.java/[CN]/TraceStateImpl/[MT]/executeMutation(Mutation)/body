@@ -1,8 +1,10 @@
 {
-  StageManager.getStage(Stage.TRACING).execute(new WrappedRunnable(){
+  CompletableFuture<Void> fut=CompletableFuture.runAsync(new WrappedRunnable(){
     protected void runMayThrow(){
       mutateWithCatch(mutation);
     }
   }
-);
+,StageManager.getStage(Stage.TRACING));
+  boolean ret=pendingFutures.add(fut);
+  if (!ret)   logger.warn("Failed to insert pending future, tracing synchronization may not work");
 }

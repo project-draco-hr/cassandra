@@ -1,0 +1,14 @@
+{
+  if (WAIT_FOR_PENDING_EVENTS_TIMEOUT_SECS <= 0)   return;
+  try {
+    if (logger.isTraceEnabled())     logger.trace("Waiting for up to {} seconds for {} trace events to complete",+WAIT_FOR_PENDING_EVENTS_TIMEOUT_SECS,pendingFutures.size());
+    CompletableFuture.allOf(pendingFutures.toArray(new CompletableFuture<?>[pendingFutures.size()])).get(WAIT_FOR_PENDING_EVENTS_TIMEOUT_SECS,TimeUnit.SECONDS);
+  }
+ catch (  TimeoutException ex) {
+    if (logger.isTraceEnabled())     logger.trace("Failed to wait for tracing events to complete in {} seconds",WAIT_FOR_PENDING_EVENTS_TIMEOUT_SECS);
+  }
+catch (  Throwable t) {
+    JVMStabilityInspector.inspectThrowable(t);
+    logger.error("Got exception whilst waiting for tracing events to complete",t);
+  }
+}
