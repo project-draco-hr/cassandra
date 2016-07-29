@@ -1,32 +1,35 @@
 {
-  JavaDriverClient client=settings.getJavaDriverClient(false);
-  if (keyspaceCql != null) {
-    try {
-      client.execute(keyspaceCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
-    }
- catch (    AlreadyExistsException e) {
-    }
-  }
-  client.execute("use " + keyspaceName,org.apache.cassandra.db.ConsistencyLevel.ONE);
-  if (tableCql != null) {
-    try {
-      client.execute(tableCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
-    }
- catch (    AlreadyExistsException e) {
-    }
-    System.out.println(String.format("Created schema. Sleeping %ss for propagation.",settings.node.nodes.size()));
-    Uninterruptibles.sleepUninterruptibly(settings.node.nodes.size(),TimeUnit.SECONDS);
-  }
-  if (extraSchemaDefinitions != null) {
-    for (    String extraCql : extraSchemaDefinitions) {
+  if (!schemaCreated) {
+    JavaDriverClient client=settings.getJavaDriverClient(false);
+    if (keyspaceCql != null) {
       try {
-        client.execute(extraCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
+        client.execute(keyspaceCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
       }
  catch (      AlreadyExistsException e) {
       }
     }
-    System.out.println(String.format("Created extra schema. Sleeping %ss for propagation.",settings.node.nodes.size()));
-    Uninterruptibles.sleepUninterruptibly(settings.node.nodes.size(),TimeUnit.SECONDS);
+    client.execute("use " + keyspaceName,org.apache.cassandra.db.ConsistencyLevel.ONE);
+    if (tableCql != null) {
+      try {
+        client.execute(tableCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
+      }
+ catch (      AlreadyExistsException e) {
+      }
+      System.out.println(String.format("Created schema. Sleeping %ss for propagation.",settings.node.nodes.size()));
+      Uninterruptibles.sleepUninterruptibly(settings.node.nodes.size(),TimeUnit.SECONDS);
+    }
+    if (extraSchemaDefinitions != null) {
+      for (      String extraCql : extraSchemaDefinitions) {
+        try {
+          client.execute(extraCql,org.apache.cassandra.db.ConsistencyLevel.ONE);
+        }
+ catch (        AlreadyExistsException e) {
+        }
+      }
+      System.out.println(String.format("Created extra schema. Sleeping %ss for propagation.",settings.node.nodes.size()));
+      Uninterruptibles.sleepUninterruptibly(settings.node.nodes.size(),TimeUnit.SECONDS);
+    }
+    schemaCreated=true;
   }
   maybeLoadSchemaInfo(settings);
 }
