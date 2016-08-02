@@ -1,5 +1,6 @@
 {
   createTable("CREATE TABLE %s (a int, b int, c int, d int, PRIMARY KEY (a, b))");
-  createIndex(String.format("CREATE CUSTOM INDEX custom_index ON %%s(c) USING '%s'",NoCustomExpressionsIndex.class.getName()));
-  assertInvalidThrowMessage(Server.CURRENT_VERSION,String.format(IndexRestrictions.CUSTOM_EXPRESSION_NOT_SUPPORTED,"custom_index"),QueryValidationException.class,"SELECT * FROM %s WHERE expr(custom_index, 'foo bar baz')");
+  String indexName=currentTable() + "_custom_index";
+  createIndex(String.format("CREATE CUSTOM INDEX %s ON %%s(c) USING '%s'",indexName,NoCustomExpressionsIndex.class.getName()));
+  assertInvalidThrowMessage(Server.CURRENT_VERSION,String.format(IndexRestrictions.CUSTOM_EXPRESSION_NOT_SUPPORTED,indexName),QueryValidationException.class,String.format("SELECT * FROM %%s WHERE expr(%s, 'foo bar baz')",indexName));
 }
