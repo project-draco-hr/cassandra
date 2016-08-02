@@ -2,9 +2,11 @@
   try {
     if (nextEntry == null) {
       do {
+        if (startScan != -1)         bytesScanned+=dfile.getFilePointer() - startScan;
         if (!rangeIterator.hasNext())         return endOfData();
         currentRange=rangeIterator.next();
         seekToCurrentRangeStart();
+        startScan=dfile.getFilePointer();
         if (ifile.isEOF())         return endOfData();
         currentKey=sstable.decorateKey(ByteBufferUtil.readWithShortLength(ifile));
         currentEntry=rowIndexEntrySerializer.deserialize(ifile,ifile.getFilePointer());
@@ -29,11 +31,16 @@
     }
     return new LazilyInitializedUnfilteredRowIterator(currentKey){
       protected UnfilteredRowIterator initializeIterator(){
+        if (startScan != -1)         bytesScanned+=dfile.getFilePointer() - startScan;
         try {
           if (dataRange == null) {
             dfile.seek(currentEntry.position);
+            startScan=dfile.getFilePointer();
             ByteBufferUtil.skipShortLength(dfile);
             return SSTableIdentityIterator.create(sstable,dfile,partitionKey());
+          }
+ else {
+            startScan=dfile.getFilePointer();
           }
           ClusteringIndexFilter filter=dataRange.clusteringIndexFilter(partitionKey());
           return sstable.iterator(dfile,partitionKey(),currentEntry,filter.getSlices(BigTableScanner.this.metadata()),columns,filter.isReversed(),isForThrift);
