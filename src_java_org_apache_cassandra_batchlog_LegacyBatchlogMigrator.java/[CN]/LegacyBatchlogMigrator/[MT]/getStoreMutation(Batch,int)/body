@@ -1,3 +1,5 @@
 {
-  return new RowUpdateBuilder(SystemKeyspace.LegacyBatchlog,batch.creationTime,batch.id).clustering().add("written_at",new Date(batch.creationTime / 1000)).add("data",getSerializedMutations(version,batch.decodedMutations)).add("version",version).build();
+  PartitionUpdate.SimpleBuilder builder=PartitionUpdate.simpleBuilder(SystemKeyspace.LegacyBatchlog,batch.id);
+  builder.row().timestamp(batch.creationTime).add("written_at",new Date(batch.creationTime / 1000)).add("data",getSerializedMutations(version,batch.decodedMutations)).add("version",version);
+  return builder.buildAsMutation();
 }
