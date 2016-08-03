@@ -21,10 +21,11 @@
       MoreExecutors.sameThreadExecutor().execute(memtable.flushRunnable());
       reclaim(memtable);
     }
+    postFlush.latch.countDown();
   }
  catch (  FSWriteError e) {
     JVMStabilityInspector.inspectThrowable(e);
-    postFlush.flushFailure=e;
+    previousFlushFailure=e;
+    throw e;
   }
-  postFlush.latch.countDown();
 }

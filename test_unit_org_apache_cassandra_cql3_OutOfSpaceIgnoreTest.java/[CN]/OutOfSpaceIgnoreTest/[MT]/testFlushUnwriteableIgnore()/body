@@ -3,11 +3,17 @@
   markDirectoriesUnwriteable();
   DiskFailurePolicy oldPolicy=DatabaseDescriptor.getDiskFailurePolicy();
   try {
-    DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.stop);
+    DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.ignore);
     flushAndExpectError();
-    Assert.assertFalse(Gossiper.instance.isEnabled());
   }
   finally {
     DatabaseDescriptor.setDiskFailurePolicy(oldPolicy);
+  }
+  makeTable();
+  try {
+    flush();
+    fail("Subsequent flushes expected to fail.");
+  }
+ catch (  RuntimeException e) {
   }
 }
