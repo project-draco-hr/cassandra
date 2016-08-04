@@ -1,0 +1,37 @@
+{
+  InetAddress peer=FBUtilities.getBroadcastAddress();
+  StreamCoordinator streamCoordinator=new StreamCoordinator(1,true,false,null,false);
+  StreamResultFuture future=StreamResultFuture.init(UUID.randomUUID(),"",Collections.<StreamEventHandler>emptyList(),streamCoordinator);
+  StreamSession session=new StreamSession(peer,peer,null,0,true,false);
+  session.init(future);
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(CF_STANDARD);
+  for (int i=0; i < 2; i++) {
+    SchemaLoader.insertData(KEYSPACE1,CF_STANDARD,i,1);
+    cfs.forceBlockingFlush();
+  }
+  StreamTransferTask task=new StreamTransferTask(session,cfs.metadata.cfId);
+  List<Ref<SSTableReader>> refs=new ArrayList<>(cfs.getSSTables().size());
+  for (  SSTableReader sstable : cfs.getLiveSSTables()) {
+    List<Range<Token>> ranges=new ArrayList<>();
+    ranges.add(new Range<>(sstable.first.getToken(),sstable.last.getToken()));
+    Ref<SSTableReader> ref=sstable.selfRef();
+    refs.add(ref);
+    task.addTransferFile(ref,1,sstable.getPositionsForRanges(ranges),0);
+  }
+  assertEquals(2,task.getTotalNumberOfFiles());
+  session.transfers.put(UUID.randomUUID(),task);
+  Collection<OutgoingFileMessage> files=new LinkedList<>(task.files.values());
+  for (  OutgoingFileMessage file : files) {
+    file.startTransfer();
+  }
+  session.onError(new Exception("Fake exception"));
+  for (  Ref<SSTableReader> ref : refs) {
+    assertEquals(1,ref.globalCount());
+  }
+  for (  OutgoingFileMessage file : files) {
+    file.finishTransfer();
+  }
+  for (  Ref<SSTableReader> ref : refs) {
+    assertEquals(0,ref.globalCount());
+  }
+}
