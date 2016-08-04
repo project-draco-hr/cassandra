@@ -1,0 +1,15 @@
+{
+  int cqlRowLimit=DataLimits.NO_LIMIT;
+  int cqlPerPartitionLimit=DataLimits.NO_LIMIT;
+  if (aggregationSpec != AggregationSpecification.AGGREGATE_EVERYTHING) {
+    if (!needsPostQueryOrdering())     cqlRowLimit=userLimit;
+    cqlPerPartitionLimit=perPartitionLimit;
+  }
+  if (pageSize <= 0)   pageSize=DEFAULT_PAGE_SIZE;
+  if (aggregationSpec != null && aggregationSpec != AggregationSpecification.AGGREGATE_EVERYTHING) {
+    if (parameters.isDistinct)     return DataLimits.distinctLimits(cqlRowLimit);
+    return DataLimits.groupByLimits(cqlRowLimit,cqlPerPartitionLimit,pageSize,aggregationSpec);
+  }
+  if (parameters.isDistinct)   return cqlRowLimit == DataLimits.NO_LIMIT ? DataLimits.DISTINCT_NONE : DataLimits.distinctLimits(cqlRowLimit);
+  return DataLimits.cqlLimits(cqlRowLimit,cqlPerPartitionLimit);
+}

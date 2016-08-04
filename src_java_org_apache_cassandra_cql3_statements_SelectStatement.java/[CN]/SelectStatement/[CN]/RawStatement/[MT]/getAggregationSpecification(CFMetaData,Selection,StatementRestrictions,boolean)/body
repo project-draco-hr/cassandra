@@ -1,0 +1,19 @@
+{
+  if (parameters.groups.isEmpty())   return selection.isAggregate() ? AggregationSpecification.AGGREGATE_EVERYTHING : null;
+  int clusteringPrefixSize=0;
+  Iterator<ColumnDefinition> pkColumns=cfm.primaryKeyColumns().iterator();
+  for (  ColumnDefinition.Raw raw : parameters.groups) {
+    ColumnDefinition def=raw.prepare(cfm);
+    checkTrue(def.isPartitionKey() || def.isClusteringColumn(),"Group by is currently only supported on the columns of the PRIMARY KEY, got %s",def.name);
+    while (true) {
+      checkTrue(pkColumns.hasNext(),"Group by currently only support groups of columns following their declared order in the PRIMARY KEY");
+      ColumnDefinition pkColumn=pkColumns.next();
+      if (pkColumn.isClusteringColumn())       clusteringPrefixSize++;
+      if (pkColumn.equals(def))       break;
+      checkTrue(restrictions.isColumnRestrictedByEq(pkColumn),"Group by currently only support groups of columns following their declared order in the PRIMARY KEY");
+    }
+  }
+  checkFalse(pkColumns.hasNext() && pkColumns.next().isPartitionKey(),"Group by is not supported on only a part of the partition key");
+  checkFalse(clusteringPrefixSize > 0 && isDistinct,"Grouping on clustering columns is not allowed for SELECT DISTINCT queries");
+  return AggregationSpecification.aggregatePkPrefix(cfm.comparator,clusteringPrefixSize);
+}

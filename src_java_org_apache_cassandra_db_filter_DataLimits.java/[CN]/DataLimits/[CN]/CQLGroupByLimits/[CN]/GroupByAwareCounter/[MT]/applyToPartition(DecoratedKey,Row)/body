@@ -1,0 +1,21 @@
+{
+  if (partitionKey.getKey().equals(state.partitionKey())) {
+    hasLiveStaticRow=false;
+    hasReturnedRowsFromCurrentPartition=true;
+    hasGroupStarted=true;
+  }
+ else {
+    if (hasGroupStarted && groupMaker.isNewGroup(partitionKey,Clustering.STATIC_CLUSTERING)) {
+      incrementGroupCount();
+      if (isDone())       incrementGroupInCurrentPartitionCount();
+      hasGroupStarted=false;
+    }
+    hasReturnedRowsFromCurrentPartition=false;
+    hasLiveStaticRow=!staticRow.isEmpty() && isLive(staticRow);
+  }
+  currentPartitionKey=partitionKey;
+  if (!isDone()) {
+    groupInCurrentPartition=0;
+    rowCountedInCurrentPartition=0;
+  }
+}

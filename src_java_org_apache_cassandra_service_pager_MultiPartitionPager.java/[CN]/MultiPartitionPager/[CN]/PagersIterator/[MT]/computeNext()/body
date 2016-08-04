@@ -1,8 +1,16 @@
 {
   while (result == null || !result.hasNext()) {
-    if (result != null)     result.close();
-    if (isExhausted())     return endOfData();
-    int toQuery=pageSize - counter.counted();
+    if (result != null) {
+      result.close();
+      counted+=pagerMaxRemaining - pagers[current].maxRemaining();
+    }
+    boolean isDone=counted >= pageSize || (result != null && limit.isGroupByLimit() && !pagers[current].isExhausted());
+    if (isDone || isExhausted()) {
+      closed=true;
+      return endOfData();
+    }
+    pagerMaxRemaining=pagers[current].maxRemaining();
+    int toQuery=pageSize - counted;
     result=consistency == null ? pagers[current].fetchPageInternal(toQuery,executionController) : pagers[current].fetchPage(toQuery,consistency,clientState);
   }
   return result.next();

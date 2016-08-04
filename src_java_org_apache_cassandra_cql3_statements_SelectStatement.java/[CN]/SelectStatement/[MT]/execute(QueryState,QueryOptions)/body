@@ -5,9 +5,9 @@
   int nowInSec=FBUtilities.nowInSeconds();
   int userLimit=getLimit(options);
   int userPerPartitionLimit=getPerPartitionLimit(options);
-  ReadQuery query=getQuery(options,nowInSec,userLimit,userPerPartitionLimit);
-  int pageSize=getPageSize(options);
-  if (pageSize <= 0 || query.limits().count() <= pageSize)   return execute(query,options,state,nowInSec,userLimit);
-  QueryPager pager=query.getPager(options.getPagingState(),options.getProtocolVersion());
+  int pageSize=options.getPageSize();
+  ReadQuery query=getQuery(options,nowInSec,userLimit,userPerPartitionLimit,pageSize);
+  if (aggregationSpec == null && (pageSize <= 0 || (query.limits().count() <= pageSize)))   return execute(query,options,state,nowInSec,userLimit);
+  QueryPager pager=getPager(query,options);
   return execute(Pager.forDistributedQuery(pager,cl,state.getClientState()),options,pageSize,nowInSec,userLimit);
 }

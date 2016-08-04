@@ -1,0 +1,38 @@
+{
+  out.writeByte(limits.kind().ordinal());
+switch (limits.kind()) {
+case CQL_LIMIT:
+case CQL_PAGING_LIMIT:
+    CQLLimits cqlLimits=(CQLLimits)limits;
+  out.writeUnsignedVInt(cqlLimits.rowLimit);
+out.writeUnsignedVInt(cqlLimits.perPartitionLimit);
+out.writeBoolean(cqlLimits.isDistinct);
+if (limits.kind() == Kind.CQL_PAGING_LIMIT) {
+CQLPagingLimits pagingLimits=(CQLPagingLimits)cqlLimits;
+ByteBufferUtil.writeWithVIntLength(pagingLimits.lastReturnedKey,out);
+out.writeUnsignedVInt(pagingLimits.lastReturnedKeyRemaining);
+}
+break;
+case CQL_GROUP_BY_LIMIT:
+case CQL_GROUP_BY_PAGING_LIMIT:
+CQLGroupByLimits groupByLimits=(CQLGroupByLimits)limits;
+out.writeUnsignedVInt(groupByLimits.groupLimit);
+out.writeUnsignedVInt(groupByLimits.groupPerPartitionLimit);
+out.writeUnsignedVInt(groupByLimits.rowLimit);
+AggregationSpecification groupBySpec=groupByLimits.groupBySpec;
+AggregationSpecification.serializer.serialize(groupBySpec,out,version);
+GroupingState.serializer.serialize(groupByLimits.state,out,version,comparator);
+if (limits.kind() == Kind.CQL_GROUP_BY_PAGING_LIMIT) {
+CQLGroupByPagingLimits pagingLimits=(CQLGroupByPagingLimits)groupByLimits;
+ByteBufferUtil.writeWithVIntLength(pagingLimits.lastReturnedKey,out);
+out.writeUnsignedVInt(pagingLimits.lastReturnedKeyRemaining);
+}
+break;
+case THRIFT_LIMIT:
+case SUPER_COLUMN_COUNTING_LIMIT:
+ThriftLimits thriftLimits=(ThriftLimits)limits;
+out.writeUnsignedVInt(thriftLimits.partitionLimit);
+out.writeUnsignedVInt(thriftLimits.cellPerPartitionLimit);
+break;
+}
+}
