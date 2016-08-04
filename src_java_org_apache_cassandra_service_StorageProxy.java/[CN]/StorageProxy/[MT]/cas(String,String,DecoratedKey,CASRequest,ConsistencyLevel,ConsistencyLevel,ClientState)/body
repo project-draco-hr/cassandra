@@ -42,18 +42,23 @@
   }
  catch (  WriteTimeoutException|ReadTimeoutException e) {
     casWriteMetrics.timeouts.mark();
+    writeMetricsMap.get(consistencyForPaxos).timeouts.mark();
     throw e;
   }
 catch (  WriteFailureException|ReadFailureException e) {
     casWriteMetrics.failures.mark();
+    writeMetricsMap.get(consistencyForPaxos).failures.mark();
     throw e;
   }
 catch (  UnavailableException e) {
     casWriteMetrics.unavailables.mark();
+    writeMetricsMap.get(consistencyForPaxos).unavailables.mark();
     throw e;
   }
  finally {
     if (contentions > 0)     casWriteMetrics.contention.update(contentions);
-    casWriteMetrics.addNano(System.nanoTime() - start);
+    final long latency=System.nanoTime() - start;
+    casWriteMetrics.addNano(latency);
+    writeMetricsMap.get(consistencyForPaxos).addNano(latency);
   }
 }

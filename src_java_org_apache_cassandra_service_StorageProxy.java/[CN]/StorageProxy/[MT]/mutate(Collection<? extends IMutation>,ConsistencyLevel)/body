@@ -24,11 +24,13 @@
  else {
       if (ex instanceof WriteFailureException) {
         writeMetrics.failures.mark();
+        writeMetricsMap.get(consistency_level).failures.mark();
         WriteFailureException fe=(WriteFailureException)ex;
         Tracing.trace("Write failure; received {} of {} required replies, failed {} requests",fe.received,fe.blockFor,fe.failures);
       }
  else {
         writeMetrics.timeouts.mark();
+        writeMetricsMap.get(consistency_level).timeouts.mark();
         WriteTimeoutException te=(WriteTimeoutException)ex;
         Tracing.trace("Write timeout; received {} of {} required replies",te.received,te.blockFor);
       }
@@ -37,15 +39,19 @@
   }
 catch (  UnavailableException e) {
     writeMetrics.unavailables.mark();
+    writeMetricsMap.get(consistency_level).unavailables.mark();
     Tracing.trace("Unavailable");
     throw e;
   }
 catch (  OverloadedException e) {
     writeMetrics.unavailables.mark();
+    writeMetricsMap.get(consistency_level).unavailables.mark();
     Tracing.trace("Overloaded");
     throw e;
   }
  finally {
-    writeMetrics.addNano(System.nanoTime() - startTime);
+    long latency=System.nanoTime() - startTime;
+    writeMetrics.addNano(latency);
+    writeMetricsMap.get(consistency_level).addNano(latency);
   }
 }
