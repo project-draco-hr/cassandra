@@ -1,8 +1,12 @@
 {
-  if (splitOutput && userDefined) {
-    throw new RuntimeException("Invalid option combination: User defined compaction can not be split");
+  final boolean tokenProvided=!(startToken.isEmpty() && endToken.isEmpty());
+  if (splitOutput && (userDefined || tokenProvided)) {
+    throw new RuntimeException("Invalid option combination: Can not use split-output here");
   }
- else   if (userDefined) {
+  if (userDefined && tokenProvided) {
+    throw new RuntimeException("Invalid option combination: Can not provide tokens when using user-defined");
+  }
+  if (userDefined) {
     try {
       String userDefinedFiles=String.join(",",args);
       probe.forceUserDefinedCompaction(userDefinedFiles);
@@ -16,7 +20,12 @@
   String[] tableNames=parseOptionalTables(args);
   for (  String keyspace : keyspaces) {
     try {
-      probe.forceKeyspaceCompaction(splitOutput,keyspace,tableNames);
+      if (tokenProvided) {
+        probe.forceKeyspaceCompactionForTokenRange(keyspace,startToken,endToken,tableNames);
+      }
+ else {
+        probe.forceKeyspaceCompaction(splitOutput,keyspace,tableNames);
+      }
     }
  catch (    Exception e) {
       throw new RuntimeException("Error occurred during compaction",e);
