@@ -1,0 +1,20 @@
+{
+  ColumnFamilyStore store=Keyspace.open(KS_NAME).getColumnFamilyStore(CLUSTERING_CF_NAME_1);
+  executeCQL(CLUSTERING_CF_NAME_1,"INSERT INTO %s.%s (name, nickname, location, age, height, score) VALUES (?, ?, ?, ?, ?, ?)","Pavel","xedin","US",27,183,1.0);
+  executeCQL(CLUSTERING_CF_NAME_1,"INSERT INTO %s.%s (name, location, age, height, score) VALUES (?, ?, ?, ?, ?)","Pavel","BY",28,182,2.0);
+  executeCQL(CLUSTERING_CF_NAME_1,"INSERT INTO %s.%s (name, nickname, location, age, height, score) VALUES (?, ?, ?, ?, ?, ?)","Jordan","jrwest","US",27,182,1.0);
+  store.forceBlockingFlush();
+  SSTable ssTable=store.getSSTables(SSTableSet.LIVE).iterator().next();
+  Path path=FileSystems.getDefault().getPath(ssTable.getFilename().replace("-Data","-SI_age"));
+  Writer writer=new FileWriter(path.toFile(),false);
+  writer.write("garbage");
+  writer.close();
+  long size1=Files.readAttributes(path,BasicFileAttributes.class).size();
+  Assert.assertTrue(executeCQL(CLUSTERING_CF_NAME_1,"SELECT * FROM %s.%s WHERE age = 27 AND name = 'Pavel'").isEmpty());
+  store.rebuildSecondaryIndex("age");
+  long size2=Files.readAttributes(path,BasicFileAttributes.class).size();
+  Assert.assertTrue(size2 > size1);
+  CQLTester.assertRows(executeCQL(CLUSTERING_CF_NAME_1,"SELECT * FROM %s.%s WHERE age = 27 AND name = 'Pavel'"),CQLTester.row("Pavel","US",27,"xedin",183,1.0));
+  CQLTester.assertRows(executeCQL(CLUSTERING_CF_NAME_1,"SELECT * FROM %s.%s WHERE age = 28"),CQLTester.row("Pavel","BY",28,"xedin",182,2.0));
+  CQLTester.assertRows(executeCQL(CLUSTERING_CF_NAME_1,"SELECT * FROM %s.%s WHERE score < 2.0 AND nickname = 'jrwest' ALLOW FILTERING"),CQLTester.row("Jordan","US",27,"jrwest",182,1.0));
+}
