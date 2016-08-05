@@ -1,6 +1,6 @@
 {
   String typeName=createType("CREATE TYPE %s (a int, b uuid, c set<text>)");
-  createTable("CREATE TABLE %s (" + "k int PRIMARY KEY, " + "asciival ascii, "+ "bigintval bigint, "+ "blobval blob, "+ "booleanval boolean, "+ "dateval date, "+ "decimalval decimal, "+ "doubleval double, "+ "floatval float, "+ "inetval inet, "+ "intval int, "+ "textval text, "+ "timeval time, "+ "timestampval timestamp, "+ "timeuuidval timeuuid, "+ "uuidval uuid,"+ "varcharval varchar, "+ "varintval varint, "+ "listval list<int>, "+ "frozenlistval frozen<list<int>>, "+ "setval set<uuid>, "+ "frozensetval frozen<set<uuid>>, "+ "mapval map<ascii, int>,"+ "frozenmapval frozen<map<ascii, int>>,"+ "tupleval frozen<tuple<int, ascii, uuid>>,"+ "udtval frozen<" + typeName + ">)");
+  createTable("CREATE TABLE %s (" + "k int PRIMARY KEY, " + "asciival ascii, "+ "bigintval bigint, "+ "blobval blob, "+ "booleanval boolean, "+ "dateval date, "+ "decimalval decimal, "+ "doubleval double, "+ "floatval float, "+ "inetval inet, "+ "intval int, "+ "smallintval smallint, "+ "textval text, "+ "timeval time, "+ "timestampval timestamp, "+ "timeuuidval timeuuid, "+ "tinyintval tinyint, "+ "uuidval uuid,"+ "varcharval varchar, "+ "varintval varint, "+ "listval list<int>, "+ "frozenlistval frozen<list<int>>, "+ "setval set<uuid>, "+ "frozensetval frozen<set<uuid>>, "+ "mapval map<ascii, int>,"+ "frozenmapval frozen<map<ascii, int>>,"+ "tupleval frozen<tuple<int, ascii, uuid>>,"+ "udtval frozen<" + typeName + ">)");
   assertInvalidMessage("fromJson() cannot be used in the selection clause","SELECT fromJson(asciival) FROM %s",0,0);
   String func1=createFunction(KEYSPACE,"int","CREATE FUNCTION %s (a int) CALLED ON NULL INPUT RETURNS text LANGUAGE java AS $$ return a.toString(); $$");
   createFunctionOverload(func1,"int","CREATE FUNCTION %s (a text) CALLED ON NULL INPUT RETURNS text LANGUAGE java AS $$ return new String(a); $$");
@@ -82,6 +82,22 @@
   assertInvalidMessage("Expected an int value, but got a","INSERT INTO %s (k, intval) VALUES (?, fromJson(?))",0,"123.456");
   assertInvalidMessage("Unable to make int from","INSERT INTO %s (k, intval) VALUES (?, fromJson(?))",0,"\"xyzz\"");
   assertInvalidMessage("Expected an int value, but got a","INSERT INTO %s (k, intval) VALUES (?, fromJson(?))",0,"true");
+  execute("INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"32767");
+  assertRows(execute("SELECT k, smallintval FROM %s WHERE k = ?",0),row(0,(short)32767));
+  execute("INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"\"32767\"");
+  assertRows(execute("SELECT k, smallintval FROM %s WHERE k = ?",0),row(0,(short)32767));
+  assertInvalidMessage("Unable to make short from","INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"32768");
+  assertInvalidMessage("Unable to make short from","INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"123.456");
+  assertInvalidMessage("Unable to make short from","INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"\"xyzz\"");
+  assertInvalidMessage("Expected a short value, but got a Boolean","INSERT INTO %s (k, smallintval) VALUES (?, fromJson(?))",0,"true");
+  execute("INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"127");
+  assertRows(execute("SELECT k, tinyintval FROM %s WHERE k = ?",0),row(0,(byte)127));
+  execute("INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"\"127\"");
+  assertRows(execute("SELECT k, tinyintval FROM %s WHERE k = ?",0),row(0,(byte)127));
+  assertInvalidMessage("Unable to make byte from","INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"128");
+  assertInvalidMessage("Unable to make byte from","INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"123.456");
+  assertInvalidMessage("Unable to make byte from","INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"\"xyzz\"");
+  assertInvalidMessage("Expected a byte value, but got a Boolean","INSERT INTO %s (k, tinyintval) VALUES (?, fromJson(?))",0,"true");
   execute("INSERT INTO %s (k, textval) VALUES (?, fromJson(?))",0,"\"\"");
   assertRows(execute("SELECT k, textval FROM %s WHERE k = ?",0),row(0,""));
   execute("INSERT INTO %s (k, textval) VALUES (?, fromJson(?))",0,"\"abcd\"");
