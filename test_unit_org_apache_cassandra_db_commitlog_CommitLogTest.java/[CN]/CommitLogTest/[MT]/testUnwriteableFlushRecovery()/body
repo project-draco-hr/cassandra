@@ -1,0 +1,26 @@
+{
+  CommitLog.instance.resetUnsafe(true);
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE1).getColumnFamilyStore(STANDARD1);
+  DiskFailurePolicy oldPolicy=DatabaseDescriptor.getDiskFailurePolicy();
+  try {
+    DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.ignore);
+    for (int i=0; i < 5; i++) {
+      new RowUpdateBuilder(cfs.metadata,0,"k").clustering("c" + i).add("val",ByteBuffer.allocate(100)).build().apply();
+      if (i == 2) {
+        try (Closeable c=Util.markDirectoriesUnwriteable(cfs)){
+          cfs.forceBlockingFlush();
+        }
+ catch (        Throwable t) {
+          while (!(t instanceof FSWriteError))           t=t.getCause();
+        }
+      }
+ else       cfs.forceBlockingFlush();
+    }
+  }
+  finally {
+    DatabaseDescriptor.setDiskFailurePolicy(oldPolicy);
+  }
+  CommitLog.instance.sync();
+  System.setProperty("cassandra.replayList",KEYSPACE1 + "." + STANDARD1);
+  Assert.assertEquals(1,CommitLog.instance.resetUnsafe(false));
+}

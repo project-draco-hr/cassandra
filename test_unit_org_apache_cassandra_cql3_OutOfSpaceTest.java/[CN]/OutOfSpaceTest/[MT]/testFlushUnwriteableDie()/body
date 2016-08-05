@@ -1,10 +1,9 @@
 {
   makeTable();
-  markDirectoriesUnwriteable();
   KillerForTests killerForTests=new KillerForTests();
   JVMStabilityInspector.Killer originalKiller=JVMStabilityInspector.replaceKiller(killerForTests);
   DiskFailurePolicy oldPolicy=DatabaseDescriptor.getDiskFailurePolicy();
-  try {
+  try (Closeable c=Util.markDirectoriesUnwriteable(getCurrentColumnFamilyStore())){
     DatabaseDescriptor.setDiskFailurePolicy(DiskFailurePolicy.die);
     flushAndExpectError();
     Assert.assertTrue(killerForTests.wasKilled());

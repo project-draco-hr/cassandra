@@ -2,7 +2,7 @@
   int size=0;
   size+=EstimatedHistogram.serializer.serializedSize(component.estimatedPartitionSize);
   size+=EstimatedHistogram.serializer.serializedSize(component.estimatedColumnCount);
-  size+=CommitLogPosition.serializer.serializedSize(component.commitLogUpperBound);
+  size+=CommitLogPosition.serializer.serializedSize(component.commitLogIntervals.upperBound().orElse(CommitLogPosition.NONE));
   if (version.storeRows())   size+=8 + 8 + 4+ 4+ 4+ 4+ 8+ 8;
  else   size+=8 + 8 + 4+ 8+ 8;
   size+=StreamingHistogram.serializer.serializedSize(component.estimatedTombstoneDropTime);
@@ -13,6 +13,7 @@
   for (  ByteBuffer value : component.maxClusteringValues)   size+=2 + value.remaining();
   size+=TypeSizes.sizeof(component.hasLegacyCounterShards);
   if (version.storeRows())   size+=8 + 8;
-  if (version.hasCommitLogLowerBound())   size+=CommitLogPosition.serializer.serializedSize(component.commitLogLowerBound);
+  if (version.hasCommitLogLowerBound())   size+=CommitLogPosition.serializer.serializedSize(component.commitLogIntervals.lowerBound().orElse(CommitLogPosition.NONE));
+  if (version.hasCommitLogIntervals())   size+=commitLogPositionSetSerializer.serializedSize(component.commitLogIntervals);
   return size;
 }

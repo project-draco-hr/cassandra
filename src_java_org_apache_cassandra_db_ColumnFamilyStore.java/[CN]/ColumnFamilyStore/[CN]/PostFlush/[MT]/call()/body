@@ -1,5 +1,4 @@
 {
-  if (discardFlushResults == ColumnFamilyStore.this)   return commitLogUpperBound;
   writeBarrier.await();
   if (flushSecondaryIndexes)   indexManager.flushAllNonCFSBackedIndexesBlocking();
   try {
@@ -8,14 +7,11 @@
  catch (  InterruptedException e) {
     throw new IllegalStateException();
   }
-  if (flushFailure == null) {
-    CommitLog.instance.discardCompletedSegments(metadata.cfId,commitLogUpperBound);
-    for (int i=0; i < memtables.size(); i++) {
-      Memtable memtable=memtables.get(i);
-      Collection<SSTableReader> reader=readers.get(i);
-      memtable.cfs.data.permitCompactionOfFlushed(reader);
-      memtable.cfs.compactionStrategyManager.replaceFlushed(memtable,reader);
-    }
+  CommitLogPosition commitLogUpperBound=CommitLogPosition.NONE;
+  if (flushFailure == null && !memtables.isEmpty()) {
+    Memtable memtable=memtables.get(0);
+    commitLogUpperBound=memtable.getCommitLogUpperBound();
+    CommitLog.instance.discardCompletedSegments(metadata.cfId,memtable.getCommitLogLowerBound(),commitLogUpperBound);
   }
   metric.pendingFlushes.dec();
   if (flushFailure != null)   throw Throwables.propagate(flushFailure);
