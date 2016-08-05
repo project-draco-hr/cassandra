@@ -1,6 +1,6 @@
 {
   String typeName=createType("CREATE TYPE %s (a int, b uuid, c set<text>)");
-  createTable("CREATE TABLE %s (" + "k int PRIMARY KEY, " + "asciival ascii, "+ "bigintval bigint, "+ "blobval blob, "+ "booleanval boolean, "+ "dateval date, "+ "decimalval decimal, "+ "doubleval double, "+ "floatval float, "+ "inetval inet, "+ "intval int, "+ "textval text, "+ "timeval time, "+ "timestampval timestamp, "+ "timeuuidval timeuuid, "+ "uuidval uuid,"+ "varcharval varchar, "+ "varintval varint, "+ "listval list<int>, "+ "frozenlistval frozen<list<int>>, "+ "setval set<uuid>, "+ "frozensetval frozen<set<uuid>>, "+ "mapval map<ascii, int>, "+ "frozenmapval frozen<map<ascii, int>>, "+ "tupleval frozen<tuple<int, ascii, uuid>>,"+ "udtval frozen<" + typeName + ">)");
+  createTable("CREATE TABLE %s (" + "k int PRIMARY KEY, " + "asciival ascii, "+ "bigintval bigint, "+ "blobval blob, "+ "booleanval boolean, "+ "dateval date, "+ "decimalval decimal, "+ "doubleval double, "+ "floatval float, "+ "inetval inet, "+ "intval int, "+ "smallintval smallint, "+ "textval text, "+ "timeval time, "+ "timestampval timestamp, "+ "timeuuidval timeuuid, "+ "tinyintval tinyint, "+ "uuidval uuid,"+ "varcharval varchar, "+ "varintval varint, "+ "listval list<int>, "+ "frozenlistval frozen<list<int>>, "+ "setval set<uuid>, "+ "frozensetval frozen<set<uuid>>, "+ "mapval map<ascii, int>, "+ "frozenmapval frozen<map<ascii, int>>, "+ "tupleval frozen<tuple<int, ascii, uuid>>,"+ "udtval frozen<" + typeName + ">)");
   assertInvalidMessage("toJson() may only be used within the selection clause","INSERT INTO %s (k, asciival) VALUES (?, toJson(?))",0,0);
   assertInvalidMessage("toJson() may only be used within the selection clause","UPDATE %s SET asciival = toJson(?) WHERE k = ?",0,0);
   assertInvalidMessage("toJson() may only be used within the selection clause","DELETE FROM %s WHERE k = fromJson(toJson(?))",0);
@@ -46,6 +46,18 @@
   assertRows(execute("SELECT k, toJson(intval) FROM %s WHERE k = ?",0),row(0,"0"));
   execute("INSERT INTO %s (k, intval) VALUES (?, ?)",0,-123123);
   assertRows(execute("SELECT k, toJson(intval) FROM %s WHERE k = ?",0),row(0,"-123123"));
+  execute("INSERT INTO %s (k, smallintval) VALUES (?, ?)",0,(short)32767);
+  assertRows(execute("SELECT k, toJson(smallintval) FROM %s WHERE k = ?",0),row(0,"32767"));
+  execute("INSERT INTO %s (k, smallintval) VALUES (?, ?)",0,(short)0);
+  assertRows(execute("SELECT k, toJson(smallintval) FROM %s WHERE k = ?",0),row(0,"0"));
+  execute("INSERT INTO %s (k, smallintval) VALUES (?, ?)",0,(short)-32768);
+  assertRows(execute("SELECT k, toJson(smallintval) FROM %s WHERE k = ?",0),row(0,"-32768"));
+  execute("INSERT INTO %s (k, tinyintval) VALUES (?, ?)",0,(byte)127);
+  assertRows(execute("SELECT k, toJson(tinyintval) FROM %s WHERE k = ?",0),row(0,"127"));
+  execute("INSERT INTO %s (k, tinyintval) VALUES (?, ?)",0,(byte)0);
+  assertRows(execute("SELECT k, toJson(tinyintval) FROM %s WHERE k = ?",0),row(0,"0"));
+  execute("INSERT INTO %s (k, tinyintval) VALUES (?, ?)",0,(byte)-128);
+  assertRows(execute("SELECT k, toJson(tinyintval) FROM %s WHERE k = ?",0),row(0,"-128"));
   execute("INSERT INTO %s (k, textval) VALUES (?, ?)",0,"");
   assertRows(execute("SELECT k, toJson(textval) FROM %s WHERE k = ?",0),row(0,"\"\""));
   execute("INSERT INTO %s (k, textval) VALUES (?, ?)",0,"abcd");
