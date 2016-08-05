@@ -1,0 +1,18 @@
+{
+  IEndpointSnitch snitch=DatabaseDescriptor.getEndpointSnitch();
+  DatabaseDescriptor.setEndpointSnitch(new AbstractEndpointSnitch(){
+    @Override public String getRack(    InetAddress endpoint){
+      return RACK1;
+    }
+    @Override public String getDatacenter(    InetAddress endpoint){
+      return "us-east-1";
+    }
+    @Override public int compareEndpoints(    InetAddress target,    InetAddress a1,    InetAddress a2){
+      return 0;
+    }
+  }
+);
+  execute("CREATE KEYSPACE Foo WITH replication = { 'class' : 'NetworkTopologyStrategy', 'us-east-1' : 1 };");
+  DatabaseDescriptor.setEndpointSnitch(snitch);
+  execute("DROP KEYSPACE IF EXISTS Foo");
+}
