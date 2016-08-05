@@ -13,16 +13,13 @@
  catch (  InterruptedException e) {
     throw new IllegalStateException();
   }
-  if (flushFailure == null) {
-    CommitLog.instance.discardCompletedSegments(metadata.cfId,commitLogUpperBound);
-    for (int i=0; i < memtables.size(); i++) {
-      Memtable memtable=memtables.get(i);
-      SSTableReader reader=readers.get(i);
-      memtable.cfs.data.permitCompactionOfFlushed(reader);
-      memtable.cfs.compactionStrategyWrapper.replaceFlushed(memtable,reader);
-    }
+  CommitLog.instance.discardCompletedSegments(metadata.cfId,commitLogUpperBound);
+  for (int i=0; i < memtables.size(); i++) {
+    Memtable memtable=memtables.get(i);
+    SSTableReader reader=readers.get(i);
+    memtable.cfs.data.permitCompactionOfFlushed(reader);
+    memtable.cfs.compactionStrategyWrapper.replaceFlushed(memtable,reader);
   }
   metric.pendingFlushes.dec();
-  if (flushFailure != null)   throw flushFailure;
   return commitLogUpperBound;
 }
