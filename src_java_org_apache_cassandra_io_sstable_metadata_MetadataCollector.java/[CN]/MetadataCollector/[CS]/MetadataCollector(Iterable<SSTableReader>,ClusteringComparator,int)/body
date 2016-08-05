@@ -1,17 +1,9 @@
 {
   this(comparator);
-  CommitLogPosition min=null, max=null;
+  IntervalSet.Builder<CommitLogPosition> intervals=new IntervalSet.Builder<>();
   for (  SSTableReader sstable : sstables) {
-    if (min == null) {
-      min=sstable.getSSTableMetadata().commitLogLowerBound;
-      max=sstable.getSSTableMetadata().commitLogUpperBound;
-    }
- else {
-      min=Ordering.natural().min(min,sstable.getSSTableMetadata().commitLogLowerBound);
-      max=Ordering.natural().max(max,sstable.getSSTableMetadata().commitLogUpperBound);
-    }
+    intervals.addAll(sstable.getSSTableMetadata().commitLogIntervals);
   }
-  commitLogLowerBound(min);
-  commitLogUpperBound(max);
+  commitLogIntervals(intervals.build());
   sstableLevel(level);
 }

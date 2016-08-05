@@ -6,16 +6,14 @@
     Memtable memtable=iter.next();
     memtable.cfs.data.markFlushing(memtable);
     if (memtable.isClean() || truncate) {
-      memtable.cfs.data.replaceFlushed(memtable,Collections.emptyList());
+      memtable.cfs.replaceFlushed(memtable,Collections.emptyList());
       reclaim(memtable);
       iter.remove();
     }
   }
   metric.memtableSwitchCount.inc();
   try {
-    for (    Memtable memtable : memtables) {
-      this.readers.add(flushMemtable(memtable));
-    }
+    for (    Memtable memtable : memtables)     flushMemtable(memtable);
   }
  catch (  Throwable t) {
     JVMStabilityInspector.inspectThrowable(t);
