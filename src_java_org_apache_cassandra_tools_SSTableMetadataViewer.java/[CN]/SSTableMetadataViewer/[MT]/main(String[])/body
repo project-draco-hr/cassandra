@@ -1,11 +1,22 @@
 {
   PrintStream out=System.out;
-  if (args.length == 0) {
-    out.println("Usage: sstablemetadata <sstable filenames>");
-    System.exit(1);
+  Option optGcgs=new Option(null,GCGS_KEY,true,"The " + GCGS_KEY + " to use when calculating droppable tombstones");
+  Options options=new Options();
+  options.addOption(optGcgs);
+  CommandLine cmd=null;
+  CommandLineParser parser=new PosixParser();
+  try {
+    cmd=parser.parse(options,args);
   }
+ catch (  ParseException e) {
+    printHelp(options,out);
+  }
+  if (cmd.getArgs().length == 0) {
+    printHelp(options,out);
+  }
+  int gcgs=Integer.parseInt(cmd.getOptionValue(GCGS_KEY,"0"));
   Util.initDatabaseDescriptor();
-  for (  String fname : args) {
+  for (  String fname : cmd.getArgs()) {
     if (new File(fname).exists()) {
       Descriptor descriptor=Descriptor.fromFilename(fname);
       Map<MetadataType,MetadataComponent> metadata=descriptor.getMetadataSerializer().deserialize(descriptor,EnumSet.allOf(MetadataType.class));
@@ -22,7 +33,7 @@
         out.printf("Maximum timestamp: %s%n",stats.maxTimestamp);
         out.printf("SSTable max local deletion time: %s%n",stats.maxLocalDeletionTime);
         out.printf("Compression ratio: %s%n",stats.compressionRatio);
-        out.printf("Estimated droppable tombstones: %s%n",stats.getEstimatedDroppableTombstoneRatio((int)(System.currentTimeMillis() / 1000)));
+        out.printf("Estimated droppable tombstones: %s%n",stats.getEstimatedDroppableTombstoneRatio((int)(System.currentTimeMillis() / 1000) - gcgs));
         out.printf("SSTable Level: %d%n",stats.sstableLevel);
         out.printf("Repaired at: %d%n",stats.repairedAt);
         out.printf("Replay positions covered: %s\n",stats.commitLogIntervals);
