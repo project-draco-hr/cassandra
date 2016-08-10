@@ -1,6 +1,13 @@
 {
   createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
-  testConditionalUpdatesWithNonExistingOrNullValuesWithBatch();
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, d) values (2, 2, 'a');\n" + "UPDATE %1$s SET s = 2 WHERE a = 2 IF s = null;\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 2"),row(2,2,2,"a"));
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (4, 4, 4, 'a');\n" + "UPDATE %1$s SET s = 5 WHERE a = 4 IF s = null;\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 4"),row(4,4,5,"a"));
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (5, 5, 5, 'a');\n" + "UPDATE %1$s SET s = 6 WHERE a = 5 IF s IN (1,2,null);\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 5"),row(5,5,6,"a"));
+  assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (7, 7, 7, 'a');\n" + "UPDATE %1$s SET s = 8 WHERE a = 7 IF s != 7;\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 7"),row(7,7,8,"a"));
   for (  String operator : new String[]{">","<",">=","<=","="}) {
     assertRows(execute("BEGIN BATCH\n" + "INSERT INTO %1$s (a, b, s, d) values (3, 3, 3, 'a');\n" + "UPDATE %1$s SET s = 3 WHERE a = 3 IF s " + operator + " 5;\n"+ "APPLY BATCH"),row(false));
     assertEmpty(execute("SELECT * FROM %s WHERE a = 3"));

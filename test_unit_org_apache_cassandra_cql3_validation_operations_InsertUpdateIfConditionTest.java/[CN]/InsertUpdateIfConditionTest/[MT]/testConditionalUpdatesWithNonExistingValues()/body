@@ -1,6 +1,11 @@
 {
   createTable("CREATE TABLE %s (a int, b int, s int static, d text, PRIMARY KEY (a, b))");
-  conditionalUpdatesWithNonExistingOrNullValues();
+  assertRows(execute("UPDATE %s SET s = 1 WHERE a = 1 IF s = NULL"),row(true));
+  assertRows(execute("SELECT a, s, d FROM %s WHERE a = 1"),row(1,1,null));
+  assertRows(execute("UPDATE %s SET s = 2 WHERE a = 2 IF s IN (10,20,NULL)"),row(true));
+  assertRows(execute("SELECT a, s, d FROM %s WHERE a = 2"),row(2,2,null));
+  assertRows(execute("UPDATE %s SET s = 4 WHERE a = 4 IF s != 4"),row(true));
+  assertRows(execute("SELECT a, s, d FROM %s WHERE a = 4"),row(4,4,null));
   assertRows(execute("UPDATE %s SET s = 3 WHERE a = 3 IF s IN (10,20,30)"),row(false));
   assertEmpty(execute("SELECT a, s, d FROM %s WHERE a = 3"));
   for (  String operator : new String[]{">","<",">=","<=","="}) {

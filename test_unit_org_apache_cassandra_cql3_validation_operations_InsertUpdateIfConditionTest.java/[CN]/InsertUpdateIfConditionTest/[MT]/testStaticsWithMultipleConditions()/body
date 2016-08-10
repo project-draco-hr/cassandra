@@ -1,0 +1,12 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s1 int static, s2 int static, d int, PRIMARY KEY (a, b))");
+  for (int i=1; i <= 5; i++) {
+    execute("INSERT INTO %s (a, b, d) VALUES (?, ?, ?)",i,1,5);
+    execute("INSERT INTO %s (a, b, d) VALUES (?, ?, ?)",i,2,6);
+  }
+  assertRows(execute("BEGIN BATCH\n" + "UPDATE %1$s SET s2 = 102 WHERE a = 1 IF s1 = null;\n" + "UPDATE %1$s SET s1 = 101 WHERE a = 1 IF s2 = null;\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 1"),row(1,1,101,102,5),row(1,2,101,102,6));
+  assertRows(execute("BEGIN BATCH\n" + "UPDATE %1$s SET s2 = 202 WHERE a = 2 IF s1 = null;\n" + "UPDATE %1$s SET s1 = 201 WHERE a = 2 IF s2 = null;\n"+ "UPDATE %1$s SET d = 203 WHERE a = 2 AND b = 1 IF d = 5;\n"+ "UPDATE %1$s SET d = 204 WHERE a = 2 AND b = 2 IF d = 6;\n"+ "APPLY BATCH"),row(true));
+  assertRows(execute("SELECT * FROM %s WHERE a = 2"),row(2,1,201,202,203),row(2,2,201,202,204));
+  assertRows(execute("BEGIN BATCH\n" + "UPDATE %1$s SET s2 = 202 WHERE a = 20 IF s1 = null;\n" + "UPDATE %1$s SET s1 = 201 WHERE a = 20 IF s2 = null;\n"+ "UPDATE %1$s SET d = 203 WHERE a = 20 AND b = 1 IF d = 5;\n"+ "UPDATE %1$s SET d = 204 WHERE a = 20 AND b = 2 IF d = 6;\n"+ "APPLY BATCH"),row(false));
+}
