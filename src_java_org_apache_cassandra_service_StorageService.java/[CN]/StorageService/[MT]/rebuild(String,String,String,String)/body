@@ -30,7 +30,37 @@
         }
         if (tokenScanner.hasNext())         throw new IllegalArgumentException("Unexpected string: " + tokenScanner.next());
       }
-       streamer.addRanges(keyspace,ranges);
+       Collection<Range<Token>> localRanges=getLocalRanges(keyspace);
+      for (      Range<Token> specifiedRange : ranges) {
+        boolean foundParentRange=false;
+        for (        Range<Token> localRange : localRanges) {
+          if (localRange.contains(specifiedRange)) {
+            foundParentRange=true;
+            break;
+          }
+        }
+        if (!foundParentRange) {
+          throw new IllegalArgumentException(String.format("The specified range %s is not a range that is owned by this node. Please ensure that all token ranges specified to be rebuilt belong to this node.",specifiedRange.toString()));
+        }
+      }
+      if (specificSources != null) {
+        String[] stringHosts=specificSources.split(",");
+        Set<InetAddress> sources=new HashSet<>(stringHosts.length);
+        for (        String stringHost : stringHosts) {
+          try {
+            InetAddress endpoint=InetAddress.getByName(stringHost);
+            if (FBUtilities.getBroadcastAddress().equals(endpoint)) {
+              throw new IllegalArgumentException("This host was specified as a source for rebuilding. Sources for a rebuild can only be other nodes in the cluster.");
+            }
+            sources.add(endpoint);
+          }
+ catch (          UnknownHostException ex) {
+            throw new IllegalArgumentException("Unknown host specified " + stringHost,ex);
+          }
+        }
+        streamer.addSourceFilter(new RangeStreamer.WhitelistedSourcesFilter(sources));
+      }
+      streamer.addRanges(keyspace,ranges);
     }
     StreamResultFuture resultFuture=streamer.fetchAsync();
     resultFuture.get();
