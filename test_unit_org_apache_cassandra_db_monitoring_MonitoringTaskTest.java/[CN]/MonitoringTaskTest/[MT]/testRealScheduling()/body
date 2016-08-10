@@ -1,12 +1,18 @@
 {
   MonitoringTask.instance=MonitoringTask.make(10,-1);
   try {
-    Monitorable operation=new TestMonitor("Test report",new ConstructionTime(System.currentTimeMillis()),timeout);
-    waitForOperationsToComplete(operation);
-    assertTrue(operation.isAborted());
-    assertFalse(operation.isCompleted());
+    Monitorable operation1=new TestMonitor("Test report 1",new ConstructionTime(System.currentTimeMillis()),timeout,slowTimeout);
+    waitForOperationsToComplete(operation1);
+    assertTrue(operation1.isAborted());
+    assertFalse(operation1.isCompleted());
+    Monitorable operation2=new TestMonitor("Test report 2",new ConstructionTime(System.currentTimeMillis()),timeout,slowTimeout);
+    waitForOperationsToBeReportedAsSlow(operation2);
+    operation2.complete();
+    assertFalse(operation2.isAborted());
+    assertTrue(operation2.isCompleted());
     Thread.sleep(ApproximateTime.precision() + 500);
     assertEquals(0,MonitoringTask.instance.getFailedOperations().size());
+    assertEquals(0,MonitoringTask.instance.getSlowOperations().size());
   }
   finally {
     MonitoringTask.instance=MonitoringTask.make(REPORT_INTERVAL_MS,MAX_TIMEDOUT_OPERATIONS);
