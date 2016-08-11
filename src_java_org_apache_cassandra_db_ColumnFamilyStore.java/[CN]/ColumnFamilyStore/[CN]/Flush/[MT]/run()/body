@@ -1,20 +1,12 @@
 {
   writeBarrier.markBlocking();
   writeBarrier.await();
-  Iterator<Memtable> iter=memtables.iterator();
-  while (iter.hasNext()) {
-    Memtable memtable=iter.next();
-    memtable.cfs.data.markFlushing(memtable);
-    if (memtable.isClean() || truncate) {
-      memtable.cfs.replaceFlushed(memtable,Collections.emptyList());
-      reclaim(memtable);
-      iter.remove();
-    }
-  }
+  for (  Memtable memtable : memtables)   memtable.cfs.data.markFlushing(memtable);
   metric.memtableSwitchCount.inc();
   try {
     for (    Memtable memtable : memtables) {
-      Collection<SSTableReader> readers=memtable.flush();
+      Collection<SSTableReader> readers=Collections.emptyList();
+      if (!memtable.isClean() && !truncate)       readers=memtable.flush();
       memtable.cfs.replaceFlushed(memtable,readers);
       reclaim(memtable);
     }
