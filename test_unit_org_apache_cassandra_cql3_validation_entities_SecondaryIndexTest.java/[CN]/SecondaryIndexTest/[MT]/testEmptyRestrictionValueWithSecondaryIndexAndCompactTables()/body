@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (pk blob, c blob, v blob, PRIMARY KEY ((pk), c)) WITH COMPACT STORAGE");
+  assertInvalidMessage("Secondary indexes are not supported on COMPACT STORAGE tables that have clustering columns","CREATE INDEX on %s(c)");
+  createTable("CREATE TABLE %s (pk blob PRIMARY KEY, v blob) WITH COMPACT STORAGE");
+  createIndex("CREATE INDEX on %s(v)");
+  execute("INSERT INTO %s (pk, v) VALUES (?, ?)",bytes("foo123"),bytes("1"));
+  assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND v = textAsBlob('');"));
+  execute("INSERT INTO %s (pk, v) VALUES (?, ?)",bytes("foo124"),EMPTY_BYTE_BUFFER);
+  assertRows(execute("SELECT * FROM %s WHERE v = textAsBlob('');"),row(bytes("foo124"),EMPTY_BYTE_BUFFER));
+}
