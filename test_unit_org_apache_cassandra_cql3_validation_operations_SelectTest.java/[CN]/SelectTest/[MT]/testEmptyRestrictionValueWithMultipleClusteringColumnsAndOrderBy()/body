@@ -1,0 +1,24 @@
+{
+  for (  String options : new String[]{""," WITH COMPACT STORAGE"," WITH CLUSTERING ORDER BY (c1 DESC, c2 DESC)"," WITH COMPACT STORAGE AND CLUSTERING ORDER BY (c1 DESC, c2 DESC)"}) {
+    String orderingClause=options.contains("ORDER") ? "" : "ORDER BY c1 DESC, c2 DESC";
+    createTable("CREATE TABLE %s (pk blob, c1 blob, c2 blob, v blob, PRIMARY KEY (pk, c1, c2))" + options);
+    execute("INSERT INTO %s (pk, c1, c2, v) VALUES (?, ?, ?, ?)",bytes("foo123"),bytes("1"),bytes("1"),bytes("1"));
+    execute("INSERT INTO %s (pk, c1, c2, v) VALUES (?, ?, ?, ?)",bytes("foo123"),bytes("1"),bytes("2"),bytes("2"));
+    for (    boolean flush : new boolean[]{false,true}) {
+      if (flush)       flush();
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c1 > textAsBlob('')" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c1 = textAsBlob('1') AND c2 > textAsBlob('')" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c1, c2) > (textAsBlob(''), textAsBlob('1'))" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c1 = textAsBlob('1') AND c2 >= textAsBlob('')" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+    }
+    execute("INSERT INTO %s (pk, c1, c2, v) VALUES (?, ?, ?, ?)",bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("1"),bytes("4"));
+    for (    boolean flush : new boolean[]{false,true}) {
+      if (flush)       flush();
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c1 = textAsBlob('1') AND c2 IN (textAsBlob(''), textAsBlob('1'))" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c1 = textAsBlob('') AND c2 IN (textAsBlob(''), textAsBlob('1'))" + orderingClause),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("1"),bytes("4")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c1, c2) IN ((textAsBlob(''), textAsBlob('1')), (textAsBlob('1'), textAsBlob('1')))" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("1"),bytes("4")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c1, c2) > (textAsBlob(''), textAsBlob('1'))" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c1, c2) >= (textAsBlob(''), textAsBlob('1'))" + orderingClause),row(bytes("foo123"),bytes("1"),bytes("2"),bytes("2")),row(bytes("foo123"),bytes("1"),bytes("1"),bytes("1")),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("1"),bytes("4")));
+    }
+  }
+}

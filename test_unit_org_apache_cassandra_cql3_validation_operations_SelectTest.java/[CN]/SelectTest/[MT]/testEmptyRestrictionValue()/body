@@ -1,0 +1,50 @@
+{
+  for (  String options : new String[]{""," WITH COMPACT STORAGE"}) {
+    createTable("CREATE TABLE %s (pk blob, c blob, v blob, PRIMARY KEY ((pk), c))" + options);
+    execute("INSERT INTO %s (pk, c, v) VALUES (?, ?, ?)",bytes("foo123"),bytes("1"),bytes("1"));
+    execute("INSERT INTO %s (pk, c, v) VALUES (?, ?, ?)",bytes("foo123"),bytes("2"),bytes("2"));
+    for (    boolean flush : new boolean[]{false,true}) {
+      if (flush)       flush();
+      assertInvalidMessage("Key may not be empty","SELECT * FROM %s WHERE pk = textAsBlob('');");
+      assertInvalidMessage("Key may not be empty","SELECT * FROM %s WHERE pk IN (textAsBlob(''), textAsBlob('1'));");
+      assertInvalidMessage("Key may not be empty","INSERT INTO %s (pk, c, v) VALUES (?, ?, ?)",EMPTY_BYTE_BUFFER,bytes("2"),bytes("2"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c = textAsBlob('');"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) = (textAsBlob(''));"));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c IN (textAsBlob(''), textAsBlob('1'));"),row(bytes("foo123"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) IN ((textAsBlob('')), (textAsBlob('1')));"),row(bytes("foo123"),bytes("1"),bytes("1")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c > textAsBlob('');"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) > (textAsBlob(''));"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c >= textAsBlob('');"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+      assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) >= (textAsBlob(''));"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c <= textAsBlob('');"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) <= (textAsBlob(''));"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c < textAsBlob('');"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) < (textAsBlob(''));"));
+      assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c > textAsBlob('') AND c < textAsBlob('');"));
+    }
+    if (options.contains("COMPACT")) {
+      assertInvalidMessage("Missing PRIMARY KEY part c","INSERT INTO %s (pk, c, v) VALUES (?, ?, ?)",bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4"));
+      assertInvalidMessage("Predicates on the non-primary-key column (v) of a COMPACT table are not yet supported","SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND v = textAsBlob('') ALLOW FILTERING;");
+    }
+ else {
+      execute("INSERT INTO %s (pk, c, v) VALUES (?, ?, ?)",bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4"));
+      for (      boolean flush : new boolean[]{false,true}) {
+        if (flush)         flush();
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c = textAsBlob('');"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) = (textAsBlob(''));"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c IN (textAsBlob(''), textAsBlob('1'));"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")),row(bytes("foo123"),bytes("1"),bytes("1")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) IN ((textAsBlob('')), (textAsBlob('1')));"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")),row(bytes("foo123"),bytes("1"),bytes("1")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c > textAsBlob('');"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) > (textAsBlob(''));"),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c >= textAsBlob('');"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) >= (textAsBlob(''));"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")),row(bytes("foo123"),bytes("1"),bytes("1")),row(bytes("foo123"),bytes("2"),bytes("2")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c <= textAsBlob('');"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")));
+        assertRows(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) <= (textAsBlob(''));"),row(bytes("foo123"),EMPTY_BYTE_BUFFER,bytes("4")));
+        assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c < textAsBlob('');"));
+        assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND (c) < (textAsBlob(''));"));
+        assertEmpty(execute("SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND c >= textAsBlob('') AND c < textAsBlob('');"));
+        assertInvalidMessage("No secondary indexes on the restricted columns support the provided operators","SELECT * FROM %s WHERE pk = textAsBlob('foo123') AND v = textAsBlob('') ALLOW FILTERING;");
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  OrderCheckerIterator atoms=new OrderCheckerIterator(new SSTableIdentityIterator(sstable,dataFile,key,dataSize,validateColumns),cfs.metadata.comparator.onDiskAtomComparator());
+  if (prevKey != null && prevKey.compareTo(key) > 0) {
+    saveOutOfOrderRow(prevKey,key,atoms);
+    return false;
+  }
+  AbstractCompactedRow compactedRow=new LazilyCompactedRow(controller,Collections.singletonList(atoms));
+  if (writer.tryAppend(compactedRow) == null)   emptyRows++;
+ else   goodRows++;
+  if (atoms.hasOutOfOrderCells())   saveOutOfOrderRow(key,atoms);
+  return true;
+}
