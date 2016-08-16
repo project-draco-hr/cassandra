@@ -1,5 +1,6 @@
 {
   try {
+    long queryStartNanoTime=System.nanoTime();
     String queryString=uncompress(query,compression);
     if (startSessionIfRequested()) {
       Tracing.instance.begin("execute_cql3_query",ImmutableMap.of("query",queryString,"consistency_level",cLevel.name()));
@@ -8,7 +9,7 @@
       logger.trace("execute_cql3_query");
     }
     ThriftClientState cState=state();
-    return ClientState.getCQLQueryHandler().process(queryString,cState.getQueryState(),QueryOptions.fromThrift(ThriftConversion.fromThrift(cLevel),Collections.<ByteBuffer>emptyList()),null).toThriftResult();
+    return ClientState.getCQLQueryHandler().process(queryString,cState.getQueryState(),QueryOptions.fromThrift(ThriftConversion.fromThrift(cLevel),Collections.<ByteBuffer>emptyList()),null,queryStartNanoTime).toThriftResult();
   }
  catch (  RequestExecutionException e) {
     throw ThriftConversion.rethrow(e);

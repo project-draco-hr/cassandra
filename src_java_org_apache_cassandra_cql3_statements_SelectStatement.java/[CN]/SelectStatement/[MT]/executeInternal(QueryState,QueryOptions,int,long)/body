@@ -1,0 +1,17 @@
+{
+  int userLimit=getLimit(options);
+  int userPerPartitionLimit=getPerPartitionLimit(options);
+  int pageSize=options.getPageSize();
+  ReadQuery query=getQuery(options,nowInSec,userLimit,userPerPartitionLimit,pageSize);
+  try (ReadExecutionController executionController=query.executionController()){
+    if (aggregationSpec == null && (pageSize <= 0 || (query.limits().count() <= pageSize))) {
+      try (PartitionIterator data=query.executeInternal(executionController)){
+        return processResults(data,options,nowInSec,userLimit);
+      }
+     }
+ else {
+      QueryPager pager=getPager(query,options);
+      return execute(Pager.forInternalQuery(pager,executionController),options,pageSize,nowInSec,userLimit,queryStartNanoTime);
+    }
+  }
+ }

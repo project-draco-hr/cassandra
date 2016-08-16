@@ -1,4 +1,5 @@
 {
+  long queryStartNanoTime=System.nanoTime();
   if (startSessionIfRequested()) {
     Map<String,String> traceParameters=ImmutableMap.of("key",ByteBufferUtil.bytesToHex(key),"column_parent",column_parent.toString(),"predicate",predicate.toString(),"consistency_level",consistency_level.name());
     Tracing.instance.begin("get_count",traceParameters);
@@ -13,7 +14,7 @@
     Keyspace keyspaceName=Keyspace.open(keyspace);
     ColumnFamilyStore cfs=keyspaceName.getColumnFamilyStore(column_parent.column_family);
     int nowInSec=FBUtilities.nowInSeconds();
-    if (predicate.column_names != null)     return getSliceInternal(keyspace,key,column_parent,nowInSec,predicate,consistency_level,cState).size();
+    if (predicate.column_names != null)     return getSliceInternal(keyspace,key,column_parent,nowInSec,predicate,consistency_level,cState,queryStartNanoTime).size();
     int pageSize;
     if (cfs.getMeanColumns() > 0) {
       int averageColumnSize=(int)(cfs.metric.meanPartitionSize.getValue() / cfs.getMeanColumns());
@@ -38,7 +39,7 @@
     }
     DataLimits limits=getLimits(1,metadata.isSuper() && !column_parent.isSetSuper_column(),predicate);
     DecoratedKey dk=metadata.decorateKey(key);
-    return QueryPagers.countPaged(metadata,dk,columnFilter,filter,limits,ThriftConversion.fromThrift(consistency_level),cState,pageSize,nowInSec,true);
+    return QueryPagers.countPaged(metadata,dk,columnFilter,filter,limits,ThriftConversion.fromThrift(consistency_level),cState,pageSize,nowInSec,true,queryStartNanoTime);
   }
  catch (  IllegalArgumentException e) {
     throw new InvalidRequestException(e.getMessage());

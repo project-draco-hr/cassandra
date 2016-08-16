@@ -1,10 +1,10 @@
 {
   PartitionRangeReadCommand rangeCommand=command.forSubRange(toQuery.range,isFirst);
-  DataResolver resolver=new DataResolver(keyspace,rangeCommand,consistency,toQuery.filteredEndpoints.size());
+  DataResolver resolver=new DataResolver(keyspace,rangeCommand,consistency,toQuery.filteredEndpoints.size(),queryStartNanoTime);
   int blockFor=consistency.blockFor(keyspace);
   int minResponses=Math.min(toQuery.filteredEndpoints.size(),blockFor);
   List<InetAddress> minimalEndpoints=toQuery.filteredEndpoints.subList(0,minResponses);
-  ReadCallback handler=new ReadCallback(resolver,consistency,rangeCommand,minimalEndpoints);
+  ReadCallback handler=new ReadCallback(resolver,consistency,rangeCommand,minimalEndpoints,queryStartNanoTime);
   handler.assureSufficientLiveNodes();
   if (toQuery.filteredEndpoints.size() == 1 && canDoLocalRequest(toQuery.filteredEndpoints.get(0))) {
     StageManager.getStage(Stage.READ).execute(new LocalReadRunnable(rangeCommand,handler));

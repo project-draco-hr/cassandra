@@ -1,0 +1,13 @@
+{
+  ConsistencyLevel cl=options.getConsistency();
+  checkNotNull(cl,"Invalid empty consistency level");
+  cl.validateForRead(keyspace());
+  int nowInSec=FBUtilities.nowInSeconds();
+  int userLimit=getLimit(options);
+  int userPerPartitionLimit=getPerPartitionLimit(options);
+  int pageSize=options.getPageSize();
+  ReadQuery query=getQuery(options,nowInSec,userLimit,userPerPartitionLimit,pageSize);
+  if (aggregationSpec == null && (pageSize <= 0 || (query.limits().count() <= pageSize)))   return execute(query,options,state,nowInSec,userLimit,queryStartNanoTime);
+  QueryPager pager=getPager(query,options);
+  return execute(Pager.forDistributedQuery(pager,cl,state.getClientState()),options,pageSize,nowInSec,userLimit,queryStartNanoTime);
+}

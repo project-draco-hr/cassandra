@@ -1,4 +1,5 @@
 {
+  long queryStartNanoTime=System.nanoTime();
   if (startSessionIfRequested()) {
     Map<String,String> traceParameters=ImmutableMap.of("column_parent",column_parent.toString(),"column",column.toString(),"consistency_level",consistency_level.name());
     Tracing.instance.begin("add",traceParameters);
@@ -24,7 +25,7 @@
       Cell cell=BufferCell.live(name.column,FBUtilities.timestampMicros(),value,path);
       PartitionUpdate update=PartitionUpdate.singleRowUpdate(metadata,key,BTreeRow.singleCellRow(name.clustering,cell));
       org.apache.cassandra.db.Mutation mutation=new org.apache.cassandra.db.Mutation(update);
-      doInsert(consistency_level,Arrays.asList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))));
+      doInsert(consistency_level,Arrays.asList(new CounterMutation(mutation,ThriftConversion.fromThrift(consistency_level))),queryStartNanoTime);
     }
  catch (    MarshalException|UnknownColumnException e) {
       throw new InvalidRequestException(e.getMessage());

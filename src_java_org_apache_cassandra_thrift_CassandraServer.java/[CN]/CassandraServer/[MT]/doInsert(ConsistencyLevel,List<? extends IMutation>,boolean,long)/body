@@ -1,0 +1,17 @@
+{
+  org.apache.cassandra.db.ConsistencyLevel consistencyLevel=ThriftConversion.fromThrift(consistency_level);
+  consistencyLevel.validateForWrite(state().getKeyspace());
+  if (mutations.isEmpty())   return;
+  long timeout=Long.MAX_VALUE;
+  for (  IMutation m : mutations)   timeout=Longs.min(timeout,m.getTimeout());
+  schedule(timeout);
+  try {
+    StorageProxy.mutateWithTriggers(mutations,consistencyLevel,mutateAtomically,queryStartNanoTime);
+  }
+ catch (  RequestExecutionException e) {
+    ThriftConversion.rethrow(e);
+  }
+ finally {
+    release();
+  }
+}
