@@ -1,0 +1,9 @@
+{
+  createTable("CREATE TABLE %s (k int PRIMARY KEY, v int)");
+  execute("INSERT INTO %s (k, v) VALUES (1, 1) USING TTL ?",unset());
+  assertRows(execute("SELECT ttl(v) FROM %s"),row(new Object[]{null}));
+  execute("INSERT INTO %s (k, v) VALUES (?, ?) USING TTL ?",1,1,null);
+  assertRows(execute("SELECT k, v, TTL(v) FROM %s"),row(1,1,null));
+  assertInvalidMessage("A TTL must be greater or equal to 0, but was -5","INSERT INTO %s (k, v) VALUES (?, ?) USING TTL ?",1,1,-5);
+  assertInvalidMessage("ttl is too large.","INSERT INTO %s (k, v) VALUES (?, ?) USING TTL ?",1,1,Attributes.MAX_TTL + 1);
+}
