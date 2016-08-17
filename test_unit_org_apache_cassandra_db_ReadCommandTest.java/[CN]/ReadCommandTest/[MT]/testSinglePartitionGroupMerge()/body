@@ -1,0 +1,58 @@
+{
+  ColumnFamilyStore cfs=Keyspace.open(KEYSPACE).getColumnFamilyStore(CF3);
+  String[][][] groups=new String[][][]{new String[][]{new String[]{"1","key1","aa","a"},new String[]{"1","key2","bb","b"},new String[]{"1","key3","cc","c"}},new String[][]{new String[]{"1","key3","dd","d"},new String[]{"1","key2","ee","e"},new String[]{"1","key1","ff","f"}},new String[][]{new String[]{"1","key6","aa","a"},new String[]{"1","key5","bb","b"},new String[]{"1","key4","cc","c"}},new String[][]{new String[]{"-1","key6","aa","a"},new String[]{"-1","key2","bb","b"}}};
+  String[] expectedRows=new String[]{"aa","ff","ee","cc","dd","cc","bb"};
+  List<ByteBuffer> buffers=new ArrayList<>(groups.length);
+  int nowInSeconds=FBUtilities.nowInSeconds();
+  ColumnFilter columnFilter=ColumnFilter.allColumnsBuilder(cfs.metadata).build();
+  RowFilter rowFilter=RowFilter.create();
+  Slice slice=Slice.make(ClusteringBound.BOTTOM,ClusteringBound.TOP);
+  ClusteringIndexSliceFilter sliceFilter=new ClusteringIndexSliceFilter(Slices.with(cfs.metadata.comparator,slice),false);
+  for (  String[][] group : groups) {
+    cfs.truncateBlocking();
+    List<SinglePartitionReadCommand> commands=new ArrayList<>(group.length);
+    for (    String[] data : group) {
+      if (data[0].equals("1")) {
+        new RowUpdateBuilder(cfs.metadata,0,ByteBufferUtil.bytes(data[1])).clustering(data[2]).add(data[3],ByteBufferUtil.bytes("blah")).build().apply();
+      }
+ else {
+        RowUpdateBuilder.deleteRow(cfs.metadata,FBUtilities.timestampMicros(),ByteBufferUtil.bytes(data[1]),data[2]).apply();
+      }
+      commands.add(SinglePartitionReadCommand.create(cfs.metadata,nowInSeconds,columnFilter,rowFilter,DataLimits.NONE,Util.dk(data[1]),sliceFilter));
+    }
+    cfs.forceBlockingFlush();
+    ReadQuery query=new SinglePartitionReadCommand.Group(commands,DataLimits.NONE);
+    try (ReadExecutionController executionController=query.executionController();UnfilteredPartitionIterator iter=query.executeLocally(executionController);DataOutputBuffer buffer=new DataOutputBuffer()){
+      UnfilteredPartitionIterators.serializerForIntraNode().serialize(iter,columnFilter,buffer,MessagingService.current_version);
+      buffers.add(buffer.buffer());
+    }
+   }
+  List<UnfilteredPartitionIterator> iterators=new ArrayList<>();
+  for (  ByteBuffer buffer : buffers) {
+    try (DataInputBuffer in=new DataInputBuffer(buffer,true)){
+      iterators.add(UnfilteredPartitionIterators.serializerForIntraNode().deserialize(in,MessagingService.current_version,cfs.metadata,columnFilter,SerializationHelper.Flag.LOCAL));
+    }
+   }
+  try (PartitionIterator partitionIterator=UnfilteredPartitionIterators.mergeAndFilter(iterators,nowInSeconds,new UnfilteredPartitionIterators.MergeListener(){
+    public UnfilteredRowIterators.MergeListener getRowMergeListener(    DecoratedKey partitionKey,    List<UnfilteredRowIterator> versions){
+      return null;
+    }
+    public void close(){
+    }
+  }
+)){
+    int i=0;
+    int numPartitions=0;
+    while (partitionIterator.hasNext()) {
+      numPartitions++;
+      try (RowIterator rowIterator=partitionIterator.next()){
+        while (rowIterator.hasNext()) {
+          Row row=rowIterator.next();
+          assertEquals("col=" + expectedRows[i++],row.clustering().toString(cfs.metadata));
+        }
+      }
+     }
+    assertEquals(5,numPartitions);
+    assertEquals(expectedRows.length,i);
+  }
+ }
