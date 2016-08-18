@@ -1,0 +1,27 @@
+{
+  requestSchedulerOptions=conf.request_scheduler_options;
+  if (conf.request_scheduler != null) {
+    try {
+      if (requestSchedulerOptions == null) {
+        requestSchedulerOptions=new RequestSchedulerOptions();
+      }
+      Class<?> cls=Class.forName(conf.request_scheduler);
+      requestScheduler=(IRequestScheduler)cls.getConstructor(RequestSchedulerOptions.class).newInstance(requestSchedulerOptions);
+    }
+ catch (    ClassNotFoundException e) {
+      throw new ConfigurationException("Invalid Request Scheduler class " + conf.request_scheduler,false);
+    }
+catch (    Exception e) {
+      throw new ConfigurationException("Unable to instantiate request scheduler",e);
+    }
+  }
+ else {
+    requestScheduler=new NoScheduler();
+  }
+  if (conf.request_scheduler_id == RequestSchedulerId.keyspace) {
+    requestSchedulerId=conf.request_scheduler_id;
+  }
+ else {
+    requestSchedulerId=RequestSchedulerId.keyspace;
+  }
+}

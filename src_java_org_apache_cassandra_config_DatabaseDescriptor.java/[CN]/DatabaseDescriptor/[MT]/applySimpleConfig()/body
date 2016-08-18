@@ -1,0 +1,213 @@
+{
+  if (conf.commitlog_sync == null) {
+    throw new ConfigurationException("Missing required directive CommitLogSync",false);
+  }
+  if (conf.commitlog_sync == Config.CommitLogSync.batch) {
+    if (conf.commitlog_sync_batch_window_in_ms == null) {
+      throw new ConfigurationException("Missing value for commitlog_sync_batch_window_in_ms: Double expected.",false);
+    }
+ else     if (conf.commitlog_sync_period_in_ms != null) {
+      throw new ConfigurationException("Batch sync specified, but commitlog_sync_period_in_ms found. Only specify commitlog_sync_batch_window_in_ms when using batch sync",false);
+    }
+    logger.debug("Syncing log with a batch window of {}",conf.commitlog_sync_batch_window_in_ms);
+  }
+ else {
+    if (conf.commitlog_sync_period_in_ms == null) {
+      throw new ConfigurationException("Missing value for commitlog_sync_period_in_ms: Integer expected",false);
+    }
+ else     if (conf.commitlog_sync_batch_window_in_ms != null) {
+      throw new ConfigurationException("commitlog_sync_period_in_ms specified, but commitlog_sync_batch_window_in_ms found.  Only specify commitlog_sync_period_in_ms when using periodic sync.",false);
+    }
+    logger.debug("Syncing log with a period of {}",conf.commitlog_sync_period_in_ms);
+  }
+  if (conf.disk_access_mode == Config.DiskAccessMode.auto) {
+    conf.disk_access_mode=hasLargeAddressSpace() ? Config.DiskAccessMode.mmap : Config.DiskAccessMode.standard;
+    indexAccessMode=conf.disk_access_mode;
+    logger.info("DiskAccessMode 'auto' determined to be {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
+  }
+ else   if (conf.disk_access_mode == Config.DiskAccessMode.mmap_index_only) {
+    conf.disk_access_mode=Config.DiskAccessMode.standard;
+    indexAccessMode=Config.DiskAccessMode.mmap;
+    logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
+  }
+ else {
+    indexAccessMode=conf.disk_access_mode;
+    logger.info("DiskAccessMode is {}, indexAccessMode is {}",conf.disk_access_mode,indexAccessMode);
+  }
+  if (conf.gc_warn_threshold_in_ms < 0) {
+    throw new ConfigurationException("gc_warn_threshold_in_ms must be a positive integer");
+  }
+  if (conf.max_hint_window_in_ms == null) {
+    throw new ConfigurationException("max_hint_window_in_ms cannot be set to null",false);
+  }
+  if (conf.phi_convict_threshold < 5 || conf.phi_convict_threshold > 16) {
+    throw new ConfigurationException("phi_convict_threshold must be between 5 and 16, but was " + conf.phi_convict_threshold,false);
+  }
+  if (conf.concurrent_reads != null && conf.concurrent_reads < 2) {
+    throw new ConfigurationException("concurrent_reads must be at least 2, but was " + conf.concurrent_reads,false);
+  }
+  if (conf.concurrent_writes != null && conf.concurrent_writes < 2) {
+    throw new ConfigurationException("concurrent_writes must be at least 2, but was " + conf.concurrent_writes,false);
+  }
+  if (conf.concurrent_counter_writes != null && conf.concurrent_counter_writes < 2)   throw new ConfigurationException("concurrent_counter_writes must be at least 2, but was " + conf.concurrent_counter_writes,false);
+  if (conf.concurrent_replicates != null)   logger.warn("concurrent_replicates has been deprecated and should be removed from cassandra.yaml");
+  if (conf.file_cache_size_in_mb == null)   conf.file_cache_size_in_mb=Math.min(512,(int)(Runtime.getRuntime().maxMemory() / (4 * 1048576)));
+  if (conf.memtable_offheap_space_in_mb == null)   conf.memtable_offheap_space_in_mb=(int)(Runtime.getRuntime().maxMemory() / (4 * 1048576));
+  if (conf.memtable_offheap_space_in_mb < 0)   throw new ConfigurationException("memtable_offheap_space_in_mb must be positive, but was " + conf.memtable_offheap_space_in_mb,false);
+  if (conf.memtable_heap_space_in_mb == null)   conf.memtable_heap_space_in_mb=(int)(Runtime.getRuntime().maxMemory() / (4 * 1048576));
+  if (conf.memtable_heap_space_in_mb <= 0)   throw new ConfigurationException("memtable_heap_space_in_mb must be positive, but was " + conf.memtable_heap_space_in_mb,false);
+  logger.info("Global memtable on-heap threshold is enabled at {}MB",conf.memtable_heap_space_in_mb);
+  if (conf.memtable_offheap_space_in_mb == 0)   logger.info("Global memtable off-heap threshold is disabled, HeapAllocator will be used instead");
+ else   logger.info("Global memtable off-heap threshold is enabled at {}MB",conf.memtable_offheap_space_in_mb);
+  if (conf.thrift_framed_transport_size_in_mb <= 0)   throw new ConfigurationException("thrift_framed_transport_size_in_mb must be positive, but was " + conf.thrift_framed_transport_size_in_mb,false);
+  if (conf.native_transport_max_frame_size_in_mb <= 0)   throw new ConfigurationException("native_transport_max_frame_size_in_mb must be positive, but was " + conf.native_transport_max_frame_size_in_mb,false);
+  if (conf.commitlog_directory == null) {
+    conf.commitlog_directory=System.getProperty("cassandra.storagedir",null);
+    if (conf.commitlog_directory == null)     throw new ConfigurationException("commitlog_directory is missing and -Dcassandra.storagedir is not set",false);
+    conf.commitlog_directory+=File.separator + "commitlog";
+  }
+  if (conf.hints_directory == null) {
+    conf.hints_directory=System.getProperty("cassandra.storagedir",null);
+    if (conf.hints_directory == null)     throw new ConfigurationException("hints_directory is missing and -Dcassandra.storagedir is not set",false);
+    conf.hints_directory+=File.separator + "hints";
+  }
+  if (conf.cdc_raw_directory == null) {
+    conf.cdc_raw_directory=System.getProperty("cassandra.storagedir",null);
+    if (conf.cdc_raw_directory == null)     throw new ConfigurationException("cdc_raw_directory is missing and -Dcassandra.storagedir is not set",false);
+    conf.cdc_raw_directory+=File.separator + "cdc_raw";
+  }
+  if (conf.commitlog_total_space_in_mb == null) {
+    int preferredSize=8192;
+    int minSize=0;
+    try {
+      minSize=Ints.checkedCast((guessFileStore(conf.commitlog_directory).getTotalSpace() / 1048576) / 4);
+    }
+ catch (    IOException e) {
+      logger.debug("Error checking disk space",e);
+      throw new ConfigurationException(String.format("Unable to check disk space available to %s. Perhaps the Cassandra user does not have the necessary permissions",conf.commitlog_directory),e);
+    }
+    if (minSize < preferredSize) {
+      logger.warn("Small commitlog volume detected at {}; setting commitlog_total_space_in_mb to {}.  You can override this in cassandra.yaml",conf.commitlog_directory,minSize);
+      conf.commitlog_total_space_in_mb=minSize;
+    }
+ else {
+      conf.commitlog_total_space_in_mb=preferredSize;
+    }
+  }
+  if (conf.cdc_total_space_in_mb == null) {
+    int preferredSize=4096;
+    int minSize=0;
+    try {
+      minSize=Ints.checkedCast((guessFileStore(conf.cdc_raw_directory).getTotalSpace() / 1048576) / 8);
+    }
+ catch (    IOException e) {
+      logger.debug("Error checking disk space",e);
+      throw new ConfigurationException(String.format("Unable to check disk space available to %s. Perhaps the Cassandra user does not have the necessary permissions",conf.cdc_raw_directory),e);
+    }
+    if (minSize < preferredSize) {
+      logger.warn("Small cdc volume detected at {}; setting cdc_total_space_in_mb to {}.  You can override this in cassandra.yaml",conf.cdc_raw_directory,minSize);
+      conf.cdc_total_space_in_mb=minSize;
+    }
+ else {
+      conf.cdc_total_space_in_mb=preferredSize;
+    }
+  }
+  if (conf.cdc_enabled == true) {
+    logger.info("cdc_enabled is true. Starting casssandra node with Change-Data-Capture enabled.");
+  }
+  if (conf.saved_caches_directory == null) {
+    conf.saved_caches_directory=System.getProperty("cassandra.storagedir",null);
+    if (conf.saved_caches_directory == null)     throw new ConfigurationException("saved_caches_directory is missing and -Dcassandra.storagedir is not set",false);
+    conf.saved_caches_directory+=File.separator + "saved_caches";
+  }
+  if (conf.data_file_directories == null || conf.data_file_directories.length == 0) {
+    String defaultDataDir=System.getProperty("cassandra.storagedir",null);
+    if (defaultDataDir == null)     throw new ConfigurationException("data_file_directories is not missing and -Dcassandra.storagedir is not set",false);
+    conf.data_file_directories=new String[]{defaultDataDir + File.separator + "data"};
+  }
+  long dataFreeBytes=0;
+  for (  String datadir : conf.data_file_directories) {
+    if (datadir.equals(conf.commitlog_directory))     throw new ConfigurationException("commitlog_directory must not be the same as any data_file_directories",false);
+    if (datadir.equals(conf.hints_directory))     throw new ConfigurationException("hints_directory must not be the same as any data_file_directories",false);
+    if (datadir.equals(conf.saved_caches_directory))     throw new ConfigurationException("saved_caches_directory must not be the same as any data_file_directories",false);
+    try {
+      dataFreeBytes+=guessFileStore(datadir).getUnallocatedSpace();
+    }
+ catch (    IOException e) {
+      logger.debug("Error checking disk space",e);
+      throw new ConfigurationException(String.format("Unable to check disk space available to %s. Perhaps the Cassandra user does not have the necessary permissions",datadir),e);
+    }
+  }
+  if (dataFreeBytes < 64L * 1024 * 1048576)   logger.warn("Only {} free across all data volumes. Consider adding more capacity to your cluster or removing obsolete snapshots",FBUtilities.prettyPrintMemory(dataFreeBytes));
+  if (conf.commitlog_directory.equals(conf.saved_caches_directory))   throw new ConfigurationException("saved_caches_directory must not be the same as the commitlog_directory",false);
+  if (conf.commitlog_directory.equals(conf.hints_directory))   throw new ConfigurationException("hints_directory must not be the same as the commitlog_directory",false);
+  if (conf.hints_directory.equals(conf.saved_caches_directory))   throw new ConfigurationException("saved_caches_directory must not be the same as the hints_directory",false);
+  if (conf.memtable_flush_writers == null) {
+    conf.memtable_flush_writers=conf.data_file_directories.length == 1 ? 2 : 1;
+  }
+  if (conf.memtable_flush_writers < 1)   throw new ConfigurationException("memtable_flush_writers must be at least 1, but was " + conf.memtable_flush_writers,false);
+  if (conf.memtable_cleanup_threshold == null) {
+    conf.memtable_cleanup_threshold=(float)(1.0 / (1 + conf.memtable_flush_writers));
+  }
+ else {
+    logger.warn("memtable_cleanup_threshold has been deprecated and should be removed from cassandra.yaml");
+  }
+  if (conf.memtable_cleanup_threshold < 0.01f)   throw new ConfigurationException("memtable_cleanup_threshold must be >= 0.01, but was " + conf.memtable_cleanup_threshold,false);
+  if (conf.memtable_cleanup_threshold > 0.99f)   throw new ConfigurationException("memtable_cleanup_threshold must be <= 0.99, but was " + conf.memtable_cleanup_threshold,false);
+  if (conf.memtable_cleanup_threshold < 0.1f)   logger.warn("memtable_cleanup_threshold is set very low [{}], which may cause performance degradation",conf.memtable_cleanup_threshold);
+  if (conf.concurrent_compactors == null)   conf.concurrent_compactors=Math.min(8,Math.max(2,Math.min(FBUtilities.getAvailableProcessors(),conf.data_file_directories.length)));
+  if (conf.concurrent_compactors <= 0)   throw new ConfigurationException("concurrent_compactors should be strictly greater than 0, but was " + conf.concurrent_compactors,false);
+  if (conf.num_tokens == null)   conf.num_tokens=1;
+ else   if (conf.num_tokens > MAX_NUM_TOKENS)   throw new ConfigurationException(String.format("A maximum number of %d tokens per node is supported",MAX_NUM_TOKENS),false);
+  try {
+    preparedStatementsCacheSizeInMB=(conf.prepared_statements_cache_size_mb == null) ? Math.max(10,(int)(Runtime.getRuntime().maxMemory() / 1024 / 1024/ 256)) : conf.prepared_statements_cache_size_mb;
+    if (preparedStatementsCacheSizeInMB <= 0)     throw new NumberFormatException();
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException("prepared_statements_cache_size_mb option was set incorrectly to '" + conf.prepared_statements_cache_size_mb + "', supported values are <integer> >= 0.",false);
+  }
+  try {
+    thriftPreparedStatementsCacheSizeInMB=(conf.thrift_prepared_statements_cache_size_mb == null) ? Math.max(10,(int)(Runtime.getRuntime().maxMemory() / 1024 / 1024/ 256)) : conf.thrift_prepared_statements_cache_size_mb;
+    if (thriftPreparedStatementsCacheSizeInMB <= 0)     throw new NumberFormatException();
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException("thrift_prepared_statements_cache_size_mb option was set incorrectly to '" + conf.thrift_prepared_statements_cache_size_mb + "', supported values are <integer> >= 0.",false);
+  }
+  try {
+    keyCacheSizeInMB=(conf.key_cache_size_in_mb == null) ? Math.min(Math.max(1,(int)(Runtime.getRuntime().totalMemory() * 0.05 / 1024 / 1024)),100) : conf.key_cache_size_in_mb;
+    if (keyCacheSizeInMB < 0)     throw new NumberFormatException();
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException("key_cache_size_in_mb option was set incorrectly to '" + conf.key_cache_size_in_mb + "', supported values are <integer> >= 0.",false);
+  }
+  try {
+    counterCacheSizeInMB=(conf.counter_cache_size_in_mb == null) ? Math.min(Math.max(1,(int)(Runtime.getRuntime().totalMemory() * 0.025 / 1024 / 1024)),50) : conf.counter_cache_size_in_mb;
+    if (counterCacheSizeInMB < 0)     throw new NumberFormatException();
+  }
+ catch (  NumberFormatException e) {
+    throw new ConfigurationException("counter_cache_size_in_mb option was set incorrectly to '" + conf.counter_cache_size_in_mb + "', supported values are <integer> >= 0.",false);
+  }
+  indexSummaryCapacityInMB=(conf.index_summary_capacity_in_mb == null) ? Math.max(1,(int)(Runtime.getRuntime().totalMemory() * 0.05 / 1024 / 1024)) : conf.index_summary_capacity_in_mb;
+  if (indexSummaryCapacityInMB < 0)   throw new ConfigurationException("index_summary_capacity_in_mb option was set incorrectly to '" + conf.index_summary_capacity_in_mb + "', it should be a non-negative integer.",false);
+  if (conf.encryption_options != null) {
+    logger.warn("Please rename encryption_options as server_encryption_options in the yaml");
+    conf.server_encryption_options=conf.encryption_options;
+  }
+  if (conf.user_defined_function_fail_timeout < 0)   throw new ConfigurationException("user_defined_function_fail_timeout must not be negative",false);
+  if (conf.user_defined_function_warn_timeout < 0)   throw new ConfigurationException("user_defined_function_warn_timeout must not be negative",false);
+  if (conf.user_defined_function_fail_timeout < conf.user_defined_function_warn_timeout)   throw new ConfigurationException("user_defined_function_warn_timeout must less than user_defined_function_fail_timeout",false);
+  if (conf.max_mutation_size_in_kb == null)   conf.max_mutation_size_in_kb=conf.commitlog_segment_size_in_mb * 1024 / 2;
+ else   if (conf.commitlog_segment_size_in_mb * 1024 < 2 * conf.max_mutation_size_in_kb)   throw new ConfigurationException("commitlog_segment_size_in_mb must be at least twice the size of max_mutation_size_in_kb / 1024",false);
+  if (conf.native_transport_port_ssl != null && conf.native_transport_port_ssl.intValue() != conf.native_transport_port.intValue() && !conf.client_encryption_options.enabled) {
+    throw new ConfigurationException("Encryption must be enabled in client_encryption_options for native_transport_port_ssl",false);
+  }
+  if (conf.max_value_size_in_mb == null || conf.max_value_size_in_mb <= 0)   throw new ConfigurationException("max_value_size_in_mb must be positive",false);
+switch (conf.disk_optimization_strategy) {
+case ssd:
+    diskOptimizationStrategy=new SsdDiskOptimizationStrategy(conf.disk_optimization_page_cross_chance);
+  break;
+case spinning:
+diskOptimizationStrategy=new SpinningDiskOptimizationStrategy();
+break;
+}
+}

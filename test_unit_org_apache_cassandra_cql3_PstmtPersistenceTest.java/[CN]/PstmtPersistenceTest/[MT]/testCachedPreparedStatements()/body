@@ -1,13 +1,13 @@
 {
   requireNetwork();
-  int rows=QueryProcessor.executeOnceInternal("SELECT * FROM " + SystemKeyspace.NAME + '.'+ SystemKeyspace.PREPARED_STATEMENTS).size();
+  int rows=QueryProcessor.executeOnceInternal("SELECT * FROM " + SchemaConstants.SYSTEM_KEYSPACE_NAME + '.'+ SystemKeyspace.PREPARED_STATEMENTS).size();
   Assert.assertEquals(0,rows);
   execute("CREATE KEYSPACE IF NOT EXISTS foo WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}");
   execute("CREATE TABLE foo.bar (key text PRIMARY KEY, val int)");
   ClientState clientState=ClientState.forExternalCalls(InetSocketAddress.createUnresolved("127.0.0.1",1234));
   createTable("CREATE TABLE %s (pk int PRIMARY KEY, val text)");
   List<MD5Digest> stmtIds=new ArrayList<>();
-  stmtIds.add(QueryProcessor.prepare("SELECT * FROM " + SchemaKeyspace.NAME + '.'+ SchemaKeyspace.TABLES+ " WHERE keyspace_name = ?",clientState,false).statementId);
+  stmtIds.add(QueryProcessor.prepare("SELECT * FROM " + SchemaConstants.SCHEMA_KEYSPACE_NAME + '.'+ SchemaKeyspace.TABLES+ " WHERE keyspace_name = ?",clientState,false).statementId);
   stmtIds.add(QueryProcessor.prepare("SELECT * FROM " + KEYSPACE + '.'+ currentTable()+ " WHERE pk = ?",clientState,false).statementId);
   stmtIds.add(QueryProcessor.prepare("SELECT * FROM foo.bar WHERE key = ?",clientState,false).statementId);
   clientState.setKeyspace("foo");
@@ -15,7 +15,7 @@
   stmtIds.add(QueryProcessor.prepare("SELECT * FROM foo.bar WHERE key = ?",clientState,false).statementId);
   Assert.assertEquals(5,stmtIds.size());
   Assert.assertEquals(5,QueryProcessor.preparedStatementsCount());
-  String queryAll="SELECT * FROM " + SystemKeyspace.NAME + '.'+ SystemKeyspace.PREPARED_STATEMENTS;
+  String queryAll="SELECT * FROM " + SchemaConstants.SYSTEM_KEYSPACE_NAME + '.'+ SystemKeyspace.PREPARED_STATEMENTS;
   rows=QueryProcessor.executeOnceInternal(queryAll).size();
   Assert.assertEquals(5,rows);
   QueryHandler handler=ClientState.getCQLQueryHandler();

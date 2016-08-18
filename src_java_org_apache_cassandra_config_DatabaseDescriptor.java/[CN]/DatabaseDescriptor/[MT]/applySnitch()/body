@@ -1,0 +1,18 @@
+{
+  if (conf.endpoint_snitch == null) {
+    throw new ConfigurationException("Missing endpoint_snitch directive",false);
+  }
+  snitch=createEndpointSnitch(conf.dynamic_snitch,conf.endpoint_snitch);
+  EndpointSnitchInfo.create();
+  localDC=snitch.getDatacenter(FBUtilities.getBroadcastAddress());
+  localComparator=new Comparator<InetAddress>(){
+    public int compare(    InetAddress endpoint1,    InetAddress endpoint2){
+      boolean local1=localDC.equals(snitch.getDatacenter(endpoint1));
+      boolean local2=localDC.equals(snitch.getDatacenter(endpoint2));
+      if (local1 && !local2)       return -1;
+      if (local2 && !local1)       return 1;
+      return 0;
+    }
+  }
+;
+}

@@ -1,0 +1,54 @@
+{
+  PrintStream out=System.out;
+  PrintStream err=System.err;
+  ThreadMXBean threads=ManagementFactory.getThreadMXBean();
+  int threadCount=threads.getThreadCount();
+  ClassLoader delegate=Thread.currentThread().getContextClassLoader();
+  List<Pair<String,Exception>> violations=Collections.synchronizedList(new ArrayList<>());
+  ClassLoader cl=new ClassLoader(null){
+    final Map<String,Class<?>> classMap=new HashMap<>();
+    public URL getResource(    String name){
+      return delegate.getResource(name);
+    }
+    public InputStream getResourceAsStream(    String name){
+      return delegate.getResourceAsStream(name);
+    }
+    protected Class<?> findClass(    String name) throws ClassNotFoundException {
+      Class<?> cls=classMap.get(name);
+      if (cls != null)       return cls;
+      if (name.startsWith("org.apache.cassandra.")) {
+        if (!checkedClasses.contains(name))         violations.add(Pair.create(name,new Exception()));
+      }
+      URL url=delegate.getResource(name.replace('.','/') + ".class");
+      if (url == null)       throw new ClassNotFoundException(name);
+      try (InputStream in=url.openConnection().getInputStream()){
+        ByteArrayOutputStream os=new ByteArrayOutputStream();
+        int c;
+        while ((c=in.read()) != -1)         os.write(c);
+        byte[] data=os.toByteArray();
+        cls=defineClass(name,data,0,data.length);
+        classMap.put(name,cls);
+        return cls;
+      }
+ catch (      IOException e) {
+        throw new ClassNotFoundException(name,e);
+      }
+    }
+  }
+;
+  Thread.currentThread().setContextClassLoader(cl);
+  assertEquals("thread started",threadCount,threads.getThreadCount());
+  Class cDatabaseDescriptor=Class.forName("org.apache.cassandra.config.DatabaseDescriptor",true,cl);
+  for (  String methodName : new String[]{"clientInitialization","applyAddressConfig","applyThriftHSHA","applyInitialTokens","applyEncryptionContext"}) {
+    Method method=cDatabaseDescriptor.getDeclaredMethod(methodName);
+    method.invoke(null);
+    if ("clientInitialization".equals(methodName) && threadCount + 1 == threads.getThreadCount()) {
+      threadCount++;
+    }
+    if (threadCount != threads.getThreadCount()) {
+      for (      ThreadInfo threadInfo : threads.getThreadInfo(threads.getAllThreadIds()))       out.println("Thread #" + threadInfo.getThreadId() + ": "+ threadInfo.getThreadName());
+      assertEquals("thread started in " + methodName,threadCount,ManagementFactory.getThreadMXBean().getThreadCount());
+    }
+    checkViolations(err,violations);
+  }
+}
