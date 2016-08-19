@@ -10,13 +10,18 @@
     }
  else {
       MessagingService.instance().incrementDroppedMessages(verb,System.currentTimeMillis() - constructionTime);
-      handler.onFailure(FBUtilities.getBroadcastAddress());
+      handler.onFailure(FBUtilities.getBroadcastAddress(),RequestFailureReason.UNKNOWN);
     }
     MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(),TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
   }
  catch (  Throwable t) {
-    handler.onFailure(FBUtilities.getBroadcastAddress());
-    if (t instanceof TombstoneOverwhelmingException)     logger.error(t.getMessage());
- else     throw t;
+    if (t instanceof TombstoneOverwhelmingException) {
+      handler.onFailure(FBUtilities.getBroadcastAddress(),RequestFailureReason.READ_TOO_MANY_TOMBSTONES);
+      logger.error(t.getMessage());
+    }
+ else {
+      handler.onFailure(FBUtilities.getBroadcastAddress(),RequestFailureReason.UNKNOWN);
+      throw t;
+    }
   }
 }
