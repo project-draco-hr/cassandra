@@ -1,23 +1,8 @@
 {
-  System.out.println("Compaction History: ");
-  TabularData tabularData=probe.getCompactionHistory();
-  if (tabularData.isEmpty()) {
-    System.out.printf("There is no compaction history");
-    return;
+  if (!outputFormat.isEmpty() && !"json".equals(outputFormat) && !"yaml".equals(outputFormat)) {
+    throw new IllegalArgumentException("arguments for -F are json,yaml only.");
   }
-  TableBuilder table=new TableBuilder();
-  List<String> indexNames=tabularData.getTabularType().getIndexNames();
-  table.add(toArray(indexNames,String.class));
-  Set<?> values=tabularData.keySet();
-  List<CompactionHistoryRow> chr=new ArrayList<>();
-  for (  Object eachValue : values) {
-    List<?> value=(List<?>)eachValue;
-    CompactionHistoryRow chc=new CompactionHistoryRow((String)value.get(0),(String)value.get(1),(String)value.get(2),(Long)value.get(3),(Long)value.get(4),(Long)value.get(5),(String)value.get(6));
-    chr.add(chc);
-  }
-  Collections.sort(chr);
-  for (  CompactionHistoryRow eachChc : chr) {
-    table.add(eachChc.getAllAsArray());
-  }
-  table.printTo(System.out);
+  StatsHolder data=new CompactionHistoryHolder(probe);
+  StatsPrinter printer=CompactionHistoryPrinter.from(outputFormat);
+  printer.print(data,System.out);
 }

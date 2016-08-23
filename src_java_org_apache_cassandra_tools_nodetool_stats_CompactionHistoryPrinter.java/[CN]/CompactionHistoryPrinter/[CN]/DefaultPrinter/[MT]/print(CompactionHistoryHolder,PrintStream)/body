@@ -1,0 +1,25 @@
+{
+  out.println("Compaction History: ");
+  Map<String,Object> convertData=data.convert2Map();
+  List<Object> compactionHistories=convertData.get("CompactionHistory") instanceof List<?> ? (List)convertData.get("CompactionHistory") : Collections.emptyList();
+  List<String> indexNames=data.indexNames;
+  if (compactionHistories.size() == 0) {
+    out.printf("There is no compaction history");
+    return;
+  }
+  TableBuilder table=new TableBuilder();
+  table.add(toArray(indexNames,String.class));
+  for (  Object chr : compactionHistories) {
+    Map value=chr instanceof Map<?,?> ? (Map)chr : Collections.emptyMap();
+    String[] obj=new String[7];
+    obj[0]=(String)value.get("id");
+    obj[1]=(String)value.get("keyspace_name");
+    obj[2]=(String)value.get("columnfamily_name");
+    obj[3]=(String)value.get("compacted_at");
+    obj[4]=value.get("bytes_in").toString();
+    obj[5]=value.get("bytes_out").toString();
+    obj[6]=(String)value.get("rows_merged");
+    table.add(obj);
+  }
+  table.printTo(out);
+}
