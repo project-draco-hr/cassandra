@@ -1,5 +1,5 @@
 {
-  if (logger.isTraceEnabled())   logger.trace("attempting to connect to {}",poolReference.endPoint());
+  logger.debug("Attempting to connect to {}",poolReference.endPoint());
   long start=System.nanoTime();
   long timeout=TimeUnit.MILLISECONDS.toNanos(DatabaseDescriptor.getRpcTimeout());
   while (System.nanoTime() - start < timeout) {
@@ -50,7 +50,7 @@
       CompactEndpointSerializationHelper.serialize(FBUtilities.getBroadcastAddress(),out);
       if (shouldCompressConnection()) {
         out.flush();
-        logger.trace("Upgrading OutputStream to be compressed");
+        logger.trace("Upgrading OutputStream to {} to be compressed",poolReference.endPoint());
         if (targetVersion < MessagingService.VERSION_21) {
           out=new WrappedDataOutputStreamPlus(new SnappyOutputStream(socket.getOutputStream()));
         }
@@ -60,6 +60,7 @@
           out=new WrappedDataOutputStreamPlus(new LZ4BlockOutputStream(socket.getOutputStream(),1 << 14,compressor,checksum,true));
         }
       }
+      logger.debug("Done connecting to {}",poolReference.endPoint());
       return true;
     }
  catch (    SSLHandshakeException e) {
@@ -69,7 +70,7 @@
     }
 catch (    IOException e) {
       socket=null;
-      if (logger.isTraceEnabled())       logger.trace("unable to connect to " + poolReference.endPoint(),e);
+      logger.debug("Unable to connect to {}",poolReference.endPoint(),e);
       Uninterruptibles.sleepUninterruptibly(OPEN_RETRY_DELAY,TimeUnit.MILLISECONDS);
     }
   }
