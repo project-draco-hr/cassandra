@@ -22,17 +22,13 @@
   if (hasExtendedFlags)   out.writeByte((byte)extendedFlags);
   if (!isStatic)   Clustering.serializer.serialize(row.clustering(),out,version,header.clusteringTypes());
   if (header.isForSSTable()) {
-    DataOutputBuffer dob=DataOutputBuffer.scratchBuffer.get();
-    try {
+    try (DataOutputBuffer dob=DataOutputBuffer.scratchBuffer.get()){
       serializeRowBody(row,flags,header,dob);
       out.writeUnsignedVInt(dob.position() + TypeSizes.sizeofUnsignedVInt(previousUnfilteredSize));
       out.writeUnsignedVInt(previousUnfilteredSize);
       out.write(dob.getData(),0,dob.getLength());
     }
-  finally {
-      dob.recycle();
-    }
-  }
+   }
  else {
     serializeRowBody(row,flags,header,out);
   }
