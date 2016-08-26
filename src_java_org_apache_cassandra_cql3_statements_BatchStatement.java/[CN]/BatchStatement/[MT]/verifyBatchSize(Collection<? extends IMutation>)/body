@@ -2,7 +2,6 @@
   if (mutations.size() <= 1)   return;
   long size=0;
   long warnThreshold=DatabaseDescriptor.getBatchSizeWarnThreshold();
-  long failThreshold=DatabaseDescriptor.getBatchSizeFailThreshold();
   for (  IMutation mutation : mutations) {
     for (    PartitionUpdate update : mutation.getPartitionUpdates())     size+=update.dataSize();
   }
@@ -11,6 +10,7 @@
     for (    IMutation mutation : mutations) {
       for (      PartitionUpdate update : mutation.getPartitionUpdates())       tableNames.add(String.format("%s.%s",update.metadata().ksName,update.metadata().cfName));
     }
+    long failThreshold=DatabaseDescriptor.getBatchSizeFailThreshold();
     String format="Batch for {} is of size {}, exceeding specified threshold of {} by {}.{}";
     if (size > failThreshold) {
       Tracing.trace(format,tableNames,FBUtilities.prettyPrintMemory(size),FBUtilities.prettyPrintMemory(failThreshold),FBUtilities.prettyPrintMemory(size - failThreshold)," (see batch_size_fail_threshold_in_kb)");
