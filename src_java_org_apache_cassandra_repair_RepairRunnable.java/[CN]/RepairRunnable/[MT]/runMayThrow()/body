@@ -2,9 +2,18 @@
   final TraceState traceState;
   final String tag="repair:" + cmd;
   final AtomicInteger progress=new AtomicInteger();
-  final int totalProgress=3 + options.getRanges().size();
+  final int totalProgress=4 + options.getRanges().size();
   String[] columnFamilies=options.getColumnFamilies().toArray(new String[options.getColumnFamilies().size()]);
-  Iterable<ColumnFamilyStore> validColumnFamilies=storageService.getValidColumnFamilies(false,false,keyspace,columnFamilies);
+  Iterable<ColumnFamilyStore> validColumnFamilies;
+  try {
+    validColumnFamilies=storageService.getValidColumnFamilies(false,false,keyspace,columnFamilies);
+    progress.incrementAndGet();
+  }
+ catch (  IllegalArgumentException e) {
+    logger.error("Repair failed:",e);
+    fireErrorAndComplete(tag,progress.get(),totalProgress,e.getMessage());
+    return;
+  }
   final long startTime=System.currentTimeMillis();
   String message=String.format("Starting repair command #%d, repairing keyspace %s with %s",cmd,keyspace,options);
   logger.info(message);
