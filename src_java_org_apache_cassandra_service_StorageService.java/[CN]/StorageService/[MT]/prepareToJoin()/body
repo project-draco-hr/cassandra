@@ -14,8 +14,11 @@
       if (SystemKeyspace.bootstrapComplete())       throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
       if (!DatabaseDescriptor.isAutoBootstrap())       throw new RuntimeException("Trying to replace_address with auto_bootstrap disabled will not work, check your configuration");
       bootstrapTokens=prepareReplacementInfo();
-      appStates.put(ApplicationState.TOKENS,valueFactory.tokens(bootstrapTokens));
-      appStates.put(ApplicationState.STATUS,valueFactory.hibernate(true));
+      if (isReplacingSameAddress()) {
+        logger.warn("Writes will not be forwarded to this node during replacement because it has the same address as " + "the node to be replaced ({}). If the previous node has been down for longer than max_hint_window_in_ms, " + "repair must be run after the replacement process in order to make this node consistent.",DatabaseDescriptor.getReplaceAddress());
+        appStates.put(ApplicationState.TOKENS,valueFactory.tokens(bootstrapTokens));
+        appStates.put(ApplicationState.STATUS,valueFactory.hibernate(true));
+      }
     }
  else     if (shouldBootstrap()) {
       checkForEndpointCollision();
