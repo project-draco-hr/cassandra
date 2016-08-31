@@ -1,0 +1,27 @@
+{
+  final long currentTimeMs=System.currentTimeMillis();
+  final long startTimeMs=currentTimeMs - (currentTimeMs % 1000);
+  long reportingStartNs=(System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(currentTimeMs - startTimeMs));
+  final long parkIntervalNs=TimeUnit.MILLISECONDS.toNanos(logIntervalMillis);
+  try {
+    while (!stop) {
+      final long wakupTarget=reportingStartNs + parkIntervalNs;
+      sleepUntil(wakupTarget);
+      if (stop) {
+        break;
+      }
+      recordInterval(wakupTarget,parkIntervalNs);
+      reportingStartNs+=parkIntervalNs;
+    }
+    final long end=System.nanoTime();
+    recordInterval(end,end - reportingStartNs);
+  }
+ catch (  Exception e) {
+    e.printStackTrace();
+    cancel();
+  }
+ finally {
+    rowRateUncertainty.wakeAll();
+    stopped.countDown();
+  }
+}

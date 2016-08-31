@@ -1,0 +1,26 @@
+{
+  drainConsumerMeasurements(intervalEnd,parkIntervalNs);
+  GcStats gcStats=null;
+  try {
+    gcStats=gcStatsCollector.call();
+  }
+ catch (  Exception e) {
+    gcStats=new GcStats(0);
+  }
+  totalGcStats=JmxCollector.GcStats.aggregate(Arrays.asList(totalGcStats,gcStats));
+  rowRateUncertainty.update(totalCurrentInterval.adjustedRowRate());
+  if (totalCurrentInterval.operationCount() != 0) {
+    final boolean logPerOpSummaryLine=opTypeToCurrentTimingInterval.size() > 1;
+    for (    Map.Entry<String,TimingInterval> type : opTypeToCurrentTimingInterval.entrySet()) {
+      final String opName=type.getKey();
+      final TimingInterval opInterval=type.getValue();
+      if (logPerOpSummaryLine) {
+        printRow("",opName,opInterval,opTypeToSummaryTimingInterval.get(opName),gcStats,rowRateUncertainty,output);
+      }
+      logHistograms(opName,opInterval);
+      opInterval.reset();
+    }
+    printRow("","total",totalCurrentInterval,totalSummaryInterval,gcStats,rowRateUncertainty,output);
+    totalCurrentInterval.reset();
+  }
+}
