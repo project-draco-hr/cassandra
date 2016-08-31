@@ -12,14 +12,15 @@
     if (!MessagingService.instance().isListening())     MessagingService.instance().listen();
     UUID localHostId=SystemKeyspace.getLocalHostId();
     if (replacing) {
-      if (SystemKeyspace.bootstrapComplete())       throw new RuntimeException("Cannot replace address with a node that is already bootstrapped");
-      if (!(Boolean.parseBoolean(System.getProperty("cassandra.join_ring","true"))))       throw new ConfigurationException("Cannot set both join_ring=false and attempt to replace a node");
-      if (!DatabaseDescriptor.isAutoBootstrap() && !Boolean.getBoolean("cassandra.allow_unsafe_replace"))       throw new RuntimeException("Replacing a node without bootstrapping risks invalidating consistency " + "guarantees as the expected data may not be present until repair is run. " + "To perform this operation, please restart with "+ "-Dcassandra.allow_unsafe_replace=true");
-      InetAddress replaceAddress=DatabaseDescriptor.getReplaceAddress();
-      localHostId=prepareReplacementInfo(replaceAddress);
+      localHostId=prepareForReplacement();
       appStates.put(ApplicationState.TOKENS,valueFactory.tokens(bootstrapTokens));
-      if (DatabaseDescriptor.isAutoBootstrap())       appStates.put(ApplicationState.STATUS,valueFactory.hibernate(true));
- else       SystemKeyspace.updateTokens(bootstrapTokens);
+      if (!DatabaseDescriptor.isAutoBootstrap()) {
+        SystemKeyspace.updateTokens(bootstrapTokens);
+      }
+ else       if (isReplacingSameAddress()) {
+        logger.warn("Writes will not be forwarded to this node during replacement because it has the same address as " + "the node to be replaced ({}). If the previous node has been down for longer than max_hint_window_in_ms, " + "repair must be run after the replacement process in order to make this node consistent.",DatabaseDescriptor.getReplaceAddress());
+        appStates.put(ApplicationState.STATUS,valueFactory.hibernate(true));
+      }
     }
  else {
       checkForEndpointCollision(localHostId);
