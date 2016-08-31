@@ -1,0 +1,26 @@
+{
+  Keyspace ks=Keyspace.open(keyspace);
+  ColumnFamilyStore cfs=ks.getColumnFamilyStore(columnFamily);
+  cfs.clearUnsafe();
+  cfs.disableAutoCompaction();
+  CompactionsTest.populate(keyspace,columnFamily,0,n,0);
+  cfs.forceBlockingFlush();
+  assertEquals(1,cfs.getSSTables().size());
+  TimeUnit.SECONDS.sleep(5);
+  SSTableReader sstable=cfs.getSSTables().iterator().next();
+  UUID repairSessionId=UUIDGen.getTimeUUID();
+  final RepairJobDesc desc=new RepairJobDesc(repairSessionId,UUIDGen.getTimeUUID(),cfs.keyspace.getName(),cfs.getColumnFamilyName(),new Range<Token>(sstable.first.getToken(),sstable.last.getToken()));
+  ActiveRepairService.instance.registerParentRepairSession(repairSessionId,FBUtilities.getBroadcastAddress(),Collections.singletonList(cfs),Collections.singleton(desc.range),false,false);
+  final ListenableFuture<MessageOut> outgoingMessageSink=registerOutgoingMessageSink();
+  Validator validator=new Validator(desc,FBUtilities.getBroadcastAddress(),0,true);
+  CompactionManager.instance.submitValidation(cfs,validator);
+  MessageOut message=outgoingMessageSink.get(TEST_TIMEOUT,TimeUnit.SECONDS);
+  assertEquals(MessagingService.Verb.REPAIR_MESSAGE,message.verb);
+  RepairMessage m=(RepairMessage)message.payload;
+  assertEquals(RepairMessage.Type.VALIDATION_COMPLETE,m.messageType);
+  assertEquals(desc,m.desc);
+  assertTrue(((ValidationComplete)m).success);
+  MerkleTree tree=((ValidationComplete)m).tree;
+  assertEquals(Math.pow(2,Math.ceil(Math.log(n) / Math.log(2))),tree.size(),0.0);
+  assertEquals(tree.rowCount(),n);
+}
