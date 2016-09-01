@@ -1,10 +1,10 @@
 {
   isBootstrapMode=true;
   SystemKeyspace.updateTokens(tokens);
-  if (!replacing) {
+  if (!replacing || !isReplacingSameAddress()) {
     List<Pair<ApplicationState,VersionedValue>> states=new ArrayList<>();
     states.add(Pair.create(ApplicationState.TOKENS,valueFactory.tokens(tokens)));
-    states.add(Pair.create(ApplicationState.STATUS,valueFactory.bootstrapping(tokens)));
+    states.add(Pair.create(ApplicationState.STATUS,replacing ? valueFactory.bootReplacing(DatabaseDescriptor.getReplaceAddress()) : valueFactory.bootstrapping(tokens)));
     Gossiper.instance.addLocalApplicationStates(states);
     setMode(Mode.JOINING,"sleeping " + RING_DELAY + " ms for pending range setup",true);
     Uninterruptibles.sleepUninterruptibly(RING_DELAY,TimeUnit.MILLISECONDS);
