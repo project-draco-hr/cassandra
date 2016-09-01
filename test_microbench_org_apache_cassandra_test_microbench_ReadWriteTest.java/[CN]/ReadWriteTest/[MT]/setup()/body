@@ -1,0 +1,12 @@
+{
+  CQLTester.setUpClass();
+  keyspace=createKeyspace("CREATE KEYSPACE %s with replication = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 } and durable_writes = false");
+  table=createTable(keyspace,"CREATE TABLE %s ( userid bigint, picid bigint, commentid bigint, PRIMARY KEY(userid, picid))");
+  execute("use " + keyspace + ";");
+  writeStatement="INSERT INTO " + table + "(userid,picid,commentid)VALUES(?,?,?)";
+  readStatement="SELECT * from " + table + " limit 100";
+  cfs=Keyspace.open(keyspace).getColumnFamilyStore(table);
+  cfs.disableAutoCompaction();
+  System.err.println("Writing 50k");
+  for (long i=0; i < 5000; i++)   execute(writeStatement,i,i,i);
+}
