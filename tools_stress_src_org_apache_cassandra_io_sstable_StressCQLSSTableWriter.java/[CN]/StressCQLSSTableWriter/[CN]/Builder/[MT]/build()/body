@@ -1,0 +1,14 @@
+{
+  if (directoryList.isEmpty() && cfs == null)   throw new IllegalStateException("No output directories specified, you should provide a directory with inDirectory()");
+  if (schemaStatement == null && cfs == null)   throw new IllegalStateException("Missing schema, you should provide the schema for the SSTable to create with forTable()");
+  if (insertStatement == null)   throw new IllegalStateException("No insert statement specified, you should provide an insert statement through using()");
+synchronized (StressCQLSSTableWriter.class) {
+    if (cfs == null)     cfs=createOfflineTable(schemaStatement,typeStatements,directoryList);
+    if (partitioner == null)     partitioner=cfs.getPartitioner();
+    Pair<UpdateStatement,List<ColumnSpecification>> preparedInsert=prepareInsert();
+    AbstractSSTableSimpleWriter writer=sorted ? new SSTableSimpleWriter(cfs.getDirectories().getDirectoryForNewSSTables(),cfs.metadata,preparedInsert.left.updatedColumns()) : new SSTableSimpleUnsortedWriter(cfs.getDirectories().getDirectoryForNewSSTables(),cfs.metadata,preparedInsert.left.updatedColumns(),bufferSizeInMB);
+    if (formatType != null)     writer.setSSTableFormatType(formatType);
+    writer.setRangeAwareWriting(makeRangeAware);
+    return new StressCQLSSTableWriter(cfs,writer,preparedInsert.left,preparedInsert.right);
+  }
+}
