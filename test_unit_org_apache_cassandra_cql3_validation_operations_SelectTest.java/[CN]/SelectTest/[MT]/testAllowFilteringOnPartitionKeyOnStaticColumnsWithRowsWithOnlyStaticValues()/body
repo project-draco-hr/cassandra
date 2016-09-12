@@ -1,0 +1,10 @@
+{
+  createTable("CREATE TABLE %s (a int, b int, s int static, c int, d int, primary key (a, b))");
+  for (int i=0; i < 5; i++) {
+    execute("INSERT INTO %s (a, s) VALUES (?, ?)",i,i);
+    if (i != 2)     for (int j=0; j < 4; j++)     execute("INSERT INTO %s (a, b, c, d) VALUES (?, ?, ?, ?)",i,j,j,i + j);
+  }
+  assertRowsIgnoringOrder(execute("SELECT * FROM %s WHERE a >= 1 AND c = 2 AND s >= 1 ALLOW FILTERING"),row(1,2,1,2,3),row(3,2,3,2,5),row(4,2,4,2,6));
+  assertRows(execute("SELECT * FROM %s WHERE a >= 1 AND c = 2 AND s >= 1 LIMIT 2 ALLOW FILTERING"),row(1,2,1,2,3),row(4,2,4,2,6));
+  assertRowsIgnoringOrder(execute("SELECT * FROM %s WHERE a >= 3 AND c = 2 AND s >= 1 LIMIT 2 ALLOW FILTERING"),row(4,2,4,2,6),row(3,2,3,2,5));
+}

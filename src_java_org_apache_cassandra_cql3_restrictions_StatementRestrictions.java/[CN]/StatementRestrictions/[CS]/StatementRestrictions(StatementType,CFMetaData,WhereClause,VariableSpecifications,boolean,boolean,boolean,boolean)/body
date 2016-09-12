@@ -27,8 +27,8 @@
     hasQueriableClusteringColumnIndex=clusteringColumnsRestrictions.hasSupportingIndex(secondaryIndexManager);
     hasQueriableIndex=!filterRestrictions.getCustomIndexExpressions().isEmpty() || hasQueriableClusteringColumnIndex || partitionKeyRestrictions.hasSupportingIndex(secondaryIndexManager)|| nonPrimaryKeyRestrictions.hasSupportingIndex(secondaryIndexManager);
   }
-  processPartitionKeyRestrictions(hasQueriableIndex);
-  if (usesSecondaryIndexing)   filterRestrictions.add(partitionKeyRestrictions);
+  processPartitionKeyRestrictions(hasQueriableIndex,allowFiltering,forView);
+  if (usesSecondaryIndexing || partitionKeyRestrictions.needFiltering(cfm))   filterRestrictions.add(partitionKeyRestrictions);
   if (selectsOnlyStaticColumns && hasClusteringColumnsRestriction()) {
     if (type.isDelete() || type.isUpdate())     throw invalidRequest("Invalid restrictions on clustering columns since the %s statement modifies only static columns",type);
     if (type.isSelect())     throw invalidRequest("Cannot restrict clustering columns when selecting only static columns");

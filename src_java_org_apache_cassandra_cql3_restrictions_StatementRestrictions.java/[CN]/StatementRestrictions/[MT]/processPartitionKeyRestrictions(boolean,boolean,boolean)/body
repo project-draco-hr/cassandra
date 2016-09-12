@@ -1,0 +1,20 @@
+{
+  if (!type.allowPartitionKeyRanges()) {
+    checkFalse(partitionKeyRestrictions.isOnToken(),"The token function cannot be used in WHERE clauses for %s statements",type);
+    if (partitionKeyRestrictions.hasUnrestrictedPartitionKeyComponents(cfm))     throw invalidRequest("Some partition key parts are missing: %s",Joiner.on(", ").join(getPartitionKeyUnrestrictedComponents()));
+    checkFalse(partitionKeyRestrictions.hasSlice(),"Only EQ and IN relation are supported on the partition key (unless you use the token() function)" + " for %s statements",type);
+  }
+ else {
+    if (partitionKeyRestrictions.isOnToken())     isKeyRange=true;
+    if (partitionKeyRestrictions.isEmpty() && partitionKeyRestrictions.hasUnrestrictedPartitionKeyComponents(cfm)) {
+      isKeyRange=true;
+      usesSecondaryIndexing=hasQueriableIndex;
+    }
+    if (partitionKeyRestrictions.needFiltering(cfm)) {
+      if (!allowFiltering && !forView && !hasQueriableIndex&& (partitionKeyRestrictions.hasUnrestrictedPartitionKeyComponents(cfm) || partitionKeyRestrictions.hasSlice()))       throw new InvalidRequestException(REQUIRES_ALLOW_FILTERING_MESSAGE);
+      if (partitionKeyRestrictions.hasIN())       throw new InvalidRequestException("IN restrictions are not supported when the query involves filtering");
+      isKeyRange=true;
+      usesSecondaryIndexing=hasQueriableIndex;
+    }
+  }
+}

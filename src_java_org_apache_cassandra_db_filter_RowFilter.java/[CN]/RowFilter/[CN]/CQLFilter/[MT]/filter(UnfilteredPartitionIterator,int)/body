@@ -1,2 +1,28 @@
 {
+  if (expressions.isEmpty())   return iter;
+  final CFMetaData metadata=iter.metadata();
+  List<Expression> partitionLevelExpressions=new ArrayList<>();
+  List<Expression> rowLevelExpressions=new ArrayList<>();
+  for (  Expression e : expressions) {
+    if (e.column.isStatic() || e.column.isPartitionKey())     partitionLevelExpressions.add(e);
+ else     rowLevelExpressions.add(e);
+  }
+  long numberOfRegularColumnExpressions=rowLevelExpressions.size();
+  final boolean filterNonStaticColumns=numberOfRegularColumnExpressions > 0;
+class IsSatisfiedFilter extends Transformation<UnfilteredRowIterator> {
+    DecoratedKey pk;
+    public UnfilteredRowIterator applyToPartition(    UnfilteredRowIterator partition){
+      pk=partition.partitionKey();
+      for (      Expression e : partitionLevelExpressions)       if (!e.isSatisfiedBy(metadata,partition.partitionKey(),partition.staticRow()))       return null;
+      UnfilteredRowIterator iterator=Transformation.apply(partition,this);
+      return (filterNonStaticColumns && !iterator.hasNext()) ? null : iterator;
+    }
+    public Row applyToRow(    Row row){
+      Row purged=row.purge(DeletionPurger.PURGE_ALL,nowInSec);
+      if (purged == null)       return null;
+      for (      Expression e : rowLevelExpressions)       if (!e.isSatisfiedBy(metadata,pk,purged))       return null;
+      return row;
+    }
+  }
+  return Transformation.apply(iter,new IsSatisfiedFilter());
 }
