@@ -6,7 +6,7 @@
   LogTransaction log=new LogTransaction(OperationType.COMPACTION);
   assertNotNull(log);
   log.trackNew(sstableNew);
-  log.obsoleted(sstableOld);
+  LogTransaction.SSTableTidier tidier=log.obsoleted(sstableOld);
   modifier.accept(sstableOld);
   log.txnFile().commit();
   LogTransaction.removeUnfinishedLeftovers(cfs.metadata);
@@ -15,4 +15,5 @@
   sstableNew.selfRef().release();
   assertNull(log.complete(null));
   assertFiles(dataFolder.getPath(),Sets.newHashSet(Iterables.concat(sstableNew.getAllFilePaths(),sstableOld.getAllFilePaths(),log.logFilePaths())));
+  tidier.run();
 }
