@@ -1,0 +1,25 @@
+{
+  pruneLock.readLock().lock();
+  try {
+    while (true) {
+      long now=timeSource.currentTimeMillis();
+      long lastTimestamp=lastCounterTimestamp.get();
+      boolean isWithinPrecisionRange=(now - lastTimestamp) < precisionInMillis;
+      AtomicInteger lastCounter=counters.get(lastTimestamp);
+      if (lastCounter != null && isWithinPrecisionRange) {
+        lastCounter.addAndGet(delta);
+        break;
+      }
+ else       if (lastCounterTimestamp.compareAndSet(lastTimestamp,now)) {
+        AtomicInteger existing=counters.putIfAbsent(now,new AtomicInteger(delta));
+        if (existing != null) {
+          existing.addAndGet(delta);
+        }
+        break;
+      }
+    }
+  }
+  finally {
+    pruneLock.readLock().unlock();
+  }
+}

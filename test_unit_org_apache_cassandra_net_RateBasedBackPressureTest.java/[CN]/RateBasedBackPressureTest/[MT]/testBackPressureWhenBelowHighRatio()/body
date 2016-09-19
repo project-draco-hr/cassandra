@@ -1,0 +1,11 @@
+{
+  long windowSize=6000;
+  TestTimeSource timeSource=new TestTimeSource();
+  RateBasedBackPressure strategy=new RateBasedBackPressure(ImmutableMap.of(HIGH_RATIO,"0.9",FACTOR,"10",FLOW,"FAST"),timeSource,windowSize);
+  RateBasedBackPressureState state=strategy.newState(InetAddress.getLoopbackAddress());
+  state.incomingRate.update(50);
+  state.outgoingRate.update(100);
+  timeSource.sleep(windowSize,TimeUnit.MILLISECONDS);
+  strategy.apply(Sets.newHashSet(state),1,TimeUnit.SECONDS);
+  assertEquals(7.4,state.rateLimiter.getRate(),0.1);
+}

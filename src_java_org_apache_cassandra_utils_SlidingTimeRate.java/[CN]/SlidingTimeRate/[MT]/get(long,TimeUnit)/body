@@ -1,0 +1,19 @@
+{
+  pruneLock.readLock().lock();
+  try {
+    long toAgoInMillis=TimeUnit.MILLISECONDS.convert(toAgo,unit);
+    Preconditions.checkArgument(toAgoInMillis < sizeInMillis,"Cannot get rate in the past!");
+    long now=timeSource.currentTimeMillis();
+    long sum=0;
+    ConcurrentNavigableMap<Long,AtomicInteger> tailCounters=counters.tailMap(now - sizeInMillis,true).headMap(now - toAgoInMillis,true);
+    for (    AtomicInteger i : tailCounters.values()) {
+      sum+=i.get();
+    }
+    double rateInMillis=sum == 0 ? sum : sum / (double)Math.max(1000,(now - toAgoInMillis) - tailCounters.firstKey());
+    double multiplier=TimeUnit.MILLISECONDS.convert(1,unit);
+    return rateInMillis * multiplier;
+  }
+  finally {
+    pruneLock.readLock().unlock();
+  }
+}

@@ -1,0 +1,27 @@
+{
+  long windowSize=10000;
+  TestTimeSource timeSource=new TestTimeSource();
+  TestableBackPressure strategy=new TestableBackPressure(ImmutableMap.of(HIGH_RATIO,"0.9",FACTOR,"10",FLOW,"SLOW"),timeSource,windowSize);
+  RateBasedBackPressureState state1=strategy.newState(InetAddress.getByName("127.0.0.1"));
+  RateBasedBackPressureState state2=strategy.newState(InetAddress.getByName("127.0.0.2"));
+  RateBasedBackPressureState state3=strategy.newState(InetAddress.getByName("127.0.0.3"));
+  state1.incomingRate.update(5);
+  state1.outgoingRate.update(100);
+  state2.incomingRate.update(100);
+  state2.outgoingRate.update(100);
+  state3.incomingRate.update(100);
+  state3.outgoingRate.update(100);
+  timeSource.sleep(windowSize,TimeUnit.MILLISECONDS);
+  Set<RateBasedBackPressureState> replicaGroup=Sets.newHashSet(state1,state2,state3);
+  strategy.apply(replicaGroup,4,TimeUnit.SECONDS);
+  assertTrue(strategy.checkAcquired());
+  assertTrue(strategy.checkApplied());
+  assertEquals(0.5,strategy.getRateLimiterForReplicaGroup(replicaGroup).getRate(),0.1);
+  strategy.apply(replicaGroup,4,TimeUnit.SECONDS);
+  long start=timeSource.currentTimeMillis();
+  strategy.apply(replicaGroup,4,TimeUnit.SECONDS);
+  assertFalse(strategy.checkAcquired());
+  assertTrue(strategy.checkApplied());
+  assertEquals(TimeUnit.NANOSECONDS.convert(2,TimeUnit.SECONDS),strategy.timeout);
+  assertEquals(strategy.timeout,TimeUnit.NANOSECONDS.convert(timeSource.currentTimeMillis() - start,TimeUnit.MILLISECONDS));
+}

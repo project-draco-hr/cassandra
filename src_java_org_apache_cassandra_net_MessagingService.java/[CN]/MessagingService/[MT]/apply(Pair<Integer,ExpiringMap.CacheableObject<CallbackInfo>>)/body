@@ -3,6 +3,9 @@
   maybeAddLatency(expiredCallbackInfo.callback,expiredCallbackInfo.target,pair.right.timeout);
   ConnectionMetrics.totalTimeouts.mark();
   getConnectionPool(expiredCallbackInfo.target).incrementTimeout();
+  if (expiredCallbackInfo.callback.supportsBackPressure()) {
+    updateBackPressureOnReceive(expiredCallbackInfo.target,expiredCallbackInfo.callback,true);
+  }
   if (expiredCallbackInfo.isFailureCallback()) {
     StageManager.getStage(Stage.INTERNAL_RESPONSE).submit(new Runnable(){
       @Override public void run(){

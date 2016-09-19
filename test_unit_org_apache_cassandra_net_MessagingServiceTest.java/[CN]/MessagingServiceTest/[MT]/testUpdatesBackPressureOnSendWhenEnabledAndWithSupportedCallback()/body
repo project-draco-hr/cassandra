@@ -1,0 +1,15 @@
+{
+  MockBackPressureStrategy.MockBackPressureState backPressureState=(MockBackPressureStrategy.MockBackPressureState)messagingService.getConnectionPool(InetAddress.getByName("127.0.0.2")).getBackPressureState();
+  IAsyncCallback bpCallback=new BackPressureCallback();
+  IAsyncCallback noCallback=new NoBackPressureCallback();
+  MessageOut<?> ignored=null;
+  DatabaseDescriptor.setBackPressureEnabled(true);
+  messagingService.updateBackPressureOnSend(InetAddress.getByName("127.0.0.2"),noCallback,ignored);
+  assertFalse(backPressureState.onSend);
+  DatabaseDescriptor.setBackPressureEnabled(false);
+  messagingService.updateBackPressureOnSend(InetAddress.getByName("127.0.0.2"),bpCallback,ignored);
+  assertFalse(backPressureState.onSend);
+  DatabaseDescriptor.setBackPressureEnabled(true);
+  messagingService.updateBackPressureOnSend(InetAddress.getByName("127.0.0.2"),bpCallback,ignored);
+  assertTrue(backPressureState.onSend);
+}
