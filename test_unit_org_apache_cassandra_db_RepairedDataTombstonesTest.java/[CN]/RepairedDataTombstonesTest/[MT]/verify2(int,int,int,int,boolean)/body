@@ -1,10 +1,9 @@
 {
-  ReadCommand cmd=Util.cmd(getCurrentColumnFamilyStore()).build();
+  ReadCommand cmd=Util.cmd(getCurrentColumnFamilyStore(),Util.dk(ByteBufferUtil.bytes(key))).build();
   int foundRows=0;
-  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iterator=cmd.executeLocally(orderGroup)){
+  try (ReadOrderGroup orderGroup=cmd.startOrderGroup();UnfilteredPartitionIterator iterator=includePurgeable ? cmd.queryStorage(getCurrentColumnFamilyStore(),orderGroup) : cmd.executeLocally(orderGroup)){
     while (iterator.hasNext()) {
-      UnfilteredRowIterator rowIter=iterator.next();
-      if (!rowIter.partitionKey().equals(Util.dk(ByteBufferUtil.bytes(999)))) {
+      try (UnfilteredRowIterator rowIter=iterator.next()){
         while (rowIter.hasNext()) {
           AbstractRow row=(AbstractRow)rowIter.next();
           for (int i=0; i < row.clustering().size(); i++) {
@@ -14,7 +13,7 @@
           }
         }
       }
-    }
+     }
   }
    assertEquals(expectedRows,foundRows);
 }
