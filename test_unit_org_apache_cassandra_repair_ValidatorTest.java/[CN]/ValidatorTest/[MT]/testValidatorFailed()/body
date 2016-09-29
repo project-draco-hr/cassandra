@@ -1,30 +1,15 @@
 {
   Range<Token> range=new Range<>(partitioner.getMinimumToken(),partitioner.getRandomToken());
   final RepairJobDesc desc=new RepairJobDesc(UUID.randomUUID(),UUID.randomUUID(),keyspace,columnFamily,Arrays.asList(range));
-  final SimpleCondition lock=new SimpleCondition();
-  MessagingService.instance().addMessageSink(new IMessageSink(){
-    public boolean allowOutgoingMessage(    MessageOut message,    int id,    InetAddress to){
-      try {
-        if (message.verb == MessagingService.Verb.REPAIR_MESSAGE) {
-          RepairMessage m=(RepairMessage)message.payload;
-          assertEquals(RepairMessage.Type.VALIDATION_COMPLETE,m.messageType);
-          assertEquals(desc,m.desc);
-          assertFalse(((ValidationComplete)m).success());
-          assertNull(((ValidationComplete)m).trees);
-        }
-      }
-  finally {
-        lock.signalAll();
-      }
-      return false;
-    }
-    public boolean allowIncomingMessage(    MessageIn message,    int id){
-      return false;
-    }
-  }
-);
+  final CompletableFuture<MessageOut> outgoingMessageSink=registerOutgoingMessageSink();
   InetAddress remote=InetAddress.getByName("127.0.0.2");
   Validator validator=new Validator(desc,remote,0);
   validator.fail();
-  if (!lock.isSignaled())   lock.await();
+  MessageOut message=outgoingMessageSink.get(TEST_TIMEOUT,TimeUnit.SECONDS);
+  assertEquals(MessagingService.Verb.REPAIR_MESSAGE,message.verb);
+  RepairMessage m=(RepairMessage)message.payload;
+  assertEquals(RepairMessage.Type.VALIDATION_COMPLETE,m.messageType);
+  assertEquals(desc,m.desc);
+  assertFalse(((ValidationComplete)m).success());
+  assertNull(((ValidationComplete)m).trees);
 }
